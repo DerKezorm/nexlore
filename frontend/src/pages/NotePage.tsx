@@ -76,6 +76,25 @@ export function NotePage() {
 
   const open = useCallback((next: string) => navigate(noteUrl(next)), [navigate])
 
+  // The "More" menu closes on a click elsewhere and on Escape, like any menu.
+  const menu = useRef<HTMLDetailsElement>(null)
+  useEffect(() => {
+    const close = (event: Event) => {
+      const element = menu.current
+      if (!element?.open) return
+      if (event instanceof KeyboardEvent ? event.key === 'Escape' : !element.contains(event.target as Node)) {
+        element.open = false
+        if (event instanceof KeyboardEvent) element.querySelector('summary')?.focus()
+      }
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', close)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', close)
+    }
+  }, [])
+
   const readDraft = () => {
     if (editor.current) draft.current = editor.current.text()
     return draft.current
@@ -96,7 +115,8 @@ export function NotePage() {
     }
   }, [])
 
-  const save = useCallback(async (): Promise<boolean> => {
+  /** `saved` (or nothing to save), `ended` (a conflict or a lost lock ended editing), `failed` (still editing). */
+  const save = useCallback(async (): Promise<'saved' | 'ended' | 'failed'> => {
     if (timer.current !== null) {
       window.clearTimeout(timer.current)
       timer.current = null
@@ -106,7 +126,7 @@ export function NotePage() {
     if (text === saved.current) {
       savedEdits.current = mark
       setSaveState((state) => (state === 'pending' ? 'saved' : state))
-      return true
+      return 'saved'
     }
     saving.current = true
     setSaveState('saving')
@@ -122,20 +142,21 @@ export function NotePage() {
         setSaveState('idle')
         await vaultApi.unlock(path).catch(() => undefined)
         await Promise.all([load(path), reload()])
-        return false
+        return 'ended'
       }
       saved.current = text
       base.current = result.hash
       savedEdits.current = mark
       setSaveState(edits.current === mark ? 'saved' : 'pending')
-      return true
+      return 'saved'
     } catch (error) {
       setSaveState('failed')
       if (error instanceof ApiError && error.code === 'locked') {
         setLockHolder(String(error.values.holder ?? ''))
         setEditingPath(null)
+        return 'ended'
       }
-      return false
+      return 'failed'
     } finally {
       saving.current = false
     }
@@ -143,16 +164,22 @@ export function NotePage() {
 
   const startEditing = useCallback(async () => {
     if (!note || note.readonly) return
+    // The note as it is now, read after the lock is ours: what the page shows may be older (a save just before, a
+    // change made elsewhere since the last look).
+    let fresh: NoteData
     try {
       await vaultApi.lock(path)
+      fresh = await vaultApi.note(path)
     } catch (error) {
       if (error instanceof ApiError && error.code === 'locked') setLockHolder(String(error.values.holder ?? ''))
       else setProblem(error instanceof ApiError ? error.code : 'internal_error')
       return
     }
-    draft.current = note.content
-    saved.current = note.content
-    base.current = note.hash
+    if (current.current !== path) return
+    setNote(fresh)
+    draft.current = fresh.content
+    saved.current = fresh.content
+    base.current = fresh.hash
     edits.current = 0
     savedEdits.current = 0
     setLockHolder(null)
@@ -162,11 +189,15 @@ export function NotePage() {
     setEditingPath(path)
   }, [note, path])
 
-  const stopEditing = useCallback(async () => {
-    await save()
+  /** True when editing has ended; false when the last save failed and the text is still only in the editor. */
+  const stopEditing = useCallback(async (): Promise<boolean> => {
+    const result = await save()
+    // After a conflict, save() has ended editing, given the lock back and loaded the note already.
+    if (result !== 'saved') return result === 'ended'
     setEditingPath(null)
     await vaultApi.unlock(path).catch(() => undefined)
     await Promise.all([load(path), reload()])
+    return true
   }, [save, path, load, reload])
 
   // A different note: back to reading, fresh data.
@@ -205,10 +236,19 @@ export function NotePage() {
     // A page that is going away runs no more code after this: then both requests leave at once (an unanswered lock
     // would run out by itself after 90 seconds anyway). When the editor itself goes, it has handed its last text to
     // `draft` already (NoteEditor's onLeave runs before this clean-up).
+    // The server never refuses these words: changed on disk, or locked by somebody else meanwhile, they go into a
+    // conflict copy. Then the vault is read again, so the copy shows up (and its banner on the note).
     const flush = (unloading: boolean) => {
       const text = unloading ? readDraft() : draft.current
       const pending = text !== saved.current
-      const sent = pending ? vaultApi.save(path, text, base.current, true).catch(() => undefined) : Promise.resolve()
+      const sent = pending
+        ? vaultApi
+            .save(path, text, base.current, true)
+            .then((result) => {
+              if (result.conflict) void reload()
+            })
+            .catch(() => undefined)
+        : Promise.resolve()
       if (pending) saved.current = text
       const unlock = () => vaultApi.unlock(path, true).catch(() => undefined)
       if (unloading) void unlock()
@@ -222,7 +262,7 @@ export function NotePage() {
       if (timer.current !== null) window.clearTimeout(timer.current)
       flush(false)
     }
-  }, [editing, path])
+  }, [editing, path, reload])
 
   // Changes made elsewhere: asked for every few seconds while the page is visible.
   useEffect(() => {
@@ -312,6 +352,12 @@ export function NotePage() {
     }
   }
 
+  // Comparing while editing would let two saves race (the editor's and the comparison's): editing ends first.
+  const compare = async (notePath: string, copyPath: string) => {
+    if (editing && !(await stopEditing())) return
+    setComparing({ note: notePath, copy: copyPath })
+  }
+
   const compared = async () => {
     const shown = comparing
     setComparing(null)
@@ -386,7 +432,7 @@ export function NotePage() {
               <Symbol name="graph" className="h-3.5 w-3.5" /> {t('note.inGraph')}
             </Link>
             {editing ? (
-              <details className="relative">
+              <details ref={menu} className="relative">
                 <summary className="cursor-pointer list-none rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850" aria-label={t('note.menu')}>
                   ⋯
                 </summary>
@@ -433,19 +479,19 @@ export function NotePage() {
           )}
           {lockedBy && <Banner tone="warn" symbol="lock">{t('note.lockedBanner', { name: lockedBy })}</Banner>}
           {conflict ? (
-            <Banner tone="warn" symbol="alert" action={<CompareButton onClick={() => setComparing({ note: path, copy: conflict })} />}>
+            <Banner tone="warn" symbol="alert" action={<CompareButton onClick={() => void compare(path, conflict)} />}>
               {t('note.conflict')}{' '}
               <button type="button" onClick={() => open(conflict)} className="font-semibold underline">{baseName(conflict)}</button>
             </Banner>
           ) : (
             copies.length > 0 && (
-              <Banner tone="warn" symbol="alert" action={<CompareButton onClick={() => setComparing({ note: path, copy: copies[0] })} />}>
+              <Banner tone="warn" symbol="alert" action={<CompareButton onClick={() => void compare(path, copies[0])} />}>
                 {t('note.copyExists')}
               </Banner>
             )
           )}
           {originalPath && vault.notes.has(originalPath) && (
-            <Banner tone="warn" symbol="alert" action={<CompareButton onClick={() => setComparing({ note: originalPath, copy: path })} />}>
+            <Banner tone="warn" symbol="alert" action={<CompareButton onClick={() => void compare(originalPath, path)} />}>
               {t('note.isCopy', { name: baseName(originalPath) })}
             </Banner>
           )}

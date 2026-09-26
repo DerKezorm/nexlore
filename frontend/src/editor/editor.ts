@@ -12,7 +12,7 @@
  */
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { editorViewCtx, parserCtx, remarkCtx, serializerCtx } from '@milkdown/kit/core'
-import type { Ctx } from '@milkdown/kit/ctx'
+import type { Ctx, MilkdownPlugin } from '@milkdown/kit/ctx'
 import { uploadConfig } from '@milkdown/kit/plugin/upload'
 import { remarkInlineLinkPlugin, remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark'
 import type { Node as ProseNode, Slice } from '@milkdown/kit/prose/model'
@@ -25,7 +25,7 @@ import type { Root } from 'mdast'
 import { Plan, type Block, type Tools } from './blocks'
 import { livePreview, refreshLive, type LinkHelpers } from './live'
 import { obsidian, replaced, writerOptions } from './obsidian'
-import { forcedRaw, keepsLetters } from './syntax'
+import { forcedRaw, holdRaw, keepsLetters, releaseRaw } from './syntax'
 import { detectStyle } from './style'
 import { linkSuggest, type Suggestion } from './suggest'
 
@@ -67,6 +67,8 @@ export type EditorOptions = {
   onChange: () => void
   /** A file was pasted or dropped; attachments come with M3. */
   onFileRefused?: () => void
+  /** For tests: more Milkdown plugins, after nexlore's own. */
+  plugins?: MilkdownPlugin[]
 }
 
 export type NoteEditor = {
@@ -199,6 +201,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     )
     .use($prose(() => livePreview(options.links)))
     .use($prose(() => linkSuggest({ search: options.search, label: () => labels.suggestions })))
+    .use(options.plugins ?? [])
   await crepe.editor.remove([remarkInlineLinkPlugin, remarkPreserveEmptyLinePlugin, ...replaced].flat())
   await crepe.create()
   crepe.setReadonly(!!options.readOnly)
@@ -237,19 +240,20 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
    * stay raw Markdown: shown as source, never rewritten. Better unwieldy than lost.
    */
   const guard = (text: string): boolean => {
-    for (const key of forcedKeys) forcedRaw.delete(key)
+    for (const key of forcedKeys) releaseRaw(key)
     forcedKeys = []
     memo = new Map()
     const lossy = new Set<number>()
     for (const block of tools.blocks(text)) {
       const piece = text.slice(block.start, block.end)
-      if (keepsLetters(piece, tools.serialize(piece))) continue
+      // Marked by another open editor already: lossy here too (its round trip now comes back raw).
+      if (!forcedRaw.has(piece) && keepsLetters(piece, tools.serialize(piece))) continue
       lossy.add(block.start)
-      forcedRaw.set(piece, new Set([0]))
+      holdRaw(piece, new Set([0]))
       forcedKeys.push(piece)
     }
     if (!lossy.size) return false
-    forcedRaw.set(text, lossy)
+    holdRaw(text, lossy)
     forcedKeys.push(text)
     memo = new Map()
     return true
@@ -286,7 +290,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     replace: (next: string) => load(next, true),
     refresh: () => refreshLive(view),
     destroy: async () => {
-      for (const key of forcedKeys) forcedRaw.delete(key)
+      for (const key of forcedKeys) releaseRaw(key)
       await crepe.destroy()
     },
   }

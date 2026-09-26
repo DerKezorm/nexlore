@@ -1,6 +1,7 @@
 /**
  * Suggestions after `[[`: notes whose name contains what was typed, the best first. Arrow keys choose, Enter or
- * Tab takes, Escape closes. The list is a plain element next to the editor, filled by the page.
+ * Tab takes, Escape closes. The list is a plain element next to the editor, filled by the page. The focus stays in
+ * the text; the editor points at the chosen suggestion (`aria-activedescendant`), as a combobox does.
  */
 import { Plugin, PluginKey, type EditorState } from '@milkdown/kit/prose/state'
 import type { EditorView } from '@milkdown/kit/prose/view'
@@ -19,7 +20,7 @@ function find(state: EditorState, search: (query: string) => Suggestion[]): Acti
   if (!selection.empty) return null
   const $pos = selection.$from
   if (!$pos.parent.isTextblock || $pos.parent.type.spec.code) return null
-  const before = $pos.parent.textBetween(0, $pos.parentOffset, undefined, '￼')
+  const before = $pos.parent.textBetween(0, $pos.parentOffset, undefined, '\ufffc')
   const match = OPEN.exec(before)
   if (!match) return null
   const query = match[1]
@@ -30,33 +31,44 @@ function find(state: EditorState, search: (query: string) => Suggestion[]): Acti
 
 function take(view: EditorView, active: NonNullable<Active>, item: Suggestion) {
   const { state } = view
-  const after = state.doc.textBetween(active.to, Math.min(active.to + 2, state.selection.$from.end()), undefined, '￼')
+  const after = state.doc.textBetween(active.to, Math.min(active.to + 2, state.selection.$from.end()), undefined, '\ufffc')
   const closing = after === ']]' ? '' : ']]'
   const tr = state.tr.insertText(item.insert + closing, active.from, active.to)
   view.dispatch(tr.setMeta(suggestKey, 'close'))
   view.focus()
 }
 
+let instances = 0
+
 export function linkSuggest(options: { search: () => (query: string) => Suggestion[]; label: () => string }) {
   let box: HTMLDivElement | null = null
   let closed: number | null = null // position where Escape closed the list, until the cursor moves elsewhere
+  const id = `nx-suggest-${++instances}`
 
   const render = (view: EditorView, active: Active) => {
+    const editable = view.dom
     if (!active || !active.items.length) {
       box?.remove()
       box = null
+      editable.setAttribute('aria-expanded', 'false')
+      editable.removeAttribute('aria-activedescendant')
       return
     }
     if (!box) {
       box = document.createElement('div')
+      box.id = id
       box.className = 'nx-suggest'
       box.setAttribute('role', 'listbox')
       box.setAttribute('aria-label', options.label())
       document.body.appendChild(box)
     }
+    editable.setAttribute('aria-expanded', 'true')
+    editable.setAttribute('aria-controls', id)
+    editable.setAttribute('aria-activedescendant', `${id}-${active.index}`)
     box.replaceChildren(
       ...active.items.map((item, index) => {
         const row = document.createElement('div')
+        row.id = `${id}-${index}`
         row.className = 'nx-suggest-item' + (index === active.index ? ' is-active' : '')
         row.setAttribute('role', 'option')
         row.setAttribute('aria-selected', String(index === active.index))
@@ -103,6 +115,8 @@ export function linkSuggest(options: { search: () => (query: string) => Suggesti
       }
       const host = view.dom.parentElement ?? view.dom
       host.addEventListener('keydown', keys, true)
+      view.dom.setAttribute('aria-autocomplete', 'list')
+      view.dom.setAttribute('aria-expanded', 'false')
       render(view, suggestKey.getState(view.state) ?? null)
       return {
         update: (v) => render(v, suggestKey.getState(v.state) ?? null),

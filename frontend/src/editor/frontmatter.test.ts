@@ -52,6 +52,21 @@ describe('front matter', () => {
     expect(writeProperties('', [{ key: 'new', kind: 'list', value: ['x'] }])).toBe('---\nnew:\n  - x\n---\n')
   })
 
+  it('splits a tag string at blanks, an alias string only at commas', () => {
+    const read = readProperties('---\ntags: one two\naliases: My Note Title\ncssclasses: wide, dark\n---\n')
+    expect(read.ok && read.items.map((item) => item.value)).toEqual([['one', 'two'], ['My Note Title'], ['wide', 'dark']])
+  })
+
+  it('keeps the comment after a property that is removed (it is about the next one)', () => {
+    const head = '---\ntitle: a\n# note about b\nb: 2\n# last words\n---\n'
+    const read = readProperties(head)
+    if (!read.ok) throw new Error('not ok')
+    expect(writeProperties(head, read.items.filter((item) => item.key !== 'title'))).toBe('---\n# note about b\nb: 2\n# last words\n---\n')
+    expect(writeProperties(head, read.items.filter((item) => item.key !== 'b'))).toBe('---\ntitle: a\n# note about b\n# last words\n---\n')
+    const changed = read.items.map((item) => (item.key === 'title' ? { ...item, value: 'z' } : item))
+    expect(writeProperties(head, changed)).toBe('---\ntitle: z\n# note about b\nb: 2\n# last words\n---\n')
+  })
+
   it('keeps CRLF', () => {
     const head = '---\r\na: 1\r\nb: 2\r\n---\r\n'
     const read = readProperties(head)

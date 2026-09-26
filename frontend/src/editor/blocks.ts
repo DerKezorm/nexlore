@@ -30,7 +30,7 @@ export type Tools = {
   serialize: (text: string) => string
 }
 
-/** Above this many cells a table is not built; the part in between becomes one unit (never loses anything). */
+/** Above this many cells a table is not built; matching walks with a window instead (see `windowUnits`). */
 const MAX_CELLS = 2_000_000
 const SPAN = 4
 
@@ -48,7 +48,11 @@ export class Plan {
   readonly empty: boolean[]
   readonly eol: string
 
-  constructor(original: string, tools: Tools) {
+  /** `maxCells`: for tests, to reach the windowed matching with small texts. */
+  readonly maxCells: number
+
+  constructor(original: string, tools: Tools, maxCells = MAX_CELLS) {
+    this.maxCells = maxCells
     this.original = original
     this.eol = original.includes('\r\n') ? '\r\n' : '\n'
     this.e0 = tools.serialize(original)
@@ -57,7 +61,7 @@ export class Plan {
     this.e0Texts = this.e0Blocks.map((block) => norm(this.e0.slice(block.start, block.end)))
     const canon = this.o.map((block) => norm(tools.serialize(original.slice(block.start, block.end))))
     this.empty = canon.map((text) => !text)
-    this.units = splitEmpty(matchUnits(canon, this.e0, this.e0Blocks))
+    this.units = splitEmpty(matchUnits(canon, this.e0, this.e0Blocks, maxCells))
   }
 
   /** The text to write for the editor's output `edited`. */
@@ -66,7 +70,7 @@ export class Plan {
   }
 }
 
-function matchUnits(canon: string[], e0Text: string, e0: Block[]): Unit[] {
+function matchUnits(canon: string[], e0Text: string, e0: Block[], maxCells: number): Unit[] {
   const n = canon.length
   const m = e0.length
   const joined: string[][] = e0.map((_, j) =>
@@ -101,16 +105,65 @@ function matchUnits(canon: string[], e0Text: string, e0: Block[]): Unit[] {
     i1 -= 1
     j1 -= found
   }
-  const middle = middleUnits(i0, i1, j0, j1, takeAt)
+  const middle = middleUnits(i0, i1, j0, j1, takeAt, maxCells)
   return [...anchors, ...middle, ...tail]
 }
 
+/**
+ * Too large for the table (a very long note whose early block the editor writes differently): matching walks
+ * forward and looks for the next anchor within a window on either side. Linear, and misses only anchors that moved
+ * far; what it misses becomes part of a gap, never lost.
+ */
+function windowUnits(i0: number, i1: number, j0: number, j1: number, takeAt: (i: number, j: number) => number): Unit[] {
+  const WINDOW = 64
+  const result: Unit[] = []
+  let gapFrom = i0
+  let gapE: number[] = []
+  const flush = (to: number) => {
+    if (gapFrom < to || gapE.length) result.push({ oFrom: gapFrom, oTo: to, e0: gapE })
+    gapE = []
+  }
+  let i = i0
+  let j = j0
+  while (i < i1 && j < j1) {
+    const k = takeAt(i, j)
+    if (k && j + k <= j1) {
+      flush(i)
+      result.push({ oFrom: i, oTo: i + 1, e0: range(j, k) })
+      i += 1
+      j += k
+      gapFrom = i
+      continue
+    }
+    // The nearest anchor ahead: E0 blocks skipped (the editor wrote more), or O blocks skipped (it wrote less).
+    let skipE = 0
+    let skipO = 0
+    for (let d = 1; d <= WINDOW && !skipE && !skipO; d++) {
+      if (j + d < j1 && takeAt(i, j + d)) skipE = d
+      else if (i + d < i1 && takeAt(i + d, j)) skipO = d
+    }
+    if (skipE) {
+      gapE.push(...range(j, skipE))
+      j += skipE
+    } else if (skipO) i += skipO
+    else {
+      gapE.push(j)
+      i += 1
+      j += 1
+    }
+  }
+  gapE.push(...range(j, j1 - j))
+  flush(i1)
+  return result
+}
+
 /** The part between the greedy ends: a table of how many O blocks can be matched at most from (i, j) on. */
-function middleUnits(i0: number, i1: number, j0: number, j1: number, takeAt: (i: number, j: number) => number): Unit[] {
+function middleUnits(i0: number, i1: number, j0: number, j1: number, takeAt: (i: number, j: number) => number, maxCells: number): Unit[] {
   const n = i1 - i0
   const m = j1 - j0
   if (!n && !m) return []
-  if (n * m > MAX_CELLS || !n || !m) return [{ oFrom: i0, oTo: i1, e0: range(j0, m) }]
+  if (!n || !m) return [{ oFrom: i0, oTo: i1, e0: range(j0, m) }]
+  if (n * m > maxCells) return windowUnits(i0, i1, j0, j1, takeAt)
   const best = Array.from({ length: n + 1 }, () => new Int32Array(m + 1))
   const take = Array.from({ length: n + 1 }, () => new Int8Array(m + 1))
   for (let i = n - 1; i >= 0; i--) {
@@ -170,7 +223,7 @@ function range(from: number, count: number): number[] {
 }
 
 /** Longest common subsequence over block texts: for each E0 block the matching E1 block, or -1. */
-function matchBlocks(a: string[], b: string[]): number[] {
+function matchBlocks(a: string[], b: string[], maxCells: number): number[] {
   const match = new Array<number>(a.length).fill(-1)
   let start = 0
   while (start < a.length && start < b.length && a[start] === b[start]) {
@@ -186,7 +239,32 @@ function matchBlocks(a: string[], b: string[]): number[] {
   }
   const n = endA - start
   const m = endB - start
-  if (!n || !m || n * m > MAX_CELLS) return match
+  if (!n || !m) return match
+  if (n * m > maxCells) {
+    // Too large for the table (changes far apart in a very long note): walk, and look ahead within a window.
+    const WINDOW = 64
+    let i = start
+    let j = start
+    while (i < endA && j < endB) {
+      if (a[i] === b[j]) {
+        match[i++] = j++
+        continue
+      }
+      let skipB = 0
+      let skipA = 0
+      for (let d = 1; d <= WINDOW && !skipA && !skipB; d++) {
+        if (j + d < endB && a[i] === b[j + d]) skipB = d
+        else if (i + d < endA && a[i + d] === b[j]) skipA = d
+      }
+      if (skipB) j += skipB
+      else if (skipA) i += skipA
+      else {
+        i++
+        j++
+      }
+    }
+    return match
+  }
   const table = Array.from({ length: n + 1 }, () => new Int32Array(m + 1))
   for (let i = n - 1; i >= 0; i--)
     for (let j = m - 1; j >= 0; j--)
@@ -209,7 +287,7 @@ type Segment = { from: 'o'; first: number; last: number } | { from: 'e1'; block:
 function assemble(plan: Plan, edited: string, e1: Block[]): string {
   const { original, o, units, eol, empty } = plan
   const e1Texts = e1.map((block) => norm(edited.slice(block.start, block.end)))
-  const match = matchBlocks(plan.e0Texts, e1Texts)
+  const match = matchBlocks(plan.e0Texts, e1Texts, plan.maxCells)
 
   // E1 blocks without an E0 counterpart are placed after the last matched E0 block before them.
   const insertedAfter = new Map<number, number[]>()

@@ -98,13 +98,12 @@ export const wikiFromMarkdown: FromMarkdownExtension = {
 
 /**
  * Spans in plain text that are written exactly as they stand. Order matters: the first alternative that matches at
- * a place wins.
+ * a place wins. Templater and comments are found apart (`closedSpans`): a lazy `<%[\s\S]*?%>` scans to the end of
+ * the text from every `<%` that is never closed, and a line full of them took seconds.
  */
 const PROTECTED = new RegExp(
   [
     String.raw`!?\[\[[^\[\]\n]+\]\]`, // wiki link, embed
-    String.raw`<%[\s\S]*?%>`, // Templater
-    String.raw`%%[\s\S]*?%%`, // Obsidian comment
     String.raw`(?<![=\\])==(?=[^\s=])|(?<=[^\s=])==(?!=)`, // highlight markers, not a setext underline
     String.raw`(?<![\p{L}\p{N}_&/\\#])#[\p{L}\p{N}_/-]*[\p{L}_/-][\p{L}\p{N}_/-]*`, // tag, not a heading
     // A web address typed as text: remark would write `https\://`, and remark-gfm links it on reading anyway. Only
@@ -113,6 +112,33 @@ const PROTECTED = new RegExp(
   ].join('|'),
   'gu',
 )
+
+/** `<% … %>` (Templater) and `%% … %%` (comment) in one pass, each up to its own end, in order. */
+export function closedSpans(value: string): [number, number][] {
+  const out: [number, number][] = []
+  let at = 0
+  let templater = true
+  let comments = true
+  while (at < value.length && (templater || comments)) {
+    const t = templater ? value.indexOf('<%', at) : -1
+    const c = comments ? value.indexOf('%%', at) : -1
+    if (t < 0) templater = false
+    if (c < 0) comments = false
+    if (t < 0 && c < 0) break
+    const isTemplater = t >= 0 && (c < 0 || t < c)
+    const start = isTemplater ? t : c
+    const end = value.indexOf(isTemplater ? '%>' : '%%', start + 2)
+    if (end < 0) {
+      // Nothing closes after here, so no later one of this kind is closed either.
+      if (isTemplater) templater = false
+      else comments = false
+      continue
+    }
+    out.push([start, end + 2])
+    at = end + 2
+  }
+  return out
+}
 
 /** Obsidian's callout marker, only at the start of a quote: `[!note]`, `[!warning]-`, `[!tip]+`. */
 const CALLOUT = /^\[![\w-]+\][+-]?/
@@ -132,18 +158,31 @@ export function pieces(value: string, calloutAllowed = false): Piece[] {
   }
   const rest = value.slice(offset)
   let last = 0
-  for (const match of rest.matchAll(PROTECTED)) {
-    if (match.index > last) out.push({ text: rest.slice(last, match.index), raw: false })
-    out.push({ text: match[0], raw: true })
-    last = match.index + match[0].length
+  const raw = (from: number, to: number) => {
+    if (from > last) out.push({ text: rest.slice(last, from), raw: false })
+    out.push({ text: rest.slice(from, to), raw: true })
+    last = to
+  }
+  // Between the closed spans, the other patterns; run over the whole text, so what stands before counts.
+  const spans = [...closedSpans(rest), [rest.length, rest.length] as [number, number]]
+  for (const [start, end] of spans) {
+    PROTECTED.lastIndex = last
+    for (let match = PROTECTED.exec(rest); match && match.index < start; match = PROTECTED.exec(rest)) {
+      if (match.index + match[0].length > start) break
+      raw(match.index, match.index + match[0].length)
+    }
+    if (end > start) raw(start, end)
   }
   if (last < rest.length) out.push({ text: rest.slice(last), raw: false })
   return out
 }
 
-/** In a table cell a bare `|` ends the cell; inside a wiki link Obsidian writes it as `\|`. */
+/**
+ * In a table cell a bare `|` ends the cell: Obsidian writes it as `\|`, in a wiki link as in a highlight, a comment
+ * or Templater. A wiki link read from a cell still has its `\|`; text from elsewhere gets one.
+ */
 function forTable(raw: string): string {
-  return /^!?\[\[/.test(raw) ? raw.replace(/(?<!\\)\|/g, '\\|') : raw
+  return raw.replace(/(?<!\\)\|/g, '\\|')
 }
 
 /**
@@ -354,6 +393,22 @@ export function indentedListItem(unit: string | null) {
  * offset where the block starts: blocks the editor would lose something of (see `lossyBlocks` in editor.ts).
  */
 export const forcedRaw = new Map<string, Set<number>>()
+const rawHolds = new Map<string, number>()
+
+/** An editor marks a text; two editors with the same text share the entry until both have let go. */
+export function holdRaw(text: string, starts: Set<number>): void {
+  forcedRaw.set(text, starts)
+  rawHolds.set(text, (rawHolds.get(text) ?? 0) + 1)
+}
+
+export function releaseRaw(text: string): void {
+  const left = (rawHolds.get(text) ?? 1) - 1
+  if (left > 0) rawHolds.set(text, left)
+  else {
+    rawHolds.delete(text)
+    forcedRaw.delete(text)
+  }
+}
 
 /** A code block as it was written: with the author's fence character, or indented where it was indented. */
 export function writtenCode(fallback: NonNullable<ToMarkdownOptions['handlers']>['code']) {

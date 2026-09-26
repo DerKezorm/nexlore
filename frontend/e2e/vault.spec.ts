@@ -59,7 +59,8 @@ test('typing saves by itself, and the file on disk has it', async ({ page }) => 
 test('a change made elsewhere while typing ends in a conflict copy, nothing is overwritten', async ({ page }) => {
   await page.goto('/note/Work/Conflict.md')
   await page.getByRole('button', { name: 'Edit' }).click()
-  // Obsidian (or anybody) writes the file while the editor is open.
+  // Obsidian (or anybody) writes the file while the editor is open (editing reads the note afresh when it starts).
+  await expect(page.locator('.ProseMirror')).toContainText('Before.')
   fs.writeFileSync(path.join(DATA, 'vault', 'Work', 'Conflict.md'), '# Conflict\n\nChanged in Obsidian.\n')
   await page.locator('.ProseMirror').click()
   await page.keyboard.press('Control+End')

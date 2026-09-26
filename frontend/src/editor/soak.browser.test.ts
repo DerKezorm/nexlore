@@ -15,8 +15,7 @@ import { TextSelection } from '@milkdown/kit/prose/state'
 import type { EditorView } from '@milkdown/kit/prose/view'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { CORPUS, openEditor } from './harness'
-import { replaceWord } from './roundtrip.browser.test'
+import { CORPUS, openEditor, replaceWord } from './harness'
 
 type Open = Awaited<ReturnType<typeof openEditor>>
 const opened: Open[] = []
@@ -111,7 +110,7 @@ function textblocks(doc: ProseNode): { from: number; to: number; node: ProseNode
 /** A cursor never stands between the two halves of an emoji; a random position must not either. */
 function whole(doc: ProseNode, pos: number): number {
   if (pos <= 0) return pos
-  const before = doc.textBetween(pos - 1, pos, undefined, '￼')
+  const before = doc.textBetween(pos - 1, pos, undefined, '\ufffc')
   return /[\ud800-\udbff]/.test(before) ? pos - 1 : pos
 }
 
@@ -260,7 +259,7 @@ function inline(block: ProseNode): string {
     else runs.push({ text, marks })
   }
   block.forEach((child) => {
-    if (child.type.name === 'hardbreak') return push('\n', '')
+    if (child.type.name === 'hardbreak') return push(block.type.name === 'heading' ? ' ' : '\n', '')
     if (!child.isText) return void runs.push({ atom: visible(child) })
     // A heading is one line in Markdown: a line break in it is written as a blank.
     const text = block.type.name === 'heading' ? (child.text ?? '').replace(/\n/g, ' ') : (child.text ?? '')

@@ -34,6 +34,15 @@ describe('comparing a note with its conflict copy', () => {
     expect(merge(rows, ['both'])).toBe('one\n\ntwo\n\nthree')
   })
 
+  it('stays quick with very many blocks: what differs between the equal ends becomes one change', () => {
+    const many = (prefix: string) => Array.from({ length: 3000 }, (_, i) => `${prefix} ${i}`).join('\n\n') + '\n'
+    const started = performance.now()
+    const rows = compareTexts('# Same\n\n' + many('left') + '\nEnd\n', '# Same\n\n' + many('right') + '\nEnd\n')
+    expect(performance.now() - started).toBeLessThan(2000)
+    expect(rows.map((row) => row.kind)).toEqual(['same', 'change', 'same'])
+    expect(merge(rows, [])).toBe('# Same\n\n' + many('left') + '\nEnd\n')
+  })
+
   it('marks the words that differ', () => {
     const diff = wordDiff('the old house', 'the new house')
     expect(diff.left).toEqual([{ text: 'the ', changed: false }, { text: 'old', changed: true }, { text: ' house', changed: false }])

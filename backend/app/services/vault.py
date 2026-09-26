@@ -219,14 +219,20 @@ def conflict_name(rel: str, now: datetime) -> str:
 
 
 def save(rel: str, data: bytes, *, base_hash: str, actor: Actor) -> Saved:
-    """Write a note the client had loaded as ``base_hash``. Changed in between: into a conflict copy instead."""
+    """Write a note the client had loaded as ``base_hash``. Changed in between: into a conflict copy instead.
+
+    Somebody else holding the note's lock does not refuse the text either: a tab that lost its lock (it ran out, the
+    heartbeat failed) still has words nobody saved, often in a last request as the tab closes. They go into a
+    conflict copy; the note itself stays with the lock holder.
+    """
     rel = _parse(rel)
     if not paths.is_note(rel):
         raise VaultError("not_a_note", "only notes are saved this way")
     full = _full(rel)
     with index.guard, SessionLocal() as db:
         file = _file(db, rel)
-        _refuse_foreign_lock(db, [file], actor)
+        foreign = _valid_lock(db, file.id, utcnow())
+        locked_out = foreign is not None and foreign.holder != actor.client
         try:
             current = full.read_bytes()
         except FileNotFoundError:
@@ -236,17 +242,21 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor) -> Saved:
         if current is not None and index.digest(current) == index.digest(data):
             db.expunge(file)
             return Saved(file=file, changed=False)
-        if current is not None and index.digest(current) != base_hash:
+        if current is not None and (locked_out or index.digest(current) != base_hash):
             # Local time in the name: it is read by people, next to the files' own times (TZ in the container).
             copy_name = paths.unique_name(full.parent, conflict_name(rel, datetime.now().astimezone()))
             copy_rel = posixpath.join(posixpath.dirname(rel), copy_name)
             stat = atomic_write(full.parent / copy_name, data)
             copy = index.record(db, copy_rel, data, stat, source=index.APP, author=actor.name, session=actor.client)
-            # What is on disk now goes into the history too, before the watcher gets to it.
-            index.record(db, rel, current, full.stat(), source=index.EXTERNAL, file=file)
+            # What is on disk now goes into the history too, before the watcher gets to it (if it did change).
+            if index.digest(current) != base_hash:
+                index.record(db, rel, current, full.stat(), source=index.EXTERNAL, file=file)
             index.reresolve(db, copy.space_id, [copy.name_key])
             db.commit()
-            logger.info("Save conflict, copy written file_id=%s copy_id=%s", file.id, copy.id)
+            logger.info(
+                "Save conflict, copy written file_id=%s copy_id=%s reason=%s",
+                file.id, copy.id, "locked" if locked_out else "changed",
+            )
             db.expunge(file)
             return Saved(file=file, conflict=copy_rel)
         stat = atomic_write(full, data)

@@ -51,7 +51,9 @@ function kindOf(key: string, node: unknown): Property {
     if (typeof value === 'number') return { key, kind: 'number', value: String(isScalar(node) && node.source ? node.source : value) }
     const text = value === null ? '' : String(value)
     // Tags and aliases are lists in Obsidian even when written as one word.
-    if (/^(tags|aliases|cssclasses)$/i.test(key)) return { key, kind: 'list', value: text ? text.split(/[,\s]+/).filter(Boolean) : [] }
+    // A tag has no blanks, so `tags: a b` are two; an alias may have them, so only a comma separates aliases.
+    if (/^tags$/i.test(key)) return { key, kind: 'list', value: text ? text.split(/[,\s]+/).filter(Boolean) : [] }
+    if (/^(aliases|cssclasses)$/i.test(key)) return { key, kind: 'list', value: text ? text.split(/\s*,\s*/).filter(Boolean) : [] }
     if (DATE.test(text)) return { key, kind: 'date', value: text }
     if (DATETIME.test(text)) return { key, kind: 'datetime', value: text }
     return { key, kind: 'text', value: text }
@@ -123,19 +125,29 @@ export function writeProperties(head: string, items: Property[]): string {
     })
   }
   const old = new Map(before.ok ? before.items.map((item) => [item.key, item]) : [])
+  // Comments and blank lines at the end of a property's source are about the next one: when a property goes, they
+  // stay (a comment is never lost with the property above it).
+  const order = [...chunks.keys()]
+  const wanted = new Set(items.map((item) => item.key))
+  const tail = (chunk: string) => /(?:^|\n)((?:(?:#[^\n]*)?\n)+)$/.exec(chunk)?.[1] ?? ''
   let out = preamble
+  const afterRemoved = (index: number) => {
+    for (let k = index + 1; k < order.length && !wanted.has(order[k]); k++) out += tail(chunks.get(order[k])!)
+  }
+  afterRemoved(-1)
   for (const item of items) {
     const kept = chunks.get(item.key)
-    if (kept !== undefined && same(old.get(item.key), item)) {
-      out += kept
-      continue
+    if (kept !== undefined && same(old.get(item.key), item)) out += kept
+    else {
+      const doc = new Document({})
+      const node = toNode(doc, item)
+      // A list keeps its style: `[a, b]` on one line, or one item per line.
+      if (isSeq(node) && kept !== undefined) node.flow = /^[^:\n]*:[ \t]*\[/.test(kept)
+      doc.set(item.key, node)
+      // A changed property keeps the comments that ended its source.
+      out += doc.toString({ lineWidth: 0, flowCollectionPadding: false }) + (kept !== undefined ? tail(kept) : '')
     }
-    const doc = new Document({})
-    const node = toNode(doc, item)
-    // A list keeps its style: `[a, b]` on one line, or one item per line.
-    if (isSeq(node) && kept !== undefined) node.flow = /^[^:\n]*:[ \t]*\[/.test(kept)
-    doc.set(item.key, node)
-    out += doc.toString({ lineWidth: 0, flowCollectionPadding: false })
+    if (kept !== undefined) afterRemoved(order.indexOf(item.key))
   }
   return ['---', ...out.replace(/\n$/, '').split('\n'), '---', ''].join(eol)
 }

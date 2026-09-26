@@ -2,11 +2,11 @@
  * The editor against Obsidian-style files, in a real browser: unchanged files stay byte for byte, the editor itself
  * keeps Obsidian's syntax, and a changed word changes only its block.
  */
-import { TextSelection } from '@milkdown/kit/prose/state'
-import type { EditorView } from '@milkdown/kit/prose/view'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { CORPUS, openEditor } from './harness'
+import { Plan } from './blocks'
+import { splitNote } from './frontmatter'
+import { CORPUS, openEditor, replaceWord } from './harness'
 
 type Open = Awaited<ReturnType<typeof openEditor>>
 let open: Open | null = null
@@ -14,21 +14,6 @@ afterEach(async () => {
   await open?.close()
   open = null
 })
-
-/** Replace the first occurrence of a word in the document's text, as typing would. */
-export function replaceWord(view: EditorView, find: string, replace: string): boolean {
-  let hit = -1
-  view.state.doc.descendants((node, pos) => {
-    if (hit >= 0) return false
-    if (!node.isText) return true
-    const at = node.text!.indexOf(find)
-    if (at >= 0) hit = pos + at
-    return false
-  })
-  if (hit < 0) return false
-  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, hit, hit + find.length)).insertText(replace))
-  return true
-}
 
 describe('without a change', () => {
   for (const [name, text] of Object.entries(CORPUS)) {
@@ -100,6 +85,22 @@ describe('one word changed', () => {
       open = await openEditor(text)
       expect(replaceWord(open.view, find, replace)).toBe(true)
       expect(open.text()).toBe(EXPECTED[name]?.(text) ?? text.replace(find, replace))
+    })
+  }
+})
+
+describe('very long notes', () => {
+  // The table for matching is not built above a size; the window that takes over must give the same result.
+  for (const [name, [find, replace]] of Object.entries(EDITS)) {
+    it(`${name}: matching by window gives what the table gives`, async () => {
+      const text = CORPUS[name]
+      open = await openEditor(text)
+      expect(replaceWord(open.view, find, replace)).toBe(true)
+      const { head, body } = splitNote(text)
+      const edited = open.markdown().slice(head.length)
+      const byTable = new Plan(body, open.tools).apply(edited, open.tools)
+      const byWindow = new Plan(body, open.tools, 0).apply(edited, open.tools)
+      expect(head + byWindow).toBe(head + byTable)
     })
   }
 })

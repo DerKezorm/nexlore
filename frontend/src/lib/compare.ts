@@ -57,39 +57,57 @@ export function splitBlocks(text: string): string[] {
 
 const key = (block: string) => block.replace(/\r\n?/g, '\n').trim()
 
+/** Above this many cells the table is not built: what lies between the equal start and end is one change. */
+const MAX_CELLS = 4_000_000
+
 export function compareTexts(left: string, right: string): Row[] {
   const a = splitBlocks(left)
   const b = splitBlocks(right)
   const ka = a.map(key)
   const kb = b.map(key)
-  const n = a.length
-  const m = b.length
-  const table = Array.from({ length: n + 1 }, () => new Int32Array(m + 1))
-  for (let i = n - 1; i >= 0; i--)
-    for (let j = m - 1; j >= 0; j--) table[i][j] = ka[i] === kb[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1])
+  // Equal blocks at the start and the end first; the table only for what lies between.
+  let start = 0
+  while (start < a.length && start < b.length && ka[start] === kb[start]) start++
+  let endA = a.length
+  let endB = b.length
+  while (endA > start && endB > start && ka[endA - 1] === kb[endB - 1]) {
+    endA--
+    endB--
+  }
   const rows: Row[] = []
-  let change: { left: string[]; right: string[] } | null = null
-  const flush = () => {
-    if (change) rows.push({ kind: 'change', ...change })
-    change = null
-  }
-  let i = 0
-  let j = 0
-  while (i < n || j < m) {
-    if (i < n && j < m && ka[i] === kb[j]) {
-      flush()
-      rows.push({ kind: 'same', left: a[i], right: b[j] })
-      i++
-      j++
-    } else if (j >= m || (i < n && table[i + 1][j] >= table[i][j + 1])) {
-      change ??= { left: [], right: [] }
-      change.left.push(a[i++])
-    } else {
-      change ??= { left: [], right: [] }
-      change.right.push(b[j++])
+  for (let k = 0; k < start; k++) rows.push({ kind: 'same', left: a[k], right: b[k] })
+  const n = endA - start
+  const m = endB - start
+  if (n * m > MAX_CELLS) rows.push({ kind: 'change', left: a.slice(start, endA), right: b.slice(start, endB) })
+  else if (n || m) {
+    const table = Array.from({ length: n + 1 }, () => new Int32Array(m + 1))
+    for (let i = n - 1; i >= 0; i--)
+      for (let j = m - 1; j >= 0; j--)
+        table[i][j] = ka[start + i] === kb[start + j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1])
+    let change: { left: string[]; right: string[] } | null = null
+    const flush = () => {
+      if (change) rows.push({ kind: 'change', ...change })
+      change = null
     }
+    let i = 0
+    let j = 0
+    while (i < n || j < m) {
+      if (i < n && j < m && ka[start + i] === kb[start + j]) {
+        flush()
+        rows.push({ kind: 'same', left: a[start + i], right: b[start + j] })
+        i++
+        j++
+      } else if (j >= m || (i < n && table[i + 1][j] >= table[i][j + 1])) {
+        change ??= { left: [], right: [] }
+        change.left.push(a[start + i++])
+      } else {
+        change ??= { left: [], right: [] }
+        change.right.push(b[start + j++])
+      }
+    }
+    flush()
   }
-  flush()
+  for (let k = 0; k < a.length - endA; k++) rows.push({ kind: 'same', left: a[endA + k], right: b[endB + k] })
   return rows
 }
 

@@ -305,7 +305,12 @@ def save(body: SaveIn, who: ActorDep) -> SaveOut:
     except VaultError as exc:
         raise _fail(exc) from exc
     if result.conflict:
-        return SaveOut(saved=False, hash=index.digest(current), conflict=result.conflict)
+        # The state that caused the conflict, read again: the file may have changed once more since the first read.
+        try:
+            _file, now = vault.read(body.path)
+        except VaultError:
+            now = current
+        return SaveOut(saved=False, hash=index.digest(now), conflict=result.conflict)
     return SaveOut(saved=result.changed, hash=index.digest(data))
 
 

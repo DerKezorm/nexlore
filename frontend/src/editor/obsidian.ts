@@ -10,6 +10,8 @@ import { gfmTableToMarkdown } from 'mdast-util-gfm-table'
 import type { Options } from 'mdast-util-to-markdown'
 import { defaultHandlers } from 'mdast-util-to-markdown'
 
+import { safeUrl } from '../lib/markdown'
+
 import type { Style } from './style'
 import {
   attention,
@@ -152,6 +154,12 @@ export const safeImage = imageSchema.extendSchema((previous) => (ctx) => {
   const base = previous(ctx)
   return {
     ...base,
+    // Links are cleaned by Milkdown; images were not. Only the web and paths in the vault reach the page.
+    toDOM: (node) => {
+      const shown = base.toDOM!(node) as [string, Record<string, unknown>]
+      const src = String(node.attrs.src ?? '')
+      return [shown[0], { ...shown[1], src: safeUrl(src) && !/^mailto:/i.test(src) ? src : '' }]
+    },
     parseMarkdown: {
       match: base.parseMarkdown.match,
       runner: (state, node, type) => {

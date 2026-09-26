@@ -95,8 +95,11 @@ def test_a_lock_keeps_others_out_until_it_runs_out(vault: Path) -> None:
     with pytest.raises(VaultError) as refused:
         service.acquire("S/a.md", OTHER)
     assert refused.value.status == 423 and refused.value.values["holder"] == "tester"
-    with pytest.raises(VaultError):
-        service.save("S/a.md", b"y", base_hash=hash_of(vault, "S/a.md"), actor=OTHER)
+    # A save against the lock is not refused (a tab that lost its lock still has unsaved words): it goes into a copy.
+    saved = service.save("S/a.md", b"y", base_hash=hash_of(vault, "S/a.md"), actor=OTHER)
+    assert saved.conflict and saved.conflict.startswith("S/a (conflict ")
+    assert (vault / "S" / "a.md").read_bytes() == b"x"
+    assert (vault / saved.conflict).read_bytes() == b"y"
     with pytest.raises(VaultError):
         service.delete_path("S/a.md", actor=OTHER)
     with SessionLocal() as db:
