@@ -38,6 +38,7 @@ def test_every_vault_route_needs_an_account(client: TestClient) -> None:
         ("post", "/api/move"), ("get", "/api/links?path=Work/a.md"), ("get", "/api/tags"),
         ("get", "/api/search?q=x"), ("get", "/api/graph?space=Work"), ("post", "/api/locks"),
         ("get", "/api/versions?path=Work/a.md"), ("get", "/api/trash"), ("get", "/api/index"),
+        ("get", "/api/note/state?path=Work/a.md"),
         ("post", "/api/index/scan"), ("post", "/api/spaces"), ("post", "/api/folders"),
     ]:
         response = getattr(client, method)(url)
@@ -76,6 +77,24 @@ def test_read_save_and_conflict(client: TestClient, filled: Path) -> None:
     ).json()
     assert stale["saved"] is False and stale["conflict"].startswith("Work/Plan (conflict ")
     assert (filled / "Work" / "Plan.md").read_bytes() == b"new text"
+
+
+def test_the_state_of_a_note_follows_the_disk_without_its_text(client: TestClient, filled: Path) -> None:
+    note = client.get("/api/note", params={"path": "Work/Plan.md"}).json()
+    state = client.get("/api/note/state", params={"path": "Work/Plan.md"}, headers=TAB).json()
+    assert state["hash"] == note["hash"]
+    assert "content" not in state
+    assert state["lock"] is None
+    # Changed elsewhere (Obsidian): the state says so at once, before the watcher has indexed anything.
+    put(filled, "Work/Plan.md", "# Plan\nChanged outside.")
+    changed = client.get("/api/note/state", params={"path": "Work/Plan.md"}, headers=TAB).json()
+    assert changed["hash"] != note["hash"]
+    assert changed["hash"] == client.get("/api/note", params={"path": "Work/Plan.md"}).json()["hash"]
+    client.post("/api/locks", json={"path": "Work/Plan.md"}, headers=TAB)
+    assert client.get("/api/note/state", params={"path": "Work/Plan.md"}, headers=TAB).json()["lock"]["mine"] is True
+    assert client.get("/api/note/state", params={"path": "Work/Plan.md"}, headers=OTHER_TAB).json()["lock"]["mine"] is False
+    assert client.get("/api/note/state", params={"path": "Work/Ideas/pic.png"}).json()["detail"]["code"] == "not_a_note"
+    assert client.get("/api/note/state", params={"path": "Work/None.md"}).status_code == 404
 
 
 def test_a_byte_order_mark_survives_a_save(client: TestClient, filled: Path) -> None:

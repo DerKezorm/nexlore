@@ -1,0 +1,223 @@
+/*
+ * The note editor: Crepe's variables on nexlore's colours (they switch with the theme, see index.css), and the look
+ * of Obsidian's syntax in the live preview (live.ts). Plain CSS on purpose: Crepe's own sheet is plain CSS too, and
+ * Tailwind's utilities never touch the editor's inside.
+ */
+
+.nx-note-editor .milkdown {
+  --crepe-color-background: transparent;
+  --crepe-color-on-background: var(--color-mist-200);
+  --crepe-color-surface: var(--color-ink-900);
+  --crepe-color-surface-low: var(--color-ink-850);
+  --crepe-color-on-surface: var(--color-mist-200);
+  --crepe-color-on-surface-variant: var(--color-mist-500);
+  --crepe-color-outline: var(--color-ink-600);
+  --crepe-color-primary: var(--color-accent-500);
+  --crepe-color-secondary: var(--color-ink-800);
+  --crepe-color-on-secondary: var(--color-mist-200);
+  --crepe-color-inverse: var(--color-mist-100);
+  --crepe-color-on-inverse: var(--color-ink-900);
+  --crepe-color-inline-code: var(--color-warn-500);
+  --crepe-color-error: var(--color-bad-500);
+  --crepe-color-hover: var(--color-ink-800);
+  --crepe-color-selected: color-mix(in srgb, var(--color-accent-500) 22%, transparent);
+  --crepe-color-inline-area: var(--color-ink-800);
+
+  --crepe-base-font-size: 15px;
+  --crepe-font-title: var(--font-sans);
+  --crepe-font-default: var(--font-sans);
+  --crepe-font-code: var(--font-mono);
+
+  --crepe-shadow-1: 0 1px 3px rgb(0 0 0 / 0.35);
+  --crepe-shadow-2: 0 4px 16px rgb(0 0 0 / 0.4);
+}
+
+/* The page gives the width and the padding; the editor only the text. */
+.nx-note-editor .milkdown .ProseMirror {
+  padding: 0 0 40vh 0;
+  outline: none;
+}
+
+/* Headings like the reading view. */
+.nx-note-editor .milkdown .ProseMirror h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-mist-100);
+}
+.nx-note-editor .milkdown .ProseMirror h2 {
+  font-size: 1.2rem;
+  font-weight: 650;
+  color: var(--color-mist-100);
+}
+.nx-note-editor .milkdown .ProseMirror h3 {
+  font-size: 1.05rem;
+  font-weight: 650;
+  color: var(--color-mist-100);
+}
+
+/* Live preview: syntax hidden, or pale while the cursor is inside. */
+.nx-hide {
+  display: none;
+}
+.nx-syntax {
+  color: var(--color-mist-600);
+}
+
+/* Wiki links: turquoise; a missing target paler and dashed (design answer M0). */
+.nx-wiki {
+  color: var(--color-accent-400);
+  cursor: pointer;
+  border-radius: 3px;
+}
+.nx-wiki:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.nx-wiki.nx-wiki-missing {
+  color: color-mix(in srgb, var(--color-accent-400) 55%, var(--color-mist-600));
+  text-decoration: underline dashed;
+  text-underline-offset: 3px;
+}
+.nx-wiki.nx-wiki-editing {
+  cursor: text;
+  text-decoration: none;
+}
+.nx-embed {
+  background: color-mix(in srgb, var(--color-accent-500) 10%, transparent);
+  padding: 1px 6px;
+}
+.nx-embed::before {
+  content: '⧉ ';
+  opacity: 0.7;
+}
+
+.nx-highlight {
+  background: color-mix(in srgb, var(--color-warn-500) 30%, transparent);
+  border-radius: 2px;
+}
+.nx-comment {
+  color: var(--color-mist-600);
+  font-style: italic;
+}
+.nx-tag {
+  color: var(--color-accent-400);
+  background: color-mix(in srgb, var(--color-accent-500) 12%, transparent);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+.nx-blockid {
+  color: var(--color-mist-600);
+  font-size: 0.85em;
+}
+
+/* Callouts: a coloured quote with a label, the way Obsidian draws them. */
+.nx-callout {
+  --nx-callout: var(--color-accent-500);
+  border-left: 3px solid var(--nx-callout) !important;
+  background: color-mix(in srgb, var(--nx-callout) 8%, transparent);
+  border-radius: 0 10px 10px 0;
+  padding: 6px 12px !important;
+}
+.nx-callout-warning,
+.nx-callout-caution,
+.nx-callout-attention {
+  --nx-callout: var(--color-warn-500);
+}
+.nx-callout-danger,
+.nx-callout-error,
+.nx-callout-bug,
+.nx-callout-failure {
+  --nx-callout: var(--color-bad-500);
+}
+.nx-callout-success,
+.nx-callout-check,
+.nx-callout-done {
+  --nx-callout: var(--color-ok-500);
+}
+.nx-callout-question,
+.nx-callout-help,
+.nx-callout-faq,
+.nx-callout-example {
+  --nx-callout: var(--color-ai-500);
+}
+.nx-callout-label {
+  display: inline-block;
+  margin-right: 8px;
+  color: var(--nx-callout);
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.nx-callout-marker {
+  color: var(--nx-callout);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+.nx-callout-title {
+  font-weight: 650;
+  color: var(--color-mist-100);
+}
+
+/* Markdown the editor keeps as it is. */
+.nx-raw-block {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  color: var(--color-mist-400);
+  background: var(--color-ink-900);
+  border: 1px dashed var(--color-ink-600);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.nx-raw-inline {
+  color: var(--color-accent-400);
+  border-bottom: 1px dotted currentColor;
+}
+
+/* Suggestions after [[ */
+.nx-suggest {
+  position: fixed;
+  z-index: 60;
+  width: 320px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px solid var(--color-ink-700);
+  border-radius: 12px;
+  background: var(--color-ink-900);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.45);
+}
+.nx-suggest-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--color-mist-300);
+  cursor: pointer;
+}
+.nx-suggest-item.is-active {
+  background: color-mix(in srgb, var(--color-accent-500) 18%, transparent);
+  color: var(--color-mist-100);
+}
+.nx-suggest-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-mist-600);
+  font-size: 11px;
+}
+
+.nx-slash-icon {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-mist-500);
+}
+
+/* Images: until attachments are served (M3) a relative picture shows its name instead of a broken image. */
+.nx-note-editor .milkdown img {
+  max-width: 100%;
+  border-radius: 8px;
+}

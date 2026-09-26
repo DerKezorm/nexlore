@@ -9,7 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     css: false,
-    exclude: ['node_modules/**', 'dist/**', 'e2e/**'],
+    exclude: ['node_modules/**', 'dist/**', 'e2e/**', 'src/**/*.browser.test.{ts,tsx}'],
   },
   server: {
     // Fixed port: if it is taken, Vite aborts instead of silently falling back to another one.

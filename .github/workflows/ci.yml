@@ -59,11 +59,13 @@ jobs:
           npm test
           npm run build
 
-      - name: End to end, headless
+      - name: Editor in a real browser, then end to end, headless
         working-directory: frontend
         run: |
           # The system libraries Chromium needs are not guaranteed on the Ubuntu image; Windows needs none.
           if [ "$RUNNER_OS" = "Linux" ]; then npx playwright install --with-deps chromium; else npx playwright install chromium; fi
+          # Round trips and the long test against data loss (Milkdown does not run in jsdom).
+          npm run test:browser
           npx playwright test
 
   image:

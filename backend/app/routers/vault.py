@@ -256,6 +256,29 @@ def note(path: PathQuery, who: ActorDep) -> NoteOut:
     return _note_out(file, data, who)
 
 
+class NoteStateOut(BaseModel):
+    hash: str
+    modified: int
+    lock: LockOut | None = None
+
+
+@router.get("/note/state", response_model=NoteStateOut)
+def note_state(path: PathQuery, who: ActorDep) -> NoteStateOut:
+    """How a note stands on disk, without its text: an open page asks every few seconds whether to load it again."""
+    try:
+        file, data = vault.read(path)
+    except VaultError as exc:
+        raise _fail(exc) from exc
+    if not file.is_note:
+        raise error("not_a_note", "This file is not a note.")
+    with SessionLocal() as db:
+        lock = vault.lock_state(db, file.id)
+        lock_out = None
+        if lock is not None:
+            lock_out = LockOut(holder=lock.holder_name, mine=lock.holder == who.client, expires_at=lock.expires_at)
+    return NoteStateOut(hash=index.digest(data), modified=file.mtime_ns // 1_000_000, lock=lock_out)
+
+
 class SaveIn(BaseModel):
     path: str = Field(min_length=1, max_length=paths.MAX_PATH_CHARS)
     content: str = Field(max_length=MAX_NOTE_UPLOAD)

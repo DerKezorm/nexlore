@@ -50,6 +50,15 @@ const E2E_NOTES: Record<string, string> = {
   'Home/50% C# done.md': '# Odd name\n\nThe zebracorn lives here.\n',
   'Switch/From.md': '# From\n\nStart.\n',
   'Switch/To.md': '# To\n\nOther note.\n',
+  // The editor (editor.spec.ts): Obsidian's way of writing, kept byte for byte where nothing was changed.
+  'Writing/Obsidian.md':
+    '---\ntags:\n  - alpha\nstatus: draft\n---\n# Obsidian\n\nFirst paragraph with [[Garden]] and ==marked== text.\n\n* star list\n* second\n\n~~~\ntilde code\n~~~\n\nLast paragraph stays.\n',
+  'Writing/Quiet.md': '# Quiet\n\nNothing typed here.\n',
+  'Writing/Props.md': '---\ntags: [one, two]\nstatus: draft\n---\nBody of the note.\n',
+  'Writing/Linking.md': '# Linking\n\nStart.\n',
+  'Writing/Target note.md': '# Target note\n',
+  'Writing/Source.md': '# Source\n\nPlain text.\n',
+  'Writing/Compare.md': '# Compare\n\nKept line.\n\nOld ending.\n',
 }
 
 const DATA_DIR = external ? '' : dataDir()

@@ -77,7 +77,7 @@
     "inGraph": "Im Graph",
     "lockedBanner": "{{name}} bearbeitet diese Notiz gerade. Du kannst lesen; bearbeiten geht, sobald sie fertig ist.",
     "changed": "geändert {{when}}",
-    "editorPlaceholder": "Schreib los. [[ verlinkt eine andere Notiz.",
+    "editorPlaceholder": "Einfach losschreiben. [[ verlinkt eine andere Notiz, / fügt einen Block ein.",
     "missingLink": "Noch keine Notiz",
     "backlinks": "Rückverweise",
     "noBacklinks": "Noch keine Notiz verweist hierher.",
@@ -88,7 +88,6 @@
     "renameDo": "Umbenennen",
     "renameHint": "Links auf diese Notiz in anderen Notizen ziehen mit.",
     "delete": "Löschen",
-    "deleteConfirm": "„{{title}}“ in den Papierkorb legen?",
     "conflict": "Die Notiz wurde woanders geändert, während du geschrieben hast. Nichts wurde überschrieben; dein Text steht in der Kopie",
     "readonlyTitle": "Diese Datei ist kein UTF-8-Text",
     "readonlyBanner": "Diese Datei ist kein UTF-8-Text. Sie wird angezeigt, aber Speichern könnte hier Zeichen kosten, darum bleibt sie schreibgeschützt.",
@@ -96,7 +95,8 @@
       "pending": "Noch nicht gespeichert",
       "saving": "Speichert …",
       "saved": "Gespeichert",
-      "failed": "Nicht gespeichert"
+      "failed": "Nicht gespeichert",
+      "refreshed": "Von außen aktualisiert"
     },
     "versions": "Versionen",
     "showVersions": "Verlauf zeigen",
@@ -110,7 +110,19 @@
       "rename": "Links nachgezogen",
       "restore": "zurückgeholt",
       "import": "importiert"
-    }
+    },
+    "editorFailed": "Der Editor konnte nicht starten. Lade die Seite neu; aus ihm wurde nichts gespeichert.",
+    "deleteTitle": "„{{title}}“ in den Papierkorb legen?",
+    "deleteText": "Sie bleibt 30 Tage mit ihrem Verlauf im Papierkorb und lässt sich auf der Seite „Dateien“ zurückholen.",
+    "deleteDo": "In den Papierkorb",
+    "compare": "Vergleichen",
+    "copyExists": "Zu dieser Notiz gibt es eine Konfliktkopie aus einer Änderung an anderer Stelle.",
+    "isCopy": "Das ist eine Konfliktkopie von {{name}}.",
+    "menu": "Mehr",
+    "sourceMode": "Markdown-Ansicht",
+    "visualMode": "Visueller Editor",
+    "sourceLabel": "Markdown der Notiz",
+    "fileRefused": "Bilder und andere Dateien lassen sich noch nicht einfügen; Anhänge kommen mit einer späteren Version."
   },
   "settings": {
     "title": "Einstellungen",
@@ -212,7 +224,8 @@
       "archive_too_large": "Das Archiv ist zu groß.",
       "archive_too_many_files": "Das Archiv enthält zu viele Dateien.",
       "client_required": "Die Anfrage sagte nicht, aus welchem Tab sie kam. Lade die Seite neu.",
-      "too_large": "Das ist zu groß zum Senden."
+      "too_large": "Das ist zu groß zum Senden.",
+      "changed_meanwhile": "Die Notiz wurde inzwischen noch einmal geändert. Nichts wurde überschrieben; öffne den Vergleich erneut."
     }
   },
   "files": {
@@ -238,7 +251,8 @@
       "files_other": "{{count}} Dateien",
       "restore": "Zurückholen",
       "purge": "Endgültig löschen",
-      "purgeConfirm": "„{{path}}“ endgültig löschen? Das lässt sich nicht rückgängig machen."
+      "purgeTitle": "„{{path}}“ endgültig löschen?",
+      "purgeText": "Das lässt sich nicht rückgängig machen: Die Datei und ihr Verlauf sind weg."
     },
     "import": {
       "title": "Obsidian-Tresor hereinholen",
@@ -260,5 +274,67 @@
       "caseTwins": "Namen, die sich nur in Groß- und Kleinschreibung unterscheiden",
       "renamed": "Beim Hereinholen umbenannt"
     }
+  },
+  "editor": {
+    "suggestions": "Notizen zum Verlinken",
+    "slash": {
+      "text": "Text",
+      "h1": "Überschrift 1",
+      "h2": "Überschrift 2",
+      "h3": "Überschrift 3",
+      "quote": "Zitat",
+      "divider": "Trennlinie",
+      "bulletList": "Aufzählung",
+      "orderedList": "Nummerierte Liste",
+      "taskList": "Aufgabenliste",
+      "code": "Code",
+      "table": "Tabelle",
+      "math": "Formel",
+      "groupText": "Text",
+      "groupList": "Listen",
+      "groupAdvanced": "Mehr",
+      "groupObsidian": "Obsidian",
+      "callout": "Hinweiskasten",
+      "wikiLink": "Link auf eine Notiz",
+      "embed": "Notiz einbetten"
+    }
+  },
+  "properties": {
+    "title": "Eigenschaften",
+    "notYaml": "Das Frontmatter ist keine Liste aus Namen und Werten, deshalb wird es hier als Text bearbeitet.",
+    "yaml": "Frontmatter als YAML",
+    "name": "Name",
+    "kind": "Art",
+    "kinds": {
+      "text": "Text",
+      "list": "Liste",
+      "number": "Zahl",
+      "checkbox": "Ja oder nein",
+      "date": "Datum",
+      "datetime": "Datum und Uhrzeit"
+    },
+    "remove": "Eigenschaft {{name}} entfernen",
+    "removeValue": "{{value}} entfernen",
+    "add": "Eigenschaft hinzufügen",
+    "addValue": "Hinzufügen …",
+    "addValueTo": "Zu {{name}} hinzufügen"
+  },
+  "compare": {
+    "title": "Notiz mit der Konfliktkopie vergleichen",
+    "changes_one": "{{count}} Unterschied",
+    "changes_other": "{{count}} Unterschiede",
+    "note": "Die Notiz",
+    "copy": "Die Konfliktkopie",
+    "equal": "Beide sind gleich. Die Kopie kann weg.",
+    "nothing": "hier nichts",
+    "choose": "Welche Fassung bleibt",
+    "take": {
+      "left": "Notiz behalten",
+      "right": "Kopie übernehmen",
+      "both": "Beides behalten"
+    },
+    "hint": "Die Kopie kommt danach in den Papierkorb und lässt sich dort 30 Tage zurückholen.",
+    "keepNote": "Notiz behalten, Kopie entfernen",
+    "save": "Speichern und Kopie entfernen"
   }
 }

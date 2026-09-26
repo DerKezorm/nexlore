@@ -5,3 +5,5 @@
 *.webp binary
 *.ico binary
 *.woff2 binary
+# The editor corpus is compared byte for byte, line endings included (19-crlf.md must keep CRLF).
+frontend/src/editor/corpus/** -text

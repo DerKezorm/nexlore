@@ -95,6 +95,7 @@ export type NoteData = {
   tags: string[]
   lock: Lock | null
 }
+export type NoteState = { hash: string; modified: number; lock: Lock | null }
 export type Saved = { saved: boolean; hash: string; conflict: string | null }
 export type Outgoing = { kind: string; target: string; subpath: string; line: number; path: string | null; title: string | null }
 export type Backlink = { path: string; title: string; line: number; kind: string }
@@ -138,6 +139,8 @@ export const vaultApi = {
   createSpace: (name: string) => api<Space>('/api/spaces', { method: 'POST', body: { name } }),
   graph: (space: string) => api<Graph>('/api/graph', { query: { space } }),
   note: (path: string) => api<NoteData>('/api/note', { query: { path } }),
+  /** How the note stands on disk, without its text: for noticing changes made elsewhere. */
+  noteState: (path: string) => api<NoteState>('/api/note/state', { query: { path } }),
   /** `keepalive`: the request outlives a closing tab. Browsers allow that only for small bodies (64 KB in all). */
   save: (path: string, content: string, baseHash: string, keepalive = false) =>
     api<Saved>('/api/note', { method: 'PUT', body: { path, content, base_hash: baseHash }, keepalive: keepalive && content.length < 60_000 }),

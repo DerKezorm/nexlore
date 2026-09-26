@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError, vaultApi, type Finding, type IndexState, type Report, type TrashEntry } from '../api/client'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { errorText } from '../lib/errors'
 import { formatDate } from '../lib/markdown'
@@ -94,6 +95,7 @@ function TrashCard() {
   const { reload } = useStore()
   const [entries, setEntries] = useState<TrashEntry[] | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
+  const [purging, setPurging] = useState<TrashEntry | null>(null)
 
   const load = useCallback(() => vaultApi.trash().then(setEntries).catch((error) => setProblem(error instanceof ApiError ? error.code : 'internal_error')), [])
   useEffect(() => void load(), [load])
@@ -127,7 +129,7 @@ function TrashCard() {
               </button>
               <button
                 type="button"
-                onClick={() => window.confirm(t('files.trash.purgeConfirm', { path: entry.path })) && void act(() => vaultApi.purgeTrash(entry.id))}
+                onClick={() => setPurging(entry)}
                 className="rounded-full border border-ink-700 px-3 py-1 text-xs text-bad-500 hover:bg-ink-850"
               >
                 {t('files.trash.purge')}
@@ -137,6 +139,20 @@ function TrashCard() {
         </ul>
       )}
       {problem && <p className="mt-2 text-sm text-bad-500">{errorText(problem)}</p>}
+      <ConfirmDialog
+        open={purging !== null}
+        title={t('files.trash.purgeTitle', { path: purging?.path ?? '' })}
+        confirm={t('files.trash.purge')}
+        danger
+        onCancel={() => setPurging(null)}
+        onConfirm={() => {
+          const entry = purging
+          setPurging(null)
+          if (entry) void act(() => vaultApi.purgeTrash(entry.id))
+        }}
+      >
+        {t('files.trash.purgeText')}
+      </ConfirmDialog>
     </Card>
   )
 }

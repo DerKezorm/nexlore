@@ -157,18 +157,3 @@
     @apply my-6 border-ink-700;
   }
 }
-
-/* CodeMirror fills its box; colors come from the theme in NoteEditor. */
-.nn-editor .cm-editor {
-  height: 100%;
-}
-.nn-editor .cm-editor.cm-focused {
-  outline: none;
-}
-.nn-editor .cm-scroller {
-  font-family: var(--font-mono);
-  font-size: 14px;
-  line-height: 1.7;
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-ink-600) transparent;
-}

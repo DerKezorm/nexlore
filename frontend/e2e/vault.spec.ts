@@ -45,10 +45,11 @@ test('a note reads with its links resolved by the server, and a link leads on', 
 test('typing saves by itself, and the file on disk has it', async ({ page }) => {
   await page.goto('/note/Work/Scratch.md')
   await page.getByRole('button', { name: 'Edit' }).click()
-  const editor = page.locator('.cm-content')
+  const editor = page.locator('.ProseMirror')
   await editor.click()
   await page.keyboard.press('Control+End')
-  await page.keyboard.type('\nA line from the test.')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('A line from the test.')
   await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 })
   expect(onDisk('Work/Scratch.md')).toContain('A line from the test.')
   await page.getByRole('button', { name: 'Read' }).click()
@@ -60,7 +61,8 @@ test('a change made elsewhere while typing ends in a conflict copy, nothing is o
   await page.getByRole('button', { name: 'Edit' }).click()
   // Obsidian (or anybody) writes the file while the editor is open.
   fs.writeFileSync(path.join(DATA, 'vault', 'Work', 'Conflict.md'), '# Conflict\n\nChanged in Obsidian.\n')
-  await page.locator('.cm-content').click()
+  await page.locator('.ProseMirror').click()
+  await page.keyboard.press('Control+End')
   await page.keyboard.type(' my words')
   const banner = page.getByRole('alert').filter({ hasText: 'changed elsewhere' })
   await expect(banner).toBeVisible({ timeout: 10_000 })
@@ -73,7 +75,7 @@ test('a change made elsewhere while typing ends in a conflict copy, nothing is o
 test('while one tab edits a note, another sees who and cannot edit', async ({ page, browser }) => {
   await page.goto('/note/Work/Locked.md')
   await page.getByRole('button', { name: 'Edit' }).click()
-  await expect(page.locator('.cm-content')).toBeVisible()
+  await expect(page.locator('.ProseMirror')).toBeVisible()
   const other = await browser.newContext({ locale: 'en-US' })
   const second = await other.newPage()
   await second.goto('/note/Work/Locked.md')
@@ -113,7 +115,7 @@ test('a note with # and % in its name opens', async ({ page }) => {
 test('going straight from one note being edited to another keeps each text where it belongs', async ({ page }) => {
   await page.goto('/note/Switch/From.md')
   await page.getByRole('button', { name: 'Edit' }).click()
-  await page.locator('.cm-content').click()
+  await page.locator('.ProseMirror').click()
   await page.keyboard.press('Control+End')
   await page.keyboard.type(' typed just before leaving')
   // No pause for the autosave: straight to the other note in the sidebar.
@@ -135,9 +137,16 @@ test('renaming a note carries the links to it along', async ({ page }) => {
 
 test('a deleted note waits in the trash and comes back', async ({ page }) => {
   await page.goto('/note/Work/Delete me.md')
-  page.once('dialog', (dialog) => void dialog.accept())
   // exact: the sidebar also has a button "Delete me" once the vault has loaded, and that may be before or after.
   await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  // nexlore's own question, not the browser's; cancelling keeps the note.
+  const question = page.getByRole('dialog', { name: /Move .Delete me. to the trash/ })
+  await expect(question).toContainText('30 days')
+  await question.getByRole('button', { name: 'Cancel' }).click()
+  await expect(question).toBeHidden()
+  expect(fs.existsSync(path.join(DATA, 'vault', 'Work', 'Delete me.md'))).toBe(true)
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await question.getByRole('button', { name: 'Move to the trash' }).click()
   await expect(page).toHaveURL(/\/$/)
   expect(fs.existsSync(path.join(DATA, 'vault', 'Work', 'Delete me.md'))).toBe(false)
   await page.goto('/files')
