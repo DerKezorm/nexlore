@@ -2,7 +2,8 @@
 #
 # Then open http://<your-host>:8470.
 #
-# ⚠️ nexlore is at an early stage (M0). There are no accounts yet: do not expose it beyond your own network.
+# ⚠️ nexlore is at an early stage. There are no accounts yet, so every note route answers 401 unless
+#    NEXLORE_UNSAFE_OPEN_ACCESS is set below. Set it only for a test server in your own network, with test notes.
 
 services:
   nexlore:
@@ -31,3 +32,9 @@ services:
       # The notes can live in a folder of their own, for example one that Obsidian or Syncthing also works on.
       # Mount it and point nexlore at it:
       # NEXLORE_VAULT_DIR: /vault
+
+      # A network share or container mount that delivers no change notifications: watch by polling instead.
+      # NEXLORE_WATCH_POLLING: "true"
+
+      # ⚠️ Until accounts exist: anybody who reaches nexlore can read and change every note.
+      # NEXLORE_UNSAFE_OPEN_ACCESS: "true"

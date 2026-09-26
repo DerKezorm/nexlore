@@ -588,7 +588,8 @@ def index_status(_account: Account) -> dict[str, Any]:
 
 
 @router.post("/index/scan")
-def index_scan(_account: Account) -> dict[str, Any]:
-    stats = index.scan()
+def index_scan(_account: Account, confirm_deletions: bool = False) -> dict[str, Any]:
+    """A full pass now. ``confirm_deletions``: files the brake held back were deleted on purpose."""
+    stats = index.scan(confirm_deletions=confirm_deletions)
     return stats.__dict__
 

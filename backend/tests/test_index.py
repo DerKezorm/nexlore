@@ -55,6 +55,20 @@ def test_first_scan_indexes_notes_and_other_files(vault: Path) -> None:
         assert len(hits) == 2
 
 
+def test_a_big_scan_reads_in_worker_processes_with_the_same_result(vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(index, "POOL_MIN", 5)
+    monkeypatch.setattr(index, "BATCH", 4)  # several chunks: the next one is read while one is written
+    for number in range(10):
+        put(vault, f"S/n{number}.md", f"note {number} links [[n{(number + 1) % 10}]] #t{number}")
+    put(vault, "S/pic.png", b"png")
+    stats = index.scan()
+    assert stats.added == 11 and stats.errors == 0
+    assert target_of("S/n3.md", "n4") == "S/n4.md"
+    with SessionLocal() as db:
+        assert db.scalar(select(text("count(*)")).select_from(Version)) == 10
+        assert len(set(db.scalars(select(Tag.tag)))) == 10
+
+
 def test_a_second_scan_without_changes_touches_nothing(vault: Path) -> None:
     put(vault, "S/a.md", "a")
     index.scan()
@@ -141,6 +155,9 @@ def test_the_brake_holds_back_a_mass_deletion(vault: Path) -> None:
     assert stats.removed == 0 and stats.held_back == index.MASS_DELETION_MIN + 10
     assert index.status.held_back == {"Big": index.MASS_DELETION_MIN + 10}
     assert len(live_paths()) == index.MASS_DELETION_MIN + 11
+    # A person says they were deleted on purpose: now they go to the trash.
+    assert index.scan(confirm_deletions=True).removed == index.MASS_DELETION_MIN + 10
+    assert live_paths() == {"Small/keep.md"} and index.status.held_back == {}
 
 
 def test_refresh_handles_a_folder_moved_away_in_one_piece(vault: Path) -> None:

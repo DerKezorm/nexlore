@@ -6,16 +6,15 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Sidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { GraphView, type GraphHandle, type Hover } from '../graph/GraphView'
-import { formatDate, snippetAround } from '../lib/markdown'
 import { ancestry, neighbours, type Cluster } from '../lib/vault'
-import { SPACES } from '../mock/notes'
 import { useStore } from '../state/store'
 
-const DAILY = 'Mein Wissen/Tagesnotizen'
+/** Daily notes live in a folder of this name in any space (M6 makes it a setting). */
+const DAILY = /(^|\/)(Tagesnotizen|Daily notes|Daily)$/i
 
 export function GraphPage() {
   const { t } = useTranslation()
-  const { vault, layout } = useStore()
+  const { vault, layout, status } = useStore()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const graph = useRef<GraphHandle>(null)
@@ -25,7 +24,12 @@ export function GraphPage() {
   const [hideDaily, setHideDaily] = useState(false)
   const [hintOpen, setHintOpen] = useState(true)
 
-  const hidden = useMemo(() => new Set(hideDaily ? [DAILY] : []), [hideDaily])
+  const hidden = useMemo(
+    () => new Set(hideDaily ? [...vault.clusters.keys()].filter((id) => DAILY.test(id)) : []),
+    [hideDaily, vault],
+  )
+  // The root of the vault changes with every load; the focus follows it.
+  if (focus.depth === 0 && focus !== vault.root) setFocus(vault.root)
 
   // Search from the header lands here with ?focus=<note>.
   const focusParam = params.get('focus')
@@ -43,7 +47,7 @@ export function GraphPage() {
   }, [focus])
 
   const selectNote = useCallback((id: string | null) => setSelected(id), [])
-  const openNote = useCallback((id: string) => navigate(`/note/${encodeURIComponent(id)}`), [navigate])
+  const openNote = useCallback((id: string) => navigate(`/note/${encodeURI(id)}`), [navigate])
   const onFocus = useCallback((cluster: Cluster) => setFocus(cluster), [])
 
   const note = selected ? vault.notes.get(selected) : null
@@ -93,33 +97,21 @@ export function GraphPage() {
         <div className="absolute top-3 right-3 hidden w-56 rounded-2xl border border-ink-700 bg-ink-900/85 p-3 text-sm backdrop-blur lg:block">
           <div className="mb-2 text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('graph.spaces')}</div>
           <ul className="space-y-1.5">
-            {vault.root.children.map((space) => {
-              const info = SPACES.find((s) => s.name === space.name)
-              return (
-                <li key={space.id}>
-                  <button type="button" onClick={() => graph.current?.flyToCluster(space.id)} className="flex w-full items-center gap-2 text-left text-mist-300 hover:text-mist-100">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: space.color }} />
-                    <span className="flex-1 truncate">{space.name}</span>
-                    {info?.shared ? (
-                      <span className="inline-flex items-center gap-1 text-[11px] text-mist-500" title={info.members.join(', ')}>
-                        <Symbol name="users" className="h-3 w-3" /> {info.members.length}
-                      </span>
-                    ) : (
-                      <Symbol name="lock" className="h-3 w-3 text-mist-600" />
-                    )}
-                  </button>
-                </li>
-              )
-            })}
+            {vault.root.children.map((space) => (
+              <li key={space.id}>
+                <button type="button" onClick={() => graph.current?.flyToCluster(space.id)} className="flex w-full items-center gap-2 text-left text-mist-300 hover:text-mist-100">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: space.color }} />
+                  <span className="flex-1 truncate">{space.name}</span>
+                  <span className="text-[11px] text-mist-600 tabular-nums">{space.total}</span>
+                </button>
+              </li>
+            ))}
           </ul>
           <div className="mt-3 border-t border-ink-700 pt-3">
             <label className="flex cursor-pointer items-center justify-between gap-2 text-mist-300">
               <span>{t('graph.showDaily')}</span>
               <input type="checkbox" checked={!hideDaily} onChange={(e) => setHideDaily(!e.target.checked)} className="h-4 w-4 accent-accent-500" />
             </label>
-            <div className="mt-2 flex items-center gap-2 text-xs text-mist-500">
-              <span className="inline-block h-2.5 w-2.5 rounded-full border border-dashed border-ai-500" /> {t('common.aiDraft')}
-            </div>
           </div>
         </div>
 
@@ -170,17 +162,6 @@ export function GraphPage() {
               </button>
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
-              {note.aiDraft && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-ai-500/15 px-2 py-0.5 font-medium text-ai-500">
-                  <Symbol name="sparkle" className="h-3 w-3" /> {t('common.aiDraft')}
-                </span>
-              )}
-              {note.lockedBy && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-warn-500/15 px-2 py-0.5 font-medium text-warn-500">
-                  <Symbol name="lock" className="h-3 w-3" /> {t('graph.editingNow', { name: note.lockedBy })}
-                </span>
-              )}
-              <span className="rounded-full bg-ink-800 px-2 py-0.5 text-mist-400">{formatDate(note.updated)}</span>
               <span className="rounded-full bg-ink-800 px-2 py-0.5 text-mist-400">{t('graph.links', { count: (vault.outgoing.get(note.id) ?? []).length })}</span>
               <span className="rounded-full bg-ink-800 px-2 py-0.5 text-mist-400">{t('graph.backlinks', { count: (vault.backlinks.get(note.id) ?? []).length })}</span>
             </div>
@@ -193,7 +174,7 @@ export function GraphPage() {
                       <button type="button" onClick={() => { setSelected(id); graph.current?.flyToNote(id) }} className="font-medium text-mist-200 hover:text-accent-400">
                         {from.title}
                       </button>
-                      {snippetAround(from.body, note.title) && <span className="text-mist-600"> · {snippetAround(from.body, note.title)}</span>}
+                      <span className="text-mist-600"> · {from.path.join(' › ')}</span>
                     </li>
                   )
                 })}
@@ -210,8 +191,14 @@ export function GraphPage() {
           </div>
         )}
 
+        {status === 'ready' && vault.notes.size === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center p-6">
+            <p className="max-w-md rounded-2xl border border-ink-700 bg-ink-900/90 px-5 py-4 text-center text-sm text-mist-400">{t('graph.empty')}</p>
+          </div>
+        )}
+
         {/* First hint. */}
-        {hintOpen && !note && (
+        {hintOpen && !note && vault.notes.size > 0 && (
           <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-full border border-ink-700 bg-ink-900/90 py-1.5 pr-1.5 pl-4 text-xs text-mist-400 backdrop-blur">
             <span>{t('graph.hint')}</span>
             <button type="button" onClick={() => setHintOpen(false)} className="rounded-full p-1 hover:bg-ink-800 hover:text-mist-100" aria-label={t('graph.closeHint')}>

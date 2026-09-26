@@ -41,9 +41,13 @@ def _empty_vault() -> None:
     VAULT.mkdir(parents=True)
 
 
-@pytest.fixture(autouse=True)
-def clean_db() -> Iterator[None]:
+@pytest.fixture(scope="session", autouse=True)
+def schema() -> None:
     init_db()
+
+
+@pytest.fixture(autouse=True)
+def clean_db(schema: None) -> Iterator[None]:
     with SessionLocal() as db:
         for table in reversed(Base.metadata.sorted_tables):
             db.execute(delete(table))

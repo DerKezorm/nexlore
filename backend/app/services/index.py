@@ -19,7 +19,6 @@ more than one batch.
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import os
 import posixpath
@@ -27,24 +26,29 @@ import threading
 import time
 import zlib
 from collections.abc import Iterable, Iterator
+from concurrent.futures import Executor, ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures.process import BrokenProcessPool
 from dataclasses import dataclass, field
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 
-from sqlalchemy import delete, func, select, text, update
+from sqlalchemy import bindparam, delete, func, insert, select, text, update
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import FTS_TABLE, File, Link, Lock, Space, Tag, Version, utcnow
 from . import mdparse, paths
+from .prepare import MAX_NOTE_BYTES, Analysis, Prepared, analyse, decode, digest, name_key, prepare, target_key
+
+__all__ = ["MAX_NOTE_BYTES", "decode", "digest", "name_key", "target_key"]
 
 logger = logging.getLogger("nexlore.index")
 
 guard = threading.RLock()
 
-#: A note larger than this is kept and versioned, but not read for links, tags and search.
-MAX_NOTE_BYTES = 5 * 1024 * 1024
 BATCH = 400
+READERS = 8
 MASS_DELETION_MIN = 50
 #: Up to this many changed names, links are re-resolved one query at a time; above, from a table in memory.
 SMALL_CHANGE = 64
@@ -90,17 +94,6 @@ status = Status()
 
 
 # --- Names and link resolution -------------------------------------------------------------------------------------
-
-
-def name_key(rel: str) -> str:
-    return paths.fold(paths.stem(rel))
-
-
-def target_key(target: str) -> str:
-    last = target.rstrip("/").rsplit("/", 1)[-1]
-    if last.lower().endswith(paths.NOTE_SUFFIX):
-        last = last[: -len(paths.NOTE_SUFFIX)]
-    return paths.fold(last)
 
 
 class Names:
@@ -203,21 +196,18 @@ def resolve(kind: str, target: str, source: str, names: Names) -> int | None:
 # --- Reading and recording files -----------------------------------------------------------------------------------
 
 
-def digest(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
-
-
-def decode(data: bytes) -> str:
-    return data.decode("utf-8-sig", errors="replace")
-
-
 def ensure_space(db: Session, folder: str) -> Space:
+    known: dict[str, Space] = db.info.setdefault("spaces", {})
+    space = known.get(folder)
+    if space is not None:
+        return space
     space = db.scalar(select(Space).where(Space.folder == folder))
     if space is None:
         space = Space(folder=folder)
         db.add(space)
         db.flush()
         logger.info("Space registered id=%s", space.id)
+    known[folder] = space
     return space
 
 
@@ -270,57 +260,73 @@ def _clear_note_index(db: Session, file_id: int) -> None:
     db.execute(text(f"DELETE FROM {FTS_TABLE} WHERE rowid = :id"), {"id": file_id})  # noqa: S608
 
 
-def _index_content(db: Session, file: File, data: bytes, names: Names | None) -> None:
-    """Links, tags and search text of one note, replacing what was there."""
-    _clear_note_index(db, file.id)
-    file.front = None
-    file.features = None
-    file.title = paths.stem(file.path)
-    if not file.is_note:
-        return
-    if len(data) > MAX_NOTE_BYTES:
-        file.features = {"too_large": 1}
-        return
-    content = decode(data)
-    parsed = mdparse.parse(content)
-    file.front = _jsonable(parsed.front) if parsed.front else None
-    features = dict(parsed.features)
-    if "�" in content and b"\xef\xbf\xbd" not in data:
-        features["not_utf8"] = 1
-    file.features = features or None
-    if parsed.title:
-        file.title = parsed.title[:1024]
-    seen: set[tuple[str, str]] = set()
-    for tag in parsed.tags:
-        key = paths.fold(tag)[:255]
-        if (key, "") in seen:
-            continue
-        seen.add((key, ""))
-        db.add(Tag(file_id=file.id, tag_key=key, tag=tag[:255]))
-    for link in parsed.links:
-        target_id = resolve(link.kind, link.target, file.path, names) if names is not None else None
-        db.add(
-            Link(
-                source_id=file.id, space_id=file.space_id, kind=link.kind, target=link.target[:1024],
-                subpath=link.subpath[:1024], target_key=target_key(link.target)[:255], target_id=target_id,
-                line=link.line,
-            )
+def _index_content(db: Session, file: File, data: bytes, names: Names | None, *, fresh: bool = False) -> None:
+    """Links, tags and search text of one note, replacing what was there. ``names`` None: links stay unresolved
+    for now (a bulk scan resolves them all at the end). Rows go in with plain inserts, not through the ORM: for
+    a scan of a whole vault the difference is minutes."""
+    if not fresh:
+        _clear_note_index(db, file.id)
+    analysis = analyse(file.path, data)
+    file.title = analysis.title
+    file.front = analysis.front
+    file.features = analysis.features
+    _insert_content(db, file.id, file.space_id, file.path, analysis, names)
+
+
+def _insert_content(
+    db: Session, file_id: int, space_id: int, rel: str, analysis: Analysis, names: Names | None
+) -> None:
+    connection = db.connection()
+    if analysis.tags:
+        tag_rows = [{"file_id": file_id, "tag_key": key, "tag": tag} for key, tag in analysis.tags]
+        connection.execute(insert(Tag), tag_rows)
+    if analysis.links:
+        connection.execute(
+            insert(Link),
+            [
+                {
+                    "source_id": file_id, "space_id": space_id, "kind": kind, "target": target, "subpath": subpath,
+                    "target_key": key, "line": line,
+                    "target_id": resolve(kind, target, rel, names) if names is not None else None,
+                }
+                for kind, target, subpath, key, line in analysis.links
+            ],
         )
-    db.execute(
-        text(f"INSERT INTO {FTS_TABLE}(rowid, title, body) VALUES (:id, :title, :body)"),  # noqa: S608
-        {"id": file.id, "title": file.title, "body": parsed.body},
-    )
+    if analysis.body is not None:
+        connection.execute(
+            text(f"INSERT INTO {FTS_TABLE}(rowid, title, body) VALUES (:id, :title, :body)"),  # noqa: S608
+            {"id": file_id, "title": analysis.title, "body": analysis.body},
+        )
 
 
-def _jsonable(value: object) -> object:
-    """Front matter as JSON can hold it: YAML dates become text."""
-    if isinstance(value, dict):
-        return {str(key): _jsonable(item) for key, item in value.items()}
-    if isinstance(value, list | tuple):
-        return [_jsonable(item) for item in value]
-    if value is None or isinstance(value, bool | int | float | str):
-        return value
-    return str(value)
+def bulk_add(db: Session, items: list[Prepared]) -> list[tuple[int, int, str, str]]:
+    """New files, prepared elsewhere, in one go: plain inserts, links left unresolved for the caller.
+    Returns (id, space_id, name_key, rel) for each."""
+    if not items:
+        return []
+    now = utcnow()
+    rows = []
+    for item in items:
+        space = ensure_space(db, paths.space_of(item.rel))
+        rows.append({
+            "space_id": space.id, "path": item.rel, "path_key": paths.fold(item.rel), "name_key": name_key(item.rel),
+            "is_note": paths.is_note(item.rel), "title": item.analysis.title, "size": item.size,
+            "mtime_ns": item.mtime_ns, "hash": item.hash, "front": item.analysis.front,
+            "features": item.analysis.features, "indexed_at": now,
+        })
+    connection = db.connection()
+    ids = connection.execute(insert(File).returning(File.id, sort_by_parameter_order=True), rows).scalars().all()
+    versions = []
+    for file_id, row, item in zip(ids, rows, items, strict=True):
+        _insert_content(db, file_id, row["space_id"], item.rel, item.analysis, None)
+        if item.compressed is not None:
+            versions.append({
+                "file_id": file_id, "path": item.rel, "created_at": now, "updated_at": now, "source": INITIAL,
+                "author": None, "session": None, "hash": item.hash, "size": item.size, "content": item.compressed,
+            })
+    if versions:
+        connection.execute(insert(Version), versions)
+    return [(file_id, row["space_id"], row["name_key"], row["path"]) for file_id, row in zip(ids, rows, strict=True)]
 
 
 def record(
@@ -335,11 +341,17 @@ def record(
     bundle_seconds: int = 0,
     file: File | None = None,
     names: Names | None = None,
+    resolve_links: bool = True,
+    known_new: bool = False,
 ) -> File:
-    """Bring the row of one file in line with ``data``, which is what is on disk now. Returns the row."""
+    """Bring the row of one file in line with ``data``, which is what is on disk now. Returns the row.
+
+    ``resolve_links`` False leaves the note's links unresolved; the caller resolves a whole space at the end.
+    ``known_new``: the caller knows there is no row yet, which saves the lookup."""
     space = ensure_space(db, paths.space_of(rel))
-    if file is None:
+    if file is None and not known_new:
         file = db.scalar(select(File).where(File.path == rel, File.deleted_at.is_(None)))
+    fresh = file is None
     if file is None:
         file = File(space_id=space.id, path=rel)
         db.add(file)
@@ -353,11 +365,22 @@ def record(
     file.hash = digest(data)
     file.indexed_at = utcnow()
     db.flush()
-    if names is None:
+    if names is None and resolve_links:
         names = Names(db, space.id, preload=False)
-    _index_content(db, file, data, names)
+    _index_content(db, file, data, names if resolve_links else None, fresh=fresh)
     if file.is_note:
-        add_version(db, file, data, source=source, author=author, session=session, bundle_seconds=bundle_seconds)
+        if fresh:
+            now = utcnow()
+            db.connection().execute(
+                insert(Version),
+                [{
+                    "file_id": file.id, "path": rel, "created_at": now, "updated_at": now, "source": source,
+                    "author": author, "session": session, "hash": file.hash, "size": len(data),
+                    "content": zlib.compress(data, 6),
+                }],
+            )
+        else:
+            add_version(db, file, data, source=source, author=author, session=session, bundle_seconds=bundle_seconds)
     return file
 
 
@@ -371,26 +394,37 @@ def forget(db: Session, file: File, *, how: str, by: str | None = None, group: s
     file.trash_group = group
 
 
-def reresolve(db: Session, space_id: int, keys: Iterable[str]) -> int:
-    """Look at every link again whose target has one of these names. Returns how many changed their target."""
-    wanted = {key for key in keys if key}
-    if not wanted:
+def reresolve(
+    db: Session, space_id: int, keys: Iterable[str] | None, *, sources: set[int] | None = None
+) -> int:
+    """Look at every link again whose target has one of these names, and at every link of these notes;
+    ``keys`` None: at every link of the space. Returns how many changed their target."""
+    wanted = None if keys is None else {key for key in keys if key}
+    sources = sources or set()
+    if wanted is not None and not wanted and not sources:
         return 0
-    big = len(wanted) > SMALL_CHANGE
+    big = wanted is None or len(wanted) + len(sources) > SMALL_CHANGE
     names = Names(db, space_id, preload=big)
-    query = select(Link.id, Link.kind, Link.target, Link.target_id, File.path).join(File, File.id == Link.source_id)
-    query = query.where(Link.space_id == space_id)
-    if not big:
-        query = query.where(Link.target_key.in_(wanted))
-    changed = 0
-    for link_id, kind, target, current, source in db.execute(query).all():
-        if big and target_key(target) not in wanted:
-            continue
+    base = select(Link.id, Link.kind, Link.target, Link.target_id, File.path).join(File, File.id == Link.source_id)
+    base = base.where(Link.space_id == space_id)
+    rows: dict[int, tuple[str, str, int | None, str]] = {}
+    if wanted is None:
+        queries = [base]
+    else:
+        queries = [base.where(Link.target_key.in_(part)) for part in _chunks(sorted(wanted), 500)]
+        queries += [base.where(Link.source_id.in_(part)) for part in _chunks(sorted(sources), 500)]
+    for query in queries:
+        for link_id, kind, target, current, source in db.execute(query):
+            rows[link_id] = (kind, target, current, source)
+    changes: list[dict[str, int | None]] = []
+    for link_id, (kind, target, current, source) in rows.items():
         found = resolve(kind, target, source, names)
         if found != current:
-            db.execute(update(Link).where(Link.id == link_id).values(target_id=found))
-            changed += 1
-    return changed
+            changes.append({"link_id": link_id, "found": found})
+    if changes:
+        statement = update(Link).where(Link.id == bindparam("link_id")).values(target_id=bindparam("found"))
+        db.connection().execute(statement, changes)
+    return len(changes)
 
 
 # --- Walking the vault ---------------------------------------------------------------------------------------------
@@ -441,12 +475,23 @@ def _read(root: Path, rel: str) -> tuple[bytes, os.stat_result] | None:
         return None
 
 
-def _chunks(items: list[str], size: int) -> Iterator[list[str]]:
+#: From this many files on, a scan reads and parses in worker processes; below, starting them costs more than it saves.
+POOL_MIN = 1000
+POOL_MAX = 4
+
+
+def _workers(count: int) -> int:
+    if count < POOL_MIN:
+        return 1
+    return max(1, min(POOL_MAX, (os.cpu_count() or 2) - 1))
+
+
+def _chunks[T](items: list[T], size: int) -> Iterator[list[T]]:
     for start in range(0, len(items), size):
         yield items[start : start + size]
 
 
-def scan(*, root: Path | None = None, only: set[str] | None = None) -> ScanStats:
+def scan(*, root: Path | None = None, only: set[str] | None = None, confirm_deletions: bool = False) -> ScanStats:
     """Bring the index in line with the disk. ``only``: vault-relative paths the watcher saw; else everything."""
     root = root or paths.vault_root()
     stats = ScanStats()
@@ -457,7 +502,7 @@ def scan(*, root: Path | None = None, only: set[str] | None = None) -> ScanStats
     status.running = True
     status.phase = "walking"
     try:
-        _scan(root, only, stats)
+        _scan(root, only, stats, confirm_deletions)
     finally:
         stats.seconds = round(time.monotonic() - began, 3)
         status.running = False
@@ -474,7 +519,7 @@ def scan(*, root: Path | None = None, only: set[str] | None = None) -> ScanStats
     return stats
 
 
-def _scan(root: Path, only: set[str] | None, stats: ScanStats) -> None:
+def _scan(root: Path, only: set[str] | None, stats: ScanStats, confirm_deletions: bool = False) -> None:
     on_disk: dict[str, os.stat_result] = {}
     if only is None:
         space_folders = spaces_on_disk(root)
@@ -517,7 +562,8 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats) -> None:
 
     # The brake: a space that loses most of its files at once is probably not mounted or mid-sync.
     held: dict[str, int] = {}
-    if only is None and gone:
+    # Confirmed by a person (the files were deleted on purpose): the brake stays off for this one scan.
+    if only is None and gone and not confirm_deletions:
         with SessionLocal() as db:
             rows = db.execute(
                 select(File.space_id, func.count()).where(File.deleted_at.is_(None)).group_by(File.space_id)
@@ -543,37 +589,84 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats) -> None:
     status.done = 0
     changed_keys: dict[int, set[str]] = {}
     arrived: dict[str, list[str]] = {}  # hash -> new paths, for moves
+    # Many files: their links are resolved in one go per space at the end, from a table in memory.
+    bulk = len(candidates) > SMALL_CHANGE
+    relink: dict[int, set[int]] = {}
+    # Paths that went away from the outside earlier: one of them coming back takes its old row.
+    new_paths = [rel for rel in candidates if rel not in known]
+    with SessionLocal() as db:
+        query = select(File.path).where(File.deleted_at.is_not(None), File.deleted_how == EXTERNAL)
+        if len(new_paths) <= 500:
+            query = query.where(File.path.in_(new_paths))
+        trashed = set(db.scalars(query)) & set(new_paths)
 
-    for chunk in _chunks(sorted(candidates), BATCH):
-        with guard, SessionLocal() as db:
-            for rel in chunk:
-                read = _read(root, rel)
-                if read is None:
-                    stats.errors += 1
-                    continue
-                data, stat = read
-                row = known.get(rel)
-                if row is not None and row.hash == digest(data):
-                    db.execute(
-                        update(File).where(File.id == row.id).values(size=stat.st_size, mtime_ns=stat.st_mtime_ns)
-                    )
-                    continue
-                if row is not None:
-                    file = db.get(File, row.id)
-                    record(db, rel, data, stat, source=EXTERNAL, file=file)
-                    stats.changed += 1
-                    continue
-                file = _revive(db, rel)
-                if file is not None:
-                    stats.revived += 1
-                else:
-                    arrived.setdefault(digest(data), []).append(rel)
-                source = EXTERNAL if file is not None else INITIAL
-                file = record(db, rel, data, stat, source=source, file=file)
-                stats.added += 0 if source == EXTERNAL else 1
-                changed_keys.setdefault(file.space_id, set()).add(file.name_key)
-            db.commit()
-        status.done += len(chunk)
+    # Reading and taking apart runs beside the database work: in processes for a big scan (parsing is Python and
+    # holds the interpreter lock), in threads for a small one (opening a file waits on the disk, and on Windows on
+    # the virus scanner, measured at 5 to 10 ms for every file it has not seen).
+    workers = _workers(len(candidates))
+    executor: Executor = (
+        ProcessPoolExecutor(max_workers=workers) if workers > 1 else ThreadPoolExecutor(max_workers=READERS)
+    )
+    work = partial(prepare, str(root))
+    touched: dict[int, set[int]] = {}  # space -> notes whose links are still unresolved
+    try:
+        chunks = list(_chunks(sorted(candidates), BATCH))
+        pending = executor.map(work, chunks[0], chunksize=16) if chunks else iter(())
+        for position, chunk in enumerate(chunks):
+            try:
+                results = list(pending)
+            except BrokenProcessPool:
+                # A worker died (out of memory, killed): the rest of the scan reads in threads, slower but sure.
+                logger.warning("Index workers stopped, the scan goes on in threads")
+                executor.shutdown(wait=False, cancel_futures=True)
+                executor = ThreadPoolExecutor(max_workers=READERS)
+                results = list(executor.map(work, chunk))
+            # The next chunk is read while this one is written.
+            if position + 1 < len(chunks):
+                pending = executor.map(work, chunks[position + 1], chunksize=16)
+            fresh: list[Prepared] = []
+            with guard, SessionLocal() as db:
+                for rel, item in zip(chunk, results, strict=True):
+                    if item is None:
+                        stats.errors += 1
+                        continue
+                    row = known.get(rel)
+                    if row is not None and row.hash == item.hash:
+                        db.execute(
+                            update(File).where(File.id == row.id).values(size=item.size, mtime_ns=item.mtime_ns)
+                        )
+                        continue
+                    if row is None and rel not in trashed:
+                        fresh.append(item)
+                        continue
+                    read = _read(root, rel)
+                    if read is None:
+                        stats.errors += 1
+                        continue
+                    data, stat = read
+                    if row is not None:
+                        file = record(db, rel, data, stat, source=EXTERNAL, file=db.get(File, row.id),
+                                      resolve_links=not bulk)
+                        stats.changed += 1
+                    else:
+                        file = record(db, rel, data, stat, source=EXTERNAL, file=_revive(db, rel),
+                                      resolve_links=not bulk)
+                        stats.revived += 1
+                        changed_keys.setdefault(file.space_id, set()).add(file.name_key)
+                    if bulk:
+                        touched.setdefault(file.space_id, set()).add(file.id)
+                for file_id, space_id, key, _rel in bulk_add(db, fresh):
+                    stats.added += 1
+                    changed_keys.setdefault(space_id, set()).add(key)
+                    touched.setdefault(space_id, set()).add(file_id)
+                for item in fresh:
+                    arrived.setdefault(item.hash, []).append(item.rel)
+                db.commit()
+            status.done += len(chunk)
+    finally:
+        executor.shutdown(wait=True, cancel_futures=True)
+    for space_id, ids in touched.items():
+        relink.setdefault(space_id, set()).update(ids)
 
     if gone:
         status.phase = "removing"
@@ -600,11 +693,11 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats) -> None:
                 stats.removed += 1
             db.commit()
 
-    if changed_keys:
+    if changed_keys or relink:
         status.phase = "linking"
         with guard, SessionLocal() as db:
-            for space_id, keys in changed_keys.items():
-                reresolve(db, space_id, keys)
+            for space_id in set(relink) | set(changed_keys):
+                reresolve(db, space_id, changed_keys.get(space_id, set()), sources=relink.get(space_id))
             db.commit()
 
 

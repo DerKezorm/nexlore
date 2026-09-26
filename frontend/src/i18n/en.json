@@ -1,7 +1,9 @@
 {
   "app": {
     "home": "Home",
-    "mainMenu": "Main menu"
+    "mainMenu": "Main menu",
+    "account": "Account (sign-in comes with a later version)",
+    "closed": "nexlore is closed: accounts come with a later version. A test server can be opened with NEXLORE_UNSAFE_OPEN_ACCESS."
   },
   "nav": {
     "graph": "Graph",
@@ -28,15 +30,20 @@
   },
   "common": {
     "close": "Close",
-    "noFunction": "No function in the mockup yet",
-    "aiDraft": "AI draft"
+    "loading": "Loading …",
+    "cancel": "Cancel"
   },
   "sidebar": {
     "spaces": "Spaces",
-    "newNote": "New note (no function in the mockup yet)",
+    "newNote": "New note",
     "collapse": "Collapse",
     "expand": "Expand",
-    "flyTo": "Fly there in the graph"
+    "flyTo": "Fly there in the graph",
+    "newTitle": "Title of the new note",
+    "newIn": "in {{folder}}",
+    "more_one": "{{count}} more",
+    "more_other": "{{count}} more",
+    "empty": "No spaces yet."
   },
   "graph": {
     "canvas": "Graph",
@@ -51,7 +58,6 @@
     "noteHover_other": "{{count}} connections · double click opens",
     "folderHover_one": "{{count}} note · click zooms in",
     "folderHover_other": "{{count}} notes · click zooms in",
-    "editingNow": "{{name}} is editing",
     "links_one": "{{count}} link",
     "links_other": "{{count}} links",
     "backlinks_one": "{{count}} backlink",
@@ -59,7 +65,8 @@
     "open": "Open",
     "flyToNote": "Fly there",
     "hint": "Scroll to zoom · click a folder to open it · double click opens a note · Ctrl K searches",
-    "closeHint": "Close hint"
+    "closeHint": "Close hint",
+    "empty": "No notes yet. Create a space under Settings, import an Obsidian vault under Files, or put Markdown files into the vault folder."
   },
   "note": {
     "notFound": "This note does not exist.",
@@ -69,32 +76,41 @@
     "lockedTitle": "{{name}} is editing this note right now",
     "inGraph": "In the graph",
     "lockedBanner": "{{name}} is editing this note right now. You can read it; editing works once they are done.",
-    "draftBanner": "Created through the MCP access “{{access}}”, {{when}}. It stays marked as a draft until you accept it.",
-    "accept": "Accept",
-    "byYou": "By you",
-    "byOther": "By {{name}}",
     "changed": "changed {{when}}",
     "editorPlaceholder": "Start writing. [[ links another note.",
     "missingLink": "No note yet",
     "backlinks": "Backlinks",
     "noBacklinks": "No note links here yet.",
     "outgoing": "Links in this note",
-    "attachments": "Attachments",
-    "dropFile": "Drop a file here",
-    "draftTitle": "AI draft."
-  },
-  "files": {
-    "title": "Files",
-    "intro": "Everything attached to notes. The files sit in the note's folder, next to the .md file.",
-    "filter": "File or note",
-    "upload": "Upload",
-    "file": "File",
-    "belongsTo": "Belongs to",
-    "space": "Space",
-    "size": "Size",
-    "changed": "Changed",
-    "none": "No file matches.",
-    "drop": "Drop files here, then nexlore asks which note they belong to."
+    "pick": "Pick a note on the left, or search with Ctrl K.",
+    "rename": "Rename",
+    "renameLabel": "New name",
+    "renameDo": "Rename",
+    "renameHint": "Links to this note in other notes follow the new name.",
+    "delete": "Delete",
+    "deleteConfirm": "Move “{{title}}” to the trash?",
+    "conflict": "The note was changed elsewhere while you were writing. Nothing was overwritten; your text is in the copy",
+    "readonlyTitle": "This file is not UTF-8 text",
+    "readonlyBanner": "This file is not UTF-8 text. It is shown, but saving it here could lose characters, so it stays read-only.",
+    "save": {
+      "pending": "Not saved yet",
+      "saving": "Saving …",
+      "saved": "Saved",
+      "failed": "Not saved"
+    },
+    "versions": "Versions",
+    "showVersions": "Show the history",
+    "showVersion": "Show",
+    "hideVersion": "Hide",
+    "restoreVersion": "Restore this",
+    "source": {
+      "initial": "found",
+      "app": "saved",
+      "external": "changed outside",
+      "rename": "links updated",
+      "restore": "restored",
+      "import": "imported"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -116,8 +132,11 @@
     "spaces": {
       "title": "Spaces and rights",
       "text": "A space is a folder on disk. Whoever may not see it sees nothing of it in the graph, the search or the backlinks either, not even the title.",
-      "owner": "Owner",
-      "canWrite": "May write"
+      "count_one": "{{count}} note",
+      "count_other": "{{count}} notes",
+      "none": "No spaces yet.",
+      "newName": "Name of a new space",
+      "create": "Create"
     },
     "mcp": {
       "title": "AI access (MCP)",
@@ -179,7 +198,65 @@
       "invalid_input": "The input is not valid.",
       "sign_in_required": "Sign in first.",
       "locale_unusable": "This language file cannot be used.",
-      "internal_error": "Something went wrong on the server."
+      "internal_error": "Something went wrong on the server.",
+      "path_invalid": "This path is not allowed.",
+      "path_too_long": "The name or path is too long.",
+      "name_invalid": "This name cannot be used: it holds a character or a form Windows, macOS or Linux cannot store.",
+      "exists": "Something of that name exists already.",
+      "locked": "Somebody else is editing this note.",
+      "not_a_note": "This file is not a note.",
+      "move_across_spaces": "Notes move within their space only.",
+      "too_large_for_trash": "The file is too large for the trash.",
+      "archive_invalid": "This is not a ZIP archive.",
+      "archive_unsafe": "The archive holds an entry that would end up outside its folder. Nothing was unpacked.",
+      "archive_too_large": "The archive is too large.",
+      "archive_too_many_files": "The archive holds too many files."
+    }
+  },
+  "files": {
+    "title": "Files",
+    "intro": "The Markdown files are the truth. Here: the index over them, the trash, and bringing in an Obsidian vault.",
+    "index": {
+      "title": "Index",
+      "text": "nexlore watches the vault folder and reads every change, also those made by Obsidian, Syncthing or an editor. A full pass every few minutes catches what the watcher missed.",
+      "running": "Reading the vault: {{done}} of {{total}}",
+      "last": "Last pass {{when}}: {{files}} files in {{seconds}} s",
+      "never": "No pass yet.",
+      "rescan": "Read everything again",
+      "heldBack": "Most files of {{spaces}} vanished at once. nexlore did not move them to the trash, because a folder that is not mounted looks just like that.",
+      "confirm": "They were deleted on purpose"
+    },
+    "trash": {
+      "title": "Trash",
+      "text": "Deleted notes stay here for 30 days with their history, then they go for good. Notes deleted outside nexlore land here too.",
+      "empty": "The trash is empty.",
+      "external": "vanished from the disk {{when}}",
+      "deleted": "deleted {{when}} by {{by}}",
+      "files_one": "{{count}} file",
+      "files_other": "{{count}} files",
+      "restore": "Restore",
+      "purge": "Delete for good",
+      "purgeConfirm": "Delete “{{path}}” for good? This cannot be undone."
+    },
+    "import": {
+      "title": "Import an Obsidian vault",
+      "text": "A ZIP of the vault becomes a new space. .obsidian and plugin syntax come along untouched; the report says what nexlore shows as code instead of running it.",
+      "file": "ZIP file",
+      "name": "Name of the new space",
+      "start": "Import",
+      "busy": "Importing …"
+    },
+    "report": {
+      "summary": "“{{space}}”: {{notes}} notes, {{files}} other files, {{links}} links.",
+      "plugins": "Community plugins in .obsidian: {{list}}",
+      "pluginSyntax": "{{kind}} (shown as code)",
+      "unresolved": "Links that point nowhere",
+      "frontMatter": "Front matter nexlore cannot read",
+      "notUtf8": "Files that are not UTF-8 text (read-only)",
+      "tooLarge": "Notes too large to index",
+      "unportable": "Names another system cannot hold",
+      "caseTwins": "Names that differ only in case",
+      "renamed": "Renamed while importing"
     }
   }
 }

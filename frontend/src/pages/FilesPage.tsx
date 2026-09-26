@@ -1,86 +1,245 @@
-/** All attachments across the vault, with the note each one belongs to. */
-import { useMemo, useState } from 'react'
+/**
+ * The files behind the notes: how far the index is, the trash, and bringing in an Obsidian vault.
+ * Attachments get their own list here with M3.
+ */
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
 
-import { Symbol } from '../components/Symbol'
+import { ApiError, vaultApi, type Finding, type IndexState, type Report, type TrashEntry } from '../api/client'
+import { Symbol, type SymbolName } from '../components/Symbol'
+import { errorText } from '../lib/errors'
 import { formatDate } from '../lib/markdown'
 import { useStore } from '../state/store'
 
 export function FilesPage() {
   const { t } = useTranslation()
-  const { vault } = useStore()
-  const [query, setQuery] = useState('')
-
-  const files = useMemo(() => {
-    const all = [...vault.notes.values()].flatMap((note) => (note.attachments ?? []).map((file) => ({ file, note })))
-    const q = query.trim().toLowerCase()
-    return q ? all.filter(({ file, note }) => file.name.toLowerCase().includes(q) || note.title.toLowerCase().includes(q)) : all
-  }, [vault, query])
-
   return (
     <main className="nn-scroll flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-6 py-8">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold tracking-tight">{t('files.title')}</h1>
-            <p className="mt-1 text-sm text-mist-500">{t('files.intro')}</p>
-          </div>
-          <div className="flex items-center gap-2 rounded-full border border-ink-700 bg-ink-850 px-3">
-            <Symbol name="search" className="h-4 w-4 text-mist-500" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('files.filter')} className="h-9 w-48 bg-transparent text-sm outline-none placeholder:text-mist-600" />
-          </div>
-          <button type="button" className="inline-flex items-center gap-2 rounded-full bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400" title={t('common.noFunction')}>
-            <Symbol name="upload" /> {t('files.upload')}
-          </button>
+      <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{t('files.title')}</h1>
+          <p className="mt-1 text-sm text-mist-500">{t('files.intro')}</p>
         </div>
-
-        <div className="mt-6 overflow-hidden rounded-2xl border border-ink-700 bg-ink-900">
-          <table className="w-full text-sm">
-            <thead className="border-b border-ink-700 text-left text-xs text-mist-500">
-              <tr>
-                <th className="px-4 py-2.5 font-medium">{t('files.file')}</th>
-                <th className="px-4 py-2.5 font-medium">{t('files.belongsTo')}</th>
-                <th className="hidden px-4 py-2.5 font-medium md:table-cell">{t('files.space')}</th>
-                <th className="px-4 py-2.5 text-right font-medium">{t('files.size')}</th>
-                <th className="hidden px-4 py-2.5 text-right font-medium sm:table-cell">{t('files.changed')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {files.map(({ file, note }) => (
-                <tr key={note.id + file.name} className="border-b border-ink-700/60 last:border-0 hover:bg-ink-850">
-                  <td className="px-4 py-3">
-                    <span className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink-800 text-mist-400">
-                        <Symbol name={file.kind === 'image' ? 'image' : file.kind === 'pdf' ? 'pdf' : 'file'} />
-                      </span>
-                      <span className="font-medium text-mist-100">{file.name}</span>
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link to={`/note/${encodeURIComponent(note.id)}`} className="text-accent-400 hover:underline">
-                      {note.title}
-                    </Link>
-                  </td>
-                  <td className="hidden px-4 py-3 text-mist-400 md:table-cell">
-                    <span className="flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full" style={{ background: vault.home.get(note.id)!.color }} />
-                      {note.path.join(' › ')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-right text-mist-400 tabular-nums">{file.size}</td>
-                  <td className="hidden px-4 py-3 text-right text-mist-500 sm:table-cell">{formatDate(note.updated)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {files.length === 0 && <p className="px-4 py-10 text-center text-sm text-mist-500">{t('files.none')}</p>}
-        </div>
-
-        <div className="mt-4 flex items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-600 px-4 py-8 text-sm text-mist-500">
-          <Symbol name="upload" /> {t('files.drop')}
-        </div>
+        <IndexCard />
+        <TrashCard />
+        <ImportCard />
       </div>
     </main>
+  )
+}
+
+function Card({ symbol, title, text, children }: { symbol: SymbolName; title: string; text: string; children: ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
+      <h2 className="flex items-center gap-2 font-semibold">
+        <Symbol name={symbol} className="h-4 w-4 text-accent-400" />
+        {title}
+      </h2>
+      <p className="mt-1 mb-4 text-sm text-mist-500">{text}</p>
+      {children}
+    </section>
+  )
+}
+
+function IndexCard() {
+  const { t } = useTranslation()
+  const { reload } = useStore()
+  const [state, setState] = useState<IndexState | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const load = useCallback(() => vaultApi.index().then(setState).catch(() => undefined), [])
+  useEffect(() => void load(), [load])
+
+  const rescan = async (confirmDeletions = false) => {
+    setBusy(true)
+    try {
+      await vaultApi.rescan(confirmDeletions)
+      await Promise.all([load(), reload()])
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const last = state?.last
+  return (
+    <Card symbol="refresh" title={t('files.index.title')} text={t('files.index.text')}>
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        {state?.running ? (
+          <span className="text-mist-300">{t('files.index.running', { done: state.done, total: state.total })}</span>
+        ) : last ? (
+          <span className="text-mist-300">
+            {t('files.index.last', { when: formatDate(state!.last_at!), files: last.files, seconds: last.seconds })}
+          </span>
+        ) : (
+          <span className="text-mist-500">{t('files.index.never')}</span>
+        )}
+        <button type="button" onClick={() => void rescan()} disabled={busy || !!state?.running} className="ml-auto rounded-full border border-ink-700 px-3 py-1 text-mist-300 hover:bg-ink-850 disabled:opacity-40">
+          {t('files.index.rescan')}
+        </button>
+      </div>
+      {state && Object.keys(state.held_back).length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-warn-500/30 bg-warn-500/10 px-4 py-2.5 text-sm text-warn-500" role="alert">
+          <span className="flex-1">{t('files.index.heldBack', { spaces: Object.keys(state.held_back).join(', ') })}</span>
+          <button type="button" onClick={() => void rescan(true)} disabled={busy} className="rounded-full border border-warn-500/40 px-3 py-1 text-xs hover:bg-warn-500/10 disabled:opacity-40">
+            {t('files.index.confirm')}
+          </button>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function TrashCard() {
+  const { t } = useTranslation()
+  const { reload } = useStore()
+  const [entries, setEntries] = useState<TrashEntry[] | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+
+  const load = useCallback(() => vaultApi.trash().then(setEntries).catch((error) => setProblem(error instanceof ApiError ? error.code : 'internal_error')), [])
+  useEffect(() => void load(), [load])
+
+  const act = async (action: () => Promise<unknown>) => {
+    try {
+      await action()
+      setProblem(null)
+      await Promise.all([load(), reload()])
+    } catch (error) {
+      setProblem(error instanceof ApiError ? error.code : 'internal_error')
+    }
+  }
+
+  return (
+    <Card symbol="trash" title={t('files.trash.title')} text={t('files.trash.text')}>
+      {entries?.length === 0 && <p className="text-sm text-mist-500">{t('files.trash.empty')}</p>}
+      {!!entries?.length && (
+        <ul className="divide-y divide-ink-700 rounded-xl border border-ink-700">
+          {entries.map((entry) => (
+            <li key={entry.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{entry.path}</span>
+                <span className="block text-xs text-mist-500">
+                  {entry.how === 'external' ? t('files.trash.external', { when: formatDate(entry.deleted_at) }) : t('files.trash.deleted', { when: formatDate(entry.deleted_at), by: entry.by ?? '' })}
+                  {entry.files > 1 && ` · ${t('files.trash.files', { count: entry.files })}`}
+                </span>
+              </span>
+              <button type="button" onClick={() => void act(() => vaultApi.restoreTrash(entry.id))} className="rounded-full bg-accent-500 px-3 py-1 text-xs font-semibold text-on-accent hover:bg-accent-400">
+                {t('files.trash.restore')}
+              </button>
+              <button
+                type="button"
+                onClick={() => window.confirm(t('files.trash.purgeConfirm', { path: entry.path })) && void act(() => vaultApi.purgeTrash(entry.id))}
+                className="rounded-full border border-ink-700 px-3 py-1 text-xs text-bad-500 hover:bg-ink-850"
+              >
+                {t('files.trash.purge')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {problem && <p className="mt-2 text-sm text-bad-500">{errorText(problem)}</p>}
+    </Card>
+  )
+}
+
+function ImportCard() {
+  const { t } = useTranslation()
+  const { reload } = useStore()
+  const [file, setFile] = useState<File | null>(null)
+  const [name, setName] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [report, setReport] = useState<Report | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+
+  const start = async () => {
+    if (!file || !name.trim()) return
+    setBusy(true)
+    setProblem(null)
+    try {
+      setReport(await vaultApi.importVault(file, name.trim()))
+      await reload()
+    } catch (error) {
+      setProblem(error instanceof ApiError ? error.code : 'internal_error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Card symbol="upload" title={t('files.import.title')} text={t('files.import.text')}>
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void start()
+        }}
+      >
+        <input
+          type="file"
+          accept=".zip,application/zip"
+          aria-label={t('files.import.file')}
+          onChange={(event) => {
+            const chosen = event.target.files?.[0] ?? null
+            setFile(chosen)
+            if (chosen && !name) setName(chosen.name.replace(/\.zip$/i, ''))
+          }}
+          className="text-sm text-mist-400 file:mr-3 file:rounded-full file:border-0 file:bg-ink-800 file:px-3 file:py-1.5 file:text-mist-200"
+        />
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder={t('files.import.name')}
+          aria-label={t('files.import.name')}
+          className="h-9 min-w-0 flex-1 rounded-lg border border-ink-700 bg-ink-850 px-3 text-sm outline-none focus:border-accent-500"
+        />
+        <button type="submit" disabled={!file || !name.trim() || busy} className="h-9 rounded-full bg-accent-500 px-4 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-40">
+          {busy ? t('files.import.busy') : t('files.import.start')}
+        </button>
+      </form>
+      {problem && <p className="mt-2 text-sm text-bad-500">{errorText(problem)}</p>}
+      {report && <ReportView report={report} />}
+    </Card>
+  )
+}
+
+function FindingRow({ label, finding }: { label: string; finding: Finding }) {
+  if (!finding.count) return null
+  return (
+    <details className="rounded-lg px-2 py-1.5 hover:bg-ink-850">
+      <summary className="cursor-pointer text-sm text-mist-300">
+        {label} <span className="text-mist-500 tabular-nums">· {finding.count}</span>
+      </summary>
+      <ul className="mt-1 space-y-0.5 pl-4 font-mono text-[11px] text-mist-500">
+        {finding.examples.map((example) => (
+          <li key={example} className="truncate">{example}</li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
+/** What the import found. Plugin syntax is kept exactly as it is and shown as code, never run. */
+export function ReportView({ report }: { report: Report }) {
+  const { t } = useTranslation()
+  return (
+    <div className="mt-4 rounded-xl border border-ink-700 p-4 text-sm">
+      <p className="font-medium">
+        {t('files.report.summary', { space: report.space, notes: report.notes, files: report.other_files, links: report.links })}
+      </p>
+      {report.community_plugins.length > 0 && (
+        <p className="mt-1 text-xs text-mist-500">{t('files.report.plugins', { list: report.community_plugins.join(', ') })}</p>
+      )}
+      <div className="mt-3 space-y-0.5">
+        {Object.entries(report.plugins).map(([label, finding]) => (
+          <FindingRow key={label} label={t('files.report.pluginSyntax', { kind: label })} finding={finding} />
+        ))}
+        <FindingRow label={t('files.report.unresolved')} finding={report.unresolved_links} />
+        <FindingRow label={t('files.report.frontMatter')} finding={report.front_matter_errors} />
+        <FindingRow label={t('files.report.notUtf8')} finding={report.not_utf8} />
+        <FindingRow label={t('files.report.tooLarge')} finding={report.too_large} />
+        <FindingRow label={t('files.report.unportable')} finding={report.unportable_names} />
+        <FindingRow label={t('files.report.caseTwins')} finding={report.case_collisions} />
+        <FindingRow label={t('files.report.renamed')} finding={report.renamed_on_import} />
+      </div>
+    </div>
   )
 }

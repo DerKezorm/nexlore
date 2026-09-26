@@ -1,27 +1,89 @@
-/** Quick switcher on Ctrl+K: titles first, then text. */
+/**
+ * Quick switcher on Ctrl+K: titles from the loaded vault at once, then the server's full-text search with the
+ * matching words marked. The server marks hits with two control characters; they are split here and shown as
+ * <mark>, never inserted as HTML.
+ */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { vaultApi, type Hit } from '../api/client'
+import { folderOf } from '../lib/vault'
 import { useStore } from '../state/store'
 import { Symbol } from './Symbol'
+
+const HIT_START = '\u0002'
+const HIT_END = '\u0003'
+
+type Result = { path: string; title: string; snippet?: string }
+
+function Snippet({ text }: { text: string }) {
+  const parts: { text: string; hit: boolean }[] = []
+  text.split(HIT_START).forEach((piece, position) => {
+    const end = piece.indexOf(HIT_END)
+    // Everything before the first start mark is plain text; after a start mark, up to its end mark is the hit.
+    if (position === 0 || end < 0) {
+      if (piece) parts.push({ text: piece.replaceAll(HIT_END, ''), hit: false })
+      return
+    }
+    parts.push({ text: piece.slice(0, end), hit: true })
+    const rest = piece.slice(end + 1).replaceAll(HIT_END, '')
+    if (rest) parts.push({ text: rest, hit: false })
+  })
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.hit ? (
+          <mark key={index} className="rounded bg-accent-500/25 px-0.5 text-mist-100">
+            {part.text}
+          </mark>
+        ) : (
+          <span key={index}>{part.text}</span>
+        ),
+      )}
+    </>
+  )
+}
 
 export function SearchDialog({ onClose, onPick }: { onClose: () => void; onPick: (id: string) => void }) {
   const { t } = useTranslation()
   const { vault } = useStore()
   const [query, setQuery] = useState('')
+  const [hits, setHits] = useState<Hit[]>([])
   const [index, setIndex] = useState(0)
   const input = useRef<HTMLInputElement>(null)
 
   useEffect(() => input.current?.focus(), [])
 
-  const results = useMemo(() => {
+  useEffect(() => {
+    const q = query.trim()
+    if (!q) {
+      setHits([])
+      return
+    }
+    let live = true
+    const timer = window.setTimeout(() => {
+      vaultApi
+        .search(q)
+        .then((found) => live && setHits(found))
+        .catch(() => live && setHits([]))
+    }, 150)
+    return () => {
+      live = false
+      window.clearTimeout(timer)
+    }
+  }, [query])
+
+  const results = useMemo<Result[]>(() => {
     const q = query.trim().toLowerCase()
     const all = [...vault.notes.values()]
-    if (!q) return all.filter((n) => !n.path.includes('Tagesnotizen')).slice(0, 8)
-    const byTitle = all.filter((n) => n.title.toLowerCase().includes(q))
-    const byText = all.filter((n) => !byTitle.includes(n) && n.body.toLowerCase().includes(q))
-    return [...byTitle, ...byText].slice(0, 10)
-  }, [query, vault])
+    if (!q) return all.slice(0, 8).map((note) => ({ path: note.id, title: note.title }))
+    const byTitle = all.filter((note) => note.title.toLowerCase().includes(q)).slice(0, 8)
+    const seen = new Set(byTitle.map((note) => note.id))
+    return [
+      ...byTitle.map((note) => ({ path: note.id, title: note.title })),
+      ...hits.filter((hit) => !seen.has(hit.path)).map((hit) => ({ path: hit.path, title: hit.title, snippet: hit.snippet })),
+    ].slice(0, 20)
+  }, [query, vault, hits])
 
   const pick = (id: string) => {
     onPick(id)
@@ -30,7 +92,7 @@ export function SearchDialog({ onClose, onPick }: { onClose: () => void; onPick:
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-scrim/70 px-4 pt-[12vh]" onMouseDown={onClose}>
-      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-2xl" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label={t('search.button')}>
         <div className="flex items-center gap-3 border-b border-ink-700 px-4">
           <Symbol name="search" className="h-4 w-4 text-mist-500" />
           <input
@@ -44,26 +106,29 @@ export function SearchDialog({ onClose, onPick }: { onClose: () => void; onPick:
               if (e.key === 'Escape') onClose()
               if (e.key === 'ArrowDown') setIndex((i) => Math.min(results.length - 1, i + 1))
               if (e.key === 'ArrowUp') setIndex((i) => Math.max(0, i - 1))
-              if (e.key === 'Enter' && results[index]) pick(results[index].id)
+              if (e.key === 'Enter' && results[index]) pick(results[index].path)
             }}
             placeholder={t('search.placeholder')}
+            aria-label={t('search.placeholder')}
             className="h-12 flex-1 bg-transparent text-[15px] text-mist-100 outline-none placeholder:text-mist-600"
           />
           <kbd className="rounded border border-ink-700 px-1.5 text-[11px] text-mist-500">Esc</kbd>
         </div>
         <ul className="nn-scroll max-h-[50vh] overflow-y-auto p-2">
-          {results.map((note, i) => (
-            <li key={note.id}>
+          {results.map((result, i) => (
+            <li key={result.path}>
               <button
                 type="button"
                 onMouseEnter={() => setIndex(i)}
-                onClick={() => pick(note.id)}
+                onClick={() => pick(result.path)}
                 className={'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left ' + (i === index ? 'bg-accent-500/12 text-mist-100' : 'text-mist-300')}
               >
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: vault.home.get(note.id)!.color }} />
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: vault.home.get(result.path)?.color ?? 'var(--color-mist-600)' }} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{note.title}</span>
-                  <span className="block truncate text-xs text-mist-500">{note.path.join(' › ')}</span>
+                  <span className="block truncate text-sm font-medium">{result.title}</span>
+                  <span className="block truncate text-xs text-mist-500">
+                    {result.snippet ? <Snippet text={result.snippet} /> : folderOf(result.path).replace(/\//g, ' › ')}
+                  </span>
                 </span>
               </button>
             </li>

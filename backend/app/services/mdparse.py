@@ -206,7 +206,8 @@ def parse(text: str) -> Parsed:
 
     # Blocks. The front matter is blanked first so that markdown-it does not read its "---" as a rule or heading.
     source = _mask(text, [(0, parsed.body_start)]) if parsed.body_start else text
-    if _NEEDS_BLOCKS.search(source):
+    # Asked of the body alone: the blanked front matter would look like lines indented as code.
+    if _NEEDS_BLOCKS.search(text, parsed.body_start):
         for token in _BLOCKS.parse(source):
             if token.type not in ("fence", "code_block", "html_block") or not token.map:
                 continue

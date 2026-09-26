@@ -1,8 +1,24 @@
 /**
- * Turns the flat note list into what the interface needs: a folder tree (the clusters of the graph),
- * resolved wiki links and backlinks.
+ * Turns the server's notes and links into what the interface needs: a folder tree (the clusters of the graph),
+ * outgoing links and backlinks.
+ *
+ * A note's id is its path in the vault (`Space/Folder/Note.md`): that is what the API speaks and what the address
+ * bar shows. Links come resolved from the server, which follows Obsidian's rules; nothing is guessed here.
  */
-import type { Note } from '../mock/notes'
+import type { Graph } from '../api/client'
+
+export type Note = {
+  /** Path in the vault, `Space/Folder/Note.md`. */
+  id: string
+  fileId: number
+  title: string
+  /** Folder path, first entry is the space. */
+  path: string[]
+  /** Written by an AI assistant through the MCP server (M7); not in use yet. */
+  aiDraft?: boolean
+  /** Somebody else is editing the note right now. */
+  lockedBy?: string
+}
 
 export type Cluster = {
   id: string
@@ -23,7 +39,6 @@ export type Vault = {
   root: Cluster
   clusters: Map<string, Cluster>
   notes: Map<string, Note>
-  byTitle: Map<string, Note>
   /** Folder a note sits in directly. */
   home: Map<string, Cluster>
   links: Link[]
@@ -35,24 +50,19 @@ export type Vault = {
 const PALETTE = ['#2dd4bf', '#a78bfa', '#fbbf24', '#fb7185', '#38bdf8', '#a3e635', '#fb923c', '#f472b6', '#34d399', '#818cf8']
 const SPACE_COLORS = ['#5eead4', '#c4b5fd', '#fcd34d']
 
-const WIKILINK = /\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g
-
-export function linkTargets(body: string): { title: string; label: string }[] {
-  const found: { title: string; label: string }[] = []
-  for (const match of body.matchAll(WIKILINK)) {
-    const title = match[1].trim()
-    found.push({ title, label: (match[2] ?? title).trim() })
-  }
-  return found
+export function noteFromPath(fileId: number, path: string, title: string): Note {
+  const parts = path.split('/')
+  return { id: path, fileId, title, path: parts.slice(0, -1) }
 }
 
-export function buildVault(list: Note[]): Vault {
+export function buildVault(list: Note[], pairs: Link[]): Vault {
   const root: Cluster = { id: '', name: '', depth: 0, parent: null, children: [], notes: [], total: 0, color: '#9a9aa8' }
   const clusters = new Map<string, Cluster>([['', root]])
   const home = new Map<string, Cluster>()
   let paletteIndex = 0
+  const sorted = [...list].sort((a, b) => a.id.localeCompare(b.id))
 
-  for (const note of list) {
+  for (const note of sorted) {
     let current = root
     note.path.forEach((name, index) => {
       const id = note.path.slice(0, index + 1).join('/')
@@ -76,32 +86,47 @@ export function buildVault(list: Note[]): Vault {
     for (let c: Cluster | null = current; c; c = c.parent) c.total++
   }
 
-  const notes = new Map(list.map((n) => [n.id, n]))
-  const byTitle = new Map(list.map((n) => [n.title.toLowerCase(), n]))
+  const notes = new Map(sorted.map((n) => [n.id, n]))
   const links: Link[] = []
   const outgoing = new Map<string, string[]>()
   const backlinks = new Map<string, string[]>()
   const seen = new Set<string>()
-
-  for (const note of list) {
-    const targets: string[] = []
-    for (const { title } of linkTargets(note.body)) {
-      const target = byTitle.get(title.toLowerCase())
-      if (!target || target.id === note.id || targets.includes(target.id)) continue
-      targets.push(target.id)
-      const key = note.id < target.id ? note.id + '|' + target.id : target.id + '|' + note.id
-      if (!seen.has(key)) {
-        seen.add(key)
-        links.push({ from: note.id, to: target.id })
-      }
-      const back = backlinks.get(target.id) ?? []
-      back.push(note.id)
-      backlinks.set(target.id, back)
+  for (const { from, to } of pairs) {
+    if (from === to || !notes.has(from) || !notes.has(to)) continue
+    const out = outgoing.get(from) ?? []
+    if (out.includes(to)) continue
+    out.push(to)
+    outgoing.set(from, out)
+    const back = backlinks.get(to) ?? []
+    back.push(from)
+    backlinks.set(to, back)
+    const key = from < to ? from + '|' + to : to + '|' + from
+    if (!seen.has(key)) {
+      seen.add(key)
+      links.push({ from, to })
     }
-    outgoing.set(note.id, targets)
   }
 
-  return { root, clusters, notes, byTitle, home, links, outgoing, backlinks }
+  return { root, clusters, notes, home, links, outgoing, backlinks }
+}
+
+/** The server's graph of every space as one vault. */
+export function vaultFromGraphs(graphs: Graph[]): Vault {
+  const list: Note[] = []
+  const pairs: Link[] = []
+  for (const graph of graphs) {
+    const byId = new Map<number, string>()
+    for (const [id, path, title] of graph.nodes) {
+      byId.set(id, path)
+      list.push(noteFromPath(id, path, title))
+    }
+    for (const [from, to] of graph.links) {
+      const a = byId.get(from)
+      const b = byId.get(to)
+      if (a && b) pairs.push({ from: a, to: b })
+    }
+  }
+  return buildVault(list, pairs)
 }
 
 /** Space, folders, subfolders of a note, from the top down, without the root. */
@@ -113,4 +138,16 @@ export function ancestry(vault: Vault, noteId: string): Cluster[] {
 
 export function neighbours(vault: Vault, noteId: string): Set<string> {
   return new Set([...(vault.outgoing.get(noteId) ?? []), ...(vault.backlinks.get(noteId) ?? [])])
+}
+
+/** The folder part of a vault path: `Space/Folder` of `Space/Folder/Note.md`. */
+export function folderOf(path: string): string {
+  const index = path.lastIndexOf('/')
+  return index < 0 ? path : path.slice(0, index)
+}
+
+/** The file name without `.md`. */
+export function baseName(path: string): string {
+  const name = path.slice(path.lastIndexOf('/') + 1)
+  return name.toLowerCase().endsWith('.md') ? name.slice(0, -3) : name
 }

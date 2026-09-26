@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
-import { ME } from '../mock/notes'
+import { errorText } from '../lib/errors'
+import { useStore } from '../state/store'
 import { Logo } from './Logo'
 import { SearchDialog } from './SearchDialog'
 import { Symbol, type SymbolName } from './Symbol'
@@ -43,9 +44,11 @@ export function AppShell() {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  const { status, error } = useStore()
+
   const pick = (id: string) => {
     if (location.pathname === '/') navigate(`/?focus=${encodeURIComponent(id)}`)
-    else navigate(`/note/${encodeURIComponent(id)}`)
+    else navigate(`/note/${encodeURI(id)}`)
   }
 
   return (
@@ -73,11 +76,16 @@ export function AppShell() {
             <kbd className="rounded border border-ink-700 px-1.5 text-[11px]">{t('search.shortcut')}</kbd>
           </button>
           <ThemeSwitcher />
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ink-700 bg-ink-850 text-xs font-semibold text-mist-300 uppercase" title={ME}>
-            {ME.slice(0, 1)}
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ink-700 bg-ink-850 text-mist-400" title={t('app.account')}>
+            <Symbol name="users" className="h-4 w-4" />
           </span>
         </div>
       </header>
+      {status === 'error' && (
+        <div className="shrink-0 border-b border-bad-500/30 bg-bad-500/10 px-4 py-2 text-sm text-bad-500" role="alert">
+          {error === 'sign_in_required' ? t('app.closed') : errorText(error ?? 'internal_error')}
+        </div>
+      )}
       <div className="flex min-h-0 flex-1">
         <Outlet />
       </div>

@@ -1,7 +1,9 @@
 {
   "app": {
     "home": "Start",
-    "mainMenu": "Hauptmenü"
+    "mainMenu": "Hauptmenü",
+    "account": "Konto (die Anmeldung kommt mit einer späteren Version)",
+    "closed": "nexlore ist geschlossen: Konten kommen mit einer späteren Version. Einen Testserver öffnet NEXLORE_UNSAFE_OPEN_ACCESS."
   },
   "nav": {
     "graph": "Graph",
@@ -28,15 +30,20 @@
   },
   "common": {
     "close": "Schließen",
-    "noFunction": "In der Attrappe noch ohne Funktion",
-    "aiDraft": "KI-Entwurf"
+    "loading": "Lädt …",
+    "cancel": "Abbrechen"
   },
   "sidebar": {
     "spaces": "Bereiche",
-    "newNote": "Neue Notiz (in der Attrappe noch ohne Funktion)",
+    "newNote": "Neue Notiz",
     "collapse": "Zuklappen",
     "expand": "Aufklappen",
-    "flyTo": "Im Graph anfliegen"
+    "flyTo": "Im Graph anfliegen",
+    "newTitle": "Titel der neuen Notiz",
+    "newIn": "in {{folder}}",
+    "more_one": "{{count}} weitere",
+    "more_other": "{{count}} weitere",
+    "empty": "Noch keine Bereiche."
   },
   "graph": {
     "canvas": "Graph",
@@ -51,7 +58,6 @@
     "noteHover_other": "{{count}} Verknüpfungen · Doppelklick öffnet",
     "folderHover_one": "{{count}} Notiz · Klick zoomt hinein",
     "folderHover_other": "{{count}} Notizen · Klick zoomt hinein",
-    "editingNow": "{{name}} bearbeitet gerade",
     "links_one": "{{count}} Link",
     "links_other": "{{count}} Links",
     "backlinks_one": "{{count}} Rückverweis",
@@ -59,7 +65,8 @@
     "open": "Öffnen",
     "flyToNote": "Hinfliegen",
     "hint": "Scrollen zoomt · Ordner anklicken öffnet ihn · Doppelklick öffnet eine Notiz · Strg K sucht",
-    "closeHint": "Hinweis schließen"
+    "closeHint": "Hinweis schließen",
+    "empty": "Noch keine Notizen. Lege unter Einstellungen einen Bereich an, hole unter Dateien einen Obsidian-Tresor herein oder lege Markdown-Dateien in den Tresor-Ordner."
   },
   "note": {
     "notFound": "Diese Notiz gibt es nicht.",
@@ -69,32 +76,41 @@
     "lockedTitle": "{{name}} bearbeitet diese Notiz gerade",
     "inGraph": "Im Graph",
     "lockedBanner": "{{name}} bearbeitet diese Notiz gerade. Du kannst lesen; bearbeiten geht, sobald sie fertig ist.",
-    "draftBanner": "Über den MCP-Zugang „{{access}}“ angelegt, {{when}}. Bis du ihn übernimmst, ist er als Entwurf markiert.",
-    "accept": "Übernehmen",
-    "byYou": "Von dir",
-    "byOther": "Von {{name}}",
     "changed": "geändert {{when}}",
     "editorPlaceholder": "Schreib los. [[ verlinkt eine andere Notiz.",
     "missingLink": "Noch keine Notiz",
     "backlinks": "Rückverweise",
     "noBacklinks": "Noch keine Notiz verweist hierher.",
     "outgoing": "Links in dieser Notiz",
-    "attachments": "Anhänge",
-    "dropFile": "Datei hierher ziehen",
-    "draftTitle": "KI-Entwurf."
-  },
-  "files": {
-    "title": "Dateien",
-    "intro": "Alles, was an Notizen hängt. Die Dateien liegen im Ordner der Notiz, neben der .md-Datei.",
-    "filter": "Datei oder Notiz",
-    "upload": "Hochladen",
-    "file": "Datei",
-    "belongsTo": "Gehört zu",
-    "space": "Bereich",
-    "size": "Größe",
-    "changed": "Geändert",
-    "none": "Keine Datei passt.",
-    "drop": "Dateien hierher ziehen, dann fragt nexlore, zu welcher Notiz sie gehören."
+    "pick": "Wähle links eine Notiz oder suche mit Strg K.",
+    "rename": "Umbenennen",
+    "renameLabel": "Neuer Name",
+    "renameDo": "Umbenennen",
+    "renameHint": "Links auf diese Notiz in anderen Notizen ziehen mit.",
+    "delete": "Löschen",
+    "deleteConfirm": "„{{title}}“ in den Papierkorb legen?",
+    "conflict": "Die Notiz wurde woanders geändert, während du geschrieben hast. Nichts wurde überschrieben; dein Text steht in der Kopie",
+    "readonlyTitle": "Diese Datei ist kein UTF-8-Text",
+    "readonlyBanner": "Diese Datei ist kein UTF-8-Text. Sie wird angezeigt, aber Speichern könnte hier Zeichen kosten, darum bleibt sie schreibgeschützt.",
+    "save": {
+      "pending": "Noch nicht gespeichert",
+      "saving": "Speichert …",
+      "saved": "Gespeichert",
+      "failed": "Nicht gespeichert"
+    },
+    "versions": "Versionen",
+    "showVersions": "Verlauf zeigen",
+    "showVersion": "Zeigen",
+    "hideVersion": "Ausblenden",
+    "restoreVersion": "Diese zurückholen",
+    "source": {
+      "initial": "vorgefunden",
+      "app": "gespeichert",
+      "external": "außen geändert",
+      "rename": "Links nachgezogen",
+      "restore": "zurückgeholt",
+      "import": "importiert"
+    }
   },
   "settings": {
     "title": "Einstellungen",
@@ -116,8 +132,11 @@
     "spaces": {
       "title": "Bereiche und Rechte",
       "text": "Ein Bereich ist ein Ordner auf der Platte. Wer ihn nicht sehen darf, sieht auch im Graph, in der Suche und bei den Rückverweisen nichts davon, nicht einmal den Titel.",
-      "owner": "Besitzer",
-      "canWrite": "Darf schreiben"
+      "count_one": "{{count}} Notiz",
+      "count_other": "{{count}} Notizen",
+      "none": "Noch keine Bereiche.",
+      "newName": "Name eines neuen Bereichs",
+      "create": "Anlegen"
     },
     "mcp": {
       "title": "KI-Zugang (MCP)",
@@ -179,7 +198,65 @@
       "invalid_input": "Die Eingabe ist nicht gültig.",
       "sign_in_required": "Bitte erst anmelden.",
       "locale_unusable": "Diese Sprachdatei lässt sich nicht verwenden.",
-      "internal_error": "Auf dem Server ist etwas schiefgegangen."
+      "internal_error": "Auf dem Server ist etwas schiefgegangen.",
+      "path_invalid": "Dieser Pfad ist nicht erlaubt.",
+      "path_too_long": "Der Name oder Pfad ist zu lang.",
+      "name_invalid": "Dieser Name geht nicht: Er enthält ein Zeichen oder eine Form, die Windows, macOS oder Linux nicht speichern kann.",
+      "exists": "Etwas mit diesem Namen gibt es schon.",
+      "locked": "Jemand anderes bearbeitet diese Notiz gerade.",
+      "not_a_note": "Diese Datei ist keine Notiz.",
+      "move_across_spaces": "Notizen ziehen nur innerhalb ihres Bereichs um.",
+      "too_large_for_trash": "Die Datei ist zu groß für den Papierkorb.",
+      "archive_invalid": "Das ist kein ZIP-Archiv.",
+      "archive_unsafe": "Das Archiv enthält einen Eintrag, der außerhalb seines Ordners landen würde. Nichts wurde entpackt.",
+      "archive_too_large": "Das Archiv ist zu groß.",
+      "archive_too_many_files": "Das Archiv enthält zu viele Dateien."
+    }
+  },
+  "files": {
+    "title": "Dateien",
+    "intro": "Die Markdown-Dateien sind die Wahrheit. Hier: der Index darüber, der Papierkorb und das Hereinholen eines Obsidian-Tresors.",
+    "index": {
+      "title": "Index",
+      "text": "nexlore beobachtet den Tresor-Ordner und liest jede Änderung, auch die von Obsidian, Syncthing oder einem Editor. Alle paar Minuten fängt ein ganzer Durchgang auf, was der Wächter verpasst hat.",
+      "running": "Liest den Tresor: {{done}} von {{total}}",
+      "last": "Letzter Durchgang {{when}}: {{files}} Dateien in {{seconds}} s",
+      "never": "Noch kein Durchgang.",
+      "rescan": "Alles neu lesen",
+      "heldBack": "Die meisten Dateien von {{spaces}} sind auf einmal verschwunden. nexlore hat sie nicht in den Papierkorb gelegt, denn ein nicht eingehängter Ordner sieht genauso aus.",
+      "confirm": "Sie wurden absichtlich gelöscht"
+    },
+    "trash": {
+      "title": "Papierkorb",
+      "text": "Gelöschte Notizen bleiben 30 Tage hier, mit ihrem Verlauf, dann gehen sie endgültig. Außerhalb von nexlore gelöschte Notizen landen auch hier.",
+      "empty": "Der Papierkorb ist leer.",
+      "external": "{{when}} von der Platte verschwunden",
+      "deleted": "{{when}} gelöscht von {{by}}",
+      "files_one": "{{count}} Datei",
+      "files_other": "{{count}} Dateien",
+      "restore": "Zurückholen",
+      "purge": "Endgültig löschen",
+      "purgeConfirm": "„{{path}}“ endgültig löschen? Das lässt sich nicht rückgängig machen."
+    },
+    "import": {
+      "title": "Obsidian-Tresor hereinholen",
+      "text": "Ein ZIP des Tresors wird ein neuer Bereich. .obsidian und Plugin-Syntax kommen unverändert mit; der Bericht sagt, was nexlore als Code zeigt, statt es auszuführen.",
+      "file": "ZIP-Datei",
+      "name": "Name des neuen Bereichs",
+      "start": "Hereinholen",
+      "busy": "Holt herein …"
+    },
+    "report": {
+      "summary": "„{{space}}“: {{notes}} Notizen, {{files}} andere Dateien, {{links}} Links.",
+      "plugins": "Community-Plugins in .obsidian: {{list}}",
+      "pluginSyntax": "{{kind}} (als Code gezeigt)",
+      "unresolved": "Links, die ins Leere zeigen",
+      "frontMatter": "Frontmatter, das nexlore nicht lesen kann",
+      "notUtf8": "Dateien, die kein UTF-8-Text sind (schreibgeschützt)",
+      "tooLarge": "Notizen, zu groß für den Index",
+      "unportable": "Namen, die ein anderes System nicht speichern kann",
+      "caseTwins": "Namen, die sich nur in Groß- und Kleinschreibung unterscheiden",
+      "renamed": "Beim Hereinholen umbenannt"
     }
   }
 }

@@ -36,8 +36,15 @@ describe('translation keys used in the code', () => {
       ...['read', 'drafts', 'write'].flatMap((mode) => [`settings.mcp.mode.${mode}`, `settings.mcp.mode.${mode}Text`]),
       ...['calendar', 'mermaid', 'kanban', 'templates', 'readingTime'].flatMap((id) => [`settings.plugins.${id}.name`, `settings.plugins.${id}.text`]),
       ...['readNotes', 'readOpen', 'writeOpen', 'writeNew'].map((right) => `settings.plugins.right.${right}`),
+      ...['pending', 'saving', 'saved', 'failed'].map((state) => `note.save.${state}`),
+      // How a version came about, as the server names it.
+      ...['initial', 'app', 'external', 'rename', 'restore', 'import'].map((source) => `note.source.${source}`),
       // The server's error codes, which the UI turns into sentences.
-      ...['not_found', 'invalid_input', 'sign_in_required', 'locale_unusable', 'internal_error'].map((code) => `errors.byCode.${code}`),
+      ...[
+        'not_found', 'invalid_input', 'sign_in_required', 'locale_unusable', 'internal_error', 'path_invalid',
+        'path_too_long', 'name_invalid', 'exists', 'locked', 'not_a_note', 'move_across_spaces', 'too_large_for_trash',
+        'archive_invalid', 'archive_unsafe', 'archive_too_large', 'archive_too_many_files',
+      ].map((code) => `errors.byCode.${code}`),
     ]
     expect(composed.filter((key) => !existsWithPlural(key))).toEqual([])
   })

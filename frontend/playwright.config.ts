@@ -26,8 +26,26 @@ function dataDir(): string {
   const spanish = { _meta: { name: 'Español' }, nav: { graph: 'Grafo', notes: 'Notas', files: 'Archivos', settings: 'Ajustes' } }
   fs.writeFileSync(path.join(locales, 'es.json'), JSON.stringify(spanish))
   fs.writeFileSync(path.join(locales, 'xx.json'), '{broken')
+  for (const [name, content] of Object.entries(E2E_NOTES)) {
+    const file = path.join(dir, 'vault', ...name.split('/'))
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, content)
+  }
   process.env.NEXLORE_E2E_DATA = dir
   return dir
+}
+
+/** An invented vault for the tests; each test works on its own notes, so the order does not matter. */
+const E2E_NOTES: Record<string, string> = {
+  'Work/Plan.md': '---\ntags: [project]\n---\n# Plan\n\nThe roadmap links to [[Garden]] and to [[Missing note]].\n',
+  'Work/Ideas/Garden.md': '# Garden\n\nTomatoes and basil grow here. Back to [[Plan]].\n',
+  'Work/Scratch.md': '# Scratch\n\nFirst line.\n',
+  'Work/Conflict.md': '# Conflict\n\nBefore.\n',
+  'Work/Locked.md': '# Locked\n\nSomebody types here.\n',
+  'Work/Rename me.md': '# Rename me\n',
+  'Work/Points at rename.md': 'See [[Rename me]] and [it](Rename%20me.md).\n',
+  'Work/Delete me.md': '# Delete me\n\nGone soon.\n',
+  'Home/Shopping.md': '# Shopping\n\nMilk, flour and quinceapple jam.\n',
 }
 
 const DATA_DIR = external ? '' : dataDir()
@@ -57,7 +75,10 @@ export default defineConfig({
         env: {
           NEXLORE_DATA_DIR: DATA_DIR,
           NEXLORE_FRONTEND_DIST: path.resolve('dist'),
-          NEXLORE_DISABLE_BACKGROUND: '1',
+          // The watcher and the first scan run as in a real installation: they index the prepared vault.
+          NEXLORE_DISABLE_BACKGROUND: '0',
+          // No accounts before M4: the tests use the open test access.
+          NEXLORE_UNSAFE_OPEN_ACCESS: '1',
         },
       },
 })

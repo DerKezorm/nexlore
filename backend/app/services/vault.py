@@ -232,7 +232,8 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor) -> Saved:
         except FileNotFoundError:
             current = None
         if current is not None and index.digest(current) != base_hash:
-            copy_name = paths.unique_name(full.parent, conflict_name(rel, utcnow()))
+            # Local time in the name: it is read by people, next to the files' own times (TZ in the container).
+            copy_name = paths.unique_name(full.parent, conflict_name(rel, datetime.now().astimezone()))
             copy_rel = posixpath.join(posixpath.dirname(rel), copy_name)
             stat = atomic_write(full.parent / copy_name, data)
             copy = index.record(db, copy_rel, data, stat, source=index.APP, author=actor.name, session=actor.client)

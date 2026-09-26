@@ -12,7 +12,7 @@ export default function App() {
       <Route element={<AppShell />}>
         <Route index element={<GraphPage />} />
         <Route path="note" element={<NotePage />} />
-        <Route path="note/:id" element={<NotePage />} />
+        <Route path="note/*" element={<NotePage />} />
         <Route path="files" element={<FilesPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
