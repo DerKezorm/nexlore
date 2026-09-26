@@ -45,6 +45,21 @@ it('two editors with the same text keep it marked until both are closed', async 
   expect(forcedRaw.size).toBe(0)
 })
 
+/** Drops inline code, the way a quirk could lose one word of a block and keep all its letters elsewhere. */
+const dropInlineCode = $remark('testDropInlineCode', () => () => (tree: Root) => {
+  for (const node of tree.children) {
+    if (node.type === 'paragraph') node.children = node.children.filter((child) => child.type !== 'inlineCode')
+  }
+})
+
+it('counts letters: a block that still has every letter somewhere, but fewer of them, stays raw too', async () => {
+  const text = 'Start.\n\nKeep `Keep` here.\n'
+  open = await openEditor(text, { plugins: [dropInlineCode].flat() })
+  expect(open.view.state.doc.child(1).type.name).toBe('nx_raw_block')
+  expect(replaceWord(open.view, 'Start', 'Begin')).toBe(true)
+  expect(open.text()).toBe(text.replace('Start', 'Begin'))
+})
+
 it('forgets the texts it marked when the editor closes', async () => {
   open = await openEditor(TEXT, { plugins: [dropSmallHeadings].flat() })
   expect(forcedRaw.size).toBeGreaterThan(0)

@@ -79,6 +79,29 @@ def test_read_save_and_conflict(client: TestClient, filled: Path) -> None:
     assert (filled / "Work" / "Plan.md").read_bytes() == b"new text"
 
 
+def test_a_conflict_answers_with_the_state_of_the_file_after_it(
+    client: TestClient, filled: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.routers import vault as route
+
+    note = client.get("/api/note", params={"path": "Work/Plan.md"}, headers=TAB).json()
+    (filled / "Work" / "Plan.md").write_bytes(b"changed in Obsidian")
+    save = route.vault.save
+
+    def and_changed_again(*args, **kwargs):
+        # The file changes once more while the conflict copy is written.
+        result = save(*args, **kwargs)
+        (filled / "Work" / "Plan.md").write_bytes(b"changed again")
+        return result
+
+    monkeypatch.setattr(route.vault, "save", and_changed_again)
+    answer = client.put(
+        "/api/note", json={"path": "Work/Plan.md", "content": "mine", "base_hash": note["hash"]}, headers=TAB
+    ).json()
+    assert answer["saved"] is False and answer["conflict"]
+    assert answer["hash"] == index.digest(b"changed again")
+
+
 def test_the_state_of_a_note_follows_the_disk_without_its_text(client: TestClient, filled: Path) -> None:
     note = client.get("/api/note", params={"path": "Work/Plan.md"}).json()
     state = client.get("/api/note/state", params={"path": "Work/Plan.md"}, headers=TAB).json()

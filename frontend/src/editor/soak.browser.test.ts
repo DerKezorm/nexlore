@@ -8,7 +8,7 @@
  *    fresh editor, which must show exactly what the first one shows (nothing lost, nothing added), and saving that
  *    again unchanged must give the same bytes.
  *
- * More rounds: `SOAK_ROUNDS=200 SOAK_SEEDS=10 npm run test:browser -- soak` (the seed is in every failure).
+ * More rounds: `VITE_SOAK_ROUNDS=200 VITE_SOAK_SEEDS=10 npm run test:browser -- soak` (the seed is in every failure).
  */
 import type { Node as ProseNode } from '@milkdown/kit/prose/model'
 import { TextSelection } from '@milkdown/kit/prose/state'

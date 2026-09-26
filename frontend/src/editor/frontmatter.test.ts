@@ -31,6 +31,22 @@ describe('front matter', () => {
     expect(writeProperties(HEAD, read.items)).toBe(HEAD)
   })
 
+  it('leaves the lines of a property that did not change exactly as they were', () => {
+    const head = '---\nstatus:   draft   # keep this\ncount: 1\nwhen:  2026-09-26\n---\n'
+    const read = readProperties(head)
+    if (!read.ok) throw new Error('not ok')
+    const items = read.items.map((item) => (item.key === 'count' ? { ...item, value: '2' } : item))
+    expect(writeProperties(head, items)).toBe('---\nstatus:   draft   # keep this\ncount: 2\nwhen:  2026-09-26\n---\n')
+  })
+
+  it('gives an unchanged head back as it was, whatever fences it uses', () => {
+    for (const head of ['---\ntitle: x\n...\n', '---  \na: 1\n---\n', '---\na: 1\n---']) {
+      const read = readProperties(head)
+      if (!read.ok) throw new Error('not ok')
+      expect(writeProperties(head, read.items)).toBe(head)
+    }
+  })
+
   it('keeps the style of a list: one per line stays one per line, flow stays flow', () => {
     const read = readProperties(HEAD)
     if (!read.ok) throw new Error('not ok')

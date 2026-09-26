@@ -74,6 +74,31 @@ test('a note changed elsewhere while open without own changes is loaded quietly'
   expect(fs.readdirSync(path.join(DATA, 'vault', 'Writing')).filter((name) => name.startsWith('Quiet (conflict'))).toEqual([])
 })
 
+test('a change elsewhere is never loaded over words still being typed: they end in a conflict copy', async ({ page }) => {
+  await edit(page, 'Writing/Typing.md')
+  await page.locator('.ProseMirror p', { hasText: 'Old text.' }).click()
+  await page.keyboard.press('End')
+  fs.writeFileSync(file('Writing/Typing.md'), '# Typing\n\nChanged elsewhere.\n')
+  // Typing without a pause long enough to save, for longer than the page waits between two looks at the disk.
+  const typed = ' ' + 'word '.repeat(14).trim()
+  await page.keyboard.type(typed, { delay: 110 })
+  const banner = page.getByRole('alert').filter({ hasText: 'changed elsewhere' })
+  await expect(banner).toBeVisible({ timeout: 10_000 })
+  expect(onDisk('Writing/Typing.md')).toBe('# Typing\n\nChanged elsewhere.\n')
+  const copies = fs.readdirSync(path.join(DATA, 'vault', 'Writing')).filter((name) => name.startsWith('Typing (conflict'))
+  expect(copies).toHaveLength(1)
+  expect(onDisk(`Writing/${copies[0]}`)).toBe(`# Typing\n\nOld text.${typed}\n`)
+})
+
+test('starting to edit reads the note afresh, not what the page showed', async ({ page }) => {
+  await page.goto('/note/Writing/Fresh.md')
+  await expect(page.getByText('Before.')).toBeVisible()
+  fs.writeFileSync(file('Writing/Fresh.md'), '# Fresh\n\nAfter.\n')
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(page.locator('.ProseMirror')).toContainText('After.')
+  await expect(page.locator('.ProseMirror')).not.toContainText('Before.')
+})
+
 test('a property changed in the table rewrites only its line', async ({ page }) => {
   await edit(page, 'Writing/Props.md')
   const properties = page.getByRole('region', { name: 'Properties' })
@@ -82,6 +107,37 @@ test('a property changed in the table rewrites only its line', async ({ page }) 
   await status.fill('done')
   await saved(page)
   expect(onDisk('Writing/Props.md')).toBe('---\ntags: [one, two]\nstatus: done\n---\nBody of the note.\n')
+})
+
+test('a property name used twice is flagged and not written until it has a name of its own', async ({ page }) => {
+  await edit(page, 'Writing/Twice.md')
+  const properties = page.getByRole('region', { name: 'Properties' })
+  await properties.getByRole('button', { name: /Add a property/ }).click()
+  const name = properties.getByRole('textbox', { name: 'Name' }).last()
+  await name.fill('status')
+  await expect(name).toHaveAttribute('aria-invalid', 'true')
+  await expect(properties.getByText('This name exists already')).toBeVisible()
+  await properties.getByRole('textbox', { name: 'status' }).last().fill('other')
+  // Given time to save: the first "status" keeps its value.
+  await page.waitForTimeout(2_000)
+  expect(onDisk('Writing/Twice.md')).toBe('---\nstatus: draft\n---\nBody.\n')
+  await name.fill('owner')
+  await expect(name).not.toHaveAttribute('aria-invalid')
+  await saved(page)
+  expect(onDisk('Writing/Twice.md')).toBe('---\nstatus: draft\nowner: other\n---\nBody.\n')
+})
+
+test('properties changed elsewhere are not overwritten by the next change in the table', async ({ page }) => {
+  await edit(page, 'Writing/Outside props.md')
+  const properties = page.getByRole('region', { name: 'Properties' })
+  await properties.getByRole('textbox', { name: 'status' }).fill('review')
+  await saved(page)
+  fs.writeFileSync(file('Writing/Outside props.md'), '---\nstatus: review\nowner: team\n---\nBody.\n')
+  await expect(page.getByRole('status')).toHaveText('Updated from elsewhere', { timeout: 12_000 })
+  await expect(properties.getByRole('textbox', { name: 'owner' })).toHaveValue('team')
+  await properties.getByRole('textbox', { name: 'status' }).fill('done')
+  await saved(page)
+  expect(onDisk('Writing/Outside props.md')).toBe('---\nstatus: done\nowner: team\n---\nBody.\n')
 })
 
 test('[[ suggests notes, and Enter writes the link', async ({ page }) => {

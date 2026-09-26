@@ -36,7 +36,8 @@ const SIZE = /^\d+(x\d+)?$/
 
 /** Target and label of the inside of a wiki link; `\|` is the pipe Obsidian writes in tables. */
 export function parseWiki(inner: string): { target: string; label: string; aliasAt: number } {
-  const pipe = /(?<!\\)\|/.exec(inner)
+  // The first pipe, escaped or not; the backslash of an escaped one is cut off the target below.
+  const pipe = /\|/.exec(inner)
   const target = (pipe ? inner.slice(0, pipe.index) : inner).replace(/\\$/, '')
   const label = pipe ? inner.slice(pipe.index + 1) : target
   return { target: target.trim(), label, aliasAt: pipe ? pipe.index + 1 : 0 }
