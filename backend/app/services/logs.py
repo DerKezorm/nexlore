@@ -92,6 +92,12 @@ def current_request_id() -> str | None:
     return data.get("rid") if data else None
 
 
+def _one_line(text: str) -> str:
+    """A log record is one line. A line break inside a message would let whoever controls a value (a request path, a
+    file name) write a second, genuine-looking record: ``/api/x%0d%0a<date> INFO nexlore.auth [-] | ...``."""
+    return text.replace("\r", "\\r").replace("\n", "\\n")
+
+
 class _ContextFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         data = _context.get() or {}
@@ -99,7 +105,13 @@ class _ContextFilter(logging.Filter):
         actor = data.get("actor")
         if actor:
             parts.append(f"u:{actor}")
-        record.ctx = " ".join(parts) if parts else "-"
+        record.ctx = _one_line(" ".join(parts)) if parts else "-"
+        # Formatted once and then fixed, so the second handler sees the finished text. Tracebacks are added by the
+        # formatter afterwards and keep their lines; ``read`` joins them to their record.
+        if not getattr(record, "_one_line", False):
+            record.msg = _one_line(record.getMessage())
+            record.args = ()
+            record._one_line = True  # type: ignore[attr-defined]
         return True
 
 

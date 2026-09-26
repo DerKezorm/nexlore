@@ -129,6 +129,11 @@ def load(code: str) -> dict[str, Any]:
 _seen: dict[str, tuple[tuple[int, int, int], Locale | None]] = {}
 
 
+def forget() -> None:
+    """Drop what ``available`` remembered; for tests that write files under the same names again and again."""
+    _seen.clear()
+
+
 def available() -> list[Locale]:
     """Every usable language file, sorted by code. Broken ones are skipped and logged once per state of the file."""
     directory = locales_dir()

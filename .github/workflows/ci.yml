@@ -62,7 +62,8 @@ jobs:
       - name: End to end, headless
         working-directory: frontend
         run: |
-          npx playwright install chromium
+          # The system libraries Chromium needs are not guaranteed on the Ubuntu image; Windows needs none.
+          if [ "$RUNNER_OS" = "Linux" ]; then npx playwright install --with-deps chromium; else npx playwright install chromium; fi
           npx playwright test
 
   image:

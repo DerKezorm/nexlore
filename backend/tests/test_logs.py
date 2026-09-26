@@ -127,3 +127,24 @@ def test_clear_empties_the_file_and_removes_rotated_ones(client: TestClient, ope
     assert any(line["message"] == "Log cleared by operator" for line in client.get("/api/logs").json())
     probe.warning("probe-clear after line")
     assert "probe-clear after line" in logs.log_file().read_text(encoding="utf-8")
+
+
+def test_a_line_break_in_a_request_cannot_forge_a_record(client: TestClient, operator: str) -> None:
+    logs.set_mode("detailed")
+    forged = "2026-09-26 12:00:00 INFO     nexlore.auth [-] | probe-forged sign-in"
+    client.get("/api/x%0d%0a" + forged.replace(" ", "%20"))
+    lines = client.get("/api/logs", params={"search": "probe-forged"}).json()
+    assert any(line["logger"] == "nexlore.api" for line in lines), "the request was logged"
+    assert not any(line["logger"] == "nexlore.auth" for line in lines), lines
+    raw = logs.log_file().read_text(encoding="utf-8")
+    assert not any(line.startswith("2026-09-26 12:00:00") for line in raw.splitlines())
+    assert "\\r\\n2026-09-26 12:00:00" in raw
+
+
+def test_a_traceback_keeps_its_lines_and_stays_with_its_record(client: TestClient, operator: str) -> None:
+    try:
+        raise RuntimeError("probe-traceback boom")
+    except RuntimeError:
+        probe.exception("probe-traceback failed")
+    lines = client.get("/api/logs", params={"search": "probe-traceback"}).json()
+    assert len(lines) == 1 and "Traceback" in lines[0]["message"] and "\n" in lines[0]["message"]

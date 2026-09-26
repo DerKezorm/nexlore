@@ -10,9 +10,12 @@ _DATA = tempfile.mkdtemp(prefix="nexlore-tests-")
 os.environ["NEXLORE_DATA_DIR"] = _DATA
 os.environ["NEXLORE_DISABLE_BACKGROUND"] = "1"
 os.environ["NEXLORE_FRONTEND_DIST"] = os.path.join(_DATA, "no-frontend")
-os.environ.pop("NEXLORE_VAULT_DIR", None)
-os.environ.pop("NEXLORE_LOCALES_DIR", None)
-os.environ.pop("NEXLORE_LOG_LEVEL", None)
+# Set, not removed: a value in the environment wins over a .env file in the project, a removed one does not. The
+# locales fixture empties its directory, and that must never be a real one from somebody's .env.
+os.environ["NEXLORE_VAULT_DIR"] = os.path.join(_DATA, "vault")
+os.environ["NEXLORE_LOCALES_DIR"] = os.path.join(_DATA, "locales")
+os.environ["NEXLORE_LOG_LEVEL"] = ""
+os.environ["NEXLORE_API_DOCS"] = "false"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

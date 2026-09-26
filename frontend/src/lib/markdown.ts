@@ -1,5 +1,5 @@
 /** Markdown to HTML for the reading view, with [[wiki links]] turned into clickable links. */
-import { marked } from 'marked'
+import { Marked, type Token } from 'marked'
 
 import i18n, { locale } from '../i18n'
 import type { Vault } from './vault'
@@ -7,6 +7,26 @@ import type { Vault } from './vault'
 function escape(text: string): string {
   return text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!)
 }
+
+/**
+ * Where a link or an image in a note may point: the web, mail, or a path in the vault. `javascript:` and `data:`
+ * would run code or show a forged page in nexlore's own origin; the Content Security Policy is a second wall, not
+ * the only one. Blanks and control characters are removed first, because browsers ignore them in `java\tscript:`.
+ */
+export function safeUrl(href: string): boolean {
+  // eslint-disable-next-line no-control-regex -- control characters are exactly what has to go
+  const compact = href.replace(/[\u0000- \u007f]/g, '')
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(compact)
+  return !scheme || ['http', 'https', 'mailto'].includes(scheme[1].toLowerCase())
+}
+
+const markdown = new Marked({
+  async: false,
+  gfm: true,
+  walkTokens(token: Token) {
+    if ((token.type === 'link' || token.type === 'image') && !safeUrl(token.href)) token.href = '#'
+  },
+})
 
 export function renderMarkdown(body: string, vault: Vault): string {
   // Raw HTML in a note is shown as text, not executed: notes can come from other people and from an AI.
@@ -18,7 +38,7 @@ export function renderMarkdown(body: string, vault: Vault): string {
       ? `<a class="nn-wikilink" data-note="${escape(target.id)}">${text}</a>`
       : `<a class="nn-wikilink nn-wikilink-missing" title="${escape(i18n.t('note.missingLink'))}">${text}</a>`
   })
-  return marked.parse(linked, { async: false, gfm: true }) as string
+  return markdown.parse(linked) as string
 }
 
 /** A few words around the first link to `title`, for the backlink list. */

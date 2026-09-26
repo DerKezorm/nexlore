@@ -19,8 +19,10 @@ GOOD = {"_meta": {"name": "Español"}, "nav": {"graph": "Grafo", "search": "Busc
 def folder() -> Iterator[Path]:
     directory = locales.locales_dir()
     directory.mkdir(parents=True, exist_ok=True)
+    assert Path(os.environ["NEXLORE_LOCALES_DIR"]) == directory, "never empty a directory that is not the test's own"
     for old in directory.iterdir():
         old.unlink()
+    locales.forget()
     yield directory
     for old in directory.iterdir():
         old.unlink()

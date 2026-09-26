@@ -14,6 +14,7 @@ The files are the ones git would take: tracked plus untracked that are not ignor
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
 import shutil
 import subprocess
@@ -31,6 +32,9 @@ FLOOR = 50
 
 def repository_files() -> list[Path]:
     if shutil.which("git") is None or not (ROOT / ".git").exists():
+        # In CI a skip here would read green while nothing was checked.
+        if os.environ.get("CI"):
+            pytest.fail("CI without a git checkout: the attribution check cannot list the files")
         pytest.skip("no git checkout here")
     listing = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
@@ -43,6 +47,10 @@ def text_of(path: Path) -> str | None:
     if path.suffix.lower() in BINARY:
         return None
     raw = path.read_bytes()
+    # UTF-16 and UTF-32 with a byte order mark are text full of zero bytes (Notepad, PowerShell's Out-File).
+    for bom, encoding in ((b"\xff\xfe\x00\x00", "utf-32"), (b"\x00\x00\xfe\xff", "utf-32"), (b"\xff\xfe", "utf-16"), (b"\xfe\xff", "utf-16")):
+        if raw.startswith(bom):
+            return raw.decode(encoding, errors="replace")
     if b"\0" in raw:
         return None
     return raw.decode("utf-8", errors="replace")
@@ -59,9 +67,11 @@ def test_no_file_names_an_assistant_or_carries_an_attribution() -> None:
         text = text_of(path)
         if text is None:
             continue
-        for number, line in enumerate(text.splitlines(), 1):
-            if PATTERN.search(line):
-                found.append(f"{relative}:{number}")
+        hits = [number for number, line in enumerate(text.splitlines(), 1) if PATTERN.search(line)]
+        found += [f"{relative}:{number}" for number in hits]
+        # "generated" at the end of one line and "with" at the start of the next is the same attribution.
+        if not hits and PATTERN.search(" ".join(text.split())):
+            found.append(f"{relative}: across a line break")
     assert not found, "Attribution found:\n" + "\n".join(found)
 
 
