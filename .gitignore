@@ -1,0 +1,17 @@
+# Frontend
+node_modules/
+dist/
+*.tsbuildinfo
+test-results/
+playwright-report/
+
+# Backend
+backend/.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# Runtime data: database, vault, backups, logs, user languages. Never in the repo.
+data/
+data-*/
+.env

@@ -1,0 +1,33 @@
+# nexlore, start with:  docker compose up -d --build
+#
+# Then open http://<your-host>:8470.
+#
+# ⚠️ nexlore is at an early stage (M0). There are no accounts yet: do not expose it beyond your own network.
+
+services:
+  nexlore:
+    build: .
+    container_name: nexlore
+    restart: unless-stopped
+
+    ports:
+      # Host port on the left, container port on the right.
+      - "8470:8000"
+
+    volumes:
+      # Database, logs, the operator's own languages (data/locales) and, unless NEXLORE_VAULT_DIR says otherwise,
+      # the notes in data/vault.
+      # ⚠️ A local disk, never an SMB or NFS share. SQLite's locking does not work reliably over network
+      # filesystems, and that is how it loses data.
+      - ./data:/data
+
+    environment:
+      # Who should own the files in the data directory. The container fixes the permissions itself on startup.
+      PUID: 1000
+      PGID: 1000
+
+      TZ: Europe/Berlin
+
+      # The notes can live in a folder of their own, for example one that Obsidian or Syncthing also works on.
+      # Mount it and point nexlore at it:
+      # NEXLORE_VAULT_DIR: /vault

@@ -1,0 +1,185 @@
+{
+  "app": {
+    "home": "Start",
+    "mainMenu": "Hauptmenü"
+  },
+  "nav": {
+    "graph": "Graph",
+    "notes": "Notizen",
+    "files": "Dateien",
+    "settings": "Einstellungen"
+  },
+  "search": {
+    "button": "Suchen",
+    "shortcut": "Strg K",
+    "placeholder": "Notiz suchen …",
+    "nothing": "Nichts gefunden."
+  },
+  "theme": {
+    "group": "Darstellung",
+    "dark": "Dunkel",
+    "light": "Hell"
+  },
+  "time": {
+    "today": "heute, {{time}}",
+    "yesterday": "gestern",
+    "daysAgo_one": "vor {{count}} Tag",
+    "daysAgo_other": "vor {{count}} Tagen"
+  },
+  "common": {
+    "close": "Schließen",
+    "noFunction": "In der Attrappe noch ohne Funktion",
+    "aiDraft": "KI-Entwurf"
+  },
+  "sidebar": {
+    "spaces": "Bereiche",
+    "newNote": "Neue Notiz (in der Attrappe noch ohne Funktion)",
+    "collapse": "Zuklappen",
+    "expand": "Aufklappen",
+    "flyTo": "Im Graph anfliegen"
+  },
+  "graph": {
+    "canvas": "Graph",
+    "position": "Position im Graph",
+    "all": "Alles",
+    "spaces": "Bereiche",
+    "showDaily": "Tagesnotizen zeigen",
+    "zoomIn": "Näher",
+    "zoomOut": "Weiter weg",
+    "fitAll": "Alles zeigen",
+    "noteHover_one": "{{count}} Verknüpfung · Doppelklick öffnet",
+    "noteHover_other": "{{count}} Verknüpfungen · Doppelklick öffnet",
+    "folderHover_one": "{{count}} Notiz · Klick zoomt hinein",
+    "folderHover_other": "{{count}} Notizen · Klick zoomt hinein",
+    "editingNow": "{{name}} bearbeitet gerade",
+    "links_one": "{{count}} Link",
+    "links_other": "{{count}} Links",
+    "backlinks_one": "{{count}} Rückverweis",
+    "backlinks_other": "{{count}} Rückverweise",
+    "open": "Öffnen",
+    "flyToNote": "Hinfliegen",
+    "hint": "Scrollen zoomt · Ordner anklicken öffnet ihn · Doppelklick öffnet eine Notiz · Strg K sucht",
+    "closeHint": "Hinweis schließen"
+  },
+  "note": {
+    "notFound": "Diese Notiz gibt es nicht.",
+    "view": "Ansicht",
+    "read": "Lesen",
+    "edit": "Bearbeiten",
+    "lockedTitle": "{{name}} bearbeitet diese Notiz gerade",
+    "inGraph": "Im Graph",
+    "lockedBanner": "{{name}} bearbeitet diese Notiz gerade. Du kannst lesen; bearbeiten geht, sobald sie fertig ist.",
+    "draftBanner": "Über den MCP-Zugang „{{access}}“ angelegt, {{when}}. Bis du ihn übernimmst, ist er als Entwurf markiert.",
+    "accept": "Übernehmen",
+    "byYou": "Von dir",
+    "byOther": "Von {{name}}",
+    "changed": "geändert {{when}}",
+    "editorPlaceholder": "Schreib los. [[ verlinkt eine andere Notiz.",
+    "missingLink": "Noch keine Notiz",
+    "backlinks": "Rückverweise",
+    "noBacklinks": "Noch keine Notiz verweist hierher.",
+    "outgoing": "Links in dieser Notiz",
+    "attachments": "Anhänge",
+    "dropFile": "Datei hierher ziehen",
+    "draftTitle": "KI-Entwurf."
+  },
+  "files": {
+    "title": "Dateien",
+    "intro": "Alles, was an Notizen hängt. Die Dateien liegen im Ordner der Notiz, neben der .md-Datei.",
+    "filter": "Datei oder Notiz",
+    "upload": "Hochladen",
+    "file": "Datei",
+    "belongsTo": "Gehört zu",
+    "space": "Bereich",
+    "size": "Größe",
+    "changed": "Geändert",
+    "none": "Keine Datei passt.",
+    "drop": "Dateien hierher ziehen, dann fragt nexlore, zu welcher Notiz sie gehören."
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "sketch": "Skizze der Attrappe: hier wird noch nichts gespeichert.",
+    "language": {
+      "title": "Sprache",
+      "text": "Englisch und Deutsch bringt nexlore mit. Der Betreiber kann weitere als JSON-Dateien in data/locales ablegen; was einer Datei fehlt, erscheint auf Englisch.",
+      "choose": "Sprache der Oberfläche",
+      "added": "vom Betreiber ergänzt",
+      "template": "Vorlage herunterladen",
+      "templateHint": "Die englischen Texte als Datei zum Übersetzen. Als data/locales/<code>.json ablegen, zum Beispiel es.json oder pt-BR.json."
+    },
+    "signin": {
+      "title": "Anmeldung",
+      "text": "Konten mit Passwort, dazu ein OIDC-Anbieter. Wer sich über OIDC zum ersten Mal anmeldet, bekommt ein Konto.",
+      "signedIn_one": "{{count}} Konto angemeldet",
+      "signedIn_other": "{{count}} Konten angemeldet"
+    },
+    "spaces": {
+      "title": "Bereiche und Rechte",
+      "text": "Ein Bereich ist ein Ordner auf der Platte. Wer ihn nicht sehen darf, sieht auch im Graph, in der Suche und bei den Rückverweisen nichts davon, nicht einmal den Titel.",
+      "owner": "Besitzer",
+      "canWrite": "Darf schreiben"
+    },
+    "mcp": {
+      "title": "KI-Zugang (MCP)",
+      "text": "Damit KI-Assistenten Notizen suchen, lesen und schreiben. Jeder Schlüssel gehört zu einem Konto und sieht nur, was dieses Konto sehen darf.",
+      "allow": "KI-Zugang erlauben",
+      "allowHint": "Ab Werk aus. Der Betreiber schaltet ihn für alle frei.",
+      "mode": {
+        "read": "Nur lesen",
+        "readText": "Suchen, lesen, Rückverweise.",
+        "drafts": "Entwürfe schreiben",
+        "draftsText": "Neue Notizen und Änderungen sind als KI-Entwurf markiert, bis du sie übernimmst.",
+        "write": "Frei schreiben",
+        "writeText": "Wie ein Mensch mit Schreibrecht. Jede Änderung steht im Verlauf."
+      },
+      "address": "Adresse",
+      "createdDraft": "„{{title}}“ angelegt (Entwurf)",
+      "readNotes_one": "{{count}} Notiz gelesen",
+      "readNotes_other": "{{count}} Notizen gelesen",
+      "revoke": "Sperren",
+      "newKey": "Neuer Schlüssel"
+    },
+    "plugins": {
+      "title": "Plugins",
+      "text": "Plugins laufen eingesperrt im Browser und sehen nur, was sie beim Installieren anfragen. Ins Netz dürfen sie nicht.",
+      "noNetwork": "kein Netz",
+      "enable": "{{name}} einschalten",
+      "install": "Installieren",
+      "right": {
+        "readNotes": "liest Notizen",
+        "readOpen": "liest die offene Notiz",
+        "writeOpen": "liest und schreibt die offene Notiz",
+        "writeNew": "schreibt neue Notizen"
+      },
+      "calendar": {
+        "name": "Kalender",
+        "text": "Tagesnotizen als Monatsansicht."
+      },
+      "mermaid": {
+        "name": "Mermaid-Diagramme",
+        "text": "Zeichnet ```mermaid-Blöcke in der Leseansicht."
+      },
+      "kanban": {
+        "name": "Kanban-Tafel",
+        "text": "Eine Notiz mit Überschriften als Spalten."
+      },
+      "templates": {
+        "name": "Vorlagen",
+        "text": "Neue Notiz aus einer Vorlage, mit Datum und Platzhaltern."
+      },
+      "readingTime": {
+        "name": "Lesezeit",
+        "text": "Zeigt unter dem Titel, wie lange man zum Lesen braucht."
+      }
+    }
+  },
+  "errors": {
+    "byCode": {
+      "not_found": "Nicht gefunden.",
+      "invalid_input": "Die Eingabe ist nicht gültig.",
+      "sign_in_required": "Bitte erst anmelden.",
+      "locale_unusable": "Diese Sprachdatei lässt sich nicht verwenden.",
+      "internal_error": "Auf dem Server ist etwas schiefgegangen."
+    }
+  }
+}

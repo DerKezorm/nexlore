@@ -1,0 +1,185 @@
+{
+  "app": {
+    "home": "Home",
+    "mainMenu": "Main menu"
+  },
+  "nav": {
+    "graph": "Graph",
+    "notes": "Notes",
+    "files": "Files",
+    "settings": "Settings"
+  },
+  "search": {
+    "button": "Search",
+    "shortcut": "Ctrl K",
+    "placeholder": "Search notes …",
+    "nothing": "Nothing found."
+  },
+  "theme": {
+    "group": "Appearance",
+    "dark": "Dark",
+    "light": "Light"
+  },
+  "time": {
+    "today": "today, {{time}}",
+    "yesterday": "yesterday",
+    "daysAgo_one": "{{count}} day ago",
+    "daysAgo_other": "{{count}} days ago"
+  },
+  "common": {
+    "close": "Close",
+    "noFunction": "No function in the mockup yet",
+    "aiDraft": "AI draft"
+  },
+  "sidebar": {
+    "spaces": "Spaces",
+    "newNote": "New note (no function in the mockup yet)",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "flyTo": "Fly there in the graph"
+  },
+  "graph": {
+    "canvas": "Graph",
+    "position": "Position in the graph",
+    "all": "All",
+    "spaces": "Spaces",
+    "showDaily": "Show daily notes",
+    "zoomIn": "Closer",
+    "zoomOut": "Further away",
+    "fitAll": "Show everything",
+    "noteHover_one": "{{count}} connection · double click opens",
+    "noteHover_other": "{{count}} connections · double click opens",
+    "folderHover_one": "{{count}} note · click zooms in",
+    "folderHover_other": "{{count}} notes · click zooms in",
+    "editingNow": "{{name}} is editing",
+    "links_one": "{{count}} link",
+    "links_other": "{{count}} links",
+    "backlinks_one": "{{count}} backlink",
+    "backlinks_other": "{{count}} backlinks",
+    "open": "Open",
+    "flyToNote": "Fly there",
+    "hint": "Scroll to zoom · click a folder to open it · double click opens a note · Ctrl K searches",
+    "closeHint": "Close hint"
+  },
+  "note": {
+    "notFound": "This note does not exist.",
+    "view": "View",
+    "read": "Read",
+    "edit": "Edit",
+    "lockedTitle": "{{name}} is editing this note right now",
+    "inGraph": "In the graph",
+    "lockedBanner": "{{name}} is editing this note right now. You can read it; editing works once they are done.",
+    "draftBanner": "Created through the MCP access “{{access}}”, {{when}}. It stays marked as a draft until you accept it.",
+    "accept": "Accept",
+    "byYou": "By you",
+    "byOther": "By {{name}}",
+    "changed": "changed {{when}}",
+    "editorPlaceholder": "Start writing. [[ links another note.",
+    "missingLink": "No note yet",
+    "backlinks": "Backlinks",
+    "noBacklinks": "No note links here yet.",
+    "outgoing": "Links in this note",
+    "attachments": "Attachments",
+    "dropFile": "Drop a file here",
+    "draftTitle": "AI draft."
+  },
+  "files": {
+    "title": "Files",
+    "intro": "Everything attached to notes. The files sit in the note's folder, next to the .md file.",
+    "filter": "File or note",
+    "upload": "Upload",
+    "file": "File",
+    "belongsTo": "Belongs to",
+    "space": "Space",
+    "size": "Size",
+    "changed": "Changed",
+    "none": "No file matches.",
+    "drop": "Drop files here, then nexlore asks which note they belong to."
+  },
+  "settings": {
+    "title": "Settings",
+    "sketch": "Sketch in the mockup: nothing here is saved yet.",
+    "language": {
+      "title": "Language",
+      "text": "English and German come with nexlore. The operator can add more as JSON files in data/locales; whatever a file leaves out appears in English.",
+      "choose": "Language of the interface",
+      "added": "added by the operator",
+      "template": "Download template",
+      "templateHint": "The English texts as a file to translate. Save it as data/locales/<code>.json, for example es.json or pt-BR.json."
+    },
+    "signin": {
+      "title": "Sign-in",
+      "text": "Accounts with a password, plus an OIDC provider. Whoever signs in through OIDC for the first time gets an account.",
+      "signedIn_one": "{{count}} account signed in",
+      "signedIn_other": "{{count}} accounts signed in"
+    },
+    "spaces": {
+      "title": "Spaces and rights",
+      "text": "A space is a folder on disk. Whoever may not see it sees nothing of it in the graph, the search or the backlinks either, not even the title.",
+      "owner": "Owner",
+      "canWrite": "May write"
+    },
+    "mcp": {
+      "title": "AI access (MCP)",
+      "text": "Lets AI assistants search, read and write notes. Every key belongs to an account and sees only what that account may see.",
+      "allow": "Allow AI access",
+      "allowHint": "Off by default. The operator turns it on for everybody.",
+      "mode": {
+        "read": "Read only",
+        "readText": "Search, read, backlinks.",
+        "drafts": "Write drafts",
+        "draftsText": "New notes and changes are marked as AI drafts until you accept them.",
+        "write": "Write freely",
+        "writeText": "Like a person with the right to write. Every change is in the history."
+      },
+      "address": "Address",
+      "createdDraft": "Created “{{title}}” (draft)",
+      "readNotes_one": "Read {{count}} note",
+      "readNotes_other": "Read {{count}} notes",
+      "revoke": "Revoke",
+      "newKey": "New key"
+    },
+    "plugins": {
+      "title": "Plugins",
+      "text": "Plugins run locked away in the browser and see only what they ask for when installed. They may not go online.",
+      "noNetwork": "no network",
+      "enable": "Turn on {{name}}",
+      "install": "Install",
+      "right": {
+        "readNotes": "reads notes",
+        "readOpen": "reads the open note",
+        "writeOpen": "reads and writes the open note",
+        "writeNew": "writes new notes"
+      },
+      "calendar": {
+        "name": "Calendar",
+        "text": "Daily notes as a month view."
+      },
+      "mermaid": {
+        "name": "Mermaid diagrams",
+        "text": "Draws ```mermaid blocks in the reading view."
+      },
+      "kanban": {
+        "name": "Kanban board",
+        "text": "A note with headings as columns."
+      },
+      "templates": {
+        "name": "Templates",
+        "text": "A new note from a template, with date and placeholders."
+      },
+      "readingTime": {
+        "name": "Reading time",
+        "text": "Shows under the title how long reading takes."
+      }
+    }
+  },
+  "errors": {
+    "byCode": {
+      "not_found": "Not found.",
+      "invalid_input": "The input is not valid.",
+      "sign_in_required": "Sign in first.",
+      "locale_unusable": "This language file cannot be used.",
+      "internal_error": "Something went wrong on the server."
+    }
+  }
+}
