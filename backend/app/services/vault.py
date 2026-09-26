@@ -573,14 +573,14 @@ def thin(rows: list[tuple[int, datetime]], now: datetime) -> list[int]:
     ordered = sorted(rows, key=lambda row: (row[1], row[0]), reverse=True)
     drop: list[int] = []
     kept_buckets: set[tuple[int, int]] = set()
-    for position, (version_id, when) in enumerate(ordered):
+    for version_id, when in ordered:
         age = now - when
         width = next(width for limit, width in THINNING if limit is None or age <= limit)
         if width is None:
             continue
         bucket = (width, int(when.timestamp()) // width)
-        # The newest never goes; it fills its bucket like any other.
-        if bucket in kept_buckets and position > 0:
+        # The newest comes first, finds every bucket empty and so never goes; it fills its bucket like any other.
+        if bucket in kept_buckets:
             drop.append(version_id)
         else:
             kept_buckets.add(bucket)
