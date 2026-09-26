@@ -39,7 +39,18 @@ from sqlalchemy.orm import Session
 from ..db import SessionLocal
 from ..models import FTS_TABLE, File, Link, Lock, Space, Tag, Version, utcnow
 from . import mdparse, paths
-from .prepare import MAX_NOTE_BYTES, Analysis, Prepared, analyse, decode, digest, name_key, prepare, target_key
+from .prepare import (
+    MAX_NOTE_BYTES,
+    Analysis,
+    Prepared,
+    analyse,
+    decode,
+    digest,
+    is_read_whole,
+    name_key,
+    prepare,
+    target_key,
+)
 
 __all__ = ["MAX_NOTE_BYTES", "decode", "digest", "name_key", "target_key"]
 
@@ -266,13 +277,15 @@ def _clear_note_index(db: Session, file_id: int) -> None:
     db.execute(text(f"DELETE FROM {FTS_TABLE} WHERE rowid = :id"), {"id": file_id})  # noqa: S608
 
 
-def _index_content(db: Session, file: File, data: bytes, names: Names | None, *, fresh: bool = False) -> None:
+def _index_content(
+    db: Session, file: File, data: bytes, names: Names | None, *, fresh: bool = False, analysis: Analysis | None = None
+) -> None:
     """Links, tags and search text of one note, replacing what was there. ``names`` None: links stay unresolved
     for now (a bulk scan resolves them all at the end). Rows go in with plain inserts, not through the ORM: for
-    a scan of a whole vault the difference is minutes."""
+    a scan of a whole vault the difference is minutes. ``analysis``: worked out already (a PDF's text)."""
     if not fresh:
         _clear_note_index(db, file.id)
-    analysis = analyse(file.path, data)
+    analysis = analysis or analyse(file.path, data)
     file.title = analysis.title
     file.front = analysis.front
     file.features = analysis.features
@@ -349,11 +362,16 @@ def record(
     names: Names | None = None,
     resolve_links: bool = True,
     known_new: bool = False,
+    prepared: Prepared | None = None,
 ) -> File:
     """Bring the row of one file in line with ``data``, which is what is on disk now. Returns the row.
 
     ``resolve_links`` False leaves the note's links unresolved; the caller resolves a whole space at the end.
-    ``known_new``: the caller knows there is no row yet, which saves the lookup."""
+    ``known_new``: the caller knows there is no row yet, which saves the lookup. ``prepared``: the file was read
+    and hashed already (a large attachment is never held in memory whole); ``data`` is then not looked at."""
+    if prepared is None and not paths.is_note(rel) and not data:
+        # A file that is not a note, handed over without its bytes: read and hash it here, piece by piece.
+        prepared = prepare(str(paths.vault_root()), rel)
     space = ensure_space(db, paths.space_of(rel))
     if file is None and not known_new:
         file = db.scalar(select(File).where(File.path == rel, File.deleted_at.is_(None)))
@@ -368,12 +386,13 @@ def record(
     file.is_note = paths.is_note(rel)
     file.size = stat.st_size
     file.mtime_ns = stat.st_mtime_ns
-    file.hash = digest(data)
+    file.hash = prepared.hash if prepared is not None else digest(data)
     file.indexed_at = utcnow()
     db.flush()
     if names is None and resolve_links:
         names = Names(db, space.id, preload=False)
-    _index_content(db, file, data, names if resolve_links else None, fresh=fresh)
+    analysis = prepared.analysis if prepared is not None else None
+    _index_content(db, file, data, names if resolve_links else None, fresh=fresh, analysis=analysis)
     if file.is_note:
         if fresh:
             now = utcnow()
@@ -645,18 +664,28 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats, confirm_deletions
                     if row is None and rel not in trashed:
                         fresh.append(item)
                         continue
-                    read = _read(root, rel)
-                    if read is None:
-                        stats.errors += 1
-                        continue
-                    data, stat = read
+                    if is_read_whole(rel):
+                        read = _read(root, rel)
+                        if read is None:
+                            stats.errors += 1
+                            continue
+                        data, stat = read
+                        ready = None
+                    else:
+                        # Hashed already, piece by piece; only its state is needed.
+                        try:
+                            stat = os.stat(root.joinpath(*rel.split("/")))
+                        except OSError:
+                            stats.errors += 1
+                            continue
+                        data, ready = b"", item
                     if row is not None:
                         file = record(db, rel, data, stat, source=EXTERNAL, file=db.get(File, row.id),
-                                      resolve_links=not bulk)
+                                      resolve_links=not bulk, prepared=ready)
                         stats.changed += 1
                     else:
                         file = record(db, rel, data, stat, source=EXTERNAL, file=_revive(db, rel),
-                                      resolve_links=not bulk)
+                                      resolve_links=not bulk, prepared=ready)
                         stats.revived += 1
                         changed_keys.setdefault(file.space_id, set()).add(file.name_key)
                     if bulk:
@@ -746,6 +775,11 @@ def _merge_move(db: Session, old: File, new_rel: str) -> None:
     old.path_key = paths.fold(new_rel)
     old.name_key = name_key(new_rel)
     old.space_id = ensure_space(db, paths.space_of(new_rel)).id
+    if not is_read_whole(new_rel):
+        full = paths.vault_root().joinpath(*new_rel.split("/"))
+        if full.exists():
+            record(db, new_rel, b"", full.stat(), source=RENAME, file=old)
+        return
     data = _read(paths.vault_root(), new_rel)
     if data is not None:
         record(db, new_rel, data[0], data[1], source=RENAME, file=old)

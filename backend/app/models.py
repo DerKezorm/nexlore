@@ -78,6 +78,9 @@ class File(Base):
         Index("files_space_name", "space_id", "name_key"),
         Index("files_space_path_key", "space_id", "path_key"),
         Index("files_deleted", "deleted_at"),
+        # A file uploaded twice is found by its content.
+        Index("files_space_hash", "space_id", "hash"),
+        Index("files_owner", "owner"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -103,6 +106,9 @@ class File(Base):
     deleted_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
     #: Files deleted together (a folder) share it and come back together.
     trash_group: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    #: The account that uploaded the file; its size counts against that account's space. Empty for files that came
+    #: from elsewhere (the disk, an import).
+    owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
 class Link(Base):

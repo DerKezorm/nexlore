@@ -35,8 +35,16 @@ function dataDir(): string {
   return dir
 }
 
+/** Small pictures and a PDF for the attachment tests (attachments.spec.ts), made once with Pillow. */
+const ORANGE_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAIAAABChommAAAAFUlEQVR42mN8ViHCQAgwMRABhrciALQ1AYLyZG5iAAAAAElFTkSuQmCC', 'base64')
+const BLUE_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAIAAABChommAAAAFUlEQVR42mMUqXjGQAgwMRABhrciALKRAYJ+ADfJAAAAAElFTkSuQmCC', 'base64')
+const LEAFLET_PDF = Buffer.from(
+  'JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCAzMDAgMjAwXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA0OSA+PgpzdHJlYW0KQlQgL0YxIDEyIFRmIDIwIDEwMCBUZCAoa2luZ2Zpc2hlciBsYW50ZXJuKSBUaiBFVAplbmRzdHJlYW0KZW5kb2JqCjUgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL1R5cGUxIC9CYXNlRm9udCAvSGVsdmV0aWNhID4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTE1IDAwMDAwIG4gCjAwMDAwMDAyNDEgMDAwMDAgbiAKMDAwMDAwMDM0MCAwMDAwMCBuIAp0cmFpbGVyCjw8IC9TaXplIDYgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjQxMAolJUVPRgo=',
+  'base64',
+)
+
 /** An invented vault for the tests; each test works on its own notes, so the order does not matter. */
-const E2E_NOTES: Record<string, string> = {
+const E2E_NOTES: Record<string, string | Buffer> = {
   'Work/Plan.md': '---\ntags: [project]\n---\n# Plan\n\nThe roadmap links to [[Garden]] and to [[Missing note]].\n',
   'Work/Ideas/Garden.md': '# Garden\n\nTomatoes and basil grow here. Back to [[Plan]].\n',
   'Work/Scratch.md': '# Scratch\n\nFirst line.\n',
@@ -63,6 +71,13 @@ const E2E_NOTES: Record<string, string> = {
   'Writing/Target note.md': '# Target note\n',
   'Writing/Source.md': '# Source\n\nPlain text.\n',
   'Writing/Compare.md': '# Compare\n\nKept line.\n\nOld ending.\n',
+  // Attachments (attachments.spec.ts).
+  'Media/Paste here.md': '# Paste here\n\nStart.\n',
+  'Media/Drop here.md': '# Drop here\n\nStart.\n',
+  'Media/Gallery.md': '# Gallery\n\n![[sunset.png]]\n\n![Beach](Anh%C3%A4nge/beach.png)\n\nThe [[leaflet.pdf|leaflet]].\n',
+  'Media/sunset.png': ORANGE_PNG,
+  'Media/Anhänge/beach.png': BLUE_PNG,
+  'Media/leaflet.pdf': LEAFLET_PDF,
 }
 
 const DATA_DIR = external ? '' : dataDir()

@@ -156,4 +156,11 @@
   .nn-prose hr {
     @apply my-6 border-ink-700;
   }
+  .nn-prose img,
+  .nn-prose video {
+    @apply my-2 inline-block max-w-full rounded-lg;
+  }
+  .nn-prose audio {
+    @apply my-2 block w-full max-w-md;
+  }
 }

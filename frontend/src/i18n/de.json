@@ -122,7 +122,13 @@
     "sourceMode": "Markdown-Ansicht",
     "visualMode": "Visueller Editor",
     "sourceLabel": "Markdown der Notiz",
-    "fileRefused": "Bilder und andere Dateien lassen sich noch nicht einfügen; Anhänge kommen mit einer späteren Version."
+    "fileRefused": "Diese Notiz kann hier keine Dateien aufnehmen.",
+    "missingFile": "In diesem Bereich gibt es keine Datei namens {{name}}.",
+    "uploaded_one": "Datei hinzugefügt.",
+    "uploaded_other": "{{count}} Dateien hinzugefügt.",
+    "uploadedCleaned": "Ort und Gerät wurden aus dem Foto entfernt.",
+    "uploadedUnchecked": "Eine Datei ließ sich nicht auf Ort und Gerät prüfen; sie liegt so da, wie sie kam.",
+    "uploadedDuplicate": "Dieselbe Datei gab es im Bereich schon; sie ist verlinkt."
   },
   "settings": {
     "title": "Einstellungen",
@@ -225,7 +231,11 @@
       "archive_too_many_files": "Das Archiv enthält zu viele Dateien.",
       "client_required": "Die Anfrage sagte nicht, aus welchem Tab sie kam. Lade die Seite neu.",
       "too_large": "Das ist zu groß zum Senden.",
-      "changed_meanwhile": "Die Notiz wurde inzwischen noch einmal geändert. Nichts wurde überschrieben; öffne den Vergleich erneut."
+      "changed_meanwhile": "Die Notiz wurde inzwischen noch einmal geändert. Nichts wurde überschrieben; öffne den Vergleich erneut.",
+      "quota_exceeded": "Für deine Dateien ist kein Platz mehr frei. Lösche welche, die du nicht brauchst, oder frag den Betreiber nach mehr.",
+      "upload_aborted": "Das Hochladen brach vor dem Ende ab. Versuch es noch einmal.",
+      "empty": "Die Datei ist leer.",
+      "network_error": "Der Server war nicht zu erreichen."
     }
   },
   "files": {
@@ -273,6 +283,25 @@
       "unportable": "Namen, die ein anderes System nicht speichern kann",
       "caseTwins": "Namen, die sich nur in Groß- und Kleinschreibung unterscheiden",
       "renamed": "Beim Hereinholen umbenannt"
+    },
+    "attachments": {
+      "title": "Anhänge",
+      "text": "Bilder und andere Dateien der Notizen. Hochgeladenes landet in einem Ordner „{{folder}}“ neben seiner Notiz.",
+      "used": "Du belegst {{used}}.",
+      "usedOf": "Du belegst {{used}} von {{quota}}.",
+      "perFile": "bis {{size}} je Datei",
+      "stripOn": "Ort und Gerät werden aus Fotos entfernt",
+      "stripOff": "Fotos behalten Ort und Gerät",
+      "space": "Bereich",
+      "onlyUnused": "Nur Dateien, die keine Notiz nutzt",
+      "count_one": "1 Datei",
+      "count_other": "{{count}} Dateien",
+      "none": "In diesem Bereich gibt es noch keine Anhänge.",
+      "noneUnused": "Jede Datei hier nutzt eine Notiz.",
+      "uses_one": "in 1 Notiz",
+      "uses_other": "in {{count}} Notizen",
+      "unused": "ungenutzt",
+      "more": "Mehr zeigen"
     }
   },
   "editor": {
@@ -296,7 +325,8 @@
       "groupObsidian": "Obsidian",
       "callout": "Hinweiskasten",
       "wikiLink": "Link auf eine Notiz",
-      "embed": "Notiz einbetten"
+      "embed": "Notiz einbetten",
+      "attachment": "Bild oder Datei"
     },
     "link": "Link einfügen oder tippen …",
     "code": {
@@ -346,5 +376,18 @@
     "hint": "Die Kopie kommt danach in den Papierkorb und lässt sich dort 30 Tage zurückholen.",
     "keepNote": "Notiz behalten, Kopie entfernen",
     "save": "Speichern und Kopie entfernen"
+  },
+  "file": {
+    "download": "Herunterladen",
+    "delete": "Löschen",
+    "notFound": "Diese Datei gibt es (nicht mehr).",
+    "noPreview": "Für diese Art Datei gibt es keine Vorschau. Lade sie herunter, um sie zu öffnen.",
+    "usedIn": "Verwendet in",
+    "unused": "Keine Notiz verlinkt diese Datei.",
+    "deleteTitle": "{{name}} löschen?",
+    "deleteDo": "Löschen",
+    "deleteText": "Die Datei kommt in den Papierkorb und lässt sich dort 30 Tage lang wiederherstellen.",
+    "deleteUsed_one": "Eine Notiz verlinkt diese Datei; der Link zeigt dann ins Leere. Aus dem Papierkorb lässt sie sich 30 Tage lang wiederherstellen.",
+    "deleteUsed_other": "{{count}} Notizen verlinken diese Datei; ihre Links zeigen dann ins Leere. Aus dem Papierkorb lässt sie sich 30 Tage lang wiederherstellen."
   }
 }

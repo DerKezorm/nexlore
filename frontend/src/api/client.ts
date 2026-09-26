@@ -134,6 +134,65 @@ export type IndexState = {
   held_back: Record<string, number>
 }
 
+export type Uploaded = {
+  /** What to link: for a HEIC photo its WebP, else the file itself. */
+  path: string
+  size: number
+  kind: string | null
+  /** The space held this content already; nothing new was stored. */
+  duplicate: boolean
+  /** What came out of it: `location`, `device`, `metadata`, or `unchecked`. */
+  removed: string[]
+  original: string | null
+  /** The link text for the note it was uploaded for, relative and escaped. */
+  link: string
+}
+export type Attachment = { id: number; path: string; size: number; modified: number; owner: string | null; uses: number }
+export type Usage = { used: number; quota: number; per_file: number; folder: string; strip_location: boolean }
+
+/** The address a file of the vault is shown or downloaded from. */
+export function fileUrl(path: string, download = false): string {
+  return `/api/file?path=${encodeURIComponent(path)}${download ? '&download=1' : ''}`
+}
+
+/**
+ * A file sent as it is, streamed (no form, no copy in memory), with progress. `fetch` cannot report the progress of
+ * what it sends, so this is one of the few places left for XMLHttpRequest.
+ */
+export function uploadFile(
+  file: Blob & { name?: string },
+  where: { note?: string; folder?: string; pasted?: boolean; name?: string },
+  onProgress?: (share: number) => void,
+): Promise<Uploaded> {
+  const query = new URLSearchParams({ name: where.name ?? file.name ?? 'file', pasted: where.pasted ? 'true' : 'false' })
+  if (where.note) query.set('note', where.note)
+  if (where.folder) query.set('folder', where.folder)
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest()
+    request.open('POST', `/api/attachments?${query}`)
+    request.setRequestHeader('X-Nexlore-Client', tabId())
+    request.setRequestHeader('Accept', 'application/json')
+    request.upload.onprogress = (event) => event.lengthComputable && onProgress?.(event.loaded / event.total)
+    request.onerror = () => reject(new ApiError(0, 'network_error'))
+    request.onload = () => {
+      let data: { detail?: { code?: string; message?: string } & Record<string, unknown> } | Uploaded | null
+      try {
+        data = JSON.parse(request.responseText)
+      } catch {
+        data = null
+      }
+      if (request.status === 201) return resolve(data as Uploaded)
+      const detail = (data as { detail?: Record<string, unknown> } | null)?.detail
+      if (detail && typeof detail.code === 'string') {
+        const { code, message: _message, ...values } = detail
+        return reject(new ApiError(request.status, code as string, values))
+      }
+      reject(new ApiError(request.status, request.status === 413 ? 'too_large' : 'internal_error'))
+    }
+    request.send(file)
+  })
+}
+
 export const vaultApi = {
   spaces: () => api<Space[]>('/api/spaces'),
   createSpace: (name: string) => api<Space>('/api/spaces', { method: 'POST', body: { name } }),
@@ -163,6 +222,14 @@ export const vaultApi = {
   rescan: (confirmDeletions = false) =>
     api<unknown>('/api/index/scan', { method: 'POST', query: { confirm_deletions: confirmDeletions ? 'true' : undefined } }),
   report: (space: string) => api<Report>(`/api/spaces/${encodeURIComponent(space)}/report`),
+  attachments: (space: string, unused = false, offset = 0) =>
+    api<{ total: number; items: Attachment[] }>('/api/attachments', {
+      query: { space, unused: unused ? 'true' : undefined, offset, limit: 200 },
+    }),
+  usage: () => api<Usage>('/api/attachments/usage'),
+  /** Where a link written in `source` leads, before the note is saved: the server resolves it like a saved one. */
+  resolve: (source: string, target: string, kind: 'wiki' | 'embed' | 'md' | 'md_embed') =>
+    api<{ path: string | null; is_note: boolean }>('/api/resolve', { query: { source, target, kind } }),
   importVault: (file: File, name: string) => {
     const form = new FormData()
     form.set('file', file)

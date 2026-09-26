@@ -19,7 +19,7 @@ from .config import get_settings
 from .db import SessionLocal, init_db
 from .errors import detail
 from .middleware import GuardMiddleware, RequestContextMiddleware, unhandled_error
-from .routers import about, health, imports
+from .routers import about, attachments, health, imports
 from .routers import backups as backups_router
 from .routers import locales as locales_router
 from .routers import logs as logs_router
@@ -28,7 +28,7 @@ from .services import backups, locales, logs, settings_service, watcher
 
 logger = logging.getLogger("nexlore")
 
-ROUTERS = [health, about, locales_router, logs_router, vault_router, imports, backups_router]
+ROUTERS = [health, about, locales_router, logs_router, vault_router, attachments, imports, backups_router]
 
 
 def _read_log_mode() -> tuple[str, datetime | None]:

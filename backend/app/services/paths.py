@@ -47,6 +47,11 @@ def vault_root() -> Path:
     return root
 
 
+def trash_root() -> Path:
+    """Where deleted files other than notes wait, by their row id (notes wait in their versions)."""
+    return get_settings().data_dir / "trash"
+
+
 def is_hidden(part: str) -> bool:
     """Dot folders and dot files belong to other programs (``.obsidian``, ``.git``, ``.trash``) or to nexlore's own
     temporary files. The scanner skips them and the API does not reach them."""

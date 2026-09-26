@@ -13,7 +13,7 @@ import zlib
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import mdparse, paths
+from . import mdparse, paths, pdftext
 
 #: A note larger than this is kept and versioned, but not read for links, tags and search.
 MAX_NOTE_BYTES = 5 * 1024 * 1024
@@ -64,8 +64,20 @@ class Analysis:
     body: str | None = None
 
 
+def is_pdf(rel: str) -> bool:
+    return rel.lower().endswith(".pdf")
+
+
+def is_read_whole(rel: str) -> bool:
+    """Notes and PDFs are read for their text; every other file only hashed, piece by piece."""
+    return paths.is_note(rel) or is_pdf(rel)
+
+
 def analyse(rel: str, data: bytes) -> Analysis:
     result = Analysis(title=paths.stem(rel))
+    if is_pdf(rel):
+        result.body, result.features = pdftext.extract(data)
+        return result
     if not paths.is_note(rel):
         return result
     if len(data) > MAX_NOTE_BYTES:
@@ -103,10 +115,29 @@ class Prepared:
     compressed: bytes | None
 
 
+#: Pieces in which a file that is only hashed is read: a video of several gigabytes never lies in memory whole.
+CHUNK = 1024 * 1024
+
+
+def hash_file(path: str) -> tuple[str, os.stat_result]:
+    """The sha256 of a file, read piece by piece, and its state when it was read."""
+    hasher = hashlib.sha256()
+    with open(path, "rb") as handle:
+        while chunk := handle.read(CHUNK):
+            hasher.update(chunk)
+        stat = os.fstat(handle.fileno())
+    return hasher.hexdigest(), stat
+
+
 def prepare(root: str, rel: str) -> Prepared | None:
     """Read and take apart one file. None when it cannot be read (gone in between, no permission)."""
+    full = os.path.join(root, *rel.split("/"))
     try:
-        with open(os.path.join(root, *rel.split("/")), "rb") as handle:
+        if not is_read_whole(rel):
+            hashed, stat = hash_file(full)
+            return Prepared(rel=rel, size=stat.st_size, mtime_ns=stat.st_mtime_ns, hash=hashed,
+                            analysis=Analysis(title=paths.stem(rel)), compressed=None)
+        with open(full, "rb") as handle:
             data = handle.read()
             stat = os.fstat(handle.fileno())
     except OSError:

@@ -5,8 +5,10 @@
  * - `[[Target|Alias]]` shows `Alias` in turquoise; `[[Target]]` shows `Target`, `[[Note#Heading]]` shows
  *   `Note › Heading`. A missing target is paler and dashed. With the cursor inside or at the edge, the brackets
  *   appear and the link is edited as text.
- * - `![[…]]` looks like a chip (a size such as `|300` is not shown as a caption), `==…==` is highlighted, `%%…%%`
- *   is pale, `#tag` a pill (after a blank or at the start, as the server counts tags), `^block-id` pale.
+ * - `![[…]]` of a picture, a video or a sound shows it (`|300` is its width); a click on it, or the cursor, brings
+ *   the text back. Any other embed looks like a chip (a size is not shown as a caption).
+ * - `==…==` is highlighted, `%%…%%` is pale, `#tag` a pill (after a blank or at the start, as the server counts
+ *   tags), `^block-id` pale.
  * - A quote starting with `[!type]` is a callout; its marker becomes a label until the cursor is on that line.
  *
  * Only what changed is worked out again: after typing, the top-level block that changed; after a cursor move, the
@@ -15,13 +17,37 @@
  * A click on a link opens it (Ctrl or Cmd: in a new tab); inline code and code blocks are left alone.
  */
 import type { Node as ProseNode } from '@milkdown/kit/prose/model'
-import { Plugin, PluginKey, type EditorState, type Transaction } from '@milkdown/kit/prose/state'
+import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet, type EditorView } from '@milkdown/kit/prose/view'
+
+/** What an embedded file shows in place of its link. */
+export type EmbedShown = { url: string; kind: 'image' | 'video' | 'audio' }
 
 export type LinkHelpers = {
   /** Does a wiki link target (`Name`, `Folder/Name`, `Name#Heading`) point at an existing note or file? */
   exists: (target: string) => boolean
   open: (target: string, newTab: boolean) => void
+  /**
+   * What `![[target]]` shows: a picture, a video or a sound; null for a chip (a note, a PDF, nothing found);
+   * undefined while it is not known yet (the helper asks, and the page redraws with `refresh` when it knows).
+   */
+  embed?: (target: string) => EmbedShown | null | undefined
+}
+
+function mediaElement(shown: EmbedShown, width: string, target: string): HTMLElement {
+  const element = document.createElement(shown.kind === 'image' ? 'img' : shown.kind)
+  element.className = 'nx-embed-media'
+  element.setAttribute('src', shown.url)
+  element.setAttribute('data-embed', target)
+  if (shown.kind === 'image') {
+    element.setAttribute('alt', target)
+    element.setAttribute('draggable', 'false')
+  } else {
+    element.setAttribute('controls', '')
+    element.setAttribute('preload', 'metadata')
+  }
+  if (width) element.style.width = `${width}px`
+  return element
 }
 
 export const liveKey = new PluginKey<DecorationSet>('nxLive')
@@ -105,6 +131,14 @@ function decorateBlock(state: EditorState, block: ProseNode, start: number, help
       }
       // An embed's `|300` or `|300x200` is its size, not a caption: the name is shown.
       const sized = embed && aliasAt && SIZE.test(label.trim())
+      // A picture, a video or a sound shows itself; its text comes back when the cursor enters it.
+      const media = embed ? helpers.embed?.(target) : null
+      if (media) {
+        hide(from, to)
+        const width = sized ? label.trim().split('x')[0] : ''
+        decorations.push(Decoration.widget(to, () => mediaElement(media, width, target), { side: -1, key: `embed:${media.url}:${width}` }))
+        continue
+      }
       const labelFrom = aliasAt && !sized ? open + aliasAt : open
       const labelTo = sized ? open + aliasAt - 1 : close
       hide(from, labelFrom)
@@ -247,6 +281,14 @@ export function livePreview(helpers: () => LinkHelpers) {
     props: {
       decorations: (state) => liveKey.getState(state),
       handleClick: (view: EditorView, _pos: number, event: MouseEvent) => {
+        // A click on an embedded picture puts the cursor into its link, which then shows as text to edit.
+        const media = (event.target as HTMLElement | null)?.closest?.('.nx-embed-media')
+        if (media && view.dom.contains(media)) {
+          const at = view.posAtDOM(media, 0)
+          view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, Math.max(0, at - 2))))
+          view.focus()
+          return true
+        }
         const link = (event.target as HTMLElement | null)?.closest?.('.nx-wiki[data-target]:not(.nx-wiki-editing)')
         if (!link || !view.dom.contains(link)) return false
         event.preventDefault()

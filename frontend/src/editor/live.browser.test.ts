@@ -7,6 +7,7 @@ import { afterEach, expect, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
 
 import { openEditor } from './harness'
+import type { EmbedShown } from './live'
 
 type Open = Awaited<ReturnType<typeof openEditor>>
 let open: Open | null = null
@@ -58,6 +59,30 @@ it('shows the brackets of the link the cursor is in, and hides them again when i
   cursorAfter(open, 'Second')
   expect(shown(open.root, '.nx-wiki-editing')).toEqual([])
   expect(shown(open.root, '.nx-hide')).toEqual(['[[', ']]'])
+})
+
+it('shows an embedded picture, video or sound itself, and the text again where the cursor is', async () => {
+  const media: Record<string, EmbedShown | null | undefined> = {
+    'photo.png': { url: '/api/file?path=S%2Fphoto.png', kind: 'image' },
+    'clip.mp4': { url: '/api/file?path=S%2Fclip.mp4', kind: 'video' },
+    'later.png': undefined,
+    'doc.pdf': null,
+  }
+  open = await openEditor('Start.\n\n![[photo.png|120]] and ![[clip.mp4]] and ![[later.png]] and ![[doc.pdf]]\n', {
+    links: { embed: (target) => media[target] },
+  })
+  const shownMedia = [...open.root.querySelectorAll('.nx-embed-media')] as HTMLElement[]
+  expect(shownMedia.map((element) => [element.tagName, element.getAttribute('src'), element.style.width])).toEqual([
+    ['IMG', '/api/file?path=S%2Fphoto.png', '120px'],
+    ['VIDEO', '/api/file?path=S%2Fclip.mp4', ''],
+  ])
+  // Not known yet, or not a picture: a chip with the name.
+  expect(shown(open.root, '.nx-embed:not(.nx-hide)')).toEqual(['later.png', 'doc.pdf'])
+  cursorAfter(open, '![[photo')
+  expect(open.root.querySelectorAll('.nx-embed-media')).toHaveLength(1)
+  expect(shown(open.root, '.nx-wiki-editing')).toEqual(['photo.png|120'])
+  // The file's text stays as written.
+  expect(open.text()).toBe('Start.\n\n![[photo.png|120]] and ![[clip.mp4]] and ![[later.png]] and ![[doc.pdf]]\n')
 })
 
 it('shows the name of an embed, not its size', async () => {

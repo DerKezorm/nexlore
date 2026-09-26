@@ -55,6 +55,10 @@ def init_db() -> None:
     _add_missing_columns()
     with engine.begin() as connection:
         connection.execute(text(FTS_CREATE))
+    # create_all makes the indexes of new tables only; one added to an existing table comes here.
+    for table in Base.metadata.sorted_tables:
+        for table_index in table.indexes:
+            table_index.create(engine, checkfirst=True)
 
 
 def _sql_literal(value: Any) -> str:

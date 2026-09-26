@@ -122,7 +122,13 @@
     "sourceMode": "Markdown source",
     "visualMode": "Visual editor",
     "sourceLabel": "Markdown source of the note",
-    "fileRefused": "Pictures and other files cannot be added yet; attachments come with a later version."
+    "fileRefused": "This note cannot take files here.",
+    "missingFile": "There is no file called {{name}} in this space.",
+    "uploaded_one": "File added.",
+    "uploaded_other": "{{count}} files added.",
+    "uploadedCleaned": "Place and device were removed from the photo.",
+    "uploadedUnchecked": "One file could not be checked for its place and device; it is stored as it came.",
+    "uploadedDuplicate": "The space held the same file already; that one is linked."
   },
   "settings": {
     "title": "Settings",
@@ -225,7 +231,11 @@
       "archive_too_many_files": "The archive holds too many files.",
       "client_required": "The request did not say which tab sent it. Reload the page.",
       "too_large": "That is too large to send.",
-      "changed_meanwhile": "The note was changed again in the meantime. Nothing was overwritten; open the comparison again."
+      "changed_meanwhile": "The note was changed again in the meantime. Nothing was overwritten; open the comparison again.",
+      "quota_exceeded": "There is no space left for your files. Delete some you do not need, or ask the operator for more.",
+      "upload_aborted": "The upload stopped before the end. Try again.",
+      "empty": "The file is empty.",
+      "network_error": "The server could not be reached."
     }
   },
   "files": {
@@ -273,6 +283,25 @@
       "unportable": "Names another system cannot hold",
       "caseTwins": "Names that differ only in case",
       "renamed": "Renamed while importing"
+    },
+    "attachments": {
+      "title": "Attachments",
+      "text": "Pictures and other files of the notes. Uploaded files land in a folder “{{folder}}” next to their note.",
+      "used": "You use {{used}}.",
+      "usedOf": "You use {{used}} of {{quota}}.",
+      "perFile": "Up to {{size}} per file",
+      "stripOn": "place and device are removed from photos",
+      "stripOff": "photos keep place and device",
+      "space": "Space",
+      "onlyUnused": "Only files no note uses",
+      "count_one": "1 file",
+      "count_other": "{{count}} files",
+      "none": "No attachments in this space yet.",
+      "noneUnused": "Every file here is used by a note.",
+      "uses_one": "in 1 note",
+      "uses_other": "in {{count}} notes",
+      "unused": "unused",
+      "more": "Show more"
     }
   },
   "editor": {
@@ -296,7 +325,8 @@
       "groupObsidian": "Obsidian",
       "callout": "Callout",
       "wikiLink": "Link to a note",
-      "embed": "Embed a note"
+      "embed": "Embed a note",
+      "attachment": "Picture or file"
     },
     "link": "Paste or type a link …",
     "code": {
@@ -346,5 +376,18 @@
     "hint": "The copy goes to the trash afterwards; it can come back from there for 30 days.",
     "keepNote": "Keep the note, remove the copy",
     "save": "Save and remove the copy"
+  },
+  "file": {
+    "download": "Download",
+    "delete": "Delete",
+    "notFound": "This file is not there (any more).",
+    "noPreview": "No preview for this kind of file. Download it to open it.",
+    "usedIn": "Used in",
+    "unused": "No note links this file.",
+    "deleteTitle": "Delete {{name}}?",
+    "deleteDo": "Delete",
+    "deleteText": "The file goes to the trash and can be restored there for 30 days.",
+    "deleteUsed_one": "One note links this file; the link will point nowhere. The file can be restored from the trash for 30 days.",
+    "deleteUsed_other": "{{count}} notes link this file; their links will point nowhere. The file can be restored from the trash for 30 days."
   }
 }

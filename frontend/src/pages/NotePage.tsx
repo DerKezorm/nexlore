@@ -13,7 +13,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { ApiError, vaultApi, type Links, type NoteData, type VersionInfo } from '../api/client'
+import { ApiError, vaultApi, type Links, type NoteData, type Uploaded, type VersionInfo } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ConflictCompare } from '../components/ConflictCompare'
 import type { EditorHandle, EditorMode } from '../components/NoteEditor'
@@ -21,8 +21,9 @@ import { Sidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { copiesOf, originalOf } from '../lib/compare'
 import { errorText } from '../lib/errors'
+import { isNotePath } from '../lib/files'
 import { linkIndex } from '../lib/links'
-import { formatDate, renderMarkdown } from '../lib/markdown'
+import { fileRoute, formatDate, renderMarkdown } from '../lib/markdown'
 import { ancestry, baseName, folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 
@@ -58,6 +59,8 @@ export function NotePage() {
   const [renaming, setRenaming] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  // What an upload did, said once (place and device removed, the file was there already).
+  const [info, setInfo] = useState<string | null>(null)
 
   // The editor, the text it held when last asked, what was last written, and the file state it was written against.
   const editor = useRef<EditorHandle>(null)
@@ -208,6 +211,7 @@ export function NotePage() {
     setLockHolder(null)
     setRenaming(null)
     setNotice(null)
+    setInfo(null)
     setSaveState('idle')
     if (path) void load(path)
   }, [path, load])
@@ -303,11 +307,23 @@ export function NotePage() {
     for (const link of links?.outgoing ?? []) if (link.path) map.set(link.target.toLowerCase(), link.path)
     return (target: string) => map.get(target.toLowerCase()) ?? null
   }, [links])
-  const html = useMemo(() => (note ? renderMarkdown(note.content, resolve) : ''), [note, resolve])
+  const html = useMemo(() => (note ? renderMarkdown(note.content, resolve, note.path) : ''), [note, resolve])
   const copies = useMemo(() => copiesOf(path, vault.notes.keys()), [path, vault])
   const originalPath = originalOf(path)
 
+  const openFile = (file: string, newTab = false) => {
+    if (newTab) window.open(fileRoute(file), '_blank', 'noopener')
+    else navigate(fileRoute(file))
+  }
+
   const openLink = async (target: string, newTab: boolean) => {
+    // A file (`photo.png`, `doc.pdf`): the server knows where it is; a missing one is never made into a note.
+    if (/\.(?!md$)[a-z0-9]{1,6}$/i.test(target.split('#')[0].trim())) {
+      const found = await vaultApi.resolve(path, target.split('#')[0].trim(), 'embed').catch(() => null)
+      if (found?.path) openFile(found.path, newTab)
+      else setNotice(t('note.missingFile', { name: target }))
+      return
+    }
     const found = linkIndex(vault, path).resolve(target)
     if (found) {
       if (newTab) window.open(noteUrl(found), '_blank', 'noopener')
@@ -356,6 +372,15 @@ export function NotePage() {
   const compare = async (notePath: string, copyPath: string) => {
     if (editing && !(await stopEditing())) return
     setComparing({ note: notePath, copy: copyPath })
+  }
+
+  const uploaded = (done: Uploaded[]) => {
+    const removed = new Set(done.flatMap((item) => item.removed))
+    const parts = [t('note.uploaded', { count: done.length })]
+    if (removed.has('location') || removed.has('device') || removed.has('metadata')) parts.push(t('note.uploadedCleaned'))
+    if (removed.has('unchecked')) parts.push(t('note.uploadedUnchecked'))
+    if (done.some((item) => item.duplicate)) parts.push(t('note.uploadedDuplicate'))
+    setInfo(parts.join(' '))
   }
 
   const compared = async () => {
@@ -497,6 +522,7 @@ export function NotePage() {
           )}
           {note.readonly && <Banner tone="warn" symbol="alert">{t('note.readonlyBanner')}</Banner>}
           {notice && <Banner tone="warn" symbol="alert">{notice}</Banner>}
+          {info && <Banner tone="info" symbol="info" action={<CloseButton onClick={() => setInfo(null)} />}>{info}</Banner>}
           {problem && <Banner tone="bad" symbol="alert">{errorText(problem)}</Banner>}
 
           {/* Body */}
@@ -525,6 +551,8 @@ export function NotePage() {
                   }}
                   onOpenLink={(target, newTab) => void openLink(target, newTab)}
                   onFileRefused={() => setNotice(t('note.fileRefused'))}
+                  onUploaded={uploaded}
+                  onUploadFailed={(code) => setNotice(errorText(code))}
                 />
                 </Suspense>
               ) : (
@@ -533,6 +561,12 @@ export function NotePage() {
                   onClick={(e) => {
                     const target = (e.target as HTMLElement).closest('a[data-note]')
                     if (target) open(target.getAttribute('data-note')!)
+                    // A file's page inside the app, not a full page load.
+                    const file = (e.target as HTMLElement).closest('a[data-file], a[href^="/file/"]')
+                    if (file && !e.ctrlKey && !e.metaKey) {
+                      e.preventDefault()
+                      navigate(file.getAttribute('href')!)
+                    }
                   }}
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
@@ -555,7 +589,7 @@ export function NotePage() {
           <Section symbol="link" title={t('note.outgoing')} count={links?.outgoing.length ?? 0}>
             {links?.outgoing.map((item, index) =>
               item.path ? (
-                <button key={index} type="button" onClick={() => open(item.path!)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-sm text-mist-300 hover:bg-ink-850">
+                <button key={index} type="button" onClick={() => (isNotePath(item.path!) ? open(item.path!) : openFile(item.path!))} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-sm text-mist-300 hover:bg-ink-850">
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: vault.home.get(item.path)?.color ?? 'var(--color-mist-600)' }} />
                   <span className="truncate">{item.title}</span>
                 </button>
@@ -605,10 +639,24 @@ function SaveBadge({ state }: { state: SaveState }) {
   )
 }
 
-function Banner({ tone, symbol, action, children }: { tone: 'warn' | 'bad'; symbol: 'lock' | 'alert'; action?: ReactNode; children: ReactNode }) {
-  const colors = tone === 'warn' ? 'border-warn-500/30 bg-warn-500/10 text-warn-500' : 'border-bad-500/30 bg-bad-500/10 text-bad-500'
+const BANNER_TONES = {
+  warn: 'border-warn-500/30 bg-warn-500/10 text-warn-500',
+  bad: 'border-bad-500/30 bg-bad-500/10 text-bad-500',
+  info: 'border-accent-500/30 bg-accent-500/10 text-accent-400',
+}
+
+function CloseButton({ onClick }: { onClick: () => void }) {
+  const { t } = useTranslation()
   return (
-    <div className={'mx-6 mt-4 flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm ' + colors} role="alert">
+    <button type="button" onClick={onClick} aria-label={t('common.close')} className="shrink-0 rounded-full p-1 hover:bg-accent-500/10">
+      <Symbol name="close" className="h-3.5 w-3.5" />
+    </button>
+  )
+}
+
+function Banner({ tone, symbol, action, children }: { tone: keyof typeof BANNER_TONES; symbol: 'lock' | 'alert' | 'info'; action?: ReactNode; children: ReactNode }) {
+  return (
+    <div className={'mx-6 mt-4 flex items-center gap-3 rounded-xl border px-4 py-2.5 text-sm ' + BANNER_TONES[tone]} role={tone === 'info' ? 'note' : 'alert'} aria-live={tone === 'info' ? 'polite' : undefined}>
       <Symbol name={symbol} />
       <span className="flex-1">{children}</span>
       {action}

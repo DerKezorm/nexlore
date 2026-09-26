@@ -15,12 +15,14 @@ import { useTranslation } from 'react-i18next'
 import '@milkdown/crepe/theme/common/style.css'
 import '../styles/editor.css'
 
-import { createEditor, type EditorLabels, type NoteEditor as Engine } from '../editor/editor'
+import { ApiError, fileUrl, uploadFile, vaultApi, type Uploaded } from '../api/client'
+import { createEditor, type EditorLabels, type FileHelpers, type NoteEditor as Engine } from '../editor/editor'
 import { splitNote } from '../editor/frontmatter'
 import type { LinkHelpers } from '../editor/live'
 import { searchNames } from '../editor/suggest'
+import { fileKind, isPasted, relativeTarget } from '../lib/files'
 import { linkIndex } from '../lib/links'
-import type { Vault } from '../lib/vault'
+import { baseName, type Vault } from '../lib/vault'
 import { Properties } from './Properties'
 
 export type EditorMode = 'visual' | 'source'
@@ -43,15 +45,24 @@ type Props = {
   onLeave: (text: string) => void
   onOpenLink: (target: string, newTab: boolean) => void
   onFileRefused?: () => void
+  /** Files were uploaded (what came out of them is in each). */
+  onUploaded?: (done: Uploaded[]) => void
+  /** An upload was refused; the server's code says why. */
+  onUploadFailed?: (code: string) => void
 }
 
+/** A wiki link target that names a file other than a note (`photo.png`, `Folder/doc.pdf`). */
+const isFileTarget = (target: string) => /\.(?!md$)[a-z0-9]{1,6}$/i.test(target.split('#')[0].split('|')[0].trim())
+
 export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
-  { path, content, vault, mode, readOnly = false, onChange, onLeave, onOpenLink, onFileRefused },
+  { path, content, vault, mode, readOnly = false, onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed },
   ref,
 ) {
   const { t } = useTranslation()
   const host = useRef<HTMLDivElement>(null)
   const engine = useRef<Engine | null>(null)
+  // Files that wiki links name, as the server resolves them: vault path, or null when there is none.
+  const fileTargets = useRef(new Map<string, string | null>())
   // The note as last shown or typed: head and body kept apart; `body` is only current while no editor runs.
   const initial = useMemo(() => splitNote(content), [content])
   const [head, setHead] = useState(initial.head)
@@ -61,8 +72,8 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   const sourceRef = useRef('')
   const [problem, setProblem] = useState<string | null>(null)
 
-  const latest = useRef({ onChange, onLeave, onOpenLink, onFileRefused })
-  latest.current = { onChange, onLeave, onOpenLink, onFileRefused }
+  const latest = useRef({ onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed })
+  latest.current = { onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed }
   const links = useMemo(() => linkIndex(vault, path), [vault, path])
   const linksRef = useRef(links)
   linksRef.current = links
@@ -97,9 +108,49 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     let alive = true
     let made: Engine | null = null
     const labels = editorLabels(t)
+    // A file target the server has not been asked about yet: asked once, and the links are drawn again with the answer.
+    const lookup = (target: string): string | null | undefined => {
+      const key = target.split('#')[0].split('|')[0].trim()
+      if (fileTargets.current.has(key)) return fileTargets.current.get(key)
+      fileTargets.current.set(key, undefined as never)
+      vaultApi
+        .resolve(path, key, 'embed')
+        .then((found) => found.path, () => null)
+        .then((found) => {
+          fileTargets.current.set(key, found)
+          if (alive) engine.current?.refresh()
+        })
+      return undefined
+    }
     const helpers: LinkHelpers = {
-      exists: (target) => linksRef.current.exists(target),
+      exists: (target) => (isFileTarget(target) ? lookup(target) !== null : linksRef.current.exists(target)),
       open: (target, newTab) => latest.current.onOpenLink(target, newTab),
+      embed: (target) => {
+        if (!isFileTarget(target)) return null
+        const found = lookup(target)
+        if (found === null || found === undefined) return found
+        const kind = fileKind(found)
+        return kind === 'image' || kind === 'video' || kind === 'audio' ? { url: fileUrl(found), kind } : null
+      },
+    }
+    const files: FileHelpers = {
+      src: (written) => {
+        const target = relativeTarget(path, written)
+        return target ? fileUrl(target) : written
+      },
+      upload: async (chosen) => {
+        const results = await Promise.all(
+          chosen.map((file) =>
+            uploadFile(file, { note: path, pasted: isPasted(file) }).catch((error: unknown) => {
+              latest.current.onUploadFailed?.(error instanceof ApiError ? error.code : 'internal_error')
+              return null
+            }),
+          ),
+        )
+        const done = results.filter((item): item is Uploaded => item !== null)
+        if (done.length) latest.current.onUploaded?.(done)
+        return results.map((item) => item && { link: item.link, name: baseName(item.path), image: fileKind(item.path) === 'image' })
+      },
     }
     const started = body.current
     createEditor({
@@ -110,6 +161,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       links: () => helpers,
       search: () => (query) => searchNames(linksRef.current.suggestions, query),
       onChange: () => latest.current.onChange(),
+      files: readOnly ? undefined : files,
       onFileRefused: () => latest.current.onFileRefused?.(),
     })
       .then((editor) => {
@@ -205,7 +257,7 @@ function editorLabels(t: (key: string) => string): EditorLabels {
       bulletList: s('bulletList'), orderedList: s('orderedList'), taskList: s('taskList'), code: s('code'),
       table: s('table'), math: s('math'), groupText: s('groupText'), groupList: s('groupList'),
       groupAdvanced: s('groupAdvanced'), groupObsidian: s('groupObsidian'), callout: s('callout'),
-      wikiLink: s('wikiLink'), embed: s('embed'),
+      wikiLink: s('wikiLink'), embed: s('embed'), attachment: s('attachment'),
     },
   }
 }

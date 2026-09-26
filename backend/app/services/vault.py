@@ -24,11 +24,12 @@ from pathlib import Path
 from urllib.parse import quote
 
 from sqlalchemy import delete, func, select
+from sqlalchemy import text as sql
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import File, Link, Lock, TrashBlob, Version, utcnow
-from . import index, mdparse, paths
+from ..models import FTS_TABLE, File, Link, Lock, TrashBlob, Version, utcnow
+from . import index, mdparse, paths, settings_service
 
 logger = logging.getLogger("nexlore.vault")
 
@@ -37,8 +38,6 @@ LOCK_SECONDS = 90
 #: Saves of one session within this time become one version.
 BUNDLE_SECONDS = 600
 TRASH_DAYS = 30
-#: A file other than a note that is larger than this cannot go into the trash (M3 brings real attachment handling).
-TRASH_BLOB_MAX = 200 * 1024 * 1024
 TEMPORARY_PREFIX = ".nexlore-"
 
 
@@ -351,19 +350,34 @@ def below(db: Session, folder: str) -> list[File]:
 # --- Deleting and the trash ----------------------------------------------------------------------------------------
 
 
-def _keep_current(db: Session, file: File, full: Path) -> bytes | None:
-    """Make sure what is on disk right now is kept: the newest version for a note, a blob for anything else."""
+def trash_file(file_id: int) -> Path:
+    return paths.trash_root() / str(file_id)
+
+
+def _move(source: Path, target: Path) -> None:
+    """Rename where possible; across file systems (the vault on a share, the data folder local) a copy."""
+    target.parent.mkdir(parents=True, exist_ok=True)
     try:
-        data = full.read_bytes()
-    except FileNotFoundError:
-        return None
+        os.replace(source, target)
+    except OSError:
+        shutil.move(str(source), str(target))
+
+
+def _keep_current(db: Session, file: File, full: Path) -> bool:
+    """Make sure what is on disk right now is kept: the newest version for a note; any other file moves into the
+    trash folder whole, however large (a video is never read into memory for this). True when the file was moved
+    away already."""
     if file.is_note:
+        try:
+            data = full.read_bytes()
+        except FileNotFoundError:
+            return False
         index.add_version(db, file, data, source=index.EXTERNAL if index.digest(data) != file.hash else index.APP)
-    else:
-        if len(data) > TRASH_BLOB_MAX:
-            raise VaultError("too_large_for_trash", "the file is too large for the trash", 413)
-        db.merge(TrashBlob(file_id=file.id, content=zlib.compress(data, 6)))
-    return data
+        return False
+    if not full.exists():
+        return False
+    _move(full, trash_file(file.id))
+    return True
 
 
 def delete_path(rel: str, *, actor: Actor) -> int:
@@ -379,22 +393,33 @@ def delete_path(rel: str, *, actor: Actor) -> int:
         _refuse_foreign_lock(db, files, actor)
         keys: set[str] = set()
         space_id = None
-        for file in files:
-            file_full = paths.vault_root().joinpath(*file.path.split("/"))
-            _keep_current(db, file, file_full)
-            index.forget(db, file, how=index.APP, by=actor.name, group=group)
-            keys.add(file.name_key)
-            space_id = file.space_id
-        db.flush()
-        for file in files:
-            file_full = paths.vault_root().joinpath(*file.path.split("/"))
-            if file_full.exists():
-                file_full.unlink()
-        if full.is_dir():
-            _remove_empty_folders(full)
-        if space_id is not None:
-            index.reresolve(db, space_id, keys)
-        db.commit()
+        moved: list[File] = []
+        try:
+            for file in files:
+                file_full = paths.vault_root().joinpath(*file.path.split("/"))
+                if _keep_current(db, file, file_full):
+                    moved.append(file)
+                index.forget(db, file, how=index.APP, by=actor.name, group=group)
+                keys.add(file.name_key)
+                space_id = file.space_id
+            db.flush()
+            for file in files:
+                file_full = paths.vault_root().joinpath(*file.path.split("/"))
+                if file_full.exists():
+                    file_full.unlink()
+            if full.is_dir():
+                _remove_empty_folders(full)
+            if space_id is not None:
+                index.reresolve(db, space_id, keys)
+            db.commit()
+        except BaseException:
+            # Not in the trash after all: the files moved there go back where they were.
+            db.rollback()
+            for file in moved:
+                back = paths.vault_root().joinpath(*file.path.split("/"))
+                if trash_file(file.id).exists() and not back.exists():
+                    _move(trash_file(file.id), back)
+            raise
     logger.info("Moved to the trash files=%s", len(files))
     return len(files)
 
@@ -455,6 +480,7 @@ def _trash_members(db: Session, entry_id: str) -> list[File]:
 
 
 def _newest_content(db: Session, file: File) -> bytes | None:
+    """What a trashed note, or a small file kept in the database before M3, holds."""
     if file.is_note:
         version = db.scalar(
             select(Version).where(Version.file_id == file.id).order_by(Version.updated_at.desc(), Version.id.desc())
@@ -471,8 +497,9 @@ def restore_trash(entry_id: str, *, actor: Actor) -> list[str]:
         files = _trash_members(db, entry_id)
         keys: dict[int, set[str]] = {}
         for file in files:
-            data = _newest_content(db, file)
-            if data is None:
+            waiting = trash_file(file.id)
+            data = None if waiting.is_file() else _newest_content(db, file)
+            if data is None and not waiting.is_file():
                 logger.warning("Trash entry without content, skipped file_id=%s", file.id)
                 continue
             target = paths.vault_root().joinpath(*file.path.split("/"))
@@ -489,8 +516,12 @@ def restore_trash(entry_id: str, *, actor: Actor) -> list[str]:
             file.deleted_by = None
             file.trash_group = None
             db.flush()
-            stat = atomic_write(target, data)
-            index.record(db, rel, data, stat, source=index.RESTORE, author=actor.name, file=file)
+            if data is None:
+                _move(waiting, target)
+                index.record(db, rel, b"", target.stat(), source=index.RESTORE, author=actor.name, file=file)
+            else:
+                stat = atomic_write(target, data)
+                index.record(db, rel, data, stat, source=index.RESTORE, author=actor.name, file=file)
             db.execute(delete(TrashBlob).where(TrashBlob.file_id == file.id))
             keys.setdefault(file.space_id, set()).add(file.name_key)
             restored.append(rel)
@@ -501,12 +532,19 @@ def restore_trash(entry_id: str, *, actor: Actor) -> list[str]:
     return restored
 
 
+def _forget_for_good(db: Session, files: list[File]) -> None:
+    ids = [file.id for file in files]
+    for file in files:
+        db.delete(file)
+    db.commit()
+    for file_id in ids:
+        trash_file(file_id).unlink(missing_ok=True)
+
+
 def purge_trash(entry_id: str) -> int:
     with index.guard, SessionLocal() as db:
         files = _trash_members(db, entry_id)
-        for file in files:
-            db.delete(file)
-        db.commit()
+        _forget_for_good(db, files)
     logger.info("Trash entry removed for good files=%s", len(files))
     return len(files)
 
@@ -515,9 +553,7 @@ def purge_expired(now: datetime | None = None) -> int:
     limit = (now or utcnow()) - timedelta(days=TRASH_DAYS)
     with index.guard, SessionLocal() as db:
         files = list(db.scalars(select(File).where(File.deleted_at.is_not(None), File.deleted_at < limit)))
-        for file in files:
-            db.delete(file)
-        db.commit()
+        _forget_for_good(db, files)
     if files:
         logger.info("Trash emptied of old entries files=%s", len(files))
     return len(files)
@@ -693,10 +729,17 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
     with index.guard, SessionLocal() as db:
         files = below(db, source) if is_folder else [_file(db, source)]
         _refuse_foreign_lock(db, files, actor)
-        moved_ids = {file.id for file in files}
         new_path = {
             file.id: destination + file.path[len(source) :] if is_folder else destination for file in files
         }
+        # A note moving to another folder takes the attachments only it uses along.
+        carried: list[File] = []
+        if not is_folder and files[0].is_note and posixpath.dirname(source) != posixpath.dirname(destination):
+            for attachment, target in _carried(db, files[0], posixpath.dirname(destination)):
+                carried.append(attachment)
+                new_path[attachment.id] = target
+            files = files + carried
+        moved_ids = {file.id for file in files}
         space_id = files[0].space_id if files else index.ensure_space(db, paths.space_of(source)).id
 
         # Which notes must be rewritten: those linking here, and the moved notes themselves.
@@ -733,6 +776,10 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
             os.rename(step, full_destination)
         else:
             shutil.move(str(full_source), str(full_destination))
+        for attachment in carried:
+            old = paths.vault_root().joinpath(*attachment.path.split("/"))
+            _move(old, paths.vault_root().joinpath(*new_path[attachment.id].split("/")))
+            _remove_empty_folders(old.parent)
         for file in files:
             file.path = new_path[file.id]
             file.path_key = paths.fold(file.path)
@@ -780,6 +827,18 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
             if file.id in rewritten_ids:
                 continue
             file_full = paths.vault_root().joinpath(*file.path.split("/"))
+            if not file.is_note:
+                # Same content in a new place: its row, hash and search text stay; the name it is found by follows.
+                try:
+                    file.mtime_ns = file_full.stat().st_mtime_ns
+                except OSError:
+                    continue
+                file.title = paths.stem(file.path)
+                db.execute(
+                    sql(f"UPDATE {FTS_TABLE} SET title = :title WHERE rowid = :id"),  # noqa: S608
+                    {"title": file.title, "id": file.id},
+                )
+                continue
             try:
                 data = file_full.read_bytes()
             except OSError:
@@ -790,6 +849,40 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
         db.commit()
     logger.info("Moved files=%s notes_rewritten=%s", len(files), len(rewritten_ids))
     return Moved(path=destination, files=len(files), rewritten=len(rewritten_ids))
+
+
+def _carried(db: Session, note: File, new_folder: str) -> list[tuple[File, str]]:
+    """The attachments that go along when ``note`` moves to ``new_folder``: those in the attachment folder beside it
+    that no other note links. Each with its new path, in the attachment folder beside the note's new place."""
+    folder_name = str(settings_service.get(db, "attachment_folder") or "Anhänge")
+    old_folder = posixpath.join(posixpath.dirname(note.path), folder_name)
+    target_folder = posixpath.join(new_folder, folder_name)
+    linked = select(Link.target_id).where(Link.source_id == note.id, Link.target_id.is_not(None))
+    candidates = db.scalars(
+        select(File).where(
+            File.id.in_(linked), File.deleted_at.is_(None), File.is_note.is_(False),
+            File.path > old_folder + "/", File.path < old_folder + "0",
+        )
+    ).all()
+    source_file = File.__table__.alias("source")
+    result: list[tuple[File, str]] = []
+    taken: set[str] = set()
+    directory = paths.vault_root().joinpath(*target_folder.split("/"))
+    for attachment in candidates:
+        if "/" in attachment.path[len(old_folder) + 1 :]:
+            continue  # in a folder below: not simply "beside the note"
+        others = db.scalar(
+            select(func.count())
+            .select_from(Link)
+            .join(source_file, source_file.c.id == Link.source_id)
+            .where(Link.target_id == attachment.id, Link.source_id != note.id, source_file.c.deleted_at.is_(None))
+        )
+        if others:
+            continue
+        name = paths.unique_name(directory, posixpath.basename(attachment.path), taken=taken)
+        taken.add(name)
+        result.append((attachment, f"{target_folder}/{name}"))
+    return result
 
 
 def _old_keys(files: list[File], source: str, destination: str) -> set[str]:

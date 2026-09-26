@@ -216,8 +216,14 @@
   color: var(--color-mist-500);
 }
 
-/* Images: until attachments are served (M3) a relative picture shows its name instead of a broken image. */
-.nx-note-editor .milkdown img {
+/* Pictures of the vault come from the server; an embed (`![[photo.png]]`) shows its picture, video or sound. */
+.nx-note-editor .milkdown img,
+.nx-note-editor .nx-embed-media {
   max-width: 100%;
   border-radius: 8px;
+}
+.nx-note-editor audio.nx-embed-media {
+  display: block;
+  width: 100%;
+  max-width: 28rem;
 }

@@ -5,7 +5,7 @@
 import { remarkStringifyOptionsCtx } from '@milkdown/kit/core'
 import type { Ctx } from '@milkdown/kit/ctx'
 import { bulletListSchema, codeBlockSchema, imageSchema, linkSchema, orderedListSchema } from '@milkdown/kit/preset/commonmark'
-import { $node, $remark } from '@milkdown/kit/utils'
+import { $ctx, $node, $remark } from '@milkdown/kit/utils'
 import { gfmTableToMarkdown } from 'mdast-util-gfm-table'
 import type { Options } from 'mdast-util-to-markdown'
 import { defaultHandlers } from 'mdast-util-to-markdown'
@@ -122,6 +122,9 @@ export function writerOptions(style: Style) {
   }
 }
 
+/** Where the page shows a picture a note links (`Anhänge/Foto%201.png`): set by the editor, the same by default. */
+export const imageSource = $ctx<(src: string) => string, 'nxImageSource'>((src) => src, 'nxImageSource')
+
 /** Milkdown's link, plus how it was written (see `LinkForm`). Replaces the preset's link. */
 export const formedLink = linkSchema.extendSchema((previous) => (ctx) => {
   const base = previous(ctx)
@@ -154,12 +157,28 @@ export const safeImage = imageSchema.extendSchema((previous) => (ctx) => {
   const base = previous(ctx)
   return {
     ...base,
-    // Links are cleaned by Milkdown; images were not. Only the web and paths in the vault reach the page.
+    // Links are cleaned by Milkdown; images were not. Only the web and paths in the vault reach the page, and a path
+    // in the vault is shown through the server (`imageSource`); the node keeps what the note says.
     toDOM: (node) => {
       const shown = base.toDOM!(node) as [string, Record<string, unknown>]
       const src = String(node.attrs.src ?? '')
-      return [shown[0], { ...shown[1], src: safeUrl(src) && !/^mailto:/i.test(src) ? src : '' }]
+      const allowed = safeUrl(src) && !/^mailto:/i.test(src)
+      return [shown[0], { ...shown[1], src: allowed ? ctx.get(imageSource.key)(src) : '', 'data-src': src }]
     },
+    // Copied inside the editor, a picture carries the address it is shown from; the note's own path comes back.
+    parseDOM: [
+      {
+        tag: 'img[src]',
+        getAttrs: (dom) => {
+          const element = dom as HTMLElement
+          return {
+            src: element.getAttribute('data-src') ?? element.getAttribute('src') ?? '',
+            alt: element.getAttribute('alt') ?? '',
+            title: element.getAttribute('title') ?? element.getAttribute('alt') ?? '',
+          }
+        },
+      },
+    ],
     parseMarkdown: {
       match: base.parseMarkdown.match,
       runner: (state, node, type) => {
@@ -256,6 +275,7 @@ export const obsidian = [
   rawBlock,
   rawInline,
   formedLink,
+  imageSource,
   safeImage,
   fullCodeBlock,
   markedList(bulletListSchema, false),

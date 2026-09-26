@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { errorText } from '../lib/errors'
+import { isNotePath } from '../lib/files'
+import { fileRoute } from '../lib/markdown'
 import { noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 import { Logo } from './Logo'
@@ -48,7 +50,9 @@ export function AppShell() {
   const { status, error } = useStore()
 
   const pick = (id: string) => {
-    if (location.pathname === '/') navigate(`/?focus=${encodeURIComponent(id)}`)
+    // A PDF found by its text has a page of its own; it is not in the graph.
+    if (!isNotePath(id)) navigate(fileRoute(id))
+    else if (location.pathname === '/') navigate(`/?focus=${encodeURIComponent(id)}`)
     else navigate(noteUrl(id))
   }
 

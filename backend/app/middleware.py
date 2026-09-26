@@ -91,8 +91,9 @@ CLIENT_HEADER = b"x-nexlore-client"
 CLIENT_PATTERN = re.compile(rb"^[A-Za-z0-9_-]{8,64}$")
 #: Largest body an ordinary request may carry: a note is at most 5 MB of text, JSON adds a little.
 MAX_BODY = 16 * 1024 * 1024
-#: Where a larger body is expected, with its own limit checked while streaming.
-LARGE_BODIES = {"/api/import": 4 * 1024**3}
+#: Where a larger body is expected, with its own limit checked while streaming. An upload's limit is the operator's
+#: setting, checked by the route while the file arrives; this is only the ceiling above every setting.
+LARGE_BODIES = {"/api/import": 4 * 1024**3, "/api/attachments": 1024**4}
 
 
 class BodyTooLarge(Exception):

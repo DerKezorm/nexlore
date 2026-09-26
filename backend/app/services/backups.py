@@ -7,7 +7,8 @@ Built after nextrmnl's backup service:
   files are copied after, without holding up saves. Whatever changed in between, the scan after a restore brings the
   index back in line with the files; history and trash are in the database copy.
 * **Everything in the vault goes in**, hidden folders too: ``.obsidian/`` belongs to the vault that was backed up.
-  Only nexlore's own temporary files stay out.
+  Only nexlore's own temporary files stay out. So do the files waiting in the trash (``trash/``, deleted
+  attachments; notes wait in the database's versions).
 * **The manifest lists every file with its size and sha256**, so the check before a restore can tell a damaged
   archive from a good one, and say what a restore would change.
 * **Only automatic copies are pruned** (``scheduled`` and ``update``); one made by hand stays until deleted.
@@ -49,6 +50,9 @@ FOLDER_NAME = "backups"
 MANIFEST = "nexlore-backup.json"
 DATABASE_ENTRY = "database/nexlore.db"
 VAULT_PREFIX = "vault/"
+TRASH_PREFIX = "trash/"
+#: Files in the trash folder are named by their row id.
+TRASH_NAME = re.compile(r"^\d{1,18}$")
 PENDING = "restore-pending"
 MANUAL = "manual"
 SCHEDULED = "scheduled"
@@ -83,6 +87,8 @@ class Manifest:
     bytes: int = 0
     #: vault-relative path -> [size, sha256]
     vault: dict[str, list[Any]] = field(default_factory=dict)
+    #: name in the trash folder -> [size, sha256]
+    trash: dict[str, list[Any]] = field(default_factory=dict)
 
 
 @dataclass
@@ -167,6 +173,16 @@ def _vault_files(root: Path) -> list[tuple[str, Path]]:
     return found
 
 
+def _trash_files() -> list[tuple[str, Path]]:
+    folder_path = paths.trash_root()
+    if not folder_path.is_dir():
+        return []
+    return sorted(
+        (entry.name, entry) for entry in folder_path.iterdir()
+        if TRASH_NAME.match(entry.name) and entry.is_file() and not entry.is_symlink()
+    )
+
+
 def _database_copy(target: Path) -> None:
     source = sqlite3.connect(get_settings().database_path)
     destination = sqlite3.connect(target)
@@ -209,6 +225,12 @@ def create(*, kind: str = MANUAL, note: str = "") -> Path:
                 manifest.files += 1
                 manifest.bytes += size
                 manifest.notes += int(rel.lower().endswith(paths.NOTE_SUFFIX))
+            for name_in_trash, full in _trash_files():
+                try:
+                    archive.write(full, TRASH_PREFIX + name_in_trash)
+                    manifest.trash[name_in_trash] = [full.stat().st_size, _hash_file(full)]
+                except OSError as exc:
+                    logger.warning("A file in the trash could not be backed up and was left out: %s", exc.strerror)
             # Last: an archive without its manifest is recognisably incomplete.
             archive.writestr(MANIFEST, json.dumps(asdict(manifest), ensure_ascii=False))
         os.replace(partial, base / name)
@@ -317,6 +339,17 @@ def check(name: str) -> Brief:
                     hasher.update(chunk)
             if hasher.hexdigest() != digest:
                 damaged.append(rel)
+        for name_in_trash, (size, digest) in manifest.trash.items():
+            member = members.get(TRASH_PREFIX + name_in_trash)
+            if not TRASH_NAME.match(name_in_trash) or member is None or member.file_size != size:
+                damaged.append(TRASH_PREFIX + name_in_trash)
+                continue
+            hasher = hashlib.sha256()
+            with archive.open(member) as handle:
+                while chunk := handle.read(_CHUNK):
+                    hasher.update(chunk)
+            if hasher.hexdigest() != digest:
+                damaged.append(TRASH_PREFIX + name_in_trash)
         extra = [
             info.filename for info in archive.infolist()
             if info.filename.startswith(VAULT_PREFIX) and not info.is_dir()
@@ -360,6 +393,12 @@ def stage_restore(name: str) -> Brief:
                     with archive.open(VAULT_PREFIX + rel) as source, open(target, "wb") as sink:
                         shutil.copyfileobj(source, sink, _CHUNK)
                 (pending / "vault").mkdir(exist_ok=True)
+                (pending / "trash").mkdir(exist_ok=True)
+                for name_in_trash in manifest.trash:
+                    with archive.open(TRASH_PREFIX + name_in_trash) as source, open(
+                        pending / "trash" / name_in_trash, "wb"
+                    ) as sink:
+                        shutil.copyfileobj(source, sink, _CHUNK)
                 # Last: the manifest says the pending folder is complete.
                 (pending / MANIFEST).write_bytes(json.dumps(asdict(manifest), ensure_ascii=False).encode())
         except BaseException:
@@ -424,6 +463,11 @@ def apply_pending() -> bool:
     for suffix in ("-wal", "-shm", "-journal"):
         target.with_name(target.name + suffix).unlink(missing_ok=True)
     shutil.copyfile(pending / "nexlore.db", target)
+    # The trash goes with the database that knows its files (an archive from before M3 has none: empty trash).
+    trash = paths.trash_root()
+    shutil.rmtree(trash, ignore_errors=True)
+    if (pending / "trash").is_dir():
+        shutil.move(str(pending / "trash"), str(trash))
     manifest = json.loads((pending / MANIFEST).read_text(encoding="utf-8"))
     shutil.rmtree(pending, ignore_errors=True)
     shutil.rmtree(aside, ignore_errors=True)

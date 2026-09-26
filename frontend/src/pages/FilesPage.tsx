@@ -1,15 +1,17 @@
 /**
- * The files behind the notes: how far the index is, the trash, and bringing in an Obsidian vault.
- * Attachments get their own list here with M3.
+ * The files behind the notes: how far the index is, the attachments with how often each is used, the trash, and
+ * bringing in an Obsidian vault.
  */
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
-import { ApiError, vaultApi, type Finding, type IndexState, type Report, type TrashEntry } from '../api/client'
+import { ApiError, vaultApi, type Attachment, type Finding, type IndexState, type Report, type TrashEntry, type Usage } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { errorText } from '../lib/errors'
-import { formatDate } from '../lib/markdown'
+import { fileKind, formatSize } from '../lib/files'
+import { fileRoute, formatDate } from '../lib/markdown'
 import { useStore } from '../state/store'
 
 export function FilesPage() {
@@ -22,6 +24,7 @@ export function FilesPage() {
           <p className="mt-1 text-sm text-mist-500">{t('files.intro')}</p>
         </div>
         <IndexCard />
+        <AttachmentsCard />
         <TrashCard />
         <ImportCard />
       </div>
@@ -153,6 +156,95 @@ function TrashCard() {
       >
         {t('files.trash.purgeText')}
       </ConfirmDialog>
+    </Card>
+  )
+}
+
+/** The files in a space that are not notes: size, how many notes use each, the space the account has used. */
+function AttachmentsCard() {
+  const { t, i18n } = useTranslation()
+  const { spaces } = useStore()
+  const [space, setSpace] = useState('')
+  const [unused, setUnused] = useState(false)
+  const [list, setList] = useState<{ total: number; items: Attachment[] } | null>(null)
+  const [usage, setUsage] = useState<Usage | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+  const shown = space || spaces[0]?.name || ''
+
+  useEffect(() => {
+    vaultApi.usage().then(setUsage).catch(() => undefined)
+  }, [])
+  useEffect(() => {
+    if (!shown) return
+    let live = true
+    setList(null)
+    vaultApi
+      .attachments(shown, unused)
+      .then((found) => live && setList(found))
+      .catch((error) => live && setProblem(error instanceof ApiError ? error.code : 'internal_error'))
+    return () => {
+      live = false
+    }
+  }, [shown, unused])
+
+  const more = async () => {
+    if (!list) return
+    const next = await vaultApi.attachments(shown, unused, list.items.length)
+    setList({ total: next.total, items: [...list.items, ...next.items] })
+  }
+
+  const size = (bytes: number) => formatSize(bytes, i18n.language)
+  return (
+    <Card symbol="clip" title={t('files.attachments.title')} text={t('files.attachments.text', { folder: usage?.folder ?? '' })}>
+      {usage && (
+        <p className="mb-3 text-sm text-mist-400">
+          {usage.quota
+            ? t('files.attachments.usedOf', { used: size(usage.used), quota: size(usage.quota) })
+            : t('files.attachments.used', { used: size(usage.used) })}
+          {' · '}
+          {t('files.attachments.perFile', { size: size(usage.per_file) })}
+          {' · '}
+          {usage.strip_location ? t('files.attachments.stripOn') : t('files.attachments.stripOff')}
+        </p>
+      )}
+      <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
+        <label className="flex items-center gap-2 text-mist-400">
+          {t('files.attachments.space')}
+          <select value={shown} onChange={(event) => setSpace(event.target.value)} className="h-8 rounded-lg border border-ink-700 bg-ink-850 px-2 text-mist-100 outline-none focus:border-accent-500">
+            {spaces.map((item) => (
+              <option key={item.id} value={item.name}>{item.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-2 text-mist-400">
+          <input type="checkbox" checked={unused} onChange={(event) => setUnused(event.target.checked)} className="accent-accent-500" />
+          {t('files.attachments.onlyUnused')}
+        </label>
+        {list && <span className="ml-auto text-mist-500">{t('files.attachments.count', { count: list.total })}</span>}
+      </div>
+      {list?.items.length === 0 && <p className="text-sm text-mist-500">{unused ? t('files.attachments.noneUnused') : t('files.attachments.none')}</p>}
+      {!!list?.items.length && (
+        <ul className="divide-y divide-ink-700 rounded-xl border border-ink-700">
+          {list.items.map((item) => (
+            <li key={item.id} className="flex items-center gap-3 px-4 py-2 text-sm">
+              <Symbol name={fileKind(item.path) === 'image' ? 'image' : fileKind(item.path) === 'pdf' ? 'pdf' : 'file'} className="h-4 w-4 shrink-0 text-mist-500" />
+              <Link to={fileRoute(item.path)} className="min-w-0 flex-1 truncate text-mist-200 hover:text-accent-400">
+                {item.path.slice(shown.length + 1)}
+              </Link>
+              <span className="shrink-0 text-xs text-mist-500 tabular-nums">{size(item.size)}</span>
+              <span className={'w-24 shrink-0 text-right text-xs ' + (item.uses ? 'text-mist-500' : 'text-warn-500')}>
+                {item.uses ? t('files.attachments.uses', { count: item.uses }) : t('files.attachments.unused')}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {list && list.items.length < list.total && (
+        <button type="button" onClick={() => void more()} className="mt-3 rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850">
+          {t('files.attachments.more')}
+        </button>
+      )}
+      {problem && <p className="mt-2 text-sm text-bad-500">{errorText(problem)}</p>}
     </Card>
   )
 }

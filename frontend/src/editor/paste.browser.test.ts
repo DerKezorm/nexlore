@@ -14,6 +14,14 @@ afterEach(async () => {
   open = null
 })
 
+it('keeps the path the note wrote when a picture is copied inside the editor, not the address it shows from', async () => {
+  open = await openEditor('Start.\n')
+  open.view.dispatch(open.view.state.tr.setSelection(Selection.atEnd(open.view.state.doc)))
+  open.view.pasteHTML('<p><img src="/api/file?path=Home%2FAnh%C3%A4nge%2Fx.png" data-src="Anh%C3%A4nge/x.png" alt="x"></p>')
+  expect(open.text()).toContain('![x](Anh%C3%A4nge/x.png')
+  expect(open.text()).not.toContain('/api/file')
+})
+
 it('leaves pictures with a data or blob address out of pasted content, and keeps the rest', async () => {
   open = await openEditor('Start.\n')
   open.view.dispatch(open.view.state.tr.setSelection(Selection.atEnd(open.view.state.doc)))

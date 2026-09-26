@@ -1,7 +1,9 @@
 /** Markdown to HTML for the reading view, with [[wiki links]] turned into clickable links. */
 import { Marked, type Token } from 'marked'
 
+import { fileUrl } from '../api/client'
 import i18n, { locale } from '../i18n'
+import { fileKind, isNotePath, relativeTarget } from './files'
 
 function escape(text: string | undefined): string {
   // An i18n text is undefined until the languages are loaded (in tests, for example).
@@ -20,13 +22,29 @@ export function safeUrl(href: string): boolean {
   return !scheme || ['http', 'https', 'mailto'].includes(scheme[1].toLowerCase())
 }
 
-const markdown = new Marked({
-  async: false,
-  gfm: true,
-  walkTokens(token: Token) {
-    if ((token.type === 'link' || token.type === 'image') && !safeUrl(token.href)) token.href = '#'
-  },
-})
+/** The page of a file that is not a note: preview, download, the notes that use it. */
+export function fileRoute(path: string): string {
+  return '/file/' + path.split('/').map(encodeURIComponent).join('/')
+}
+
+function markdownFor(notePath: string | null) {
+  return new Marked({
+    async: false,
+    gfm: true,
+    walkTokens(token: Token) {
+      if (token.type !== 'link' && token.type !== 'image') return
+      if (!safeUrl(token.href)) {
+        token.href = '#'
+        return
+      }
+      // A path in the vault: pictures come from the server, links to files lead to their page.
+      const target = notePath ? relativeTarget(notePath, token.href) : null
+      if (!target) return
+      if (token.type === 'image') token.href = fileUrl(target)
+      else if (!isNotePath(target)) token.href = fileRoute(target)
+    },
+  })
+}
 
 /** The front matter at the top of a note: shown as properties, not as text. */
 export function withoutFrontMatter(body: string): string {
@@ -34,21 +52,44 @@ export function withoutFrontMatter(body: string): string {
   return match ? body.slice(match[0].length) : body
 }
 
+function fileLink(path: string, text: string): string {
+  return `<a class="nn-wikilink nn-filelink" data-file="${escape(path)}" href="${escape(fileRoute(path))}">${text}</a>`
+}
+
+/** An embedded file where the embed stands: a picture, a video, a sound, or a link to its page. */
+function embedded(path: string, text: string, width: string): string {
+  const url = escape(fileUrl(path))
+  const size = width ? ` style="width:${Number(width)}px"` : ''
+  switch (fileKind(path)) {
+    case 'image':
+      return `<img class="nn-embed" src="${url}" alt="${text}"${size}>`
+    case 'video':
+      return `<video class="nn-embed" src="${url}" controls preload="metadata"${size}></video>`
+    case 'audio':
+      return `<audio class="nn-embed" src="${url}" controls preload="metadata"></audio>`
+    default:
+      return fileLink(path, text)
+  }
+}
+
 /**
  * Markdown to HTML. `resolve` answers where a wiki link points (a vault path) or null; the server knows, because
- * it resolves links the way Obsidian does.
+ * it resolves links the way Obsidian does. `notePath`: the note shown, for its relative links and pictures.
  */
-export function renderMarkdown(body: string, resolve: (target: string) => string | null): string {
+export function renderMarkdown(body: string, resolve: (target: string) => string | null, notePath: string | null = null): string {
   // Raw HTML in a note is shown as text, not executed: notes can come from other people and from an AI.
   const safe = withoutFrontMatter(body).replace(/</g, '&lt;')
-  const linked = safe.replace(/(!?)\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g, (_, _embed: string, target: string, label?: string) => {
+  const linked = safe.replace(/(!?)\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g, (_, embed: string, target: string, label?: string) => {
     const path = target.trim() ? resolve(target.trim()) : null
-    const text = escape((label ?? target).trim())
+    // An embed's `|300` is its width, not a caption.
+    const width = embed && label && /^\d+(x\d+)?$/.test(label.trim()) ? label.trim().split('x')[0] : ''
+    const text = escape((width ? target : (label ?? target)).trim())
+    if (path && !isNotePath(path)) return embed ? embedded(path, text, width) : fileLink(path, text)
     return path
       ? `<a class="nn-wikilink" data-note="${escape(path)}">${text}</a>`
       : `<a class="nn-wikilink nn-wikilink-missing" title="${escape(i18n.t('note.missingLink'))}">${text}</a>`
   })
-  return markdown.parse(linked) as string
+  return markdownFor(notePath).parse(linked) as string
 }
 
 export function formatDate(when: string | number): string {

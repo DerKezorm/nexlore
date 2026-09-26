@@ -5,17 +5,18 @@
  * changed blocks differ from the file. The plan for that is worked out once per original, on the first save.
  *
  * Off on purpose: Crepe's image block (it stores the aspect ratio in the alt text, `![Photo](x)` came back as
- * `![1.00](x)`, and dropped relative images entirely), uploads (M3 brings attachments; until then a pasted picture
- * would end up as a huge data address in the note: the uploader inserts nothing), the empty-line placeholder (it writes
- * `<br />` into the file for every empty paragraph) and the inlining of reference links (it dropped their
- * definitions).
+ * `![1.00](x)`, and dropped relative images entirely), the empty-line placeholder (it writes `<br />` into the file for
+ * every empty paragraph) and the inlining of reference links (it dropped their definitions).
+ *
+ * Files pasted, dropped or picked from the menu are uploaded through `files` (the page's helpers) and linked with an
+ * ordinary relative Markdown link; pictures show through the server (`imageSource`).
  */
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { editorViewCtx, parserCtx, remarkCtx, serializerCtx } from '@milkdown/kit/core'
 import type { Ctx, MilkdownPlugin } from '@milkdown/kit/ctx'
 import { uploadConfig } from '@milkdown/kit/plugin/upload'
 import { remarkInlineLinkPlugin, remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark'
-import type { Node as ProseNode, Slice } from '@milkdown/kit/prose/model'
+import type { Node as ProseNode, Schema, Slice } from '@milkdown/kit/prose/model'
 import { Fragment, Slice as ProseSlice } from '@milkdown/kit/prose/model'
 import { Plugin, TextSelection } from '@milkdown/kit/prose/state'
 import type { EditorView } from '@milkdown/kit/prose/view'
@@ -24,7 +25,7 @@ import type { Root } from 'mdast'
 
 import { Plan, type Block, type Tools } from './blocks'
 import { livePreview, refreshLive, type LinkHelpers } from './live'
-import { obsidian, replaced, writerOptions } from './obsidian'
+import { imageSource, obsidian, replaced, writerOptions } from './obsidian'
 import { forcedRaw, holdRaw, keepsLetters, releaseRaw } from './syntax'
 import { detectStyle } from './style'
 import { linkSuggest, type Suggestion } from './suggest'
@@ -54,7 +55,18 @@ export type EditorLabels = {
     callout: string
     wikiLink: string
     embed: string
+    attachment: string
   }
+}
+
+/** An uploaded file, as the note links it. */
+export type Inserted = { link: string; name: string; image: boolean }
+
+export type FileHelpers = {
+  /** The address a picture the note links is shown from (`Anhänge/Foto%201.png` → the server's address). */
+  src: (written: string) => string
+  /** Upload files for this note; for each what to link, or null when it was refused (the page says why). */
+  upload: (files: File[]) => Promise<(Inserted | null)[]>
 }
 
 export type EditorOptions = {
@@ -67,7 +79,8 @@ export type EditorOptions = {
   search: () => (query: string) => Suggestion[]
   /** The document changed (typing, pasting, a command). Cheap: nothing is serialized here. */
   onChange: () => void
-  /** A file was pasted or dropped; attachments come with M3. */
+  /** Uploading and showing files; without it a pasted or dropped file is refused (`onFileRefused`). */
+  files?: FileHelpers
   onFileRefused?: () => void
   /** For tests: more Milkdown plugins, after nexlore's own. */
   plugins?: MilkdownPlugin[]
@@ -87,7 +100,10 @@ export type NoteEditor = {
   destroy: () => Promise<void>
 }
 
-/** Images with a `blob:` or `data:` address would be written into the note; until uploads exist they are left out. */
+/**
+ * Images with a `blob:` or `data:` address would be written into the note as a huge address. A pasted picture comes
+ * as a file too and is uploaded (`uploader`); its copy as an address is left out.
+ */
 function withoutLocalImages(slice: Slice): Slice {
   const strip = (fragment: Fragment): Fragment => {
     const kept: ProseNode[] = []
@@ -98,6 +114,30 @@ function withoutLocalImages(slice: Slice): Slice {
     return Fragment.from(kept)
   }
   return new ProseSlice(strip(slice.content), slice.openStart, slice.openEnd)
+}
+
+/** What an upload puts into the note: the picture itself, or a link with the file's name. */
+function insertedNodes(schema: Schema, done: (Inserted | null)[]): ProseNode[] {
+  const nodes: ProseNode[] = []
+  for (const item of done) {
+    if (!item) continue
+    if (item.image) nodes.push(schema.nodes.image.create({ src: item.link, alt: '', title: '' }))
+    else nodes.push(schema.text(item.name, [schema.marks.link.create({ href: item.link })]))
+    nodes.push(schema.text(' '))
+  }
+  return nodes.slice(0, -1)
+}
+
+/** A file picker, for the menu item: the files chosen, or none. */
+function pickFiles(): Promise<File[]> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.multiple = true
+    input.addEventListener('change', () => resolve([...(input.files ?? [])]))
+    input.addEventListener('cancel', () => resolve([]))
+    input.click()
+  })
 }
 
 export async function createEditor(options: EditorOptions): Promise<NoteEditor> {
@@ -169,6 +209,24 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
             .addGroup('obsidian', labels.slash.groupObsidian)
             .addItem('wiki-link', { label: labels.slash.wikiLink, icon: icon('[[ ]]'), onRun: (ctx: Ctx) => replaceBlock(ctx, () => ({ text: '[[', caret: 2 })) })
             .addItem('embed', { label: labels.slash.embed, icon: icon('![[ ]]'), onRun: (ctx: Ctx) => replaceBlock(ctx, () => ({ text: '![[', caret: 3 })) })
+            .addItem('attachment', {
+              label: labels.slash.attachment,
+              icon: icon('📎'),
+              onRun: (ctx: Ctx) => {
+                // The typed "/filter" goes first; the files land where it stood.
+                replaceBlock(ctx, () => ({ text: '', caret: 0 }))
+                const files = options.files
+                if (!files) return options.onFileRefused?.()
+                void pickFiles().then(async (chosen) => {
+                  if (!chosen.length) return
+                  const view = ctx.get(editorViewCtx)
+                  const nodes = insertedNodes(view.state.schema, await files.upload(chosen))
+                  if (!nodes.length) return
+                  view.dispatch(view.state.tr.replaceSelectionWith(nodes.length === 1 ? nodes[0] : view.state.schema.nodes.paragraph.create(null, nodes)).scrollIntoView())
+                  view.focus()
+                })
+              },
+            })
             .addItem('callout', {
               label: labels.slash.callout,
               icon: icon('[!]'),
@@ -187,15 +245,19 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
 
   crepe.editor
     .config(writerOptions(style))
-    .config((ctx) =>
+    .config((ctx) => {
       ctx.update(uploadConfig.key, (previous) => ({
         ...previous,
-        uploader: async () => {
-          options.onFileRefused?.()
-          return []
+        uploader: async (files: FileList, schema: Schema) => {
+          if (!options.files) {
+            options.onFileRefused?.()
+            return []
+          }
+          return insertedNodes(schema, await options.files.upload([...files]))
         },
-      })),
-    )
+      }))
+      if (options.files) ctx.set(imageSource.key, options.files.src)
+    })
     .use(obsidian)
     .use(
       $prose(

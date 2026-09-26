@@ -44,6 +44,25 @@ describe('the reading view', () => {
     expect(html).not.toContain('<script')
   })
 
+  it('shows pictures of the vault through the server and links other files to their page', () => {
+    const html = renderMarkdown('![](Anh%C3%A4nge/Foto%201.png) and [doc](Anhänge/doc.pdf) and [other](Other.md)', nowhere, 'Home/Shopping.md')
+    expect(html).toContain(`src="/api/file?path=${encodeURIComponent('Home/Anhänge/Foto 1.png')}"`)
+    expect(html).toContain(`href="/file/Home/${encodeURIComponent('Anhänge')}/doc.pdf"`)
+    expect(html).toContain('href="Other.md"')
+  })
+
+  it('shows an embedded picture, video or sound where it is embedded, other files as a link', () => {
+    const where: Record<string, string> = {
+      'photo.png': 'Home/A/photo.png', 'clip.mp4': 'Home/A/clip.mp4', 'song.mp3': 'Home/A/song.mp3', 'doc.pdf': 'Home/A/doc.pdf',
+    }
+    const html = renderMarkdown('![[photo.png|300]] ![[clip.mp4]] ![[song.mp3]] ![[doc.pdf]] [[doc.pdf|the doc]]', (target) => where[target] ?? null)
+    expect(html).toContain('<img class="nn-embed" src="/api/file?path=Home%2FA%2Fphoto.png" alt="photo.png" style="width:300px">')
+    expect(html).toContain('<video class="nn-embed" src="/api/file?path=Home%2FA%2Fclip.mp4" controls')
+    expect(html).toContain('<audio class="nn-embed" src="/api/file?path=Home%2FA%2Fsong.mp3" controls')
+    expect(html).toContain('data-file="Home/A/doc.pdf" href="/file/Home/A/doc.pdf">doc.pdf</a>')
+    expect(html).toContain('data-file="Home/A/doc.pdf" href="/file/Home/A/doc.pdf">the doc</a>')
+  })
+
   it('leaves out the front matter', () => {
     expect(withoutFrontMatter('---\ntags: [a]\n---\n# Title')).toBe('# Title')
     expect(withoutFrontMatter('text\n---\nnot front matter\n---\n')).toBe('text\n---\nnot front matter\n---\n')

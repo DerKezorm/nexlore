@@ -71,6 +71,36 @@ def test_backup_check_and_restore_bring_back_files_and_history(vault: Path) -> N
     assert not backups.pending_folder().exists()
 
 
+def test_files_waiting_in_the_trash_are_backed_up_and_come_back(vault: Path) -> None:
+    from app.services import paths
+    from app.services import vault as vault_service
+
+    put(vault, "S/a.md", "a")
+    put(vault, "S/clip.bin", b"\x01\x02" * 5000)
+    index.scan()
+    vault_service.delete_path("S/clip.bin", actor=vault_service.Actor(name="t", client="tab-tests000"))
+    waiting = [path.name for path in paths.trash_root().iterdir()]
+    assert len(waiting) == 1
+    archive = backups.create()
+    with zipfile.ZipFile(archive) as opened:
+        assert f"trash/{waiting[0]}" in opened.namelist()
+    # Emptied after the backup: the restore brings the waiting file back with the database that knows it.
+    (paths.trash_root() / waiting[0]).unlink()
+    assert backups.check(archive.name).usable
+    backups.stage_restore(archive.name)
+    assert backups.apply_pending() is True
+    assert (paths.trash_root() / waiting[0]).read_bytes() == b"\x01\x02" * 5000
+
+    damaged = archive.with_name("nexlore-2026-01-01-000000.zip")
+    with zipfile.ZipFile(archive) as source, zipfile.ZipFile(damaged, "w") as target:
+        for info in source.infolist():
+            data = source.read(info)
+            # Same length, other bytes: only the checksum can tell.
+            target.writestr(info, data[::-1] if info.filename.startswith("trash/") else data)
+    brief = backups.check(damaged.name)
+    assert not brief.files_ok and brief.damaged == [f"trash/{waiting[0]}"]
+
+
 def test_a_damaged_archive_is_not_restored(vault: Path) -> None:
     put(vault, "S/a.md", "a")
     index.scan()

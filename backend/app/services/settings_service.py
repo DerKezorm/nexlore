@@ -15,6 +15,14 @@ DEFAULTS: dict[str, Any] = {
     #: off | daily | weekly. Off until the operator decides (M4 brings the switch to the interface).
     "backup_schedule": "off",
     "backup_keep": 7,
+    #: Where uploaded files go, next to the note they belong to. Only a name, never a path.
+    "attachment_folder": "Anhänge",
+    #: Largest single upload, in MB.
+    "upload_max_mb": 1024,
+    #: Space per account for what it uploaded, in MB; 0 is no limit.
+    "quota_mb": 0,
+    #: Remove the place and the device from photos and videos on upload.
+    "strip_location": True,
 }
 
 
