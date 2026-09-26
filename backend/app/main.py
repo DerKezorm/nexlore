@@ -18,7 +18,7 @@ from . import __version__
 from .config import get_settings
 from .db import SessionLocal, init_db
 from .errors import detail
-from .middleware import RequestContextMiddleware, unhandled_error
+from .middleware import GuardMiddleware, RequestContextMiddleware, unhandled_error
 from .routers import about, health, imports
 from .routers import backups as backups_router
 from .routers import locales as locales_router
@@ -86,6 +86,8 @@ app = FastAPI(
     openapi_url="/api/openapi.json" if get_settings().api_docs else None,
     redoc_url=None,
 )
+# Added last, runs first: the request id and headers wrap everything, the guard sits inside it.
+app.add_middleware(GuardMiddleware)
 app.add_middleware(RequestContextMiddleware)
 
 

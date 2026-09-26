@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import re
+import secrets
 from datetime import datetime
 from typing import Annotated, Any
 
@@ -41,7 +42,10 @@ def _fail(exc: VaultError) -> Exception:
 
 
 def actor(account: Account, x_nexlore_client: Annotated[str | None, Header()] = None) -> Actor:
-    client = x_nexlore_client if x_nexlore_client and CLIENT_PATTERN.match(x_nexlore_client) else f"account-{account}"
+    # Changes always carry the header (the guard middleware refuses them otherwise). A read without it gets an id
+    # of its own, never one shared with other callers: it holds no lock, so it must not look like a holder.
+    valid = x_nexlore_client and CLIENT_PATTERN.match(x_nexlore_client)
+    client = x_nexlore_client if valid else f"reader-{secrets.token_hex(8)}"
     return Actor(name=account, client=client)
 
 

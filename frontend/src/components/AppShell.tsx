@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
 import { errorText } from '../lib/errors'
+import { noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 import { Logo } from './Logo'
 import { SearchDialog } from './SearchDialog'
@@ -48,7 +49,7 @@ export function AppShell() {
 
   const pick = (id: string) => {
     if (location.pathname === '/') navigate(`/?focus=${encodeURIComponent(id)}`)
-    else navigate(`/note/${encodeURI(id)}`)
+    else navigate(noteUrl(id))
   }
 
   return (

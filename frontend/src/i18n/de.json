@@ -210,7 +210,9 @@
       "archive_invalid": "Das ist kein ZIP-Archiv.",
       "archive_unsafe": "Das Archiv enthält einen Eintrag, der außerhalb seines Ordners landen würde. Nichts wurde entpackt.",
       "archive_too_large": "Das Archiv ist zu groß.",
-      "archive_too_many_files": "Das Archiv enthält zu viele Dateien."
+      "archive_too_many_files": "Das Archiv enthält zu viele Dateien.",
+      "client_required": "Die Anfrage sagte nicht, aus welchem Tab sie kam. Lade die Seite neu.",
+      "too_large": "Das ist zu groß zum Senden."
     }
   },
   "files": {

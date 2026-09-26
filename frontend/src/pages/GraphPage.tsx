@@ -6,7 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Sidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { GraphView, type GraphHandle, type Hover } from '../graph/GraphView'
-import { ancestry, neighbours, type Cluster } from '../lib/vault'
+import { ancestry, neighbours, noteUrl, type Cluster } from '../lib/vault'
 import { useStore } from '../state/store'
 
 /** Daily notes live in a folder of this name in any space (M6 makes it a setting). */
@@ -47,7 +47,7 @@ export function GraphPage() {
   }, [focus])
 
   const selectNote = useCallback((id: string | null) => setSelected(id), [])
-  const openNote = useCallback((id: string) => navigate(`/note/${encodeURI(id)}`), [navigate])
+  const openNote = useCallback((id: string) => navigate(noteUrl(id)), [navigate])
   const onFocus = useCallback((cluster: Cluster) => setFocus(cluster), [])
 
   const note = selected ? vault.notes.get(selected) : null

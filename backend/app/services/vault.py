@@ -231,6 +231,11 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor) -> Saved:
             current = full.read_bytes()
         except FileNotFoundError:
             current = None
+        # First: the file already holds exactly this text (a save sent twice, the second with the old base). That
+        # is no conflict, nothing to write.
+        if current is not None and index.digest(current) == index.digest(data):
+            db.expunge(file)
+            return Saved(file=file, changed=False)
         if current is not None and index.digest(current) != base_hash:
             # Local time in the name: it is read by people, next to the files' own times (TZ in the container).
             copy_name = paths.unique_name(full.parent, conflict_name(rel, datetime.now().astimezone()))
@@ -244,9 +249,6 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor) -> Saved:
             logger.info("Save conflict, copy written file_id=%s copy_id=%s", file.id, copy.id)
             db.expunge(file)
             return Saved(file=file, conflict=copy_rel)
-        if current is not None and index.digest(current) == index.digest(data):
-            db.expunge(file)
-            return Saved(file=file, changed=False)
         stat = atomic_write(full, data)
         index.record(
             db, rel, data, stat, source=index.APP, author=actor.name, session=actor.client,
@@ -567,18 +569,18 @@ def thin(rows: list[tuple[int, datetime]], now: datetime) -> list[int]:
     """Of one note's versions (id, time), the ids to drop. The newest version always stays."""
     if not rows:
         return []
-    ordered = sorted(rows, key=lambda row: row[1], reverse=True)
+    # By time, then by id: of two versions with the same time the later made one counts as newer, as everywhere else.
+    ordered = sorted(rows, key=lambda row: (row[1], row[0]), reverse=True)
     drop: list[int] = []
     kept_buckets: set[tuple[int, int]] = set()
     for position, (version_id, when) in enumerate(ordered):
-        if position == 0:
-            continue
         age = now - when
         width = next(width for limit, width in THINNING if limit is None or age <= limit)
         if width is None:
             continue
         bucket = (width, int(when.timestamp()) // width)
-        if bucket in kept_buckets:
+        # The newest never goes; it fills its bucket like any other.
+        if bucket in kept_buckets and position > 0:
             drop.append(version_id)
         else:
             kept_buckets.add(bucket)

@@ -210,7 +210,9 @@
       "archive_invalid": "This is not a ZIP archive.",
       "archive_unsafe": "The archive holds an entry that would end up outside its folder. Nothing was unpacked.",
       "archive_too_large": "The archive is too large.",
-      "archive_too_many_files": "The archive holds too many files."
+      "archive_too_many_files": "The archive holds too many files.",
+      "client_required": "The request did not say which tab sent it. Reload the page.",
+      "too_large": "That is too large to send."
     }
   },
   "files": {

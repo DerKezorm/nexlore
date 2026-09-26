@@ -69,6 +69,18 @@ def test_a_big_scan_reads_in_worker_processes_with_the_same_result(vault: Path, 
         assert len(set(db.scalars(select(Tag.tag)))) == 10
 
 
+def test_a_decomposed_name_from_macos_stays_readable_and_linkable(vault: Path) -> None:
+    from app.services import vault as service
+
+    put(vault, "S/Café.md", "decomposed")
+    put(vault, "S/link.md", "[[Café]]")  # typed composed, as most keyboards do
+    index.scan()
+    assert live_paths() == {"S/Café.md", "S/link.md"}
+    _file, data = service.read("S/Café.md")
+    assert data == b"decomposed"
+    assert target_of("S/link.md", "Café") == "S/Café.md"
+
+
 def test_a_second_scan_without_changes_touches_nothing(vault: Path) -> None:
     put(vault, "S/a.md", "a")
     index.scan()
@@ -124,6 +136,28 @@ def test_a_moved_file_keeps_its_row_history_and_backlinks(vault: Path) -> None:
     with SessionLocal() as db:
         assert db.scalar(select(File.id).where(File.path == "S/Sub/b.md", File.deleted_at.is_(None))) == before
     assert target_of("S/a.md", "b") == "S/Sub/b.md"
+
+
+def test_same_content_in_several_files_is_no_move(vault: Path) -> None:
+    # Two empty daily notes go, two others with the same (empty) content come: nobody moved, nothing inherits.
+    first = put(vault, "S/2026-09-01.md", "")
+    second = put(vault, "S/2026-09-02.md", "")
+    put(vault, "S/keep.md", "keep")
+    index.scan()
+    first.unlink()
+    second.unlink()
+    put(vault, "S/2026-09-03.md", "")
+    put(vault, "S/2026-09-04.md", "")
+    stats = index.scan()
+    assert (stats.moved, stats.removed, stats.added) == (0, 2, 2)
+    # One goes, two of that content come: still no move.
+    put(vault, "S/t1.md", "template")
+    index.scan()
+    (vault / "S" / "t1.md").unlink()
+    put(vault, "S/t2.md", "template")
+    put(vault, "S/t3.md", "template")
+    stats = index.scan()
+    assert (stats.moved, stats.removed, stats.added) == (0, 1, 2)
 
 
 def test_a_vanished_file_goes_to_the_trash_and_comes_back_with_its_history(vault: Path) -> None:
@@ -214,6 +248,9 @@ def linked(vault: Path) -> Path:
         ("S/A/Note.md", "[x](../B/Only%20B.md)", "S/B/Only B.md"),
         ("S/A/Note.md", "[x](<B/Only B.md>)", "S/B/Only B.md"),  # from the space when not relative
         ("S/A/Note.md", "[x](/B/Only%20B.md)", "S/B/Only B.md"),
+        ("S/Home.md", "[[s/B/Note]]", "S/B/Note.md"),  # written from a vault that holds all spaces
+        ("S/A/Note.md", "[x](S/B/Only%20B.md)", "S/B/Only B.md"),
+        ("S/Home.md", "[[T/Note]]", None),  # the other space's name does not lead there
         ("S/Home.md", "[x](../T/Note.md)", None),  # never into another space
         ("S/Home.md", "[[../../outside]]", None),
     ],

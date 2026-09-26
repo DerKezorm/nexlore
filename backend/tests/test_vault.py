@@ -68,6 +68,17 @@ def test_a_save_against_a_changed_file_goes_into_a_conflict_copy(vault: Path) ->
     assert "external" in sources  # the outside change is in the history before the watcher saw it
 
 
+def test_the_same_save_sent_twice_with_the_old_base_is_no_conflict(vault: Path) -> None:
+    # The editor's autosave is still under way when the page is left, and the page sends the text once more.
+    put(vault, "S/a.md", "one")
+    index.scan()
+    base = hash_of(vault, "S/a.md")
+    assert service.save("S/a.md", b"two", base_hash=base, actor=ME).conflict is None
+    again = service.save("S/a.md", b"two", base_hash=base, actor=ME)
+    assert again.conflict is None and again.changed is False
+    assert sorted(path.name for path in (vault / "S").iterdir()) == ["a.md"]
+
+
 def test_an_unchanged_save_writes_nothing(vault: Path) -> None:
     put(vault, "S/a.md", "same")
     index.scan()
@@ -195,6 +206,11 @@ def test_thinning_keeps_the_newest_per_hour_day_and_week() -> None:
     dropped = set(service.thin(rows, now))
     assert dropped == {5, 7}
     assert service.thin([(1, now - timedelta(days=400))], now) == []
+    # All old and in one week: only one stays, and it is the newest.
+    old = now - timedelta(days=100)
+    assert set(service.thin([(1, old), (2, old + timedelta(hours=5)), (3, old + timedelta(hours=1))], now)) == {1, 3}
+    # Same time: the one made later (higher id) counts as the newest.
+    assert service.thin([(7, old), (9, old)], now) == [7]
 
 
 # --- Moving with links following ------------------------------------------------------------------------------------
@@ -220,11 +236,12 @@ def test_rename_rewrites_links_in_their_own_style(vault: Path) -> None:
 
 def test_moving_a_note_updates_its_own_relative_links_not_its_wiki_links(vault: Path) -> None:
     put(vault, "S/Other.md", "other")
-    put(vault, "S/Mover.md", "[[Other]] and [rel](Other.md)")
+    put(vault, "S/Mover.md", "[[other]] and [rel](Other.md)")
     (vault / "S" / "Deep").mkdir()
     index.scan()
     service.move("S/Mover.md", "S/Deep/Mover.md", actor=ME)
-    assert disk(vault, "S/Deep/Mover.md") == "[[Other]] and [rel](../Other.md)"
+    # The wiki link still finds its note from the new place: it stays exactly as written, case included.
+    assert disk(vault, "S/Deep/Mover.md") == "[[other]] and [rel](../Other.md)"
 
 
 def test_a_name_that_becomes_ambiguous_gets_the_full_path(vault: Path) -> None:

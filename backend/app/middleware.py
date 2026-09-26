@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import re
 import secrets
 import time
 from collections.abc import Callable
@@ -81,6 +83,96 @@ class RequestContextMiddleware:
                 logger.debug("%s %s -> %s in %dms", method, path, status, duration)
         finally:
             logs.unbind_request(token)
+
+
+#: Methods that change something. They must name their browser tab (see ``GuardMiddleware``).
+CHANGING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+CLIENT_HEADER = b"x-nexlore-client"
+CLIENT_PATTERN = re.compile(rb"^[A-Za-z0-9_-]{8,64}$")
+#: Largest body an ordinary request may carry: a note is at most 5 MB of text, JSON adds a little.
+MAX_BODY = 16 * 1024 * 1024
+#: Where a larger body is expected, with its own limit checked while streaming.
+LARGE_BODIES = {"/api/import": 4 * 1024**3}
+
+
+class BodyTooLarge(Exception):
+    pass
+
+
+def _refuse(status: int, code: str, text: str) -> tuple[dict, dict]:
+    body = json.dumps({"detail": {"code": code, "message": text}}).encode()
+    start = {
+        "type": "http.response.start",
+        "status": status,
+        "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())],
+    }
+    return start, {"type": "http.response.body", "body": body}
+
+
+class GuardMiddleware:
+    """Two walls in front of every route, including routes still to come.
+
+    * **A change must name its tab** in ``X-Nexlore-Client``. Locks belong to a tab; without the header two callers
+      would share one identity and could release each other's lock. And a page on another site can make a browser
+      send a form, but not a request with a header of its own (that needs CORS, which nexlore does not allow): so
+      the header is the wall against cross-site requests too, the more so while the open test access stands in for
+      accounts.
+    * **A body has a size limit** before anything reads it: the declared length is checked first, and a body sent
+      without one is counted while it arrives.
+    """
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
+        if scope["type"] != "http" or not scope.get("path", "").startswith("/api/"):
+            await self.app(scope, receive, send)
+            return
+        headers = dict(scope.get("headers") or [])
+        if scope.get("method") in CHANGING and not CLIENT_PATTERN.match(headers.get(CLIENT_HEADER, b"")):
+            for message in _refuse(400, "client_required", "Changes need the header X-Nexlore-Client."):
+                await send(message)
+            return
+        limit = LARGE_BODIES.get(scope["path"], MAX_BODY)
+        declared = headers.get(b"content-length")
+        if declared is not None and (not declared.isdigit() or int(declared) > limit):
+            for message in _refuse(413, "too_large", "The request is too large."):
+                await send(message)
+            return
+        received = 0
+        overflow = False
+
+        async def counting_receive() -> dict:
+            nonlocal received, overflow
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > limit:
+                    overflow = True
+                    raise BodyTooLarge
+            return message
+
+        started = False
+
+        async def tracking_send(message: dict) -> None:
+            nonlocal started
+            # The framework turns the aborted read into an answer of its own (400); the caller gets the true one.
+            if overflow:
+                if message["type"] == "http.response.start" and not started:
+                    started = True
+                    for refusal in _refuse(413, "too_large", "The request is too large."):
+                        await send(refusal)
+                return
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, counting_receive, tracking_send)
+        except BodyTooLarge:
+            if not started:
+                for message in _refuse(413, "too_large", "The request is too large."):
+                    await send(message)
 
 
 async def unhandled_error(request: Request, _exc: Exception) -> JSONResponse:

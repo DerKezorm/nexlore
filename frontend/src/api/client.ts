@@ -138,8 +138,9 @@ export const vaultApi = {
   createSpace: (name: string) => api<Space>('/api/spaces', { method: 'POST', body: { name } }),
   graph: (space: string) => api<Graph>('/api/graph', { query: { space } }),
   note: (path: string) => api<NoteData>('/api/note', { query: { path } }),
-  save: (path: string, content: string, baseHash: string) =>
-    api<Saved>('/api/note', { method: 'PUT', body: { path, content, base_hash: baseHash } }),
+  /** `keepalive`: the request outlives a closing tab. Browsers allow that only for small bodies (64 KB in all). */
+  save: (path: string, content: string, baseHash: string, keepalive = false) =>
+    api<Saved>('/api/note', { method: 'PUT', body: { path, content, base_hash: baseHash }, keepalive: keepalive && content.length < 60_000 }),
   create: (folder: string, title: string, content = '') =>
     api<NoteData>('/api/notes', { method: 'POST', body: { folder, title, content } }),
   remove: (path: string) => api<{ files: number }>('/api/files', { method: 'DELETE', query: { path } }),

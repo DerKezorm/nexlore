@@ -140,6 +140,14 @@ export function neighbours(vault: Vault, noteId: string): Set<string> {
   return new Set([...(vault.outgoing.get(noteId) ?? []), ...(vault.backlinks.get(noteId) ?? [])])
 }
 
+/**
+ * The address of a note's page. Every part encoded on its own: `#`, `?` and `%` are legal in file names and would
+ * otherwise end the path in the address bar.
+ */
+export function noteUrl(path: string): string {
+  return '/note/' + path.split('/').map(encodeURIComponent).join('/')
+}
+
 /** The folder part of a vault path: `Space/Folder` of `Space/Folder/Note.md`. */
 export function folderOf(path: string): string {
   const index = path.lastIndexOf('/')

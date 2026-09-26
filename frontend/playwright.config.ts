@@ -46,6 +46,10 @@ const E2E_NOTES: Record<string, string> = {
   'Work/Points at rename.md': 'See [[Rename me]] and [it](Rename%20me.md).\n',
   'Work/Delete me.md': '# Delete me\n\nGone soon.\n',
   'Home/Shopping.md': '# Shopping\n\nMilk, flour and quinceapple jam.\n',
+  // "#" and "%" are legal in names on every system and mean something in an address.
+  'Home/50% C# done.md': '# Odd name\n\nThe zebracorn lives here.\n',
+  'Switch/From.md': '# From\n\nStart.\n',
+  'Switch/To.md': '# To\n\nOther note.\n',
 }
 
 const DATA_DIR = external ? '' : dataDir()

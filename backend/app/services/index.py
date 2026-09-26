@@ -172,16 +172,22 @@ def resolve(kind: str, target: str, source: str, names: Names) -> int | None:
         return None
     rooted = text_target.startswith("/")
     text_target = text_target.lstrip("/")
+    # Obsidian opened on the whole vault (all spaces as one) writes paths that start with the space's own folder.
+    with_space = (
+        by_path(names, inside(space, space + text_target[len(space) :]))
+        if paths.fold(text_target).startswith(paths.fold(space) + "/")
+        else None
+    )
     if kind in (mdparse.MARKDOWN, mdparse.MARKDOWN_EMBED):
         found = None if rooted else by_path(names, inside(space, f"{folder}/{text_target}"))
-        found = found or by_path(names, inside(space, f"{space}/{text_target}"))
+        found = found or by_path(names, inside(space, f"{space}/{text_target}")) or with_space
         if found is None and "/" not in text_target:
             found = _pick(names.by_name(target_key(text_target)), source)
         return found
     if text_target.startswith(("./", "../")):
         return by_path(names, inside(space, f"{folder}/{text_target}"))
     if "/" in text_target:
-        found = by_path(names, inside(space, f"{space}/{text_target}"))
+        found = by_path(names, inside(space, f"{space}/{text_target}")) or with_space
         if found is not None:
             return found
         tail = "/" + paths.fold(text_target)
@@ -670,6 +676,12 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats, confirm_deletions
 
     if gone:
         status.phase = "removing"
+        # A move only when it is unambiguous: exactly one file of this content vanished and exactly one appeared,
+        # in the same space. Two empty daily notes, or two notes from one template, are not one note that moved.
+        vanished: dict[tuple[str, str], int] = {}
+        for rel in gone:
+            key = (known[rel].hash, paths.space_of(rel))
+            vanished[key] = vanished.get(key, 0) + 1
         with guard, SessionLocal() as db:
             for rel in gone:
                 row = known[rel]
@@ -681,7 +693,7 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats, confirm_deletions
                     if paths.space_of(new) == paths.space_of(rel)
                 ]
                 changed_keys.setdefault(file.space_id, set()).add(file.name_key)
-                if twins:
+                if len(twins) == 1 and vanished[(row.hash, paths.space_of(rel))] == 1:
                     # Moved: the new row takes over the old one's history, the old row keeps the id.
                     new_rel = twins.pop(0)
                     arrived[row.hash].remove(new_rel)

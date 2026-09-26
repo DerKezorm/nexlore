@@ -47,7 +47,7 @@ _HIGHLIGHT = re.compile(r"==[^=\r\n]+==")
 _TEMPLATER = re.compile(r"<%[*_-]?[\s\S]*?[-_]?%>")
 _INLINE_FIELD = re.compile(r"^[ \t]*(?:[-*+][ \t]+)?[\w][\w -]*::[ \t]", re.MULTILINE)
 _TASK = re.compile(r"^[ \t]*(?:>[ \t]*)*[-*+][ \t]+\[(.)\][ \t]", re.MULTILINE)
-_MATH_BLOCK = re.compile(r"^[ \t]*\$\$", re.MULTILINE)
+_MATH_SPAN = re.compile(r"\$\$.+?\$\$", re.DOTALL)
 
 #: Only when one of these can be in a note does markdown-it have to look at it: a fence, a line indented as code, an
 #: HTML block. Most notes have none of them and skip the block parser, which costs most of the time.
@@ -231,7 +231,11 @@ def parse(text: str) -> Parsed:
     comments = [(match.start(), match.end()) for match in _COMMENT.finditer(masked)]
     _count(features, "comments", len(comments))
     masked = _mask(masked, comments)
-    parsed.headings = [(len(match.group(1)), (match.group(2) or "").strip()) for match in _HEADING.finditer(masked)]
+    # $$ … $$ is a formula (KaTeX in Obsidian): nothing inside is a link or a tag.
+    math = [(match.start(), match.end()) for match in _MATH_SPAN.finditer(masked)]
+    _count(features, "math_blocks", len(math))
+    masked = _mask(masked, math)
+    parsed.headings =[(len(match.group(1)), (match.group(2) or "").strip()) for match in _HEADING.finditer(masked)]
 
     def line_of(offset: int) -> int:
         low, high = 0, len(starts) - 1
@@ -311,7 +315,6 @@ def parse(text: str) -> Parsed:
 
     _count(features, "callouts", len(_CALLOUT.findall(masked)))
     _count(features, "highlights", len(_HIGHLIGHT.findall(masked)))
-    _count(features, "math_blocks", len(_MATH_BLOCK.findall(masked)))
     _count(features, "dataview_fields", len(_INLINE_FIELD.findall(masked)))
     tasks = _TASK.findall(masked)
     _count(features, "tasks", len(tasks))

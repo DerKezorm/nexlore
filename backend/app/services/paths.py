@@ -57,7 +57,9 @@ def parse(raw: str) -> str:
     """A relative path from outside, normalised, or ``PathError``."""
     if not isinstance(raw, str) or not raw:
         raise PathError("path_invalid", "empty path")
-    text = unicodedata.normalize("NFC", raw)
+    # Not normalised: the disk compares names byte for byte, and a name macOS wrote decomposed (NFD) must be
+    # addressed exactly as it lies there. Comparisons go through ``fold``.
+    text = raw
     if _CONTROL.search(text):
         raise PathError("path_invalid", "control character in path")
     if "\\" in text:
@@ -170,7 +172,7 @@ def resolve(rel: str, *, root: Path | None = None) -> Path:
 def relative(path: Path, *, root: Path | None = None) -> str:
     """The vault-relative POSIX form of a real path below the vault."""
     base = root or vault_root()
-    return unicodedata.normalize("NFC", path.relative_to(base).as_posix())
+    return path.relative_to(base).as_posix()
 
 
 def space_of(rel: str) -> str:

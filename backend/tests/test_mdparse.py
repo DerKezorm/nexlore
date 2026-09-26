@@ -103,6 +103,12 @@ def test_external_and_same_note_links_are_not_links() -> None:
     assert parsed.links == []
 
 
+def test_nothing_inside_a_formula_is_a_link_or_tag() -> None:
+    parsed = mdparse.parse("$$\n[[Inside]] #inside\n$$\nand $$x [[Inline]]$$ then [[Outside]]")
+    assert [link.target for link in parsed.links] == ["Outside"]
+    assert parsed.tags == [] and parsed.features["math_blocks"] == 2
+
+
 def test_headings_including_inside_quotes() -> None:
     assert mdparse.parse("# One\n> ## Two ##\ntext\n####### seven").headings == [(1, "One"), (2, "Two")]
 

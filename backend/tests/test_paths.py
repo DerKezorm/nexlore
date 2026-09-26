@@ -25,10 +25,12 @@ def test_parse_refuses_what_could_leave_the_vault_or_hide(raw: str) -> None:
         paths.parse(raw)
 
 
-def test_parse_keeps_what_others_may_create_and_normalises_to_nfc() -> None:
+def test_parse_keeps_what_others_may_create_exactly_as_written() -> None:
     # A colon cannot be created by nexlore, but a Linux client may have made it and it must stay readable.
     assert paths.parse("Space/Folder/a: b.md") == "Space/Folder/a: b.md"
-    assert paths.parse("Space/Cafe\u0301.md") == "Space/Caf\u00e9.md"
+    # A decomposed name (macOS) stays decomposed: the disk finds it only byte for byte.
+    assert paths.parse("Space/Cafe\u0301.md") == "Space/Cafe\u0301.md"
+    assert paths.fold("Cafe\u0301.md") == paths.fold("CAF\u00c9.md")
 
 
 @pytest.mark.parametrize(
@@ -81,6 +83,22 @@ def test_resolve_refuses_a_link_out_of_the_vault(tmp_path: Path) -> None:
     with pytest.raises(PathError):
         paths.resolve("Space/escape/x.md", root=root)
     assert paths.resolve("Space/fine.md", root=root) == root / "Space" / "fine.md"
+
+
+def test_resolve_refuses_a_link_even_when_it_stays_inside(tmp_path: Path) -> None:
+    # A link inside the vault to another folder of it would show one file under two paths (and two spaces).
+    root = tmp_path / "vault"
+    (root / "Space" / "real").mkdir(parents=True)
+    try:
+        os.symlink(root / "Space" / "real", root / "Space" / "alias", target_is_directory=True)
+    except OSError:
+        if sys.platform != "win32":
+            raise
+        import _winapi
+
+        _winapi.CreateJunction(str(root / "Space" / "real"), str(root / "Space" / "alias"))
+    with pytest.raises(PathError):
+        paths.resolve("Space/alias/x.md", root=root)
 
 
 def test_stem_and_space() -> None:

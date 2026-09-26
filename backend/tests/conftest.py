@@ -74,7 +74,8 @@ def account(client: TestClient) -> str:
 
 @pytest.fixture
 def client() -> Iterator[TestClient]:
-    with TestClient(app, base_url="http://testserver") as test_client:
+    # As the interface does: every request names its tab (changes are refused without it).
+    with TestClient(app, base_url="http://testserver", headers={"X-Nexlore-Client": "tab-tests000"}) as test_client:
         yield test_client
 
 

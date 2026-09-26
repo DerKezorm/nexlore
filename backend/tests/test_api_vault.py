@@ -159,5 +159,39 @@ def test_index_status_and_scan(client: TestClient, filled: Path) -> None:
     assert client.get("/api/index").json()["last"]["added"] == 1
 
 
+def test_a_change_without_the_tab_header_is_refused(client: TestClient, filled: Path) -> None:
+    for method, url, body in [
+        ("post", "/api/notes", {"folder": "Work", "title": "x"}), ("post", "/api/locks", {"path": "Work/Plan.md"}),
+        ("delete", "/api/files?path=Work/Plan.md", None), ("post", "/api/logs/mode", {"mode": "quiet"}),
+    ]:
+        response = client.request(method.upper(), url, json=body, headers={"X-Nexlore-Client": ""})
+        assert response.status_code == 400, url
+        assert response.json()["detail"]["code"] == "client_required"
+        assert "content-security-policy" in response.headers  # still wrapped by the outer middleware
+    assert (filled / "Work" / "Plan.md").exists()
+    # Reading needs no header.
+    assert client.get("/api/spaces", headers={"X-Nexlore-Client": ""}).status_code == 200
+
+
+def test_a_body_too_large_is_refused_before_it_is_read(client: TestClient, filled: Path) -> None:
+    from app.middleware import MAX_BODY
+
+    declared = client.put("/api/note", content=b"x" * (MAX_BODY + 1), headers={"Content-Type": "application/json"})
+    assert declared.status_code == 413 and declared.json()["detail"]["code"] == "too_large"
+
+    def chunks():  # no Content-Length: counted while it arrives
+        for _ in range(MAX_BODY // (1024 * 1024) + 2):
+            yield b"x" * (1024 * 1024)
+
+    streamed = client.put("/api/note", content=chunks(), headers={"Content-Type": "application/json"})
+    assert streamed.status_code == 413
+
+
+def test_a_reader_without_header_never_passes_as_a_lock_holder(client: TestClient, filled: Path) -> None:
+    client.post("/api/locks", json={"path": "Work/Plan.md"}, headers=TAB)
+    lock = client.get("/api/note", params={"path": "Work/Plan.md"}, headers={"X-Nexlore-Client": ""}).json()["lock"]
+    assert lock["mine"] is False
+
+
 def test_teardown_clears_overrides() -> None:
     assert app.dependency_overrides == {}

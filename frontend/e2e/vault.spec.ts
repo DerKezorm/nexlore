@@ -98,6 +98,32 @@ test('search finds words inside notes and marks them', async ({ page }) => {
   await expect(page).toHaveURL(/\/note\/Home\/Shopping\.md$/)
 })
 
+test('a note with # and % in its name opens', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.goto('/files')
+  await page.getByRole('button', { name: /Search/ }).click()
+  await page.getByRole('textbox', { name: 'Search notes …' }).fill('zebracorn')
+  await page.getByRole('dialog').getByRole('button', { name: /50% C# done/ }).click()
+  await expect(page.locator('article')).toContainText('The zebracorn lives here.')
+  await page.reload()
+  await expect(page.locator('article')).toContainText('The zebracorn lives here.')
+  expect(problems).toEqual([])
+})
+
+test('going straight from one note being edited to another keeps each text where it belongs', async ({ page }) => {
+  await page.goto('/note/Switch/From.md')
+  await page.getByRole('button', { name: 'Edit' }).click()
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('Control+End')
+  await page.keyboard.type(' typed just before leaving')
+  // No pause for the autosave: straight to the other note in the sidebar.
+  await page.getByRole('button', { name: 'To', exact: true }).click()
+  await expect(page.locator('article')).toContainText('Other note.')
+  await expect.poll(() => onDisk('Switch/From.md')).toContain('typed just before leaving')
+  expect(onDisk('Switch/To.md')).toBe('# To\n\nOther note.\n')
+  expect(fs.readdirSync(path.join(DATA, 'vault', 'Switch')).sort()).toEqual(['From.md', 'To.md'])
+})
+
 test('renaming a note carries the links to it along', async ({ page }) => {
   await page.goto('/note/Work/Rename me.md')
   await page.getByRole('button', { name: 'Rename', exact: true }).first().click()
@@ -110,7 +136,8 @@ test('renaming a note carries the links to it along', async ({ page }) => {
 test('a deleted note waits in the trash and comes back', async ({ page }) => {
   await page.goto('/note/Work/Delete me.md')
   page.once('dialog', (dialog) => void dialog.accept())
-  await page.getByRole('button', { name: 'Delete' }).click()
+  // exact: the sidebar also has a button "Delete me" once the vault has loaded, and that may be before or after.
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
   await expect(page).toHaveURL(/\/$/)
   expect(fs.existsSync(path.join(DATA, 'vault', 'Work', 'Delete me.md'))).toBe(false)
   await page.goto('/files')

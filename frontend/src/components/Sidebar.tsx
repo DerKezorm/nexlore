@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { ApiError, vaultApi } from '../api/client'
 import { errorText } from '../lib/errors'
-import { folderOf, type Cluster } from '../lib/vault'
+import { folderOf, noteUrl, type Cluster } from '../lib/vault'
 import { useStore } from '../state/store'
 import { Symbol } from './Symbol'
 
@@ -23,12 +23,12 @@ export function Sidebar({ activeNote, activeCluster, onNote, onCluster }: Props)
   const { t } = useTranslation()
   const { vault, spaces, reload } = useStore()
   const navigate = useNavigate()
-  // Spaces and the folder of the active note start open.
-  const [openIds, setOpenIds] = useState<Set<string>>(() => {
-    const start = new Set(vault.root.children.map((c) => c.id))
-    for (let c = activeNote ? vault.home.get(activeNote) : null; c; c = c.parent) start.add(c.id)
-    return start
-  })
+  // Spaces and the folders of the active note are open unless closed by hand; everything else is closed unless
+  // opened. Worked out on every render, so it holds also for a vault that arrives after the first paint.
+  const [toggled, setToggled] = useState<Map<string, boolean>>(new Map())
+  const activeChain = new Set<string>()
+  for (let c = activeNote ? vault.home.get(activeNote) : null; c; c = c.parent) activeChain.add(c.id)
+  const isOpenCluster = (cluster: Cluster) => toggled.get(cluster.id) ?? (cluster.depth === 1 || activeChain.has(cluster.id))
   const [full, setFull] = useState<Set<string>>(new Set())
   const [creating, setCreating] = useState(false)
   const [title, setTitle] = useState('')
@@ -36,13 +36,12 @@ export function Sidebar({ activeNote, activeCluster, onNote, onCluster }: Props)
 
   const target = activeNote ? folderOf(activeNote) : activeCluster || spaces[0]?.name
 
-  const toggle = (id: string) =>
-    setOpenIds((current) => {
-      const next = new Set(current)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  const toggle = (id: string) => {
+    const cluster = vault.clusters.get(id)
+    if (!cluster) return
+    const open = isOpenCluster(cluster)
+    setToggled((current) => new Map(current).set(id, !open))
+  }
 
   const create = async () => {
     if (!title.trim() || !target) return
@@ -52,14 +51,14 @@ export function Sidebar({ activeNote, activeCluster, onNote, onCluster }: Props)
       setTitle('')
       setProblem(null)
       await reload()
-      navigate(`/note/${encodeURI(note.path)}?edit=1`)
+      navigate(`${noteUrl(note.path)}?edit=1`)
     } catch (error) {
       setProblem(error instanceof ApiError ? error.code : 'internal_error')
     }
   }
 
   const renderCluster = (cluster: Cluster) => {
-    const isOpen = openIds.has(cluster.id)
+    const isOpen = isOpenCluster(cluster)
     const shown = full.has(cluster.id) ? cluster.notes : cluster.notes.slice(0, FIRST)
     return (
       <li key={cluster.id}>

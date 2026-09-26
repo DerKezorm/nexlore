@@ -82,9 +82,9 @@ class File(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"))
-    #: Relative to the vault, POSIX, NFC: ``Space/Folder/Note.md``.
+    #: Relative to the vault, POSIX, byte for byte as on disk (a name from macOS may be NFD): ``Space/Folder/Note.md``.
     path: Mapped[str] = mapped_column(String(1024))
-    #: The path casefolded, for lookups the way Windows and macOS compare names.
+    #: The path NFC-normalised and casefolded, for lookups the way Windows and macOS compare names.
     path_key: Mapped[str] = mapped_column(String(1024))
     #: The name without folder and without ``.md``, casefolded: what ``[[Note]]`` is matched against.
     name_key: Mapped[str] = mapped_column(String(255))

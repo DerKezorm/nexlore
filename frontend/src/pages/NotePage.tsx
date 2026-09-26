@@ -18,7 +18,7 @@ import { Sidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { errorText } from '../lib/errors'
 import { formatDate, renderMarkdown } from '../lib/markdown'
-import { ancestry, baseName, folderOf } from '../lib/vault'
+import { ancestry, baseName, folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 
 const SAVE_PAUSE = 1200
@@ -27,7 +27,8 @@ const HEARTBEAT = 30_000
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'failed'
 
 export function NotePage() {
-  const path = decodeURI(useParams()['*'] ?? '')
+  // Already decoded by the router; decoding again breaks names with a "%" in them.
+  const path = useParams()['*'] ?? ''
   const [params, setParams] = useSearchParams()
   const { t } = useTranslation()
   const { vault, reload } = useStore()
@@ -36,7 +37,10 @@ export function NotePage() {
   const [note, setNote] = useState<NoteData | null>(null)
   const [links, setLinks] = useState<Links | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
-  const [editing, setEditing] = useState(false)
+  // Editing belongs to one note: moving on to another ends it in the same render, so nothing of the old note's
+  // editor (its text, its lock, its save) can ever run against the new path.
+  const [editingPath, setEditingPath] = useState<string | null>(null)
+  const editing = editingPath === path
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [conflict, setConflict] = useState<string | null>(null)
   const [lockHolder, setLockHolder] = useState<string | null>(null)
@@ -50,7 +54,7 @@ export function NotePage() {
   const current = useRef(path)
   current.current = path
 
-  const open = useCallback((next: string) => navigate(`/note/${encodeURI(next)}`), [navigate])
+  const open = useCallback((next: string) => navigate(noteUrl(next)), [navigate])
 
   const load = useCallback(async (target: string) => {
     try {
@@ -85,7 +89,7 @@ export function NotePage() {
         saved.current = text
         draft.current = text
         setConflict(result.conflict)
-        setEditing(false)
+        setEditingPath(null)
         setSaveState('idle')
         await vaultApi.unlock(path).catch(() => undefined)
         await Promise.all([load(path), reload()])
@@ -99,7 +103,7 @@ export function NotePage() {
       setSaveState('failed')
       if (error instanceof ApiError && error.code === 'locked') {
         setLockHolder(String(error.values.holder ?? ''))
-        setEditing(false)
+        setEditingPath(null)
       }
       return false
     }
@@ -120,19 +124,19 @@ export function NotePage() {
     setLockHolder(null)
     setConflict(null)
     setSaveState('idle')
-    setEditing(true)
+    setEditingPath(path)
   }, [note, path])
 
   const stopEditing = useCallback(async () => {
     await save()
-    setEditing(false)
+    setEditingPath(null)
     await vaultApi.unlock(path).catch(() => undefined)
     await Promise.all([load(path), reload()])
   }, [save, path, load, reload])
 
   // A different note: back to reading, fresh data.
   useEffect(() => {
-    setEditing(false)
+    setEditingPath(null)
     setConflict(null)
     setLockHolder(null)
     setRenaming(null)
@@ -155,23 +159,30 @@ export function NotePage() {
       vaultApi.lock(path).catch((error) => {
         if (error instanceof ApiError && error.code === 'locked') {
           setLockHolder(String(error.values.holder ?? ''))
-          setEditing(false)
+          setEditingPath(null)
         }
       })
     }, HEARTBEAT)
-    const leave = () => {
-      if (draft.current !== saved.current) {
-        void vaultApi.save(path, draft.current, base.current).catch(() => undefined)
-      }
-      void vaultApi.unlock(path, true).catch(() => undefined)
+    // The last words go out first, as a request that outlives the page; the lock is given back only after them.
+    // A save that doubles one still under way is harmless: the server sees the same text and writes nothing.
+    // A page that is going away runs no more code after this: then both requests leave at once (an unanswered lock
+    // would run out by itself after 90 seconds anyway).
+    const flush = (unloading: boolean) => {
+      const pending = draft.current !== saved.current
+      const text = draft.current
+      const sent = pending ? vaultApi.save(path, text, base.current, true).catch(() => undefined) : Promise.resolve()
+      if (pending) saved.current = text
+      const unlock = () => vaultApi.unlock(path, true).catch(() => undefined)
+      if (unloading) void unlock()
+      else void sent.finally(unlock)
     }
+    const leave = () => flush(true)
     window.addEventListener('pagehide', leave)
     return () => {
       window.clearInterval(beat)
       window.removeEventListener('pagehide', leave)
       if (timer.current !== null) window.clearTimeout(timer.current)
-      if (draft.current !== saved.current) void vaultApi.save(path, draft.current, base.current).catch(() => undefined)
-      void vaultApi.unlock(path, true).catch(() => undefined)
+      flush(false)
     }
   }, [editing, path])
 

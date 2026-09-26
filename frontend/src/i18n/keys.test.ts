@@ -43,7 +43,7 @@ describe('translation keys used in the code', () => {
       ...[
         'not_found', 'invalid_input', 'sign_in_required', 'locale_unusable', 'internal_error', 'path_invalid',
         'path_too_long', 'name_invalid', 'exists', 'locked', 'not_a_note', 'move_across_spaces', 'too_large_for_trash',
-        'archive_invalid', 'archive_unsafe', 'archive_too_large', 'archive_too_many_files',
+        'archive_invalid', 'archive_unsafe', 'archive_too_large', 'archive_too_many_files', 'client_required', 'too_large',
       ].map((code) => `errors.byCode.${code}`),
     ]
     expect(composed.filter((key) => !existsWithPlural(key))).toEqual([])
