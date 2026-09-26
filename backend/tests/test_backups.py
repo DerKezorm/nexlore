@@ -1,0 +1,156 @@
+"""Backups: the whole vault and the database in one archive, checked before a restore, restored at the next start."""
+
+from __future__ import annotations
+
+import json
+import zipfile
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import func, select
+
+from app.config import get_settings
+from app.db import SessionLocal
+from app.models import Version
+from app.services import backups, index
+
+
+@pytest.fixture(autouse=True)
+def no_old_backups() -> None:
+    folder = backups.folder()
+    if folder.exists():
+        import shutil
+
+        shutil.rmtree(folder)
+
+
+def put(root: Path, rel: str, content: str | bytes) -> Path:
+    path = root.joinpath(*rel.split("/"))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(content.encode() if isinstance(content, str) else content)
+    return path
+
+
+def versions() -> int:
+    with SessionLocal() as db:
+        return db.scalar(select(func.count()).select_from(Version)) or 0
+
+
+def test_backup_check_and_restore_bring_back_files_and_history(vault: Path) -> None:
+    put(vault, "S/a.md", "a")
+    put(vault, "S/b.md", "b")
+    put(vault, "S/.obsidian/app.json", "{}")
+    index.scan()
+    archive = backups.create()
+    before = versions()
+    with zipfile.ZipFile(archive) as opened:
+        names = set(opened.namelist())
+    assert {"vault/S/a.md", "vault/S/.obsidian/app.json", "database/nexlore.db", backups.MANIFEST} <= names
+
+    brief = backups.check(archive.name)
+    assert brief.usable and (brief.would_add, brief.would_change, brief.would_remove) == (0, 0, 0)
+
+    put(vault, "S/a.md", "changed")
+    (vault / "S" / "b.md").unlink()
+    put(vault, "S/new.md", "new")
+    index.scan()
+    brief = backups.check(archive.name)
+    assert (brief.would_add, brief.would_change, brief.would_remove) == (1, 1, 1)
+    assert brief.examples["remove"] == ["S/new.md"]
+
+    backups.stage_restore(archive.name)
+    assert [entry.kind for entry in backups.entries()].count("update") == 1  # the way back
+    assert backups.apply_pending() is True
+    assert (vault / "S" / "a.md").read_bytes() == b"a"
+    assert (vault / "S" / "b.md").read_bytes() == b"b"
+    assert not (vault / "S" / "new.md").exists()
+    assert (vault / "S" / ".obsidian" / "app.json").is_file()
+    assert not [path for path in vault.iterdir() if path.name.startswith(".nexlore-")]
+    assert versions() == before
+    assert not backups.pending_folder().exists()
+
+
+def test_a_damaged_archive_is_not_restored(vault: Path) -> None:
+    put(vault, "S/a.md", "a")
+    index.scan()
+    archive = backups.create()
+    # Rewrite the archive with one file's content changed but the manifest as it was.
+    damaged = archive.with_name("nexlore-2026-01-01-000000.zip")
+    with zipfile.ZipFile(archive) as source, zipfile.ZipFile(damaged, "w") as target:
+        for info in source.infolist():
+            data = source.read(info)
+            target.writestr(info, b"b" if info.filename == "vault/S/a.md" else data)
+    brief = backups.check(damaged.name)
+    assert not brief.files_ok and brief.damaged == ["S/a.md"]
+    with pytest.raises(backups.BackupError):
+        backups.stage_restore(damaged.name)
+    assert not backups.pending_folder().exists()
+
+
+def test_an_archive_entry_outside_the_vault_counts_as_damage(vault: Path) -> None:
+    put(vault, "S/a.md", "a")
+    archive = backups.create()
+    evil = archive.with_name("nexlore-2026-01-02-000000.zip")
+    with zipfile.ZipFile(archive) as source, zipfile.ZipFile(evil, "w") as target:
+        for info in source.infolist():
+            data = source.read(info)
+            if info.filename == backups.MANIFEST:
+                manifest = json.loads(data)
+                manifest["vault"]["../evil.md"] = [1, "0" * 64]
+                data = json.dumps(manifest).encode()
+            target.writestr(info, data)
+        target.writestr("vault/../evil.md", b"x")
+    assert not backups.check(evil.name).files_ok
+
+
+def test_a_half_written_pending_restore_is_thrown_away(vault: Path) -> None:
+    pending = backups.pending_folder()
+    (pending / "vault").mkdir(parents=True)
+    (pending / "nexlore.db").write_bytes(b"not a database")
+    put(vault, "S/keep.md", "keep")
+    assert backups.apply_pending() is False
+    assert not pending.exists() and (vault / "S" / "keep.md").is_file()
+
+
+def test_pruning_keeps_manual_copies(vault: Path) -> None:
+    manual = backups.create()
+    for _ in range(3):
+        backups.create(kind=backups.SCHEDULED)
+    assert backups.prune(1) == 2
+    names = [entry.name for entry in backups.entries()]
+    assert manual.name in names and len(names) == 2
+
+
+def test_names_are_checked(vault: Path) -> None:
+    for name in ("../nexlore.db", "nexlore-x.zip", "restore-pending"):
+        with pytest.raises(backups.BackupError):
+            backups.path_of(name)
+
+
+def test_due_only_at_night_or_a_day_late(vault: Path) -> None:
+    from datetime import datetime, timedelta
+
+    night = datetime(2026, 9, 26, 3, tzinfo=datetime.now().astimezone().tzinfo)
+    assert backups.due("daily", now=night) and not backups.due("daily", now=night.replace(hour=14))
+    assert not backups.due("off", now=night)
+    backups.create(kind=backups.SCHEDULED)
+    assert not backups.due("daily", now=datetime.now().astimezone() + timedelta(hours=2))
+
+
+def test_backup_routes_are_for_the_operator(client: TestClient, vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    assert client.get("/api/backups").status_code == 401
+    assert client.post("/api/backups", json={}).status_code == 401
+    from app.deps import require_operator
+    from app.main import app
+
+    app.dependency_overrides[require_operator] = lambda: "admin"
+    put(vault, "S/a.md", "a")
+    name = client.post("/api/backups", json={"note": "by hand"}).json()["name"]
+    assert client.get("/api/backups").json()[0]["note"] == "by hand"
+    assert client.post(f"/api/backups/{name}/check").json()["usable"] is True
+    restarted: list[bool] = []
+    monkeypatch.setattr(backups, "restart_soon", lambda: restarted.append(True))
+    assert client.post(f"/api/backups/{name}/restore").json()["restarting"] is True and restarted
+    assert client.post("/api/backups/..%2Fx/check").status_code in (404, 422)
+    assert get_settings().data_dir.is_dir()

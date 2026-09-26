@@ -19,15 +19,16 @@ from .config import get_settings
 from .db import SessionLocal, init_db
 from .errors import detail
 from .middleware import RequestContextMiddleware, unhandled_error
-from .routers import about, health
+from .routers import about, health, imports
+from .routers import backups as backups_router
 from .routers import locales as locales_router
 from .routers import logs as logs_router
 from .routers import vault as vault_router
-from .services import locales, logs, settings_service, watcher
+from .services import backups, locales, logs, settings_service, watcher
 
 logger = logging.getLogger("nexlore")
 
-ROUTERS = [health, about, locales_router, logs_router, vault_router]
+ROUTERS = [health, about, locales_router, logs_router, vault_router, imports, backups_router]
 
 
 def _read_log_mode() -> tuple[str, datetime | None]:
@@ -46,6 +47,7 @@ def _write_log_mode(mode: str, until: datetime | None) -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     logs.setup()
+    backups.apply_pending()
     init_db()
     logs.attach_store(_read_log_mode, _write_log_mode)
     logs.apply_stored_mode()
@@ -64,6 +66,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         tasks.append(asyncio.create_task(logs.run_forever(stop)))
         tasks.append(asyncio.create_task(watcher.scan_forever(stop)))
         tasks.append(asyncio.create_task(watcher.watch(stop)))
+        tasks.append(asyncio.create_task(backups.run_forever(stop)))
     logger.info("nexlore %s started vault=%s", __version__, settings.vault_dir)
     try:
         yield

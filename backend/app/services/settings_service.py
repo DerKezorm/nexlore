@@ -12,6 +12,9 @@ from ..models import Setting
 DEFAULTS: dict[str, Any] = {
     "log_mode": "normal",
     "log_mode_until": None,
+    #: off | daily | weekly. Off until the operator decides (M4 brings the switch to the interface).
+    "backup_schedule": "off",
+    "backup_keep": 7,
 }
 
 

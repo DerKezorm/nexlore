@@ -68,8 +68,19 @@ def _sql_literal(value: Any) -> str:
 
 
 def _add_missing_columns() -> None:
-    # TODO(M1): a backup before the first column is added, as in nextrmnl, once backups exist.
     inspector = inspect(engine)
+    missing = [
+        column
+        for table in Base.metadata.sorted_tables
+        if inspector.has_table(table.name)
+        for column in table.columns
+        if column.name not in {existing["name"] for existing in inspector.get_columns(table.name)}
+    ]
+    if missing:
+        # A schema change is the moment a backup is worth most: the way back if the new version goes wrong.
+        from .services import backups
+
+        backups.create(kind=backups.UPDATE, note="before adding columns")
     with engine.begin() as connection:
         for table in Base.metadata.sorted_tables:
             existing = {column["name"] for column in inspector.get_columns(table.name)}

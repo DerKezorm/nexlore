@@ -504,9 +504,9 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats) -> None:
         query = select(File.id, File.path, File.size, File.mtime_ns, File.hash, File.space_id).where(
             File.deleted_at.is_(None)
         )
-        if only is not None:
+        if only is not None and len(only) <= 500:
             query = query.where(File.path.in_(list(only)))
-        known = {row.path: row for row in db.execute(query)}
+        known = {row.path: row for row in db.execute(query) if only is None or row.path in only}
         spaces = {space.id: space.folder for space in db.scalars(select(Space))}
 
     candidates = [
