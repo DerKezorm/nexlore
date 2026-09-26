@@ -194,6 +194,12 @@ function editorLabels(t: (key: string) => string): EditorLabels {
   return {
     placeholder: t('note.editorPlaceholder'),
     suggestions: t('editor.suggestions'),
+    link: t('editor.link'),
+    code: {
+      search: t('editor.code.search'), copy: t('editor.code.copy'), noResult: t('editor.code.noResult'),
+      edit: t('editor.code.edit'), hide: t('editor.code.hide'), preview: t('editor.code.preview'),
+      loading: t('common.loading'),
+    },
     slash: {
       text: s('text'), h1: s('h1'), h2: s('h2'), h3: s('h3'), quote: s('quote'), divider: s('divider'),
       bulletList: s('bulletList'), orderedList: s('orderedList'), taskList: s('taskList'), code: s('code'),

@@ -297,6 +297,15 @@
       "callout": "Callout",
       "wikiLink": "Link to a note",
       "embed": "Embed a note"
+    },
+    "link": "Paste or type a link …",
+    "code": {
+      "search": "Search a language",
+      "copy": "Copy",
+      "noResult": "No such language",
+      "edit": "Edit",
+      "hide": "Hide",
+      "preview": "Preview"
     }
   },
   "properties": {
@@ -317,7 +326,8 @@
     "removeValue": "Remove {{value}}",
     "add": "Add a property",
     "addValue": "Add …",
-    "addValueTo": "Add to {{name}}"
+    "addValueTo": "Add to {{name}}",
+    "duplicate": "This name exists already; the row is not saved until it has a name of its own."
   },
   "compare": {
     "title": "Compare the note with the conflict copy",

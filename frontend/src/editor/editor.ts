@@ -32,6 +32,8 @@ import { linkSuggest, type Suggestion } from './suggest'
 export type EditorLabels = {
   placeholder: string
   suggestions: string
+  link: string
+  code: { search: string; copy: string; noResult: string; edit: string; hide: string; preview: string; loading: string }
   slash: {
     text: string
     h1: string
@@ -115,6 +117,15 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     },
     featureConfigs: {
       [CrepeFeature.Placeholder]: { text: labels.placeholder, mode: 'doc' },
+      [CrepeFeature.LinkTooltip]: { inputPlaceholder: labels.link },
+      [CrepeFeature.CodeMirror]: {
+        searchPlaceholder: labels.code.search,
+        copyText: labels.code.copy,
+        noResultText: labels.code.noResult,
+        previewToggleText: (previewOnly: boolean) => (previewOnly ? labels.code.edit : labels.code.hide),
+        previewLabel: labels.code.preview,
+        previewLoading: labels.code.loading,
+      },
       [CrepeFeature.BlockEdit]: {
         textGroup: {
           label: labels.slash.groupText,

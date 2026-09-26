@@ -297,6 +297,15 @@
       "callout": "Hinweiskasten",
       "wikiLink": "Link auf eine Notiz",
       "embed": "Notiz einbetten"
+    },
+    "link": "Link einfügen oder tippen …",
+    "code": {
+      "search": "Sprache suchen",
+      "copy": "Kopieren",
+      "noResult": "Keine solche Sprache",
+      "edit": "Bearbeiten",
+      "hide": "Ausblenden",
+      "preview": "Vorschau"
     }
   },
   "properties": {
@@ -317,7 +326,8 @@
     "removeValue": "{{value}} entfernen",
     "add": "Eigenschaft hinzufügen",
     "addValue": "Hinzufügen …",
-    "addValueTo": "Zu {{name}} hinzufügen"
+    "addValueTo": "Zu {{name}} hinzufügen",
+    "duplicate": "Diesen Namen gibt es schon; die Zeile wird erst mit einem eigenen Namen gespeichert."
   },
   "compare": {
     "title": "Notiz mit der Konfliktkopie vergleichen",

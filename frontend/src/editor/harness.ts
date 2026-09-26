@@ -13,6 +13,8 @@ import type { LinkHelpers } from './live'
 export const LABELS: EditorLabels = {
   placeholder: 'Write',
   suggestions: 'Notes',
+  link: 'Paste a link',
+  code: { search: 'Search', copy: 'Copy', noResult: 'None', edit: 'Edit', hide: 'Hide', preview: 'Preview', loading: 'Loading' },
   slash: {
     text: 'Text', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3', quote: 'Quote', divider: 'Divider',
     bulletList: 'Bullet list', orderedList: 'Numbered list', taskList: 'Task list', code: 'Code', table: 'Table',

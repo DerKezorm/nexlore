@@ -3,7 +3,7 @@
  * (tags, aliases) as chips, dates with a calendar, yes/no as a box. Folds away. Only what changes is written back
  * (frontmatter.ts); YAML that is not a list of names and values is edited as text.
  */
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { headYaml, readProperties, writeProperties, writeYaml, type Property, type PropertyKind } from '../editor/frontmatter'
@@ -23,13 +23,23 @@ export function Properties({ head, readOnly = false, onChange }: Props) {
   // Rows being edited; a row without a name is not written yet.
   const [draft, setDraft] = useState<Property[] | null>(null)
   const items = draft ?? (parsed.ok ? parsed.items : [])
+  // The head this table wrote last. Another one came from outside (the note was loaded again): the rows follow it,
+  // or the next keystroke would write the old properties over the new ones.
+  const written = useRef(head)
+  useEffect(() => {
+    if (head === written.current) return
+    written.current = head
+    setDraft(null)
+  }, [head])
 
   if (!head && readOnly) return null
 
   const commit = (next: Property[]) => {
     setDraft(next)
     const named = next.filter((item, index) => item.key.trim() && next.findIndex((other) => other.key.trim() === item.key.trim()) === index)
-    onChange(writeProperties(head, named.map((item) => ({ ...item, key: item.key.trim() }))))
+    const nextHead = writeProperties(head, named.map((item) => ({ ...item, key: item.key.trim() })))
+    written.current = nextHead
+    onChange(nextHead)
   }
   const update = (index: number, change: Partial<Property>) => commit(items.map((item, i) => (i === index ? { ...item, ...change } : item)))
 
@@ -65,15 +75,20 @@ export function Properties({ head, readOnly = false, onChange }: Props) {
       </button>
       {open && (
         <div className="space-y-0.5">
-          {items.map((item, index) => (
-            <div key={index} className="group flex items-start gap-2 rounded-lg px-1 py-0.5 hover:bg-ink-850">
+          {items.map((item, index) => {
+            // A second row with a name already taken is not written (it would replace the first): said so.
+            const taken = !!item.key.trim() && items.findIndex((other) => other.key.trim() === item.key.trim()) < index
+            return (
+            <div key={index} className="group flex flex-wrap items-start gap-2 rounded-lg px-1 py-0.5 hover:bg-ink-850">
               <input
                 value={item.key}
                 readOnly={readOnly}
                 placeholder={t('properties.name')}
                 aria-label={t('properties.name')}
+                aria-invalid={taken || undefined}
+                aria-describedby={taken ? `property-taken-${index}` : undefined}
                 onChange={(event) => update(index, { key: event.target.value })}
-                className="h-7 w-36 shrink-0 truncate rounded-md bg-transparent px-1.5 text-sm text-mist-400 outline-none focus:bg-ink-900 focus:text-mist-100"
+                className={'h-7 w-36 shrink-0 truncate rounded-md bg-transparent px-1.5 text-sm outline-none focus:bg-ink-900 focus:text-mist-100 ' + (taken ? 'text-bad-500' : 'text-mist-400')}
               />
               <div className="min-w-0 flex-1">
                 <Value item={item} readOnly={readOnly} onChange={(value) => update(index, { value })} />
@@ -100,8 +115,14 @@ export function Properties({ head, readOnly = false, onChange }: Props) {
                   </button>
                 </div>
               )}
+              {taken && (
+                <p id={`property-taken-${index}`} className="w-full px-1.5 text-xs text-bad-500">
+                  {t('properties.duplicate')}
+                </p>
+              )}
             </div>
-          ))}
+            )
+          })}
           {!readOnly && (
             <button
               type="button"
