@@ -148,3 +148,22 @@ def test_no_directory_means_no_extra_languages(client: TestClient, folder: Path)
         assert client.get("/api/locales/es").status_code == 404
     finally:
         folder.mkdir()
+
+
+def test_a_broken_file_is_warned_about_once_not_on_every_page_load(
+    client: TestClient, folder: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    put(folder, "it.json", b"{broken")
+    with caplog.at_level("WARNING", logger="nexlore.locales"):
+        for _ in range(5):
+            assert client.get("/api/locales").json() == []
+    assert sum("it.json skipped" in record.getMessage() for record in caplog.records) == 1
+
+
+def test_a_repaired_file_shows_up_and_a_removed_one_goes(client: TestClient, folder: Path) -> None:
+    path = put(folder, "it.json", b"{broken")
+    assert client.get("/api/locales").json() == []
+    put(folder, "it.json", {"_meta": {"name": "Italiano"}, "save": "Salva"})
+    assert client.get("/api/locales").json() == [{"code": "it", "name": "Italiano", "keys": 1}]
+    path.unlink()
+    assert client.get("/api/locales").json() == []

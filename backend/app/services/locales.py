@@ -123,24 +123,48 @@ def load(code: str) -> dict[str, Any]:
     return data
 
 
+#: What ``available`` found per file, keyed by name, valid while size and change time stay the same. The list is
+#: asked for on every page load; without this every file would be read in full each time, and a broken one would be
+#: warned about each time.
+_seen: dict[str, tuple[tuple[int, int, int], Locale | None]] = {}
+
+
 def available() -> list[Locale]:
-    """Every usable language file, sorted by code. Broken ones are skipped and logged."""
+    """Every usable language file, sorted by code. Broken ones are skipped and logged once per state of the file."""
     directory = locales_dir()
     if not directory.is_dir():
+        _seen.clear()
         return []
     result: list[Locale] = []
     files = sorted(p for p in directory.iterdir() if p.suffix == ".json")
     if len(files) > MAX_FILES:
         logger.warning("Language directory holds %d files, only the first %d are read", len(files), MAX_FILES)
         files = files[:MAX_FILES]
+    for name in set(_seen) - {path.name for path in files}:
+        del _seen[name]
     for path in files:
-        code = path.stem
         try:
-            _data, name, keys = _parse(_path_for(code))
-        except FileNotFoundError:
+            stat = path.lstat()
+        except OSError:
             continue
-        except (LocaleError, OSError) as exc:
-            logger.warning("Language file %s skipped: %s", path.name, exc)
-            continue
-        result.append(Locale(code=code, name=name or code, keys=keys))
+        # The inode as well: a file written anew within the same clock tick at the same size is still new.
+        state = (stat.st_size, stat.st_mtime_ns, stat.st_ino)
+        known = _seen.get(path.name)
+        if known is None or known[0] != state:
+            known = (state, _examine(path))
+            _seen[path.name] = known
+        if known[1] is not None:
+            result.append(known[1])
     return result
+
+
+def _examine(path: Path) -> Locale | None:
+    code = path.stem
+    try:
+        _data, name, keys = _parse(_path_for(code))
+    except FileNotFoundError:
+        return None
+    except (LocaleError, OSError) as exc:
+        logger.warning("Language file %s skipped: %s", path.name, exc)
+        return None
+    return Locale(code=code, name=name or code, keys=keys)
