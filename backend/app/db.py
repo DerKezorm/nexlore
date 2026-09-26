@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from .config import get_settings
-from .models import Base
+from .models import FTS_CREATE, Base
 
 logger = logging.getLogger("nexlore.db")
 
@@ -53,6 +53,8 @@ def get_db() -> Iterator[Session]:
 def init_db() -> None:
     Base.metadata.create_all(engine)
     _add_missing_columns()
+    with engine.begin() as connection:
+        connection.execute(text(FTS_CREATE))
 
 
 def _sql_literal(value: Any) -> str:

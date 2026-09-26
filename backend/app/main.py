@@ -22,11 +22,12 @@ from .middleware import RequestContextMiddleware, unhandled_error
 from .routers import about, health
 from .routers import locales as locales_router
 from .routers import logs as logs_router
-from .services import locales, logs, settings_service
+from .routers import vault as vault_router
+from .services import locales, logs, settings_service, watcher
 
 logger = logging.getLogger("nexlore")
 
-ROUTERS = [health, about, locales_router, logs_router]
+ROUTERS = [health, about, locales_router, logs_router, vault_router]
 
 
 def _read_log_mode() -> tuple[str, datetime | None]:
@@ -57,8 +58,12 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         logger.info("Languages added by the operator: %s", ", ".join(locale.code for locale in added))
     stop = asyncio.Event()
     tasks: list[asyncio.Task[None]] = []
+    if settings.unsafe_open_access:
+        logger.warning("Open access is on: anybody who reaches nexlore can read and change every note")
     if not settings.disable_background:
         tasks.append(asyncio.create_task(logs.run_forever(stop)))
+        tasks.append(asyncio.create_task(watcher.scan_forever(stop)))
+        tasks.append(asyncio.create_task(watcher.watch(stop)))
     logger.info("nexlore %s started vault=%s", __version__, settings.vault_dir)
     try:
         yield

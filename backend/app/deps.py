@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
+from .config import get_settings
 from .db import get_db
 from .errors import error
 
@@ -24,3 +25,21 @@ def require_operator() -> str:
 
 
 OperatorAccount = Annotated[str, Depends(require_operator)]
+
+
+#: The name changes go under while the open test access stands in for accounts.
+OPEN_ACCESS_ACCOUNT = "local"
+
+
+def require_account() -> str:
+    """The signed-in account, by name.
+
+    Accounts arrive in M4. Until then only ``NEXLORE_UNSAFE_OPEN_ACCESS`` lets anybody in, as ``local``; without it
+    every note route answers 401. Tests stand in by overriding this dependency.
+    """
+    if get_settings().unsafe_open_access:
+        return OPEN_ACCESS_ACCOUNT
+    raise error("sign_in_required", "Sign in first.", 401)
+
+
+Account = Annotated[str, Depends(require_account)]

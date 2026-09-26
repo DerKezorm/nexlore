@@ -17,26 +17,55 @@ os.environ["NEXLORE_LOCALES_DIR"] = os.path.join(_DATA, "locales")
 os.environ["NEXLORE_LOG_LEVEL"] = ""
 os.environ["NEXLORE_API_DOCS"] = "false"
 
+import shutil  # noqa: E402
+from pathlib import Path  # noqa: E402
+
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import delete  # noqa: E402
+from sqlalchemy import delete, text  # noqa: E402
 
 from app.db import SessionLocal, init_db  # noqa: E402
-from app.deps import require_operator  # noqa: E402
+from app.deps import require_account, require_operator  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import Setting  # noqa: E402
+from app.models import FTS_TABLE, Base, Setting  # noqa: E402
 
 DATA_DIR = _DATA
+VAULT = Path(_DATA) / "vault"
+
+
+def _empty_vault() -> None:
+    # Only ever the test run's own folder, never one a .env might name.
+    assert VAULT.resolve().is_relative_to(Path(_DATA).resolve())
+    if VAULT.exists():
+        shutil.rmtree(VAULT)
+    VAULT.mkdir(parents=True)
 
 
 @pytest.fixture(autouse=True)
 def clean_db() -> Iterator[None]:
     init_db()
     with SessionLocal() as db:
+        for table in reversed(Base.metadata.sorted_tables):
+            db.execute(delete(table))
+        db.execute(text(f"DELETE FROM {FTS_TABLE}"))  # noqa: S608
         db.execute(delete(Setting))
         db.commit()
+    _empty_vault()
     yield
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def vault() -> Path:
+    """The test run's vault folder, empty."""
+    return VAULT
+
+
+@pytest.fixture
+def account(client: TestClient) -> str:
+    """Stands in for a signed-in account until accounts exist (M4)."""
+    app.dependency_overrides[require_account] = lambda: "tester"
+    return "tester"
 
 
 @pytest.fixture

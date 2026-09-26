@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     log_level: str = ""
     #: Serves /api/docs and /api/openapi.json. Off by default.
     api_docs: bool = False
+    #: ⚠️ Until accounts exist (M4): lets anybody who reaches the app read and change the notes, as the account
+    #: "local". For a test server on the own network with invented notes only. Off by default; then every note
+    #: route answers 401.
+    unsafe_open_access: bool = False
+    #: The watcher misses changes on some network shares and container mounts; polling always sees them.
+    watch_polling: bool = False
+    #: Seconds between two full scans of the vault, the safety net under the watcher. 0 turns it off.
+    scan_interval: int = 300
 
     @field_validator("data_dir", "frontend_dist", "vault_dir", "locales_dir")
     @classmethod
