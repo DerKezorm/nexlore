@@ -31,6 +31,7 @@ import posixpath
 import threading
 import time
 import zlib
+from collections import deque
 from collections.abc import Iterable, Iterator
 from concurrent.futures import Executor, ProcessPoolExecutor, ThreadPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
@@ -38,6 +39,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from functools import partial
 from pathlib import Path
+from typing import Self
 
 from sqlalchemy import bindparam, delete, func, insert, select, text, update
 from sqlalchemy.orm import Session
@@ -61,7 +63,61 @@ __all__ = ["MAX_NOTE_BYTES", "decode", "digest", "name_key", "target_key"]
 
 logger = logging.getLogger("nexlore.index")
 
-guard = threading.RLock()
+
+class FairLock:
+    """A re-entrant lock that goes to whoever waited longest. Python's own lets the thread that just let go take it
+    straight back: measured on a test server with 100,000 notes, a save waited 9.5 s while the scan took the lock for
+    one part of its links after the other, each part only 0.3 s long."""
+
+    def __init__(self) -> None:
+        self._state = threading.Condition(threading.Lock())
+        self._owner: int | None = None
+        self._depth = 0
+        self._queue: deque[object] = deque()
+
+    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        me = threading.get_ident()
+        with self._state:
+            if self._owner == me:
+                self._depth += 1
+                return True
+            if self._owner is None and not self._queue:
+                self._owner, self._depth = me, 1
+                return True
+            if not blocking:
+                return False
+            ticket = object()
+            self._queue.append(ticket)
+            deadline = None if timeout < 0 else time.monotonic() + timeout
+            while self._owner is not None or self._queue[0] is not ticket:
+                left = None if deadline is None else deadline - time.monotonic()
+                if left is not None and left <= 0:
+                    self._queue.remove(ticket)
+                    self._state.notify_all()
+                    return False
+                self._state.wait(left)
+            self._queue.popleft()
+            self._owner, self._depth = me, 1
+            return True
+
+    def release(self) -> None:
+        with self._state:
+            if self._owner != threading.get_ident():
+                raise RuntimeError("release of a lock not held")
+            self._depth -= 1
+            if self._depth == 0:
+                self._owner = None
+                self._state.notify_all()
+
+    def __enter__(self) -> Self:
+        self.acquire()
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.release()
+
+
+guard = FairLock()
 #: One scan at a time, the full one and the watcher's alike.
 scan_lock = threading.Lock()
 
@@ -639,6 +695,11 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats, confirm_deletions
     on_disk: dict[str, os.stat_result] = {}
     if only is None:
         space_folders = spaces_on_disk(root)
+        # The spaces first: walking a big vault takes a while, and meanwhile the sidebar shows them already.
+        with guard, SessionLocal() as db:
+            for folder in space_folders:
+                ensure_space(db, folder)
+            db.commit()
         for folder in space_folders:
             for rel, stat in _walk(root / folder, root):
                 on_disk[rel] = stat
@@ -783,7 +844,7 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats, confirm_deletions
                     if bulk:
                         touched.setdefault(file.space_id, set()).add(file.id)
                 if fresh:
-                    # Another scan (the watcher's) may have taken the same new files meanwhile: they are known now.
+                    # The app may have recorded the same new files meanwhile (a note made while this read): known now.
                     taken = set(db.scalars(select(File.path).where(
                         File.deleted_at.is_(None), File.path.in_([item.rel for item in fresh])
                     )))

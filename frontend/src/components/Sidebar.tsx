@@ -37,7 +37,7 @@ type Row =
 
 export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
   const { t } = useTranslation()
-  const { spaces, generation, reload } = useStore()
+  const { spaces, generation, reload, scan } = useStore()
   const navigate = useNavigate()
   const [toggled, setToggled] = useState<Map<string, boolean>>(new Map())
   const [listings, setListings] = useState<Map<string, Listing | 'loading' | 'failed'>>(new Map())
@@ -265,7 +265,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
         )}
       </div>
       <div ref={scroller} className="nn-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3" data-testid="sidebar-tree">
-        {spaces.length === 0 && <p className="px-2 text-sm text-mist-500">{t('sidebar.empty')}</p>}
+        {spaces.length === 0 && <p className="px-2 text-sm text-mist-500">{scan.running ? t('scan.plain') : t('sidebar.empty')}</p>}
         <ul className="relative" style={{ height: rows.out.length * ROW }}>
           {rows.out.slice(first, last).map((row, i) => (
             <li key={row.kind + ':' + row.path} className="absolute right-0 left-0" style={{ top: (first + i) * ROW, height: ROW }}>

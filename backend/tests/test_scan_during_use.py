@@ -140,13 +140,13 @@ class RowsPerTransaction:
         self.current: dict[int, int] = {}
         self.biggest = 0
 
-    def before(self, conn, _cursor, statement, params, _context, many) -> None:  # noqa: ANN001
+    def before(self, conn, _cursor, statement, params, _context, many) -> None:
         if threading.current_thread() is not self.thread:
             return
         if statement.lstrip().upper().startswith(("INSERT", "UPDATE", "DELETE")):
             self.current[id(conn)] = self.current.get(id(conn), 0) + (len(params) if many else 1)
 
-    def commit(self, conn) -> None:  # noqa: ANN001
+    def commit(self, conn) -> None:
         self.biggest = max(self.biggest, self.current.pop(id(conn), 0))
 
 
@@ -210,3 +210,89 @@ def test_a_database_still_busy_answers_503_busy_not_a_server_error(
     assert answer.status_code == 503
     assert answer.json()["detail"]["code"] == "busy"
     assert answer.headers["retry-after"] == "2"
+
+
+def test_the_index_lock_goes_to_whoever_waited_longest() -> None:
+    # The scan takes the lock part after part. With Python's own lock the thread that just let go took it straight
+    # back, and a save waited 9.5 s (a test server, 100,000 notes) although no part held it longer than 0.5 s.
+    lock = index.guard
+    stop = threading.Event()
+    waited: list[float] = []
+
+    def scan_like() -> None:
+        while not stop.is_set():
+            with lock:
+                time.sleep(0.02)
+            # Between two parts the scan works on in Python for a moment (it holds the interpreter): long enough
+            # to take the lock again before a woken waiter runs, shorter than the interpreter's switch interval.
+            until = time.perf_counter() + 0.001
+            while time.perf_counter() < until:
+                pass
+
+    def save_like() -> None:
+        began = time.perf_counter()
+        with lock:
+            waited.append(time.perf_counter() - began)
+
+    scanning = threading.Thread(target=scan_like)
+    scanning.start()
+    try:
+        time.sleep(0.05)
+        for _ in range(5):
+            saving = threading.Thread(target=save_like)
+            saving.start()
+            saving.join(timeout=10)
+    finally:
+        stop.set()
+        scanning.join(timeout=10)
+    assert len(waited) == 5
+    # One part at most (20 ms), with room for a slow machine; never the length of the whole scan.
+    assert max(waited) < 0.5, waited
+
+
+def test_who_lets_go_of_the_index_lock_cannot_take_it_back_while_another_waits() -> None:
+    # The same property without timing: whether the woken waiter or the thread that let go wins depends on the
+    # operating system (Windows handed over, Linux did not). The lock itself must decide.
+    lock = index.guard
+    got = threading.Event()
+
+    def waiter() -> None:
+        with lock:
+            got.set()
+
+    lock.acquire()
+    thread = threading.Thread(target=waiter)
+    thread.start()
+    time.sleep(0.2)  # the waiter is blocked in acquire by now
+    lock.release()
+    took_back = lock.acquire(blocking=False)
+    if took_back:
+        lock.release()
+    thread.join(5)
+    assert got.is_set()
+    assert not took_back
+
+
+def test_the_index_lock_is_reentrant_and_can_be_given_up_waiting() -> None:
+    lock = index.FairLock()
+    with lock, lock:
+        pass
+    taken = threading.Event()
+    release = threading.Event()
+
+    def holder() -> None:
+        with lock:
+            taken.set()
+            release.wait(5)
+
+    thread = threading.Thread(target=holder)
+    thread.start()
+    taken.wait(5)
+    assert lock.acquire(blocking=False) is False
+    assert lock.acquire(timeout=0.05) is False
+    release.set()
+    thread.join(5)
+    assert lock.acquire(timeout=1) is True
+    lock.release()
+    with pytest.raises(RuntimeError):
+        lock.release()

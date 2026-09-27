@@ -7,7 +7,8 @@
     "counted": "Reading the vault ({{done}} of {{total}})",
     "share": "Reading the vault ({{percent}} %)",
     "plain": "Reading the vault …",
-    "hint": "Notes appear as they are read. You can go on working."
+    "hint": "Notes appear as they are read. You can go on working.",
+    "graphEmpty": "The vault is being read. The map fills in as the notes arrive."
   },
   "nav": {
     "graph": "Graph",

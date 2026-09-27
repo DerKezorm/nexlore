@@ -7,7 +7,8 @@
     "counted": "Tresor wird eingelesen ({{done}} von {{total}})",
     "share": "Tresor wird eingelesen ({{percent}} %)",
     "plain": "Tresor wird eingelesen …",
-    "hint": "Notizen erscheinen nach und nach. Du kannst weiterarbeiten."
+    "hint": "Notizen erscheinen nach und nach. Du kannst weiterarbeiten.",
+    "graphEmpty": "Der Tresor wird eingelesen. Die Karte füllt sich, sobald die Notizen da sind."
   },
   "nav": {
     "graph": "Graph",

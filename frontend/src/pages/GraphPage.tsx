@@ -38,7 +38,7 @@ type Chosen = { id: number; path: string; title: string }
 
 export function GraphPage() {
   const { t } = useTranslation()
-  const { spaces, generation, status } = useStore()
+  const { spaces, generation, status, scan } = useStore()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const graph = useRef<GraphHandle>(null)
@@ -388,7 +388,9 @@ export function GraphPage() {
 
         {status === 'ready' && data.building.length === 0 && Object.keys(overviews).length === spaces.length && total === 0 && (
           <div className="absolute inset-0 flex items-center justify-center p-6">
-            <p className="max-w-md rounded-2xl border border-ink-700 bg-ink-900/90 px-5 py-4 text-center text-sm text-mist-400">{t('graph.empty')}</p>
+            <p className="max-w-md rounded-2xl border border-ink-700 bg-ink-900/90 px-5 py-4 text-center text-sm text-mist-400">
+              {scan.running ? t('scan.graphEmpty') : t('graph.empty')}
+            </p>
           </div>
         )}
 
