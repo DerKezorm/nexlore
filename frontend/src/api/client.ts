@@ -434,7 +434,7 @@ export function publicFileUrl(token: string, id: number, download = false): stri
 // --- The graph -------------------------------------------------------------------------------------------------------
 
 export type Cloud = 'folders' | 'tags' | 'topics'
-export type GroupKind = 'space' | 'folder' | 'tag' | 'untagged' | 'topic' | 'recent' | 'unsorted' | 'bucket' | 'unlinked'
+export type GroupKind = 'space' | 'folder' | 'tag' | 'untagged' | 'topic' | 'recent' | 'unsorted' | 'bucket' | 'unlinked' | 'range'
 /** id, parent, kind, name, notes below, daily notes below, x, y, radius, colour (-1 grey), key, zoom level from which
  * its own notes are drawn (their tiles). */
 export type GroupRow = [number, number | null, GroupKind, string, number, number, number, number, number, number, string, number]

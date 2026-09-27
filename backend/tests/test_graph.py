@@ -116,6 +116,22 @@ def test_a_small_folder_is_not_split() -> None:
     assert len(root.children[0].notes) == gl.MAX_ITEMS and root.children[0].children == []
 
 
+def test_thousands_of_subgroups_get_ranges_by_name() -> None:
+    root = gl.Group("space", "space", "S")
+    for n in range(700):
+        root.children.append(gl.Group(f"t:tag{n:03d}", "tag", f"tag{n:03d}", notes=[n]))
+    gl.split(root, [], {}, {})
+    assert len(root.children) <= gl.MAX_ITEMS
+    assert all(child.kind == "range" for child in root.children)
+    assert all(len(child.children) <= gl.MAX_ITEMS // 2 for child in root.children)
+    # In order of the names, and each range named by its first and last.
+    names = [grand.name for child in root.children for grand in child.children]
+    assert names == sorted(names) and len(names) == 700
+    assert root.children[0].name == "ta–ta"
+    result = gl.layout(root, [], {}, seed="s")
+    inside_and_apart(result, root)
+
+
 def test_layout_is_nested_without_overlaps_and_the_same_each_time() -> None:
     root = gl.Group("space", "space", "S")
     for name, count in (("A", 30), ("B", 5), ("C", 120)):

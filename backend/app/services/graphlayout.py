@@ -7,7 +7,8 @@ lets the graph open a folder once it is big enough on screen.
 
 A group with more than ``MAX_ITEMS`` items is first split into buckets by its links (``split``): notes that link to
 each other end up together, named after the note most linked to; notes without a link inside the group go to their
-own bucket. That keeps every circle readable and bounds what the browser has to load when one opens.
+own bucket. A group with more than ``MAX_ITEMS`` subgroups (thousands of tags) gets ranges by name (``A–F``). That
+keeps every circle readable and bounds what the browser has to load when one opens.
 
 The same input and the same previous positions give the same map (``seed``). With previous positions the
 simulation starts from them and runs cooler, so a new layout still looks like the old one.
@@ -148,8 +149,16 @@ def split(
 def _split(group: Group, adjacency: dict[int, dict[int, int]], titles: dict[int, str], degree: dict[int, int]) -> None:
     for child in group.children:
         _split(child, adjacency, titles, degree)
-    if len(group.notes) + len(group.children) <= MAX_ITEMS or len(group.notes) <= MIN_BUCKET:
-        return
+    if len(group.notes) + len(group.children) > MAX_ITEMS and len(group.notes) > MIN_BUCKET:
+        _split_notes(group, adjacency, titles, degree)
+    # Too many circles side by side (thousands of tags, a folder with a thousand subfolders): ranges by name.
+    while len(group.children) > MAX_ITEMS:
+        _ranges(group)
+
+
+def _split_notes(
+    group: Group, adjacency: dict[int, dict[int, int]], titles: dict[int, str], degree: dict[int, int]
+) -> None:
     members = sorted(group.notes)
     inside = set(members)
     linked = [m for m in members if any(o in inside for o in adjacency.get(m, {}))]
@@ -193,32 +202,21 @@ def _split(group: Group, adjacency: dict[int, dict[int, int]], titles: dict[int,
         buckets.append(Group(key=f"{group.key}|u{index}", kind="unlinked", name=name, notes=piece))
     group.notes = []
     group.children = group.children + buckets
-    # Many buckets are items too: split again one level up, grouping buckets by the links between them.
-    if len(group.children) > MAX_ITEMS:
-        _bucket_buckets(group, adjacency, titles, degree)
 
 
-def _bucket_buckets(
-    group: Group, adjacency: dict[int, dict[int, int]], titles: dict[int, str], degree: dict[int, int]
-) -> None:
-    children = group.children
-    size = math.ceil(len(children) / math.ceil(len(children) / (MAX_ITEMS // 2)))
+def _ranges(group: Group) -> None:
+    """Put the children of a crowded group into ranges by name (``A–F``), each at most half ``MAX_ITEMS``."""
+    children = sorted(group.children, key=lambda child: (child.name.casefold(), child.key))
+    count = math.ceil(len(children) / (MAX_ITEMS // 2))
+    size = math.ceil(len(children) / count)
     parts = [children[i : i + size] for i in range(0, len(children), size)]
     group.children = []
-    for index, part in enumerate(parts):
-        notes = [n for child in part for n in _all_notes(child)]
-        anchor = min(notes, key=lambda m: (-degree.get(m, 0), titles.get(m, "").casefold(), m)) if notes else None
+    for part in parts:
+        first = (part[0].name or "?")[:2]
+        last = (part[-1].name or "?")[:2]
         group.children.append(
-            Group(key=f"{group.key}|p{index}", kind="bucket", name=titles.get(anchor, "") if anchor else "",
-                  children=part, anchor=anchor)
+            Group(key=f"{group.key}|r{part[0].key}", kind="range", name=f"{first}–{last}", children=part)
         )
-
-
-def _all_notes(group: Group) -> list[int]:
-    found = list(group.notes)
-    for child in group.children:
-        found.extend(_all_notes(child))
-    return found
 
 
 # --- Layout ----------------------------------------------------------------------------------------------------------
@@ -271,6 +269,15 @@ def _simulate(
         if overlap.any():
             pos += ((overlap / dist * 0.5)[:, :, None] * diff).sum(axis=1) * 0.7
         alpha -= alpha * decay
+    # The forces leave small overlaps where many circles crowd; push those pairs apart until none is left.
+    for _ in range(200):
+        diff = pos[:, None, :] - pos[None, :, :]
+        dist = np.sqrt((diff**2).sum(axis=2)) + 1e-9
+        overlap = np.clip(reach + 0.5 - dist, 0, None)
+        np.fill_diagonal(overlap, 0)
+        if overlap.max() <= 0.5:
+            break
+        pos += ((overlap / dist * 0.5)[:, :, None] * diff).sum(axis=1)
     if not np.isfinite(pos).all():
         raise FloatingPointError("layout diverged")
 

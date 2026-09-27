@@ -166,7 +166,8 @@ class GraphGroup(Base):
     #: ``k:<topic>``, ``recent``, and a bucket ``<parent key>|b<note id>`` or ``<parent key>|u<n>``.
     key: Mapped[str] = mapped_column(String(1100))
     parent_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    #: ``space``, ``folder``, ``tag``, ``untagged``, ``topic``, ``recent``, ``bucket``, ``unlinked``.
+    #: ``space``, ``folder``, ``tag``, ``untagged``, ``topic``, ``recent``, ``unsorted``, ``bucket``, ``unlinked``,
+    #: ``range`` (a part of a crowded group's subgroups, by name).
     kind: Mapped[str] = mapped_column(String(12))
     name: Mapped[str] = mapped_column(String(1024), default="")
     #: The note a bucket is named after; its title is looked up when shown, so a rename shows at once.
