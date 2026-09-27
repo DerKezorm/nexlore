@@ -91,6 +91,11 @@ export function TaskRow({
               {task.due ? '📅' : '⏳'} {nice(day)}
             </span>
           )}
+          {!done && task.mark === '/' && (
+            <span className="rounded-full bg-warn-500/15 px-1.5 text-warn-500" data-testid="in-progress">
+              {t('tasks.inProgress')}
+            </span>
+          )}
           {task.recurrence && <span className="text-mist-500">🔁 {task.recurrence}</span>}
           {done && task.completed && <span className="text-mist-600">✅ {nice(task.completed)}</span>}
           {showNote && (

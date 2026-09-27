@@ -104,6 +104,14 @@ def test_the_overview_filters_and_counts(world: World, vault: Path) -> None:
     assert [item["text"] for item in tasks_of(world.anna, q="late")["items"]] == ["late", "later"]
     assert tasks_of(world.anna, q="100%")["total"] == 0
     assert found["items"][1]["priority"] == 4 and found["items"][0]["due"] == "2026-09-20"
+    assert {item["mark"] for item in found["items"]} == {" "}
+
+
+def test_a_task_in_progress_is_open_and_says_so(world: World, vault: Path) -> None:
+    put(vault, "Private/Work.md", "- [/] half done\n")
+    index.scan()
+    [item] = tasks_of(world.anna)["items"]
+    assert (item["status"], item["mark"]) == ("open", "/")
 
 
 def test_the_overview_shows_only_spaces_one_may_read(world: World, vault: Path) -> None:

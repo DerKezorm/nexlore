@@ -800,7 +800,8 @@
       "3": "medium priority",
       "1": "low priority",
       "0": "lowest priority"
-    }
+    },
+    "inProgress": "in progress"
   },
   "newNote": {
     "title": "New note in “{{folder}}”",

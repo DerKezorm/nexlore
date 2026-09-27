@@ -800,7 +800,8 @@
       "3": "mittlere Priorität",
       "1": "niedrige Priorität",
       "0": "niedrigste Priorität"
-    }
+    },
+    "inProgress": "in Arbeit"
   },
   "newNote": {
     "title": "Neue Notiz in „{{folder}}“",

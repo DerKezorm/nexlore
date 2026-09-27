@@ -515,6 +515,8 @@ export type TaskItem = {
   /** The line as written: ticking it off sends it back, so the server can tell whether it is still there. */
   raw: string
   status: TaskStatus
+  /** The character between the brackets: `/` is "in progress" in the Tasks plugin, still open. */
+  mark: string
   text: string
   due: string | null
   scheduled: string | null

@@ -271,7 +271,8 @@ def list_tasks(
     items = [
         {
             "id": task.id, "path": path, "title": title or paths.stem(path), "line": task.line, "raw": task.raw,
-            "status": task.status, "text": task.text, "due": task.due, "scheduled": task.scheduled, "start": task.start,
+            "status": task.status, "mark": task.mark, "text": task.text, "due": task.due, "scheduled": task.scheduled,
+            "start": task.start,
             "completed": task.completed, "priority": task.priority, "recurrence": task.recurrence,
             "tags": task.tags.split() if task.tags else [],
         }
