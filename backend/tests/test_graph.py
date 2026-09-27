@@ -644,3 +644,17 @@ def test_a_folder_comes_in_pages_and_a_note_knows_its_copies(client: TestClient,
     back = client.get("/api/note/copies", params={"path": "Garden/Flat/Note 03 (conflict 2026-09-27 101010).md"}).json()
     assert back == {"paths": ["Garden/Flat/Note 03.md"]}
     assert client.get("/api/note/copies", params={"path": "Garden/Flat/Note 04.md"}).json() == {"paths": []}
+
+
+def test_a_restored_note_never_takes_a_stray_file_of_the_trash_folder(client: TestClient, garden: Path) -> None:
+    from app.services import vault
+
+    tomatoes = file_id("Garden/Beds/Tomatoes.md")
+    assert client.delete("/api/files", params={"path": "Garden/Beds/Tomatoes.md"}).status_code == 200
+    # A file of the same id left in the trash folder (a file gone for good that Windows held open).
+    stray = vault.trash_file(tomatoes)
+    stray.parent.mkdir(parents=True, exist_ok=True)
+    stray.write_bytes(b"somebody else's picture")
+    entry = next(e for e in client.get("/api/trash").json() if e["path"] == "Garden/Beds/Tomatoes.md")
+    assert client.post(f"/api/trash/{entry['id']}/restore").status_code == 200
+    assert "Tomatoes like [[Basil]]" in (garden / "Garden" / "Beds" / "Tomatoes.md").read_text(encoding="utf-8")

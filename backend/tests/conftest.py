@@ -61,6 +61,9 @@ def clean_db(schema: None) -> Iterator[None]:
         db.execute(delete(Setting))
         db.commit()
     _empty_vault()
+    # The trash folder too: ids are handed out again after a clean database, and a file of an earlier test would
+    # count as the trash of this one.
+    shutil.rmtree(Path(_DATA) / "trash", ignore_errors=True)
     brake.forget()
     graphstore.forget()
     yield

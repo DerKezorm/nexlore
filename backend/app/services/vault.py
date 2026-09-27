@@ -541,8 +541,11 @@ def restore_trash(entry_id: str, *, actor: Actor) -> list[str]:
         keys: dict[int, set[str]] = {}
         for file in files:
             waiting = trash_file(file.id)
-            data = None if waiting.is_file() else _newest_content(db, file)
-            if data is None and not waiting.is_file():
+            # A note comes back from its newest version, never from a file in the trash folder: one left there by a
+            # file gone for good (Windows held it) can carry the same id, and would come back as this note.
+            from_file = not file.is_note and waiting.is_file()
+            data = None if from_file else _newest_content(db, file)
+            if data is None and not from_file:
                 logger.warning("Trash entry without content, skipped file_id=%s", file.id)
                 continue
             target = paths.vault_root().joinpath(*file.path.split("/"))
