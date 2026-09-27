@@ -6,6 +6,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { showModalOnce } from '../lib/dialog'
 
 import { ApiError, vaultApi, type NoteData } from '../api/client'
 import { compareTexts, merge, wordDiff, type Choice, type Part } from '../lib/compare'
@@ -30,7 +31,7 @@ export function ConflictCompare({ notePath, copyPath, onClose, onDone }: Props) 
   const [problem, setProblem] = useState<string | null>(null)
 
   useEffect(() => {
-    dialog.current?.showModal()
+    showModalOnce(dialog.current)
     let alive = true
     Promise.all([vaultApi.note(notePath), vaultApi.note(copyPath)])
       .then(([a, b]) => {

@@ -280,7 +280,9 @@
       "secret_required": "Bitte das Client-Geheimnis eintragen.",
       "url_invalid": "Die Adresse muss mit http:// oder https:// beginnen.",
       "shares_off": "Öffentliche Seiten sind auf diesem Server abgeschaltet.",
-      "password_required": "Diese Seite hat ein Passwort."
+      "password_required": "Diese Seite hat ein Passwort.",
+      "backup_invalid": "Das ist keine nexlore-Sicherung.",
+      "backup_damaged": "Die Sicherung ist beschädigt. Nichts wurde geändert."
     }
   },
   "files": {

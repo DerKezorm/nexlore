@@ -209,3 +209,15 @@ def test_server_secrets_are_encrypted_and_bound_to_the_key(monkeypatch) -> None:
     assert "smtp password" not in sealed and decrypt_secret(sealed) == "smtp password"
     monkeypatch.setattr(get_settings(), "secret_key", "another key entirely")
     assert decrypt_secret(sealed) == ""
+
+
+def test_a_name_is_taken_once_whatever_its_case(client: TestClient, operator: Account) -> None:
+    link = client.post("/api/invites", json={}).json()["link"]
+    token = link.rsplit("/", 1)[1]
+    stranger = TestClient(client.app, headers={"X-Nexlore-Client": "tab-stranger0"})
+    taken = stranger.post(f"/api/invite/{token}", json={"name": "Tester", "password": GOOD})
+    assert taken.status_code == 409 and taken.json()["detail"]["code"] == "name_taken"
+    bad = stranger.post(f"/api/invite/{token}", json={"name": "a b", "password": GOOD})
+    assert bad.status_code == 422 and bad.json()["detail"]["code"] == "invalid_name"
+    # The invitation is still there after both refusals.
+    assert stranger.post(f"/api/invite/{token}", json={"name": "dora", "password": GOOD}).status_code == 200

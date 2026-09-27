@@ -169,34 +169,58 @@ class Page:
     links: list[PublicLink]
 
 
+def _shown_text(text: str, link: mdparse.LinkRef) -> str:
+    """What a link that leads nowhere public shows: its own words, never where it pointed."""
+    written = text[link.start : link.end]
+    if link.kind in (mdparse.WIKI, mdparse.EMBED):
+        inner = written.lstrip("!")[2:-2]
+        label = inner.split("|", 1)[1] if "|" in inner else inner.split("#", 1)[0]
+        return label.strip()
+    close = written.find("](")
+    if close < 0:
+        close = written.find("][")
+    return written.lstrip("!")[1:close - (1 if written.startswith("!") else 0)] if close > 0 else ""
+
+
 def page(db: Session, share: Share, note: File) -> Page:
     data = paths.resolve(note.path).read_bytes()
     text = index.decode(data)
     parsed = mdparse.parse(text)
-    # Front matter and comments stay at home: they are notes to oneself, not part of the page.
-    cut = sorted([(0, parsed.body_start), *parsed.comments]) if parsed.body_start else sorted(parsed.comments)
-    pieces: list[str] = []
-    position = 0
-    for start, end in cut:
-        if start < position:
-            continue
-        pieces.append(text[position:start])
-        position = end
-    pieces.append(text[position:])
-    links: list[PublicLink] = []
-    seen: set[tuple[str, str]] = set()
+    targets: dict[tuple[str, str], File | None] = {}
     for kind, target, target_id in db.execute(
         select(Link.kind, Link.target, Link.target_id).where(Link.source_id == note.id).order_by(Link.id)
     ):
-        if (kind, target) in seen:
-            continue
-        seen.add((kind, target))
         found = db.get(File, target_id) if target_id is not None else None
-        if found is None or found.deleted_at is not None:
-            links.append(PublicLink(kind, target, None, None))
-        elif found.is_note:
-            links.append(PublicLink(kind, target, relative(share, found.path) if inside(share, found.path) else None,
-                                    None))
+        targets.setdefault((kind, target), found if found is not None and found.deleted_at is None else None)
+
+    def public(found: File | None) -> bool:
+        # A note of the share, or a file this note uses (it belongs to the note).
+        return found is not None and (not found.is_note or inside(share, found.path))
+
+    # Front matter and comments stay at home: they are notes to oneself, not part of the page. A link out of the
+    # share becomes its words: the path it pointed to is nobody's business outside.
+    cuts: list[tuple[int, int, str]] = [(start, end, "") for start, end in parsed.comments]
+    if parsed.body_start:
+        cuts.append((0, parsed.body_start, ""))
+    for link in parsed.links:
+        if not public(targets.get((link.kind, link.target))):
+            cuts.append((link.start, link.end, _shown_text(text, link)))
+    pieces: list[str] = []
+    position = 0
+    for start, end, instead in sorted(cuts):
+        if start < position:
+            continue
+        pieces.append(text[position:start])
+        pieces.append(instead)
+        position = end
+    pieces.append(text[position:])
+    links: list[PublicLink] = []
+    for (kind, target), found in targets.items():
+        if not public(found):
+            continue
+        assert found is not None
+        if found.is_note:
+            links.append(PublicLink(kind, target, relative(share, found.path), None))
         else:
             links.append(PublicLink(kind, target, None, found.id))
     return Page(relative(share, note.path), note.title, "".join(pieces), links)

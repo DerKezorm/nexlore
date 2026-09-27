@@ -69,7 +69,12 @@ def space_named(db: Session, name: str) -> Space | None:
 
 def check(db: Session, account: Account, rel: str, need: str) -> Space | None:
     """The right ``need`` in the space of a vault path (or the name of a space), or ``RightsError``."""
-    space = space_named(db, paths.space_of(rel))
+    name = paths.space_of(rel)
+    space = space_named(db, name)
+    if space is None and any(paths.fold(folder) == paths.fold(name) for folder in db.scalars(select(Space.folder))):
+        # The name of a known space in other letters: on Windows and macOS it reaches that space's folder, and as
+        # "a folder the index has not met" it would be the operator's. It is neither.
+        raise RightsError("not_found", "No such file.", 404)
     role = role_in(db, account, space.id if space is not None else None)
     if not at_least(role, READ):
         raise RightsError("not_found", "No such file.", 404)

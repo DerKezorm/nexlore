@@ -306,5 +306,8 @@ def join(token: Token, account: Account, db: DbSession) -> dict[str, Any]:
     own = db.get(AccountRow, account.id)
     assert own is not None
     space = db.get(Space, row.space_id)
-    accounts.redeem(db, row, own)
+    try:
+        accounts.redeem(db, row, own)
+    except AccountError as exc:
+        raise fail(exc) from exc
     return {"space": space.folder if space else None}

@@ -16,7 +16,8 @@ import secrets
 from datetime import timedelta
 from functools import lru_cache
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from ..models import (
@@ -66,14 +67,17 @@ def check_name(db: Session, name: str) -> str:
     return cleaned
 
 
-def create_with_password(db: Session, name: str, password: str, role: str = MEMBER) -> Account:
+def create_with_password(db: Session, name: str, password: str, role: str = MEMBER, *, commit: bool = True) -> Account:
     if role not in ROLES:
         raise ValueError("unknown role")
     account = Account(
         name=check_name(db, name), role=role, sign_in=SIGN_IN_PASSWORD, password_hash=hash_password(password)
     )
     db.add(account)
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     logger.info("Account created name=%s role=%s sign_in=password", account.name, role)
     return account
 
@@ -196,10 +200,28 @@ def expired(invite: Invite) -> bool:
 
 
 def find_invite(db: Session, token: str) -> Invite | None:
+    """A usable invitation: not run out, and into a space only while the one who made it still manages the space
+    (a manager who lost the right must not keep bringing people in with an old link)."""
+    from . import rights
+
     invite = db.scalar(select(Invite).where(Invite.token_hash == hash_token(token)))
     if invite is None or invite.expires_at <= utcnow():
         return None
+    if invite.space_id is not None:
+        creator = db.get(Account, invite.created_by) if invite.created_by else None
+        if creator is None or not rights.at_least(rights.role_in(db, creator, invite.space_id), MANAGE):
+            return None
     return invite
+
+
+def consume(db: Session, invite: Invite) -> bool:
+    """Takes the invitation away, in the open transaction; False when another request took it first. Of two requests
+    at the same moment the database lets exactly one delete the row, so a link is used once whatever the timing."""
+    try:
+        return int(db.execute(delete(Invite).where(Invite.id == invite.id)).rowcount or 0) == 1
+    except OperationalError:
+        db.rollback()
+        return False
 
 
 def grant(db: Session, account: Account, space_id: int, role: str) -> None:
@@ -211,17 +233,19 @@ def grant(db: Session, account: Account, space_id: int, role: str) -> None:
         membership.role = role
 
 
-def redeem(db: Session, invite: Invite, account: Account) -> None:
-    """The invitation is used: its right goes to the account, the invitation goes. Into a space without members
-    (the operator's, from the disk) the one who invited comes along as manager: with a first member the space would
-    otherwise stop being theirs at the very moment they share it."""
+def redeem(db: Session, invite: Invite, account: Account, *, consumed: bool = False) -> None:
+    """The invitation is used: it goes first (``consume``), then its right goes to the account. Into a space without
+    members (the operator's, from the disk) the one who invited comes along as manager: with a first member the
+    space would otherwise stop being theirs at the very moment they share it."""
+    if not consumed and not consume(db, invite):
+        db.rollback()
+        raise AccountError("invite_invalid", "This invitation is not valid any more.", 404)
     if invite.space_id is not None and invite.space_role:
         members = db.scalar(select(func.count()).select_from(Membership).where(Membership.space_id == invite.space_id))
         inviter = db.get(Account, invite.created_by) if invite.created_by else None
         if not members and inviter is not None and inviter.id != account.id:
             grant(db, inviter, invite.space_id, MANAGE)
         grant(db, account, invite.space_id, invite.space_role)
-    db.delete(invite)
     db.commit()
     logger.info("Invite used name=%s space_id=%s", account.name, invite.space_id)
 
@@ -230,10 +254,20 @@ def accept_invite(db: Session, token: str, name: str, password: str) -> Account:
     invite = find_invite(db, token)
     if invite is None:
         raise AccountError("invite_invalid", "This invitation is not valid any more.", 404)
-    account = create_with_password(db, name, password)
+    check_name(db, name)
+    # The invitation goes before the account comes, in one transaction: two requests with the same link at the same
+    # moment make one account, not two.
+    if not consume(db, invite):
+        db.rollback()
+        raise AccountError("invite_invalid", "This invitation is not valid any more.", 404)
+    try:
+        account = create_with_password(db, name, password, commit=False)
+    except AccountError:
+        db.rollback()
+        raise
     if invite.email and not account.email:
         account.email = invite.email
-    redeem(db, invite, account)
+    redeem(db, invite, account, consumed=True)
     return account
 
 

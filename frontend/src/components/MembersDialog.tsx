@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { showModalOnce } from '../lib/dialog'
 
 import { authApi, type Members, type NewInvite, type Role } from '../api/client'
 import { formatDay } from '../lib/markdown'
@@ -32,7 +33,7 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
   const load = useCallback(() => run(async () => setData(await authApi.members(space))), [run, space])
 
   useEffect(() => {
-    dialog.current?.showModal()
+    showModalOnce(dialog.current)
     void load()
   }, [load])
 

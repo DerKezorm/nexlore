@@ -261,14 +261,17 @@ async def callback(
         return _finish_link(db, request, attempt, identity, refuse)
     invite_token = attempt.get("invite")
     invite = accounts.find_invite(db, str(invite_token)) if invite_token else None
-    if invite_token and invite is None:
+    if invite_token and (invite is None or not accounts.consume(db, invite)):
+        db.rollback()
         return refuse("invite_invalid", "the invitation ran out or was used meanwhile")
     auto_create = bool(settings_service.get(db, "oidc_auto_create")) or invite is not None
     account = _resolve(db, identity, auto_create, invited=invite is not None)
     if isinstance(account, str):
+        # Nothing was written for a refusal: the invitation comes back with the rollback.
+        db.rollback()
         return refuse(account, f"no account for this identity: {account} address={oidc.masked(identity.email)}")
     if invite is not None:
-        accounts.redeem(db, invite, account)
+        accounts.redeem(db, invite, account, consumed=True)
 
     response = RedirectResponse(HOME, status_code=303)
     _delete_attempt_cookie(response)

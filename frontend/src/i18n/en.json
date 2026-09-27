@@ -280,7 +280,9 @@
       "secret_required": "Enter the client secret.",
       "url_invalid": "The address must start with http:// or https://.",
       "shares_off": "Public pages are turned off on this server.",
-      "password_required": "This page has a password."
+      "password_required": "This page has a password.",
+      "backup_invalid": "This is not a nexlore backup.",
+      "backup_damaged": "The backup is damaged. Nothing was changed."
     }
   },
   "files": {

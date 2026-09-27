@@ -313,3 +313,102 @@ def test_inviting_into_the_operators_own_space_keeps_the_operator_in(world: Worl
     assert world.operator.get("/api/note", params={"path": "Ops/Runbook.md"}).status_code == 200
     roles = {row["name"]: row["role"] for row in world.operator.get("/api/spaces/Ops/members").json()["members"]}
     assert roles == {"bob": "read", "tester": "manage"}
+
+
+def test_the_trash_of_a_space_one_only_reads_is_not_shown(world: World) -> None:
+    world.carl.post("/api/notes", json={"folder": "Shared", "title": "Scrap"})
+    world.carl.delete("/api/files", params={"path": "Shared/Scrap.md"})
+    assert [entry["path"] for entry in world.carl.get("/api/trash").json()] == ["Shared/Scrap.md"]
+    assert world.bob.get("/api/trash").json() == []
+
+
+def test_the_brake_on_deletions_is_the_operators(world: World, vault: Path) -> None:
+    from app.services import index
+
+    index.status.held_back = {"Ops": 60}
+    try:
+        assert world.operator.get("/api/index").json()["held_back"] == {"Ops": 60}
+        assert world.anna.get("/api/index").status_code == 403
+        refused = world.anna.post("/api/index/scan", params={"confirm_deletions": "true"})
+        assert refused.status_code == 403 and refused.json()["detail"]["code"] == "operator_only"
+    finally:
+        index.status.held_back = {}
+
+
+def test_an_invitation_of_a_manager_who_lost_the_right_is_void(world: World) -> None:
+    world.anna.put("/api/spaces/Shared/members/carl", json={"role": "manage"})
+    link = world.carl.post("/api/spaces/Shared/invites", json={"role": "write"}).json()["link"]
+    token = link.rsplit("/", 1)[1]
+    world.anna.put("/api/spaces/Shared/members/carl", json={"role": "read"})
+    assert world.bob.get(f"/api/invite/{token}").status_code == 404
+    assert world.bob.post(f"/api/invite/{token}/join").status_code == 404
+
+
+def test_an_invitation_is_used_once_even_at_the_same_moment(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    import threading
+
+    from app.services import accounts
+
+    token = world.anna.post("/api/spaces/Shared/invites", json={"role": "manage"}).json()["link"].rsplit("/", 1)[1]
+    both_found = threading.Barrier(2, timeout=10)
+    found = accounts.find_invite
+
+    def find_then_wait(db, token):  # type: ignore[no-untyped-def]
+        invite = found(db, token)
+        # Both requests hold a valid invitation before either uses it: the worst timing, every time.
+        both_found.wait()
+        return invite
+
+    monkeypatch.setattr(accounts, "find_invite", find_then_wait)
+    results: list[str] = []
+
+    def take(name: str) -> None:
+        with SessionLocal() as db:
+            try:
+                accounts.accept_invite(db, token, name, "a long enough password")
+                results.append("ok")
+            except accounts.AccountError as exc:
+                results.append(exc.code)
+
+    threads = [threading.Thread(target=take, args=(name,)) for name in ("racer-one", "racer-two")]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert sorted(results) == ["invite_invalid", "ok"]
+    managers = [row["name"] for row in world.anna.get("/api/spaces/Shared/members").json()["members"]
+                if row["role"] == "manage"]
+    assert len([name for name in managers if name.startswith("racer")]) == 1
+
+
+def test_the_index_tells_members_nothing_about_other_spaces(world: World) -> None:
+    world.operator.post("/api/index/scan")
+    status = world.bob.get("/api/index").json()
+    assert "Private" not in str(status) and "Ops" not in str(status)
+    assert world.bob.post("/api/index/scan").status_code == 403
+
+
+def test_a_foreign_version_or_trash_entry_answers_like_a_missing_one(world: World) -> None:
+    with SessionLocal() as db:
+        version_id = db.scalar(select(Version.id).where(Version.path == "Private/Secret Plan.md"))
+    world.anna.delete("/api/files", params={"path": "Private/Other.md"})
+    entry = world.anna.get("/api/trash").json()[0]["id"]
+    pairs = [
+        (f"/api/versions/{version_id}", f"/api/versions/{version_id + 99999}", "get"),
+        (f"/api/versions/{version_id}/restore", f"/api/versions/{version_id + 99999}/restore", "post"),
+        (f"/api/trash/{entry}/restore", "/api/trash/f-999999/restore", "post"),
+        (f"/api/trash/{entry}", "/api/trash/f-999999", "delete"),
+    ]
+    for foreign, missing, method in pairs:
+        one = getattr(world.bob, method)(foreign)
+        other = getattr(world.bob, method)(missing)
+        assert one.status_code == other.status_code == 404, foreign
+        assert one.json() == other.json(), foreign
+
+
+def test_a_space_name_in_other_letters_is_not_a_way_in(world: World) -> None:
+    for spelled in ("private", "PRIVATE", "pRivate"):
+        foreign = world.operator.get("/api/folder", params={"path": spelled})
+        missing = world.operator.get("/api/folder", params={"path": "Nowhere"})
+        assert foreign.status_code == 404 and foreign.json() == missing.json(), spelled
+        assert world.operator.get("/api/note", params={"path": f"{spelled}/Secret Plan.md"}).status_code == 404

@@ -20,6 +20,7 @@ export function SetupPage() {
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
 
+  if (status === 'loading') return null
   if (status === 'signedIn') return <Navigate to="/" replace />
   if (status === 'signedOut') return <Navigate to="/login" replace />
 

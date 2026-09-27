@@ -637,7 +637,7 @@ export function NotePage() {
               ),
             )}
           </Section>
-          <Versions path={note.path} disabled={editing || !!lockedBy} onRestored={() => void Promise.all([load(note.path), reload()])} />
+          <Versions path={note.path} disabled={editing || !!lockedBy || !mayWrite} onRestored={() => void Promise.all([load(note.path), reload()])} />
         </aside>
       </main>
 

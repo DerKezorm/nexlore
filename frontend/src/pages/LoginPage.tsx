@@ -25,6 +25,7 @@ export function LoginPage() {
     void authApi.methods().then(setMethods, () => setMethods({ password: true, oidc: false, oidc_name: '' }))
   }, [])
 
+  if (status === 'loading') return null
   if (status === 'setup') return <Navigate to="/setup" replace />
   if (status === 'signedIn') return <Navigate to={next} replace />
 

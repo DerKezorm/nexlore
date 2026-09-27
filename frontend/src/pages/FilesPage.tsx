@@ -12,10 +12,12 @@ import { Symbol, type SymbolName } from '../components/Symbol'
 import { errorText } from '../lib/errors'
 import { fileKind, formatSize } from '../lib/files'
 import { fileRoute, formatDate } from '../lib/markdown'
+import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
 
 export function FilesPage() {
   const { t } = useTranslation()
+  const { me } = useAuth()
   return (
     <main className="nn-scroll flex-1 overflow-y-auto">
       <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
@@ -23,7 +25,8 @@ export function FilesPage() {
           <h1 className="text-2xl font-bold tracking-tight">{t('files.title')}</h1>
           <p className="mt-1 text-sm text-mist-500">{t('files.intro')}</p>
         </div>
-        <IndexCard />
+        {/* The index spans every space: the operator's. */}
+        {me?.role === 'operator' && <IndexCard />}
         <AttachmentsCard />
         <TrashCard />
         <ImportCard />

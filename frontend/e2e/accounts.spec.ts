@@ -95,8 +95,8 @@ test('a reader reads and cannot change anything', async ({ page, browser }) => {
   await reader.goto('/note/Library/Catalogue.md')
   await expect(reader.getByText('Old maps and a sea chart.')).toBeVisible()
   await expect(reader.getByRole('button', { name: 'Edit', exact: true })).toBeDisabled()
-  await expect(reader.getByRole('button', { name: 'Rename' })).toHaveCount(0)
-  await expect(reader.getByRole('button', { name: 'Delete' })).toHaveCount(0)
+  await expect(reader.getByRole('button', { name: 'Rename', exact: true })).toHaveCount(0)
+  await expect(reader.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0)
   // The server refuses as well, whatever the page shows.
   const refused = await reader.request.put('/api/note', {
     data: { path: 'Library/Catalogue.md', content: 'mine', base_hash: '0'.repeat(64) },
@@ -113,16 +113,18 @@ test('a public page shows the shared folder and nothing beyond it', async ({ pag
   await page.request.post('/api/notes', { data: { folder: 'Garden/Beds', title: 'Tulips', content: '# Tulips\n\nBack to [[Roses]].\n' }, headers })
   await page.request.post('/api/notes', { data: { folder: 'Garden', title: 'Secret', content: '# Secret\n\nnot for the web\n' }, headers })
 
-  // Closed until the operator opens it.
+  // Closed until the operator opens it. The note first: before it is there, no button is always true.
   await page.goto('/note/Garden/Beds/Roses.md')
-  await expect(page.getByRole('button', { name: 'Share' })).toHaveCount(0)
+  await expect(page.getByText('Prune in March.')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Rename', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Share', exact: true })).toHaveCount(0)
   await page.goto('/settings')
   await page.locator('#shares').getByLabel('Allow public pages').check()
   await expect(page.locator('#shares').getByLabel('Allow public pages')).toBeChecked()
   await page.reload()
 
   await page.goto('/note/Garden/Beds/Roses.md')
-  await page.getByRole('button', { name: 'Share' }).click()
+  await page.getByRole('button', { name: 'Share', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Public page' })
   await dialog.getByLabel('The folder Garden/Beds').check()
   await dialog.getByRole('button', { name: 'Create public link' }).click()

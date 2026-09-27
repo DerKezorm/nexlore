@@ -1,6 +1,7 @@
 /** Putting a note or folder on a public page: the links it has, and a new one with an end date and a password. */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { showModalOnce } from '../lib/dialog'
 
 import { shareApi, type ShareInfo } from '../api/client'
 import { formatDay } from '../lib/markdown'
@@ -22,7 +23,7 @@ export function ShareDialog({ path: note, folder, onClose }: { path: string; fol
 
   const load = useCallback(() => run(async () => setShares(await shareApi.of(path))), [run, path])
   useEffect(() => {
-    dialog.current?.showModal()
+    showModalOnce(dialog.current)
     void load()
   }, [load])
 

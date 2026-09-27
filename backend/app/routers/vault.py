@@ -23,9 +23,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import Integer, cast, func, select, text
 
 from ..db import SessionLocal
-from ..deps import Account, need, readable_spaces
+from ..deps import Account, OperatorAccount, need, readable_spaces
 from ..errors import error
-from ..models import FTS_TABLE, MANAGE, OPERATOR, READ, WRITE, File, Link, Membership, Space, Tag
+from ..models import FTS_TABLE, MANAGE, READ, WRITE, File, Link, Membership, Space, Tag
 from ..services import index, paths, rights, vault
 from ..services.vault import Actor, VaultError
 
@@ -41,6 +41,17 @@ MAX_NOTE_UPLOAD = index.MAX_NOTE_BYTES
 
 def _fail(exc: VaultError) -> Exception:
     return error(exc.code, exc.text, exc.status, **exc.values)
+
+
+def _where(find: Any, key: Any) -> str:
+    """The path of a version or trash entry, for the rights check. A missing one answers exactly like one in a space
+    the caller may not read (``rights.check``), so numbers cannot be counted through."""
+    try:
+        return str(find(key))
+    except VaultError as exc:
+        if exc.code == "not_found":
+            raise error("not_found", "No such file.", 404) from exc
+        raise _fail(exc) from exc
 
 
 def actor(account: Account, x_nexlore_client: Annotated[str | None, Header()] = None) -> Actor:
@@ -609,7 +620,7 @@ def versions(path: PathQuery, account: Account) -> list[VersionOut]:
 @router.get("/versions/{version_id}")
 def version(version_id: int, account: Account) -> dict[str, Any]:
     try:
-        need(account, vault.version_path(version_id), READ)
+        need(account, _where(vault.version_path, version_id), READ)
         row, data = vault.version_content(version_id)
     except VaultError as exc:
         raise _fail(exc) from exc
@@ -619,7 +630,7 @@ def version(version_id: int, account: Account) -> dict[str, Any]:
 @router.post("/versions/{version_id}/restore")
 def restore_version(version_id: int, account: Account, who: ActorDep) -> dict[str, str]:
     try:
-        need(account, vault.version_path(version_id), WRITE)
+        need(account, _where(vault.version_path, version_id), WRITE)
         file = vault.restore_version(version_id, actor=who)
     except VaultError as exc:
         raise _fail(exc) from exc
@@ -647,7 +658,7 @@ def trash(account: Account) -> list[TrashOut]:
 @router.post("/trash/{entry_id}/restore")
 def restore_trash(entry_id: TrashId, account: Account, who: ActorDep) -> dict[str, list[str]]:
     try:
-        need(account, vault.trash_path(entry_id), WRITE)
+        need(account, _where(vault.trash_path, entry_id), WRITE)
         return {"paths": vault.restore_trash(entry_id, actor=who)}
     except VaultError as exc:
         raise _fail(exc) from exc
@@ -656,7 +667,7 @@ def restore_trash(entry_id: TrashId, account: Account, who: ActorDep) -> dict[st
 @router.delete("/trash/{entry_id}")
 def purge_trash(entry_id: TrashId, account: Account) -> dict[str, int]:
     try:
-        need(account, vault.trash_path(entry_id), WRITE)
+        need(account, _where(vault.trash_path, entry_id), WRITE)
         return {"files": vault.purge_trash(entry_id)}
     except VaultError as exc:
         raise _fail(exc) from exc
@@ -666,7 +677,8 @@ def purge_trash(entry_id: TrashId, account: Account) -> dict[str, int]:
 
 
 @router.get("/index")
-def index_status(account: Account) -> dict[str, Any]:
+def index_status(account: OperatorAccount) -> dict[str, Any]:
+    """How far the index is. The operator's: the last pass names every space of the vault."""
     state = index.status
     last = state.last
     return {
@@ -676,16 +688,13 @@ def index_status(account: Account) -> dict[str, Any]:
         "total": state.total,
         "last_at": state.last_at,
         "last": last.__dict__ if last else None,
-        # Which spaces the brake holds back, and the button to confirm, are the operator's.
-        "held_back": state.held_back if account.role == OPERATOR else {},
+        "held_back": state.held_back,
     }
 
 
 @router.post("/index/scan")
-def index_scan(account: Account, confirm_deletions: bool = False) -> dict[str, Any]:
-    """A full pass now. ``confirm_deletions``: files the brake held back were deleted on purpose (operator only)."""
-    if confirm_deletions and account.role != OPERATOR:
-        raise error("operator_only", "Only the operator may do this.", 403)
+def index_scan(_operator: OperatorAccount, confirm_deletions: bool = False) -> dict[str, Any]:
+    """A full pass now, over every space. ``confirm_deletions``: files the brake held back were deleted on purpose."""
     stats = index.scan(confirm_deletions=confirm_deletions)
     return stats.__dict__
 

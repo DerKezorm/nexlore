@@ -156,21 +156,24 @@ def public_state(token: Token, request: Request, db: DbSession) -> dict[str, Any
 
 @router.post("/public/{token}/unlock", status_code=204, summary="Give the password of a public page")
 def unlock(token: Token, payload: UnlockIn, request: Request, response: Response, db: DbSession) -> None:
-    key = "share:" + client_ip(request)
-    wait = brake.wait_seconds(key)
+    share = _share(db, token)
+    if not share.password_hash:
+        return
+    # Counted per share: per sender and in all, so neither many addresses nor a right password for another share
+    # (which anybody with a space can make) take the brake off this one.
+    keys = (f"share:{share.id}:{client_ip(request)}", f"share:{share.id}")
+    wait = max(brake.wait_seconds(key) for key in keys)
     if wait:
         raise HTTPException(
             status_code=429,
             detail=detail("too_many_attempts", "Too many attempts. Try again later.", retry_after=wait),
             headers={"Retry-After": str(wait)},
         )
-    share = _share(db, token)
-    if not share.password_hash:
-        return
     if not shares.check_password(share, payload.password):
-        brake.failed(key)
+        for key in keys:
+            brake.failed(key)
         raise error("wrong_password", "The password is wrong.", 401)
-    brake.succeeded(key)
+    brake.succeeded(keys[0])
     response.set_cookie(
         shares.COOKIE_PREFIX + str(share.id), shares.pass_value(share), httponly=True, samesite="lax",
         secure=secure_cookie(request), path=f"/api/public/{token}",

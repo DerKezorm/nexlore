@@ -120,3 +120,14 @@ def test_the_report_finds_case_twins_and_unportable_names_on_disk(vault: Path) -
 def test_report_of_a_missing_space(client: TestClient, account: str) -> None:
     assert client.get("/api/spaces/Nope/report").status_code == 404
     assert client.get("/api/spaces/..%2Fx/report").status_code in (400, 404)
+
+
+def test_a_member_imports_a_space_of_its_own(client: TestClient, account: str, vault: Path) -> None:
+    from .conftest import make_account, sign_in
+
+    sign_in(client, make_account("member"))
+    assert upload(client, make_zip({"a.md": "# A\n"}), "Theirs").status_code == 201
+    assert [(space["name"], space["role"]) for space in client.get("/api/spaces").json()] == [("Theirs", "manage")]
+    sign_in(client, make_account("boss", "operator"))
+    # It has a member now: the operator does not read it.
+    assert client.get("/api/note", params={"path": "Theirs/a.md"}).status_code == 404

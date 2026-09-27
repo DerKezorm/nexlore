@@ -31,16 +31,18 @@ export function InvitePage() {
     void authApi.methods().then(setMethods, () => setMethods(null))
   }, [token])
 
-  const done = async (space: string | null) => {
+  // The app's own store loads afresh on the way in: this page lies outside it.
+  const done = async () => {
     await refresh()
-    navigate(space ? `/?space=${encodeURIComponent(space)}` : '/', { replace: true })
+    navigate('/', { replace: true })
   }
 
-  const run = async (action: () => Promise<string | null>) => {
+  const run = async (action: () => Promise<unknown>) => {
     setBusy(true)
     setProblem(null)
     try {
-      await done(await action())
+      await action()
+      await done()
     } catch (error) {
       setProblem(errorText(error instanceof ApiError ? error.code : 'internal_error'))
     } finally {

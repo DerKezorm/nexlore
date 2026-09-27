@@ -38,7 +38,7 @@ def site(client: TestClient, account: Account, vault: Path) -> TestClient:
     )
     (garden / "Public" / "Tulips.md").write_text("# Tulips\n\nBack to [[Roses]].\n", encoding="utf-8")
     (garden / "Public" / "Attachments" / "rose.png").write_bytes(PNG)
-    (garden / "Private" / "Diary.md").write_text("# Diary\n\nnothing for the web\n", encoding="utf-8")
+    (garden / "Private" / "Diary.md").write_text("# Diary\n\nnothing for the web ![[photo.png]]\n", encoding="utf-8")
     (garden / "Private" / "photo.png").write_bytes(PNG + b"other")
     client.post("/api/index/scan")
     with SessionLocal() as db:
@@ -85,8 +85,8 @@ def test_a_folder_page_shows_its_notes_and_nothing_else(site: TestClient) -> Non
     assert "Prune in March." in page["content"]
     links = {link["target"]: link for link in page["links"]}
     assert links["Tulips"]["note"] == "Tulips.md"
-    # A link out of the share arrives without a target: the page shows its text only.
-    assert links["Diary"]["note"] is None and links["Diary"]["file"] is None
+    # A link out of the share arrives as its text only, and is not in the list of links.
+    assert "Diary" not in links and "[[Diary]]" not in page["content"] and "Diary" in page["content"]
     picture = visitor.get(f"/api/public/{token_of(made)}/file/{links['rose.png']['file']}")
     assert picture.status_code == 200 and picture.content == PNG
     assert "sandbox" in picture.headers["content-security-policy"]
@@ -113,7 +113,7 @@ def test_a_note_page_is_that_note_alone(site: TestClient) -> None:
     page = visitor.get(f"/api/public/{token_of(made)}/page").json()
     links = {link["target"]: link for link in page["links"]}
     # Tulips lies next to it but is not shared.
-    assert links["Tulips"]["note"] is None
+    assert "Tulips" not in links and "[[Tulips]]" not in page["content"]
     assert visitor.get(f"/api/public/{token_of(made)}/page", params={"path": "Tulips.md"}).status_code == 404
 
 
@@ -190,3 +190,35 @@ def test_the_operator_sees_and_withdraws_every_page(site: TestClient) -> None:
     assert site.delete(f"/api/shares/{made['id']}").status_code == 204
     assert stranger().get(f"/api/public/{token_of(made)}").status_code == 404
     assert gardener.get("/api/admin/shares").status_code == 403
+
+
+def test_a_link_out_of_the_share_leaves_neither_its_path_nor_its_target(site: TestClient, vault: Path) -> None:
+    (vault / "Garden" / "Public" / "Irises.md").write_text(
+        "# Irises\n\nSee [my notes](../Private/Diary.md), [[Diary|the diary]], [[Tulips]] and [[Nowhere]].\n",
+        encoding="utf-8",
+    )
+    site.post("/api/index/scan")
+    page = stranger().get(f"/api/public/{token_of(share(site, 'Garden/Public'))}/page", params={"path": "Irises.md"})
+    body = page.json()
+    assert "Private" not in page.text and "Diary.md" not in page.text
+    assert "See my notes, the diary, [[Tulips]] and Nowhere." in body["content"]
+    assert [link["target"] for link in body["links"]] == ["Tulips"]
+
+
+def test_a_known_password_elsewhere_does_not_reset_the_brake(site: TestClient) -> None:
+    victim = token_of(share(site, "Garden/Public", password="rose garden key"))
+    decoy = token_of(share(site, "Garden/Public/Roses.md", password="my own decoy key"))
+    visitor = stranger()
+    codes = []
+    for _ in range(8):
+        codes.append(visitor.post(f"/api/public/{victim}/unlock", json={"password": "guess"}).status_code)
+        assert visitor.post(f"/api/public/{decoy}/unlock", json={"password": "my own decoy key"}).status_code == 204
+    assert 429 in codes
+
+
+def test_a_page_follows_the_shared_note_itself(site: TestClient) -> None:
+    made = share(site, "Garden/Public/Tulips.md")
+    moved = site.post("/api/move", json={"source": "Garden/Public/Tulips.md", "destination": "Garden/Public/Lilies.md"})
+    assert moved.status_code == 200
+    assert site.get("/api/shares", params={"path": "Garden/Public/Lilies.md"}).json()[0]["id"] == made["id"]
+    assert stranger().get(f"/api/public/{token_of(made)}/page").json()["path"] == "Lilies.md"
