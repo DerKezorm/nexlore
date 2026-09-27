@@ -17,11 +17,13 @@ from sqlalchemy import (
     JSON,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
     LargeBinary,
     String,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -141,6 +143,77 @@ class Tag(Base):
     #: Casefolded; Obsidian treats #Idea and #idea as one tag.
     tag_key: Mapped[str] = mapped_column(String(255), primary_key=True)
     tag: Mapped[str] = mapped_column(String(255))
+    #: Order in the note, front matter first: the first tag is where the note stands in the graph's tag cloud.
+    pos: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class GraphGroup(Base):
+    """A circle of the graph: a space, a folder, a tag, a topic, or a bucket of a crowded one. Worked out by
+    ``services.graphstore`` for each space and each cloud (``folders``, ``tags``, ``topics``); never the truth,
+    always rebuilt from files and links."""
+
+    __tablename__ = "graph_groups"
+    __table_args__ = (UniqueConstraint("space_id", "cloud", "key"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"))
+    cloud: Mapped[str] = mapped_column(String(8))
+    #: Stable within a cloud: ``space``, ``f:<folder path in the space>``, ``t:<tag key>``, ``untagged``,
+    #: ``k:<topic>``, ``recent``, and a bucket ``<parent key>|b<note id>`` or ``<parent key>|u<n>``.
+    key: Mapped[str] = mapped_column(String(1100))
+    parent_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: ``space``, ``folder``, ``tag``, ``untagged``, ``topic``, ``recent``, ``bucket``, ``unlinked``.
+    kind: Mapped[str] = mapped_column(String(12))
+    name: Mapped[str] = mapped_column(String(1024), default="")
+    #: The note a bucket is named after; its title is looked up when shown, so a rename shows at once.
+    anchor_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Notes below, and how many of them are daily notes (a group of only daily notes can be hidden).
+    total: Mapped[int] = mapped_column(Integer, default=0)
+    daily: Mapped[int] = mapped_column(Integer, default=0)
+    x: Mapped[float] = mapped_column(Float, default=0.0)
+    y: Mapped[float] = mapped_column(Float, default=0.0)
+    r: Mapped[float] = mapped_column(Float, default=0.0)
+    rx: Mapped[float] = mapped_column(Float, default=0.0)
+    ry: Mapped[float] = mapped_column(Float, default=0.0)
+    #: Index into the interface's palette; -1 grey.
+    color: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class GraphNode(Base):
+    """Where a note stands in one cloud of the graph, and from which zoom level on it is drawn at all."""
+
+    __tablename__ = "graph_nodes"
+    __table_args__ = (Index("graph_nodes_tile", "space_id", "cloud", "level", "x", "y"),)
+
+    cloud: Mapped[str] = mapped_column(String(8), primary_key=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), primary_key=True)
+    space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"))
+    group_id: Mapped[int] = mapped_column(Integer, index=True)
+    x: Mapped[float] = mapped_column(Float, default=0.0)
+    y: Mapped[float] = mapped_column(Float, default=0.0)
+    r: Mapped[float] = mapped_column(Float, default=5.0)
+    rx: Mapped[float] = mapped_column(Float, default=0.0)
+    ry: Mapped[float] = mapped_column(Float, default=0.0)
+    #: ``floor(log2(zoom))`` at which the note's group starts to open: the browser loads it with that level's tiles.
+    level: Mapped[int] = mapped_column(Integer, default=0)
+    #: What the note was grouped by (its folder, its first tag, its topic): a change moves it.
+    placed: Mapped[str] = mapped_column(String(1100), default="")
+    daily: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class GraphState(Base):
+    """How far the graph of a space and cloud is: built when, changed when, anything waiting."""
+
+    __tablename__ = "graph_state"
+
+    space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"), primary_key=True)
+    cloud: Mapped[str] = mapped_column(String(8), primary_key=True)
+    #: Counts up with every change, so the browser knows its tiles are stale.
+    version: Mapped[int] = mapped_column(Integer, default=0)
+    #: The last full layout (and for topics: the last time they were worked out).
+    built_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: The last change that placed or removed notes without a new layout; the night orders the map again after one.
+    changed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
 
 class Version(Base):

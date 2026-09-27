@@ -1,47 +1,118 @@
-/** Folder tree on the left: spaces, folders, notes, and a new note in the folder one is in. */
-import { useState } from 'react'
+/**
+ * Folder tree on the left: spaces, folders, notes, and a new note in the folder one is in.
+ *
+ * A folder is read from the server when it opens (`/api/folder`), never the whole vault at once, and only the rows
+ * in view are drawn: a folder with ten thousand notes scrolls as quickly as one with ten. Spaces and the folders of
+ * the active note are open unless closed by hand.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
-import { ApiError, vaultApi } from '../api/client'
+import { ApiError, vaultApi, type FolderEntry, type FileEntry } from '../api/client'
+import { folderColor, spaceColor } from '../graph/palette'
 import { errorText } from '../lib/errors'
-import { folderOf, noteUrl, type Cluster } from '../lib/vault'
+import { folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 import { Symbol } from './Symbol'
 
-/** A folder shows this many notes at first; the rest on request, so a folder with thousands stays quick. */
-const FIRST = 200
+const ROW = 28
 
 type Props = {
   activeNote: string | null
-  activeCluster?: string | null
-  onNote: (id: string) => void
-  onCluster?: (id: string) => void
+  activeFolder?: string | null
+  onNote: (path: string) => void
+  onFolder?: (path: string) => void
 }
 
-export function Sidebar({ activeNote, activeCluster, onNote, onCluster }: Props) {
+type Listing = { folders: FolderEntry[]; notes: FileEntry[] }
+
+type Row =
+  | { kind: 'folder'; path: string; name: string; depth: number; count: number; color: string; open: boolean; space: boolean }
+  | { kind: 'note'; path: string; title: string; depth: number }
+  | { kind: 'loading'; path: string; depth: number }
+
+export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
   const { t } = useTranslation()
-  const { vault, spaces, reload } = useStore()
+  const { spaces, generation, reload } = useStore()
   const navigate = useNavigate()
-  // Spaces and the folders of the active note are open unless closed by hand; everything else is closed unless
-  // opened. Worked out on every render, so it holds also for a vault that arrives after the first paint.
   const [toggled, setToggled] = useState<Map<string, boolean>>(new Map())
-  const activeChain = new Set<string>()
-  for (let c = activeNote ? vault.home.get(activeNote) : null; c; c = c.parent) activeChain.add(c.id)
-  const isOpenCluster = (cluster: Cluster) => toggled.get(cluster.id) ?? (cluster.depth === 1 || activeChain.has(cluster.id))
-  const [full, setFull] = useState<Set<string>>(new Set())
+  const [listings, setListings] = useState<Map<string, Listing | 'loading' | 'failed'>>(new Map())
   const [creating, setCreating] = useState(false)
   const [title, setTitle] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
+  const scroller = useRef<HTMLDivElement>(null)
+  const [viewport, setViewport] = useState({ top: 0, height: 600 })
 
-  const target = activeNote ? folderOf(activeNote) : activeCluster || spaces[0]?.name
+  // Everything read before is stale once the vault changed.
+  useEffect(() => setListings(new Map()), [generation])
 
-  const toggle = (id: string) => {
-    const cluster = vault.clusters.get(id)
-    if (!cluster) return
-    const open = isOpenCluster(cluster)
-    setToggled((current) => new Map(current).set(id, !open))
-  }
+  const activeChain = useMemo(() => {
+    const chain = new Set<string>()
+    if (!activeNote) return chain
+    const parts = activeNote.split('/')
+    for (let i = 1; i < parts.length; i++) chain.add(parts.slice(0, i).join('/'))
+    return chain
+  }, [activeNote])
+
+  const isOpen = useCallback(
+    (path: string) => toggled.get(path) ?? (!path.includes('/') || activeChain.has(path)),
+    [toggled, activeChain],
+  )
+
+  const load = useCallback((path: string) => {
+    setListings((current) => new Map(current).set(path, 'loading'))
+    vaultApi
+      .folder(path)
+      .then((listing) =>
+        setListings((current) => new Map(current).set(path, { folders: listing.folders, notes: listing.files.filter((file) => file.is_note) })),
+      )
+      .catch(() => setListings((current) => new Map(current).set(path, 'failed')))
+  }, [])
+
+  // Every open folder that is not read yet.
+  const rows = useMemo(() => {
+    const out: Row[] = []
+    const wanted: string[] = []
+    const walk = (path: string, name: string, depth: number, count: number, color: string, space: boolean) => {
+      const open = isOpen(path)
+      out.push({ kind: 'folder', path, name, depth, count, color, open, space })
+      if (!open) return
+      const listing = listings.get(path)
+      if (listing === undefined || listing === 'loading') {
+        if (listing === undefined) wanted.push(path)
+        out.push({ kind: 'loading', path, depth: depth + 1 })
+        return
+      }
+      if (listing === 'failed') return
+      for (const folder of listing.folders) walk(folder.path, folder.name, depth + 1, folder.notes, folderColor(folder.path, true), false)
+      for (const note of listing.notes) out.push({ kind: 'note', path: note.path, title: note.title || note.name.replace(/\.md$/i, ''), depth: depth + 1 })
+    }
+    spaces.forEach((space, index) => walk(space.name, space.name, 0, space.notes, spaceColor(index), true))
+    return { out, wanted }
+  }, [spaces, listings, isOpen])
+
+  useEffect(() => {
+    for (const path of rows.wanted) load(path)
+  }, [rows.wanted, load])
+
+  useEffect(() => {
+    const element = scroller.current
+    if (!element) return
+    const update = () => setViewport({ top: element.scrollTop, height: element.clientHeight })
+    update()
+    element.addEventListener('scroll', update, { passive: true })
+    const observer = new ResizeObserver(update)
+    observer.observe(element)
+    return () => {
+      element.removeEventListener('scroll', update)
+      observer.disconnect()
+    }
+  }, [])
+
+  const target = activeNote ? folderOf(activeNote) : activeFolder || spaces[0]?.name
+
+  const toggle = (path: string) => setToggled((current) => new Map(current).set(path, !isOpen(path)))
 
   const create = async () => {
     if (!title.trim() || !target) return
@@ -57,108 +128,99 @@ export function Sidebar({ activeNote, activeCluster, onNote, onCluster }: Props)
     }
   }
 
-  const renderCluster = (cluster: Cluster) => {
-    const isOpen = isOpenCluster(cluster)
-    const shown = full.has(cluster.id) ? cluster.notes : cluster.notes.slice(0, FIRST)
-    return (
-      <li key={cluster.id}>
-        <div
+  const first = Math.max(0, Math.floor(viewport.top / ROW) - 10)
+  const last = Math.min(rows.out.length, Math.ceil((viewport.top + viewport.height) / ROW) + 10)
+
+  const renderRow = (row: Row) => {
+    if (row.kind === 'loading') {
+      return <div className="py-1 text-xs text-mist-600" style={{ paddingLeft: row.depth * 12 + 10 }}>{t('common.loading')}</div>
+    }
+    if (row.kind === 'note') {
+      return (
+        <button
+          type="button"
+          onClick={() => onNote(row.path)}
           className={
-            'group flex items-center gap-1 rounded-lg pr-1.5 ' +
-            (activeCluster === cluster.id ? 'bg-accent-500/10 text-accent-400' : 'text-mist-300 hover:bg-ink-850')
+            'flex h-full w-full items-center gap-2 rounded-lg pr-2 text-left text-[13px] ' +
+            (activeNote === row.path ? 'bg-accent-500/15 text-accent-400' : 'text-mist-400 hover:bg-ink-850 hover:text-mist-100')
           }
-          style={{ paddingLeft: (cluster.depth - 1) * 12 + 4 }}
+          style={{ paddingLeft: row.depth * 12 + 10 }}
         >
-          <button type="button" onClick={() => toggle(cluster.id)} className="rounded p-1 text-mist-600 hover:text-mist-100" aria-label={isOpen ? t('sidebar.collapse') : t('sidebar.expand')}>
-            <Symbol name={isOpen ? 'chevronDown' : 'chevronRight'} className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => (onCluster ? onCluster(cluster.id) : toggle(cluster.id))}
-            className={'flex min-w-0 flex-1 items-center gap-2 py-1 text-left ' + (cluster.depth === 1 ? 'text-[13px] font-semibold text-mist-100' : 'text-[13px]')}
-            title={onCluster ? t('sidebar.flyTo') : undefined}
-          >
-            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: cluster.color }} />
-            <span className="truncate">{cluster.name}</span>
-            <span className="ml-auto shrink-0 text-[11px] text-mist-600 tabular-nums">{cluster.total}</span>
-          </button>
-        </div>
-        {isOpen && (
-          <ul>
-            {cluster.children.map(renderCluster)}
-            {shown.map((note) => (
-              <li key={note.id}>
-                <button
-                  type="button"
-                  onClick={() => onNote(note.id)}
-                  className={
-                    'flex w-full items-center gap-2 rounded-lg py-1 pr-2 text-left text-[13px] ' +
-                    (activeNote === note.id ? 'bg-accent-500/15 text-accent-400' : 'text-mist-400 hover:bg-ink-850 hover:text-mist-100')
-                  }
-                  style={{ paddingLeft: cluster.depth * 12 + 10 }}
-                >
-                  <Symbol name="note" className="h-3.5 w-3.5 shrink-0 opacity-60" />
-                  <span className="truncate">{note.title}</span>
-                  {note.lockedBy && <Symbol name="lock" className="ml-auto h-3.5 w-3.5 shrink-0 text-warn-500" />}
-                </button>
-              </li>
-            ))}
-            {shown.length < cluster.notes.length && (
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setFull((current) => new Set(current).add(cluster.id))}
-                  className="w-full rounded-lg py-1 text-left text-xs text-accent-400 hover:bg-ink-850"
-                  style={{ paddingLeft: cluster.depth * 12 + 10 }}
-                >
-                  {t('sidebar.more', { count: cluster.notes.length - shown.length })}
-                </button>
-              </li>
-            )}
-          </ul>
-        )}
-      </li>
+          <Symbol name="note" className="h-3.5 w-3.5 shrink-0 opacity-60" />
+          <span className="truncate">{row.title}</span>
+        </button>
+      )
+    }
+    return (
+      <div
+        className={'group flex h-full items-center gap-1 rounded-lg pr-1.5 ' + (activeFolder === row.path ? 'bg-accent-500/10 text-accent-400' : 'text-mist-300 hover:bg-ink-850')}
+        style={{ paddingLeft: row.depth * 12 + 4 }}
+      >
+        <button type="button" onClick={() => toggle(row.path)} className="rounded p-1 text-mist-600 hover:text-mist-100" aria-label={row.open ? t('sidebar.collapse') : t('sidebar.expand')} aria-expanded={row.open}>
+          <Symbol name={row.open ? 'chevronDown' : 'chevronRight'} className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => (onFolder ? onFolder(row.path) : toggle(row.path))}
+          className={'flex min-w-0 flex-1 items-center gap-2 text-left ' + (row.space ? 'text-[13px] font-semibold text-mist-100' : 'text-[13px]')}
+          title={onFolder ? t('sidebar.flyTo') : undefined}
+        >
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: row.color }} />
+          <span className="truncate">{row.name}</span>
+          <span className="ml-auto shrink-0 text-[11px] text-mist-600 tabular-nums">{row.count}</span>
+        </button>
+      </div>
     )
   }
 
   return (
-    <aside className="nn-scroll hidden w-64 shrink-0 overflow-y-auto border-r border-ink-700/80 bg-ink-950/60 px-2 py-3 md:block">
-      <div className="mb-2 flex items-center justify-between px-2">
-        <span className="text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('sidebar.spaces')}</span>
-        <button
-          type="button"
-          onClick={() => setCreating((value) => !value)}
-          disabled={!target}
-          className="rounded-md p-1 text-mist-500 hover:bg-ink-850 hover:text-mist-100 disabled:opacity-40"
-          title={t('sidebar.newNote')}
-          aria-label={t('sidebar.newNote')}
-        >
-          <Symbol name="plus" className="h-4 w-4" />
-        </button>
+    <aside className="hidden w-64 shrink-0 flex-col border-r border-ink-700/80 bg-ink-950/60 md:flex">
+      <div className="px-2 pt-3">
+        <div className="mb-2 flex items-center justify-between px-2">
+          <span className="text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('sidebar.spaces')}</span>
+          <button
+            type="button"
+            onClick={() => setCreating((value) => !value)}
+            disabled={!target}
+            className="rounded-md p-1 text-mist-500 hover:bg-ink-850 hover:text-mist-100 disabled:opacity-40"
+            title={t('sidebar.newNote')}
+            aria-label={t('sidebar.newNote')}
+          >
+            <Symbol name="plus" className="h-4 w-4" />
+          </button>
+        </div>
+        {creating && target && (
+          <form
+            className="mb-3 px-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void create()
+            }}
+          >
+            <input
+              autoFocus
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              onKeyDown={(event) => event.key === 'Escape' && setCreating(false)}
+              placeholder={t('sidebar.newTitle')}
+              aria-label={t('sidebar.newTitle')}
+              className="h-8 w-full rounded-lg border border-ink-700 bg-ink-850 px-2 text-[13px] outline-none focus:border-accent-500"
+            />
+            <p className="mt-1 truncate text-[11px] text-mist-600">{t('sidebar.newIn', { folder: target })}</p>
+            {problem && <p className="mt-1 text-[11px] text-bad-500">{errorText(problem)}</p>}
+          </form>
+        )}
       </div>
-      {creating && target && (
-        <form
-          className="mb-3 px-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void create()
-          }}
-        >
-          <input
-            autoFocus
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            onKeyDown={(event) => event.key === 'Escape' && setCreating(false)}
-            placeholder={t('sidebar.newTitle')}
-            aria-label={t('sidebar.newTitle')}
-            className="h-8 w-full rounded-lg border border-ink-700 bg-ink-850 px-2 text-[13px] outline-none focus:border-accent-500"
-          />
-          <p className="mt-1 truncate text-[11px] text-mist-600">{t('sidebar.newIn', { folder: target })}</p>
-          {problem && <p className="mt-1 text-[11px] text-bad-500">{errorText(problem)}</p>}
-        </form>
-      )}
-      <ul>{vault.root.children.map(renderCluster)}</ul>
-      {vault.root.children.length === 0 && <p className="px-2 text-sm text-mist-500">{t('sidebar.empty')}</p>}
+      <div ref={scroller} className="nn-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3" data-testid="sidebar-tree">
+        {spaces.length === 0 && <p className="px-2 text-sm text-mist-500">{t('sidebar.empty')}</p>}
+        <ul className="relative" style={{ height: rows.out.length * ROW }}>
+          {rows.out.slice(first, last).map((row, i) => (
+            <li key={row.kind + ':' + row.path} className="absolute right-0 left-0" style={{ top: (first + i) * ROW, height: ROW }}>
+              {renderRow(row)}
+            </li>
+          ))}
+        </ul>
+      </div>
     </aside>
   )
 }

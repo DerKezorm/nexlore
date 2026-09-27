@@ -66,7 +66,29 @@
     "flyToNote": "Hinfliegen",
     "hint": "Scrollen zoomt · Ordner anklicken öffnet ihn · Doppelklick öffnet eine Notiz · Strg K sucht",
     "closeHint": "Hinweis schließen",
-    "empty": "Noch keine Notizen. Lege unter Einstellungen einen Bereich an, hole unter Dateien einen Obsidian-Tresor herein oder lege Markdown-Dateien in den Tresor-Ordner."
+    "empty": "Noch keine Notizen. Lege unter Einstellungen einen Bereich an, hole unter Dateien einen Obsidian-Tresor herein oder lege Markdown-Dateien in den Tresor-Ordner.",
+    "noWebgl": "Der Graph braucht WebGL 2, das dieser Browser nicht bietet (oder abgeschaltet hat).",
+    "clouds": "Gruppieren nach",
+    "cloud": {
+      "folders": "Ordner",
+      "tags": "Tags",
+      "topics": "Themen"
+    },
+    "untagged": "Ohne Tag",
+    "recent": "Neu seit der letzten Berechnung",
+    "unsorted": "Ohne Thema",
+    "around": "um „{{title}}“",
+    "group": "Gruppe",
+    "unlinked": "Ohne Verbindung",
+    "unlinkedRange": "Ohne Verbindung {{range}}",
+    "notes_one": "{{count}} Notiz",
+    "notes_other": "{{count}} Notizen",
+    "topicsWorking": "Themen werden berechnet …",
+    "topicsBuilt": "Themen berechnet {{when}}",
+    "topicsFrom": "aus Titeln, Tags, Text und Links",
+    "topicsAgain": "Neu berechnen",
+    "tagsInfo": "Verschachtelte Tags (#projekt/alpha) als Blase in der Blase. Eine Notiz mit mehreren Tags steht unter ihrem ersten.",
+    "building": "Die Karte von {{spaces}} wird berechnet …"
   },
   "note": {
     "notFound": "Diese Notiz gibt es nicht.",
@@ -131,7 +153,16 @@
     "uploadedDuplicate": "Dieselbe Datei gab es im Bereich schon; sie ist verlinkt.",
     "deleteOwn_one": "Die Datei, die nur diese Notiz nutzt, mit in den Papierkorb",
     "deleteOwn_other": "Die {{count}} Dateien, die nur diese Notiz nutzt, mit in den Papierkorb",
-    "readOnlyRight": "In diesem Bereich darfst du lesen, nicht ändern."
+    "readOnlyRight": "In diesem Bereich darfst du lesen, nicht ändern.",
+    "local": {
+      "title": "Lokaler Graph",
+      "depth": "Tiefe {{depth}}",
+      "depthGroup": "Wie viele Links weit",
+      "inGraph": "Im großen Graph zeigen",
+      "alone": "Noch keine Verbindungen.",
+      "canvas": "Nachbarschaft der Notiz",
+      "limited": "Die nächsten {{count}} Notizen."
+    }
   },
   "settings": {
     "title": "Einstellungen",

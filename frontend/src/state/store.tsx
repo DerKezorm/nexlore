@@ -1,15 +1,14 @@
 /**
- * What every page shares: the spaces, and every note with its links as one vault for the graph, the sidebar and the
- * quick switcher. Loaded from the server at the start and again after a change (`reload`).
+ * What every page shares: the spaces the account may read. Loaded at the start and again after a change (`reload`);
+ * `generation` counts the loads, so a page that shows notes (the sidebar, the graph) knows when to ask again.
  *
- * ⚠️ M1 loads the whole graph of every space. That is fine for a few thousand notes; M5 (WebGL graph) replaces it
- * with a graph that loads by region, and the sidebar then reads folders on demand (`/api/folder`).
+ * No note list and no graph live here: with 100,000 notes that would be megabytes per space. The sidebar reads folders
+ * when they open (`/api/folder`), the quick switcher and the `[[` suggestions ask the server (`/api/notes/find`), and
+ * the graph loads its circles and the part of the map it shows (`graph/`).
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
 import { ApiError, vaultApi, type Space } from '../api/client'
-import { computeLayout, type Layout } from '../graph/layout'
-import { buildVault, vaultFromGraphs, type Vault } from '../lib/vault'
 
 type Status = 'loading' | 'ready' | 'error'
 
@@ -17,32 +16,25 @@ type Store = {
   status: Status
   error: string | null
   spaces: Space[]
-  vault: Vault
-  /** Computed once per load, so the map does not rearrange itself while typing. */
-  layout: Layout
+  /** Counts up with every load. */
+  generation: number
   reload: () => Promise<void>
 }
 
 const StoreContext = createContext<Store | null>(null)
-const EMPTY = buildVault([], [])
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>('loading')
   const [error, setError] = useState<string | null>(null)
   const [spaces, setSpaces] = useState<Space[]>([])
-  const [vault, setVault] = useState<Vault>(EMPTY)
-  const [layout, setLayout] = useState<Layout>(() => computeLayout(EMPTY))
+  const [generation, setGeneration] = useState(0)
   const loading = useRef<Promise<void> | null>(null)
 
   const reload = useCallback(() => {
     loading.current ??= (async () => {
       try {
-        const list = await vaultApi.spaces()
-        const graphs = await Promise.all(list.map((space) => vaultApi.graph(space.name)))
-        const next = vaultFromGraphs(graphs)
-        setSpaces(list)
-        setVault(next)
-        setLayout(computeLayout(next))
+        setSpaces(await vaultApi.spaces())
+        setGeneration((value) => value + 1)
         setError(null)
         setStatus('ready')
       } catch (problem) {
@@ -59,7 +51,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     void reload()
   }, [reload])
 
-  const store = useMemo<Store>(() => ({ status, error, spaces, vault, layout, reload }), [status, error, spaces, vault, layout, reload])
+  const store = useMemo<Store>(() => ({ status, error, spaces, generation, reload }), [status, error, spaces, generation, reload])
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
 }

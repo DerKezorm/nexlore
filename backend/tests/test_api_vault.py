@@ -36,7 +36,9 @@ def test_every_vault_route_needs_an_account(client: TestClient) -> None:
         ("get", "/api/spaces"), ("get", "/api/folder?path=Work"), ("get", "/api/note?path=Work/a.md"),
         ("put", "/api/note"), ("post", "/api/notes"), ("delete", "/api/files?path=Work/a.md"),
         ("post", "/api/move"), ("get", "/api/links?path=Work/a.md"), ("get", "/api/tags"),
-        ("get", "/api/search?q=x"), ("get", "/api/graph?space=Work"), ("post", "/api/locks"),
+        ("get", "/api/search?q=x"), ("get", "/api/graph/overview?space=Work"), ("post", "/api/locks"),
+        ("get", "/api/graph/tiles?space=Work&t=0:0:0"), ("get", "/api/graph/locate?path=Work/a.md"),
+        ("get", "/api/graph/local?path=Work/a.md"), ("post", "/api/graph/topics?space=Work"),
         ("get", "/api/versions?path=Work/a.md"), ("get", "/api/trash"), ("get", "/api/index"),
         ("get", "/api/note/state?path=Work/a.md"),
         ("post", "/api/index/scan"), ("post", "/api/spaces"), ("post", "/api/folders"),
@@ -152,9 +154,12 @@ def test_tags_and_graph(client: TestClient, filled: Path) -> None:
     assert client.get("/api/tags", params={"space": "Work"}).json() == [
         {"tag": "project", "count": 1}, {"tag": "todo", "count": 1},
     ]
-    graph = client.get("/api/graph", params={"space": "Work"}).json()
-    ids = {path: node_id for node_id, path, _title in graph["nodes"]}
-    assert graph["links"] == [[ids["Work/Plan.md"], ids["Work/Ideas/Idea.md"]]]
+    graph = client.get("/api/graph/overview", params={"space": "Work"}).json()
+    assert graph["status"] == "ready"
+    groups = {row[3] or row[2]: row for row in graph["groups"]}
+    assert set(groups) == {"Work", "Ideas"}
+    # One link from the space's own note to the note in Ideas, counted between the two groups.
+    assert graph["links"] == [sorted([groups["Work"][0], groups["Ideas"][0]]) + [1]]
 
 
 def test_locks_belong_to_a_tab(client: TestClient, filled: Path) -> None:

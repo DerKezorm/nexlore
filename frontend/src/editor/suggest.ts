@@ -98,6 +98,13 @@ export function linkSuggest(options: { search: () => (query: string) => Suggesti
         const meta = tr.getMeta(suggestKey)
         if (meta === 'close') return null
         if (typeof meta === 'number' && value) return { ...value, index: meta }
+        // New answers from the server: look again at what is typed, keep the chosen row where it can stay.
+        if (meta === 'refresh') {
+          const next = find(state, options.search())
+          if (!next || closed === next.from) return null
+          const index = value && value.query === next.query ? Math.min(value.index, Math.max(0, next.items.length - 1)) : 0
+          return { ...next, index }
+        }
         if (!tr.docChanged && !tr.selectionSet) return value
         const next = find(state, options.search())
         if (next && closed === next.from) return null
@@ -152,6 +159,11 @@ export function linkSuggest(options: { search: () => (query: string) => Suggesti
 }
 
 /** Search over names: starts-with before contains, shorter first. */
+/** Tells the suggestions to look again (the answers they wait for have come). */
+export function refreshSuggest(view: EditorView) {
+  view.dispatch(view.state.tr.setMeta(suggestKey, 'refresh'))
+}
+
 export function searchNames(candidates: Suggestion[], query: string): Suggestion[] {
   const needle = query.trim().toLocaleLowerCase()
   if (!needle) return candidates.slice(0, LIMIT)

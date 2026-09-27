@@ -1,82 +1,75 @@
 /**
- * The zoomable graph, drawn on a canvas.
+ * The zoomable graph: WebGL for dots, circles and lines (`gl.ts`), a 2D canvas above it for the labels.
  *
- * Semantic zoom: every folder is a circle on the map. As long as it is small on screen, it is drawn as a closed
- * bubble with its name and note count, and links into it are bundled into one line. Once it grows past a size on
- * screen, it opens: the bubble fades, its subfolders and notes fade in. This works the same on every level, so
- * zooming leads from spaces to folders to subfolders to single notes.
+ * Semantic zoom: every group is a circle on the map. As long as it is small on screen, it is a closed bubble with its
+ * name and note count, and links into it are bundled into one line. Once it grows past a size on screen, it opens:
+ * the bubble fades, its subgroups and notes fade in. The same on every level, from spaces to single notes.
+ *
+ * Mouse: drag to move, wheel to zoom, click to choose, double click to open, a click on a closed circle flies into
+ * it. Touch: one finger moves, two fingers zoom (pinch).
  */
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
-import i18n from '../i18n'
-import { ancestry, neighbours, type Cluster, type Vault } from '../lib/vault'
 import { THEME_EVENT } from '../lib/theme'
-import type { Layout } from './layout'
+import { GraphGL, MAX_DOT, MIN_DOT, OPEN_TO, type Camera, type Colors } from './gl'
+import { drawLabels, type LabelItem } from './labels'
+import type { Scene, SceneGroup } from './scene'
 
-/** A folder starts opening at this radius on screen and is fully open at the second. */
-const OPEN_FROM = 80
-const OPEN_TO = 170
-const MAX_ZOOM = 9
-const MAX_DOT = 15
+const MAX_ZOOM = 12
 
 export type GraphHandle = {
-  flyToNote: (id: string) => void
-  flyToCluster: (id: string) => void
   fitAll: () => void
   zoomBy: (factor: number) => void
+  flyToGroup: (id: number) => void
+  /** Flies so that the point is in the middle and its group is open. */
+  flyToPoint: (x: number, y: number, groupRadius: number) => void
+  camera: () => Camera
 }
+
+export type Hover = { kind: 'note' | 'group'; id: number; x: number; y: number }
 
 type Props = {
-  vault: Vault
-  layout: Layout
-  selected: string | null
-  hidden: Set<string>
-  onSelect: (id: string | null) => void
-  onOpen: (id: string) => void
-  onFocus: (cluster: Cluster) => void
+  scene: Scene
+  /** Counts up whenever the scene's data changed. */
+  revision: number
+  hideDaily: boolean
+  selected: number | null
+  onSelect: (id: number | null) => void
+  onOpen: (id: number) => void
+  onCentre: (group: SceneGroup | null) => void
   onHover: (hover: Hover | null) => void
+  /** The camera moved: which part of the map is on screen. */
+  onView: (camera: Camera, width: number, height: number) => void
+  groupLabel: (group: SceneGroup) => string
+  countLabel: (count: number) => string
+  /** Accessible name of the canvas. */
+  label: string
 }
 
-export type Hover = { kind: 'note' | 'cluster'; id: string; x: number; y: number }
-
-type Camera = { x: number; y: number; k: number }
-
-type Colors = { text: string; dim: string; edge: string; accent: string; bg: string; light: boolean }
+function ease(t: number): number {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+}
 
 function smoothstep(a: number, b: number, v: number): number {
   const t = Math.min(1, Math.max(0, (v - a) / (b - a)))
   return t * t * (3 - 2 * t)
 }
 
-/** 0 while a folder is small on screen, 1 once it is big enough to show what is inside. */
-function openness(layout: Layout, cluster: Cluster, k: number): number {
-  if (cluster.depth === 0) return 1
-  return smoothstep(OPEN_FROM, OPEN_TO, layout.clusters.get(cluster.id)!.r * k)
-}
-
-/**
- * The closed bubble fades out while the border of the open folder and its contents fade in, so a folder never looks
- * empty on the way. Labels that would overlap are sorted out further down.
- */
-const shell = (o: number) => 1 - smoothstep(0.15, 0.75, o)
-const ring = (o: number) => smoothstep(0.1, 0.5, o)
-const inner = (o: number) => smoothstep(0.1, 0.6, o)
-
-type Label = { x: number; y: number; w: number; h: number; priority: number; paint: () => void }
-
-function ease(t: number): number {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+function rgb(hex: string): [number, number, number] {
+  const value = parseInt(hex.replace('#', '').slice(0, 6), 16)
+  return [((value >> 16) & 255) / 255, ((value >> 8) & 255) / 255, (value & 255) / 255]
 }
 
 function readColors(): Colors {
   const style = getComputedStyle(document.documentElement)
-  const v = (name: string) => style.getPropertyValue(name).trim()
+  const v = (name: string) => style.getPropertyValue(name).trim() || '#888888'
   return {
     text: v('--color-mist-200'),
     dim: v('--color-mist-500'),
-    edge: v('--color-mist-500'),
-    accent: v('--color-accent-500'),
     bg: v('--color-ink-950'),
+    edge: rgb(v('--color-mist-500')),
+    accent: rgb(v('--color-accent-500')),
     light: document.documentElement.getAttribute('data-theme') === 'light',
   }
 }
@@ -88,312 +81,159 @@ function withAlpha(hex: string, alpha: number): string {
   return hex.length === 7 ? hex + a : hex
 }
 
-export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(
-  { vault, layout, selected, hidden, onSelect, onOpen, onFocus, onHover },
-  ref,
-) {
+export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props, ref) {
+  const { t } = useTranslation()
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const camera = useRef<Camera>({ x: 0, y: 0, k: 0.5 })
+  const overlayRef = useRef<HTMLCanvasElement>(null)
+  const gl = useRef<GraphGL | null>(null)
+  const [unsupported, setUnsupported] = useState(false)
+  const camera = useRef<Camera>({ x: 0, y: 0, k: 0.05 })
   const size = useRef({ w: 800, h: 600 })
   const colors = useRef<Colors | null>(null)
   const hover = useRef<Hover | null>(null)
   const frame = useRef(0)
   const flight = useRef<{ from: Camera; to: Camera; start: number; duration: number } | null>(null)
-  const focusId = useRef<string | null>(null)
-  const props = useRef({ vault, layout, selected, hidden, onSelect, onOpen, onFocus, onHover })
-  props.current = { vault, layout, selected, hidden, onSelect, onOpen, onFocus, onHover }
+  const fitted = useRef(false)
+  const latest = useRef(props)
+  latest.current = props
+  // What the buffers were built from; anything that differs is built again before the next frame.
+  const built = useRef({ revision: -1, band: -1, focus: null as number | null, hide: false, flags: '', points: [] as number[], bubbles: [] as number[] })
+  // Neighbours of the focus and the groups around them: worked out once per focus and data, not per frame.
+  const around = useRef({ key: '', near: new Set<number>(), marked: new Set<number>() })
+  const centreId = useRef<number | null | undefined>(undefined)
+  // Where the mouse is, so what lies under it can be looked at again when the map moved under a still mouse.
+  const mouse = useRef<{ x: number; y: number } | null>(null)
+  const lookAgain = useRef<() => void>(() => undefined)
 
-  const isHidden = useCallback((cluster: Cluster | null | undefined): boolean => {
-    for (let c = cluster ?? null; c; c = c.parent) if (props.current.hidden.has(c.id)) return true
-    return false
-  }, [])
+  const focusId = () => (hover.current?.kind === 'note' ? hover.current.id : latest.current.selected)
 
   const draw = useCallback(() => {
     frame.current = 0
     const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')!
-    const { vault, layout, selected } = props.current
+    const overlay = overlayRef.current
+    const renderer = gl.current
+    if (!canvas || !overlay || !renderer) return
+    const { scene, revision, hideDaily } = latest.current
     const { w, h } = size.current
     const dpr = window.devicePixelRatio || 1
     const col = (colors.current ??= readColors())
 
-    // A running flight moves the camera first.
     const f = flight.current
     if (f) {
-      const t = Math.min(1, (performance.now() - f.start) / f.duration)
-      const e = ease(t)
+      const progress = Math.min(1, (performance.now() - f.start) / f.duration)
+      const e = ease(progress)
       const lk = Math.log(f.from.k) + (Math.log(f.to.k) - Math.log(f.from.k)) * e
       camera.current = { x: f.from.x + (f.to.x - f.from.x) * e, y: f.from.y + (f.to.y - f.from.y) * e, k: Math.exp(lk) }
-      if (t >= 1) flight.current = null
-      else frame.current = requestAnimationFrame(draw)
+      if (progress >= 1) {
+        flight.current = null
+        lookAgain.current()
+      } else frame.current = requestAnimationFrame(draw)
     }
-    const { x: cx, y: cy, k } = camera.current
-    const sx = (x: number) => (x - cx) * k + w / 2
-    const sy = (y: number) => (y - cy) * k + h / 2
+    const cam = camera.current
+    scene.hideDaily = hideDaily
 
+    // Buffers: again only when something they depend on changed.
+    const state = built.current
+    const focus = focusId()
+    const band = scene.band(cam.k)
+    if (state.revision !== revision) {
+      const points = scene.pointBuffer()
+      renderer.points.upload(points.data, points.ids.length)
+      const bubbles = scene.bubbleBuffer()
+      renderer.bubbles.upload(bubbles.data, bubbles.ids.length * 6)
+      state.points = points.ids
+      state.bubbles = bubbles.ids
+      state.flags = ''
+    }
+    if (state.revision !== revision || state.band !== band || state.focus !== focus || state.hide !== hideDaily || state.flags === '') {
+      const lines = scene.lineBuffers(cam.k, focus)
+      renderer.lines.upload(lines.lines, lines.lineCount)
+      renderer.bands.upload(lines.bands, lines.bandCount)
+    }
+    const aroundKey = `${focus}|${revision}`
+    if (around.current.key !== aroundKey) {
+      const near = focus !== null ? scene.neighbours(focus) : new Set<number>()
+      around.current = { key: aroundKey, near, marked: focus !== null ? scene.markedGroups([focus, ...near]) : new Set<number>() }
+    }
+    const near = around.current.near
+    const flagKey = `${focus}|${latest.current.selected}|${hover.current?.kind}:${hover.current?.id}|${hideDaily}|${revision}`
+    if (state.flags !== flagKey) {
+      renderer.points.setFlags(scene.pointFlags(state.points, focus, latest.current.selected, near))
+      renderer.bubbles.setFlags(scene.bubbleFlags(state.bubbles, hover.current?.kind === 'group' ? hover.current.id : null, around.current.marked))
+      state.flags = flagKey
+    }
+    state.revision = revision
+    state.band = band
+    state.focus = focus
+    state.hide = hideDaily
+
+    renderer.render(cam, w, h, dpr, col, focus !== null)
+
+    // Labels.
+    const ctx = overlay.getContext('2d')!
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.clearRect(0, 0, w, h)
-
-    // Openness and visibility of every folder.
-    const open = new Map<string, number>()
-    const vis = new Map<string, number>()
-    const walk = (c: Cluster, parentVis: number) => {
-      const o = openness(layout, c, k)
-      open.set(c.id, o)
-      vis.set(c.id, parentVis)
-      for (const child of c.children) walk(child, parentVis * (c.depth === 0 ? 1 : inner(o)))
-    }
-    walk(vault.root, 1)
-
-    const focusNote = hover.current?.kind === 'note' ? hover.current.id : selected
-    const near = focusNote ? neighbours(vault, focusNote) : null
-    const noteAlpha = (id: string) => {
-      const home = vault.home.get(id)!
-      return vis.get(home.id)! * (home.depth === 0 ? 1 : inner(open.get(home.id)!))
-    }
-
-    // Representative of a note on the current zoom level: the outermost folder that is still closed, or the note.
-    const representative = (id: string): string => {
-      for (const c of ancestry(vault, id)) if (open.get(c.id)! < 0.5) return 'c:' + c.id
-      return 'n:' + id
-    }
-
-    // Which folders contain the focused note or its neighbours; their closed bubbles get a ring.
-    const marked = new Set<string>()
-    if (focusNote && near) {
-      for (const id of [focusNote, ...near]) for (const c of ancestry(vault, id)) marked.add(c.id)
-    }
-
-    // 1. Open folders: faint area and border.
-    const clustersByDepth = [...vault.clusters.values()].filter((c) => c.depth > 0 && !isHidden(c)).sort((a, b) => a.depth - b.depth)
-    for (const c of clustersByDepth) {
-      const a = vis.get(c.id)! * ring(open.get(c.id)!)
-      if (a < 0.01) continue
-      const p = layout.clusters.get(c.id)!
-      const r = p.r * k
-      if (sx(p.x) + r < 0 || sx(p.x) - r > w || sy(p.y) + r < 0 || sy(p.y) - r > h) continue
-      ctx.beginPath()
-      ctx.arc(sx(p.x), sy(p.y), r, 0, Math.PI * 2)
-      ctx.fillStyle = withAlpha(c.color, (col.light ? 0.05 : 0.035) * a)
-      ctx.fill()
-      ctx.lineWidth = c.depth === 1 ? 1.5 : 1
-      ctx.setLineDash(c.depth === 1 ? [] : [4, 5])
-      ctx.strokeStyle = withAlpha(c.color, (c.depth === 1 ? 0.35 : 0.28) * a)
-      ctx.stroke()
-      ctx.setLineDash([])
-    }
-
-    // 2. Links: between notes, or bundled between closed folders.
-    const bundles = new Map<string, { a: string; b: string; count: number; hot: boolean }>()
-    for (const { from, to } of vault.links) {
-      if (isHidden(vault.home.get(from)) || isHidden(vault.home.get(to))) continue
-      const ra = representative(from)
-      const rb = representative(to)
-      if (ra === rb) continue
-      const hot = !!focusNote && (from === focusNote || to === focusNote)
-      if (ra.startsWith('n:') && rb.startsWith('n:')) {
-        const alpha = Math.min(noteAlpha(from), noteAlpha(to))
-        if (alpha < 0.02) continue
-        const pa = layout.notes.get(from)!
-        const pb = layout.notes.get(to)!
-        ctx.beginPath()
-        ctx.moveTo(sx(pa.x), sy(pa.y))
-        ctx.lineTo(sx(pb.x), sy(pb.y))
-        ctx.lineWidth = hot ? 1.8 : 1
-        ctx.strokeStyle = hot ? withAlpha(col.accent, 0.9 * alpha) : withAlpha(col.edge, (focusNote ? 0.08 : 0.22) * alpha)
-        ctx.stroke()
-        continue
-      }
-      const key = ra < rb ? ra + '|' + rb : rb + '|' + ra
-      const bundle = bundles.get(key) ?? { a: ra, b: rb, count: 0, hot: false }
-      bundle.count++
-      bundle.hot ||= hot
-      bundles.set(key, bundle)
-    }
-    const point = (key: string) => {
-      const id = key.slice(2)
-      const p = key.startsWith('c:') ? layout.clusters.get(id)! : layout.notes.get(id)!
-      const alpha = key.startsWith('c:') ? vis.get(id)! * shell(open.get(id)!) : noteAlpha(id)
-      return { x: sx(p.x), y: sy(p.y), r: key.startsWith('c:') ? p.r * k : p.r * k, alpha }
-    }
-    for (const bundle of bundles.values()) {
-      const a = point(bundle.a)
-      const b = point(bundle.b)
-      const alpha = Math.min(a.alpha, b.alpha)
-      if (alpha < 0.02) continue
-      const d = Math.hypot(b.x - a.x, b.y - a.y) || 1
-      const ux = (b.x - a.x) / d
-      const uy = (b.y - a.y) / d
-      if (d < a.r + b.r) continue
-      ctx.beginPath()
-      ctx.moveTo(a.x + ux * a.r, a.y + uy * a.r)
-      ctx.lineTo(b.x - ux * b.r, b.y - uy * b.r)
-      ctx.lineWidth = Math.min(7, 1 + Math.log2(bundle.count) * 1.3)
-      ctx.strokeStyle = bundle.hot ? withAlpha(col.accent, 0.85 * alpha) : withAlpha(col.edge, (focusNote ? 0.1 : 0.28) * alpha)
-      ctx.stroke()
-    }
-
-    // 3. Closed folders as bubbles.
-    const labels: Label[] = []
-    for (const c of clustersByDepth) {
-      const a = vis.get(c.id)! * shell(open.get(c.id)!)
-      if (a < 0.01) continue
-      const p = layout.clusters.get(c.id)!
-      const x = sx(p.x)
-      const y = sy(p.y)
-      const r = p.r * k
+    const sx = (x: number) => (x - cam.x) * cam.k + w / 2
+    const sy = (y: number) => (y - cam.y) * cam.k + h / 2
+    const items: LabelItem[] = []
+    const marked = focus !== null ? around.current.marked : null
+    for (const group of scene.groups.values()) {
+      const alpha = scene.groupAlpha(group, cam.k)
+      const r = group.r * cam.k
+      const x = sx(group.x)
+      const y = sy(group.y)
       if (x + r < 0 || x - r > w || y + r < 0 || y - r > h) continue
-      const isHover = hover.current?.kind === 'cluster' && hover.current.id === c.id
-      const dimmed = focusNote && !marked.has(c.id)
-      ctx.beginPath()
-      ctx.arc(x, y, r, 0, Math.PI * 2)
-      ctx.fillStyle = withAlpha(c.color, (isHover ? 0.3 : 0.18) * a * (dimmed ? 0.5 : 1))
-      ctx.fill()
-      ctx.lineWidth = marked.has(c.id) && focusNote ? 2.5 : 1.5
-      ctx.strokeStyle = marked.has(c.id) && focusNote ? withAlpha(col.accent, a) : withAlpha(c.color, (isHover ? 0.9 : 0.6) * a)
-      ctx.stroke()
-      if (r > 16 && a > 0.05) {
-        const size = Math.max(11, Math.min(20, r * 0.2))
-        const font = `600 ${size}px Inter, "Segoe UI", system-ui, sans-serif`
-        ctx.font = font
-        const width = ctx.measureText(c.name).width
-        const withCount = r > 34
-        labels.push({
-          x: x - width / 2,
-          y: y - size,
-          w: width,
-          h: size * (withCount ? 2.2 : 1.4),
-          priority: 300 + c.depth,
-          paint: () => {
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'middle'
-            ctx.font = font
-            ctx.fillStyle = withAlpha(col.text, a * (dimmed ? 0.5 : 1))
-            ctx.fillText(c.name, x, y - (withCount ? size * 0.35 : 0))
-            if (withCount) {
-              ctx.font = `500 ${Math.max(10, size * 0.62)}px Inter, "Segoe UI", system-ui, sans-serif`
-              ctx.fillStyle = withAlpha(col.dim, a * (dimmed ? 0.5 : 1))
-              ctx.fillText(c.total === 1 ? '1 Notiz' : `${c.total} Notizen`, x, y + size * 0.75)
-            }
-          },
+      const name = latest.current.groupLabel(group)
+      if (alpha.closed > 0.05 && r > 16) {
+        const dimmed = marked && !marked.has(group.id) ? 0.5 : 1
+        const fontSize = Math.max(11, Math.min(20, r * 0.2))
+        items.push({
+          x, y, text: name, sub: r > 34 ? latest.current.countLabel(group.total) : undefined, size: fontSize, weight: 600,
+          color: col.text, subColor: col.dim, alpha: alpha.closed * dimmed, baseline: 'middle',
+          // Bigger bubbles first: their names say more, and a small neighbour gives way.
+          priority: 300 + Math.min(99, r / 10), maxWidth: Math.max(60, r * 1.7),
+        })
+      }
+      const fade = 1 - smoothstep(Math.max(w, h) * 0.9, Math.max(w, h) * 1.6, r)
+      const openAlpha = alpha.open * fade
+      if (openAlpha > 0.02) {
+        const top = y - r + (group.depth === 1 ? 22 : 16)
+        items.push({
+          x, y: top, text: group.depth === 1 ? name.toUpperCase() : name, size: group.depth === 1 ? 15 : 12,
+          weight: group.depth === 1 ? 700 : 600, color: group.color, alpha: openAlpha * 0.95, baseline: 'middle',
+          priority: 400 - group.depth,
         })
       }
     }
-
-    // 4. Notes.
-    for (const note of vault.notes.values()) {
-      if (isHidden(vault.home.get(note.id))) continue
-      let a = noteAlpha(note.id)
-      if (a < 0.01) continue
-      const p = layout.notes.get(note.id)!
-      const x = sx(p.x)
-      const y = sy(p.y)
-      // Dots stop growing at some point, otherwise deep zoom turns them into discs.
-      const r = Math.min(MAX_DOT, Math.max(2, p.r * k))
-      if (x + r < -40 || x - r > w + 40 || y + r < -20 || y - r > h + 20) continue
-      const isFocus = note.id === focusNote
-      const isNear = near?.has(note.id) ?? false
-      if (focusNote && !isFocus && !isNear) a *= 0.25
-      const color = vault.home.get(note.id)!.color
-      ctx.beginPath()
-      ctx.arc(x, y, r, 0, Math.PI * 2)
-      ctx.fillStyle = withAlpha(isFocus ? col.accent : color, a)
-      ctx.fill()
-      if (note.aiDraft) {
-        ctx.lineWidth = 1.5
-        ctx.setLineDash([2, 2.5])
-        ctx.strokeStyle = withAlpha('#c4b5fd', a)
-        ctx.beginPath()
-        ctx.arc(x, y, r + 3, 0, Math.PI * 2)
-        ctx.stroke()
-        ctx.setLineDash([])
-      }
-      if (isFocus || note.id === selected) {
-        ctx.lineWidth = 2
-        ctx.strokeStyle = withAlpha(col.accent, a)
-        ctx.beginPath()
-        ctx.arc(x, y, r + 4, 0, Math.PI * 2)
-        ctx.stroke()
-      }
-      const labelAlpha = isFocus || isNear ? a : a * smoothstep(3.2, 6, p.r * k)
-      if (labelAlpha > 0.03) {
-        const font = `${isFocus ? 600 : 500} ${isFocus ? 13 : 12}px Inter, "Segoe UI", system-ui, sans-serif`
-        ctx.font = font
-        const width = ctx.measureText(note.title).width
-        labels.push({
-          x: x - width / 2 - 2,
-          y: y + r + 4,
-          w: width + 4,
-          h: 16,
-          priority: isFocus ? 1000 : isNear ? 500 : p.r,
-          paint: () => {
-            ctx.textAlign = 'center'
-            ctx.textBaseline = 'top'
-            ctx.font = font
-            ctx.lineWidth = 3
-            ctx.strokeStyle = withAlpha(col.bg, labelAlpha * 0.9)
-            ctx.strokeText(note.title, x, y + r + 5)
-            ctx.fillStyle = withAlpha(isFocus ? col.accent : col.text, labelAlpha)
-            ctx.fillText(note.title, x, y + r + 5)
-          },
-        })
-      }
-    }
-
-    // 5. Labels of open folders, at the top edge of their circle.
-    for (const c of clustersByDepth) {
-      const p = layout.clusters.get(c.id)!
-      const r = p.r * k
-      const a = vis.get(c.id)! * ring(open.get(c.id)!) * (1 - smoothstep(Math.max(w, h) * 0.9, Math.max(w, h) * 1.6, r))
-      if (a < 0.02) continue
-      const x = sx(p.x)
-      const y = sy(p.y) - r + (c.depth === 1 ? 22 : 16)
-      if (x < -200 || x > w + 200 || y < -20 || y > h + 20) continue
-      const font = `${c.depth === 1 ? 700 : 600} ${c.depth === 1 ? 15 : 12}px Inter, "Segoe UI", system-ui, sans-serif`
-      const text = c.depth === 1 ? c.name.toUpperCase() : c.name
-      ctx.font = font
-      const width = ctx.measureText(text).width
-      labels.push({
-        x: x - width / 2,
-        y: y - 9,
-        w: width,
-        h: 18,
-        priority: 400 - c.depth,
-        paint: () => {
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'middle'
-          ctx.font = font
-          ctx.fillStyle = withAlpha(c.color, a * 0.95)
-          ctx.fillText(text, x, y)
-        },
+    const x0 = cam.x - w / 2 / cam.k - 40 / cam.k
+    const x1 = cam.x + w / 2 / cam.k + 40 / cam.k
+    const y0 = cam.y - h / 2 / cam.k - 20 / cam.k
+    const y1 = cam.y + h / 2 / cam.k + 20 / cam.k
+    for (const note of scene.notes.values()) {
+      if (note.x < x0 || note.x > x1 || note.y < y0 || note.y > y1) continue
+      const a = scene.noteAlpha(note, cam.k)
+      if (a < 0.03) continue
+      const dot = Math.min(MAX_DOT, Math.max(MIN_DOT, note.r * cam.k))
+      const isFocus = note.id === focus
+      const isNear = near.has(note.id)
+      const labelAlpha = isFocus || isNear ? a : a * smoothstep(3.2, 6, note.r * cam.k)
+      if (labelAlpha < 0.03) continue
+      items.push({
+        x: sx(note.x), y: sy(note.y) + dot + 5, text: note.title, size: isFocus ? 13 : 12, weight: isFocus ? 600 : 500,
+        color: isFocus ? `rgb(${col.accent.map((c) => Math.round(c * 255)).join(',')})` : col.text,
+        alpha: focus !== null && !isFocus && !isNear ? labelAlpha * 0.5 : labelAlpha, baseline: 'top',
+        priority: isFocus ? 1000 : isNear ? 500 : note.r, halo: true,
       })
     }
+    drawLabels(ctx, items, withAlpha(col.bg, 0.9), w, h)
 
-    // Labels by priority; one that would overlap an already placed label is left out.
-    const placed: Label[] = []
-    for (const label of labels.sort((a, b) => b.priority - a.priority)) {
-      const clash = placed.some((o) => label.x < o.x + o.w && label.x + label.w > o.x && label.y < o.y + o.h && label.y + label.h > o.y)
-      if (clash) continue
-      placed.push(label)
-      label.paint()
+    const centre = scene.centre(cam)
+    if ((centre?.id ?? null) !== centreId.current) {
+      centreId.current = centre?.id ?? null
+      latest.current.onCentre(centre)
     }
-
-    // Which folder the middle of the screen is in, for the breadcrumb.
-    let focus = vault.root
-    for (;;) {
-      const deeper = focus.children.find((child) => {
-        const p = layout.clusters.get(child.id)!
-        return open.get(child.id)! >= 0.5 && Math.hypot(p.x - cx, p.y - cy) < p.r
-      })
-      if (!deeper) break
-      focus = deeper
-    }
-    if (focus.id !== focusId.current) {
-      focusId.current = focus.id
-      props.current.onFocus(focus)
-    }
-  }, [isHidden])
+    latest.current.onView(cam, w, h)
+  }, [])
 
   const redraw = useCallback(() => {
     if (!frame.current) frame.current = requestAnimationFrame(draw)
@@ -401,58 +241,92 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(
 
   // ---- camera ----------------------------------------------------------------------------------------------------
 
+  const fitCamera = useCallback((): Camera => {
+    const { scene } = latest.current
+    const { w, h } = size.current
+    if (!scene.spaces.length) return { x: 0, y: 0, k: 0.05 }
+    let minX = Infinity
+    let maxX = -Infinity
+    let minY = Infinity
+    let maxY = -Infinity
+    for (const space of scene.spaces) {
+      minX = Math.min(minX, space.ox - space.r)
+      maxX = Math.max(maxX, space.ox + space.r)
+      minY = Math.min(minY, space.oy - space.r)
+      maxY = Math.max(maxY, space.oy + space.r)
+    }
+    const k = Math.min((w * 0.94) / (maxX - minX), (h * 0.94) / (maxY - minY))
+    return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, k }
+  }, [])
+
+  const clampZoom = useCallback((k: number) => Math.min(MAX_ZOOM, Math.max(fitCamera().k * 0.5, k)), [fitCamera])
+
   const fly = useCallback(
     (to: Camera, duration = 700) => {
-      flight.current = { from: { ...camera.current }, to, start: performance.now(), duration }
+      flight.current = { from: { ...camera.current }, to: { ...to, k: clampZoom(to.k) }, start: performance.now(), duration }
       redraw()
     },
-    [redraw],
+    [redraw, clampZoom],
   )
-
-  const fitAllCamera = useCallback((): Camera => {
-    const root = props.current.layout.clusters.get('')!
-    const { w, h } = size.current
-    return { x: root.x, y: root.y, k: (Math.min(w, h) * 0.47) / root.r }
-  }, [])
 
   useImperativeHandle(
     ref,
     () => ({
-      fitAll: () => fly(fitAllCamera()),
-      zoomBy: (factor: number) => {
-        const c = camera.current
-        fly({ ...c, k: Math.min(MAX_ZOOM, Math.max(fitAllCamera().k * 0.6, c.k * factor)) }, 280)
-      },
-      flyToCluster: (id: string) => {
-        const p = props.current.layout.clusters.get(id)
-        if (!p) return
-        if (id === '') return fly(fitAllCamera())
+      fitAll: () => fly(fitCamera()),
+      zoomBy: (factor: number) => fly({ ...camera.current, k: camera.current.k * factor }, 280),
+      flyToGroup: (id: number) => {
+        const group = latest.current.scene.groups.get(id)
+        if (!group) return
         const { w, h } = size.current
-        fly({ x: p.x, y: p.y, k: (Math.min(w, h) * 0.44) / p.r })
+        fly({ x: group.x, y: group.y, k: (Math.min(w, h) * 0.44) / group.r })
       },
-      flyToNote: (id: string) => {
-        const p = props.current.layout.notes.get(id)
-        if (!p) return
-        fly({ x: p.x, y: p.y, k: Math.max(camera.current.k, 2.2) }, 900)
+      flyToPoint: (x: number, y: number, groupRadius: number) => {
+        // Far enough in that the group is open and the dot has its label.
+        const k = Math.max(camera.current.k, (OPEN_TO * 1.15) / Math.max(groupRadius, 1), 1.2)
+        fly({ x, y, k }, 900)
       },
+      camera: () => ({ ...camera.current }),
     }),
-    [fly, fitAllCamera],
+    [fly, fitCamera],
   )
 
-  // ---- size, theme, first view -----------------------------------------------------------------------------------
+  // ---- set up: WebGL, size, theme ----------------------------------------------------------------------------------
 
   useEffect(() => {
     const canvas = canvasRef.current!
-    let first = true
+    const overlay = overlayRef.current!
+    const start = () => {
+      try {
+        gl.current = new GraphGL(canvas)
+        built.current = { revision: -1, band: -1, focus: null, hide: false, flags: '', points: [], bubbles: [] }
+        setUnsupported(false)
+      } catch {
+        gl.current = null
+        setUnsupported(true)
+      }
+    }
+    start()
+    const onLost = (event: Event) => {
+      event.preventDefault()
+      gl.current = null
+    }
+    const onRestored = () => {
+      start()
+      redraw()
+    }
+    canvas.addEventListener('webglcontextlost', onLost)
+    canvas.addEventListener('webglcontextrestored', onRestored)
     const observer = new ResizeObserver(() => {
       const rect = canvas.getBoundingClientRect()
       const dpr = window.devicePixelRatio || 1
       size.current = { w: rect.width, h: rect.height }
-      canvas.width = Math.round(rect.width * dpr)
-      canvas.height = Math.round(rect.height * dpr)
-      if (first) {
-        first = false
-        camera.current = fitAllCamera()
+      for (const c of [canvas, overlay]) {
+        c.width = Math.max(1, Math.round(rect.width * dpr))
+        c.height = Math.max(1, Math.round(rect.height * dpr))
+      }
+      if (!fitted.current && latest.current.scene.spaces.length) {
+        fitted.current = true
+        camera.current = fitCamera()
       }
       redraw()
     })
@@ -465,58 +339,32 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(
     return () => {
       observer.disconnect()
       window.removeEventListener(THEME_EVENT, onTheme)
+      canvas.removeEventListener('webglcontextlost', onLost)
+      canvas.removeEventListener('webglcontextrestored', onRestored)
       cancelAnimationFrame(frame.current)
       frame.current = 0
+      gl.current?.destroy()
+      gl.current = null
     }
-  }, [fitAllCamera, redraw])
+  }, [fitCamera, redraw])
 
+  // The first overview: the whole map in view.
   useEffect(() => {
+    if (!fitted.current && props.scene.spaces.length && size.current.w > 1) {
+      fitted.current = true
+      camera.current = fitCamera()
+    }
     redraw()
-  }, [vault, layout, selected, hidden, redraw])
+  }, [props.revision, props.selected, props.hideDaily, props.scene, fitCamera, redraw])
 
-  // ---- pointer ---------------------------------------------------------------------------------------------------
-
-  const hitTest = useCallback((px: number, py: number): Hover | null => {
-    const { vault, layout } = props.current
-    const { x: cx, y: cy, k } = camera.current
-    const { w, h } = size.current
-    const wx = (px - w / 2) / k + cx
-    const wy = (py - h / 2) / k + cy
-    const open = (c: Cluster) => openness(layout, c, k)
-    const visible = (c: Cluster) => {
-      for (let p = c.parent; p && p.depth > 0; p = p.parent) if (open(p) < 0.35) return false
-      return true
-    }
-    let best: Hover | null = null
-    let bestDistance = Infinity
-    for (const note of vault.notes.values()) {
-      const home = vault.home.get(note.id)!
-      if (isHidden(home) || !visible(home) || open(home) < 0.35) continue
-      const p = layout.notes.get(note.id)!
-      const d = Math.hypot(p.x - wx, p.y - wy) * k
-      if (d < Math.max(Math.min(MAX_DOT, p.r * k), 6) + 4 && d < bestDistance) {
-        bestDistance = d
-        best = { kind: 'note', id: note.id, x: (p.x - cx) * k + w / 2, y: (p.y - cy) * k + h / 2 + Math.min(MAX_DOT, Math.max(p.r * k, 2)) }
-      }
-    }
-    if (best) return best
-    let deepest: Cluster | null = null
-    for (const c of vault.clusters.values()) {
-      if (c.depth === 0 || isHidden(c) || !visible(c) || open(c) >= 0.5) continue
-      const p = layout.clusters.get(c.id)!
-      if (Math.hypot(p.x - wx, p.y - wy) < p.r && (!deepest || c.depth > deepest.depth)) deepest = c
-    }
-    if (!deepest) return null
-    const p = layout.clusters.get(deepest.id)!
-    return { kind: 'cluster', id: deepest.id, x: (p.x - cx) * k + w / 2, y: (p.y - cy) * k + h / 2 + p.r * k }
-  }, [isHidden])
+  // ---- pointer -----------------------------------------------------------------------------------------------------
 
   useEffect(() => {
-    const canvas = canvasRef.current!
+    const canvas = overlayRef.current!
     const pointers = new Map<number, { x: number; y: number }>()
     let moved = 0
     let pinch: { distance: number; k: number } | null = null
-    let lastClick = { id: '', time: 0 }
+    let lastClick = { id: -1, time: 0 }
 
     const local = (e: PointerEvent | WheelEvent) => {
       const rect = canvas.getBoundingClientRect()
@@ -528,14 +376,29 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(
       if (current?.id === next?.id && current?.kind === next?.kind) return
       hover.current = next
       canvas.style.cursor = next ? 'pointer' : 'grab'
-      props.current.onHover(next)
+      latest.current.onHover(next)
       redraw()
+    }
+
+    const hitAt = (px: number, py: number): Hover | null => {
+      const { w, h } = size.current
+      const found = latest.current.scene.hit(px, py, camera.current, w, h)
+      if (!found) return null
+      const cam = camera.current
+      const scene = latest.current.scene
+      if (found.kind === 'note') {
+        const note = scene.notes.get(found.id)!
+        const dot = Math.min(MAX_DOT, Math.max(MIN_DOT, note.r * cam.k))
+        return { kind: 'note', id: found.id, x: (note.x - cam.x) * cam.k + w / 2, y: (note.y - cam.y) * cam.k + h / 2 + dot }
+      }
+      const group = scene.groups.get(found.id)!
+      return { kind: 'group', id: found.id, x: (group.x - cam.x) * cam.k + w / 2, y: (group.y - cam.y) * cam.k + h / 2 + group.r * cam.k }
     }
 
     const zoomAt = (px: number, py: number, factor: number) => {
       const c = camera.current
       const { w, h } = size.current
-      const k = Math.min(MAX_ZOOM, Math.max(fitAllCamera().k * 0.6, c.k * factor))
+      const k = clampZoom(c.k * factor)
       const wx = (px - w / 2) / c.k + c.x
       const wy = (py - h / 2) / c.k + c.y
       camera.current = { k, x: wx - (px - w / 2) / k, y: wy - (py - h / 2) / k }
@@ -553,18 +416,23 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(
       }
     }
 
+    lookAgain.current = () => {
+      if (mouse.current && pointers.size === 0) setHover(hitAt(mouse.current.x, mouse.current.y))
+    }
+
     const onMove = (e: PointerEvent) => {
       const p = local(e)
+      if (e.pointerType === 'mouse') mouse.current = p
       const previous = pointers.get(e.pointerId)
       if (!previous) {
-        setHover(hitTest(p.x, p.y))
+        if (e.pointerType === 'mouse') setHover(hitAt(p.x, p.y))
         return
       }
       pointers.set(e.pointerId, p)
       if (pointers.size === 2 && pinch) {
         const [a, b] = [...pointers.values()]
         const distance = Math.hypot(a.x - b.x, a.y - b.y)
-        zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, (pinch.k * (distance / pinch.distance)) / camera.current.k)
+        zoomAt((a.x + b.x) / 2, (a.y + b.y) / 2, (pinch.k * (distance / Math.max(pinch.distance, 1))) / camera.current.k)
         moved += 10
         return
       }
@@ -586,17 +454,17 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(
       pointers.delete(e.pointerId)
       if (pointers.size < 2) pinch = null
       canvas.style.cursor = hover.current ? 'pointer' : 'grab'
-      if (moved > 3 || pointers.size > 0) return
-      const hit = hitTest(p.x, p.y)
-      const { onSelect, onOpen } = props.current
+      if (moved > 3 || pointers.size > 0 || e.type === 'pointercancel') return
+      const hit = hitAt(p.x, p.y)
+      const { onSelect, onOpen, scene } = latest.current
       if (!hit) {
         onSelect(null)
         return
       }
-      if (hit.kind === 'cluster') {
-        const layoutCluster = props.current.layout.clusters.get(hit.id)!
+      if (hit.kind === 'group') {
+        const group = scene.groups.get(hit.id)!
         const { w, h } = size.current
-        fly({ x: layoutCluster.x, y: layoutCluster.y, k: (Math.min(w, h) * 0.44) / layoutCluster.r })
+        fly({ x: group.x, y: group.y, k: (Math.min(w, h) * 0.44) / group.r })
         return
       }
       const now = performance.now()
@@ -609,10 +477,12 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(
       e.preventDefault()
       const p = local(e)
       zoomAt(p.x, p.y, Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0016)))
-      setHover(null)
+      mouse.current = p
+      setHover(hitAt(p.x, p.y))
     }
 
     const onLeave = () => {
+      mouse.current = null
       if (pointers.size === 0) setHover(null)
     }
 
@@ -630,7 +500,26 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(
       canvas.removeEventListener('pointerleave', onLeave)
       canvas.removeEventListener('wheel', onWheel)
     }
-  }, [fitAllCamera, fly, hitTest, redraw])
+  }, [clampZoom, fly, redraw])
 
-  return <canvas ref={canvasRef} className="block h-full w-full touch-none" style={{ cursor: 'grab' }} aria-label={i18n.t('graph.canvas')} />
+  return (
+    <div className="relative h-full w-full">
+      <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-hidden="true" />
+      <canvas
+        ref={overlayRef}
+        className="absolute inset-0 block h-full w-full touch-none"
+        style={{ cursor: 'grab' }}
+        role="img"
+        aria-label={props.label}
+        data-testid="graph-canvas"
+      />
+      {unsupported && (
+        <div className="absolute inset-0 flex items-center justify-center p-6">
+          <p className="max-w-md rounded-2xl border border-ink-700 bg-ink-900/90 px-5 py-4 text-center text-sm text-mist-400">
+            {t('graph.noWebgl')}
+          </p>
+        </div>
+      )}
+    </div>
+  )
 })

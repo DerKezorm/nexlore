@@ -33,6 +33,7 @@ describe('translation keys used in the code', () => {
   it('cover the composed keys', () => {
     const composed = [
       ...['nav.graph', 'nav.notes', 'nav.files', 'nav.settings'],
+      ...['folders', 'tags', 'topics'].map((cloud) => `graph.cloud.${cloud}`),
       ...['read', 'drafts', 'write'].flatMap((mode) => [`settings.mcp.mode.${mode}`, `settings.mcp.mode.${mode}Text`]),
       ...['calendar', 'mermaid', 'kanban', 'templates', 'readingTime'].flatMap((id) => [`settings.plugins.${id}.name`, `settings.plugins.${id}.text`]),
       ...['readNotes', 'readOpen', 'writeOpen', 'writeNew'].map((right) => `settings.plugins.right.${right}`),

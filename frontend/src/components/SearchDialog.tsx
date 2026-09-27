@@ -1,14 +1,14 @@
 /**
- * Quick switcher on Ctrl+K: titles from the loaded vault at once, then the server's full-text search with the
- * matching words marked. The server marks hits with two control characters; they are split here and shown as
+ * Quick switcher on Ctrl+K: notes by title first (the server's `/api/notes/find`, the ones changed last while nothing
+ * is typed), then the server's full-text search with the matching words marked. The server marks hits with two control characters; they are split here and shown as
  * <mark>, never inserted as HTML.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { vaultApi, type Hit } from '../api/client'
+import { vaultApi, type Found, type Hit } from '../api/client'
+import { folderColor } from '../graph/palette'
 import { folderOf } from '../lib/vault'
-import { useStore } from '../state/store'
 import { Symbol } from './Symbol'
 
 const HIT_START = '\u0002'
@@ -46,9 +46,9 @@ function Snippet({ text }: { text: string }) {
 
 export function SearchDialog({ onClose, onPick }: { onClose: () => void; onPick: (id: string) => void }) {
   const { t } = useTranslation()
-  const { vault } = useStore()
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<Hit[]>([])
+  const [titles, setTitles] = useState<Found[]>([])
   const [index, setIndex] = useState(0)
   const input = useRef<HTMLInputElement>(null)
 
@@ -56,17 +56,21 @@ export function SearchDialog({ onClose, onPick }: { onClose: () => void; onPick:
 
   useEffect(() => {
     const q = query.trim()
-    if (!q) {
-      setHits([])
-      return
-    }
     let live = true
-    const timer = window.setTimeout(() => {
-      vaultApi
-        .search(q)
-        .then((found) => live && setHits(found))
-        .catch(() => live && setHits([]))
-    }, 150)
+    const timer = window.setTimeout(
+      () => {
+        vaultApi
+          .find(q, undefined, 8)
+          .then((found) => live && setTitles(found))
+          .catch(() => live && setTitles([]))
+        if (!q) return setHits([])
+        vaultApi
+          .search(q)
+          .then((found) => live && setHits(found))
+          .catch(() => live && setHits([]))
+      },
+      q ? 150 : 0,
+    )
     return () => {
       live = false
       window.clearTimeout(timer)
@@ -74,16 +78,12 @@ export function SearchDialog({ onClose, onPick }: { onClose: () => void; onPick:
   }, [query])
 
   const results = useMemo<Result[]>(() => {
-    const q = query.trim().toLowerCase()
-    const all = [...vault.notes.values()]
-    if (!q) return all.slice(0, 8).map((note) => ({ path: note.id, title: note.title }))
-    const byTitle = all.filter((note) => note.title.toLowerCase().includes(q)).slice(0, 8)
-    const seen = new Set(byTitle.map((note) => note.id))
+    const seen = new Set(titles.map((note) => note.path))
     return [
-      ...byTitle.map((note) => ({ path: note.id, title: note.title })),
+      ...titles.map((note) => ({ path: note.path, title: note.title })),
       ...hits.filter((hit) => !seen.has(hit.path)).map((hit) => ({ path: hit.path, title: hit.title, snippet: hit.snippet })),
     ].slice(0, 20)
-  }, [query, vault, hits])
+  }, [titles, hits])
 
   const pick = (id: string) => {
     onPick(id)
@@ -123,7 +123,7 @@ export function SearchDialog({ onClose, onPick }: { onClose: () => void; onPick:
                 onClick={() => pick(result.path)}
                 className={'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left ' + (i === index ? 'bg-accent-500/12 text-mist-100' : 'text-mist-300')}
               >
-                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: vault.home.get(result.path)?.color ?? 'var(--color-mist-600)' }} />
+                <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: folderColor(result.path) }} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{result.title}</span>
                   <span className="block truncate text-xs text-mist-500">

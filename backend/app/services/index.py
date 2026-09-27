@@ -296,7 +296,9 @@ def _insert_content(
 ) -> None:
     connection = db.connection()
     if analysis.tags:
-        tag_rows = [{"file_id": file_id, "tag_key": key, "tag": tag} for key, tag in analysis.tags]
+        tag_rows = [
+            {"file_id": file_id, "tag_key": key, "tag": tag, "pos": pos} for pos, (key, tag) in enumerate(analysis.tags)
+        ]
         connection.execute(insert(Tag), tag_rows)
     if analysis.links:
         connection.execute(

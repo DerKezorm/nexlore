@@ -106,7 +106,9 @@ export type Outgoing = { kind: string; target: string; subpath: string; line: nu
 export type Backlink = { path: string; title: string; line: number; kind: string }
 export type Links = { outgoing: Outgoing[]; backlinks: Backlink[] }
 export type Hit = { path: string; title: string; snippet: string }
-export type Graph = { nodes: [number, string, string][]; links: [number, number][] }
+export type Found = { path: string; title: string; link?: string | null }
+export type FolderEntry = { name: string; path: string; notes: number }
+export type FileEntry = { id: number; name: string; path: string; title: string; is_note: boolean; size: number; modified: number }
 export type VersionInfo = { id: number; path: string; created_at: string; updated_at: string; source: string; author: string | null; size: number }
 export type TrashEntry = { id: string; path: string; files: number; deleted_at: string; how: string; by: string | null }
 export type Finding = { count: number; examples: string[] }
@@ -200,8 +202,13 @@ export function uploadFile(
 
 export const vaultApi = {
   spaces: () => api<Space[]>('/api/spaces'),
+  /** What lies directly in a space or folder. */
+  folder: (path: string) => api<{ path: string; folders: FolderEntry[]; files: FileEntry[] }>('/api/folder', { query: { path } }),
   createSpace: (name: string) => api<Space>('/api/spaces', { method: 'POST', body: { name } }),
-  graph: (space: string) => api<Graph>('/api/graph', { query: { space } }),
+  /** Notes by title or name, the best first; nothing typed: the ones changed last. */
+  find: (q: string, space?: string, limit = 20) => api<Found[]>('/api/notes/find', { query: { q, space, limit } }),
+  /** The same from a note being edited: its space only, and the link text that reaches each hit from there. */
+  findFrom: (q: string, source: string, limit = 8) => api<Found[]>('/api/notes/find', { query: { q, source, limit } }),
   note: (path: string) => api<NoteData>('/api/note', { query: { path } }),
   /** How the note stands on disk, without its text: for noticing changes made elsewhere. */
   noteState: (path: string) => api<NoteState>('/api/note/state', { query: { path } }),
@@ -238,6 +245,9 @@ export const vaultApi = {
   /** Where a link written in `source` leads, before the note is saved: the server resolves it like a saved one. */
   resolve: (source: string, target: string, kind: 'wiki' | 'embed' | 'md' | 'md_embed') =>
     api<{ path: string | null; is_note: boolean }>('/api/resolve', { query: { source, target, kind } }),
+  /** The same for many wiki links at once (at most 200): each target as written, to a path or null. */
+  resolveMany: (source: string, targets: string[]) =>
+    api<{ found: Record<string, string | null> }>('/api/resolve/many', { query: { source, target: targets, kind: 'wiki' } }),
   importVault: (file: File, name: string) => {
     const form = new FormData()
     form.set('file', file)
@@ -419,4 +429,45 @@ export const shareApi = {
 /** A file a public page uses. */
 export function publicFileUrl(token: string, id: number, download = false): string {
   return `/api/public/${encodeURIComponent(token)}/file/${id}${download ? '?download=1' : ''}`
+}
+
+// --- The graph -------------------------------------------------------------------------------------------------------
+
+export type Cloud = 'folders' | 'tags' | 'topics'
+export type GroupKind = 'space' | 'folder' | 'tag' | 'untagged' | 'topic' | 'recent' | 'unsorted' | 'bucket' | 'unlinked'
+/** id, parent, kind, name, notes below, daily notes below, x, y, radius, colour (-1 grey), key, zoom level from which
+ * its own notes are drawn (their tiles). */
+export type GroupRow = [number, number | null, GroupKind, string, number, number, number, number, number, number, string, number]
+export type Overview = {
+  status: 'ready' | 'building'
+  version: number
+  built?: string | null
+  changed?: string | null
+  groups: GroupRow[]
+  /** Links between the notes of two groups: group, group, how many. */
+  links: [number, number, number][]
+  manage: boolean
+  open_from: number
+  tile: number
+  working: boolean
+}
+/** id, group, x, y, radius, daily (1/0), title, path. */
+export type TileNote = [number, number, number, number, number, number, string, string]
+export type Tiles = {
+  tiles: { level: number; x: number; y: number; notes: TileNote[] }[]
+  links: [number, number][]
+  /** Ends of those links outside the tiles: id, group, x, y, level. */
+  others: [number, number, number, number, number][]
+}
+/** id, path, title, distance in links. */
+export type LocalNode = [number, string, string, number]
+
+export const graphApi = {
+  overview: (space: string, cloud: Cloud) => api<Overview>('/api/graph/overview', { query: { space, cloud } }),
+  tiles: (space: string, cloud: Cloud, tiles: string[]) => api<Tiles>('/api/graph/tiles', { query: { space, cloud, t: tiles } }),
+  locate: (path: string, cloud: Cloud) =>
+    api<{ id: number; x: number; y: number; group: number; level: number }>('/api/graph/locate', { query: { path, cloud } }),
+  local: (path: string, depth: number, limit = 150) =>
+    api<{ nodes: LocalNode[]; links: [number, number][] }>('/api/graph/local', { query: { path, depth, limit } }),
+  topics: (space: string) => api<{ status: string }>('/api/graph/topics', { method: 'POST', query: { space } }),
 }

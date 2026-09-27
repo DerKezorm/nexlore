@@ -66,7 +66,29 @@
     "flyToNote": "Fly there",
     "hint": "Scroll to zoom · click a folder to open it · double click opens a note · Ctrl K searches",
     "closeHint": "Close hint",
-    "empty": "No notes yet. Create a space under Settings, import an Obsidian vault under Files, or put Markdown files into the vault folder."
+    "empty": "No notes yet. Create a space under Settings, import an Obsidian vault under Files, or put Markdown files into the vault folder.",
+    "noWebgl": "The graph needs WebGL 2, which this browser does not offer (or has switched off).",
+    "clouds": "Group by",
+    "cloud": {
+      "folders": "Folders",
+      "tags": "Tags",
+      "topics": "Topics"
+    },
+    "untagged": "No tag",
+    "recent": "New since the topics were worked out",
+    "unsorted": "No topic",
+    "around": "around “{{title}}”",
+    "group": "Group",
+    "unlinked": "No connection",
+    "unlinkedRange": "No connection {{range}}",
+    "notes_one": "{{count}} note",
+    "notes_other": "{{count}} notes",
+    "topicsWorking": "Working out the topics …",
+    "topicsBuilt": "Topics worked out {{when}}",
+    "topicsFrom": "from titles, tags, text and links",
+    "topicsAgain": "Work out again",
+    "tagsInfo": "Nested tags (#project/alpha) as a bubble inside a bubble. A note with several tags stands under its first.",
+    "building": "The map of {{spaces}} is being worked out …"
   },
   "note": {
     "notFound": "This note does not exist.",
@@ -131,7 +153,16 @@
     "uploadedDuplicate": "The space held the same file already; that one is linked.",
     "deleteOwn_one": "Also move the file only this note uses to the trash",
     "deleteOwn_other": "Also move the {{count}} files only this note uses to the trash",
-    "readOnlyRight": "You may read this space, not change it."
+    "readOnlyRight": "You may read this space, not change it.",
+    "local": {
+      "title": "Local graph",
+      "depth": "Depth {{depth}}",
+      "depthGroup": "How many links away",
+      "inGraph": "Show in the big graph",
+      "alone": "No links yet.",
+      "canvas": "Neighbourhood of the note",
+      "limited": "The nearest {{count}} notes."
+    }
   },
   "settings": {
     "title": "Settings",

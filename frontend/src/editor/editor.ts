@@ -28,7 +28,7 @@ import { livePreview, refreshLive, type LinkHelpers } from './live'
 import { imageSource, obsidian, replaced, writerOptions } from './obsidian'
 import { forcedRaw, holdRaw, keepsLetters, releaseRaw } from './syntax'
 import { detectStyle } from './style'
-import { linkSuggest, type Suggestion } from './suggest'
+import { linkSuggest, refreshSuggest, type Suggestion } from './suggest'
 
 export type EditorLabels = {
   placeholder: string
@@ -361,7 +361,10 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
       return plan.apply(edited, tools)
     },
     replace: (next: string) => load(next, true),
-    refresh: () => refreshLive(view),
+    refresh: () => {
+      refreshLive(view)
+      refreshSuggest(view)
+    },
     destroy: async () => {
       for (const key of forcedKeys) releaseRaw(key)
       await crepe.destroy()

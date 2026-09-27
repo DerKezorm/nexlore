@@ -2,7 +2,7 @@
 
 Paths travel as query parameters or in the body, always vault-relative with ``/``. Every route needs an account
 and a right in the space the path lies in (``deps.need``); a space it may not read answers like one that does not
-exist, and lists, search, tags and the graph leave it out.
+exist, and lists, search and tags leave it out (the graph has its own router).
 
 A browser tab names itself in ``X-Nexlore-Client``: locks belong to a tab, not to an account, so the same person in
 two tabs cannot type over themselves.
@@ -533,35 +533,63 @@ def search(
     return [Hit(path=path, title=title, snippet=snippet or "") for path, title, snippet in rows]
 
 
-@router.get("/graph")
-def graph(account: Account, space: Annotated[str, Query(min_length=1, max_length=255)]) -> dict[str, Any]:
-    """Notes and the links between them, compact: nodes as [id, path, title], links as [from, to]."""
-    if "/" in space:
-        raise error("not_found", "No such space.", 404)
-    need(account, space, READ)
+class Found(BaseModel):
+    path: str
+    title: str
+    #: With ``source``: the shortest text a wiki link in that note needs to reach this one (the name, or the path
+    #: in the space where the name alone leads elsewhere).
+    link: str | None = None
+
+
+def _like(value: str) -> str:
+    return "%" + value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+
+@router.get("/notes/find", response_model=list[Found])
+def find_notes(
+    account: Account,
+    q: Annotated[str, Query(max_length=200)] = "",
+    space: Annotated[str | None, Query(max_length=255)] = None,
+    source: Annotated[str | None, Query(max_length=paths.MAX_PATH_CHARS)] = None,
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> list[Found]:
+    """Notes by title or file name, for the quick switcher and the suggestions after ``[[``: those that start with
+    what was typed first, then those that contain it; nothing typed: the ones changed last. Readable spaces only.
+    ``source``: a note being edited; then only its space, and each result says how to link to it from there."""
+    readable = readable_spaces(account)
+    words = q.strip()
+    clean = need(account, source, READ) if source else None
+    if clean is not None:
+        space = paths.space_of(clean)
     with SessionLocal() as db:
-        space_id = db.scalar(select(Space.id).where(Space.folder == space))
-        if space_id is None:
-            raise error("not_found", "No such space.", 404)
-        nodes = [
-            [file_id, path, title]
-            for file_id, path, title in db.execute(
-                select(File.id, File.path, File.title).where(
-                    File.space_id == space_id, File.deleted_at.is_(None), File.is_note.is_(True)
-                )
-            )
-        ]
-        edges = [
-            [source, target]
-            for source, target in db.execute(
-                select(Link.source_id, Link.target_id)
-                .join(File, File.id == Link.target_id)
-                .where(Link.space_id == space_id, Link.target_id.is_not(None), File.is_note.is_(True),
-                       Link.source_id != Link.target_id)
-                .distinct()
-            )
-        ]
-    return {"nodes": nodes, "links": edges}
+        query = select(File.id, File.path, File.title, File.name_key, File.space_id).where(
+            File.is_note.is_(True), File.deleted_at.is_(None), File.space_id.in_(readable)
+        )
+        if space:
+            query = query.join(Space, Space.id == File.space_id).where(Space.folder == space)
+        if not words:
+            rows = list(db.execute(query.order_by(File.mtime_ns.desc()).limit(limit)).all())
+        else:
+            folded = paths.fold(words)
+            found = db.execute(
+                query.where(
+                    File.name_key.like(_like(folded), escape="\\") | File.title.like(_like(words), escape="\\")
+                ).limit(2000)
+            ).all()
+
+            def rank(row: Any) -> tuple[int, int, str]:
+                starts = row.name_key.startswith(folded) or paths.fold(row.title).startswith(folded)
+                return (0 if starts else 1, len(row.title), paths.fold(row.title))
+
+            rows = sorted(found, key=rank)[:limit]
+        links: dict[int, str] = {}
+        if clean is not None and rows:
+            names = index.Names(db, rows[0].space_id, preload=False)
+            for row in rows:
+                inside = row.path.split("/", 1)[1][:-3]
+                name = inside.rsplit("/", 1)[-1]
+                links[row.id] = name if index.resolve("wiki", name, clean, names) == row.id else inside
+    return [Found(path=row.path, title=row.title, link=links.get(row.id)) for row in rows]
 
 
 # --- Locks ----------------------------------------------------------------------------------------------------------

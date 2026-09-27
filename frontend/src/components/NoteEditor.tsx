@@ -19,10 +19,9 @@ import { ApiError, fileUrl, uploadFile, vaultApi, type Uploaded } from '../api/c
 import { createEditor, type EditorLabels, type FileHelpers, type NoteEditor as Engine } from '../editor/editor'
 import { splitNote } from '../editor/frontmatter'
 import type { LinkHelpers } from '../editor/live'
-import { searchNames } from '../editor/suggest'
 import { fileKind, isFileTarget, isPasted, relativeTarget } from '../lib/files'
-import { linkIndex } from '../lib/links'
-import { baseName, type Vault } from '../lib/vault'
+import type { LinkIndex } from '../lib/links'
+import { baseName } from '../lib/vault'
 import { Properties } from './Properties'
 
 export type EditorMode = 'visual' | 'source'
@@ -38,7 +37,8 @@ type Props = {
   path: string
   /** The note as it is on disk. Read once; later changes come through `replace`. */
   content: string
-  vault: Vault
+  /** Where the note's wiki links lead, asked from the server (made and seeded by the page). */
+  links: LinkIndex
   mode: EditorMode
   readOnly?: boolean
   onChange: () => void
@@ -52,7 +52,7 @@ type Props = {
 }
 
 export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
-  { path, content, vault, mode, readOnly = false, onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed },
+  { path, content, links, mode, readOnly = false, onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed },
   ref,
 ) {
   const { t } = useTranslation()
@@ -71,10 +71,12 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
 
   const latest = useRef({ onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed })
   latest.current = { onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed }
-  const links = useMemo(() => linkIndex(vault, path), [vault, path])
   const linksRef = useRef(links)
   linksRef.current = links
-  useEffect(() => engine.current?.refresh(), [links])
+  useEffect(() => {
+    links.listen(() => engine.current?.refresh())
+    engine.current?.refresh()
+  }, [links])
 
   const modeRef = useRef(mode)
   modeRef.current = mode
@@ -163,7 +165,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       readOnly,
       labels,
       links: () => helpers,
-      search: () => (query) => searchNames(linksRef.current.suggestions, query),
+      search: () => (query) => linksRef.current.search(query),
       onChange: () => latest.current.onChange(),
       files: readOnly ? undefined : files,
       onFileRefused: () => latest.current.onFileRefused?.(),

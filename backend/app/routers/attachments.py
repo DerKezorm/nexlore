@@ -279,3 +279,40 @@ def resolve(
         row = db.get(File, found) if found is not None else None
     return ResolveOut(path=row.path, is_note=row.is_note) if row is not None else ResolveOut(path=None)
 
+
+
+class ResolveManyOut(BaseModel):
+    #: Each target as asked, to the path of the file it leads to, or None.
+    found: dict[str, str | None]
+
+
+@router.get("/resolve/many", response_model=ResolveManyOut)
+def resolve_many(
+    account: Account,
+    source: PathQuery,
+    target: Annotated[list[str], Query(max_length=200)],
+    kind: Annotated[str, Query(pattern="^(wiki|embed)$")] = "wiki",
+) -> ResolveManyOut:
+    """Where the wiki links of a note lead, many at once: the editor colours links it cannot find while typing."""
+    from ..services import index
+
+    clean = need(account, source, READ)
+    found: dict[str, str | None] = {}
+    with SessionLocal() as db:
+        space_id = db.scalar(select(File.space_id).where(File.path == clean, File.deleted_at.is_(None)))
+        if space_id is None:
+            raise error("not_found", "No such note.", 404)
+        names = index.Names(db, space_id, preload=False)
+        for item in target[:200]:
+            if not item or len(item) > paths.MAX_PATH_CHARS:
+                continue
+            # As written in the note: ``Note#Heading|Alias``. The index resolves the note part; a link to a heading
+            # of the note itself (``#Heading``) leads to the note.
+            name = item.split("|", 1)[0].split("#", 1)[0].strip()
+            if not name:
+                found[item] = clean
+                continue
+            hit = index.resolve(kind, name, clean, names)
+            row = db.get(File, hit) if hit is not None else None
+            found[item] = row.path if row is not None else None
+    return ResolveManyOut(found=found)

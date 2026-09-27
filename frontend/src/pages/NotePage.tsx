@@ -22,12 +22,14 @@ import { Symbol } from '../components/Symbol'
 import { copiesOf, originalOf } from '../lib/compare'
 import { errorText } from '../lib/errors'
 import { isFileTarget, isNotePath } from '../lib/files'
-import { linkIndex } from '../lib/links'
+import { LinkIndex } from '../lib/links'
 import { fileRoute, formatDate, renderMarkdown } from '../lib/markdown'
-import { ancestry, baseName, folderOf, noteUrl } from '../lib/vault'
+import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
+import { LocalGraph } from '../components/LocalGraph'
 import { ShareDialog } from '../components/ShareDialog'
+import { folderColor } from '../graph/palette'
 
 // The editor (Milkdown, CodeMirror for code, KaTeX) is most of the weight: loaded when somebody starts editing.
 const NoteEditor = lazy(() => import('../components/NoteEditor').then((module) => ({ default: module.NoteEditor })))
@@ -36,6 +38,20 @@ const SAVE_PAUSE = 1200
 const HEARTBEAT = 30_000
 const POLL = 5_000
 
+/** Whether the window is at least as wide as Tailwind's `xl`. */
+function useWide(): boolean {
+  const query = '(min-width: 1280px)'
+  const [wide, setWide] = useState(() => window.matchMedia?.(query).matches ?? true)
+  useEffect(() => {
+    const list = window.matchMedia?.(query)
+    if (!list) return
+    const update = () => setWide(list.matches)
+    list.addEventListener('change', update)
+    return () => list.removeEventListener('change', update)
+  }, [])
+  return wide
+}
+
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'failed' | 'refreshed'
 
 export function NotePage() {
@@ -43,13 +59,33 @@ export function NotePage() {
   const path = useParams()['*'] ?? ''
   const [params, setParams] = useSearchParams()
   const { t } = useTranslation()
-  const { vault, reload, spaces } = useStore()
+  const { reload, spaces, generation } = useStore()
   const { me } = useAuth()
   const navigate = useNavigate()
   const [sharing, setSharing] = useState(false)
+  // The right column (and the local graph in it) from 1280 pixels on; below, the local graph goes under the text.
+  const wide = useWide()
 
   const [note, setNote] = useState<NoteData | null>(null)
   const [links, setLinks] = useState<Links | null>(null)
+  // Where wiki links lead, asked from the server; the note's saved links give the first answers.
+  const linkIdx = useMemo(() => new LinkIndex(path), [path])
+  useEffect(() => () => linkIdx.close(), [linkIdx])
+  useEffect(() => {
+    if (links) linkIdx.seed(links.outgoing)
+  }, [links, linkIdx])
+  // The other files in the note's folder: its conflict copies, or, for a copy, the original.
+  const [siblings, setSiblings] = useState<string[]>([])
+  useEffect(() => {
+    let live = true
+    vaultApi.folder(folderOf(path)).then(
+      (listing) => live && setSiblings(listing.files.map((file) => file.path)),
+      () => live && setSiblings([]),
+    )
+    return () => {
+      live = false
+    }
+  }, [path, generation])
   const [problem, setProblem] = useState<string | null>(null)
   // Editing belongs to one note: moving on to another ends it in the same render, so nothing of the old note's
   // editor (its text, its lock, its save) can ever run against the new path.
@@ -315,7 +351,7 @@ export function NotePage() {
     return (target: string) => map.get(target.toLowerCase()) ?? null
   }, [links])
   const html = useMemo(() => (note ? renderMarkdown(note.content, resolve, note.path) : ''), [note, resolve])
-  const copies = useMemo(() => copiesOf(path, vault.notes.keys()), [path, vault])
+  const copies = useMemo(() => copiesOf(path, siblings), [path, siblings])
   const originalPath = originalOf(path)
 
   const openFile = (file: string, newTab = false) => {
@@ -324,7 +360,14 @@ export function NotePage() {
   }
 
   const openLink = async (target: string, newTab: boolean) => {
-    const found = linkIndex(vault, path).resolve(target)
+    let found: string | null
+    try {
+      found = await linkIdx.resolveNow(target)
+    } catch {
+      // Without an answer nothing is made: a link that may well lead somewhere must not become a new note.
+      setProblem('internal_error')
+      return
+    }
     if (found) {
       if (newTab) window.open(noteUrl(found), '_blank', 'noopener')
       else open(found)
@@ -428,7 +471,8 @@ export function NotePage() {
     )
   }
 
-  const chain = ancestry(vault, note.path)
+  const showInGraph = () => navigate(`/?focus=${encodeURIComponent(note.path)}`)
+  const chain = note.path.split('/').slice(0, -1).map((name, index, all) => ({ id: all.slice(0, index + 1).join('/'), name }))
   const foreignLock = note.lock && !note.lock.mine ? note.lock.holder : null
   const lockedBy = lockHolder ?? foreignLock
   // The own right in the note's space: reading only hides every change; managing may share.
@@ -551,7 +595,7 @@ export function NotePage() {
               </Banner>
             )
           )}
-          {originalPath && vault.notes.has(originalPath) && (
+          {originalPath && siblings.includes(originalPath) && (
             <Banner tone="warn" symbol="alert" action={<CompareButton onClick={() => void compare(originalPath, path)} />}>
               {t('note.isCopy', { name: baseName(originalPath) })}
             </Banner>
@@ -579,7 +623,7 @@ export function NotePage() {
                   ref={editor}
                   path={note.path}
                   content={draft.current}
-                  vault={vault}
+                  links={linkIdx}
                   mode={mode}
                   onChange={onChange}
                   onLeave={(text) => {
@@ -607,12 +651,22 @@ export function NotePage() {
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
               )}
+              {!wide && (
+                <div className="mt-10">
+                  <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Right column */}
-        <aside className="nn-scroll hidden w-72 shrink-0 overflow-y-auto border-l border-ink-700/80 px-4 py-4 xl:block">
+        <aside className="nn-scroll hidden w-80 shrink-0 overflow-y-auto border-l border-ink-700/80 px-4 py-4 xl:block">
+          {wide && (
+            <div className="mb-5">
+              <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />
+            </div>
+          )}
           <Section symbol="backlink" title={t('note.backlinks')} count={links?.backlinks.length ?? 0}>
             {links?.backlinks.length === 0 && <p className="px-2 text-sm text-mist-600">{t('note.noBacklinks')}</p>}
             {links?.backlinks.map((item) => (
@@ -626,7 +680,7 @@ export function NotePage() {
             {links?.outgoing.map((item, index) =>
               item.path ? (
                 <button key={index} type="button" onClick={() => (isNotePath(item.path!) ? open(item.path!) : openFile(item.path!))} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-sm text-mist-300 hover:bg-ink-850">
-                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: vault.home.get(item.path)?.color ?? 'var(--color-mist-600)' }} />
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: folderColor(item.path) }} />
                   <span className="truncate">{item.title}</span>
                 </button>
               ) : (

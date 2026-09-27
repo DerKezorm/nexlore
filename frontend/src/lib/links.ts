@@ -1,61 +1,165 @@
 /**
- * Wiki links in the editor, resolved in the browser the way the server does it for saved notes (Obsidian's rules,
- * simplified): a name finds a note of that name in the same space, a path finds the note at that path. The server
- * stays the authority; this only decides the colour of a link while typing and what `[[` suggests.
+ * Wiki links in the editor, answered by the server (Obsidian's rules live there, `index.resolve`): where a link
+ * leads decides its colour while typing, and what `[[` suggests comes from `/api/notes/find`.
+ *
+ * The editor asks synchronously, many times a second, so answers are kept here. A link not asked about yet counts as
+ * there (no red flicker while typing), is asked for together with the others that came up in the same moment, and
+ * the editor is told to draw again when the answers are in (`changed`). The links the note had when it was saved come
+ * with the note (`seed`), so an opened note shows its missing links at once.
  */
+import type { Found, Outgoing } from '../api/client'
+import { vaultApi } from '../api/client'
 import type { Suggestion } from '../editor/suggest'
 import { isFileTarget } from './files'
-import type { Vault } from './vault'
 
-export type LinkIndex = {
-  /** The vault path a target points to, or null. */
-  resolve: (target: string) => string | null
-  exists: (target: string) => boolean
-  /** Every note of the space, with the text a link to it needs (the name, or the path where names repeat). */
-  suggestions: Suggestion[]
+/** How a wiki link target is looked up: the note part, without heading, block or alias. */
+export function linkName(target: string): string {
+  return target.split('|', 1)[0].split('#', 1)[0].trim()
 }
 
 const fold = (text: string) => text.normalize('NFC').toLocaleLowerCase()
-const withoutMd = (path: string) => path.replace(/\.md$/i, '')
+/** Only notes count here: a picture or PDF a link names is looked up by the editor itself (`isFileTarget`). */
+const noteOnly = (path: string | null | undefined): string | null => (path && /\.md$/i.test(path) ? path : null)
+const ASK_AFTER_MS = 60
+const FIND_AFTER_MS = 120
 
-export function linkIndex(vault: Vault, notePath: string): LinkIndex {
-  const space = notePath.split('/')[0]
-  const folder = notePath.split('/').slice(0, -1).join('/')
-  const byName = new Map<string, string[]>()
-  const byPath = new Map<string, string>()
-  for (const id of vault.notes.keys()) {
-    if (id.split('/')[0] !== space) continue
-    const inSpace = withoutMd(id.slice(space.length + 1))
-    const name = inSpace.split('/').pop()!
-    byName.set(fold(name), [...(byName.get(fold(name)) ?? []), id])
-    byPath.set(fold(inSpace), id)
-    byPath.set(fold(withoutMd(id)), id)
+export type Asker = {
+  resolveMany: (source: string, targets: string[]) => Promise<{ found: Record<string, string | null> }>
+  find: (q: string, source: string) => Promise<Found[]>
+}
+
+const server: Asker = {
+  resolveMany: (source, targets) => vaultApi.resolveMany(source, targets),
+  find: (q, source) => vaultApi.findFrom(q, source),
+}
+
+export class LinkIndex {
+  private known = new Map<string, string | null>()
+  private waiting = new Set<string>()
+  private asking = false
+  private timer = 0
+  private found = new Map<string, Suggestion[]>()
+  private lastSuggestions: Suggestion[] = []
+  private findTimer = 0
+  private closed = false
+
+  constructor(
+    readonly notePath: string,
+    private changed: () => void = () => undefined,
+    private asker: Asker = server,
+  ) {}
+
+  /** Who is told when answers came in (the editor, to draw its links again). */
+  listen(changed: () => void) {
+    this.changed = changed
+    this.closed = false
   }
 
-  const resolve = (target: string): string | null => {
-    const name = fold(withoutMd(target.split('#')[0].trim()))
-    if (!name) return notePath // a link to a heading of this note
-    if (name.includes('/')) return byPath.get(name.replace(/^\//, '')) ?? null
-    const found = byName.get(name)
-    if (!found) return null
-    // Obsidian: the note in the same folder first, then the one with the shortest path.
-    return found.find((id) => id.split('/').slice(0, -1).join('/') === folder) ?? [...found].sort((a, b) => a.length - b.length)[0]
-  }
-
-  const suggestions: Suggestion[] = []
-  for (const [, ids] of byName) {
-    for (const id of ids) {
-      const inSpace = withoutMd(id.slice(space.length + 1))
-      const name = inSpace.split('/').pop()!
-      suggestions.push({ label: vault.notes.get(id)?.title || name, detail: inSpace, insert: ids.length > 1 ? inSpace : name })
+  /** Links the server resolved when the note was saved. */
+  seed(outgoing: Outgoing[]) {
+    for (const link of outgoing) {
+      if (link.kind !== 'wiki' && link.kind !== 'embed') continue
+      const name = linkName(link.target)
+      if (name) this.known.set(fold(name), noteOnly(link.path))
     }
   }
-  suggestions.sort((a, b) => a.label.localeCompare(b.label))
 
-  return {
-    resolve,
-    // Files other than notes (pictures, PDFs) are not in this list: the editor asks the server about them.
-    exists: (target) => resolve(target) !== null || isFileTarget(target),
-    suggestions,
+  /** The vault path a target leads to; null when there is none, or when nobody knows yet (then it is asked). */
+  resolve(target: string): string | null {
+    const name = linkName(target)
+    if (!name) return this.notePath
+    const key = fold(name)
+    if (this.known.has(key)) return this.known.get(key) ?? null
+    this.ask(name)
+    return null
+  }
+
+  /** Is there something at the end of the link? Unknown counts as yes until the server says otherwise. */
+  exists(target: string): boolean {
+    const name = linkName(target)
+    if (!name) return true
+    const key = fold(name)
+    if (!this.known.has(key)) {
+      this.ask(name)
+      return true
+    }
+    // Files other than notes (pictures, PDFs) the editor looks up itself.
+    return this.known.get(key) !== null || isFileTarget(target)
+  }
+
+  /** Where a link leads, waiting for the server when it was not asked before: for following a click. */
+  async resolveNow(target: string): Promise<string | null> {
+    const name = linkName(target)
+    if (!name) return this.notePath
+    const key = fold(name)
+    if (!this.known.has(key)) {
+      const answer = await this.asker.resolveMany(this.notePath, [name])
+      this.known.set(key, noteOnly(answer.found[name]))
+    }
+    return this.known.get(key) ?? null
+  }
+
+  /** Forget what is known about names that may have changed (a note was made or renamed). */
+  forget(target?: string) {
+    if (target === undefined) this.known.clear()
+    else this.known.delete(fold(linkName(target)))
+    this.found.clear()
+  }
+
+  private ask(name: string) {
+    if (this.closed) return
+    this.waiting.add(name)
+    if (this.timer || this.asking) return
+    this.timer = window.setTimeout(() => void this.flush(), ASK_AFTER_MS)
+  }
+
+  private async flush() {
+    this.timer = 0
+    const names = [...this.waiting].slice(0, 200)
+    if (!names.length) return
+    for (const name of names) this.waiting.delete(name)
+    this.asking = true
+    try {
+      const answer = await this.asker.resolveMany(this.notePath, names)
+      for (const name of names) this.known.set(fold(name), noteOnly(answer.found[name]))
+      if (!this.closed) this.changed()
+    } catch {
+      // Asked again the next time the editor wants to know.
+    } finally {
+      this.asking = false
+      if (this.waiting.size && !this.closed) this.timer = window.setTimeout(() => void this.flush(), ASK_AFTER_MS)
+    }
+  }
+
+  /** Suggestions after `[[`: what the server found for this query, or, while it is asked, the last ones. */
+  search(query: string): Suggestion[] {
+    const key = query.trim()
+    const ready = this.found.get(key)
+    if (ready) return (this.lastSuggestions = ready)
+    window.clearTimeout(this.findTimer)
+    this.findTimer = window.setTimeout(() => {
+      this.asker
+        .find(key, this.notePath)
+        .then((hits) => {
+          const space = this.notePath.split('/')[0]
+          const items = hits.map((hit) => {
+            const inSpace = hit.path.slice(space.length + 1).replace(/\.md$/i, '')
+            return { label: hit.title || inSpace.split('/').pop()!, detail: inSpace, insert: hit.link ?? inSpace }
+          })
+          this.found.set(key, items)
+          for (const hit of hits) {
+            if (hit.link) this.known.set(fold(hit.link), hit.path)
+          }
+          if (!this.closed) this.changed()
+        })
+        .catch(() => undefined)
+    }, FIND_AFTER_MS)
+    return this.lastSuggestions
+  }
+
+  close() {
+    this.closed = true
+    window.clearTimeout(this.timer)
+    window.clearTimeout(this.findTimer)
   }
 }

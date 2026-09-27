@@ -19,19 +19,19 @@ from .config import get_settings
 from .db import SessionLocal, init_db
 from .errors import detail
 from .middleware import GuardMiddleware, RequestContextMiddleware, unhandled_error
-from .routers import about, attachments, auth, health, imports, members, oidc, shares
+from .routers import about, attachments, auth, graph, health, imports, members, oidc, shares
 from .routers import backups as backups_router
 from .routers import locales as locales_router
 from .routers import logs as logs_router
 from .routers import settings as settings_router
 from .routers import vault as vault_router
-from .services import backups, locales, logs, settings_service, watcher
+from .services import backups, graphstore, locales, logs, settings_service, watcher
 
 logger = logging.getLogger("nexlore")
 
 ROUTERS = [
     health, about, locales_router, logs_router, auth, oidc, members, settings_router, vault_router, attachments,
-    imports, backups_router, shares,
+    imports, backups_router, shares, graph,
 ]
 
 
@@ -70,11 +70,13 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         tasks.append(asyncio.create_task(watcher.scan_forever(stop)))
         tasks.append(asyncio.create_task(watcher.watch(stop)))
         tasks.append(asyncio.create_task(backups.run_forever(stop)))
+        graphstore.worker.start()
     logger.info("nexlore %s started vault=%s", __version__, settings.vault_dir)
     try:
         yield
     finally:
         stop.set()
+        graphstore.worker.stop()
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)

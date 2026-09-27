@@ -10,6 +10,7 @@ python-multipart==0.0.32
 pillow==12.3.0
 pillow-heif==1.8.0
 pypdf==6.19.0
+numpy==2.5.3
 argon2-cffi==25.1.0
 cryptography==50.0.1
 pyjwt==2.15.0
