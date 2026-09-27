@@ -1,7 +1,8 @@
 """Attachments: files uploaded to a note, and everything that comes with keeping them.
 
-**Where they go.** Into a folder ``Anhänge`` next to the note (the operator names it), and the note links them with
-an ordinary relative Markdown link, the way GitHub, VS Code and Obsidian read it. A picture pasted from the
+**Where they go.** Into a folder ``Attachments`` next to the note (the operator may name it otherwise, ``Anhänge``
+for instance), and the note links them with an ordinary relative Markdown link, the way GitHub, VS Code and
+Obsidian read it. A picture pasted from the
 clipboard has no name worth keeping: it is called after the note with a number (``Shopping 1.png``). Any other
 file keeps its name, made safe for Windows, macOS and Linux, with a number when the name is taken.
 
@@ -96,7 +97,7 @@ class Uploaded:
 
 def folder_name() -> str:
     with SessionLocal() as db:
-        return str(settings_service.get(db, "attachment_folder") or "Anhänge")
+        return str(settings_service.get(db, "attachment_folder") or "Attachments")
 
 
 def used_by(db: Session, account: str) -> int:

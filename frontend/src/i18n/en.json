@@ -128,7 +128,9 @@
     "uploaded_other": "{{count}} files added.",
     "uploadedCleaned": "Place and device were removed from the photo.",
     "uploadedUnchecked": "One file could not be checked completely; it may still tell where it was taken or with what.",
-    "uploadedDuplicate": "The space held the same file already; that one is linked."
+    "uploadedDuplicate": "The space held the same file already; that one is linked.",
+    "deleteOwn_one": "Also move the file only this note uses to the trash",
+    "deleteOwn_other": "Also move the {{count}} files only this note uses to the trash"
   },
   "settings": {
     "title": "Settings",

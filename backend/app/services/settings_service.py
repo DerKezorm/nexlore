@@ -16,7 +16,7 @@ DEFAULTS: dict[str, Any] = {
     "backup_schedule": "off",
     "backup_keep": 7,
     #: Where uploaded files go, next to the note they belong to. Only a name, never a path.
-    "attachment_folder": "Anhänge",
+    "attachment_folder": "Attachments",
     #: Largest single upload, in MB.
     "upload_max_mb": 1024,
     #: Space per account for what it uploaded, in MB; 0 is no limit.

@@ -48,6 +48,7 @@ async function hand(page: Page, kind: 'paste' | 'drop', files: { name: string; t
 const GREEN_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAIAAABChommAAAAFUlEQVR42mPUOBHFQAgwMRABhrciAIVBAVrdp34QAAAAAElFTkSuQmCC'
 const PDF = Buffer.concat([fs.readFileSync(file('Media/leaflet.pdf')), Buffer.from('% price list\n')]).toString('base64')
 const LATER_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAIAAABChommAAAAFUlEQVR42mPs0VjAQAgwMRABhrciAJDbAWSHbO2AAAAAAElFTkSuQmCC'
+const SHORT_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAIAAABChommAAAAFUlEQVR42mP89UuDgRBgYiACDG9FAHeAAizq2CWgAAAAAElFTkSuQmCC'
 const SAME_AS_SUNSET = fs.readFileSync(file('Media/sunset.png')).toString('base64')
 
 test('a pasted picture lands beside its note, named after it, and shows', async ({ page }) => {
@@ -56,11 +57,11 @@ test('a pasted picture lands beside its note, named after it, and shows', async 
   await page.keyboard.press('End')
   await hand(page, 'paste', [{ name: 'image.png', type: 'image/png', base64: GREEN_PNG }])
   const picture = page.locator('.ProseMirror img[data-nx-src]')
-  await expect(picture).toHaveAttribute('data-nx-src', 'Anhänge/Paste%20here%201.png')
+  await expect(picture).toHaveAttribute('data-nx-src', 'Attachments/Paste%20here%201.png')
   await expect.poll(() => picture.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(12)
   await saved(page)
-  expect(onDisk('Media/Paste here.md')).toContain('![](Anhänge/Paste%20here%201.png)')
-  expect(fs.existsSync(file('Media/Anhänge/Paste here 1.png'))).toBe(true)
+  expect(onDisk('Media/Paste here.md')).toContain('![](Attachments/Paste%20here%201.png)')
+  expect(fs.existsSync(file('Media/Attachments/Paste here 1.png'))).toBe(true)
   await expect(page.getByRole('note')).toContainText('File added.')
   // Reading, the picture comes from the server too.
   await page.getByRole('button', { name: 'Read', exact: true }).click()
@@ -75,7 +76,7 @@ test('a picture the space holds already is linked, not stored again', async ({ p
   await expect(page.locator('.ProseMirror img[data-nx-src="sunset.png"]')).toBeVisible()
   await expect(page.getByRole('note')).toContainText('The space held the same file already')
   await saved(page)
-  expect(fs.readdirSync(path.join(DATA, 'vault', 'Media', 'Anhänge')).filter((name) => name.startsWith('Paste here'))).toHaveLength(1)
+  expect(fs.readdirSync(path.join(DATA, 'vault', 'Media', 'Attachments')).filter((name) => name.startsWith('Paste here'))).toHaveLength(1)
 })
 
 test('a dropped PDF becomes a link to it, and the link leads to its page', async ({ page }) => {
@@ -83,10 +84,10 @@ test('a dropped PDF becomes a link to it, and the link leads to its page', async
   await hand(page, 'drop', [{ name: 'Price list.pdf', type: 'application/pdf', base64: PDF }])
   await expect(page.locator('.ProseMirror a', { hasText: 'Price list.pdf' })).toBeVisible()
   await saved(page)
-  expect(onDisk('Media/Drop here.md')).toContain('[Price list.pdf](Anhänge/Price%20list.pdf)')
+  expect(onDisk('Media/Drop here.md')).toContain('[Price list.pdf](Attachments/Price%20list.pdf)')
   await page.getByRole('button', { name: 'Read', exact: true }).click()
   await page.locator('article a', { hasText: 'Price list.pdf' }).click()
-  await expect(page).toHaveURL(/\/file\/Media\/Anh%C3%A4nge\/Price%20list\.pdf$/)
+  await expect(page).toHaveURL(/\/file\/Media\/Attachments\/Price%20list\.pdf$/)
   await expect(page.getByRole('heading', { name: 'Price list.pdf' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Download' })).toHaveAttribute('href', /download=1/)
   const usedIn = page.locator('section', { has: page.getByRole('heading', { name: 'Used in' }) })
@@ -130,6 +131,27 @@ test('an embed typed before its file was uploaded shows the picture once it is',
   await expect(page.locator('.ProseMirror .nx-wiki-missing', { hasText: 'later.png' })).toBeVisible()
   await hand(page, 'paste', [{ name: 'later.png', type: 'image/png', base64: LATER_PNG }])
   await expect.poll(() => page.locator('.ProseMirror .nx-embed-media').evaluate((image: HTMLImageElement) => image.naturalWidth), { timeout: 10_000 }).toBe(12)
+})
+
+test('deleting a note asks whether the files only it uses go along, and they come back together', async ({ page }) => {
+  await edit(page, 'Media/Short lived.md')
+  await page.locator('.ProseMirror p', { hasText: 'Start.' }).click()
+  await page.keyboard.press('End')
+  await hand(page, 'paste', [{ name: 'image.png', type: 'image/png', base64: SHORT_PNG }])
+  await saved(page)
+  await page.getByRole('button', { name: 'Read', exact: true }).click()
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  const along = dialog.getByRole('checkbox', { name: /Also move the file only this note uses/ })
+  await expect(along).toBeChecked()
+  await expect(dialog).toContainText('Short lived 1.png')
+  await dialog.getByRole('button', { name: 'Move to the trash' }).click()
+  await expect.poll(() => fs.existsSync(file('Media/Attachments/Short lived 1.png'))).toBe(false)
+  await page.goto('/files')
+  const entry = page.getByRole('listitem').filter({ hasText: 'Media/Short lived.md' })
+  await expect(entry).toContainText('2 files')
+  await entry.getByRole('button', { name: 'Restore' }).click()
+  await expect.poll(() => fs.existsSync(file('Media/Attachments/Short lived 1.png'))).toBe(true)
 })
 
 test('the files page lists attachments with how often they are used, and search finds the text of a PDF', async ({ page }) => {

@@ -128,7 +128,9 @@
     "uploaded_other": "{{count}} Dateien hinzugefügt.",
     "uploadedCleaned": "Ort und Gerät wurden aus dem Foto entfernt.",
     "uploadedUnchecked": "Eine Datei ließ sich nicht vollständig prüfen; sie kann noch verraten, wo oder womit sie aufgenommen wurde.",
-    "uploadedDuplicate": "Dieselbe Datei gab es im Bereich schon; sie ist verlinkt."
+    "uploadedDuplicate": "Dieselbe Datei gab es im Bereich schon; sie ist verlinkt.",
+    "deleteOwn_one": "Die Datei, die nur diese Notiz nutzt, mit in den Papierkorb",
+    "deleteOwn_other": "Die {{count}} Dateien, die nur diese Notiz nutzt, mit in den Papierkorb"
   },
   "settings": {
     "title": "Einstellungen",

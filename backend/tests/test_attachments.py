@@ -94,11 +94,11 @@ def test_a_pasted_picture_lands_beside_the_note_named_after_it(client: TestClien
     answer = upload(client, photo(), pasted=True)
     assert answer.status_code == 201, answer.text
     body = answer.json()
-    assert body["path"] == "Home/Anhänge/Shopping 1.jpg"
-    assert body["link"] == "Anhänge/Shopping%201.jpg"
+    assert body["path"] == "Home/Attachments/Shopping 1.jpg"
+    assert body["link"] == "Attachments/Shopping%201.jpg"
     assert body["kind"] == "jpeg" and body["duplicate"] is False
     assert body["removed"] == ["device", "location"]
-    stored = (filled / "Home" / "Anhänge" / "Shopping 1.jpg").read_bytes()
+    stored = (filled / "Home" / "Attachments" / "Shopping 1.jpg").read_bytes()
     assert b"PhoneMaker" not in stored and b"SERIAL-4711" not in stored
     with SessionLocal() as db:
         row = db.scalar(select(File).where(File.path == body["path"]))
@@ -112,19 +112,19 @@ def test_the_same_content_is_linked_again_not_stored_twice(client: TestClient, f
     again = upload(client, photo(), pasted=True, note="Home/Recipes/Cake.md").json()
     assert again["duplicate"] is True and again["path"] == first["path"]
     # From another folder the link climbs up to it.
-    assert again["link"] == "../Anhänge/Shopping%201.jpg"
+    assert again["link"] == "../Attachments/Shopping%201.jpg"
     other = upload(client, photo((10, 200, 10)), pasted=True).json()
-    assert other["path"] == "Home/Anhänge/Shopping 2.jpg"
+    assert other["path"] == "Home/Attachments/Shopping 2.jpg"
     # Another space never shares a file: a copy there is stored.
     elsewhere = upload(client, photo(), pasted=True, note="Work/Plan.md").json()
-    assert elsewhere["duplicate"] is False and elsewhere["path"] == "Work/Anhänge/Plan 1.jpg"
+    assert elsewhere["duplicate"] is False and elsewhere["path"] == "Work/Attachments/Plan 1.jpg"
 
 
 def test_a_named_file_keeps_its_name_made_safe(client: TestClient, filled: Path) -> None:
     first = upload(client, b"plain text", name='Report: "final"?.txt').json()
-    assert first["path"] == "Home/Anhänge/Report final.txt"
+    assert first["path"] == "Home/Attachments/Report final.txt"
     second = upload(client, b"other text", name='Report: "final"?.txt').json()
-    assert second["path"] == "Home/Anhänge/Report final 2.txt"
+    assert second["path"] == "Home/Attachments/Report final 2.txt"
     into_folder = upload(client, b"third", name="notes.txt", note=None, folder="Home/Recipes").json()
     assert into_folder["path"] == "Home/Recipes/notes.txt" and into_folder["link"] == ""
 
@@ -138,7 +138,7 @@ def test_an_upload_goes_only_where_it_may(client: TestClient, filled: Path) -> N
     assert upload(client, b"").json()["detail"]["code"] == "empty"
     # A change without its tab is refused before the route.
     assert upload(client, b"x", headers={"X-Nexlore-Client": ""}).status_code == 400
-    assert not (filled / "Home" / "Anhänge").exists()
+    assert not (filled / "Home" / "Attachments").exists()
 
 
 def test_the_limits_per_file_and_per_account_hold(client: TestClient, filled: Path) -> None:
@@ -146,12 +146,12 @@ def test_the_limits_per_file_and_per_account_hold(client: TestClient, filled: Pa
     big = b"\x00" * (1024 * 1024 + 1)
     refused = upload(client, big, name="big.bin")
     assert refused.status_code == 413 and refused.json()["detail"]["code"] == "too_large"
-    assert not (filled / "Home" / "Anhänge").exists(), "neither the file nor an empty folder stays"
+    assert not (filled / "Home" / "Attachments").exists(), "neither the file nor an empty folder stays"
     # Sent without a length: counted while it arrives.
     streamed = client.post("/api/attachments", params={"name": "big.bin", "note": "Home/Shopping.md"},
                            content=iter([b"\x00" * 600_000, b"\x00" * 600_000]), headers=TAB)
     assert streamed.status_code == 413 and streamed.json()["detail"]["code"] == "too_large"
-    assert not (filled / "Home" / "Anhänge").exists()
+    assert not (filled / "Home" / "Attachments").exists()
     settings(upload_max_mb=10, quota_mb=1)
     assert upload(client, b"a" * 700_000, name="one.bin").status_code == 201
     over = upload(client, b"b" * 700_000, name="two.bin")
@@ -159,7 +159,7 @@ def test_the_limits_per_file_and_per_account_hold(client: TestClient, filled: Pa
     usage = client.get("/api/attachments/usage", headers=TAB).json()
     assert usage["used"] == 700_000 and usage["quota"] == 1024 * 1024
     # In the trash it still counts; gone for good it does not.
-    client.delete("/api/files", params={"path": "Home/Anhänge/one.bin"}, headers=TAB)
+    client.delete("/api/files", params={"path": "Home/Attachments/one.bin"}, headers=TAB)
     assert client.get("/api/attachments/usage", headers=TAB).json()["used"] == 700_000
     entry = client.get("/api/trash", headers=TAB).json()[0]["id"]
     client.delete(f"/api/trash/{entry}", headers=TAB)
@@ -201,22 +201,22 @@ def test_a_pdf_too_large_to_search_is_never_read_whole(filled: Path, monkeypatch
 def test_a_heic_photo_gets_a_webp_the_note_links(client: TestClient, filled: Path) -> None:
     body = upload(client, photo(fmt="HEIF"), name="IMG_0001.HEIC").json()
     assert body["kind"] == "heic"
-    assert body["original"] == "Home/Anhänge/IMG_0001.HEIC"
-    assert body["path"] == "Home/Anhänge/IMG_0001.webp" and body["link"] == "Anhänge/IMG_0001.webp"
-    webp = filled / "Home" / "Anhänge" / "IMG_0001.webp"
+    assert body["original"] == "Home/Attachments/IMG_0001.HEIC"
+    assert body["path"] == "Home/Attachments/IMG_0001.webp" and body["link"] == "Attachments/IMG_0001.webp"
+    webp = filled / "Home" / "Attachments" / "IMG_0001.webp"
     with Image.open(webp) as image:
         # The photo says "turned by 90°" (orientation 6): the WebP is upright, since it keeps no orientation.
         assert image.format == "WEBP" and image.size == (30, 40)
         assert not image.getexif()
     assert b"PhoneMaker" not in webp.read_bytes()
-    assert b"PhoneMaker" not in (filled / "Home" / "Anhänge" / "IMG_0001.HEIC").read_bytes()
+    assert b"PhoneMaker" not in (filled / "Home" / "Attachments" / "IMG_0001.HEIC").read_bytes()
 
 
 def test_the_operator_can_leave_place_and_device_in(client: TestClient, filled: Path) -> None:
     settings(strip_location=False)
     body = upload(client, photo(), name="kept.jpg").json()
     assert body["removed"] == []
-    assert b"PhoneMaker" in (filled / "Home" / "Anhänge" / "kept.jpg").read_bytes()
+    assert b"PhoneMaker" in (filled / "Home" / "Attachments" / "kept.jpg").read_bytes()
 
 
 def fetch(client: TestClient, path: str, **extra: object):
@@ -294,10 +294,10 @@ def test_the_files_page_lists_attachments_and_how_often_they_are_used(client: Te
     listed = client.get("/api/attachments", params={"space": "Home"}, headers=TAB).json()
     assert listed["total"] == 2
     assert {item["path"]: item["uses"] for item in listed["items"]} == {
-        "Home/Anhänge/Shopping 1.jpg": 1, "Home/Anhänge/lonely.txt": 0,
+        "Home/Attachments/Shopping 1.jpg": 1, "Home/Attachments/lonely.txt": 0,
     }
     unused = client.get("/api/attachments", params={"space": "Home", "unused": True}, headers=TAB).json()
-    assert [item["path"] for item in unused["items"]] == ["Home/Anhänge/lonely.txt"]
+    assert [item["path"] for item in unused["items"]] == ["Home/Attachments/lonely.txt"]
 
 
 def test_a_link_typed_but_not_saved_is_resolved(client: TestClient, filled: Path) -> None:
@@ -307,8 +307,8 @@ def test_a_link_typed_but_not_saved_is_resolved(client: TestClient, filled: Path
         return client.get("/api/resolve", params={"source": "Home/Recipes/Cake.md", "target": target, "kind": kind},
                           headers=TAB).json()["path"]
 
-    assert resolve("Shopping 1.jpg", "embed") == "Home/Anhänge/Shopping 1.jpg"
-    assert resolve("../Anh%C3%A4nge/Shopping%201.jpg", "md_embed") == "Home/Anhänge/Shopping 1.jpg"
+    assert resolve("Shopping 1.jpg", "embed") == "Home/Attachments/Shopping 1.jpg"
+    assert resolve("../Attachments/Shopping%201.jpg", "md_embed") == "Home/Attachments/Shopping 1.jpg"
     assert resolve("Nothing.png", "embed") is None
 
 
@@ -324,16 +324,40 @@ def test_a_note_moving_to_another_folder_takes_its_own_attachments_along(client:
     moved = client.post("/api/move", json={"source": "Home/Shopping.md", "destination": "Home/Lists/Shopping.md"},
                         headers=TAB)
     assert moved.status_code == 200, moved.text
-    assert (filled / "Home" / "Lists" / "Anhänge" / "Shopping 1.jpg").is_file()
-    assert not (filled / "Home" / "Anhänge" / "Shopping 1.jpg").exists()
+    assert (filled / "Home" / "Lists" / "Attachments" / "Shopping 1.jpg").is_file()
+    assert not (filled / "Home" / "Attachments" / "Shopping 1.jpg").exists()
     # Used by another note too: it stays, and the moved note's link climbs to it.
-    assert (filled / "Home" / "Anhänge" / "Shopping 2.jpg").is_file()
+    assert (filled / "Home" / "Attachments" / "Shopping 2.jpg").is_file()
     written = (filled / "Home" / "Lists" / "Shopping.md").read_text(encoding="utf-8")
-    assert written == "# Shopping\n\n![](Anhänge/Shopping%201.jpg)\n\n![](../Anh%C3%A4nge/Shopping%202.jpg)\n"
+    assert written == "# Shopping\n\n![](Attachments/Shopping%201.jpg)\n\n![](../Attachments/Shopping%202.jpg)\n"
     links = client.get("/api/links", params={"path": "Home/Lists/Shopping.md"}, headers=TAB).json()
     assert [item["path"] for item in links["outgoing"]] == [
-        "Home/Lists/Anhänge/Shopping 1.jpg", "Home/Anhänge/Shopping 2.jpg",
+        "Home/Lists/Attachments/Shopping 1.jpg", "Home/Attachments/Shopping 2.jpg",
     ]
+
+
+def test_a_deleted_note_takes_only_its_own_attachments_along_when_asked(client: TestClient, filled: Path) -> None:
+    own = upload(client, photo(), pasted=True).json()
+    shared = upload(client, photo((0, 0, 255)), pasted=True).json()
+    note = client.get("/api/note", params={"path": "Home/Shopping.md"}, headers=TAB).json()
+    client.put("/api/note", json={"path": "Home/Shopping.md", "content": f"![]({own['link']}) ![]({shared['link']})\n",
+                                  "base_hash": note["hash"]}, headers=TAB)
+    cake = client.get("/api/note", params={"path": "Home/Recipes/Cake.md"}, headers=TAB).json()
+    client.put("/api/note", json={"path": "Home/Recipes/Cake.md", "content": "![[Shopping 2.jpg]]\n",
+                                  "base_hash": cake["hash"]}, headers=TAB)
+    offered = client.get("/api/files/own", params={"path": "Home/Shopping.md"}, headers=TAB).json()["paths"]
+    assert offered == [own["path"]]
+    # Asked to take both: the shared one stays, whatever the request says.
+    gone = client.delete("/api/files", params={"path": "Home/Shopping.md", "along": [own["path"], shared["path"]]},
+                         headers=TAB).json()
+    assert gone == {"files": 2}
+    assert not (filled / "Home" / "Attachments" / "Shopping 1.jpg").exists()
+    assert (filled / "Home" / "Attachments" / "Shopping 2.jpg").exists()
+    entries = client.get("/api/trash", headers=TAB).json()
+    # Shown as the note, not as the folder the note and its files share.
+    assert len(entries) == 1 and entries[0]["files"] == 2 and entries[0]["path"] == "Home/Shopping.md"
+    client.post(f"/api/trash/{entries[0]['id']}/restore", headers=TAB)
+    assert (filled / "Home" / "Shopping.md").exists() and (filled / "Home" / "Attachments" / "Shopping 1.jpg").exists()
 
 
 def test_a_deleted_attachment_waits_in_the_trash_folder_and_comes_back(client: TestClient, filled: Path) -> None:
@@ -343,10 +367,10 @@ def test_a_deleted_attachment_waits_in_the_trash_folder_and_comes_back(client: T
         file_id = db.scalar(select(File.id).where(File.path == body["path"]))
     client.delete("/api/files", params={"path": body["path"]}, headers=TAB)
     waiting = paths.trash_root() / str(file_id)
-    assert waiting.read_bytes() == data and not (filled / "Home" / "Anhänge" / "clip.bin").exists()
+    assert waiting.read_bytes() == data and not (filled / "Home" / "Attachments" / "clip.bin").exists()
     entry = client.get("/api/trash", headers=TAB).json()[0]["id"]
     assert client.post(f"/api/trash/{entry}/restore", headers=TAB).status_code == 200
-    assert (filled / "Home" / "Anhänge" / "clip.bin").read_bytes() == data and not waiting.exists()
+    assert (filled / "Home" / "Attachments" / "clip.bin").read_bytes() == data and not waiting.exists()
     client.delete("/api/files", params={"path": body["path"]}, headers=TAB)
     entry = client.get("/api/trash", headers=TAB).json()[0]["id"]
     client.delete(f"/api/trash/{entry}", headers=TAB)
@@ -388,8 +412,10 @@ def test_file_settings_are_the_operators(client: TestClient, filled: Path) -> No
 
     app.dependency_overrides[require_operator] = lambda: "admin"
     current = client.get("/api/settings/files", headers=TAB).json()
-    assert current == {"attachment_folder": "Anhänge", "upload_max_mb": 1024, "quota_mb": 0, "strip_location": True}
+    assert current == {"attachment_folder": "Attachments", "upload_max_mb": 1024, "quota_mb": 0, "strip_location": True}
     bad = client.put("/api/settings/files", json={**current, "attachment_folder": "a/b"}, headers=TAB)
     assert bad.status_code == 400
-    client.put("/api/settings/files", json={**current, "attachment_folder": "Attachments"}, headers=TAB)
-    assert upload(client, b"x", name="x.txt").json()["path"] == "Home/Attachments/x.txt"
+    # A name of its own, umlaut and all: the link keeps the letters as they are.
+    client.put("/api/settings/files", json={**current, "attachment_folder": "Anhänge"}, headers=TAB)
+    placed = upload(client, b"x", name="x.txt").json()
+    assert placed["path"] == "Home/Anhänge/x.txt" and placed["link"] == "Anhänge/x.txt"

@@ -58,6 +58,9 @@ export function NotePage() {
   const [lockHolder, setLockHolder] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  // Files only this note uses, offered to go into the trash with it; and whether they do.
+  const [own, setOwn] = useState<string[]>([])
+  const [withOwn, setWithOwn] = useState(true)
   const [notice, setNotice] = useState<string | null>(null)
   // What an upload did, said once (place and device removed, the file was there already).
   const [info, setInfo] = useState<string | null>(null)
@@ -356,11 +359,19 @@ export function NotePage() {
     }
   }
 
+  const askToDelete = async () => {
+    setOwn([])
+    setWithOwn(true)
+    setDeleting(true)
+    const found = await vaultApi.own(path).catch(() => ({ paths: [] as string[] }))
+    if (current.current === path) setOwn(found.paths)
+  }
+
   const remove = async () => {
     if (!note) return
     setDeleting(false)
     try {
-      await vaultApi.remove(note.path)
+      await vaultApi.remove(note.path, withOwn ? own : [])
       await reload()
       navigate('/')
     } catch (error) {
@@ -479,7 +490,7 @@ export function NotePage() {
                 <button type="button" onClick={() => setRenaming(baseName(note.path))} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850">
                   {t('note.rename')}
                 </button>
-                <button type="button" onClick={() => setDeleting(true)} disabled={!!lockedBy} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-bad-500 hover:bg-ink-850 disabled:opacity-40">
+                <button type="button" onClick={() => void askToDelete()} disabled={!!lockedBy} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-bad-500 hover:bg-ink-850 disabled:opacity-40">
                   {t('note.delete')}
                 </button>
               </>
@@ -613,6 +624,19 @@ export function NotePage() {
         onConfirm={() => void remove()}
       >
         {t('note.deleteText')}
+        {own.length > 0 && (
+          <div className="mt-3 rounded-xl border border-ink-700 bg-ink-850 px-3 py-2">
+            <label className="flex items-start gap-2 text-sm text-mist-200">
+              <input type="checkbox" checked={withOwn} onChange={(event) => setWithOwn(event.target.checked)} className="mt-1 accent-accent-500" />
+              <span>{t('note.deleteOwn', { count: own.length })}</span>
+            </label>
+            <ul className="mt-1 ml-6 max-h-32 overflow-y-auto text-xs text-mist-500">
+              {own.map((file) => (
+                <li key={file} className="truncate">{baseName(file)}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </ConfirmDialog>
       {comparing && <ConflictCompare notePath={comparing.note} copyPath={comparing.copy} onClose={() => setComparing(null)} onDone={() => void compared()} />}
     </>

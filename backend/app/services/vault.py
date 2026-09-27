@@ -18,6 +18,7 @@ import shutil
 import time
 import uuid
 import zlib
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -39,6 +40,8 @@ LOCK_SECONDS = 90
 BUNDLE_SECONDS = 600
 TRASH_DAYS = 30
 TEMPORARY_PREFIX = ".nexlore-"
+#: Start of the trash group of a note deleted together with its own files (see ``trash``).
+NOTE_GROUP = "note-"
 
 
 class VaultError(Exception):
@@ -380,16 +383,24 @@ def _keep_current(db: Session, file: File, full: Path) -> bool:
     return True
 
 
-def delete_path(rel: str, *, actor: Actor) -> int:
-    """Into the trash with a file or a folder. Returns how many files went."""
+def delete_path(rel: str, *, actor: Actor, along: Iterable[str] = ()) -> int:
+    """Into the trash with a file or a folder. Returns how many files went. ``along``: files only this note uses
+    that go with it, in the same trash entry (they come back together); one that another note links meanwhile
+    stays."""
     rel = _parse(rel)
     full = _full(rel)
     group = str(uuid.uuid4())
+    if along:
+        # A note with its own files: the trash shows it as that note, not as the folder they share.
+        group = NOTE_GROUP + group[len(NOTE_GROUP) :]
     with index.guard, SessionLocal() as db:
         if full.is_dir():
             files = below(db, rel)
         else:
             files = [_file(db, rel)]
+            wanted = set(along)
+            if wanted and files[0].is_note:
+                files += [file for file in _its_own(db, files[0]) if file.path in wanted]
         _refuse_foreign_lock(db, files, actor)
         keys: set[str] = set()
         space_id = None
@@ -479,7 +490,10 @@ def trash() -> list[TrashEntry]:
             entries[key] = TrashEntry(key, path, 0, deleted_at, how or index.EXTERNAL, by)
         entries[key].files += 1
     for key, members in grouped.items():
-        if len(members) > 1:
+        notes = [member for member in members if paths.is_note(member)]
+        if key.startswith("g-" + NOTE_GROUP) and len(notes) == 1:
+            entries[key].path = notes[0]
+        elif len(members) > 1:
             entries[key].path = posixpath.commonpath(members)
     return list(entries.values())
 
@@ -871,33 +885,45 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
     return Moved(path=destination, files=len(files), rewritten=len(rewritten_ids))
 
 
-def _carried(db: Session, note: File, new_folder: str) -> list[tuple[File, str]]:
-    """The attachments that go along when ``note`` moves to ``new_folder``: those in the attachment folder beside it
-    that no other note links. Each with its new path, in the attachment folder beside the note's new place."""
-    folder_name = str(settings_service.get(db, "attachment_folder") or "Anhänge")
-    old_folder = posixpath.join(posixpath.dirname(note.path), folder_name)
-    target_folder = posixpath.join(new_folder, folder_name)
+def _its_own(db: Session, note: File) -> list[File]:
+    """Files other than notes that ``note`` links and no other live note does, by path."""
     linked = select(Link.target_id).where(Link.source_id == note.id, Link.target_id.is_not(None))
     candidates = db.scalars(
-        select(File).where(
-            File.id.in_(linked), File.deleted_at.is_(None), File.is_note.is_(False),
-            File.path > old_folder + "/", File.path < old_folder + "0",
-        )
+        select(File).where(File.id.in_(linked), File.deleted_at.is_(None), File.is_note.is_(False)).order_by(File.path)
     ).all()
     source_file = File.__table__.alias("source")
-    result: list[tuple[File, str]] = []
-    taken: set[str] = set()
-    directory = paths.vault_root().joinpath(*target_folder.split("/"))
+    own = []
     for attachment in candidates:
-        if "/" in attachment.path[len(old_folder) + 1 :]:
-            continue  # in a folder below: not simply "beside the note"
         others = db.scalar(
             select(func.count())
             .select_from(Link)
             .join(source_file, source_file.c.id == Link.source_id)
             .where(Link.target_id == attachment.id, Link.source_id != note.id, source_file.c.deleted_at.is_(None))
         )
-        if others:
+        if not others:
+            own.append(attachment)
+    return own
+
+
+def its_own(rel: str) -> list[str]:
+    """What only this note uses: offered to go along into the trash when the note is deleted."""
+    rel = _parse(rel)
+    with SessionLocal() as db:
+        return [file.path for file in _its_own(db, _file(db, rel))]
+
+
+def _carried(db: Session, note: File, new_folder: str) -> list[tuple[File, str]]:
+    """The attachments that go along when ``note`` moves to ``new_folder``: those in the attachment folder beside it
+    that no other note links. Each with its new path, in the attachment folder beside the note's new place."""
+    folder_name = str(settings_service.get(db, "attachment_folder") or "Attachments")
+    old_folder = posixpath.join(posixpath.dirname(note.path), folder_name)
+    target_folder = posixpath.join(new_folder, folder_name)
+    result: list[tuple[File, str]] = []
+    taken: set[str] = set()
+    directory = paths.vault_root().joinpath(*target_folder.split("/"))
+    for attachment in _its_own(db, note):
+        # Only what lies right in the attachment folder beside the note, not below it or elsewhere.
+        if posixpath.dirname(attachment.path) != old_folder:
             continue
         name = paths.unique_name(directory, posixpath.basename(attachment.path), taken=taken)
         taken.add(name)

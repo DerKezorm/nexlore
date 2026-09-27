@@ -51,7 +51,7 @@ def actor(account: Account, x_nexlore_client: Annotated[str | None, Header()] = 
 
 ActorDep = Annotated[Actor, Depends(actor)]
 PathQuery = Annotated[str, Query(min_length=1, max_length=paths.MAX_PATH_CHARS)]
-TrashId = Annotated[str, PathParam(max_length=64, pattern=r"^[fg]-[0-9a-f-]+$")]
+TrashId = Annotated[str, PathParam(max_length=64, pattern=r"^[fg]-(note-)?[0-9a-f-]+$")]
 
 
 # --- Spaces and folders ---------------------------------------------------------------------------------------------
@@ -331,9 +331,23 @@ def create_note(body: CreateIn, who: ActorDep) -> NoteOut:
 
 
 @router.delete("/files")
-def delete(path: PathQuery, who: ActorDep) -> dict[str, int]:
+def delete(
+    path: PathQuery,
+    who: ActorDep,
+    along: Annotated[list[str], Query(max_length=500)] = [],  # noqa: B006 - FastAPI copies the default
+) -> dict[str, int]:
+    """Into the trash; ``along``: files only this note uses that go with it (see ``GET /api/files/own``)."""
     try:
-        return {"files": vault.delete_path(path, actor=who)}
+        return {"files": vault.delete_path(path, actor=who, along=along)}
+    except VaultError as exc:
+        raise _fail(exc) from exc
+
+
+@router.get("/files/own")
+def own(path: PathQuery, _account: Account) -> dict[str, list[str]]:
+    """The files only this note uses: the delete dialog offers them to go along."""
+    try:
+        return {"paths": vault.its_own(path)}
     except VaultError as exc:
         raise _fail(exc) from exc
 

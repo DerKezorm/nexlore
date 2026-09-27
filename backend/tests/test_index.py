@@ -81,6 +81,25 @@ def test_a_decomposed_name_from_macos_stays_readable_and_linkable(vault: Path) -
     assert target_of("S/link.md", "Café") == "S/Café.md"
 
 
+def test_two_scans_at_once_do_not_add_a_file_twice(vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    put(vault, "S/a.md", "a")
+    put(vault, "S/b.md", "b")
+    real = index.prepare
+    raced: list[bool] = []
+
+    def while_the_watcher_scans(root: str, rel: str):
+        # The watcher's scan takes the same new file while this scan is still reading.
+        if not raced:
+            raced.append(True)
+            index.scan(only={"S/a.md"})
+        return real(root, rel)
+
+    monkeypatch.setattr(index, "prepare", while_the_watcher_scans)
+    index.scan()
+    with SessionLocal() as db:
+        assert sorted(db.scalars(select(File.path).where(File.deleted_at.is_(None)))) == ["S/a.md", "S/b.md"]
+
+
 def test_a_second_scan_without_changes_touches_nothing(vault: Path) -> None:
     put(vault, "S/a.md", "a")
     index.scan()

@@ -42,7 +42,7 @@ export function tabId(): string {
 
 type Options = {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
-  query?: Record<string, string | number | undefined>
+  query?: Record<string, string | number | string[] | undefined>
   body?: unknown
   form?: FormData
   keepalive?: boolean
@@ -51,7 +51,8 @@ type Options = {
 export async function api<T>(path: string, options: Options = {}): Promise<T> {
   const url = new URL(path, window.location.origin)
   for (const [key, value] of Object.entries(options.query ?? {})) {
-    if (value !== undefined) url.searchParams.set(key, String(value))
+    if (Array.isArray(value)) for (const item of value) url.searchParams.append(key, item)
+    else if (value !== undefined) url.searchParams.set(key, String(value))
   }
   const headers: Record<string, string> = { Accept: 'application/json', 'X-Nexlore-Client': tabId() }
   let body: BodyInit | undefined
@@ -205,7 +206,10 @@ export const vaultApi = {
     api<Saved>('/api/note', { method: 'PUT', body: { path, content, base_hash: baseHash }, keepalive: keepalive && content.length < 60_000 }),
   create: (folder: string, title: string, content = '') =>
     api<NoteData>('/api/notes', { method: 'POST', body: { folder, title, content } }),
-  remove: (path: string) => api<{ files: number }>('/api/files', { method: 'DELETE', query: { path } }),
+  /** `along`: files only this note uses that go into the trash with it (see `own`). */
+  remove: (path: string, along: string[] = []) => api<{ files: number }>('/api/files', { method: 'DELETE', query: { path, along } }),
+  /** The files only this note uses. */
+  own: (path: string) => api<{ paths: string[] }>('/api/files/own', { query: { path } }),
   move: (source: string, destination: string) =>
     api<{ path: string; files: number; rewritten: number }>('/api/move', { method: 'POST', body: { source, destination } }),
   links: (path: string) => api<Links>('/api/links', { query: { path } }),

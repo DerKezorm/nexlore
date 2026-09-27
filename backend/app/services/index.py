@@ -689,6 +689,12 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats, confirm_deletions
                         changed_keys.setdefault(file.space_id, set()).add(file.name_key)
                     if bulk:
                         touched.setdefault(file.space_id, set()).add(file.id)
+                if fresh:
+                    # Another scan (the watcher's) may have taken the same new files meanwhile: they are known now.
+                    taken = set(db.scalars(select(File.path).where(
+                        File.deleted_at.is_(None), File.path.in_([item.rel for item in fresh])
+                    )))
+                    fresh = [item for item in fresh if item.rel not in taken]
                 for file_id, space_id, key, _rel in bulk_add(db, fresh):
                     stats.added += 1
                     changed_keys.setdefault(space_id, set()).add(key)
