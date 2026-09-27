@@ -46,7 +46,6 @@ from .prepare import (
     analyse,
     decode,
     digest,
-    is_read_whole,
     name_key,
     prepare,
     target_key,
@@ -664,7 +663,7 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats, confirm_deletions
                     if row is None and rel not in trashed:
                         fresh.append(item)
                         continue
-                    if is_read_whole(rel):
+                    if paths.is_note(rel):
                         read = _read(root, rel)
                         if read is None:
                             stats.errors += 1
@@ -672,7 +671,7 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats, confirm_deletions
                         data, stat = read
                         ready = None
                     else:
-                        # Hashed already, piece by piece; only its state is needed.
+                        # Read already (a PDF for its text, anything else hashed piece by piece): only its state.
                         try:
                             stat = os.stat(root.joinpath(*rel.split("/")))
                         except OSError:
@@ -775,10 +774,20 @@ def _merge_move(db: Session, old: File, new_rel: str) -> None:
     old.path_key = paths.fold(new_rel)
     old.name_key = name_key(new_rel)
     old.space_id = ensure_space(db, paths.space_of(new_rel)).id
-    if not is_read_whole(new_rel):
+    if not paths.is_note(new_rel):
+        # Same content (that is how the move was recognised): only its place and state change, it is not hashed again
+        # while every save waits for this lock.
         full = paths.vault_root().joinpath(*new_rel.split("/"))
         if full.exists():
-            record(db, new_rel, b"", full.stat(), source=RENAME, file=old)
+            stat = full.stat()
+            old.size, old.mtime_ns, old.is_note = stat.st_size, stat.st_mtime_ns, False
+            old.title = paths.stem(new_rel)
+            old.indexed_at = utcnow()
+            # A PDF's text stays searchable; its title in the search follows the new name.
+            db.execute(
+                text(f"UPDATE {FTS_TABLE} SET title = :title WHERE rowid = :id"),  # noqa: S608
+                {"title": old.title, "id": old.id},
+            )
         return
     data = _read(paths.vault_root(), new_rel)
     if data is not None:

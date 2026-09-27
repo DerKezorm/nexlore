@@ -403,14 +403,10 @@ def delete_path(rel: str, *, actor: Actor) -> int:
                 keys.add(file.name_key)
                 space_id = file.space_id
             db.flush()
-            for file in files:
-                file_full = paths.vault_root().joinpath(*file.path.split("/"))
-                if file_full.exists():
-                    file_full.unlink()
-            if full.is_dir():
-                _remove_empty_folders(full)
             if space_id is not None:
                 index.reresolve(db, space_id, keys)
+            # The trash is written before a single note leaves the disk: whatever fails after, every note has its
+            # newest text in a version and can come back.
             db.commit()
         except BaseException:
             # Not in the trash after all: the files moved there go back where they were.
@@ -420,8 +416,31 @@ def delete_path(rel: str, *, actor: Actor) -> int:
                 if trash_file(file.id).exists() and not back.exists():
                     _move(trash_file(file.id), back)
             raise
+        left: list[str] = []
+        for file in files:
+            file_full = paths.vault_root().joinpath(*file.path.split("/"))
+            if file_full.exists() and not _unlink(file_full):
+                # Still on the disk (held open elsewhere): the next scan finds it and indexes it again.
+                left.append(file.path)
+        if full.is_dir():
+            _remove_empty_folders(full)
+    if left:
+        logger.warning("Files in the trash could not leave the disk, they stay files=%s", len(left))
     logger.info("Moved to the trash files=%s", len(files))
     return len(files)
+
+
+def _unlink(path: Path) -> bool:
+    """Remove a file, waiting a moment where Windows holds it open (a virus scanner, Obsidian)."""
+    for attempt in range(6):
+        try:
+            path.unlink(missing_ok=True)
+            return True
+        except PermissionError:
+            time.sleep(0.05 * (attempt + 1))
+        except OSError:
+            return False
+    return False
 
 
 def _remove_empty_folders(top: Path) -> None:
@@ -538,7 +557,8 @@ def _forget_for_good(db: Session, files: list[File]) -> None:
         db.delete(file)
     db.commit()
     for file_id in ids:
-        trash_file(file_id).unlink(missing_ok=True)
+        if not _unlink(trash_file(file_id)):
+            logger.warning("A file could not be removed from the trash folder file_id=%s", file_id)
 
 
 def purge_trash(entry_id: str) -> int:

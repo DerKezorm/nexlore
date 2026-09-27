@@ -180,7 +180,11 @@ function AttachmentsCard() {
     setList(null)
     vaultApi
       .attachments(shown, unused)
-      .then((found) => live && setList(found))
+      .then((found) => {
+        if (!live) return
+        setList(found)
+        setProblem(null)
+      })
       .catch((error) => live && setProblem(error instanceof ApiError ? error.code : 'internal_error'))
     return () => {
       live = false
@@ -189,8 +193,13 @@ function AttachmentsCard() {
 
   const more = async () => {
     if (!list) return
-    const next = await vaultApi.attachments(shown, unused, list.items.length)
-    setList({ total: next.total, items: [...list.items, ...next.items] })
+    try {
+      const next = await vaultApi.attachments(shown, unused, list.items.length)
+      setList({ total: next.total, items: [...list.items, ...next.items] })
+      setProblem(null)
+    } catch (error) {
+      setProblem(error instanceof ApiError ? error.code : 'internal_error')
+    }
   }
 
   const size = (bytes: number) => formatSize(bytes, i18n.language)

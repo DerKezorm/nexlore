@@ -183,12 +183,24 @@ def _trash_files() -> list[tuple[str, Path]]:
     )
 
 
-def _database_copy(target: Path) -> None:
+def _snapshot_trash(target: Path) -> None:
+    """The trash folder as it is this instant: hard links (instant, no copy) where the file system allows them."""
+    target.mkdir(parents=True, exist_ok=True)
+    for name_in_trash, full in _trash_files():
+        try:
+            os.link(full, target / name_in_trash)
+        except OSError:
+            shutil.copy2(full, target / name_in_trash)
+
+
+def _database_copy(target: Path, trash: Path) -> None:
+    """The database and the trash folder in one instant, so the archive's trash matches the database that knows it."""
     source = sqlite3.connect(get_settings().database_path)
     destination = sqlite3.connect(target)
     try:
         with index.guard:
             source.backup(destination)
+            _snapshot_trash(trash)
         destination.execute("PRAGMA journal_mode=DELETE")
         destination.commit()
     finally:
@@ -208,9 +220,10 @@ def create(*, kind: str = MANUAL, note: str = "") -> Path:
         number += 1
     partial = base / f".{name}.part"
     database = base / f".{name}.db"
+    trash = base / f".{name}.trash"
     root = paths.vault_root()
     try:
-        _database_copy(database)
+        _database_copy(database, trash)
         manifest = Manifest(version=__version__, created=moment.isoformat(timespec="seconds"), kind=kind, note=note)
         with zipfile.ZipFile(partial, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
             archive.write(database, DATABASE_ENTRY)
@@ -225,7 +238,8 @@ def create(*, kind: str = MANUAL, note: str = "") -> Path:
                 manifest.files += 1
                 manifest.bytes += size
                 manifest.notes += int(rel.lower().endswith(paths.NOTE_SUFFIX))
-            for name_in_trash, full in _trash_files():
+            for full in sorted(trash.iterdir()):
+                name_in_trash = full.name
                 try:
                     archive.write(full, TRASH_PREFIX + name_in_trash)
                     manifest.trash[name_in_trash] = [full.stat().st_size, _hash_file(full)]
@@ -237,6 +251,7 @@ def create(*, kind: str = MANUAL, note: str = "") -> Path:
     finally:
         partial.unlink(missing_ok=True)
         database.unlink(missing_ok=True)
+        shutil.rmtree(trash, ignore_errors=True)
     logger.info("Backup made kind=%s files=%s bytes=%s", kind, manifest.files, manifest.bytes)
     return base / name
 

@@ -21,7 +21,7 @@ import { Sidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { copiesOf, originalOf } from '../lib/compare'
 import { errorText } from '../lib/errors'
-import { isNotePath } from '../lib/files'
+import { isFileTarget, isNotePath } from '../lib/files'
 import { linkIndex } from '../lib/links'
 import { fileRoute, formatDate, renderMarkdown } from '../lib/markdown'
 import { ancestry, baseName, folderOf, noteUrl } from '../lib/vault'
@@ -317,17 +317,17 @@ export function NotePage() {
   }
 
   const openLink = async (target: string, newTab: boolean) => {
-    // A file (`photo.png`, `doc.pdf`): the server knows where it is; a missing one is never made into a note.
-    if (/\.(?!md$)[a-z0-9]{1,6}$/i.test(target.split('#')[0].trim())) {
-      const found = await vaultApi.resolve(path, target.split('#')[0].trim(), 'embed').catch(() => null)
-      if (found?.path) openFile(found.path, newTab)
-      else setNotice(t('note.missingFile', { name: target }))
-      return
-    }
     const found = linkIndex(vault, path).resolve(target)
     if (found) {
       if (newTab) window.open(noteUrl(found), '_blank', 'noopener')
       else open(found)
+      return
+    }
+    // A file (`photo.png`, `doc.pdf`): the server knows where it is; a missing one is never made into a note.
+    if (isFileTarget(target)) {
+      const file = await vaultApi.resolve(path, target.split('#')[0].trim(), 'embed').catch(() => null)
+      if (file?.path) openFile(file.path, newTab)
+      else setNotice(t('note.missingFile', { name: target }))
       return
     }
     // A link to a note not written yet: like Obsidian, a click makes it next to this one and opens it for writing.

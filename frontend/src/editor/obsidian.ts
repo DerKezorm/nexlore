@@ -163,7 +163,7 @@ export const safeImage = imageSchema.extendSchema((previous) => (ctx) => {
       const shown = base.toDOM!(node) as [string, Record<string, unknown>]
       const src = String(node.attrs.src ?? '')
       const allowed = safeUrl(src) && !/^mailto:/i.test(src)
-      return [shown[0], { ...shown[1], src: allowed ? ctx.get(imageSource.key)(src) : '', 'data-src': src }]
+      return [shown[0], { ...shown[1], src: allowed ? ctx.get(imageSource.key)(src) : '', 'data-nx-src': src }]
     },
     // Copied inside the editor, a picture carries the address it is shown from; the note's own path comes back.
     parseDOM: [
@@ -172,7 +172,7 @@ export const safeImage = imageSchema.extendSchema((previous) => (ctx) => {
         getAttrs: (dom) => {
           const element = dom as HTMLElement
           return {
-            src: element.getAttribute('data-src') ?? element.getAttribute('src') ?? '',
+            src: element.getAttribute('data-nx-src') ?? element.getAttribute('src') ?? '',
             alt: element.getAttribute('alt') ?? '',
             title: element.getAttribute('title') ?? element.getAttribute('alt') ?? '',
           }

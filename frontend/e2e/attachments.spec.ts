@@ -47,6 +47,7 @@ async function hand(page: Page, kind: 'paste' | 'drop', files: { name: string; t
 // Content of their own: the same bytes as a file of the space would be linked to that file instead (tested below).
 const GREEN_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAIAAABChommAAAAFUlEQVR42mPUOBHFQAgwMRABhrciAIVBAVrdp34QAAAAAElFTkSuQmCC'
 const PDF = Buffer.concat([fs.readFileSync(file('Media/leaflet.pdf')), Buffer.from('% price list\n')]).toString('base64')
+const LATER_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAIAAABChommAAAAFUlEQVR42mPs0VjAQAgwMRABhrciAJDbAWSHbO2AAAAAAElFTkSuQmCC'
 const SAME_AS_SUNSET = fs.readFileSync(file('Media/sunset.png')).toString('base64')
 
 test('a pasted picture lands beside its note, named after it, and shows', async ({ page }) => {
@@ -54,8 +55,8 @@ test('a pasted picture lands beside its note, named after it, and shows', async 
   await page.locator('.ProseMirror p', { hasText: 'Start.' }).click()
   await page.keyboard.press('End')
   await hand(page, 'paste', [{ name: 'image.png', type: 'image/png', base64: GREEN_PNG }])
-  const picture = page.locator('.ProseMirror img[data-src]')
-  await expect(picture).toHaveAttribute('data-src', 'Anhänge/Paste%20here%201.png')
+  const picture = page.locator('.ProseMirror img[data-nx-src]')
+  await expect(picture).toHaveAttribute('data-nx-src', 'Anhänge/Paste%20here%201.png')
   await expect.poll(() => picture.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(12)
   await saved(page)
   expect(onDisk('Media/Paste here.md')).toContain('![](Anhänge/Paste%20here%201.png)')
@@ -71,7 +72,7 @@ test('a picture the space holds already is linked, not stored again', async ({ p
   await edit(page, 'Media/Paste here.md')
   await page.locator('.ProseMirror p', { hasText: 'Start.' }).click()
   await hand(page, 'paste', [{ name: 'image.png', type: 'image/png', base64: SAME_AS_SUNSET }])
-  await expect(page.locator('.ProseMirror img[data-src="sunset.png"]')).toBeVisible()
+  await expect(page.locator('.ProseMirror img[data-nx-src="sunset.png"]')).toBeVisible()
   await expect(page.getByRole('note')).toContainText('The space held the same file already')
   await saved(page)
   expect(fs.readdirSync(path.join(DATA, 'vault', 'Media', 'Anhänge')).filter((name) => name.startsWith('Paste here'))).toHaveLength(1)
@@ -100,7 +101,7 @@ test('embedded pictures show in the editor and when reading; a click brings the 
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   const embedded = page.locator('.ProseMirror .nx-embed-media')
   await expect.poll(() => embedded.evaluate((element: HTMLImageElement) => element.naturalWidth), { timeout: 10_000 }).toBe(12)
-  const markdownImage = page.locator('.ProseMirror img[data-src]')
+  const markdownImage = page.locator('.ProseMirror img[data-nx-src]')
   await expect.poll(() => markdownImage.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(12)
   // A click on the picture puts the cursor into the embed: its text shows for editing, the picture steps aside.
   await embedded.click()
@@ -110,6 +111,25 @@ test('embedded pictures show in the editor and when reading; a click brings the 
   await page.locator('.ProseMirror .nx-wiki', { hasText: 'leaflet' }).click()
   await expect(page).toHaveURL(/\/file\/Media\/leaflet\.pdf$/)
   expect(fs.existsSync(file('Media/leaflet.pdf.md'))).toBe(false)
+})
+
+test('a note whose name ends like a file stays a note', async ({ page }) => {
+  await edit(page, 'Media/Versions.md')
+  const link = page.locator('.ProseMirror .nx-wiki', { hasText: 'v1.2' })
+  await expect(link).not.toHaveClass(/nx-wiki-missing/)
+  await link.click()
+  await expect(page).toHaveURL(/\/note\/Media\/v1\.2\.md$/)
+})
+
+test('an embed typed before its file was uploaded shows the picture once it is', async ({ page }) => {
+  await edit(page, 'Media/Later.md')
+  await page.locator('.ProseMirror p', { hasText: 'Start.' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.type(' ![[later.png]]')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.ProseMirror .nx-wiki-missing', { hasText: 'later.png' })).toBeVisible()
+  await hand(page, 'paste', [{ name: 'later.png', type: 'image/png', base64: LATER_PNG }])
+  await expect.poll(() => page.locator('.ProseMirror .nx-embed-media').evaluate((image: HTMLImageElement) => image.naturalWidth), { timeout: 10_000 }).toBe(12)
 })
 
 test('the files page lists attachments with how often they are used, and search finds the text of a PDF', async ({ page }) => {

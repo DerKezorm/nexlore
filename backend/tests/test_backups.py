@@ -101,6 +101,27 @@ def test_files_waiting_in_the_trash_are_backed_up_and_come_back(vault: Path) -> 
     assert not brief.files_ok and brief.damaged == [f"trash/{waiting[0]}"]
 
 
+def test_the_trash_in_a_backup_is_the_one_its_database_knows(vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services import paths
+    from app.services import vault as vault_service
+
+    put(vault, "S/clip.bin", b"\x03" * 4000)
+    index.scan()
+    vault_service.delete_path("S/clip.bin", actor=vault_service.Actor(name="t", client="tab-tests000"))
+    waiting = next(paths.trash_root().iterdir())
+    walk = backups._vault_files
+
+    def and_emptied_meanwhile(root: Path) -> list[tuple[str, Path]]:
+        # The vault is walked after the database copy; the trash empties itself in the meantime.
+        waiting.unlink()
+        return walk(root)
+
+    monkeypatch.setattr(backups, "_vault_files", and_emptied_meanwhile)
+    archive = backups.create()
+    with zipfile.ZipFile(archive) as opened:
+        assert opened.read(f"trash/{waiting.name}") == b"\x03" * 4000
+
+
 def test_a_damaged_archive_is_not_restored(vault: Path) -> None:
     put(vault, "S/a.md", "a")
     index.scan()

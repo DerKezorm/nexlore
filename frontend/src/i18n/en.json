@@ -127,7 +127,7 @@
     "uploaded_one": "File added.",
     "uploaded_other": "{{count}} files added.",
     "uploadedCleaned": "Place and device were removed from the photo.",
-    "uploadedUnchecked": "One file could not be checked for its place and device; it is stored as it came.",
+    "uploadedUnchecked": "One file could not be checked completely; it may still tell where it was taken or with what.",
     "uploadedDuplicate": "The space held the same file already; that one is linked."
   },
   "settings": {

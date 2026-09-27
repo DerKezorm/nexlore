@@ -29,7 +29,8 @@ LOCATION = "location"
 DEVICE = "device"
 #: A block that could not be read and was blanked whole.
 METADATA = "metadata"
-#: The file could not be read to the end: nothing was changed, and nobody can say what it still holds.
+#: Part of the file could not be read (or was too large to read): what could be read was cleaned, the rest may still
+#: hold a place or a device. The page says so.
 UNCHECKED = "unchecked"
 
 HEIF_BRANDS = {b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"hevm", b"hevs", b"mif1", b"msf1", b"mif2"}
@@ -70,7 +71,7 @@ def sniff(head: bytes) -> str | None:
     return None
 
 
-class _Bad(Exception):
+class _Bad(ValueError):
     """A block of metadata that does not read as it should."""
 
 
@@ -86,7 +87,10 @@ _DEVICE_TAGS = {0x010F, 0x0110, 0x013B, 0x013C, 0x927C, 0xA420, 0xA430, 0xA431, 
 
 
 def _zero(buf: bytearray, start: int, end: int) -> bool:
-    """Zeros over a range; whether anything was there."""
+    """Zeros over a range; whether anything was there. A range given the wrong way round (a broken size field) is
+    refused rather than taken as empty."""
+    if start < 0 or end < start or end > len(buf):
+        raise _Bad
     had = any(buf[start:end])
     buf[start:end] = bytes(end - start)
     return had
@@ -142,9 +146,10 @@ def scrub_tiff(buf: bytearray, start: int, end: int) -> set[str]:
             if length > 4 and (value < start or value + length > end):
                 raise _Bad
             if kind == "gps":
-                _zero(buf, value, value + length)
+                had = _zero(buf, value, value + length)
                 _zero(buf, entry, entry + 12)
-                removed.add(LOCATION)
+                if had:
+                    removed.add(LOCATION)
             elif tag == _GPS:
                 queue.append((u32(entry + 8), "gps"))
             elif tag in (_EXIF, _INTEROP) and kind_of_value in (4, 13):
@@ -238,7 +243,8 @@ def _jpeg(buf: bytearray) -> set[str]:
             # IPTC: city, country, sometimes the photographer. Blanked whole.
             removed.add(METADATA)
         at = stop
-    return removed
+    # A motion photo (Pixel, Samsung) carries a whole movie after the picture, with a place of its own.
+    return removed | _trailing_movies(buf, at)
 
 
 def _png(buf: bytearray) -> set[str]:
@@ -341,7 +347,7 @@ def _heif(buf: bytearray) -> set[str]:
                     name_end = buf.find(b"\x00", type_at + 4, entry_end)
                     type_end = buf.find(b"\x00", name_end + 1, entry_end) if name_end >= 0 else -1
                     content_type = bytes(buf[name_end + 1 : type_end]) if type_end >= 0 else b""
-                    if b"rdf+xml" in content_type or b"xmp" in content_type.lower():
+                    if b"rdf+xml" in content_type.lower() or b"xmp" in content_type.lower():
                         items[item_id] = b"xmp"
                 elif item_type == b"Exif":
                     items[item_id] = b"Exif"
@@ -359,6 +365,9 @@ def _heif(buf: bytearray) -> set[str]:
                 return int.from_bytes(buf[position : position + width], "big") if width else 0
 
             for _ in range(count):
+                # The count comes from the file: the box's end bounds the loop, not the number.
+                if at >= stop:
+                    break
                 item_id = number(2 if version < 2 else 4, at)
                 at += 2 if version < 2 else 4
                 method = 0
@@ -371,6 +380,8 @@ def _heif(buf: bytearray) -> set[str]:
                 extent_count = number(2, at)
                 at += 2
                 for _extent in range(extent_count):
+                    if at >= stop:
+                        break
                     at += index_size
                     offset = number(offset_size, at)
                     at += offset_size
@@ -395,7 +406,8 @@ def _heif(buf: bytearray) -> set[str]:
                 removed |= _scrub_or_blank(buf, start + 4 + skip, stop)
             else:
                 removed |= blank_xmp(buf, start, stop)
-    return removed
+    # Boxes of a movie among the picture's (a motion photo), and a movie appended after them.
+    return removed | _scrub_boxes(buf, 0, len(buf)) | _trailing_movies(buf, 12)
 
 
 # --- Movies ---------------------------------------------------------------------------------------------------------
@@ -463,11 +475,37 @@ def _scrub_boxes(buf: bytearray, start: int, end: int) -> set[str]:
                 removed.add(DEVICE)
         elif kind == b"uuid" and buf[content : content + 16] == _XMP_UUID:
             removed |= blank_xmp(buf, content + 16, stop)
+        elif kind in _PADDING:
+            # Free space may still hold an old movie header, from before the file was rearranged.
+            _zero(buf, content, stop)
     return removed
 
 
+_PADDING = {b"free", b"skip"}
+
+
+def _trailing_movies(buf: bytearray, start: int) -> set[str]:
+    """A movie appended to a picture (a motion photo): found by its ``ftyp`` box, cleaned like a movie."""
+    removed: set[str] = set()
+    at = start
+    while (found := buf.find(b"ftyp", at)) >= 0:
+        begin = found - 4
+        brand = bytes(buf[found + 4 : found + 8])
+        if begin >= start and re.fullmatch(rb"[0-9A-Za-z ]{4}", brand):
+            size = struct.unpack_from(">I", buf, begin)[0]
+            if 8 <= size <= len(buf) - begin:
+                removed |= _scrub_boxes(buf, begin, len(buf))
+        at = found + 4
+    return removed
+
+
+#: Top-level boxes of a movie that can hold a place or a device; everything else (the pictures) stays on disk.
+_MOVIE_TOP = {b"moov", b"uuid", b"meta", b"udta"} | _PADDING
+
+
 def _movie(path: Path) -> set[str]:
-    """Only the movie header (``moov``) and small top-level boxes are read and written; the pictures stay on disk."""
+    """Only the movie header (``moov``) and other small top-level boxes are read and written, one after another;
+    one that cannot be read or is too large is reported (``unchecked``), the others are still cleaned."""
     removed: set[str] = set()
     size = path.stat().st_size
     with open(path, "r+b") as handle:
@@ -482,17 +520,24 @@ def _movie(path: Path) -> set[str]:
             elif box_size == 0:
                 box_size = size - at
             if box_size < 8 or at + box_size > size:
+                removed.add(UNCHECKED)
                 break
-            if kind in (b"moov", b"uuid", b"meta", b"udta") and box_size <= MAX_MOOV_BYTES:
+            if kind in _MOVIE_TOP and box_size > MAX_MOOV_BYTES:
+                if kind not in _PADDING:
+                    logger.warning("Movie header too large to check for location, left as it is")
+                    removed.add(UNCHECKED)
+            elif kind in _MOVIE_TOP:
                 handle.seek(at)
-                buf = bytearray(handle.read(box_size))
-                found = _scrub_boxes(buf, 0, len(buf))
-                if found:
+                original = handle.read(box_size)
+                buf = bytearray(original)
+                try:
+                    removed |= _scrub_boxes(buf, 0, len(buf))
+                except (struct.error, ValueError, IndexError):
+                    removed.add(UNCHECKED)
+                # What was cleaned before a broken part is kept: zeros never make a movie unreadable.
+                if buf != original:
                     handle.seek(at)
                     handle.write(buf)
-                    removed |= found
-            elif kind == b"moov":
-                logger.warning("Movie header too large to check for location, left as it is")
             at += box_size
     return removed
 
@@ -518,13 +563,15 @@ def strip(path: Path, kind: str | None) -> set[str]:
     if size > MAX_IMAGE_BYTES:
         logger.warning("Picture too large to check for its location, left as it is bytes=%s", size)
         return {UNCHECKED}
-    buf = bytearray(path.read_bytes())
+    original = path.read_bytes()
+    buf = bytearray(original)
     try:
         removed = handler(buf)
     except (struct.error, ValueError, IndexError) as exc:
         logger.warning("Could not read a picture's metadata to the end: %s", type(exc).__name__)
-        return {UNCHECKED}
-    if removed:
+        # What was cleaned before the broken part is kept: zeros in metadata never break a picture.
+        removed = {UNCHECKED}
+    if buf != original:
         with open(path, "r+b") as handle:
             handle.write(buf)
             handle.flush()
@@ -534,7 +581,10 @@ def strip(path: Path, kind: str | None) -> set[str]:
 
 def to_webp(source: Path, target: Path) -> bool:
     """A WebP of a picture browsers cannot show (HEIC), turned upright, without any metadata. False when the
-    picture cannot be read."""
+    picture cannot be read. Pillow refuses pictures of absurd pixel counts by itself (decompression bombs); a file
+    larger than any photo is not even opened."""
+    if source.stat().st_size > MAX_IMAGE_BYTES:
+        return False
     try:
         import pillow_heif
         from PIL import Image, ImageOps

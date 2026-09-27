@@ -4,6 +4,7 @@
  * stays the authority; this only decides the colour of a link while typing and what `[[` suggests.
  */
 import type { Suggestion } from '../editor/suggest'
+import { isFileTarget } from './files'
 import type { Vault } from './vault'
 
 export type LinkIndex = {
@@ -53,8 +54,8 @@ export function linkIndex(vault: Vault, notePath: string): LinkIndex {
 
   return {
     resolve,
-    // Files other than notes (pictures, PDFs) are not in the vault list yet (M3): they count as there.
-    exists: (target) => resolve(target) !== null || /\.(?!md$)[a-z0-9]{1,5}$/i.test(target.split('#')[0].trim()),
+    // Files other than notes (pictures, PDFs) are not in this list: the editor asks the server about them.
+    exists: (target) => resolve(target) !== null || isFileTarget(target),
     suggestions,
   }
 }

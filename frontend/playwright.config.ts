@@ -78,6 +78,9 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Media/sunset.png': ORANGE_PNG,
   'Media/Anhänge/beach.png': BLUE_PNG,
   'Media/leaflet.pdf': LEAFLET_PDF,
+  'Media/Versions.md': '# Versions\n\nSee [[v1.2]].\n',
+  'Media/v1.2.md': '# v1.2\n\nA note whose name ends like a file.\n',
+  'Media/Later.md': '# Later\n\nStart.\n',
 }
 
 const DATA_DIR = external ? '' : dataDir()

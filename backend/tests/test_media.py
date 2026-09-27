@@ -175,6 +175,60 @@ def test_a_movie_loses_place_and_device_its_pictures_stay(tmp_path: Path) -> Non
     assert b"17.0" in after and b"FRAMES" * 1000 in after
 
 
+GPS_UDTA = box(b"udta", box(b"\xa9xyz", b"\x00\x12\x15\xc7+48.8584+002.2945/"))
+
+
+def test_a_broken_part_of_a_movie_does_not_keep_the_place_of_the_rest(tmp_path: Path) -> None:
+    broken = box(b"ilst", box(struct.pack(">I", 1), box(b"data", b"\x00\x00")))
+    keys = box(b"keys", b"\x00\x00\x00\x00" + struct.pack(">I", 1) + struct.pack(">I", 44) + b"mdta"
+               + b"com.apple.quicktime.location.ISO6709")
+    moov = box(b"moov", box(b"meta", box(b"hdlr", b"\x00" * 8 + b"mdta" + b"\x00" * 13) + keys + broken))
+    path = tmp_path / "broken.mov"
+    path.write_bytes(box(b"ftyp", b"qt  \x00\x00\x02\x00qt  ") + moov + GPS_UDTA + box(b"mdat", b"x" * 100))
+    assert media.strip(path, "mov") == {media.LOCATION, media.UNCHECKED}
+    assert b"+48.8584" not in path.read_bytes()
+
+
+def test_a_movie_header_too_large_to_read_is_reported(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(media, "MAX_MOOV_BYTES", 64)
+    path = tmp_path / "big.mp4"
+    path.write_bytes(box(b"ftyp", b"isom\x00\x00\x02\x00isom") + box(b"moov", b"\x00" * 100 + GPS_UDTA))
+    assert media.UNCHECKED in media.strip(path, "mp4")
+
+
+def test_free_space_in_a_movie_is_cleared(tmp_path: Path) -> None:
+    # A header moved to the front leaves the old one behind in a free box.
+    path = tmp_path / "moved.mp4"
+    path.write_bytes(box(b"ftyp", b"isom\x00\x00\x02\x00isom") + box(b"moov", b"\x00" * 16) + box(b"free", GPS_UDTA))
+    media.strip(path, "mp4")
+    assert b"+48.8584" not in path.read_bytes()
+
+
+@pytest.mark.parametrize(("fmt", "kind"), [("JPEG", "jpeg"), ("HEIF", "heic")])
+def test_the_movie_of_a_motion_photo_loses_its_place_too(tmp_path: Path, fmt: str, kind: str) -> None:
+    out = io.BytesIO()
+    picture().save(out, format=fmt)
+    movie = box(b"ftyp", b"isom\x00\x00\x02\x00isom") + box(b"moov", GPS_UDTA) + box(b"mdat", b"frames")
+    path = tmp_path / f"motion.{kind}"
+    # Samsung writes a marker before the movie that is not a box.
+    path.write_bytes(out.getvalue() + b"MotionPhoto_Data" + movie)
+    assert media.LOCATION in media.strip(path, kind)
+    assert b"+48.8584" not in path.read_bytes() and b"frames" in path.read_bytes()
+
+
+def test_a_hostile_item_count_does_not_hold_the_upload(tmp_path: Path) -> None:
+    import time
+
+    # Twenty million items claimed in a few bytes: without the bound about twenty seconds, with 0xFFFFFFFF hours.
+    iloc = box(b"iloc", bytes([2, 0, 0, 0, 0x44, 0x00]) + struct.pack(">I", 20_000_000))
+    meta = box(b"meta", b"\x00\x00\x00\x00" + box(b"hdlr", b"\x00" * 24) + iloc)
+    path = tmp_path / "loop.heic"
+    path.write_bytes(box(b"ftyp", b"heic\x00\x00\x00\x00mif1heic") + meta)
+    began = time.monotonic()
+    media.strip(path, "heic")
+    assert time.monotonic() - began < 1
+
+
 def test_kinds_are_told_by_content_not_by_name() -> None:
     def png() -> bytes:
         out = io.BytesIO()

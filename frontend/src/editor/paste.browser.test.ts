@@ -17,9 +17,17 @@ afterEach(async () => {
 it('keeps the path the note wrote when a picture is copied inside the editor, not the address it shows from', async () => {
   open = await openEditor('Start.\n')
   open.view.dispatch(open.view.state.tr.setSelection(Selection.atEnd(open.view.state.doc)))
-  open.view.pasteHTML('<p><img src="/api/file?path=Home%2FAnh%C3%A4nge%2Fx.png" data-src="Anh%C3%A4nge/x.png" alt="x"></p>')
+  open.view.pasteHTML('<p><img src="/api/file?path=Home%2FAnh%C3%A4nge%2Fx.png" data-nx-src="Anh%C3%A4nge/x.png" alt="x"></p>')
   expect(open.text()).toContain('![x](Anh%C3%A4nge/x.png')
   expect(open.text()).not.toContain('/api/file')
+})
+
+it('takes the address a picture from another site shows, not what a lazy loader keeps in data-src', async () => {
+  open = await openEditor('Start.\n')
+  open.view.dispatch(open.view.state.tr.setSelection(Selection.atEnd(open.view.state.doc)))
+  open.view.pasteHTML('<p><img src="https://example.com/shown.png" data-src="https://example.com/other.png" alt="y"></p>')
+  expect(open.text()).toContain('https://example.com/shown.png')
+  expect(open.text()).not.toContain('other.png')
 })
 
 it('leaves pictures with a data or blob address out of pasted content, and keeps the rest', async () => {

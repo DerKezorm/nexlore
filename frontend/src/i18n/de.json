@@ -127,7 +127,7 @@
     "uploaded_one": "Datei hinzugefügt.",
     "uploaded_other": "{{count}} Dateien hinzugefügt.",
     "uploadedCleaned": "Ort und Gerät wurden aus dem Foto entfernt.",
-    "uploadedUnchecked": "Eine Datei ließ sich nicht auf Ort und Gerät prüfen; sie liegt so da, wie sie kam.",
+    "uploadedUnchecked": "Eine Datei ließ sich nicht vollständig prüfen; sie kann noch verraten, wo oder womit sie aufgenommen wurde.",
     "uploadedDuplicate": "Dieselbe Datei gab es im Bereich schon; sie ist verlinkt."
   },
   "settings": {

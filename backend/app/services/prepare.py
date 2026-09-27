@@ -133,10 +133,12 @@ def prepare(root: str, rel: str) -> Prepared | None:
     """Read and take apart one file. None when it cannot be read (gone in between, no permission)."""
     full = os.path.join(root, *rel.split("/"))
     try:
-        if not is_read_whole(rel):
+        # A PDF too large to be searched is only hashed: it is never read into memory whole.
+        if not is_read_whole(rel) or (is_pdf(rel) and os.stat(full).st_size > pdftext.MAX_BYTES):
             hashed, stat = hash_file(full)
+            features = {"pdf_too_large": 1} if is_pdf(rel) else None
             return Prepared(rel=rel, size=stat.st_size, mtime_ns=stat.st_mtime_ns, hash=hashed,
-                            analysis=Analysis(title=paths.stem(rel)), compressed=None)
+                            analysis=Analysis(title=paths.stem(rel), features=features), compressed=None)
         with open(full, "rb") as handle:
             data = handle.read()
             stat = os.fstat(handle.fileno())

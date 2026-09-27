@@ -166,6 +166,38 @@ def test_the_limits_per_file_and_per_account_hold(client: TestClient, filled: Pa
     assert client.get("/api/attachments/usage", headers=TAB).json()["used"] == 0
 
 
+def test_two_uploads_at_once_do_not_share_the_space_left(client: TestClient, filled: Path) -> None:
+    from app.services import attachments
+    from app.services.vault import Actor
+
+    settings(quota_mb=1)
+    actor = Actor(name="tester", client="tab-aaaaaaaa")
+    # Both planned before either is finished: each saw the whole megabyte free.
+    plans, received = [], []
+    for number in range(2):
+        plan = attachments.plan(note="Home/Shopping.md", folder=None, name=f"{number}.bin", pasted=False, actor=actor)
+        path = attachments.temporary(plan)
+        path.write_bytes(bytes([number]) * 700_000)
+        plans.append(plan)
+        received.append(path)
+    attachments.finish(plans[0], received[0], 700_000, actor)
+    with pytest.raises(attachments.VaultError) as refused:
+        attachments.finish(plans[1], received[1], 700_000, actor)
+    assert refused.value.code == "quota_exceeded" and not received[1].exists()
+    assert client.get("/api/attachments/usage", headers=TAB).json()["used"] == 700_000
+
+
+def test_a_pdf_too_large_to_search_is_never_read_whole(filled: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.services import pdftext
+
+    put(filled, "Home/big.pdf", pdf("kingfisher"))
+    monkeypatch.setattr(pdftext, "MAX_BYTES", 100)
+    read = []
+    monkeypatch.setattr(prepare, "analyse", lambda rel, data: read.append(rel))
+    item = prepare.prepare(str(filled), "Home/big.pdf")
+    assert item is not None and read == [] and item.analysis.features == {"pdf_too_large": 1}
+
+
 def test_a_heic_photo_gets_a_webp_the_note_links(client: TestClient, filled: Path) -> None:
     body = upload(client, photo(fmt="HEIF"), name="IMG_0001.HEIC").json()
     assert body["kind"] == "heic"
@@ -319,6 +351,35 @@ def test_a_deleted_attachment_waits_in_the_trash_folder_and_comes_back(client: T
     entry = client.get("/api/trash", headers=TAB).json()[0]["id"]
     client.delete(f"/api/trash/{entry}", headers=TAB)
     assert not waiting.exists()
+
+
+def test_a_note_that_cannot_leave_the_disk_stays_whole_in_the_trash(
+    client: TestClient, filled: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.services import vault as service
+
+    note = client.get("/api/note", params={"path": "Home/Recipes/Cake.md"}, headers=TAB).json()
+    # Changed on disk a moment ago; then the folder is deleted and the second file is held open by another program.
+    (filled / "Home" / "Recipes" / "Cake.md").write_text("# Cake\n\nNewest words.\n", encoding="utf-8")
+    put(filled, "Home/Recipes/Bread.md", "# Bread\n")
+    index.scan()
+    assert note
+    real = service._unlink
+    calls: list[Path] = []
+
+    def held_open(path: Path) -> bool:
+        calls.append(path)
+        return False if len(calls) == 2 else real(path)
+
+    monkeypatch.setattr(service, "_unlink", held_open)
+    assert client.delete("/api/files", params={"path": "Home/Recipes"}, headers=TAB).status_code == 200
+    entry = client.get("/api/trash", headers=TAB).json()[0]
+    assert entry["files"] == 2
+    monkeypatch.setattr(service, "_unlink", real)
+    for path in list((filled / "Home" / "Recipes").glob("*.md")):
+        path.unlink()
+    client.post(f"/api/trash/{entry['id']}/restore", headers=TAB)
+    assert (filled / "Home" / "Recipes" / "Cake.md").read_text(encoding="utf-8") == "# Cake\n\nNewest words.\n"
 
 
 def test_file_settings_are_the_operators(client: TestClient, filled: Path) -> None:

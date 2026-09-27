@@ -20,7 +20,7 @@ import { createEditor, type EditorLabels, type FileHelpers, type NoteEditor as E
 import { splitNote } from '../editor/frontmatter'
 import type { LinkHelpers } from '../editor/live'
 import { searchNames } from '../editor/suggest'
-import { fileKind, isPasted, relativeTarget } from '../lib/files'
+import { fileKind, isFileTarget, isPasted, relativeTarget } from '../lib/files'
 import { linkIndex } from '../lib/links'
 import { baseName, type Vault } from '../lib/vault'
 import { Properties } from './Properties'
@@ -50,9 +50,6 @@ type Props = {
   /** An upload was refused; the server's code says why. */
   onUploadFailed?: (code: string) => void
 }
-
-/** A wiki link target that names a file other than a note (`photo.png`, `Folder/doc.pdf`). */
-const isFileTarget = (target: string) => /\.(?!md$)[a-z0-9]{1,6}$/i.test(target.split('#')[0].split('|')[0].trim())
 
 export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   { path, content, vault, mode, readOnly = false, onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed },
@@ -122,11 +119,13 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         })
       return undefined
     }
+    // A note of that name wins: `[[Report.pdf]]` is the note when there is one called so.
+    const asFile = (target: string) => isFileTarget(target) && !linksRef.current.resolve(target)
     const helpers: LinkHelpers = {
-      exists: (target) => (isFileTarget(target) ? lookup(target) !== null : linksRef.current.exists(target)),
+      exists: (target) => (asFile(target) ? lookup(target) !== null : linksRef.current.exists(target)),
       open: (target, newTab) => latest.current.onOpenLink(target, newTab),
       embed: (target) => {
-        if (!isFileTarget(target)) return null
+        if (!asFile(target)) return null
         const found = lookup(target)
         if (found === null || found === undefined) return found
         const kind = fileKind(found)
@@ -148,7 +147,12 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
           ),
         )
         const done = results.filter((item): item is Uploaded => item !== null)
-        if (done.length) latest.current.onUploaded?.(done)
+        if (done.length) {
+          // A link typed before its file was there was looked up as missing: asked again now.
+          for (const [key, found] of fileTargets.current) if (found === null) fileTargets.current.delete(key)
+          engine.current?.refresh()
+          latest.current.onUploaded?.(done)
+        }
         return results.map((item) => item && { link: item.link, name: baseName(item.path), image: fileKind(item.path) === 'image' })
       },
     }

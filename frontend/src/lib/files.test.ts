@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { fileKind, formatSize, isPasted, relativeTarget } from './files'
+import { fileKind, formatSize, isFileTarget, isPasted, relativeTarget } from './files'
 
 describe('relativeTarget', () => {
   it('finds a file next to the note, escaped the way Markdown links are', () => {
@@ -35,5 +35,12 @@ describe('files', () => {
     expect(formatSize(512, 'en')).toBe('512 B')
     expect(formatSize(1536, 'en')).toBe('1.5 KB')
     expect(formatSize(700 * 1024 * 1024, 'en')).toBe('700 MB')
+  })
+})
+
+describe('isFileTarget', () => {
+  it('takes known file endings for files and anything else for part of a note name', () => {
+    expect(['photo.png', 'Folder/doc.PDF', 'clip.mp4#t=1', 'a.canvas'].map(isFileTarget)).toEqual([true, true, true, true])
+    expect(['Release 2.5', 'v1.2', 'GPT-4.1', 'Note.md', 'Plain', '3.14'].map(isFileTarget)).toEqual([false, false, false, false, false, false])
   })
 })

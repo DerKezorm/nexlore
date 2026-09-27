@@ -18,6 +18,22 @@ export function fileKind(path: string): FileKind {
 
 export const isNotePath = (path: string) => /\.md$/i.test(path)
 
+/** Endings of files that sit beside notes. Any other `.x` is part of a note's name (`[[Release 2.5]]`, `[[v1.2]]`). */
+const FILE_ENDINGS = new Set(
+  (
+    'png jpg jpeg gif webp avif bmp svg heic heif tif tiff ico mp4 mov m4v webm mkv avi mp3 m4a ogg oga opus wav flac ' +
+    'aac pdf txt csv tsv json xml yaml yml log html htm docx doc xlsx xls pptx ppt odt ods odp rtf epub zip 7z rar tar ' +
+    'gz canvas'
+  ).split(' '),
+)
+
+/** Does a wiki link name a file other than a note (`photo.png`, `Folder/doc.pdf`)? Only by a known ending. */
+export function isFileTarget(target: string): boolean {
+  const name = target.split('#')[0].split('|')[0].trim()
+  const ending = /\.([a-z0-9]{1,10})$/i.exec(name)?.[1]
+  return !!ending && FILE_ENDINGS.has(ending.toLowerCase())
+}
+
 /**
  * The vault path a relative Markdown link in `notePath` points at (`Anh%C3%A4nge/Foto%201.png` from
  * `Home/Shopping.md` is `Home/Anhänge/Foto 1.png`); a leading `/` is the space's root. Null for web addresses and

@@ -230,39 +230,45 @@ def _twin(db: Session, space_id: int, hashed: str, size: int) -> File | None:
     return None
 
 
-def _webp_beside(db: Session, upload: Plan, original: File, actor: Actor) -> File | None:
-    """The WebP of a HEIC photo, next to it with the same name; made once."""
+def _webp_beside(db: Session, original: File, made: Path | None, actor: Actor) -> File | None:
+    """The WebP of a HEIC photo, next to it with the same name; made once. ``made``: converted already (outside the
+    index lock, it takes a moment)."""
     rel = posixpath.splitext(original.path)[0] + ".webp"
     existing = index_live(db, rel)
     if existing is not None:
         return existing
-    source = paths.vault_root().joinpath(*original.path.split("/"))
-    target = source.with_suffix(".webp")
-    if target.exists():
+    target = paths.vault_root().joinpath(*rel.split("/"))
+    if made is None or not made.exists() or target.exists():
         return None
-    temporary_file = source.parent / f"{TEMPORARY_PREFIX}{uuid.uuid4().hex}.webp"
-    try:
-        if not media.to_webp(source, temporary_file):
-            return None
-        _place(temporary_file, target)
-    finally:
-        if temporary_file.exists():
-            temporary_file.unlink()
+    _place(made, target)
     return _record(db, rel, actor)
 
 
 def finish(upload: Plan, received: Path, size: int, actor: Actor) -> Uploaded:
-    """Everything after the last byte arrived: kind, metadata, duplicates, name, index. ``received`` is gone after."""
+    """Everything after the last byte arrived: kind, metadata, duplicates, name, index. ``received`` is gone after.
+
+    The slow parts (reading the metadata, hashing, turning a HEIC into WebP) run before the index lock; under it only
+    what must be decided at once: the space left, a twin, the name, the rows."""
+    webp: Path | None = None
     try:
         with open(received, "rb") as handle:
             kind = media.sniff(handle.read(64))
         removed = sorted(media.strip(received, kind)) if upload.strip else []
         hashed, _stat = hash_file(str(received))
+        if kind == "heic":
+            webp = upload.directory / f"{TEMPORARY_PREFIX}{uuid.uuid4().hex}.webp"
+            if not media.to_webp(received, webp):
+                webp = None
         with index.guard, SessionLocal() as db:
             twin = _twin(db, upload.space_id, hashed, size)
             if twin is not None:
                 file, duplicate = twin, True
             else:
+                # Two uploads of one account at the same time each saw the same space left: counted again here,
+                # where uploads come one after another.
+                quota = upload.limits.quota
+                if quota and used_by(db, actor.name) + size > quota:
+                    raise VaultError("quota_exceeded", "no space left for this account", 413, left=0)
                 base = paths.stem(upload.note) if upload.pasted and upload.note else os.path.splitext(upload.name)[0]
                 name = _free_name(upload.directory, base or "Untitled", _ending(upload, kind), numbered=upload.pasted)
                 _place(received, upload.directory / name)
@@ -271,10 +277,10 @@ def finish(upload: Plan, received: Path, size: int, actor: Actor) -> Uploaded:
                 duplicate = False
             linked, original = file, None
             if kind == "heic":
-                webp = _webp_beside(db, upload, file, actor)
-                if webp is not None:
-                    linked, original = webp, file.path
-                    index.reresolve(db, webp.space_id, [webp.name_key])
+                made = _webp_beside(db, file, webp, actor)
+                if made is not None:
+                    linked, original = made, file.path
+                    index.reresolve(db, made.space_id, [made.name_key])
             db.commit()
             result = Uploaded(
                 path=linked.path, size=file.size, kind=kind, duplicate=duplicate, removed=removed, original=original,
@@ -283,6 +289,8 @@ def finish(upload: Plan, received: Path, size: int, actor: Actor) -> Uploaded:
     finally:
         if received.exists():
             received.unlink()
+        if webp is not None and webp.exists():
+            webp.unlink()
     logger.info(
         "Attachment %s file_id=%s bytes=%s kind=%s removed=%s",
         "linked again" if result.duplicate else "stored", file.id, size, kind or "other", ",".join(removed) or "-",
