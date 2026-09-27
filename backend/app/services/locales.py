@@ -96,7 +96,12 @@ def _parse(path: Path) -> tuple[dict[str, Any], str, int]:
     size = path.stat().st_size
     if size > MAX_BYTES:
         raise LocaleError(f"{size} bytes, the limit is {MAX_BYTES}")
-    raw = path.read_bytes()
+    return _parse_bytes(path.read_bytes())
+
+
+def _parse_bytes(raw: bytes) -> tuple[dict[str, Any], str, int]:
+    if len(raw) > MAX_BYTES:
+        raise LocaleError(f"{len(raw)} bytes, the limit is {MAX_BYTES}")
     try:
         data = json.loads(raw.decode("utf-8-sig"))
     except UnicodeDecodeError as exc:
@@ -173,3 +178,30 @@ def _examine(path: Path) -> Locale | None:
         logger.warning("Language file %s skipped: %s", path.name, exc)
         return None
     return Locale(code=code, name=name or code, keys=keys)
+
+
+def save(code: str, raw: bytes) -> Locale:
+    """A language file from the operator's upload: checked like one laid into the directory, then written whole."""
+    if not valid_code(code):
+        raise LocaleError("not a language code")
+    _data, name, keys = _parse_bytes(raw)
+    directory = locales_dir()
+    directory.mkdir(parents=True, exist_ok=True)
+    target = directory / f"{code}.json"
+    if target.is_symlink():
+        raise LocaleError("a link, not a file")
+    partial = directory / f".{code}.json.part"
+    partial.write_bytes(raw)
+    partial.replace(target)
+    logger.info("Language file %s saved keys=%s", target.name, keys)
+    return Locale(code=code, name=name or code, keys=keys)
+
+
+def remove(code: str) -> bool:
+    try:
+        path = _path_for(code)
+    except (FileNotFoundError, LocaleError):
+        return False
+    path.unlink()
+    logger.info("Language file %s removed", path.name)
+    return True

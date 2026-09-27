@@ -16,6 +16,11 @@ os.environ["NEXLORE_VAULT_DIR"] = os.path.join(_DATA, "vault")
 os.environ["NEXLORE_LOCALES_DIR"] = os.path.join(_DATA, "locales")
 os.environ["NEXLORE_LOG_LEVEL"] = ""
 os.environ["NEXLORE_API_DOCS"] = "false"
+# Argon2 as cheap as it goes: the tests make hundreds of accounts. The strength itself is Argon2's business.
+os.environ["NEXLORE_ARGON2_TIME"] = "1"
+os.environ["NEXLORE_ARGON2_MEMORY_KIB"] = "1024"
+os.environ["NEXLORE_ARGON2_PARALLELISM"] = "1"
+os.environ["NEXLORE_SECRET_KEY"] = "test-secret-key-for-the-test-run-only"
 
 import shutil  # noqa: E402
 from pathlib import Path  # noqa: E402
@@ -25,9 +30,9 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import delete, text  # noqa: E402
 
 from app.db import SessionLocal, init_db  # noqa: E402
-from app.deps import require_account, require_operator  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import FTS_TABLE, Base, Setting  # noqa: E402
+from app.models import FTS_TABLE, MEMBER, OPERATOR, Account, Base, Setting  # noqa: E402
+from app.security import SESSION_COOKIE, brake, hash_password, start_session  # noqa: E402
 
 DATA_DIR = _DATA
 VAULT = Path(_DATA) / "vault"
@@ -55,6 +60,7 @@ def clean_db(schema: None) -> Iterator[None]:
         db.execute(delete(Setting))
         db.commit()
     _empty_vault()
+    brake.forget()
     yield
     app.dependency_overrides.clear()
 
@@ -65,11 +71,43 @@ def vault() -> Path:
     return VAULT
 
 
+PASSWORD = "correct horse battery"
+
+
+def make_account(name: str, role: str = MEMBER, password: str = PASSWORD) -> Account:
+    """An account with a password, straight into the database."""
+    with SessionLocal() as db:
+        row = Account(name=name, role=role, password_hash=hash_password(password))
+        db.add(row)
+        db.commit()
+        db.expunge(row)
+    return row
+
+
+def sign_in(client: TestClient, account: Account) -> None:
+    """The client carries a session of ``account`` from now on (a real one, as after signing in)."""
+    with SessionLocal() as db:
+        row = db.get(Account, account.id)
+        assert row is not None
+        token = start_session(db, row, "127.0.0.1", "tests")
+    client.cookies.set(SESSION_COOKIE, token)
+
+
+def _operator(client: TestClient) -> Account:
+    with SessionLocal() as db:
+        row = db.query(Account).filter_by(name="tester").one_or_none()
+        if row is not None:
+            db.expunge(row)
+    if row is None:
+        row = make_account("tester", OPERATOR)
+    sign_in(client, row)
+    return row
+
+
 @pytest.fixture
-def account(client: TestClient) -> str:
-    """Stands in for a signed-in account until accounts exist (M4)."""
-    app.dependency_overrides[require_account] = lambda: "tester"
-    return "tester"
+def account(client: TestClient) -> Account:
+    """The signed-in operator ``tester``: spaces that came from the disk have no members and are the operator's."""
+    return _operator(client)
 
 
 @pytest.fixture
@@ -80,7 +118,6 @@ def client() -> Iterator[TestClient]:
 
 
 @pytest.fixture
-def operator(client: TestClient) -> str:
-    """Stands in for the operator until accounts exist (M4)."""
-    app.dependency_overrides[require_operator] = lambda: "admin"
-    return "admin"
+def operator(client: TestClient) -> Account:
+    """The signed-in operator; the same account as ``account``."""
+    return _operator(client)

@@ -13,10 +13,10 @@ from PIL import Image
 from sqlalchemy import select
 
 from app.db import SessionLocal
-from app.main import app
-from app.models import File
+from app.models import Account, File
 from app.services import index, paths, prepare, settings_service
 
+from .conftest import make_account, sign_in
 from .test_media import XMP, exif_bytes
 
 pillow_heif.register_heif_opener()
@@ -406,11 +406,12 @@ def test_a_note_that_cannot_leave_the_disk_stays_whole_in_the_trash(
     assert (filled / "Home" / "Recipes" / "Cake.md").read_text(encoding="utf-8") == "# Cake\n\nNewest words.\n"
 
 
-def test_file_settings_are_the_operators(client: TestClient, filled: Path) -> None:
+def test_file_settings_are_the_operators(client: TestClient, filled: Path, account: Account) -> None:
+    client.cookies.clear()
     assert client.get("/api/settings/files", headers=TAB).status_code == 401
-    from app.deps import require_operator
-
-    app.dependency_overrides[require_operator] = lambda: "admin"
+    sign_in(client, make_account("member"))
+    assert client.get("/api/settings/files", headers=TAB).status_code == 403
+    sign_in(client, account)
     current = client.get("/api/settings/files", headers=TAB).json()
     assert current == {"attachment_folder": "Attachments", "upload_max_mb": 1024, "quota_mb": 0, "strip_location": True}
     bad = client.put("/api/settings/files", json={**current, "attachment_folder": "a/b"}, headers=TAB)

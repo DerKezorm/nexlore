@@ -90,6 +90,8 @@ class Parsed:
     headings: list[tuple[int, str]] = field(default_factory=list)
     body: str = ""
     features: dict[str, int] = field(default_factory=dict)
+    #: Where ``%%…%%`` comments stand (start, end): hidden in reading, left out of anything public.
+    comments: list[tuple[int, int]] = field(default_factory=list)
 
 
 def _mask(text: str, spans: list[tuple[int, int]]) -> str:
@@ -229,6 +231,7 @@ def parse(text: str) -> Parsed:
             _count(features, "dataview_inline")
     masked = _mask(masked, code_spans)
     comments = [(match.start(), match.end()) for match in _COMMENT.finditer(masked)]
+    parsed.comments = comments
     _count(features, "comments", len(comments))
     masked = _mask(masked, comments)
     # $$ … $$ is a formula (KaTeX in Obsidian): nothing inside is a link or a tag.

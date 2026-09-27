@@ -1,4 +1,4 @@
-"""Backups over HTTP; operator only. Until M4 there is no operator, so these answer 401 (tests stand in)."""
+"""Backups over HTTP; operator only."""
 
 from __future__ import annotations
 

@@ -46,14 +46,6 @@ def test_every_vault_route_needs_an_account(client: TestClient) -> None:
         assert response.json()["detail"]["code"] == "sign_in_required"
 
 
-def test_open_access_is_off_unless_switched_on(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    from app.config import get_settings
-
-    assert client.get("/api/spaces").status_code == 401
-    monkeypatch.setattr(get_settings(), "unsafe_open_access", True)
-    assert client.get("/api/spaces").status_code == 200
-
-
 def test_spaces_and_folders(client: TestClient, filled: Path) -> None:
     spaces = client.get("/api/spaces").json()
     assert [(space["name"], space["notes"], space["files"]) for space in spaces] == [("Home", 1, 1), ("Work", 2, 3)]

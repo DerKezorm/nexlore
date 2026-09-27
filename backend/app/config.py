@@ -6,10 +6,12 @@ What the operator changes at runtime (log level and, later, sign-in rules and ba
 
 from __future__ import annotations
 
+import os
+import secrets
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import field_validator, model_validator
+from pydantic import PrivateAttr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -36,10 +38,23 @@ class Settings(BaseSettings):
     log_level: str = ""
     #: Serves /api/docs and /api/openapi.json. Off by default.
     api_docs: bool = False
-    #: ⚠️ Until accounts exist (M4): lets anybody who reaches the app read and change the notes, as the account
-    #: "local". For a test server on the own network with invented notes only. Off by default; then every note
-    #: route answers 401.
-    unsafe_open_access: bool = False
+    #: Signs the sign-in attempt cookie of OIDC and encrypts what the server must read on its own (the OIDC client
+    #: secret, the mail password). Empty: a random key in ``<data_dir>/secret.key``, made at the first start.
+    secret_key: str = ""
+    #: A browser session ends after this many days, whatever happens.
+    session_days: int = 30
+    #: Argon2id for passwords. The tests lower the cost.
+    argon2_time: int = 3
+    argon2_memory_kib: int = 65536
+    argon2_parallelism: int = 2
+    #: ``auto``: the session cookie is ``Secure`` when the request came over HTTPS (or a proxy says so).
+    cookie_secure: str = "auto"
+    #: The address people reach nexlore under, for links in invitations and the OIDC return. Empty: the address of
+    #: the request. The setting in the interface wins over this.
+    public_url: str = ""
+    #: Addresses or networks of reverse proxies whose ``X-Forwarded-For`` may be believed, comma separated. Empty:
+    #: the header is ignored, so that nobody dodges the sign-in brake with made-up addresses.
+    trusted_proxies: str = ""
     #: The watcher misses changes on some network shares and container mounts; polling always sees them.
     watch_polling: bool = False
     #: Seconds between two full scans of the vault, the safety net under the watcher. 0 turns it off.
@@ -61,9 +76,30 @@ class Settings(BaseSettings):
             self.locales_dir = self.data_dir / "locales"
         return self
 
+    _remembered_key: str = PrivateAttr(default="")
+
     @property
     def database_path(self) -> Path:
         return self.data_dir / "nexlore.db"
+
+    def resolved_secret_key(self) -> str:
+        """``NEXLORE_SECRET_KEY``, else ``secret.key`` in the data folder, made once with a random value."""
+        if self.secret_key:
+            return self.secret_key
+        if self._remembered_key:
+            return self._remembered_key
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        key_file = self.data_dir / "secret.key"
+        if key_file.exists():
+            self._remembered_key = key_file.read_text(encoding="utf-8").strip()
+        else:
+            self._remembered_key = secrets.token_urlsafe(48)
+            key_file.write_text(self._remembered_key, encoding="utf-8")
+        try:
+            os.chmod(key_file, 0o600)
+        except OSError:
+            pass
+        return self._remembered_key
 
 
 @lru_cache

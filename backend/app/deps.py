@@ -1,45 +1,147 @@
-"""Dependencies shared by the routers."""
+"""Who is asking.
+
+Every route under ``/api`` except setup, sign-in, invitations, the public reading pages, languages and health needs
+the session cookie. Changing requests need ``X-Nexlore-Client`` on top (``GuardMiddleware``): a page on another site
+can make a browser send a form with the cookie, but not a request with a header of its own.
+"""
 
 from __future__ import annotations
 
+import ipaddress
+from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from .config import get_settings
-from .db import get_db
-from .errors import error
+from .db import SessionLocal, get_db
+from .errors import detail, error
+from .models import OPERATOR
+from .models import Account as AccountRow
+from .security import SESSION_COOKIE, brake, session_account
+from .services import accounts, logs, paths, rights
 
 DbSession = Annotated[Session, Depends(get_db)]
 
 
-def require_operator() -> str:
-    """The operator, by name.
-
-    Accounts arrive in M4. Until then nobody is the operator, so every operator route answers 401: a route that
-    exists without a guard would be open to whoever finds the address. The tests stand in for the operator by
-    overriding this dependency.
-    """
-    raise error("sign_in_required", "Sign in first.", 401)
-
-
-OperatorAccount = Annotated[str, Depends(require_operator)]
-
-
-#: The name changes go under while the open test access stands in for accounts.
-OPEN_ACCESS_ACCOUNT = "local"
+@lru_cache(maxsize=4)
+def _trusted_networks(spec: str) -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:
+    networks = []
+    for entry in spec.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        try:
+            networks.append(ipaddress.ip_network(entry, strict=False))
+        except ValueError:
+            continue
+    return tuple(networks)
 
 
-def require_account() -> str:
-    """The signed-in account, by name.
+def _is_trusted_proxy(address: str) -> bool:
+    networks = _trusted_networks(get_settings().trusted_proxies)
+    if not networks:
+        return False
+    try:
+        parsed = ipaddress.ip_address(address)
+    except ValueError:
+        return False
+    return any(parsed in network for network in networks)
 
-    Accounts arrive in M4. Until then only ``NEXLORE_UNSAFE_OPEN_ACCESS`` lets anybody in, as ``local``; without it
-    every note route answers 401. Tests stand in by overriding this dependency.
-    """
-    if get_settings().unsafe_open_access:
-        return OPEN_ACCESS_ACCOUNT
-    raise error("sign_in_required", "Sign in first.", 401)
+
+def client_ip(request: Request) -> str:
+    """The sender's address, for the brake. ``X-Forwarded-For`` counts only from a configured trusted proxy, and
+    then its rightmost hop that is not itself a trusted proxy: everything left of it the sender wrote itself."""
+    peer = (request.client.host if request.client else "-")[:64]
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if not forwarded or not _is_trusted_proxy(peer):
+        return peer
+    hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
+    for hop in reversed(hops):
+        if not _is_trusted_proxy(hop):
+            return hop[:64]
+    return (hops[0] if hops else peer)[:64]
 
 
-Account = Annotated[str, Depends(require_account)]
+def require_account(request: Request) -> AccountRow:
+    """The signed-in account, detached from the database session (routes open their own)."""
+    with SessionLocal() as db:
+        account = session_account(db, request.cookies.get(SESSION_COOKIE))
+        if account is None:
+            raise error("sign_in_required", "Sign in first.", 401)
+        db.expunge(account)
+    logs.set_actor(account.name)
+    return account
+
+
+def require_operator(account: Annotated[AccountRow, Depends(require_account)]) -> AccountRow:
+    if account.role != OPERATOR:
+        raise error("operator_only", "Only the operator may do this.", 403)
+    return account
+
+
+Account = Annotated[AccountRow, Depends(require_account)]
+OperatorAccount = Annotated[AccountRow, Depends(require_operator)]
+
+
+# --- The password once more, while signed in ------------------------------------------------------------------------
+#
+# Changing the password or linking the account to a provider asks for the password again, and a wrong answer counts
+# the way it does at sign-in: otherwise a stolen cookie would be a place to guess without limit.
+
+
+def _reauth_key(request: Request) -> str:
+    return "reauth:" + client_ip(request)
+
+
+def reauth_guard(request: Request, account: AccountRow) -> None:
+    if accounts.is_locked(account):
+        raise error("account_locked", "Too many failed attempts. Try again later.", 429)
+    wait = brake.wait_seconds(_reauth_key(request))
+    if wait:
+        raise HTTPException(
+            status_code=429,
+            detail=detail("too_many_attempts", "Too many attempts. Try again later.", retry_after=wait),
+            headers={"Retry-After": str(wait)},
+        )
+
+
+def reauth_failed(request: Request, db: Session, account: AccountRow) -> None:
+    brake.failed(_reauth_key(request))
+    accounts.note_failure(db, account)
+
+
+def reauth_succeeded(request: Request, db: Session, account: AccountRow) -> None:
+    brake.succeeded(_reauth_key(request))
+    accounts.note_success(db, account)
+
+
+# --- Rights in a space -----------------------------------------------------------------------------------------------
+
+
+def need(account: AccountRow, rel: str, role: str) -> str:
+    """The right ``role`` in the space of the vault path ``rel`` (a space name works too), or the error. A space the
+    account may not read answers exactly like one that does not exist. Returns the parsed path."""
+    try:
+        clean = paths.parse(rel)
+    except paths.PathError as exc:
+        raise error(exc.code, str(exc)) from exc
+    with SessionLocal() as db:
+        try:
+            rights.check(db, account, clean, role)
+        except rights.RightsError as exc:
+            raise error(exc.code, exc.text, exc.status) from exc
+    return clean
+
+
+def readable_spaces(account: AccountRow, need_role: str = rights.READ) -> set[int]:
+    """The ids of every space the account has at least ``need_role`` in."""
+    with SessionLocal() as db:
+        if need_role == rights.READ:
+            return rights.readable_ids(db, account)
+        return {
+            space_id
+            for space_id in rights.readable_ids(db, account)
+            if rights.at_least(rights.role_in(db, account, space_id), need_role)
+        }

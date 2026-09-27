@@ -51,6 +51,9 @@ MANIFEST = "nexlore-backup.json"
 DATABASE_ENTRY = "database/nexlore.db"
 VAULT_PREFIX = "vault/"
 TRASH_PREFIX = "trash/"
+#: The key the server encrypts its own secrets with (OIDC client secret, mail password): without it a restore on
+#: another machine would bring those back unreadable. Whoever holds a backup holds the database anyway.
+SECRET_ENTRY = "secret.key"
 #: Files in the trash folder are named by their row id.
 TRASH_NAME = re.compile(r"^\d{1,18}$")
 PENDING = "restore-pending"
@@ -227,6 +230,9 @@ def create(*, kind: str = MANUAL, note: str = "") -> Path:
         manifest = Manifest(version=__version__, created=moment.isoformat(timespec="seconds"), kind=kind, note=note)
         with zipfile.ZipFile(partial, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
             archive.write(database, DATABASE_ENTRY)
+            key = get_settings().data_dir / "secret.key"
+            if key.is_file():
+                archive.write(key, SECRET_ENTRY)
             for rel, full in _vault_files(root):
                 try:
                     size = full.stat().st_size
@@ -402,6 +408,8 @@ def stage_restore(name: str) -> Brief:
                 manifest = _manifest(archive)
                 with archive.open(DATABASE_ENTRY) as source, open(pending / "nexlore.db", "wb") as sink:
                     shutil.copyfileobj(source, sink, _CHUNK)
+                if SECRET_ENTRY in archive.namelist():
+                    (pending / "secret.key").write_bytes(archive.read(SECRET_ENTRY))
                 for rel in manifest.vault:
                     target = pending / "vault" / Path(*rel.split("/"))
                     target.parent.mkdir(parents=True, exist_ok=True)
@@ -421,6 +429,17 @@ def stage_restore(name: str) -> Brief:
             raise
     logger.info("Backup staged for the next start created=%s", brief.created)
     return brief
+
+
+def _end_restored_sessions(database: Path) -> None:
+    """Sign-ins stored in the backup would come back to life, even ones ended since: everybody signs in anew."""
+    connection = sqlite3.connect(database)
+    try:
+        if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='auth_sessions'").fetchone():
+            connection.execute("DELETE FROM auth_sessions")
+            connection.commit()
+    finally:
+        connection.close()
 
 
 def restart_soon(delay: float = 1.5) -> None:
@@ -478,6 +497,14 @@ def apply_pending() -> bool:
     for suffix in ("-wal", "-shm", "-journal"):
         target.with_name(target.name + suffix).unlink(missing_ok=True)
     shutil.copyfile(pending / "nexlore.db", target)
+    _end_restored_sessions(target)
+    if (pending / "secret.key").is_file():
+        key = settings.data_dir / "secret.key"
+        shutil.copyfile(pending / "secret.key", key)
+        try:
+            key.chmod(0o600)
+        except OSError:
+            pass
     # The trash goes with the database that knows its files (an archive from before M3 has none: empty trash).
     trash = paths.trash_root()
     shutil.rmtree(trash, ignore_errors=True)

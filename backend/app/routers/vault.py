@@ -1,7 +1,8 @@
 """The vault over HTTP: spaces, folders, notes, links, tags, search, locks, versions, trash.
 
-Paths travel as query parameters or in the body, always vault-relative with ``/``. Every route needs an account;
-until M4 that is the open test access or nobody (see ``deps.require_account``). Rights per space follow in M4.
+Paths travel as query parameters or in the body, always vault-relative with ``/``. Every route needs an account
+and a right in the space the path lies in (``deps.need``); a space it may not read answers like one that does not
+exist, and lists, search, tags and the graph leave it out.
 
 A browser tab names itself in ``X-Nexlore-Client``: locks belong to a tab, not to an account, so the same person in
 two tabs cannot type over themselves.
@@ -9,6 +10,7 @@ two tabs cannot type over themselves.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import secrets
@@ -21,10 +23,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import Integer, cast, func, select, text
 
 from ..db import SessionLocal
-from ..deps import Account
+from ..deps import Account, need, readable_spaces
 from ..errors import error
-from ..models import FTS_TABLE, File, Link, Space, Tag
-from ..services import index, paths, vault
+from ..models import FTS_TABLE, MANAGE, OPERATOR, READ, WRITE, File, Link, Membership, Space, Tag
+from ..services import index, paths, rights, vault
 from ..services.vault import Actor, VaultError
 
 router = APIRouter(prefix="/api", tags=["vault"])
@@ -46,7 +48,7 @@ def actor(account: Account, x_nexlore_client: Annotated[str | None, Header()] = 
     # of its own, never one shared with other callers: it holds no lock, so it must not look like a holder.
     valid = x_nexlore_client and CLIENT_PATTERN.match(x_nexlore_client)
     client = x_nexlore_client if valid else f"reader-{secrets.token_hex(8)}"
-    return Actor(name=account, client=client)
+    return Actor(name=account.name, client=client)
 
 
 ActorDep = Annotated[Actor, Depends(actor)]
@@ -62,6 +64,8 @@ class SpaceOut(BaseModel):
     name: str
     notes: int
     files: int
+    #: The own right: read, write or manage.
+    role: str
 
 
 class NameIn(BaseModel):
@@ -69,9 +73,10 @@ class NameIn(BaseModel):
 
 
 @router.get("/spaces", response_model=list[SpaceOut])
-def spaces(_account: Account) -> list[SpaceOut]:
+def spaces(account: Account) -> list[SpaceOut]:
     root = paths.vault_root()
     with SessionLocal() as db:
+        roles = {space_id: rights.role_in(db, account, space_id) for space_id in rights.readable_ids(db, account)}
         counts = {
             space_id: (notes or 0, files)
             for space_id, notes, files in db.execute(
@@ -84,15 +89,22 @@ def spaces(_account: Account) -> list[SpaceOut]:
         rows = list(db.scalars(select(Space).order_by(Space.folder)))
     result = []
     for space in rows:
-        if not (root / space.folder).is_dir():
+        role = roles.get(space.id)
+        if role is None or not (root / space.folder).is_dir():
             continue
         notes, files = counts.get(space.id, (0, 0))
-        result.append(SpaceOut(id=space.id, name=space.folder, notes=int(notes), files=files))
+        result.append(SpaceOut(id=space.id, name=space.folder, notes=int(notes), files=files, role=role))
     return result
 
 
 @router.post("/spaces", response_model=SpaceOut, status_code=201)
-def create_space(body: NameIn, _account: Account) -> SpaceOut:
+def create_space(body: NameIn, account: Account) -> SpaceOut:
+    """Every account may make spaces of its own; whoever makes one manages it."""
+    with SessionLocal() as db:
+        try:
+            rights.free_name(db, body.name.strip())
+        except rights.RightsError as exc:
+            raise error(exc.code, exc.text, exc.status) from exc
     try:
         name = vault.create_space(body.name.strip())
     except VaultError as exc:
@@ -100,7 +112,9 @@ def create_space(body: NameIn, _account: Account) -> SpaceOut:
     with SessionLocal() as db:
         space = db.scalar(select(Space).where(Space.folder == name))
         assert space is not None
-        return SpaceOut(id=space.id, name=name, notes=0, files=0)
+        db.add(Membership(space_id=space.id, account_id=account.id, role=MANAGE))
+        db.commit()
+        return SpaceOut(id=space.id, name=name, notes=0, files=0, role=MANAGE)
 
 
 class FolderEntry(BaseModel):
@@ -126,8 +140,9 @@ class FolderOut(BaseModel):
 
 
 @router.get("/folder", response_model=FolderOut)
-def folder(path: PathQuery, _account: Account) -> FolderOut:
+def folder(path: PathQuery, account: Account) -> FolderOut:
     """What lies directly in a space or folder: its subfolders with how many notes are below, and its files."""
+    need(account, path, READ)
     try:
         clean = paths.parse(path)
         full = paths.resolve(clean)
@@ -191,7 +206,8 @@ class FolderIn(BaseModel):
 
 
 @router.post("/folders", status_code=201)
-def create_folder(body: FolderIn, _account: Account) -> dict[str, str]:
+def create_folder(body: FolderIn, account: Account) -> dict[str, str]:
+    need(account, body.parent, WRITE)
     try:
         return {"path": vault.create_folder(body.parent, body.name.strip())}
     except VaultError as exc:
@@ -246,7 +262,8 @@ def _note_out(file: File, data: bytes, who: Actor) -> NoteOut:
 
 
 @router.get("/note", response_model=NoteOut)
-def note(path: PathQuery, who: ActorDep) -> NoteOut:
+def note(path: PathQuery, account: Account, who: ActorDep) -> NoteOut:
+    need(account, path, READ)
     try:
         file, data = vault.read(path)
     except VaultError as exc:
@@ -263,8 +280,9 @@ class NoteStateOut(BaseModel):
 
 
 @router.get("/note/state", response_model=NoteStateOut)
-def note_state(path: PathQuery, who: ActorDep) -> NoteStateOut:
+def note_state(path: PathQuery, account: Account, who: ActorDep) -> NoteStateOut:
     """How a note stands on disk, without its text: an open page asks every few seconds whether to load it again."""
+    need(account, path, READ)
     try:
         file, data = vault.read(path)
     except VaultError as exc:
@@ -292,7 +310,8 @@ class SaveOut(BaseModel):
 
 
 @router.put("/note", response_model=SaveOut)
-def save(body: SaveIn, who: ActorDep) -> SaveOut:
+def save(body: SaveIn, account: Account, who: ActorDep) -> SaveOut:
+    need(account, body.path, WRITE)
     try:
         _file, current = vault.read(body.path)
     except VaultError as exc:
@@ -321,7 +340,8 @@ class CreateIn(BaseModel):
 
 
 @router.post("/notes", response_model=NoteOut, status_code=201)
-def create_note(body: CreateIn, who: ActorDep) -> NoteOut:
+def create_note(body: CreateIn, account: Account, who: ActorDep) -> NoteOut:
+    need(account, body.folder, WRITE)
     try:
         file = vault.create_note(body.folder, body.title, body.content.encode("utf-8"), actor=who)
         file, data = vault.read(file.path)
@@ -333,10 +353,15 @@ def create_note(body: CreateIn, who: ActorDep) -> NoteOut:
 @router.delete("/files")
 def delete(
     path: PathQuery,
+    account: Account,
     who: ActorDep,
     along: Annotated[list[str], Query(max_length=500)] = [],  # noqa: B006 - FastAPI copies the default
 ) -> dict[str, int]:
-    """Into the trash; ``along``: files only this note uses that go with it (see ``GET /api/files/own``)."""
+    """Into the trash; ``along``: files only this note uses that go with it (see ``GET /api/files/own``). A whole
+    space goes only by the hand of a manager."""
+    clean = need(account, path, WRITE)
+    if "/" not in clean:
+        need(account, clean, MANAGE)
     try:
         return {"files": vault.delete_path(path, actor=who, along=along)}
     except VaultError as exc:
@@ -344,8 +369,9 @@ def delete(
 
 
 @router.get("/files/own")
-def own(path: PathQuery, _account: Account) -> dict[str, list[str]]:
+def own(path: PathQuery, account: Account) -> dict[str, list[str]]:
     """The files only this note uses: the delete dialog offers them to go along."""
+    need(account, path, READ)
     try:
         return {"paths": vault.its_own(path)}
     except VaultError as exc:
@@ -358,7 +384,10 @@ class MoveIn(BaseModel):
 
 
 @router.post("/move")
-def move(body: MoveIn, who: ActorDep) -> dict[str, Any]:
+def move(body: MoveIn, account: Account, who: ActorDep) -> dict[str, Any]:
+    # Moving never crosses spaces (the vault refuses it), so the right in the source covers the destination.
+    need(account, body.source, WRITE)
+    need(account, body.destination, WRITE)
     try:
         moved = vault.move(body.source, body.destination, actor=who)
     except VaultError as exc:
@@ -402,7 +431,9 @@ def _live_file(db: Any, path: str) -> File:
 
 
 @router.get("/links", response_model=LinksOut)
-def links(path: PathQuery, _account: Account) -> LinksOut:
+def links(path: PathQuery, account: Account) -> LinksOut:
+    # Links never cross spaces (M1): whoever may read the note may read what it links to and what links to it.
+    need(account, path, READ)
     with SessionLocal() as db:
         file = _live_file(db, path)
         target_file = File.__table__.alias("target")
@@ -428,12 +459,13 @@ def links(path: PathQuery, _account: Account) -> LinksOut:
 
 
 @router.get("/tags")
-def tags(_account: Account, space: Annotated[str | None, Query(max_length=255)] = None) -> list[dict[str, Any]]:
+def tags(account: Account, space: Annotated[str | None, Query(max_length=255)] = None) -> list[dict[str, Any]]:
+    readable = readable_spaces(account)
     with SessionLocal() as db:
         query = (
             select(func.min(Tag.tag), func.count())
             .join(File, File.id == Tag.file_id)
-            .where(File.deleted_at.is_(None))
+            .where(File.deleted_at.is_(None), File.space_id.in_(readable))
             .group_by(Tag.tag_key)
             .order_by(func.count().desc(), Tag.tag_key)
         )
@@ -462,7 +494,7 @@ def fts_query(raw: str) -> str | None:
 
 @router.get("/search", response_model=list[Hit])
 def search(
-    _account: Account,
+    account: Account,
     q: Annotated[str, Query(min_length=1, max_length=200)],
     space: Annotated[str | None, Query(max_length=255)] = None,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
@@ -475,10 +507,14 @@ def search(
         f"FROM {FTS_TABLE} JOIN files f ON f.id = {FTS_TABLE}.rowid "
         "JOIN spaces s ON s.id = f.space_id "
         f"WHERE {FTS_TABLE} MATCH :query AND f.deleted_at IS NULL "
+        "AND f.space_id IN (SELECT value FROM json_each(:spaces)) "
         + ("AND s.folder = :space " if space else "")
         + f"ORDER BY bm25({FTS_TABLE}, 10.0, 1.0) LIMIT :limit"
     )
-    values: dict[str, Any] = {"query": query, "start": HIT_START, "end": HIT_END, "limit": limit}
+    values: dict[str, Any] = {
+        "query": query, "start": HIT_START, "end": HIT_END, "limit": limit,
+        "spaces": json.dumps(sorted(readable_spaces(account))),
+    }
     if space:
         values["space"] = space
     with SessionLocal() as db:
@@ -487,8 +523,11 @@ def search(
 
 
 @router.get("/graph")
-def graph(_account: Account, space: Annotated[str, Query(min_length=1, max_length=255)]) -> dict[str, Any]:
+def graph(account: Account, space: Annotated[str, Query(min_length=1, max_length=255)]) -> dict[str, Any]:
     """Notes and the links between them, compact: nodes as [id, path, title], links as [from, to]."""
+    if "/" in space:
+        raise error("not_found", "No such space.", 404)
+    need(account, space, READ)
     with SessionLocal() as db:
         space_id = db.scalar(select(Space.id).where(Space.folder == space))
         if space_id is None:
@@ -522,7 +561,8 @@ class LockIn(BaseModel):
 
 
 @router.post("/locks", response_model=LockOut)
-def lock(body: LockIn, who: ActorDep) -> LockOut:
+def lock(body: LockIn, account: Account, who: ActorDep) -> LockOut:
+    need(account, body.path, WRITE)
     try:
         held = vault.acquire(body.path, who)
     except VaultError as exc:
@@ -531,7 +571,8 @@ def lock(body: LockIn, who: ActorDep) -> LockOut:
 
 
 @router.delete("/locks", status_code=204)
-def unlock(path: PathQuery, who: ActorDep) -> None:
+def unlock(path: PathQuery, account: Account, who: ActorDep) -> None:
+    need(account, path, READ)
     try:
         vault.release(path, who)
     except VaultError as exc:
@@ -552,7 +593,8 @@ class VersionOut(BaseModel):
 
 
 @router.get("/versions", response_model=list[VersionOut])
-def versions(path: PathQuery, _account: Account) -> list[VersionOut]:
+def versions(path: PathQuery, account: Account) -> list[VersionOut]:
+    need(account, path, READ)
     try:
         rows = vault.versions(path)
     except VaultError as exc:
@@ -565,8 +607,9 @@ def versions(path: PathQuery, _account: Account) -> list[VersionOut]:
 
 
 @router.get("/versions/{version_id}")
-def version(version_id: int, _account: Account) -> dict[str, Any]:
+def version(version_id: int, account: Account) -> dict[str, Any]:
     try:
+        need(account, vault.version_path(version_id), READ)
         row, data = vault.version_content(version_id)
     except VaultError as exc:
         raise _fail(exc) from exc
@@ -574,8 +617,9 @@ def version(version_id: int, _account: Account) -> dict[str, Any]:
 
 
 @router.post("/versions/{version_id}/restore")
-def restore_version(version_id: int, who: ActorDep) -> dict[str, str]:
+def restore_version(version_id: int, account: Account, who: ActorDep) -> dict[str, str]:
     try:
+        need(account, vault.version_path(version_id), WRITE)
         file = vault.restore_version(version_id, actor=who)
     except VaultError as exc:
         raise _fail(exc) from exc
@@ -595,21 +639,24 @@ class TrashOut(BaseModel):
 
 
 @router.get("/trash", response_model=list[TrashOut])
-def trash(_account: Account) -> list[TrashOut]:
-    return [TrashOut(**entry.__dict__) for entry in vault.trash()]
+def trash(account: Account) -> list[TrashOut]:
+    """The trash of every space the account may write in: reading alone does not bring back or remove."""
+    return [TrashOut(**entry.__dict__) for entry in vault.trash(readable_spaces(account, WRITE))]
 
 
 @router.post("/trash/{entry_id}/restore")
-def restore_trash(entry_id: TrashId, who: ActorDep) -> dict[str, list[str]]:
+def restore_trash(entry_id: TrashId, account: Account, who: ActorDep) -> dict[str, list[str]]:
     try:
+        need(account, vault.trash_path(entry_id), WRITE)
         return {"paths": vault.restore_trash(entry_id, actor=who)}
     except VaultError as exc:
         raise _fail(exc) from exc
 
 
 @router.delete("/trash/{entry_id}")
-def purge_trash(entry_id: TrashId, _account: Account) -> dict[str, int]:
+def purge_trash(entry_id: TrashId, account: Account) -> dict[str, int]:
     try:
+        need(account, vault.trash_path(entry_id), WRITE)
         return {"files": vault.purge_trash(entry_id)}
     except VaultError as exc:
         raise _fail(exc) from exc
@@ -619,7 +666,7 @@ def purge_trash(entry_id: TrashId, _account: Account) -> dict[str, int]:
 
 
 @router.get("/index")
-def index_status(_account: Account) -> dict[str, Any]:
+def index_status(account: Account) -> dict[str, Any]:
     state = index.status
     last = state.last
     return {
@@ -629,13 +676,16 @@ def index_status(_account: Account) -> dict[str, Any]:
         "total": state.total,
         "last_at": state.last_at,
         "last": last.__dict__ if last else None,
-        "held_back": state.held_back,
+        # Which spaces the brake holds back, and the button to confirm, are the operator's.
+        "held_back": state.held_back if account.role == OPERATOR else {},
     }
 
 
 @router.post("/index/scan")
-def index_scan(_account: Account, confirm_deletions: bool = False) -> dict[str, Any]:
-    """A full pass now. ``confirm_deletions``: files the brake held back were deleted on purpose."""
+def index_scan(account: Account, confirm_deletions: bool = False) -> dict[str, Any]:
+    """A full pass now. ``confirm_deletions``: files the brake held back were deleted on purpose (operator only)."""
+    if confirm_deletions and account.role != OPERATOR:
+        raise error("operator_only", "Only the operator may do this.", 403)
     stats = index.scan(confirm_deletions=confirm_deletions)
     return stats.__dict__
 

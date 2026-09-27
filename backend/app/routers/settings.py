@@ -1,0 +1,114 @@
+"""The operator's settings: address, sign-in, public pages, invitation mail, backups.
+
+Secrets (the mail password) are written encrypted and never read back: the answer only says whether one is set.
+The files settings live in ``routers/attachments.py``, the OIDC ones in ``routers/oidc.py``.
+"""
+
+from __future__ import annotations
+
+import logging
+from typing import Any, Literal
+
+from fastapi import APIRouter
+from pydantic import BaseModel, Field
+
+from ..deps import DbSession, OperatorAccount
+from ..errors import error
+from ..security import encrypt_secret
+from ..services import accounts, mailer, settings_service
+
+logger = logging.getLogger("nexlore.settings")
+
+router = APIRouter(prefix="/api/settings", tags=["settings"])
+
+
+class SettingsOut(BaseModel):
+    public_url: str
+    password_login: bool
+    shares_allowed: bool
+    backup_schedule: str
+    backup_keep: int
+    smtp_host: str
+    smtp_port: int
+    smtp_security: str
+    smtp_user: str
+    smtp_password_set: bool
+    smtp_from: str
+
+
+class SettingsIn(BaseModel):
+    public_url: str | None = Field(default=None, max_length=255)
+    password_login: bool | None = None
+    shares_allowed: bool | None = None
+    backup_schedule: Literal["off", "daily", "weekly"] | None = None
+    backup_keep: int | None = Field(default=None, ge=1, le=100)
+    smtp_host: str | None = Field(default=None, max_length=255)
+    smtp_port: int | None = Field(default=None, ge=1, le=65535)
+    smtp_security: Literal["starttls", "tls", "none"] | None = None
+    smtp_user: str | None = Field(default=None, max_length=255)
+    #: Empty removes the password; left out keeps it.
+    smtp_password: str | None = Field(default=None, max_length=500)
+    smtp_from: str | None = Field(default=None, max_length=255)
+
+
+class TestMailIn(BaseModel):
+    to: str = Field(max_length=255)
+
+
+def _view(db: DbSession) -> SettingsOut:
+    values = settings_service.get_all(db)
+    return SettingsOut(
+        public_url=values["public_url"],
+        password_login=values["password_login"],
+        shares_allowed=values["shares_allowed"],
+        backup_schedule=values["backup_schedule"],
+        backup_keep=values["backup_keep"],
+        smtp_host=values["smtp_host"],
+        smtp_port=values["smtp_port"],
+        smtp_security=values["smtp_security"],
+        smtp_user=values["smtp_user"],
+        smtp_password_set=bool(values["smtp_password_enc"]),
+        smtp_from=values["smtp_from"],
+    )
+
+
+@router.get("", response_model=SettingsOut)
+def read(_operator: OperatorAccount, db: DbSession) -> SettingsOut:
+    return _view(db)
+
+
+@router.put("", response_model=SettingsOut)
+def save(payload: SettingsIn, operator: OperatorAccount, db: DbSession) -> SettingsOut:
+    changes: dict[str, Any] = {}
+    for key, value in payload.model_dump(exclude_unset=True).items():
+        if value is None:
+            continue
+        if key == "public_url":
+            try:
+                value = settings_service.normalize_public_url(value)
+            except ValueError as exc:
+                raise error("invalid_url", "Give an address like https://notes.example.com.", 422) from exc
+        elif key == "smtp_from":
+            value = value.strip()
+            if value and not accounts.EMAIL_PATTERN.match(value):
+                raise error("invalid_email", "This is not a mail address.", 422)
+        elif key == "smtp_password":
+            changes["smtp_password_enc"] = encrypt_secret(value)
+            continue
+        elif isinstance(value, str):
+            value = value.strip()
+        changes[key] = value
+    settings_service.save(db, changes)
+    logger.info("Settings changed keys=%s by=%s", ",".join(sorted(changes)), operator.name)
+    return _view(db)
+
+
+@router.post("/mail-test", status_code=204, summary="Send a test mail through the configured server")
+def mail_test(payload: TestMailIn, _operator: OperatorAccount, db: DbSession) -> None:
+    to = payload.to.strip()
+    if not accounts.EMAIL_PATTERN.match(to):
+        raise error("invalid_email", "This is not a mail address.", 422)
+    try:
+        mailer.send_test(db, to)
+    except mailer.MailError as exc:
+        raise error(exc.code, str(exc), 502) from exc

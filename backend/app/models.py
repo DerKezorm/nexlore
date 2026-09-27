@@ -188,6 +188,106 @@ class TrashBlob(Base):
     content: Mapped[bytes] = mapped_column(LargeBinary)
 
 
+OPERATOR = "operator"
+MEMBER = "member"
+ROLES = (OPERATOR, MEMBER)
+
+SIGN_IN_PASSWORD = "password"
+SIGN_IN_OIDC = "oidc"
+
+#: Rights in a space, each one including the ones before it: reading; writing (notes, files, the trash);
+#: managing (inviting, giving rights, renaming or deleting the space).
+READ = "read"
+WRITE = "write"
+MANAGE = "manage"
+SPACE_ROLES = (READ, WRITE, MANAGE)
+
+
+class Account(Base):
+    """A person. The first account is the operator; the others come by invitation or through OIDC."""
+
+    __tablename__ = "accounts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    #: Lower case, the name people sign in with and see in locks and versions.
+    name: Mapped[str] = mapped_column(String(64), unique=True)
+    role: Mapped[str] = mapped_column(String(16), default=MEMBER)
+    sign_in: Mapped[str] = mapped_column(String(16), default=SIGN_IN_PASSWORD)
+    #: Argon2id. Empty for accounts that sign in through OIDC only.
+    password_hash: Mapped[str] = mapped_column(String(255), default="")
+    email: Mapped[str] = mapped_column(String(255), default="")
+    oidc_subject: Mapped[str] = mapped_column(String(255), default="")
+    #: The interface language chosen in the account menu; empty: the browser's.
+    language: Mapped[str] = mapped_column(String(16), default="")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    last_seen_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    failed_logins: Mapped[int] = mapped_column(Integer, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class AuthSession(Base):
+    """A browser session. Only the hash of the token is stored; the token itself lives in the cookie."""
+
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+    last_seen_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    ip: Mapped[str] = mapped_column(String(64), default="")
+    user_agent: Mapped[str] = mapped_column(String(255), default="")
+
+
+class Membership(Base):
+    """An account's right in a space. A space without any member belongs to the operator (it came from the disk)."""
+
+    __tablename__ = "memberships"
+
+    space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"), primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True, index=True)
+    role: Mapped[str] = mapped_column(String(16), default=READ)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class Invite(Base):
+    """A link that lets somebody in: into nexlore (a new account) and, when it names a space, into that space with a
+    right. Only the hash of the token is stored; used once, then gone."""
+
+    __tablename__ = "invites"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    space_id: Mapped[int | None] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"), nullable=True)
+    #: The right in the space; empty for an invitation into nexlore only.
+    space_role: Mapped[str] = mapped_column(String(16), default="")
+    #: Where the invitation was mailed to, if it was; also a hint for the name.
+    email: Mapped[str] = mapped_column(String(255), default="")
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+
+
+class Share(Base):
+    """A public reading page for a note or a folder: anybody with the link reads it, nothing else."""
+
+    __tablename__ = "shares"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    #: The secret part of the address. Kept, so the link can be copied again; it only ever opens this one share.
+    token: Mapped[str] = mapped_column(String(64), unique=True)
+    space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"), index=True)
+    #: Vault-relative path of the note or folder at the time of sharing; follows renames (``vault.move``).
+    path: Mapped[str] = mapped_column(String(1024))
+    is_folder: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    expires_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: Argon2id; empty: no password.
+    password_hash: Mapped[str] = mapped_column(String(255), default="")
+
+
 #: The full-text index, created by ``db.init_db`` (SQLAlchemy has no FTS5 table). rowid is ``files.id``.
 FTS_TABLE = "notes_fts"
 FTS_CREATE = (

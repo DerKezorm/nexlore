@@ -169,3 +169,26 @@ def test_a_repaired_file_shows_up_and_a_removed_one_goes(client: TestClient, fol
     assert client.get("/api/locales").json() == [{"code": "it", "name": "Italiano", "keys": 1}]
     path.unlink()
     assert client.get("/api/locales").json() == []
+
+
+def test_the_operator_uploads_and_removes_a_language(client: TestClient, folder: Path) -> None:
+    from .conftest import make_account, sign_in
+
+    body = json.dumps(GOOD, ensure_ascii=False).encode("utf-8")
+    assert client.put("/api/locales/es", content=body).status_code == 401
+    sign_in(client, make_account("member"))
+    assert client.put("/api/locales/es", content=body).status_code == 403
+    sign_in(client, make_account("boss", "operator"))
+    saved = client.put("/api/locales/es", content=body)
+    assert saved.status_code == 200 and saved.json() == {"code": "es", "name": "Español", "keys": 3}
+    assert client.get("/api/locales/es").json()["save"] == "Guardar"
+    assert [entry["code"] for entry in client.get("/api/locales").json()] == ["es"]
+    # Checked like a file laid into the directory: nothing broken gets in, and nothing lands outside.
+    for code, raw in (("fr", b"{not json"), ("fr", b'{"a": 1}'), ("../x", body), ("es.json", body)):
+        refused = client.put(f"/api/locales/{code}", content=raw)
+        assert refused.status_code in (404, 422), code
+    assert client.put("/api/locales/fr", content=b" " * (locales.MAX_BYTES + 1)).status_code == 413
+    assert sorted(path.name for path in folder.iterdir()) == ["es.json"]
+    assert client.delete("/api/locales/es").status_code == 204
+    assert client.delete("/api/locales/es").status_code == 404
+    assert client.get("/api/locales").json() == []

@@ -1,9 +1,6 @@
 # nexlore, start with:  docker compose up -d --build
 #
-# Then open http://<your-host>:8470.
-#
-# ⚠️ nexlore is at an early stage. There are no accounts yet, so every note route answers 401 unless
-#    NEXLORE_UNSAFE_OPEN_ACCESS is set below. Set it only for a test server in your own network, with test notes.
+# Then open http://<your-host>:8470. The first account you create there is the operator.
 
 services:
   nexlore:
@@ -36,5 +33,9 @@ services:
       # A network share or container mount that delivers no change notifications: watch by polling instead.
       # NEXLORE_WATCH_POLLING: "true"
 
-      # ⚠️ Until accounts exist: anybody who reaches nexlore can read and change every note.
-      # NEXLORE_UNSAFE_OPEN_ACCESS: "true"
+      # The address people use to reach nexlore, for invitation links, public pages and the OIDC redirect. Can
+      # also be set in the interface.
+      # NEXLORE_PUBLIC_URL: https://notes.example.com
+
+      # Behind a reverse proxy: its address, so that the brake against password guessing sees the real sender.
+      # NEXLORE_TRUSTED_PROXIES: 172.16.0.0/12

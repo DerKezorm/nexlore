@@ -23,9 +23,9 @@ from sqlalchemy import func, select
 from starlette.requests import ClientDisconnect
 
 from ..db import SessionLocal
-from ..deps import Account, OperatorAccount
+from ..deps import Account, OperatorAccount, need
 from ..errors import error
-from ..models import File, Link
+from ..models import READ, WRITE, File, Link, Space
 from ..services import attachments, media, paths, settings_service
 from ..services.vault import VaultError
 from .vault import ActorDep, PathQuery, _fail
@@ -63,6 +63,7 @@ class UploadOut(BaseModel):
 @router.post("/attachments", response_model=UploadOut, status_code=201)
 async def upload(
     request: Request,
+    account: Account,
     who: ActorDep,
     name: Annotated[str, Query(min_length=1, max_length=255)],
     note: Annotated[str | None, Query(max_length=paths.MAX_PATH_CHARS)] = None,
@@ -70,7 +71,11 @@ async def upload(
     pasted: bool = False,
 ) -> UploadOut:
     """The body is the file itself, streamed; ``name`` its name, ``note`` the note it is for (it lands in that note's
-    attachment folder) or ``folder`` where it goes."""
+    attachment folder) or ``folder`` where it goes. Duplicates are found within the space only, where the uploader
+    may read anyway."""
+    if note is None and folder is None:
+        raise error("invalid_input", "Name a note or a folder.", 422)
+    need(account, note if note is not None else folder or "", WRITE)
     try:
         plan = await run_in_threadpool(
             attachments.plan, note=note, folder=folder, name=name, pasted=pasted, actor=who
@@ -119,8 +124,9 @@ def _delivery(full: Any, kind: str | None, download: bool) -> tuple[str, bool]:
 
 
 @router.get("/file", response_model=None)
-def file(path: PathQuery, request: Request, _account: Account, download: bool = False) -> Response:
+def file(path: PathQuery, request: Request, account: Account, download: bool = False) -> Response:
     """A file of the vault as it is on disk. Only files the index knows: nothing hidden, nothing half-written."""
+    need(account, path, READ)
     try:
         clean = paths.parse(path)
         full = paths.resolve(clean)
@@ -161,14 +167,19 @@ class AttachmentsOut(BaseModel):
 
 @router.get("/attachments", response_model=AttachmentsOut)
 def listing(
-    _account: Account,
+    account: Account,
     space: Annotated[str, Query(min_length=1, max_length=255)],
     unused: bool = False,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> AttachmentsOut:
     """The files in a space that are not notes, with how many notes link each; ``unused``: only those none links."""
+    if "/" in space:
+        raise error("not_found", "No such space.", 404)
+    need(account, space, READ)
     with SessionLocal() as db:
+        if db.scalar(select(Space.id).where(Space.folder == space)) is None:
+            raise error("not_found", "No such space.", 404)
         uses = (
             select(Link.target_id, func.count(func.distinct(Link.source_id)).label("uses"))
             .join(File, File.id == Link.source_id)
@@ -249,7 +260,7 @@ class ResolveOut(BaseModel):
 
 @router.get("/resolve", response_model=ResolveOut)
 def resolve(
-    _account: Account,
+    account: Account,
     source: PathQuery,
     target: Annotated[str, Query(min_length=1, max_length=paths.MAX_PATH_CHARS)],
     kind: Annotated[str, Query(pattern="^(wiki|embed|md|md_embed)$")] = "embed",
@@ -257,10 +268,7 @@ def resolve(
     """Where a link written in ``source`` leads, the way the index resolves it (an embed typed but not saved yet)."""
     from ..services import index
 
-    try:
-        clean = paths.parse(source)
-    except paths.PathError as exc:
-        raise error(exc.code, str(exc)) from exc
+    clean = need(account, source, READ)
     with SessionLocal() as db:
         space_id = db.scalar(select(File.space_id).where(File.path == clean, File.deleted_at.is_(None)))
         if space_id is None:

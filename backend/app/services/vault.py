@@ -29,7 +29,7 @@ from sqlalchemy import text as sql
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import FTS_TABLE, File, Link, Lock, TrashBlob, Version, utcnow
+from ..models import FTS_TABLE, File, Link, Lock, Share, TrashBlob, Version, utcnow
 from . import index, mdparse, paths, settings_service
 
 logger = logging.getLogger("nexlore.vault")
@@ -384,10 +384,10 @@ def _keep_current(db: Session, file: File, full: Path) -> bool:
 
 
 def delete_path(rel: str, *, actor: Actor, along: Iterable[str] = ()) -> int:
-    """Into the trash with a file or a folder. Returns how many files went. ``along``: files only this note uses
-    that go with it, in the same trash entry (they come back together); one that another note links meanwhile
-    stays."""
-    rel = _parse(rel)
+    """Into the trash with a file, a folder or a whole space. Returns how many files went. ``along``: files only
+    this note uses that go with it, in the same trash entry (they come back together); one that another note links
+    meanwhile stays. A space keeps its row and its members: restoring from the trash brings it back as it was."""
+    rel = _parse(rel) if "/" in rel.strip("/") else _parse_space(rel)
     full = _full(rel)
     group = str(uuid.uuid4())
     if along:
@@ -474,14 +474,18 @@ class TrashEntry:
     by: str | None
 
 
-def trash() -> list[TrashEntry]:
+def trash(space_ids: set[int] | None = None) -> list[TrashEntry]:
+    """What is in the trash; with ``space_ids`` only what lies in those spaces."""
     entries: dict[str, TrashEntry] = {}
+    query = (
+        select(File.id, File.path, File.deleted_at, File.deleted_how, File.deleted_by, File.trash_group)
+        .where(File.deleted_at.is_not(None))
+        .order_by(File.deleted_at.desc())
+    )
+    if space_ids is not None:
+        query = query.where(File.space_id.in_(space_ids))
     with SessionLocal() as db:
-        rows = db.execute(
-            select(File.id, File.path, File.deleted_at, File.deleted_how, File.deleted_by, File.trash_group)
-            .where(File.deleted_at.is_not(None))
-            .order_by(File.deleted_at.desc())
-        ).all()
+        rows = db.execute(query).all()
     grouped: dict[str, list[str]] = {}
     for file_id, path, deleted_at, how, by, group in rows:
         key = f"g-{group}" if group else f"f-{file_id}"
@@ -510,6 +514,12 @@ def _trash_members(db: Session, entry_id: str) -> list[File]:
     if not files:
         raise VaultError("not_found", "no such trash entry", 404)
     return files
+
+
+def trash_path(entry_id: str) -> str:
+    """A path of a trash entry, to tell which space it lies in (a group never spans two)."""
+    with SessionLocal() as db:
+        return _trash_members(db, entry_id)[0].path
 
 
 def _newest_content(db: Session, file: File) -> bytes | None:
@@ -617,6 +627,16 @@ def version_content(version_id: int) -> tuple[Version, bytes]:
             raise VaultError("not_found", "no such version", 404)
         db.expunge(version)
     return version, zlib.decompress(version.content)
+
+
+def version_path(version_id: int) -> str:
+    """Where the note of a version lies now, to tell which space it belongs to."""
+    with SessionLocal() as db:
+        version = db.get(Version, version_id)
+        file = db.get(File, version.file_id) if version is not None else None
+        if file is None:
+            raise VaultError("not_found", "no such version", 404)
+        return file.path
 
 
 def restore_version(version_id: int, *, actor: Actor) -> File:
@@ -819,6 +839,12 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
             file.path_key = paths.fold(file.path)
             file.name_key = index.name_key(file.path)
         db.flush()
+        # Public pages follow what they show.
+        for share in db.scalars(select(Share).where(Share.space_id == space_id)):
+            if share.path == source:
+                share.path = destination
+            elif share.path.startswith(source + "/"):
+                share.path = destination + share.path[len(source) :]
 
         # Rewrite the links, now that every file is at its new place.
         after = index.Names(db, space_id, preload=len(plans) > index.SMALL_CHANGE)

@@ -19,16 +19,20 @@ from .config import get_settings
 from .db import SessionLocal, init_db
 from .errors import detail
 from .middleware import GuardMiddleware, RequestContextMiddleware, unhandled_error
-from .routers import about, attachments, health, imports
+from .routers import about, attachments, auth, health, imports, members, oidc, shares
 from .routers import backups as backups_router
 from .routers import locales as locales_router
 from .routers import logs as logs_router
+from .routers import settings as settings_router
 from .routers import vault as vault_router
 from .services import backups, locales, logs, settings_service, watcher
 
 logger = logging.getLogger("nexlore")
 
-ROUTERS = [health, about, locales_router, logs_router, vault_router, attachments, imports, backups_router]
+ROUTERS = [
+    health, about, locales_router, logs_router, auth, oidc, members, settings_router, vault_router, attachments,
+    imports, backups_router, shares,
+]
 
 
 def _read_log_mode() -> tuple[str, datetime | None]:
@@ -60,8 +64,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         logger.info("Languages added by the operator: %s", ", ".join(locale.code for locale in added))
     stop = asyncio.Event()
     tasks: list[asyncio.Task[None]] = []
-    if settings.unsafe_open_access:
-        logger.warning("Open access is on: anybody who reaches nexlore can read and change every note")
+    settings.resolved_secret_key()
     if not settings.disable_background:
         tasks.append(asyncio.create_task(logs.run_forever(stop)))
         tasks.append(asyncio.create_task(watcher.scan_forever(stop)))

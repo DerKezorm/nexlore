@@ -12,8 +12,10 @@ from sqlalchemy import func, select
 
 from app.config import get_settings
 from app.db import SessionLocal
-from app.models import Version
+from app.models import OPERATOR, Version
 from app.services import backups, index
+
+from .conftest import make_account, sign_in
 
 
 @pytest.fixture(autouse=True)
@@ -192,10 +194,10 @@ def test_due_only_at_night_or_a_day_late(vault: Path) -> None:
 def test_backup_routes_are_for_the_operator(client: TestClient, vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert client.get("/api/backups").status_code == 401
     assert client.post("/api/backups", json={}).status_code == 401
-    from app.deps import require_operator
-    from app.main import app
-
-    app.dependency_overrides[require_operator] = lambda: "admin"
+    sign_in(client, make_account("member"))
+    assert client.get("/api/backups").status_code == 403
+    assert client.post("/api/backups", json={}).status_code == 403
+    sign_in(client, make_account("boss", OPERATOR))
     put(vault, "S/a.md", "a")
     name = client.post("/api/backups", json={"note": "by hand"}).json()["name"]
     assert client.get("/api/backups").json()[0]["note"] == "by hand"
