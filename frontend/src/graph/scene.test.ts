@@ -1,6 +1,6 @@
 import type { GroupRow, Overview, Tiles } from '../api/client'
 import { BAND_STRIDE, LINE_STRIDE, POINT_STRIDE } from './gl'
-import { MID, Scene, pack } from './scene'
+import { MANY_LINES, MID, Scene, pack } from './scene'
 
 /** A space as the server would lay it out: root 1000 wide, two folders, one of them with a subfolder. */
 function overview(version = 1, links: [number, number, number][] = [[2, 3, 4]]): Overview {
@@ -89,6 +89,24 @@ describe('the scene of the graph', () => {
     const hot = scene.lineBuffers(MID / 50, 10)
     expect(hot.lineCount).toBe(0)
     expect(hot.bandCount).toBe(6)
+  })
+
+  it('draws only the lines of the focus from notes when there are very many', () => {
+    const scene = new Scene()
+    scene.setOverviews([{ name: 'Work', overview: overview() }])
+    const notes: [number, number, number, number, number, number, string, string][] = []
+    const links: [number, number][] = []
+    for (let n = 0; n <= MANY_LINES + 1; n++) {
+      notes.push([100 + n, 2, -400 + (n % 20), (n / 20) | 0, 6, 0, 'N' + n, 'Work/Plans/N' + n + '.md'])
+      if (n) links.push([100, 100 + n])
+    }
+    scene.addTiles('Work', 1, [], { tiles: [{ level: -2, x: 0, y: 0, notes }], links, others: [] })
+    // All open: more than the limit, so nothing thin; the focus keeps its lines as hot bands.
+    expect(scene.lineBuffers(MID / 50, null).lineCount).toBe(0)
+    expect(scene.lineBuffers(MID / 50, 100).bandCount).toBe((MANY_LINES + 1) * 6)
+    expect(scene.lineBuffers(MID / 50, 101).bandCount).toBe(6)
+    // The bundles between closed groups do not count and stay.
+    expect(scene.lineBuffers(MID / 500, null).bandCount).toBe(6)
   })
 
   it('puts notes where their space is and hides daily notes on request', () => {

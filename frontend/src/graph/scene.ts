@@ -20,6 +20,8 @@ export const MID = (OPEN_FROM + OPEN_TO) / 2
 /** Tiles loaded at most; the ones out of sight longest go first. */
 const MAX_TILES = 1500
 const SPACE_GAP = 80
+/** More lines from notes than this, and only the focus keeps its own: the map stays readable. */
+export const MANY_LINES = 300
 
 export type SceneGroup = {
   id: number
@@ -429,7 +431,8 @@ export class Scene {
 
   /**
    * Lines at zoom `k`: thin ones between two visible notes, bands from a note to a closed group and between closed
-   * groups (one per pair, wider for more links), and the links of the focus drawn hot.
+   * groups (one per pair, wider for more links), and the links of the focus drawn hot. With more than `MANY_LINES`
+   * lines from notes, only the focus's are drawn; the bundles between closed groups stay.
    */
   lineBuffers(k: number, focus: number | null): { lines: ArrayBuffer; lineCount: number; bands: ArrayBuffer; bandCount: number } {
     const memo = new Map<number, number>()
@@ -459,6 +462,7 @@ export class Scene {
       }
     }
     // From visible notes: to another visible note, or to the closed group the other end is in.
+    const calm: { a: number; b: number; ea: [string, number]; eb: [string, number] }[] = []
     for (const [a, b] of this.links.values()) {
       const ends: ([string, number] | null)[] = [a, b].map((id) => {
         const note = this.notes.get(id)
@@ -473,8 +477,14 @@ export class Scene {
       if (ea[0] === 'g' && eb[0] === 'g') continue // counted between the groups above
       if (ea[0] === eb[0] && ea[1] === eb[1]) continue
       const hot = focus !== null && (a === focus || b === focus)
-      if (ea[0] === 'n' && eb[0] === 'n' && !hot) thin.push([a, b])
-      else add(ea, eb, 1, hot)
+      if (hot) add(ea, eb, 1, true)
+      else calm.push({ a, b, ea, eb })
+    }
+    if (calm.length <= MANY_LINES) {
+      for (const { a, b, ea, eb } of calm) {
+        if (ea[0] === 'n' && eb[0] === 'n') thin.push([a, b])
+        else add(ea, eb, 1, false)
+      }
     }
 
     const lines = new ArrayBuffer(thin.length * 2 * LINE_STRIDE)
