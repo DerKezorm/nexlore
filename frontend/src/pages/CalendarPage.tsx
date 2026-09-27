@@ -3,7 +3,7 @@
  * account may read or one of them. A click on a day opens its daily note, or makes it from the space's template.
  * Next to it (below on a phone) the open tasks of the month, day by day, to tick off.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
@@ -31,22 +31,30 @@ export function CalendarPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [target, setTarget] = useState<string | null>(null)
   const [opening, setOpening] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  // Only the newest answer counts: months clicked through fast must not show an older month's numbers.
+  const asked = useRef(0)
 
   const writable = spaces.filter((item) => item.role === 'write' || item.role === 'manage')
   // Where a new daily note goes: the chosen space, or with all spaces shown the one picked below the calendar.
   const home = space || target || dailySpace(spaces)?.name || ''
 
   const load = useCallback(async () => {
+    const mine = ++asked.current
+    setLoading(true)
     try {
       const [calendar, due] = await Promise.all([
         everydayApi.calendar(month, today, space || undefined),
         everydayApi.tasks({ today, status: 'open', start: `${month}-01`, end: lastDay(month), space: space || undefined, limit: 500 }),
       ])
+      if (mine !== asked.current) return
       setDays(calendar.days)
       setTasks(due.items)
       setProblem(null)
     } catch (error) {
-      setProblem(error instanceof ApiError ? error.code : 'internal_error')
+      if (mine === asked.current) setProblem(error instanceof ApiError ? error.code : 'internal_error')
+    } finally {
+      if (mine === asked.current) setLoading(false)
     }
   }, [month, space, today])
 
@@ -143,7 +151,10 @@ export function CalendarPage() {
           </select>
         </div>
         {problem && <p className="mb-2 text-sm text-bad-500">{errorText(problem)}</p>}
-        <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-ink-700 bg-ink-700 text-xs">
+        <div
+          className={'grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-ink-700 bg-ink-700 text-xs transition-opacity ' + (loading ? 'opacity-60' : '')}
+          aria-busy={loading}
+        >
           {weekdays.map((name) => (
             <div key={name} aria-hidden="true" className="bg-ink-900 px-1 py-1.5 text-center text-mist-500">
               {name}

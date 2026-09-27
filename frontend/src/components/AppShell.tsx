@@ -44,6 +44,12 @@ function navClass(isActive: boolean, right = false): string {
   )
 }
 
+/** Whether a key goes into text being written: there Alt+T may type a character (Option+T on a Mac). */
+function typing(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
+}
+
 /** Shell like the other nex apps: header with pills, then the page fills the rest of the window. */
 export function AppShell() {
   const { t } = useTranslation()
@@ -78,7 +84,7 @@ export function AppShell() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setSearching(true)
-      } else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyT') {
+      } else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyT' && !typing(e.target)) {
         e.preventDefault()
         void openToday()
       }
@@ -94,13 +100,15 @@ export function AppShell() {
   }, [])
 
   // The folder a new note goes to on a phone (there is no sidebar there): the open note's, else the daily space.
-  const newNoteFolder = () => {
+  const newNoteFolder = (): string | null => {
     if (location.pathname.startsWith('/note/')) {
       const path = location.pathname.slice('/note/'.length).split('/').map(decodeURIComponent).join('/')
-      return folderOf(path)
+      const role = spaces.find((space) => space.name === path.split('/')[0])?.role
+      if (role === 'write' || role === 'manage') return folderOf(path)
     }
     return home?.name ?? null
   }
+  const newNoteTarget = newNoteFolder()
 
   const pick = (id: string) => {
     // A PDF found by its text has a page of its own; it is not in the graph.
@@ -128,7 +136,7 @@ export function AppShell() {
             type="button"
             onClick={() => void openToday()}
             disabled={!home}
-            title={home ? t('today.title') : t('today.none')}
+            title={home || status !== 'ready' ? t('today.title') : t('today.none')}
             aria-label={t('today.title')}
             className="inline-flex shrink-0 items-center gap-2 rounded-full bg-accent-500 px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-40"
           >
@@ -137,8 +145,8 @@ export function AppShell() {
           </button>
           <button
             type="button"
-            onClick={() => setCreating(newNoteFolder())}
-            disabled={!home && !location.pathname.startsWith('/note/')}
+            onClick={() => setCreating(newNoteTarget)}
+            disabled={!newNoteTarget}
             aria-label={t('sidebar.newNote')}
             title={t('sidebar.newNote')}
             className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-ink-700 text-mist-300 hover:bg-ink-850 disabled:opacity-40 md:hidden"

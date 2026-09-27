@@ -3,7 +3,7 @@
  * open, overdue, today, this week, later, no date and done, with their counts; a space, a tag, words. Open tasks are
  * grouped by when they are due (or by note, switchable, remembered per browser). Ticking one off writes that one line.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
@@ -45,6 +45,8 @@ export function TasksPage() {
   const [problem, setProblem] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const today = todayIso()
+  // Only the newest answer counts: chips clicked through fast must not show an older filter's tasks.
+  const asked = useRef(0)
 
   // Typing waits a moment before it asks the server.
   useEffect(() => {
@@ -68,17 +70,19 @@ export function TasksPage() {
 
   const load = useCallback(
     async (keep = 0) => {
+      const mine = ++asked.current
       setLoading(true)
       try {
         const answer = await everydayApi.tasks(ask(0, Math.max(PAGE, keep)))
+        if (mine !== asked.current) return
         setItems(answer.items)
         setCounts(answer.counts)
         setTotal(answer.total)
         setProblem(null)
       } catch (error) {
-        setProblem(error instanceof ApiError ? error.code : 'internal_error')
+        if (mine === asked.current) setProblem(error instanceof ApiError ? error.code : 'internal_error')
       } finally {
-        setLoading(false)
+        if (mine === asked.current) setLoading(false)
       }
     },
     [ask],
@@ -89,8 +93,9 @@ export function TasksPage() {
   }, [load])
 
   const more = async () => {
+    const mine = asked.current
     const answer = await everydayApi.tasks(ask(items.length))
-    setItems((current) => [...current, ...answer.items])
+    if (mine === asked.current) setItems((current) => [...current, ...answer.items])
   }
 
   const toggled = (_task: TaskItem, result: Toggled) => {

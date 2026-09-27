@@ -36,7 +36,11 @@ export function NewNoteDialog({ folder, onClose, onCreated }: { folder: string; 
         setTemplates(list)
         setTemplateFolder(options.template_folder)
       })
-      .catch(() => alive && setTemplates([]))
+      .catch((error) => {
+        if (!alive) return
+        setTemplates([])
+        setProblem(error instanceof ApiError ? error.code : 'internal_error')
+      })
     return () => {
       alive = false
     }
@@ -132,7 +136,7 @@ export function NewNoteDialog({ folder, onClose, onCreated }: { folder: string; 
                 </li>
               ))}
             </ul>
-            {templates && templates.length === 0 && <p className="mt-2 text-xs text-mist-600">{t('newNote.noTemplates')}</p>}
+            {templates && templates.length === 0 && !problem && <p className="mt-2 text-xs text-mist-600">{t('newNote.noTemplates')}</p>}
           </div>
           <div className="min-w-0">
             <p className="mb-1 text-xs text-mist-500">{t('newNote.preview')}</p>

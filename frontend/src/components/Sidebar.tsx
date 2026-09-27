@@ -154,7 +154,14 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     }
   }, [])
 
-  const target = activeNote ? folderOf(activeNote) : activeFolder || spaces[0]?.name
+  // Where a new note goes: beside the open note, or in the chosen folder, or the first space one may write in; never
+  // into a space one may only read (the server would refuse it, the button says so before).
+  const writable = (path: string | null | undefined) => {
+    const role = path ? spaces.find((space) => space.name === path.split('/')[0])?.role : undefined
+    return role === 'write' || role === 'manage'
+  }
+  const wanted = activeNote ? folderOf(activeNote) : activeFolder || null
+  const target = writable(wanted) ? wanted : spaces.find((space) => writable(space.name))?.name
 
   const toggle = (path: string) => setToggled((current) => new Map(current).set(path, !isOpen(path)))
 

@@ -12,6 +12,7 @@ for the spaces the account may read only; a space it may not read answers like o
 
 from __future__ import annotations
 
+import os
 import posixpath
 import re
 from dataclasses import dataclass
@@ -112,6 +113,11 @@ def open_daily(space_name: str, day: str, *, actor: Actor, may_write: bool, lang
             found = vault.live_by_key(db, rel)
             if found is not None:
                 return Daily(path=found.path, created=False)
+        folder = posixpath.dirname(rel)
+        on_disk = _on_disk(folder, f"{day}.md")
+        if on_disk is not None:
+            # There already, in other letters (2026-09-27.MD) and not read by the index yet: that one is the note.
+            return Daily(path=_take_in(on_disk), created=False)
         if not may_write:
             raise VaultError("forbidden", "Your right in this space does not allow this.", 403)
         now = datetime.now().astimezone()
@@ -119,10 +125,35 @@ def open_daily(space_name: str, day: str, *, actor: Actor, may_write: bool, lang
         content = ""
         if opts["daily_template"]:
             content = render(f"{space_name}/{opts['daily_template']}", title=day, when=when, language=language)
-        folder = posixpath.dirname(rel)
         paths.resolve(folder).mkdir(parents=True, exist_ok=True)
         file = vault.create_note(folder, day, content.encode("utf-8"), actor=actor)
     return Daily(path=file.path, created=True)
+
+
+def _on_disk(folder: str, name: str) -> str | None:
+    """The file of this name in the folder, compared as Windows and macOS compare (case does not count)."""
+    try:
+        directory = paths.resolve(folder)
+        entries = os.listdir(directory) if directory.is_dir() else []
+    except (OSError, paths.PathError):
+        return None
+    wanted = paths.fold(name)
+    for entry in entries:
+        if paths.fold(entry) == wanted and (directory / entry).is_file():
+            return f"{folder}/{entry}"
+    return None
+
+
+def _take_in(rel: str) -> str:
+    """A file the index has not read yet, read now (under ``guard``, as the caller holds it; never a scan, which
+    would wait for a scan that waits for this lock)."""
+    full = paths.resolve(rel)
+    data = full.read_bytes()
+    with SessionLocal() as db:
+        file = index.record(db, rel, data, full.stat(), source=index.EXTERNAL)
+        index.reresolve(db, file.space_id, [file.name_key])
+        db.commit()
+    return rel
 
 
 # --- Templates -----------------------------------------------------------------------------------------------------

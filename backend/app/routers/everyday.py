@@ -121,6 +121,8 @@ def template_preview(
     title: Annotated[str, Query(max_length=1024)] = "",
 ) -> dict[str, str]:
     rel = need(account, path, READ)
+    if not paths.is_note(rel):
+        raise error("not_a_note", "A template is a note.")
     try:
         text = everyday.render(rel, title=title, when=datetime.now().astimezone(), language=account.language or "en")
     except VaultError as exc:
@@ -159,7 +161,7 @@ def task_list(
 class ToggleIn(BaseModel):
     path: str = Field(min_length=1, max_length=paths.MAX_PATH_CHARS)
     line: int = Field(ge=1)
-    raw: str = Field(max_length=4000)
+    raw: str = Field(max_length=1_000_000)
     done: bool
     today: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
 

@@ -8,7 +8,7 @@ not execute code from notes. The same goes for anything that looks like a placeh
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import date, datetime
 
 PLACEHOLDER = re.compile(r"\{\{\s*(title|date|time)\s*(?::([^{}\r\n]{1,64}))?\s*\}\}", re.IGNORECASE)
 DATE_FORMAT = "YYYY-MM-DD"
@@ -25,14 +25,41 @@ DAYS = {
     "de": ("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"),
 }
 #: Longest first, so that ``MMMM`` is not read as two ``MM``.
-_TOKENS = re.compile(r"\[[^\]]*\]|YYYY|YY|MMMM|MMM|MM|M|DDDD|DD|Do|D|dddd|ddd|dd|d|HH|H|hh|h|mm|m|ss|s|A|a|ww|w|E")
+_TOKENS = re.compile(r"\[[^\]]*\]|YYYY|YY|MMMM|MMM|MM|M|DDDD|DD|Do|D|dddd|ddd|dd|d|HH|H|hh|h|mm|m|ss|s|A|a|WW|W|ww|w|E")
+#: How moment counts the weeks of a locale: the first day of the week (0 Sunday) and the January day that always lies
+#: in week 1, as ``7 + dow - doy``. English: Sunday, 1 January. German: Monday, 4 January, which is the ISO rule.
+_WEEKS = {"en": (0, 6), "de": (1, 4)}
+_ISO = (1, 4)
+
+
+def _first_week_offset(year: int, dow: int, doy: int) -> int:
+    fwd = 7 + dow - doy
+    weekday = (date(year, 1, fwd).weekday() + 1) % 7  # Sunday 0, as JavaScript counts
+    return -((7 + weekday - dow) % 7) + fwd - 1
+
+
+def _weeks_in_year(year: int, dow: int, doy: int) -> int:
+    days = 366 if (year % 4 == 0 and year % 100 != 0) or year % 400 == 0 else 365
+    return (days - _first_week_offset(year, dow, doy) + _first_week_offset(year + 1, dow, doy)) // 7
+
+
+def week_of_year(when: datetime, dow: int, doy: int) -> int:
+    """The week number the way moment.js works it out (``weekOfYear``)."""
+    offset = _first_week_offset(when.year, dow, doy)
+    week = (when.timetuple().tm_yday - offset - 1) // 7 + 1
+    if week < 1:
+        return week + _weeks_in_year(when.year - 1, dow, doy)
+    if week > _weeks_in_year(when.year, dow, doy):
+        return week - _weeks_in_year(when.year, dow, doy)
+    return week
 
 
 def format_moment(when: datetime, pattern: str, language: str = "en") -> str:
     """``when`` in a moment.js format. Text in ``[brackets]`` is kept as written."""
     months = MONTHS.get(language, MONTHS["en"])
     days = DAYS.get(language, DAYS["en"])
-    week = when.isocalendar().week
+    week = week_of_year(when, *_WEEKS.get(language, _WEEKS["en"]))
+    iso_week = week_of_year(when, *_ISO)
 
     def one(match: re.Match[str]) -> str:
         token = match.group(0)
@@ -49,7 +76,7 @@ def format_moment(when: datetime, pattern: str, language: str = "en") -> str:
             "HH": f"{when.hour:02d}", "H": str(when.hour), "hh": f"{hour12:02d}", "h": str(hour12),
             "mm": f"{when.minute:02d}", "m": str(when.minute), "ss": f"{when.second:02d}", "s": str(when.second),
             "A": "AM" if when.hour < 12 else "PM", "a": "am" if when.hour < 12 else "pm",
-            "ww": f"{week:02d}", "w": str(week),
+            "ww": f"{week:02d}", "w": str(week), "WW": f"{iso_week:02d}", "W": str(iso_week),
         }
         return values[token]
 

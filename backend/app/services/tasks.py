@@ -180,9 +180,15 @@ def next_occurrence(line: str, today: str) -> str | None:
     if reference_text is None:
         return None
     when_done = task.recurrence.strip().lower().endswith("when done")
-    reference = date.fromisoformat(reference_text)
-    base = date.fromisoformat(today) if when_done else reference
-    following = next_date(task.recurrence, base)
+    try:
+        reference = date.fromisoformat(reference_text)
+        base = date.fromisoformat(today) if when_done else reference
+        following = next_date(task.recurrence, base)
+        for other in (task.due, task.scheduled, task.start):
+            if other:
+                date.fromisoformat(other)
+    except ValueError:
+        return None  # a date like 2026-02-30: the task is only ticked off, nothing is guessed
     if following is None:
         return None
     shift = following - reference
@@ -197,6 +203,8 @@ def next_occurrence(line: str, today: str) -> str | None:
 
     for pattern in (DUE, SCHEDULED, START):
         rest = pattern.sub(moved, rest)
+    # The new occurrence is made today, as the plugin writes it.
+    rest = CREATED.sub(lambda found: found.group(0).replace(found.group(1), today), rest)
     rest = re.sub(r"[ \t]+\^[A-Za-z0-9-]+[ \t]*$", "", rest)  # a block id belongs to the line it was on
     return f"{match.group(1)} {match.group(3)}{rest}"
 

@@ -416,7 +416,7 @@ class _Rows:
 
 def task_row(file_id: int, space_id: int, task: tasks_service.Task) -> dict[str, object]:
     return {
-        "file_id": file_id, "space_id": space_id, "line": task.line, "raw": task.raw[:4000], "status": task.status,
+        "file_id": file_id, "space_id": space_id, "line": task.line, "raw": task.raw, "status": task.status,
         "mark": task.mark[:4], "text": task.text, "due": task.due, "scheduled": task.scheduled, "start": task.start,
         "completed": task.completed, "priority": task.priority, "recurrence": task.recurrence,
         "tags": " ".join(task.tags)[:1000],
@@ -938,10 +938,10 @@ def _scan(root: Path, only: set[str] | None, stats: ScanStats, confirm_deletions
                         # Moved: the new row takes over the old one's history, the old row keeps the id.
                         new_rel = twins.pop(0)
                         arrived[row.hash].remove(new_rel)
-                        _merge_move(db, file, new_rel)
-                        stats.moved += 1
-                        stats.added -= 1
-                        continue
+                        if _merge_move(db, file, new_rel):
+                            stats.moved += 1
+                            stats.added -= 1
+                            continue
                     forget(db, file, how=EXTERNAL)
                     stats.removed += 1
                 db.commit()
@@ -981,11 +981,12 @@ def _revive(db: Session, rel: str) -> File | None:
     return file
 
 
-def _merge_move(db: Session, old: File, new_rel: str) -> None:
-    """``old`` moved to ``new_rel``, where the scan has just made a fresh row: fold the fresh row into the old one."""
+def _merge_move(db: Session, old: File, new_rel: str) -> bool:
+    """``old`` moved to ``new_rel``, where the scan has just made a fresh row: fold the fresh row into the old one.
+    False when that row is gone meanwhile (moved or deleted again between two parts of the scan)."""
     fresh = db.scalar(select(File).where(File.path == new_rel, File.deleted_at.is_(None)))
     if fresh is None:
-        return
+        return False
     fresh_id = fresh.id
     _clear_note_index(db, fresh_id)
     db.execute(delete(Version).where(Version.file_id == fresh_id))
@@ -1010,10 +1011,11 @@ def _merge_move(db: Session, old: File, new_rel: str) -> None:
                 text(f"UPDATE {FTS_TABLE} SET title = :title WHERE rowid = :id"),  # noqa: S608
                 {"title": old.title, "id": old.id},
             )
-        return
+        return True
     data = _read(paths.vault_root(), new_rel)
     if data is not None:
         record(db, new_rel, data[0], data[1], source=RENAME, file=old)
+    return True
 
 
 #: Set once the tasks of a database indexed before M6 were filled in.
@@ -1023,12 +1025,14 @@ TASKS_FILLED = "tasks_filled"
 def fill_tasks() -> int:
     """Once, for a database indexed before tasks were (M6): the tasks of every note that has any, from its newest
     version, which is what the file holds (a scan reads unchanged files never again). In parts, each under
-    ``guard``; a note indexed meanwhile has its tasks already. Returns how many notes got theirs."""
+    ``guard``; a note indexed meanwhile has its tasks already. Interrupted (a restart), it goes on next time: done
+    is noted only at the end. Returns how many notes got theirs."""
     with SessionLocal() as db:
         if db.get(Setting, TASKS_FILLED) is not None:
             return 0
-        known = db.scalar(select(Task.id).limit(1)) is not None
-        ids = [] if known else list(db.scalars(
+        # Every note that has tasks and no rows yet; notes indexed meanwhile (or before a restart) are skipped below.
+        # Not "any task row at all": one note saved before this ran would end the filling for the whole vault.
+        ids = list(db.scalars(
             select(File.id).where(
                 File.is_note.is_(True), File.deleted_at.is_(None),
                 func.coalesce(func.json_extract(File.features, "$.tasks"), 0) > 0,

@@ -161,7 +161,7 @@ def test_a_rule_it_does_not_know_repeats_nothing(rule: str) -> None:
 def test_the_next_occurrence_moves_every_date_by_as_much_as_the_reference_moved() -> None:
     line = "- [ ] water 🔁 every week 🛫 2026-09-20 ⏳ 2026-09-25 📅 2026-09-27 ➕ 2026-09-01 ^w1"
     assert tasks.next_occurrence(line, "2026-09-27") == (
-        "- [ ] water 🔁 every week 🛫 2026-09-27 ⏳ 2026-10-02 📅 2026-10-04 ➕ 2026-09-01")
+        "- [ ] water 🔁 every week 🛫 2026-09-27 ⏳ 2026-10-02 📅 2026-10-04 ➕ 2026-09-27")
     # "when done": from the day it was ticked off, not from the due date.
     late = "- [ ] water 🔁 every week when done 📅 2026-09-01"
     assert tasks.next_occurrence(late, "2026-09-27") == "- [ ] water 🔁 every week when done 📅 2026-10-04"
@@ -175,3 +175,30 @@ def test_the_next_occurrence_moves_every_date_by_as_much_as_the_reference_moved(
 )
 def test_no_next_occurrence_without_rule_date_or_known_rule(line: str) -> None:
     assert tasks.next_occurrence(line, "2026-09-27") is None
+
+
+@pytest.mark.parametrize(
+    ("day", "english", "german", "iso"),
+    [
+        # moment.js: English weeks start on Sunday and week 1 holds 1 January; German ones follow ISO (Monday, 4 January).
+        ((2026, 1, 4), "02", "01", "1"),
+        ((2025, 12, 28), "01", "52", "52"),
+        ((2021, 1, 3), "02", "53", "53"),
+        ((2026, 9, 7), "37", "37", "37"),
+    ],
+)
+def test_week_numbers_as_moment_counts_them(day: tuple[int, int, int], english: str, german: str, iso: str) -> None:
+    when = datetime(*day, 12, tzinfo=UTC)
+    assert templates.format_moment(when, "ww", "en") == english
+    assert templates.format_moment(when, "ww", "de") == german
+    assert templates.format_moment(when, "W", "en") == iso
+
+
+def test_a_recurring_task_with_an_impossible_date_is_only_ticked_off() -> None:
+    assert tasks.next_occurrence("- [ ] x 🔁 every month 📅 2026-02-30", "2026-09-27") is None
+    assert tasks.next_occurrence("- [ ] x 🔁 every month 📅 2026-02-01 ⏳ 2026-13-01", "2026-09-27") is None
+
+
+def test_the_next_occurrence_is_created_today() -> None:
+    line = "- [ ] a ➕ 2026-01-01 📅 2026-09-27 🔁 every week"
+    assert tasks.next_occurrence(line, "2026-09-27") == "- [ ] a ➕ 2026-09-27 📅 2026-10-04 🔁 every week"

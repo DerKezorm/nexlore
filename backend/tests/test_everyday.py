@@ -322,6 +322,67 @@ def test_a_database_indexed_before_tasks_gets_them_filled_in_once(world: World, 
         db.commit()
     assert index.fill_tasks() == 1
     assert [item["text"] for item in tasks_of(world.anna)["items"]] == ["one", "two"]
-    # Once: a second start leaves everything as it is.
+    # Once: a second start leaves everything as it is, even when the table were empty again.
     assert index.fill_tasks() == 0
     assert tasks_of(world.anna)["total"] == 2
+    with SessionLocal() as db:
+        db.execute(delete(Task))
+        db.commit()
+    assert index.fill_tasks() == 0
+
+
+def test_filling_in_goes_on_although_one_note_has_its_tasks_already(world: World, vault: Path) -> None:
+    # A note saved before the filling ran (or a restart halfway) must not end it for the rest of the vault.
+    for number in range(3):
+        put(vault, f"Private/n{number}.md", f"- [ ] task {number}\n")
+    index.scan()
+    with SessionLocal() as db:
+        keep = db.scalar(select(File.id).where(File.path == "Private/n0.md"))
+        db.execute(delete(Task).where(Task.file_id != keep))
+        db.execute(delete(Setting).where(Setting.key == index.TASKS_FILLED))
+        db.commit()
+    assert index.fill_tasks() == 2
+    assert tasks_of(world.anna)["total"] == 3
+
+
+def test_a_very_long_task_line_can_be_ticked_off(world: World, vault: Path) -> None:
+    line = "- [ ] " + "w" * 4100
+    path = put(vault, "Private/Long.md", line + "\n")
+    index.scan()
+    [task] = tasks_of(world.anna)["items"]
+    assert task["raw"] == line
+    assert toggle(world.anna, "Private/Long.md", 1, task["raw"]).status_code == 200
+    assert path.read_text(encoding="utf-8") == "- [x] " + "w" * 4100 + " ✅ 2026-09-27\n"
+
+
+def test_a_recurring_task_with_an_impossible_date_is_ticked_off_without_a_next_one(world: World, vault: Path) -> None:
+    path = put(vault, "Private/Odd.md", "- [ ] odd 🔁 every month 📅 2026-02-30\n")
+    index.scan()
+    answer = toggle(world.anna, "Private/Odd.md", 1, "- [ ] odd 🔁 every month 📅 2026-02-30")
+    assert answer.status_code == 200 and answer.json()["added"] is None
+    assert path.read_text(encoding="utf-8") == "- [x] odd 🔁 every month 📅 2026-02-30 ✅ 2026-09-27\n"
+
+
+def test_a_daily_note_on_disk_in_other_letters_is_taken_not_made_again(world: World, vault: Path) -> None:
+    # Written by Obsidian or a sync a moment ago, not read by the index yet.
+    put(vault, "Shared/Daily/2026-09-07.MD", "from outside\n")
+    made = world.carl.post("/api/daily", json={"space": "Shared", "date": "2026-09-07"})
+    assert made.json() == {"path": "Shared/Daily/2026-09-07.MD", "created": False}
+    assert sorted(entry.name for entry in (vault / "Shared" / "Daily").iterdir()) == ["2026-09-07.MD"]
+    assert world.carl.get("/api/note", params={"path": "Shared/Daily/2026-09-07.MD"}).json()["content"] == "from outside\n"
+
+
+def test_a_move_whose_new_row_is_gone_meanwhile_is_no_move(world: World, vault: Path) -> None:
+    put(vault, "Private/Old.md", "same")
+    index.scan()
+    with SessionLocal() as db:
+        file = db.scalar(select(File).where(File.path == "Private/Old.md"))
+        assert index._merge_move(db, file, "Private/Nowhere.md") is False
+        assert file.path == "Private/Old.md"
+
+
+def test_only_notes_are_previewed_as_templates(world: World, vault: Path) -> None:
+    put(vault, "Shared/Templates/picture.png", "\x89PNG")
+    index.scan()
+    answer = world.bob.get("/api/templates/preview", params={"path": "Shared/Templates/picture.png"})
+    assert answer.status_code == 400 and answer.json()["detail"]["code"] == "not_a_note"

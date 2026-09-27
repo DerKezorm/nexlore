@@ -41,7 +41,7 @@ self.addEventListener('message', (event) => {
 function kept(request) {
   const url = new URL(request.url)
   if (request.method !== 'GET' || url.origin !== self.location.origin) return false
-  return !url.pathname.startsWith('/api/') && !url.pathname.startsWith('/api?')
+  return url.pathname !== '/api' && !url.pathname.startsWith('/api/')
 }
 
 self.addEventListener('fetch', (event) => {
