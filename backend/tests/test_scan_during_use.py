@@ -296,3 +296,26 @@ def test_the_index_lock_is_reentrant_and_can_be_given_up_waiting() -> None:
     lock.release()
     with pytest.raises(RuntimeError):
         lock.release()
+
+
+def test_only_files_that_come_go_or_move_make_the_scan_load_the_names_again(
+    vault: Path, client: TestClient, operator: object
+) -> None:
+    # Measured on Windows with 100,000 notes: a save during the scan made every part of its links load the names of
+    # the space again (33,000 rows), and a part held the index lock 2.3 s. A save changes no name.
+    put(vault, "Work/a.md", "a")
+    index.scan()
+    with SessionLocal() as db:
+        space_id = db.scalar(select(File.space_id).where(File.path == "Work/a.md"))
+    note = client.get("/api/note", params={"path": "Work/a.md"}).json()
+    before = index.renames(space_id)
+    assert client.put("/api/note", json={"path": "Work/a.md", "content": "b", "base_hash": note["hash"]}).status_code == 200
+    assert index.renames(space_id) == before
+    assert client.post("/api/notes", json={"folder": "Work", "title": "New"}).status_code == 201
+    made = index.renames(space_id)
+    assert made > before
+    assert client.post("/api/move", json={"source": "Work/New.md", "destination": "Work/Moved.md"}).status_code == 200
+    moved = index.renames(space_id)
+    assert moved > made
+    assert client.request("DELETE", "/api/files", params={"path": "Work/Moved.md"}).status_code == 200
+    assert index.renames(space_id) > moved

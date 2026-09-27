@@ -31,7 +31,7 @@ import posixpath
 import threading
 import time
 import zlib
-from collections import deque
+from collections import defaultdict, deque
 from collections.abc import Iterable, Iterator
 from concurrent.futures import Executor, ProcessPoolExecutor, ThreadPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
@@ -41,7 +41,7 @@ from functools import partial
 from pathlib import Path
 from typing import Self
 
-from sqlalchemy import bindparam, delete, func, insert, select, text, update
+from sqlalchemy import bindparam, delete, event, func, insert, inspect, select, text, update
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
@@ -127,7 +127,7 @@ MASS_DELETION_MIN = 50
 #: Up to this many changed names, links are re-resolved one query at a time; above, from a table in memory.
 SMALL_CHANGE = 64
 #: Names (or notes) whose links a big scan resolves again in one transaction.
-RELINK_PART = 1000
+RELINK_PART = 500
 #: From this many files to look at, a scan shows in the interface as "reading the vault".
 PROGRESS_MIN = 200
 
@@ -449,6 +449,7 @@ def bulk_add(db: Session, items: list[Prepared]) -> list[tuple[int, int, str, st
 
     for space_id in {row["space_id"] for row in rows}:
         graphstore.touch(space_id)
+        renamed(space_id)
     return [(file_id, row["space_id"], row["name_key"], row["path"]) for file_id, row in zip(ids, rows, strict=True)]
 
 
@@ -558,12 +559,45 @@ def reresolve(
     return len(changes)
 
 
+_renames_lock = threading.Lock()
+_renames: dict[int, int] = defaultdict(int)
+#: What a link can be resolved by: a file that comes, goes or moves changes the names of its space; a save does not.
+_NAME_FIELDS = ("path", "path_key", "name_key", "space_id", "deleted_at")
+
+
+def renamed(space_id: int) -> None:
+    with _renames_lock:
+        _renames[space_id] += 1
+
+
+def renames(space_id: int) -> int:
+    """How often the names of a space changed since the start: ``relink`` loads them again only then."""
+    return _renames[space_id]
+
+
+@event.listens_for(Session, "after_flush")
+def _count_renames(session: Session, _context: object) -> None:
+    for item in (*session.new, *session.deleted):
+        if isinstance(item, File) and item.space_id is not None:
+            renamed(item.space_id)
+    for item in session.dirty:
+        if not isinstance(item, File):
+            continue
+        state = inspect(item)
+        for name in _NAME_FIELDS:
+            history = state.attrs[name].history
+            if history.has_changes():
+                for space_id in {item.space_id, *(value for value in history.deleted if name == "space_id")}:
+                    if space_id is not None:
+                        renamed(space_id)
+                break
+
+
 def relink(space_id: int, keys: set[str], sources: set[int]) -> int:
     """``reresolve`` for a big scan, part by part, each part under ``guard`` and in a transaction of its own: saving
     waits for one part at most, and nobody waits for SQLite's write lock for long. The names of the space are loaded
-    once and again only when a file of the space changed in between (a note saved or made meanwhile)."""
-    from . import graphstore  # counts the changes to the files of each space
-
+    once and again only when a file of the space came, went or moved in between (``renames``): measured on Windows
+    with 100,000 notes, loading them again for every save made a part hold the lock 2.3 s."""
     parts: list[tuple[list[str], set[int]]] = [(part, set()) for part in _chunks(sorted(keys), RELINK_PART)]
     parts += [([], set(part)) for part in _chunks(sorted(sources), RELINK_PART)]
     names: Names | None = None
@@ -571,7 +605,7 @@ def relink(space_id: int, keys: set[str], sources: set[int]) -> int:
     changed = 0
     for part_keys, part_sources in parts:
         with guard, SessionLocal() as db:
-            now = graphstore.changes(space_id)
+            now = renames(space_id)
             if names is None or now != marker:
                 names = Names(db, space_id, preload=True)
                 marker = now
