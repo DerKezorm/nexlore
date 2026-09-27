@@ -300,7 +300,7 @@ export function GraphPage() {
           <Symbol name="graph" className="h-4 w-4" /> {t(`graph.cloud.${cloud}`)}
         </button>
 
-        <div className="absolute top-3 right-3 hidden w-60 rounded-2xl border border-ink-700 bg-ink-900/85 p-3 text-sm backdrop-blur lg:block">
+        <div className="absolute top-3 right-3 hidden w-60 rounded-2xl border border-ink-700 bg-ink-900/85 p-3 text-sm backdrop-blur lg:block" data-testid="graph-filters">
           <div className="mb-2 text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('graph.spaces')}</div>
           {spaceList}
           <div className="mt-3 border-t border-ink-700 pt-3">{dailyToggle}</div>
