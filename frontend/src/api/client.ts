@@ -50,7 +50,24 @@ type Options = {
   keepalive?: boolean
 }
 
+/** How often a read or a save is tried again when the server says it is busy (503 `busy`), and how long apart. */
+const BUSY_TRIES = 3
+const BUSY_WAIT_MS = 1500
+
 export async function api<T>(path: string, options: Options = {}): Promise<T> {
+  // Reading and saving are safe to send again (a save carries its base, a repeat changes nothing); making things is not.
+  const repeatable = (options.method ?? 'GET') === 'GET' || options.method === 'PUT'
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await once<T>(path, options)
+    } catch (error) {
+      if (!(error instanceof ApiError && error.code === 'busy' && repeatable && attempt < BUSY_TRIES)) throw error
+      await new Promise((resolve) => setTimeout(resolve, BUSY_WAIT_MS))
+    }
+  }
+}
+
+async function once<T>(path: string, options: Options): Promise<T> {
   const url = new URL(path, window.location.origin)
   for (const [key, value] of Object.entries(options.query ?? {})) {
     if (Array.isArray(value)) for (const item of value) url.searchParams.append(key, item)
@@ -131,6 +148,15 @@ export type Report = {
   obsidian_config: boolean
   community_plugins: string[]
 }
+/** Whether the vault is being read right now; the counts only for the operator, a share for everybody. */
+export type IndexProgress = {
+  running: boolean
+  phase?: string
+  percent?: number | null
+  done?: number
+  total?: number
+}
+
 export type IndexState = {
   running: boolean
   phase: string
@@ -237,6 +263,7 @@ export const vaultApi = {
   restoreTrash: (id: string) => api<{ paths: string[] }>(`/api/trash/${encodeURIComponent(id)}/restore`, { method: 'POST' }),
   purgeTrash: (id: string) => api<{ files: number }>(`/api/trash/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   index: () => api<IndexState>('/api/index'),
+  progress: () => api<IndexProgress>('/api/index/progress'),
   rescan: (confirmDeletions = false) =>
     api<unknown>('/api/index/scan', { method: 'POST', query: { confirm_deletions: confirmDeletions ? 'true' : undefined } }),
   report: (space: string) => api<Report>(`/api/spaces/${encodeURIComponent(space)}/report`),

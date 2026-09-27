@@ -3,6 +3,12 @@
     "home": "Start",
     "mainMenu": "Hauptmenü"
   },
+  "scan": {
+    "counted": "Tresor wird eingelesen ({{done}} von {{total}})",
+    "share": "Tresor wird eingelesen ({{percent}} %)",
+    "plain": "Tresor wird eingelesen …",
+    "hint": "Notizen erscheinen nach und nach. Du kannst weiterarbeiten."
+  },
   "nav": {
     "graph": "Graph",
     "notes": "Notizen",
@@ -313,7 +319,9 @@
       "shares_off": "Öffentliche Seiten sind auf diesem Server abgeschaltet.",
       "password_required": "Diese Seite hat ein Passwort.",
       "backup_invalid": "Das ist keine nexlore-Sicherung.",
-      "backup_damaged": "Die Sicherung ist beschädigt. Nichts wurde geändert."
+      "backup_damaged": "Die Sicherung ist beschädigt. Nichts wurde geändert.",
+      "busy": "nexlore ist gerade beschäftigt. Versuch es gleich noch einmal.",
+      "scan_running": "Der Tresor wird schon eingelesen."
     }
   },
   "files": {

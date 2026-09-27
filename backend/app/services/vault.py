@@ -596,14 +596,25 @@ def purge_trash(entry_id: str) -> int:
     return len(files)
 
 
+#: Housekeeping works in parts this big, each in a transaction of its own: nobody waits long for the write lock.
+HOUSEKEEPING_PART = 200
+
+
 def purge_expired(now: datetime | None = None) -> int:
     limit = (now or utcnow()) - timedelta(days=TRASH_DAYS)
-    with index.guard, SessionLocal() as db:
-        files = list(db.scalars(select(File).where(File.deleted_at.is_not(None), File.deleted_at < limit)))
-        _forget_for_good(db, files)
-    if files:
-        logger.info("Trash emptied of old entries files=%s", len(files))
-    return len(files)
+    removed = 0
+    while True:
+        with index.guard, SessionLocal() as db:
+            files = list(db.scalars(
+                select(File).where(File.deleted_at.is_not(None), File.deleted_at < limit).limit(HOUSEKEEPING_PART)
+            ))
+            _forget_for_good(db, files)
+        removed += len(files)
+        if len(files) < HOUSEKEEPING_PART:
+            break
+    if removed:
+        logger.info("Trash emptied of old entries files=%s", removed)
+    return removed
 
 
 # --- Versions ------------------------------------------------------------------------------------------------------
@@ -693,19 +704,21 @@ def thin(rows: list[tuple[int, datetime]], now: datetime) -> list[int]:
 def thin_all(now: datetime | None = None) -> int:
     now = now or utcnow()
     dropped = 0
-    with index.guard, SessionLocal() as db:
+    with SessionLocal() as db:
         many = db.execute(
             select(Version.file_id).group_by(Version.file_id).having(func.count() > 1)
         ).scalars().all()
-        for file_id in many:
-            rows = [(row.id, row.updated_at) for row in db.execute(
-                select(Version.id, Version.updated_at).where(Version.file_id == file_id)
-            )]
-            ids = thin(rows, now)
-            if ids:
-                db.execute(delete(Version).where(Version.id.in_(ids)))
-                dropped += len(ids)
-        db.commit()
+    for start in range(0, len(many), HOUSEKEEPING_PART):
+        with index.guard, SessionLocal() as db:
+            for file_id in many[start : start + HOUSEKEEPING_PART]:
+                rows = [(row.id, row.updated_at) for row in db.execute(
+                    select(Version.id, Version.updated_at).where(Version.file_id == file_id)
+                )]
+                ids = thin(rows, now)
+                if ids:
+                    db.execute(delete(Version).where(Version.id.in_(ids)))
+                    dropped += len(ids)
+            db.commit()
     if dropped:
         logger.info("Old versions thinned out versions=%s", dropped)
     return dropped

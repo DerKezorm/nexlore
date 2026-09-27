@@ -57,11 +57,18 @@ function IndexCard() {
   const load = useCallback(() => vaultApi.index().then(setState).catch(() => undefined), [])
   useEffect(() => void load(), [load])
 
+  const [failed, setFailed] = useState<string | null>(null)
+
   const rescan = async (confirmDeletions = false) => {
     setBusy(true)
+    setFailed(null)
     try {
       await vaultApi.rescan(confirmDeletions)
       await Promise.all([load(), reload()])
+    } catch (error) {
+      // Another pass runs already (the first one after the start, the watcher's): said, and the state shown.
+      setFailed(error instanceof ApiError ? error.code : 'internal_error')
+      await load()
     } finally {
       setBusy(false)
     }
@@ -84,6 +91,11 @@ function IndexCard() {
           {t('files.index.rescan')}
         </button>
       </div>
+      {failed && (
+        <p className="mt-2 text-sm text-warn-500" role="alert">
+          {errorText(failed)}
+        </p>
+      )}
       {state && Object.keys(state.held_back).length > 0 && (
         <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-warn-500/30 bg-warn-500/10 px-4 py-2.5 text-sm text-warn-500" role="alert">
           <span className="flex-1">{t('files.index.heldBack', { spaces: Object.keys(state.held_back).join(', ') })}</span>

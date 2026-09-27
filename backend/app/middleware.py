@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import secrets
+import sqlite3
 import time
 from collections.abc import Callable
 from typing import Any
@@ -16,6 +17,18 @@ from fastapi.responses import JSONResponse
 from .services import logs
 
 logger = logging.getLogger("nexlore.api")
+
+
+def _database_busy(exc: BaseException) -> bool:
+    """SQLite's "database is locked" (or "busy"), however deep in the chain of causes."""
+    seen: BaseException | None = exc
+    while seen is not None:
+        if isinstance(seen, sqlite3.OperationalError) and ("locked" in str(seen) or "busy" in str(seen)):
+            return True
+        # SQLAlchemy keeps the driver's error as ``orig`` (and as the cause, when it raised it itself).
+        seen = getattr(seen, "orig", None) or seen.__cause__ or seen.__context__
+    return False
+
 
 #: Paths whose calls explain nothing but fill the log.
 QUIET_PATHS = ("/api/health", "/api/logs")
@@ -176,8 +189,17 @@ class GuardMiddleware:
                     await send(message)
 
 
-async def unhandled_error(request: Request, _exc: Exception) -> JSONResponse:
+async def unhandled_error(request: Request, exc: Exception) -> JSONResponse:
     request_id = getattr(request.state, "request_id", None) or "-"
+    if _database_busy(exc):
+        # The database stayed busy past the wait (SQLite's busy timeout): a moment later it works. The browser gets
+        # something to say and to retry instead of "went wrong".
+        return JSONResponse(
+            status_code=503,
+            content={"detail": {"code": "busy", "message": "nexlore is busy. Try again in a moment.",
+                                "request_id": request_id}},
+            headers={"X-Request-Id": request_id, "Retry-After": "2"},
+        )
     return JSONResponse(
         status_code=500,
         content={

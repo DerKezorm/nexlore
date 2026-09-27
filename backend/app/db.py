@@ -23,11 +23,15 @@ logger = logging.getLogger("nexlore.db")
 _settings = get_settings()
 _settings.data_dir.mkdir(parents=True, exist_ok=True)
 
+#: How long a write waits for another one to finish. Every writer keeps its transactions short (a scan too, see
+#: ``services/index.py``); this is the margin for a slow disk, not a wait anybody should see.
+BUSY_SECONDS = 15
+
 # No pool with an upper bound: with the default pool the sixteenth concurrent request would block the event
 # loop waiting for a connection. Opening a SQLite connection costs a fraction of a millisecond.
 engine = create_engine(
     f"sqlite:///{_settings.database_path}",
-    connect_args={"check_same_thread": False, "timeout": 5},
+    connect_args={"check_same_thread": False, "timeout": BUSY_SECONDS},
     poolclass=NullPool,
 )
 
@@ -37,7 +41,7 @@ def _pragmas(dbapi_connection: Any, _record: Any) -> None:
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA journal_mode=WAL")
     cursor.execute("PRAGMA foreign_keys=ON")
-    cursor.execute("PRAGMA busy_timeout=5000")
+    cursor.execute(f"PRAGMA busy_timeout={BUSY_SECONDS * 1000}")
     cursor.execute("PRAGMA synchronous=NORMAL")
     cursor.close()
 

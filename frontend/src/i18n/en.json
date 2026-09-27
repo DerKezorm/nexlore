@@ -3,6 +3,12 @@
     "home": "Home",
     "mainMenu": "Main menu"
   },
+  "scan": {
+    "counted": "Reading the vault ({{done}} of {{total}})",
+    "share": "Reading the vault ({{percent}} %)",
+    "plain": "Reading the vault …",
+    "hint": "Notes appear as they are read. You can go on working."
+  },
   "nav": {
     "graph": "Graph",
     "notes": "Notes",
@@ -313,7 +319,9 @@
       "shares_off": "Public pages are turned off on this server.",
       "password_required": "This page has a password.",
       "backup_invalid": "This is not a nexlore backup.",
-      "backup_damaged": "The backup is damaged. Nothing was changed."
+      "backup_damaged": "The backup is damaged. Nothing was changed.",
+      "busy": "nexlore is busy. Try again in a moment.",
+      "scan_running": "The vault is being read already."
     }
   },
   "files": {

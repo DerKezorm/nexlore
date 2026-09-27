@@ -9,6 +9,7 @@ import { noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 import { AccountMenu } from './AccountMenu'
 import { Logo } from './Logo'
+import { ScanNotice } from './ScanNotice'
 import { SearchDialog } from './SearchDialog'
 import { Symbol, type SymbolName } from './Symbol'
 import { ThemeSwitcher } from './ThemeSwitcher'
@@ -85,6 +86,7 @@ export function AppShell() {
           <AccountMenu />
         </div>
       </header>
+      <ScanNotice />
       {status === 'error' && (
         <div className="shrink-0 border-b border-bad-500/30 bg-bad-500/10 px-4 py-2 text-sm text-bad-500" role="alert">
           {errorText(error ?? 'internal_error')}

@@ -25,7 +25,7 @@ from sqlalchemy import Integer, cast, func, select, text
 from ..db import SessionLocal
 from ..deps import Account, OperatorAccount, need, readable_spaces
 from ..errors import error
-from ..models import FTS_TABLE, MANAGE, READ, WRITE, File, Link, Membership, Space, Tag
+from ..models import FTS_TABLE, MANAGE, OPERATOR, READ, WRITE, File, Link, Membership, Space, Tag
 from ..services import index, paths, rights, vault
 from ..services.vault import Actor, VaultError
 
@@ -756,9 +756,31 @@ def index_status(account: OperatorAccount) -> dict[str, Any]:
     }
 
 
+@router.get("/index/progress")
+def index_progress(account: Account) -> dict[str, Any]:
+    """Whether the vault is being read right now, for the notice at the top of the app. Every account asks it; the
+    counts, which span every space, only the operator sees, everybody else a share."""
+    state = index.status
+    if not state.visible:
+        return {"running": False}
+    total = max(state.total, 1)
+    answer: dict[str, Any] = {
+        "running": True,
+        "phase": state.phase,
+        "percent": min(99, state.done * 100 // total) if state.total else None,
+    }
+    if account.role == OPERATOR:
+        answer.update(done=min(state.done, state.total), total=state.total)
+    return answer
+
+
 @router.post("/index/scan")
 def index_scan(_operator: OperatorAccount, confirm_deletions: bool = False) -> dict[str, Any]:
-    """A full pass now, over every space. ``confirm_deletions``: files the brake held back were deleted on purpose."""
-    stats = index.scan(confirm_deletions=confirm_deletions)
+    """A full pass now, over every space. ``confirm_deletions``: files the brake held back were deleted on purpose.
+    Never a second pass beside a running one: that answers ``scan_running``."""
+    try:
+        stats = index.scan(confirm_deletions=confirm_deletions, wait=False)
+    except index.ScanRunning as exc:
+        raise error("scan_running", "The vault is being read already.", 409) from exc
     return stats.__dict__
 
