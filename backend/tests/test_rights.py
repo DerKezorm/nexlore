@@ -305,3 +305,11 @@ def test_creating_a_space_that_is_there_changes_no_rights(world: World) -> None:
     world.anna.put("/api/spaces/Empty/members/bob", json={"role": "read"})
     assert world.carl.post("/api/spaces", json={"name": "Empty"}).status_code == 409
     assert "Empty" in names(world.bob)
+
+
+def test_inviting_into_the_operators_own_space_keeps_the_operator_in(world: World) -> None:
+    token = world.operator.post("/api/spaces/Ops/invites", json={"role": "read"}).json()["link"].rsplit("/", 1)[1]
+    assert world.bob.post(f"/api/invite/{token}/join").status_code == 200
+    assert world.operator.get("/api/note", params={"path": "Ops/Runbook.md"}).status_code == 200
+    roles = {row["name"]: row["role"] for row in world.operator.get("/api/spaces/Ops/members").json()["members"]}
+    assert roles == {"bob": "read", "tester": "manage"}

@@ -1,14 +1,27 @@
-/** Settings: the language for real, the rest as a sketch (sign-in, spaces, AI access over MCP, plugins). */
+/**
+ * Settings: the language, the own spaces, and for the operator the server (accounts, sign-in, public pages, mail,
+ * files, backups, languages). AI access over MCP and plugins are still sketches (M7).
+ */
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import {
+  AccountsCard,
+  AllSpacesCard,
+  BackupsCard,
+  FilesSettingsCard,
+  LanguagesCard,
+  MailCard,
+  SharesCard,
+  SignInCard,
+} from '../components/settings/AdminCards'
+import { useServerSettings } from '../components/settings/useServerSettings'
+import { SpacesCard } from '../components/settings/SpacesCard'
 import { Symbol, type SymbolName } from '../components/Symbol'
-import { changeLanguage, downloadTemplate, languageOptions, type LanguageOption } from '../i18n'
-import { ApiError, vaultApi } from '../api/client'
-import { errorText } from '../lib/errors'
+import { downloadTemplate, languageOptions, type LanguageOption } from '../i18n'
 import { formatDate } from '../lib/markdown'
 import { MCP_KEYS } from '../mock/later'
-import { useStore } from '../state/store'
+import { useAuth } from '../state/auth'
 
 type Right = 'readNotes' | 'readOpen' | 'writeOpen' | 'writeNew'
 type Plugin = { id: 'calendar' | 'mermaid' | 'kanban' | 'templates' | 'readingTime'; rights: Right[]; on: boolean; installed: boolean }
@@ -28,29 +41,21 @@ export function SettingsPage() {
   const [mcpOn, setMcpOn] = useState(true)
   const [mode, setMode] = useState<(typeof MCP_MODES)[number]>('drafts')
   const [plugins, setPlugins] = useState(PLUGINS)
+  const { me } = useAuth()
 
   return (
     <main className="nn-scroll flex-1 overflow-y-auto">
       <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{t('settings.title')}</h1>
-          <p className="mt-1 text-sm text-mist-500">{t('settings.sketch')}</p>
         </div>
 
         <LanguageCard />
+        <SpacesCard />
+        {me?.role === 'operator' && <OperatorPart />}
 
-        <Card symbol="shield" title={t('settings.signin.title')} text={t('settings.signin.text')}>
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-ink-700 bg-ink-850 px-4 py-3 text-sm">
-            <span className="h-2 w-2 rounded-full bg-ok-500" />
-            <span className="font-medium">authentik</span>
-            <span className="font-mono text-xs text-mist-500">https://auth.example.com</span>
-            <span className="ml-auto text-xs text-mist-500">{t('settings.signin.signedIn', { count: 4 })}</span>
-          </div>
-        </Card>
-
-        <Card symbol="users" title={t('settings.spaces.title')} text={t('settings.spaces.text')}>
-          <SpaceList />
-        </Card>
+        <h2 className="pt-4 text-lg font-semibold">{t('settings.later')}</h2>
+        <p className="-mt-4 text-sm text-mist-500">{t('settings.sketch')}</p>
 
         <Card symbol="sparkle" title={t('settings.mcp.title')} text={t('settings.mcp.text')}>
           <label className="flex items-center justify-between gap-4 rounded-xl border border-ink-700 bg-ink-850 px-4 py-3 text-sm">
@@ -149,63 +154,33 @@ export function SettingsPage() {
   )
 }
 
-/** The one part that works for real: the language menu, with the operator's own languages from the server. */
-/** The spaces as they are on disk: folders at the top of the vault. Members and rights come with M4. */
-function SpaceList() {
+/** The server, for the operator. */
+function OperatorPart() {
   const { t } = useTranslation()
-  const { spaces, reload } = useStore()
-  const [name, setName] = useState('')
-  const [problem, setProblem] = useState<string | null>(null)
-
-  const create = async () => {
-    if (!name.trim()) return
-    try {
-      await vaultApi.createSpace(name.trim())
-      setName('')
-      setProblem(null)
-      await reload()
-    } catch (error) {
-      setProblem(error instanceof ApiError ? error.code : 'internal_error')
-    }
-  }
-
+  const [settings, setSettings] = useServerSettings()
   return (
     <>
-      <ul className="divide-y divide-ink-700 rounded-xl border border-ink-700">
-        {spaces.map((space) => (
-          <li key={space.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-            <span className="font-medium">{space.name}</span>
-            <span className="font-mono text-xs text-mist-600">vault/{space.name}/</span>
-            <span className="ml-auto text-xs text-mist-500">{t('settings.spaces.count', { count: space.notes })}</span>
-          </li>
-        ))}
-        {spaces.length === 0 && <li className="px-4 py-3 text-sm text-mist-500">{t('settings.spaces.none')}</li>}
-      </ul>
-      <form
-        className="mt-3 flex flex-wrap items-center gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void create()
-        }}
-      >
-        <input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder={t('settings.spaces.newName')}
-          aria-label={t('settings.spaces.newName')}
-          className="h-9 min-w-0 flex-1 rounded-lg border border-ink-700 bg-ink-850 px-3 text-sm outline-none focus:border-accent-500"
-        />
-        <button type="submit" className="h-9 rounded-full bg-accent-500 px-4 text-sm font-semibold text-on-accent hover:bg-accent-400">
-          {t('settings.spaces.create')}
-        </button>
-        {problem && <span className="w-full text-xs text-bad-500">{errorText(problem)}</span>}
-      </form>
+      <h2 className="pt-4 text-lg font-semibold">{t('admin.title')}</h2>
+      <p className="-mt-4 text-sm text-mist-500">{t('admin.text')}</p>
+      <AccountsCard />
+      <AllSpacesCard />
+      {settings && (
+        <>
+          <SignInCard settings={settings} onChange={setSettings} />
+          <SharesCard settings={settings} onChange={setSettings} />
+          <MailCard settings={settings} onChange={setSettings} />
+          <BackupsCard settings={settings} onChange={setSettings} />
+        </>
+      )}
+      <FilesSettingsCard />
+      <LanguagesCard />
     </>
   )
 }
 
 function LanguageCard() {
   const { t, i18n } = useTranslation()
+  const { setLanguage } = useAuth()
   const [options, setOptions] = useState<LanguageOption[]>([])
 
   useEffect(() => {
@@ -225,7 +200,7 @@ function LanguageCard() {
         <select
           id="language"
           value={i18n.language}
-          onChange={(e) => void changeLanguage(e.target.value)}
+          onChange={(e) => void setLanguage(e.target.value)}
           className="rounded-lg border border-ink-700 bg-ink-900 px-2.5 py-1.5 text-sm text-mist-100"
         >
           {options.map((option) => (

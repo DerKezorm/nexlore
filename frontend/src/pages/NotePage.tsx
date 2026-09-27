@@ -25,7 +25,9 @@ import { isFileTarget, isNotePath } from '../lib/files'
 import { linkIndex } from '../lib/links'
 import { fileRoute, formatDate, renderMarkdown } from '../lib/markdown'
 import { ancestry, baseName, folderOf, noteUrl } from '../lib/vault'
+import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
+import { ShareDialog } from '../components/ShareDialog'
 
 // The editor (Milkdown, CodeMirror for code, KaTeX) is most of the weight: loaded when somebody starts editing.
 const NoteEditor = lazy(() => import('../components/NoteEditor').then((module) => ({ default: module.NoteEditor })))
@@ -41,8 +43,10 @@ export function NotePage() {
   const path = useParams()['*'] ?? ''
   const [params, setParams] = useSearchParams()
   const { t } = useTranslation()
-  const { vault, reload } = useStore()
+  const { vault, reload, spaces } = useStore()
+  const { me } = useAuth()
   const navigate = useNavigate()
+  const [sharing, setSharing] = useState(false)
 
   const [note, setNote] = useState<NoteData | null>(null)
   const [links, setLinks] = useState<Links | null>(null)
@@ -427,6 +431,9 @@ export function NotePage() {
   const chain = ancestry(vault, note.path)
   const foreignLock = note.lock && !note.lock.mine ? note.lock.holder : null
   const lockedBy = lockHolder ?? foreignLock
+  // The own right in the note's space: reading only hides every change; managing may share.
+  const role = spaces.find((space) => space.name === note.path.split('/')[0])?.role ?? 'read'
+  const mayWrite = role !== 'read'
 
   return (
     <>
@@ -457,8 +464,16 @@ export function NotePage() {
                 type="button"
                 onClick={() => !editing && void startEditing()}
                 aria-pressed={editing}
-                disabled={!!lockedBy || note.readonly}
-                title={lockedBy ? t('note.lockedTitle', { name: lockedBy }) : note.readonly ? t('note.readonlyTitle') : undefined}
+                disabled={!!lockedBy || note.readonly || !mayWrite}
+                title={
+                  !mayWrite
+                    ? t('note.readOnlyRight')
+                    : lockedBy
+                      ? t('note.lockedTitle', { name: lockedBy })
+                      : note.readonly
+                        ? t('note.readonlyTitle')
+                        : undefined
+                }
                 className={'inline-flex items-center gap-1.5 rounded-full px-3 py-1 disabled:cursor-not-allowed disabled:opacity-40 ' + (editing ? 'bg-accent-500 font-semibold text-on-accent' : 'text-mist-400 hover:text-mist-100')}
               >
                 <Symbol name="pencil" className="h-3.5 w-3.5" /> {t('note.edit')}
@@ -487,14 +502,24 @@ export function NotePage() {
               </details>
             ) : (
               <>
-                <button type="button" onClick={() => setRenaming(baseName(note.path))} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850">
-                  {t('note.rename')}
-                </button>
-                <button type="button" onClick={() => void askToDelete()} disabled={!!lockedBy} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-bad-500 hover:bg-ink-850 disabled:opacity-40">
-                  {t('note.delete')}
-                </button>
+                {role === 'manage' && me?.shares_allowed && (
+                  <button type="button" onClick={() => setSharing(true)} className="inline-flex items-center gap-1.5 rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850">
+                    <Symbol name="globe" className="h-3.5 w-3.5" /> {t('share.button')}
+                  </button>
+                )}
+                {mayWrite && (
+                  <>
+                    <button type="button" onClick={() => setRenaming(baseName(note.path))} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850">
+                      {t('note.rename')}
+                    </button>
+                    <button type="button" onClick={() => void askToDelete()} disabled={!!lockedBy} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-bad-500 hover:bg-ink-850 disabled:opacity-40">
+                      {t('note.delete')}
+                    </button>
+                  </>
+                )}
               </>
             )}
+            {sharing && <ShareDialog path={note.path} folder={note.path.slice(0, note.path.lastIndexOf('/'))} onClose={() => setSharing(false)} />}
           </div>
 
           {/* Banners */}

@@ -27,7 +27,40 @@ export function fileRoute(path: string): string {
   return '/file/' + path.split('/').map(encodeURIComponent).join('/')
 }
 
-function markdownFor(notePath: string | null) {
+/**
+ * Where links and pictures lead. In the app to the vault (`appTargets`); on a public page to what the share lets
+ * out, and nowhere else (`PublicPage`).
+ */
+export type Targets = {
+  /** Where a picture, a video or a sound is loaded from. */
+  fileUrl: (path: string) => string
+  /** Where a link to a file leads. */
+  fileHref: (path: string) => string
+  /** The attributes of a link to a note: `data-note` in the app (the page opens it), an address on a public page. */
+  noteAttributes: (path: string) => string
+  /** Where a relative Markdown link or picture points, as a path; null leaves it as written. */
+  relative: (href: string) => string | null
+  /** Where a Markdown link to a note leads; left out, the link stays as written (the note page handles it). */
+  noteHref?: (path: string) => string
+  /** A wiki link that leads nowhere: in the app a pale link that makes the note, on a public page plain text. */
+  missing?: (text: string) => string
+  /** A relative Markdown link that may not lead anywhere (out of a share): shown as its text. */
+  closed?: (href: string) => boolean
+}
+
+/** Marks a Markdown link that is shown as its text; the mark never survives into the page. */
+const PLAIN = '#nn-plain'
+
+export function appTargets(notePath: string | null): Targets {
+  return {
+    fileUrl: (path) => fileUrl(path),
+    fileHref: fileRoute,
+    noteAttributes: (path) => `data-note="${escape(path)}"`,
+    relative: (href) => (notePath ? relativeTarget(notePath, href) : null),
+  }
+}
+
+function markdownFor(targets: Targets) {
   return new Marked({
     async: false,
     gfm: true,
@@ -38,10 +71,15 @@ function markdownFor(notePath: string | null) {
         return
       }
       // A path in the vault: pictures come from the server, links to files lead to their page.
-      const target = notePath ? relativeTarget(notePath, token.href) : null
+      if (token.type === 'link' && targets.closed?.(token.href)) {
+        token.href = PLAIN
+        return
+      }
+      const target = targets.relative(token.href)
       if (!target) return
-      if (token.type === 'image') token.href = fileUrl(target)
-      else if (!isNotePath(target)) token.href = fileRoute(target)
+      if (token.type === 'image') token.href = targets.fileUrl(target)
+      else if (!isNotePath(target)) token.href = targets.fileHref(target)
+      else if (targets.noteHref) token.href = targets.noteHref(target)
     },
   })
 }
@@ -52,13 +90,13 @@ export function withoutFrontMatter(body: string): string {
   return match ? body.slice(match[0].length) : body
 }
 
-function fileLink(path: string, text: string): string {
-  return `<a class="nn-wikilink nn-filelink" data-file="${escape(path)}" href="${escape(fileRoute(path))}">${text}</a>`
+function fileLink(path: string, text: string, targets: Targets): string {
+  return `<a class="nn-wikilink nn-filelink" data-file="${escape(path)}" href="${escape(targets.fileHref(path))}">${text}</a>`
 }
 
 /** An embedded file where the embed stands: a picture, a video, a sound, or a link to its page. */
-function embedded(path: string, text: string, width: string): string {
-  const url = escape(fileUrl(path))
+function embedded(path: string, text: string, width: string, targets: Targets): string {
+  const url = escape(targets.fileUrl(path))
   const size = width ? ` style="width:${Number(width)}px"` : ''
   switch (fileKind(path)) {
     case 'image':
@@ -68,7 +106,7 @@ function embedded(path: string, text: string, width: string): string {
     case 'audio':
       return `<audio class="nn-embed" src="${url}" controls preload="metadata"></audio>`
     default:
-      return fileLink(path, text)
+      return fileLink(path, text, targets)
   }
 }
 
@@ -76,7 +114,12 @@ function embedded(path: string, text: string, width: string): string {
  * Markdown to HTML. `resolve` answers where a wiki link points (a vault path) or null; the server knows, because
  * it resolves links the way Obsidian does. `notePath`: the note shown, for its relative links and pictures.
  */
-export function renderMarkdown(body: string, resolve: (target: string) => string | null, notePath: string | null = null): string {
+export function renderMarkdown(
+  body: string,
+  resolve: (target: string) => string | null,
+  notePath: string | null = null,
+  targets: Targets = appTargets(notePath),
+): string {
   // Raw HTML in a note is shown as text, not executed: notes can come from other people and from an AI.
   const safe = withoutFrontMatter(body).replace(/</g, '&lt;')
   const linked = safe.replace(/(!?)\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g, (_, embed: string, target: string, label?: string) => {
@@ -84,12 +127,15 @@ export function renderMarkdown(body: string, resolve: (target: string) => string
     // An embed's `|300` is its width, not a caption.
     const width = embed && label && /^\d+(x\d+)?$/.test(label.trim()) ? label.trim().split('x')[0] : ''
     const text = escape((width ? target : (label ?? target)).trim())
-    if (path && !isNotePath(path)) return embed ? embedded(path, text, width) : fileLink(path, text)
+    if (path && !isNotePath(path)) return embed ? embedded(path, text, width, targets) : fileLink(path, text, targets)
     return path
-      ? `<a class="nn-wikilink" data-note="${escape(path)}">${text}</a>`
-      : `<a class="nn-wikilink nn-wikilink-missing" title="${escape(i18n.t('note.missingLink'))}">${text}</a>`
+      ? `<a class="nn-wikilink" ${targets.noteAttributes(path)}>${text}</a>`
+      : targets.missing
+        ? targets.missing(text)
+        : `<a class="nn-wikilink nn-wikilink-missing" title="${escape(i18n.t('note.missingLink'))}">${text}</a>`
   })
-  return markdownFor(notePath).parse(linked) as string
+  const html = markdownFor(targets).parse(linked) as string
+  return html.replace(/<a href="#nn-plain"[^>]*>([\s\S]*?)<\/a>/g, '$1')
 }
 
 export function formatDate(when: string | number): string {
@@ -101,4 +147,9 @@ export function formatDate(when: string | number): string {
   if (days === 1) return i18n.t('time.yesterday')
   if (days < 7) return i18n.t('time.daysAgo', { count: days })
   return date.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+/** A day, as a date: for end dates, which lie ahead (`formatDate` speaks of the past). */
+export function formatDay(when: string | number): string {
+  return new Date(when).toLocaleDateString(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' })
 }

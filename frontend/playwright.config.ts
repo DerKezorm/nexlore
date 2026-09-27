@@ -85,12 +85,16 @@ const E2E_NOTES: Record<string, string | Buffer> = {
 }
 
 const DATA_DIR = external ? '' : dataDir()
+/** Where the operator's session is kept for the tests (global-setup.ts signs in once). */
+export const SIGNED_IN = path.join(external ? os.tmpdir() : DATA_DIR, 'e2e-operator.json')
+process.env.NEXLORE_E2E_STATE = SIGNED_IN
 // The project's venv on the development machines, the system Python in CI.
 const venv = path.join('.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python')
 const python = fs.existsSync(path.join('..', 'backend', venv)) ? venv : 'python'
 
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   workers: 1,
   retries: 0,
@@ -99,6 +103,7 @@ export default defineConfig({
     baseURL: external ?? `http://127.0.0.1:${PORT}`,
     headless: true,
     locale: 'en-US',
+    storageState: SIGNED_IN,
   },
   webServer: external
     ? undefined
@@ -113,8 +118,10 @@ export default defineConfig({
           NEXLORE_FRONTEND_DIST: path.resolve('dist'),
           // The watcher and the first scan run as in a real installation: they index the prepared vault.
           NEXLORE_DISABLE_BACKGROUND: '0',
-          // No accounts before M4: the tests use the open test access.
-          NEXLORE_UNSAFE_OPEN_ACCESS: '1',
+          // The tests make and sign in many accounts; Argon2's strength is not what they measure.
+          NEXLORE_ARGON2_TIME: '1',
+          NEXLORE_ARGON2_MEMORY_KIB: '8192',
+          NEXLORE_ARGON2_PARALLELISM: '1',
         },
       },
 })

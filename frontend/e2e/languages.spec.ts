@@ -41,11 +41,15 @@ test('the operator language is offered, falls back to English where it has no te
   const menu = page.getByRole('navigation', { name: 'Main menu' })
   await expect(menu.getByRole('link', { name: 'Ajustes' })).toBeVisible()
   // Not in the Spanish file: English instead of a raw key.
-  await expect(page.getByRole('heading', { name: 'Language', level: 2 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Language', level: 2, exact: true })).toBeVisible()
   await page.reload()
   await expect(page.getByRole('navigation', { name: 'Main menu' }).getByRole('link', { name: 'Ajustes' })).toBeVisible()
   await expect(page.locator('html')).toHaveAttribute('lang', 'es')
+  // The choice went with the account: a fresh browser of the same account starts in Spanish too.
+  expect((await (await page.request.get('/api/auth/me')).json()).language).toBe('es')
   expect(problems).toEqual([])
+  // Back to following the browser, for the tests after this one (they share the account).
+  await page.request.put('/api/me/language', { data: { language: '' }, headers: { 'X-Nexlore-Client': 'tab-e2elanguage' } })
 })
 
 test('the template downloads as the English texts with a _meta entry', async ({ page }) => {

@@ -1,9 +1,7 @@
 {
   "app": {
     "home": "Start",
-    "mainMenu": "Hauptmenü",
-    "account": "Konto (die Anmeldung kommt mit einer späteren Version)",
-    "closed": "nexlore ist geschlossen: Konten kommen mit einer späteren Version. Einen Testserver öffnet NEXLORE_UNSAFE_OPEN_ACCESS."
+    "mainMenu": "Hauptmenü"
   },
   "nav": {
     "graph": "Graph",
@@ -31,7 +29,9 @@
   "common": {
     "close": "Schließen",
     "loading": "Lädt …",
-    "cancel": "Abbrechen"
+    "cancel": "Abbrechen",
+    "save": "Speichern",
+    "saved": "Gespeichert."
   },
   "sidebar": {
     "spaces": "Bereiche",
@@ -130,7 +130,8 @@
     "uploadedUnchecked": "Eine Datei ließ sich nicht vollständig prüfen; sie kann noch verraten, wo oder womit sie aufgenommen wurde.",
     "uploadedDuplicate": "Dieselbe Datei gab es im Bereich schon; sie ist verlinkt.",
     "deleteOwn_one": "Die Datei, die nur diese Notiz nutzt, mit in den Papierkorb",
-    "deleteOwn_other": "Die {{count}} Dateien, die nur diese Notiz nutzt, mit in den Papierkorb"
+    "deleteOwn_other": "Die {{count}} Dateien, die nur diese Notiz nutzt, mit in den Papierkorb",
+    "readOnlyRight": "In diesem Bereich darfst du lesen, nicht ändern."
   },
   "settings": {
     "title": "Einstellungen",
@@ -143,12 +144,6 @@
       "template": "Vorlage herunterladen",
       "templateHint": "Die englischen Texte als Datei zum Übersetzen. Als data/locales/<code>.json ablegen, zum Beispiel es.json oder pt-BR.json."
     },
-    "signin": {
-      "title": "Anmeldung",
-      "text": "Konten mit Passwort, dazu ein OIDC-Anbieter. Wer sich über OIDC zum ersten Mal anmeldet, bekommt ein Konto.",
-      "signedIn_one": "{{count}} Konto angemeldet",
-      "signedIn_other": "{{count}} Konten angemeldet"
-    },
     "spaces": {
       "title": "Bereiche und Rechte",
       "text": "Ein Bereich ist ein Ordner auf der Platte. Wer ihn nicht sehen darf, sieht auch im Graph, in der Suche und bei den Rückverweisen nichts davon, nicht einmal den Titel.",
@@ -156,7 +151,11 @@
       "count_other": "{{count}} Notizen",
       "none": "Noch keine Bereiche.",
       "newName": "Name eines neuen Bereichs",
-      "create": "Anlegen"
+      "create": "Anlegen",
+      "members": "Mitglieder",
+      "delete": "Bereich löschen",
+      "deleteTitle": "Den Bereich {{space}} löschen?",
+      "deleteText": "Alle Notizen und Dateien des Bereichs gehen in den Papierkorb, und der Bereich verschwindet für alle Mitglieder. Aus dem Papierkorb kommt er 30 Tage lang samt Mitgliedern zurück."
     },
     "mcp": {
       "title": "KI-Zugang (MCP)",
@@ -210,7 +209,8 @@
         "name": "Lesezeit",
         "text": "Zeigt unter dem Titel, wie lange man zum Lesen braucht."
       }
-    }
+    },
+    "later": "Kommt später"
   },
   "errors": {
     "byCode": {
@@ -237,7 +237,50 @@
       "quota_exceeded": "Für deine Dateien ist kein Platz mehr frei. Lösche welche, die du nicht brauchst, oder frag den Betreiber nach mehr.",
       "upload_aborted": "Das Hochladen brach vor dem Ende ab. Versuch es noch einmal.",
       "empty": "Die Datei ist leer.",
-      "network_error": "Der Server war nicht zu erreichen."
+      "network_error": "Der Server war nicht zu erreichen.",
+      "wrong_credentials": "Name oder Passwort stimmt nicht.",
+      "account_locked": "Zu viele falsche Passwörter. Das Konto wartet eine Viertelstunde.",
+      "too_many_attempts": "Zu viele Versuche. Kurz warten und noch einmal.",
+      "password_login_off": "Die Anmeldung mit Passwort ist abgeschaltet.",
+      "password_too_short": "Das Passwort ist zu kurz.",
+      "invalid_name": "2 bis 64 Kleinbuchstaben, Ziffern, Punkte, Striche oder Unterstriche.",
+      "name_taken": "Dieser Name ist vergeben.",
+      "already_set_up": "nexlore ist schon eingerichtet.",
+      "unknown_language": "Diese Sprache hat nexlore nicht.",
+      "invite_invalid": "Diese Einladung gilt nicht mehr.",
+      "already_member": "Du hast schon ein Konto.",
+      "forbidden": "Dein Recht in diesem Bereich erlaubt das nicht.",
+      "operator_only": "Das darf nur der Betreiber.",
+      "last_manager": "Der Bereich braucht erst einen anderen Verwalter.",
+      "no_such_account": "Ein Konto mit diesem Namen gibt es nicht.",
+      "not_a_member": "Dieses Konto ist nicht im Bereich.",
+      "invalid_role": "Unbekanntes Recht.",
+      "invalid_days": "Bitte eine der angebotenen Laufzeiten wählen.",
+      "invalid_email": "Das ist keine Mailadresse.",
+      "invalid_url": "Eine Adresse wie https://notes.example.com angeben.",
+      "mail_off": "Es ist kein Mailserver eingetragen.",
+      "mail_failed": "Der Mailserver hat die Mail nicht angenommen.",
+      "cannot_delete_self": "Das eigene Konto kannst du nicht löschen.",
+      "cannot_demote_self": "Die Betreiberrolle kannst du dir nicht selbst nehmen.",
+      "wrong_password": "Das Passwort stimmt nicht.",
+      "oidc_account": "Dieses Konto meldet sich über den Anbieter an.",
+      "oidc_only_account": "Dieses Konto meldet sich nur über den Anbieter an.",
+      "oidc_not_configured": "Es ist kein Anmeldeanbieter eingerichtet.",
+      "oidc_no_account": "Für dich gibt es hier kein Konto. Bitte um eine Einladung.",
+      "oidc_email_unverified": "Der Anbieter hat deine Mailadresse nicht bestätigt.",
+      "oidc_email_taken": "Deine Mailadresse gehört zu einem anderen Konto.",
+      "oidc_state_mismatch": "Die Anmeldung ist abgelaufen oder kam von woanders. Noch einmal versuchen.",
+      "oidc_token_invalid": "Die Antwort des Anbieters war ungültig.",
+      "oidc_denied": "Der Anbieter hat dich nicht hereingelassen.",
+      "oidc_link_mismatch": "Diese Verknüpfung gehört zu einem anderen Konto.",
+      "oidc_subject_taken": "Diese Identität ist schon mit einem anderen Konto verknüpft.",
+      "oidc_provider_unreachable": "Der Anbieter ist nicht erreichbar.",
+      "issuer_invalid": "Das ist kein OpenID-Connect-Anbieter.",
+      "issuer_unreachable": "Unter dieser Adresse ist der Anbieter nicht erreichbar.",
+      "secret_required": "Bitte das Client-Geheimnis eintragen.",
+      "url_invalid": "Die Adresse muss mit http:// oder https:// beginnen.",
+      "shares_off": "Öffentliche Seiten sind auf diesem Server abgeschaltet.",
+      "password_required": "Diese Seite hat ein Passwort."
     }
   },
   "files": {
@@ -391,5 +434,271 @@
     "deleteText": "Die Datei kommt in den Papierkorb und lässt sich dort 30 Tage lang wiederherstellen.",
     "deleteUsed_one": "Eine Notiz verlinkt diese Datei; der Link zeigt dann ins Leere. Aus dem Papierkorb lässt sie sich 30 Tage lang wiederherstellen.",
     "deleteUsed_other": "{{count}} Notizen verlinken diese Datei; ihre Links zeigen dann ins Leere. Aus dem Papierkorb lässt sie sich 30 Tage lang wiederherstellen."
+  },
+  "roles": {
+    "read": "Lesen",
+    "write": "Schreiben",
+    "manage": "Verwalten"
+  },
+  "auth": {
+    "name": "Name",
+    "nameHint": "Kleinbuchstaben, Ziffern, Punkte, Striche. Damit meldest du dich an.",
+    "password": "Passwort",
+    "passwordAgain": "Passwort noch einmal",
+    "passwordHint_one": "Mindestens {{count}} Zeichen.",
+    "passwordHint_other": "Mindestens {{count}} Zeichen.",
+    "mismatch": "Die beiden Passwörter sind nicht gleich.",
+    "or": "oder",
+    "login": {
+      "title": "Anmelden",
+      "text": "Willkommen zurück bei nexlore.",
+      "submit": "Anmelden",
+      "passwordOff": "Die Anmeldung mit Passwort ist hier abgeschaltet. Nur der Betreiber kann es noch.",
+      "oidc": "Mit {{name}} anmelden"
+    },
+    "setup": {
+      "title": "nexlore einrichten",
+      "text": "Das Konto, das du jetzt anlegst, gehört dem Betreiber: Es führt diesen Server, lädt andere ein und stellt alles ein.",
+      "submit": "Konto anlegen"
+    },
+    "invite": {
+      "title": "Du bist eingeladen",
+      "intoSpace": "In den Bereich {{space}}, mit dem Recht {{role}}.",
+      "intoNexlore": "Zu nexlore.",
+      "invalidTitle": "Diese Einladung gilt nicht",
+      "invalidText": "Sie wurde schon benutzt, ist abgelaufen oder wurde zurückgezogen. Bitte um eine neue.",
+      "toLogin": "Zur Anmeldung",
+      "join": "Als {{name}} beitreten",
+      "haveAccount": "Du bist als {{name}} angemeldet und hast schon ein Konto.",
+      "create": "Konto anlegen",
+      "oidc": "Weiter mit {{name}}",
+      "already": "Schon ein Konto?",
+      "signIn": "Erst anmelden"
+    }
+  },
+  "account": {
+    "menu": "Konto von {{name}}",
+    "role": {
+      "operator": "Betreiber",
+      "member": "Mitglied"
+    },
+    "language": "Sprache",
+    "page": "Mein Konto",
+    "signOut": "Abmelden",
+    "title": "Mein Konto",
+    "linked": "Dein Konto ist mit dem Anbieter verknüpft.",
+    "password": {
+      "title": "Passwort",
+      "current": "Jetziges Passwort",
+      "new": "Neues Passwort",
+      "submit": "Passwort ändern",
+      "done": "Passwort geändert. Andere Browser müssen sich neu anmelden."
+    },
+    "oidc": {
+      "title": "Anmeldeanbieter",
+      "only": "Dieses Konto meldet sich über den Anbieter an.",
+      "linked": "Verknüpft: Du kannst dich über den Anbieter und mit deinem Passwort anmelden.",
+      "unlink": "Verknüpfung lösen",
+      "unlinked": "Nicht mehr verknüpft.",
+      "text": "Verknüpfe dein Konto mit dem Anbieter, dann geht beides. Dein Passwort bestätigt, dass du es bist.",
+      "link": "Mit dem Anbieter verknüpfen"
+    },
+    "sessions": {
+      "title": "Andere Browser",
+      "text": "Meldet dich überall ab außer hier, etwa nach einem verlorenen Handy.",
+      "submit": "Überall sonst abmelden",
+      "done": "Alle anderen Browser sind abgemeldet."
+    }
+  },
+  "members": {
+    "title": "Mitglieder von {{space}}",
+    "resetOnly": "Du liest diesen Bereich nicht. Als Betreiber kannst du Rechte ändern, dir selbst aber keines geben.",
+    "you": "(du)",
+    "roleOf": "Recht von {{name}}",
+    "leave": "Verlassen",
+    "remove": "{{name}} entfernen",
+    "removeShort": "Entfernen",
+    "none": "Noch keine Mitglieder.",
+    "addName": "Name eines Kontos",
+    "role": "Recht",
+    "add": "Hinzufügen",
+    "invite": {
+      "title": "Einladen",
+      "text": "Ein Link zum Weitergeben. Wer ihm folgt, legt ein Konto an oder tritt mit seinem vorhandenen bei.",
+      "valid": "Gültig für",
+      "days_one": "{{count}} Tag",
+      "days_other": "{{count}} Tage",
+      "email": "Mailadresse (freiwillig)",
+      "send": "Link per Mail schicken",
+      "create": "Einladungslink erstellen",
+      "copy": "Kopieren",
+      "sent": "An {{email}} geschickt.",
+      "once": "Der Link gilt einmal. Er wird nur jetzt gezeigt.",
+      "until": "bis {{when}}",
+      "withdraw": "Zurückziehen"
+    }
+  },
+  "share": {
+    "button": "Teilen",
+    "title": "Öffentliche Seite",
+    "text": "Wer den Link hat, kann sie lesen, ohne Konto.",
+    "thisNote": "Diese Notiz",
+    "thisFolder": "Den Ordner {{folder}}",
+    "what": "Was geteilt wird",
+    "ends": "Endet",
+    "noEnd": "ohne Ende",
+    "password": "Passwort (freiwillig)",
+    "passwordHint": "Lesende geben es einmal ein.",
+    "create": "Öffentlichen Link erstellen",
+    "withPassword": "mit Passwort",
+    "open": "Öffnen",
+    "withdraw": "Zurückziehen",
+    "leaves": "Nur der Text geht hinaus: keine Eigenschaften, keine %%Kommentare%%. Links auf nicht Geteiltes werden normaler Text."
+  },
+  "public": {
+    "gone": "Diese Seite gibt es nicht",
+    "goneText": "Der Link ist vielleicht abgelaufen oder wurde zurückgezogen.",
+    "locked": "Diese Seite hat ein Passwort",
+    "open": "Öffnen",
+    "contents": "Inhalt",
+    "noPage": "Diese Seite gibt es nicht.",
+    "empty": "Hier ist noch nichts.",
+    "footer": "Geteilt mit nexlore"
+  },
+  "admin": {
+    "title": "Server",
+    "text": "Diesen Teil siehst nur du als Betreiber.",
+    "accounts": {
+      "title": "Konten",
+      "text": "Alle, die sich hier anmelden können.",
+      "signIn": {
+        "password": "Passwort",
+        "oidc": "Anbieter"
+      },
+      "never": "nie angemeldet",
+      "locked": "nach falschen Passwörtern eine Weile gesperrt",
+      "makeMember": "Zum Mitglied machen",
+      "makeOperator": "Zum Betreiber machen",
+      "newPassword": "Neues Passwort",
+      "passwordSet": "Passwort gesetzt. Das Konto wurde überall abgemeldet.",
+      "signOut": "Abmelden",
+      "signedOut": "Überall abgemeldet.",
+      "delete": "Löschen",
+      "deleteTitle": "Das Konto {{name}} löschen?",
+      "deleteText": "Seine Rechte gehen mit, seine Notizen bleiben, wo sie sind. Ein Bereich, in dem es allein war, gehört dann dir.",
+      "inviteTitle": "Zu nexlore einladen",
+      "inviteText": "Ohne Bereich: Das neue Konto legt eigene Bereiche an oder wird später zu anderen hinzugefügt.",
+      "noEmail": "keine Adresse"
+    },
+    "spaces": {
+      "title": "Alle Bereiche",
+      "text": "Nur Namen und Mitglieder. Du liest einen Bereich nur, wenn du drin bist oder er keine Mitglieder hat.",
+      "yours": "keine Mitglieder, daher deiner",
+      "members_one": "{{count}} Mitglied · verwaltet von {{managers}}",
+      "members_other": "{{count}} Mitglieder · verwaltet von {{managers}}",
+      "rights": "Rechte"
+    },
+    "signIn": {
+      "title": "Anmeldung",
+      "text": "Wie man hereinkommt.",
+      "password": "Anmeldung mit Passwort",
+      "passwordHint": "Aus: Mitglieder kommen nur über den Anbieter herein. Du als Betreiber kannst dein Passwort immer nutzen.",
+      "address": "Öffentliche Adresse",
+      "addressHint": "Die Adresse, unter der man nexlore erreicht. Einladungen, öffentliche Seiten und der Anbieter nutzen sie."
+    },
+    "oidc": {
+      "title": "OpenID Connect",
+      "on": "Eingerichtet mit {{issuer}}.",
+      "off": "Nicht eingerichtet.",
+      "redirect": "Weiterleitungsadresse für den Anbieter:",
+      "issuer": "Aussteller (Issuer)",
+      "clientId": "Client-ID",
+      "secret": "Client-Geheimnis",
+      "secretKept": "gespeichert, leer lassen zum Behalten",
+      "name": "Name auf dem Knopf",
+      "autoCreate": "Neue Personen bekommen ein Konto",
+      "autoCreateHint": "Aus: Nur eingeladene oder verknüpfte Konten kommen über den Anbieter herein.",
+      "remove": "Entfernen"
+    },
+    "authentik": {
+      "title": "authentik in einem Schritt",
+      "text": "Mit einem API-Token, das Anwendungen anlegen darf, richtet nexlore Anbieter und Anwendung in authentik selbst ein.",
+      "url": "Adresse von authentik",
+      "token": "API-Token",
+      "run": "Einrichten",
+      "blueprint": "Stattdessen Blueprint herunterladen"
+    },
+    "shares": {
+      "title": "Öffentliche Seiten",
+      "text": "Notizen im Netz ohne Konto. Abgeschaltet antwortet jeder Link, als hätte es ihn nie gegeben.",
+      "allow": "Öffentliche Seiten erlauben",
+      "allowHint": "Verwalter eines Bereichs dürfen dann Notizen und Ordner teilen.",
+      "none": "Keine öffentlichen Seiten."
+    },
+    "mail": {
+      "title": "Einladungsmail",
+      "text": "Ohne Server wird nichts verschickt; der Link zum Kopieren reicht.",
+      "host": "Server",
+      "port": "Port",
+      "security": "Verschlüsselung",
+      "none": "keine",
+      "user": "Benutzer",
+      "password": "Passwort",
+      "from": "Absenderadresse",
+      "testTo": "Testmail schicken an",
+      "test": "Test schicken",
+      "testSent": "Testmail verschickt."
+    },
+    "files": {
+      "title": "Dateien",
+      "text": "Wohin Hochgeladenes kommt und wie viel es belegen darf.",
+      "folder": "Ordner für Anhänge",
+      "perFile": "Größte Datei (MB)",
+      "quota": "Platz je Konto (MB)",
+      "quotaHint": "0 heißt ohne Grenze.",
+      "strip": "Ort und Gerät aus Fotos entfernen",
+      "stripHint": "Beim Hochladen, aus Bildern und Videos. Das Bild selbst bleibt, wie es ist."
+    },
+    "backups": {
+      "title": "Sicherung",
+      "text": "Notizen, Dateien, Papierkorb und Datenbank in einem Archiv.",
+      "schedule": "Automatisch",
+      "every": {
+        "off": "nie",
+        "daily": "jede Nacht",
+        "weekly": "jede Woche"
+      },
+      "keep": "Aufbewahren",
+      "note": "Notiz zu dieser Sicherung",
+      "make": "Jetzt sichern",
+      "made": "Sicherung erstellt.",
+      "notes_one": "{{count}} Notiz",
+      "notes_other": "{{count}} Notizen",
+      "kind": {
+        "manual": "von Hand",
+        "scheduled": "geplant",
+        "update": "vor einer Wiederherstellung"
+      },
+      "check": "Prüfen",
+      "restore": "Wiederherstellen",
+      "delete": "Löschen",
+      "none": "Noch keine Sicherung.",
+      "usable": "Das Archiv ist vollständig und lesbar.",
+      "damaged": "Das Archiv ist beschädigt. Es lässt sich nicht wiederherstellen.",
+      "would": "Eine Wiederherstellung würde {{add}} Dateien hinzufügen, {{change}} ändern und {{remove}} entfernen.",
+      "restoreTitle": "Diese Sicherung wiederherstellen?",
+      "restoreText": "Der jetzige Stand wird vorher gesichert. Danach startet nexlore neu, und alle melden sich neu an.",
+      "restarting": "nexlore startet mit der Sicherung neu. Gleich neu anmelden."
+    },
+    "languages": {
+      "title": "Sprachen",
+      "text": "Eigene Übersetzungen, aus der Vorlage unter Sprache.",
+      "remove": "Entfernen",
+      "none": "Keine eigenen Sprachen.",
+      "code": "Kürzel",
+      "file": "JSON-Datei",
+      "upload": "Hochladen",
+      "added": "Sprache hinzugefügt."
+    }
   }
 }

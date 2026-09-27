@@ -16,6 +16,8 @@ export class ApiError extends Error {
 }
 
 const CLIENT_KEY = 'nexlore.client'
+/** Sent on `window` when a request finds that the session is gone: the page goes back to the sign-in. */
+export const SIGNED_OUT_EVENT = 'nexlore:signed-out'
 
 function randomId(): string {
   const bytes = new Uint8Array(12)
@@ -73,6 +75,7 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
     const detail = data?.detail
     if (detail && typeof detail === 'object' && typeof detail.code === 'string') {
       const { code, message: _message, ...values } = detail
+      if (code === 'sign_in_required') window.dispatchEvent(new Event(SIGNED_OUT_EVENT))
       throw new ApiError(response.status, code, values)
     }
     throw new ApiError(response.status, response.status === 401 ? 'sign_in_required' : 'internal_error')
@@ -80,7 +83,8 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
   return data as T
 }
 
-export type Space = { id: number; name: string; notes: number; files: number }
+export type Role = 'read' | 'write' | 'manage'
+export type Space = { id: number; name: string; notes: number; files: number; role: Role }
 export type Lock = { holder: string; mine: boolean; expires_at: string }
 export type NoteData = {
   id: number
@@ -240,4 +244,179 @@ export const vaultApi = {
     form.set('name', name)
     return api<Report>('/api/import', { method: 'POST', form })
   },
+}
+
+// --- Accounts, rights, invitations -----------------------------------------------------------------------------------
+
+export type Account = {
+  id: number
+  name: string
+  role: 'operator' | 'member'
+  sign_in: 'password' | 'oidc'
+  email: string
+  language: string
+  oidc_linked: boolean
+  created_at: string
+  last_seen_at: string | null
+}
+export type Me = Account & { shares_allowed: boolean; mail: boolean }
+export type AdminAccount = Account & { spaces: number; locked: boolean }
+export type SetupState = { needs_setup: boolean; version: string; min_password: number }
+export type Methods = { password: boolean; oidc: boolean; oidc_name: string }
+export type Member = { name: string; role: Role; you: boolean }
+export type Invite = { id: number; role: string; email: string; by: string | null; created_at: string; expires_at: string }
+export type NewInvite = Invite & { link: string; sent: boolean }
+export type Members = { space: string; members: Member[]; invites: Invite[]; role: Role | null }
+export type InviteOffer = { space: string | null; role: Role | null; min_password: number; signed_in_as: string | null }
+export type AdminSpace = { name: string; members: number; managers: string[]; role: Role | null }
+
+export const authApi = {
+  setupState: () => api<SetupState>('/api/setup'),
+  setup: (name: string, password: string, language: string) =>
+    api<Account>('/api/setup', { method: 'POST', body: { name, password, language } }),
+  methods: () => api<Methods>('/api/auth/methods'),
+  login: (name: string, password: string) => api<Account>('/api/auth/login', { method: 'POST', body: { name, password } }),
+  logout: () => api<void>('/api/auth/logout', { method: 'POST' }),
+  logoutEverywhere: () => api<void>('/api/auth/logout-all', { method: 'POST' }),
+  me: () => api<Me>('/api/auth/me'),
+  changePassword: (current: string, next: string) => api<void>('/api/auth/password', { method: 'PUT', body: { current, new: next } }),
+  setLanguage: (language: string) => api<Account>('/api/me/language', { method: 'PUT', body: { language } }),
+  linkStart: (password: string) => api<{ url: string }>('/api/oidc/link/start', { method: 'POST', body: { password } }),
+  unlink: () => api<void>('/api/oidc/link', { method: 'DELETE' }),
+
+  members: (space: string) => api<Members>(`/api/spaces/${encodeURIComponent(space)}/members`),
+  setMember: (space: string, name: string, role: Role) =>
+    api<Member>(`/api/spaces/${encodeURIComponent(space)}/members/${encodeURIComponent(name)}`, { method: 'PUT', body: { role } }),
+  removeMember: (space: string, name: string) =>
+    api<void>(`/api/spaces/${encodeURIComponent(space)}/members/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+  inviteToSpace: (space: string, role: Role, days: number, email = '', send = false) =>
+    api<NewInvite>(`/api/spaces/${encodeURIComponent(space)}/invites`, { method: 'POST', body: { role, days, email, send } }),
+  invite: (days: number, email = '', send = false) => api<NewInvite>('/api/invites', { method: 'POST', body: { days, email, send } }),
+  invites: () => api<Invite[]>('/api/invites'),
+  withdrawInvite: (id: number) => api<void>(`/api/invites/${id}`, { method: 'DELETE' }),
+  offer: (token: string) => api<InviteOffer>(`/api/invite/${encodeURIComponent(token)}`),
+  accept: (token: string, name: string, password: string) =>
+    api<Account>(`/api/invite/${encodeURIComponent(token)}`, { method: 'POST', body: { name, password } }),
+  join: (token: string) => api<{ space: string | null }>(`/api/invite/${encodeURIComponent(token)}/join`, { method: 'POST' }),
+  deleteSpace: (space: string) => api<{ files: number }>('/api/files', { method: 'DELETE', query: { path: space } }),
+}
+
+// --- The operator ---------------------------------------------------------------------------------------------------
+
+export type ServerSettings = {
+  public_url: string
+  password_login: boolean
+  shares_allowed: boolean
+  backup_schedule: 'off' | 'daily' | 'weekly'
+  backup_keep: number
+  smtp_host: string
+  smtp_port: number
+  smtp_security: 'starttls' | 'tls' | 'none'
+  smtp_user: string
+  smtp_password_set: boolean
+  smtp_from: string
+}
+export type ServerSettingsChange = Partial<Omit<ServerSettings, 'smtp_password_set'>> & { smtp_password?: string }
+export type FileSettings = { attachment_folder: string; upload_max_mb: number; quota_mb: number; strip_location: boolean }
+export type OidcConfig = {
+  configured: boolean
+  issuer: string
+  client_id: string
+  provider_name: string
+  auto_create: boolean
+  redirect_uri: string
+}
+export type OidcChange = { issuer: string; client_id: string; client_secret: string; provider_name: string; auto_create: boolean }
+export type AuthentikResult = { steps: { key: string; ok: boolean; detail: string }[]; client_id: string; issuer: string }
+export type Backup = { name: string; size: number; created: string; kind: string; note: string; notes: number; files: number; version: string }
+export type BackupCheck = {
+  name: string
+  usable: boolean
+  database_ok: boolean
+  files_ok: boolean
+  damaged: string[]
+  version: string
+  created: string
+  kind: string
+  notes: number
+  files: number
+  would_add: number
+  would_change: number
+  would_remove: number
+  examples: { add: string[]; change: string[]; remove: string[] }
+}
+export type AddedLanguage = { code: string; name: string; keys: number }
+
+export const adminApi = {
+  settings: () => api<ServerSettings>('/api/settings'),
+  saveSettings: (change: ServerSettingsChange) => api<ServerSettings>('/api/settings', { method: 'PUT', body: change }),
+  mailTest: (to: string) => api<void>('/api/settings/mail-test', { method: 'POST', body: { to } }),
+  fileSettings: () => api<FileSettings>('/api/settings/files'),
+  saveFileSettings: (values: FileSettings) => api<FileSettings>('/api/settings/files', { method: 'PUT', body: values }),
+  accounts: () => api<AdminAccount[]>('/api/accounts'),
+  deleteAccount: (id: number) => api<void>(`/api/accounts/${id}`, { method: 'DELETE' }),
+  signOutAccount: (id: number) => api<void>(`/api/accounts/${id}/sign-out`, { method: 'POST' }),
+  setRole: (id: number, role: 'operator' | 'member') => api<Account>(`/api/accounts/${id}/role`, { method: 'PUT', body: { role } }),
+  setPassword: (id: number, password: string) => api<void>(`/api/accounts/${id}/password`, { method: 'PUT', body: { password } }),
+  spaces: () => api<AdminSpace[]>('/api/admin/spaces'),
+  shares: () => api<ShareInfo[]>('/api/admin/shares'),
+  oidc: () => api<OidcConfig>('/api/oidc/config'),
+  saveOidc: (values: OidcChange) => api<OidcConfig>('/api/oidc/config', { method: 'PUT', body: values }),
+  removeOidc: () => api<void>('/api/oidc/config', { method: 'DELETE' }),
+  authentik: (url: string, token: string) => api<AuthentikResult>('/api/oidc/authentik/setup', { method: 'POST', body: { url, token } }),
+  backups: () => api<Backup[]>('/api/backups'),
+  makeBackup: (note: string) => api<{ name: string }>('/api/backups', { method: 'POST', body: { note } }),
+  checkBackup: (name: string) => api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/check`, { method: 'POST' }),
+  restoreBackup: (name: string) => api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/restore`, { method: 'POST' }),
+  deleteBackup: (name: string) => api<void>(`/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+  /** The JSON file itself as the body. */
+  uploadLanguage: async (code: string, file: Blob): Promise<AddedLanguage> => {
+    const response = await fetch(`/api/locales/${encodeURIComponent(code)}`, {
+      method: 'PUT',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'X-Nexlore-Client': tabId() },
+      body: file,
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) throw new ApiError(response.status, typeof data?.detail?.code === 'string' ? data.detail.code : 'internal_error')
+    return data as AddedLanguage
+  },
+  removeLanguage: (code: string) => api<void>(`/api/locales/${encodeURIComponent(code)}`, { method: 'DELETE' }),
+}
+
+// --- Public pages ---------------------------------------------------------------------------------------------------
+
+export type ShareInfo = {
+  id: number
+  path: string
+  folder: boolean
+  link: string
+  by: string | null
+  created_at: string
+  expires_at: string | null
+  password: boolean
+}
+export type PublicState = {
+  folder: boolean
+  name: string
+  password: boolean
+  unlocked: boolean
+  expires_at: string | null
+  notes?: { path: string; title: string }[]
+}
+export type PublicLink = { kind: string; target: string; note: string | null; file: number | null }
+export type PublicPage = { path: string; title: string; content: string; links: PublicLink[] }
+
+export const shareApi = {
+  create: (path: string, days: number | null, password: string) =>
+    api<ShareInfo>('/api/shares', { method: 'POST', body: { path, days, password } }),
+  of: (path: string) => api<ShareInfo[]>('/api/shares', { query: { path } }),
+  withdraw: (id: number) => api<void>(`/api/shares/${id}`, { method: 'DELETE' }),
+  state: (token: string) => api<PublicState>(`/api/public/${encodeURIComponent(token)}`),
+  unlock: (token: string, password: string) => api<void>(`/api/public/${encodeURIComponent(token)}/unlock`, { method: 'POST', body: { password } }),
+  page: (token: string, path?: string) => api<PublicPage>(`/api/public/${encodeURIComponent(token)}/page`, { query: { path } }),
+}
+
+/** A file a public page uses. */
+export function publicFileUrl(token: string, id: number, download = false): string {
+  return `/api/public/${encodeURIComponent(token)}/file/${id}${download ? '?download=1' : ''}`
 }

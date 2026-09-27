@@ -20,6 +20,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..models import (
+    MANAGE,
     MEMBER,
     OPERATOR,
     ROLES,
@@ -211,8 +212,14 @@ def grant(db: Session, account: Account, space_id: int, role: str) -> None:
 
 
 def redeem(db: Session, invite: Invite, account: Account) -> None:
-    """The invitation is used: its right goes to the account, the invitation goes."""
+    """The invitation is used: its right goes to the account, the invitation goes. Into a space without members
+    (the operator's, from the disk) the one who invited comes along as manager: with a first member the space would
+    otherwise stop being theirs at the very moment they share it."""
     if invite.space_id is not None and invite.space_role:
+        members = db.scalar(select(func.count()).select_from(Membership).where(Membership.space_id == invite.space_id))
+        inviter = db.get(Account, invite.created_by) if invite.created_by else None
+        if not members and inviter is not None and inviter.id != account.id:
+            grant(db, inviter, invite.space_id, MANAGE)
         grant(db, account, invite.space_id, invite.space_role)
     db.delete(invite)
     db.commit()

@@ -27,7 +27,7 @@ from ..security import (
     session_account,
     start_session,
 )
-from ..services import accounts, locales, settings_service
+from ..services import accounts, locales, mailer, settings_service
 from ..services.accounts import AccountError
 
 logger = logging.getLogger("nexlore.auth")
@@ -186,9 +186,13 @@ def logout_everywhere(request: Request, account: Account, db: DbSession) -> None
     logger.info("All other sessions ended by their owner name=%s", account.name)
 
 
-@router.get("/auth/me", summary="The signed-in account")
-def me(account: Account) -> dict[str, Any]:
-    return account_view(account)
+@router.get("/auth/me", summary="The signed-in account, and what this server offers it")
+def me(account: Account, db: DbSession) -> dict[str, Any]:
+    return {
+        **account_view(account),
+        "shares_allowed": bool(settings_service.get(db, "shares_allowed")),
+        "mail": mailer.configured(db),
+    }
 
 
 @router.put("/auth/password", status_code=204, summary="Change the own password")

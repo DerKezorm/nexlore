@@ -1,9 +1,7 @@
 {
   "app": {
     "home": "Home",
-    "mainMenu": "Main menu",
-    "account": "Account (sign-in comes with a later version)",
-    "closed": "nexlore is closed: accounts come with a later version. A test server can be opened with NEXLORE_UNSAFE_OPEN_ACCESS."
+    "mainMenu": "Main menu"
   },
   "nav": {
     "graph": "Graph",
@@ -31,7 +29,9 @@
   "common": {
     "close": "Close",
     "loading": "Loading …",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "save": "Save",
+    "saved": "Saved."
   },
   "sidebar": {
     "spaces": "Spaces",
@@ -130,7 +130,8 @@
     "uploadedUnchecked": "One file could not be checked completely; it may still tell where it was taken or with what.",
     "uploadedDuplicate": "The space held the same file already; that one is linked.",
     "deleteOwn_one": "Also move the file only this note uses to the trash",
-    "deleteOwn_other": "Also move the {{count}} files only this note uses to the trash"
+    "deleteOwn_other": "Also move the {{count}} files only this note uses to the trash",
+    "readOnlyRight": "You may read this space, not change it."
   },
   "settings": {
     "title": "Settings",
@@ -143,12 +144,6 @@
       "template": "Download template",
       "templateHint": "The English texts as a file to translate. Save it as data/locales/<code>.json, for example es.json or pt-BR.json."
     },
-    "signin": {
-      "title": "Sign-in",
-      "text": "Accounts with a password, plus an OIDC provider. Whoever signs in through OIDC for the first time gets an account.",
-      "signedIn_one": "{{count}} account signed in",
-      "signedIn_other": "{{count}} accounts signed in"
-    },
     "spaces": {
       "title": "Spaces and rights",
       "text": "A space is a folder on disk. Whoever may not see it sees nothing of it in the graph, the search or the backlinks either, not even the title.",
@@ -156,7 +151,11 @@
       "count_other": "{{count}} notes",
       "none": "No spaces yet.",
       "newName": "Name of a new space",
-      "create": "Create"
+      "create": "Create",
+      "members": "Members",
+      "delete": "Delete space",
+      "deleteTitle": "Delete the space {{space}}?",
+      "deleteText": "Every note and file of the space goes into the trash, and the space disappears for all its members. From the trash it comes back with its members for 30 days."
     },
     "mcp": {
       "title": "AI access (MCP)",
@@ -210,7 +209,8 @@
         "name": "Reading time",
         "text": "Shows under the title how long reading takes."
       }
-    }
+    },
+    "later": "Coming later"
   },
   "errors": {
     "byCode": {
@@ -237,7 +237,50 @@
       "quota_exceeded": "There is no space left for your files. Delete some you do not need, or ask the operator for more.",
       "upload_aborted": "The upload stopped before the end. Try again.",
       "empty": "The file is empty.",
-      "network_error": "The server could not be reached."
+      "network_error": "The server could not be reached.",
+      "wrong_credentials": "Name or password is wrong.",
+      "account_locked": "Too many wrong passwords. The account waits a quarter of an hour.",
+      "too_many_attempts": "Too many attempts. Wait a moment and try again.",
+      "password_login_off": "Signing in with a password is turned off.",
+      "password_too_short": "The password is too short.",
+      "invalid_name": "Use 2 to 64 small letters, digits, dots, dashes or underscores.",
+      "name_taken": "This name is taken.",
+      "already_set_up": "nexlore is set up already.",
+      "unknown_language": "nexlore does not have this language.",
+      "invite_invalid": "This invitation is not valid any more.",
+      "already_member": "You have an account already.",
+      "forbidden": "Your right in this space does not allow this.",
+      "operator_only": "Only the operator may do this.",
+      "last_manager": "The space needs another manager first.",
+      "no_such_account": "There is no account of that name.",
+      "not_a_member": "This account is not in the space.",
+      "invalid_role": "Unknown right.",
+      "invalid_days": "Choose one of the offered durations.",
+      "invalid_email": "This is not a mail address.",
+      "invalid_url": "Give an address like https://notes.example.com.",
+      "mail_off": "No mail server is set up.",
+      "mail_failed": "The mail server did not take the mail.",
+      "cannot_delete_self": "You cannot delete your own account.",
+      "cannot_demote_self": "You cannot take the operator role from yourself.",
+      "wrong_password": "The password is wrong.",
+      "oidc_account": "This account signs in through the provider.",
+      "oidc_only_account": "This account signs in through the provider only.",
+      "oidc_not_configured": "No sign-in provider is set up.",
+      "oidc_no_account": "There is no account for you here. Ask for an invitation.",
+      "oidc_email_unverified": "The provider did not confirm your mail address.",
+      "oidc_email_taken": "Your mail address belongs to another account.",
+      "oidc_state_mismatch": "The sign-in ran out or came from elsewhere. Try again.",
+      "oidc_token_invalid": "The provider's answer was not valid.",
+      "oidc_denied": "The provider did not let you in.",
+      "oidc_link_mismatch": "This link belongs to another account.",
+      "oidc_subject_taken": "This identity is linked to another account already.",
+      "oidc_provider_unreachable": "The provider cannot be reached.",
+      "issuer_invalid": "This is not an OpenID Connect provider.",
+      "issuer_unreachable": "The provider cannot be reached at this address.",
+      "secret_required": "Enter the client secret.",
+      "url_invalid": "The address must start with http:// or https://.",
+      "shares_off": "Public pages are turned off on this server.",
+      "password_required": "This page has a password."
     }
   },
   "files": {
@@ -391,5 +434,271 @@
     "deleteText": "The file goes to the trash and can be restored there for 30 days.",
     "deleteUsed_one": "One note links this file; the link will point nowhere. The file can be restored from the trash for 30 days.",
     "deleteUsed_other": "{{count}} notes link this file; their links will point nowhere. The file can be restored from the trash for 30 days."
+  },
+  "roles": {
+    "read": "Read",
+    "write": "Write",
+    "manage": "Manage"
+  },
+  "auth": {
+    "name": "Name",
+    "nameHint": "Small letters, digits, dots, dashes. You sign in with it.",
+    "password": "Password",
+    "passwordAgain": "Password again",
+    "passwordHint_one": "At least {{count}} character.",
+    "passwordHint_other": "At least {{count}} characters.",
+    "mismatch": "The two passwords are not the same.",
+    "or": "or",
+    "login": {
+      "title": "Sign in",
+      "text": "Welcome back to nexlore.",
+      "submit": "Sign in",
+      "passwordOff": "Signing in with a password is turned off here. Only the operator still can.",
+      "oidc": "Sign in with {{name}}"
+    },
+    "setup": {
+      "title": "Set up nexlore",
+      "text": "The account you make now is the operator's: it runs this server, invites others and sets things up.",
+      "submit": "Create account"
+    },
+    "invite": {
+      "title": "You are invited",
+      "intoSpace": "Into the space {{space}}, with the right to {{role}}.",
+      "intoNexlore": "Into nexlore.",
+      "invalidTitle": "This invitation is not valid",
+      "invalidText": "It was used already, it ran out, or it was withdrawn. Ask for a new one.",
+      "toLogin": "To the sign-in",
+      "join": "Join as {{name}}",
+      "haveAccount": "You are signed in as {{name}} and have an account already.",
+      "create": "Create account",
+      "oidc": "Continue with {{name}}",
+      "already": "Have an account already?",
+      "signIn": "Sign in first"
+    }
+  },
+  "account": {
+    "menu": "Account of {{name}}",
+    "role": {
+      "operator": "Operator",
+      "member": "Member"
+    },
+    "language": "Language",
+    "page": "My account",
+    "signOut": "Sign out",
+    "title": "My account",
+    "linked": "Your account is linked to the provider.",
+    "password": {
+      "title": "Password",
+      "current": "Current password",
+      "new": "New password",
+      "submit": "Change password",
+      "done": "Password changed. Other browsers have to sign in again."
+    },
+    "oidc": {
+      "title": "Sign-in provider",
+      "only": "This account signs in through the provider.",
+      "linked": "Linked: you can sign in with the provider as well as with your password.",
+      "unlink": "Unlink",
+      "unlinked": "No longer linked.",
+      "text": "Link your account to the provider, then you can sign in with either. Your password confirms it is you.",
+      "link": "Link with the provider"
+    },
+    "sessions": {
+      "title": "Other browsers",
+      "text": "Signs you out everywhere except here, for example after losing a phone.",
+      "submit": "Sign out everywhere else",
+      "done": "Every other browser is signed out."
+    }
+  },
+  "members": {
+    "title": "Members of {{space}}",
+    "resetOnly": "You do not read this space. As the operator you can change rights, not give yourself one.",
+    "you": "(you)",
+    "roleOf": "Right of {{name}}",
+    "leave": "Leave",
+    "remove": "Remove {{name}}",
+    "removeShort": "Remove",
+    "none": "No members yet.",
+    "addName": "Name of an account",
+    "role": "Right",
+    "add": "Add",
+    "invite": {
+      "title": "Invite",
+      "text": "A link to pass on. Whoever follows it makes an account, or joins with the one they have.",
+      "valid": "Valid for",
+      "days_one": "{{count}} day",
+      "days_other": "{{count}} days",
+      "email": "Mail address (optional)",
+      "send": "Send the link by mail",
+      "create": "Create invitation link",
+      "copy": "Copy",
+      "sent": "Sent to {{email}}.",
+      "once": "The link works once. It is shown only now.",
+      "until": "until {{when}}",
+      "withdraw": "Withdraw"
+    }
+  },
+  "share": {
+    "button": "Share",
+    "title": "Public page",
+    "text": "Anybody with the link can read it, without an account.",
+    "thisNote": "This note",
+    "thisFolder": "The folder {{folder}}",
+    "what": "What is shared",
+    "ends": "Ends",
+    "noEnd": "no end",
+    "password": "Password (optional)",
+    "passwordHint": "Readers have to give it once.",
+    "create": "Create public link",
+    "withPassword": "with password",
+    "open": "Open",
+    "withdraw": "Withdraw",
+    "leaves": "Only the text goes out: no properties, no %%comments%%. Links to notes that are not shared become plain text."
+  },
+  "public": {
+    "gone": "This page does not exist",
+    "goneText": "The link may have run out or been withdrawn.",
+    "locked": "This page has a password",
+    "open": "Open",
+    "contents": "Contents",
+    "noPage": "This page does not exist.",
+    "empty": "Nothing here yet.",
+    "footer": "Shared with nexlore"
+  },
+  "admin": {
+    "title": "Server",
+    "text": "Only you see this part, as the operator.",
+    "accounts": {
+      "title": "Accounts",
+      "text": "Everybody who can sign in here.",
+      "signIn": {
+        "password": "password",
+        "oidc": "provider"
+      },
+      "never": "never signed in",
+      "locked": "locked for a while after wrong passwords",
+      "makeMember": "Make member",
+      "makeOperator": "Make operator",
+      "newPassword": "New password",
+      "passwordSet": "Password set. The account was signed out everywhere.",
+      "signOut": "Sign out",
+      "signedOut": "Signed out everywhere.",
+      "delete": "Delete",
+      "deleteTitle": "Delete the account {{name}}?",
+      "deleteText": "Its rights go with it; its notes stay where they are. A space it was alone in becomes yours.",
+      "inviteTitle": "Invite into nexlore",
+      "inviteText": "Without a space: the new account makes its own spaces or is added to others later.",
+      "noEmail": "no address"
+    },
+    "spaces": {
+      "title": "All spaces",
+      "text": "Names and members only. You read a space only if you are in it or it has no members.",
+      "yours": "no members, so it is yours",
+      "members_one": "{{count}} member · managed by {{managers}}",
+      "members_other": "{{count}} members · managed by {{managers}}",
+      "rights": "Rights"
+    },
+    "signIn": {
+      "title": "Sign-in",
+      "text": "How people get in.",
+      "password": "Sign-in with a password",
+      "passwordHint": "Off, only the provider lets members in. You as the operator can always use your password.",
+      "address": "Public address",
+      "addressHint": "The address people use to reach nexlore. Invitation links, public pages and the provider use it."
+    },
+    "oidc": {
+      "title": "OpenID Connect",
+      "on": "Set up with {{issuer}}.",
+      "off": "Not set up.",
+      "redirect": "Redirect address for the provider:",
+      "issuer": "Issuer",
+      "clientId": "Client ID",
+      "secret": "Client secret",
+      "secretKept": "stored, leave empty to keep it",
+      "name": "Name on the button",
+      "autoCreate": "New people get an account",
+      "autoCreateHint": "Off: only invited or linked accounts come in through the provider.",
+      "remove": "Remove"
+    },
+    "authentik": {
+      "title": "authentik in one step",
+      "text": "With an API token that may create applications, nexlore sets up provider and application in authentik itself.",
+      "url": "Address of authentik",
+      "token": "API token",
+      "run": "Set up",
+      "blueprint": "Download blueprint instead"
+    },
+    "shares": {
+      "title": "Public pages",
+      "text": "Notes on the web without an account. Closed, every link answers as if it never existed.",
+      "allow": "Allow public pages",
+      "allowHint": "Managers of a space may then share notes and folders.",
+      "none": "No public pages."
+    },
+    "mail": {
+      "title": "Invitation mail",
+      "text": "Without a server nothing is sent; the link to copy is enough.",
+      "host": "Server",
+      "port": "Port",
+      "security": "Encryption",
+      "none": "none",
+      "user": "User",
+      "password": "Password",
+      "from": "Sender address",
+      "testTo": "Send a test mail to",
+      "test": "Send test",
+      "testSent": "Test mail sent."
+    },
+    "files": {
+      "title": "Files",
+      "text": "Where uploads go and how much they may take.",
+      "folder": "Attachment folder",
+      "perFile": "Largest file (MB)",
+      "quota": "Space per account (MB)",
+      "quotaHint": "0 is no limit.",
+      "strip": "Remove place and device from photos",
+      "stripHint": "On upload, from pictures and videos. The picture itself stays as it is."
+    },
+    "backups": {
+      "title": "Backups",
+      "text": "Notes, files, the trash and the database in one archive.",
+      "schedule": "Automatically",
+      "every": {
+        "off": "never",
+        "daily": "every night",
+        "weekly": "every week"
+      },
+      "keep": "Keep",
+      "note": "Note for this backup",
+      "make": "Back up now",
+      "made": "Backup made.",
+      "notes_one": "{{count}} note",
+      "notes_other": "{{count}} notes",
+      "kind": {
+        "manual": "by hand",
+        "scheduled": "scheduled",
+        "update": "before a restore"
+      },
+      "check": "Check",
+      "restore": "Restore",
+      "delete": "Delete",
+      "none": "No backups yet.",
+      "usable": "The archive is complete and readable.",
+      "damaged": "The archive is damaged. It cannot be restored.",
+      "would": "A restore would add {{add}}, change {{change}} and remove {{remove}} files.",
+      "restoreTitle": "Restore this backup?",
+      "restoreText": "The current state is backed up first. nexlore then restarts, and everybody signs in again.",
+      "restarting": "nexlore restarts with the backup. Sign in again in a moment."
+    },
+    "languages": {
+      "title": "Languages",
+      "text": "Your own translations, from the template under Language.",
+      "remove": "Remove",
+      "none": "No languages of your own.",
+      "code": "Code",
+      "file": "JSON file",
+      "upload": "Upload",
+      "added": "Language added."
+    }
   }
 }

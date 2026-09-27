@@ -7,6 +7,7 @@ import { isNotePath } from '../lib/files'
 import { fileRoute } from '../lib/markdown'
 import { noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
+import { AccountMenu } from './AccountMenu'
 import { Logo } from './Logo'
 import { SearchDialog } from './SearchDialog'
 import { Symbol, type SymbolName } from './Symbol'
@@ -81,14 +82,12 @@ export function AppShell() {
             <kbd className="rounded border border-ink-700 px-1.5 text-[11px]">{t('search.shortcut')}</kbd>
           </button>
           <ThemeSwitcher />
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ink-700 bg-ink-850 text-mist-400" title={t('app.account')}>
-            <Symbol name="users" className="h-4 w-4" />
-          </span>
+          <AccountMenu />
         </div>
       </header>
       {status === 'error' && (
         <div className="shrink-0 border-b border-bad-500/30 bg-bad-500/10 px-4 py-2 text-sm text-bad-500" role="alert">
-          {error === 'sign_in_required' ? t('app.closed') : errorText(error ?? 'internal_error')}
+          {errorText(error ?? 'internal_error')}
         </div>
       )}
       <div className="flex min-h-0 flex-1">
