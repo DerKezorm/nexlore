@@ -141,7 +141,9 @@
       "rename": "links updated",
       "renameBy": "rename by {{name}}",
       "restore": "restored",
-      "import": "imported"
+      "import": "imported",
+      "mcp": "AI (MCP)",
+      "plugin": "plugin"
     },
     "editorFailed": "The editor could not start. Reload the page; nothing was saved from it.",
     "deleteTitle": "Move “{{title}}” to the trash?",
@@ -746,6 +748,29 @@
       "file": "JSON file",
       "upload": "Upload",
       "added": "Language added."
+    },
+    "mcp": {
+      "title": "AI from outside (MCP)",
+      "text": "Off by default. Switched on, every account makes keys of its own; a key never sees more than its account.",
+      "allow": "Allow MCP",
+      "allowHint": "Programs outside reach notes with a key per account.",
+      "maxLevel": "Highest level a key may have"
+    },
+    "plugins": {
+      "title": "Plugins",
+      "text": "From the checked catalog that comes with nexlore. Installed means off for everybody until you let it out; then everybody switches it on for themselves.",
+      "install": "Install",
+      "installed": "installed",
+      "letOutDo": "Let it out",
+      "holdBack": "Hold it back",
+      "letOut_one": "let out · {{count}} uses it",
+      "letOut_other": "let out · {{count}} use it",
+      "update": "Update to {{version}}",
+      "remove": "Remove",
+      "own": "own file, not checked",
+      "uploadAllow": "Allow plugin files of one's own",
+      "uploadHint": "Not checked by anybody; they run just as locked up.",
+      "upload": "Upload"
     }
   },
   "today": {
@@ -838,5 +863,62 @@
     "install": "Install",
     "later": "Don't ask again",
     "menu": "Install as an app"
+  },
+  "mcp": {
+    "title": "AI from outside (MCP)",
+    "text": "AI programs on your computer, or an agent, read your notes with a key. They see only what you may read yourself.",
+    "none": "No keys yet.",
+    "new": "New key",
+    "name": "Name",
+    "namePlaceholder": "My AI app",
+    "what": "What may it do?",
+    "make": "Make the key",
+    "shownOnce": "Key “{{name}}” made. It is shown only now.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "address": "Address for your program:",
+    "done": "I have it",
+    "used": "last used {{when}}",
+    "unused": "never used",
+    "revoke": "Revoke",
+    "revokeNamed": "Revoke the key {{name}}",
+    "level": {
+      "read": "Read",
+      "draft": "Drafts",
+      "write": "Write"
+    },
+    "levelText": {
+      "read": "Search, read notes, links and tasks. Nothing is changed.",
+      "draft": "Also proposals, which you take over or throw away on the note.",
+      "write": "Changes notes directly: every change a version, a conflict copy when the note changed in the meantime."
+    }
+  },
+  "drafts": {
+    "banner": "Draft by {{name}}, {{when}}.",
+    "more_one": "And {{count}} more.",
+    "more_other": "And {{count}} more.",
+    "look": "Look at it",
+    "compareTitle": "Draft by {{name}}",
+    "accept": "Take it over",
+    "discard": "Throw it away",
+    "now": "Now",
+    "draft": "Draft",
+    "nothingYet": "Not there yet (a new note)",
+    "changedSince": "The note changed since the AI read it. Taking it over writes a conflict copy, nothing is overwritten.",
+    "open": "Open AI drafts",
+    "newNote": "New: {{title}}"
+  },
+  "plugins": {
+    "text": "Text",
+    "showAs": "Show as",
+    "mine": "Plugins for me",
+    "mineText": "The operator let these out; you switch them on for yourself. Each runs locked up: no network, no sign-in, only what it lists here.",
+    "may": "may: {{what}} · no network, locked up",
+    "nothing": "nothing of your notes",
+    "permission": {
+      "note_read": "read the note it sits on",
+      "note_write": "write the note it sits on",
+      "vault_read": "list notes you may read"
+    }
   }
 }

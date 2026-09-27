@@ -272,12 +272,18 @@ def test_tiles_carry_links_into_another_space_only_for_its_readers(world: World)
     with SessionLocal() as db:
         ids = {path: file_id for file_id, path in db.execute(select(File.id, File.path))}
     start, why = ids["Learning/Start.md"], ids["Homelab/Why ZFS.md"]
+    # A link only into Learning, none back: it comes along from the other space's side alone.
+    note(world.anna, "Homelab", "Only back", "see [[Learning/Plain]]")
+    with SessionLocal() as db:
+        ids = {path: file_id for file_id, path in db.execute(select(File.id, File.path))}
+    plain, back = ids["Learning/Plain.md"], ids["Homelab/Only back.md"]
     # The map of every space is there, as in the browser, which asks for every overview first.
     for space in ("Learning", "Homelab"):
         world.anna.get("/api/graph/overview", params={"space": space})
     world.dave.get("/api/graph/overview", params={"space": "Diary"})
     carl = _tiles(world.carl, "Learning")
     assert sorted([start, why]) in carl["links"]
+    assert sorted([plain, back]) in carl["links"]
     assert why in [row[0] for row in carl["others"]]
     bob = _tiles(world.bob, "Learning")
     assert all(why not in pair for pair in bob["links"])
@@ -437,3 +443,24 @@ def test_a_wrong_target_space_is_put_right_when_the_link_is_looked_at_again(worl
         db.commit()
         spaces = set(db.scalars(select(Link.target_space_id).where(Link.target == "Homelab/Why ZFS")))
     assert spaces == {homelab}
+
+
+def test_names_of_another_space_loaded_whole_are_loaded_again_after_a_change(world: World, vault: Path) -> None:
+    # A big change loads the names of other spaces whole; a file that appears there meanwhile must not be missed.
+    with SessionLocal() as db:
+        learning = db.scalar(select(File.space_id).where(File.path == "Learning/Start.md"))
+        names = index.Names(db, learning, preload=True)
+        assert index.resolve("wiki", "Homelab/Later", "Learning/Start.md", names) is None
+        (vault / "Homelab" / "Later.md").write_text("later", encoding="utf-8")
+        index.scan()
+        assert index.resolve("wiki", "Homelab/Later", "Learning/Start.md", names) is not None
+
+
+def test_a_note_gone_for_good_leaves_no_space_behind_on_links_to_it(world: World) -> None:
+    assert world.anna.delete("/api/files", params={"path": "Homelab/Why ZFS.md"}).status_code == 200
+    entry = next(e for e in world.anna.get("/api/trash").json() if e["path"] == "Homelab/Why ZFS.md")
+    assert world.anna.delete(f"/api/trash/{entry['id']}").status_code == 200
+    with SessionLocal() as db:
+        left = db.execute(select(Link.target_id, Link.target_space_id).where(Link.target == "Homelab/Why ZFS")).all()
+    assert left and all(row == (None, None) for row in left)
+

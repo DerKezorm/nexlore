@@ -9,8 +9,9 @@ is one of them or sees nothing of it: the operator can hand a space to somebody 
 foreign private space.
 
 **Nothing leaks.** A space somebody may not read is treated as if it did not exist: the same 404 as for a space
-that really does not exist, no name in any list, no title in search, graph or backlinks. Links never cross spaces
-(M1), so a right per space covers every link.
+that really does not exist, no name in any list, no title in search, graph or backlinks. A link into another space
+(``[[Space/Note]]``) leads nowhere for whoever may not read that space: every route that hands out a link's target
+checks it.
 """
 
 from __future__ import annotations

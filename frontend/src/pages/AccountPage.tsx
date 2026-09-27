@@ -1,10 +1,12 @@
-/** The own account: password, the link to the provider, signing out everywhere. */
+/** The own account: password, the link to the provider, signing out everywhere, keys for AI from outside (MCP). */
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 
 import { ApiError, authApi } from '../api/client'
 import { Field, Problem } from '../components/AuthFrame'
+import { McpKeys } from '../components/McpKeys'
+import { MyPluginsCard } from '../plugins/PluginSettings'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { errorText } from '../lib/errors'
 import { useAuth } from '../state/auth'
@@ -141,6 +143,9 @@ export function AccountPage() {
             {t('account.sessions.submit')}
           </button>
         </Section>
+
+        <McpKeys />
+        <MyPluginsCard />
       </div>
     </main>
   )

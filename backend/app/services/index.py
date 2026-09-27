@@ -143,6 +143,10 @@ EXTERNAL = "external"
 RENAME = "rename"
 RESTORE = "restore"
 IMPORT = "import"
+#: Written by an AI over MCP, directly or as a draft taken over (M7).
+MCP = "mcp"
+#: Written by a plugin in the browser (M7), with the account of the person using it.
+PLUGIN = "plugin"
 
 
 @dataclass
@@ -189,10 +193,14 @@ status = Status()
 
 
 class _Family:
-    """The spaces one resolution may reach: their names by folder, and the ``Names`` made so far for each."""
+    """The spaces one resolution may reach: their names by folder, and the ``Names`` made so far for each.
+    ``preload``: the names of other spaces are loaded whole too (a big change: a scan, a rename with many links).
+    Measured on a test server with 100,000 notes and 55,600 links into other spaces: asked row by row, the first scan
+    took 171 s instead of 97 s, and a rename that rewrote 1,841 notes 27 s."""
 
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, *, preload: bool = False) -> None:
         self.db = db
+        self.preload = preload
         self.names: dict[int, Names] = {}
         self._folders: dict[int, str] | None = None
         self._ids: dict[str, int] = {}
@@ -216,14 +224,16 @@ class Names:
     """Answers "which file is called so" for one space. Loaded whole for big changes, asked row by row for small.
 
     A link can lead into another space when written with that space's name in front (``[[Team/Note]]``). The names
-    of such a space come from the same family: made when first needed, asked row by row (such links are few), so
-    they are always current."""
+    of such a space come from the same family, made when first needed: row by row for a small change (always
+    current), loaded whole for a big one (again whenever a file of that space came, went or moved)."""
 
     def __init__(self, db: Session, space_id: int, *, preload: bool, family: _Family | None = None) -> None:
         self.db = db
         self.space_id = space_id
-        self.family = family if family is not None else _Family(db)
+        self.family = family if family is not None else _Family(db, preload=preload)
         self.family.names.setdefault(space_id, self)
+        #: How often the space's names had changed when these were loaded (``renames``).
+        self.marker = renames(space_id)
         self._by_path: dict[str, int] | None = None
         self._by_name: dict[str, list[tuple[int, str]]] | None = None
         if preload:
@@ -267,7 +277,12 @@ class Names:
         if space_id is None:
             return None
         found = self.family.names.get(space_id)
-        return found if found is not None else Names(self.db, space_id, preload=False, family=self.family)
+        # Loaded whole, another space's names are loaded again once a file there came, went or moved.
+        if found is not None and (found is self or not self.family.preload or found.marker == renames(space_id)):
+            return found
+        fresh = Names(self.db, space_id, preload=self.family.preload, family=self.family)
+        self.family.names[space_id] = fresh
+        return fresh
 
     def home(self, space: str) -> Names:
         """The names of the space a note lies in (``space``, its folder): these, or those of its family."""

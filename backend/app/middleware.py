@@ -74,7 +74,9 @@ class RequestContextMiddleware:
                 status = message["status"]
                 headers = message.setdefault("headers", [])
                 headers.append((b"x-request-id", request_id.encode("ascii")))
-                headers.extend(SECURITY_HEADERS)
+                # A response that brings its own policy keeps it (a plugin's frame, M7); every other gets the app's.
+                present = {name.lower() for name, _value in headers}
+                headers.extend(header for header in SECURITY_HEADERS if header[0] not in present)
             await send(message)
 
         method = scope.get("method", "WS")
@@ -102,6 +104,7 @@ class RequestContextMiddleware:
 CHANGING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 CLIENT_HEADER = b"x-nexlore-client"
 CLIENT_PATTERN = re.compile(rb"^[A-Za-z0-9_-]{8,64}$")
+MCP_PATH = "/api/mcp"
 #: Largest body an ordinary request may carry: a note is at most 5 MB of text, JSON adds a little.
 MAX_BODY = 16 * 1024 * 1024
 #: Where a larger body is expected, with its own limit checked while streaming. An upload's limit is the operator's
@@ -143,7 +146,10 @@ class GuardMiddleware:
             await self.app(scope, receive, send)
             return
         headers = dict(scope.get("headers") or [])
-        if scope.get("method") in CHANGING and not CLIENT_PATTERN.match(headers.get(CLIENT_HEADER, b"")):
+        # MCP (M7) is called by programs, not by a browser tab: it needs a key in ``Authorization`` instead, and a
+        # request that carries an ``Origin`` is refused there (``routers/mcp.py``).
+        exempt = scope["path"] == MCP_PATH
+        if scope.get("method") in CHANGING and not exempt and not CLIENT_PATTERN.match(headers.get(CLIENT_HEADER, b"")):
             for message in _refuse(400, "client_required", "Changes need the header X-Nexlore-Client."):
                 await send(message)
             return

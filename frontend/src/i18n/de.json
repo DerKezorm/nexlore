@@ -141,7 +141,9 @@
       "rename": "Links nachgezogen",
       "renameBy": "Umbenennen durch {{name}}",
       "restore": "zurückgeholt",
-      "import": "importiert"
+      "import": "importiert",
+      "mcp": "KI (MCP)",
+      "plugin": "Plugin"
     },
     "editorFailed": "Der Editor konnte nicht starten. Lade die Seite neu; aus ihm wurde nichts gespeichert.",
     "deleteTitle": "„{{title}}“ in den Papierkorb legen?",
@@ -746,6 +748,29 @@
       "file": "JSON-Datei",
       "upload": "Hochladen",
       "added": "Sprache hinzugefügt."
+    },
+    "mcp": {
+      "title": "KI von außen (MCP)",
+      "text": "Ab Werk aus. Eingeschaltet legt jedes Konto eigene Schlüssel an; ein Schlüssel sieht nie mehr als sein Konto.",
+      "allow": "MCP erlauben",
+      "allowHint": "Programme von außen erreichen Notizen mit einem Schlüssel je Konto.",
+      "maxLevel": "Höchste Stufe eines Schlüssels"
+    },
+    "plugins": {
+      "title": "Plugins",
+      "text": "Aus dem geprüften Katalog, der mit nexlore kommt. Installiert heißt: für niemanden an, bis du es freigibst; dann schaltet jeder es für sich ein.",
+      "install": "Installieren",
+      "installed": "installiert",
+      "letOutDo": "Freigeben",
+      "holdBack": "Zurückhalten",
+      "letOut_one": "freigegeben · {{count}} nutzt es",
+      "letOut_other": "freigegeben · {{count}} nutzen es",
+      "update": "Auf {{version}} bringen",
+      "remove": "Entfernen",
+      "own": "eigene Datei, ungeprüft",
+      "uploadAllow": "Eigene Plugin-Dateien erlauben",
+      "uploadHint": "Von niemandem geprüft; sie laufen genauso eingesperrt.",
+      "upload": "Hochladen"
     }
   },
   "today": {
@@ -838,5 +863,62 @@
     "install": "Installieren",
     "later": "Nicht mehr fragen",
     "menu": "Als App installieren"
+  },
+  "mcp": {
+    "title": "KI von außen (MCP)",
+    "text": "KI-Programme auf deinem Rechner oder ein Agent lesen deine Notizen über einen Schlüssel. Sie sehen nur, was du selbst lesen darfst.",
+    "none": "Noch keine Schlüssel.",
+    "new": "Neuer Schlüssel",
+    "name": "Name",
+    "namePlaceholder": "Meine KI-App",
+    "what": "Was darf er?",
+    "make": "Schlüssel anlegen",
+    "shownOnce": "Schlüssel „{{name}}“ angelegt. Er wird nur jetzt gezeigt.",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "address": "Adresse für dein Programm:",
+    "done": "Habe ich",
+    "used": "zuletzt {{when}}",
+    "unused": "nie benutzt",
+    "revoke": "Widerrufen",
+    "revokeNamed": "Schlüssel {{name}} widerrufen",
+    "level": {
+      "read": "Lesen",
+      "draft": "Entwürfe",
+      "write": "Schreiben"
+    },
+    "levelText": {
+      "read": "Suchen, Notizen lesen, Links und Aufgaben. Nichts wird geändert.",
+      "draft": "Zusätzlich Vorschläge, die du auf der Notiz übernimmst oder verwirfst.",
+      "write": "Ändert Notizen direkt: jede Änderung eine Version, eine Konfliktkopie, wenn sich die Notiz inzwischen geändert hat."
+    }
+  },
+  "drafts": {
+    "banner": "Entwurf von {{name}}, {{when}}.",
+    "more_one": "Dazu {{count}} weiterer.",
+    "more_other": "Dazu {{count}} weitere.",
+    "look": "Ansehen",
+    "compareTitle": "Entwurf von {{name}}",
+    "accept": "Übernehmen",
+    "discard": "Verwerfen",
+    "now": "Jetzt",
+    "draft": "Entwurf",
+    "nothingYet": "Noch nicht da (neue Notiz)",
+    "changedSince": "Die Notiz hat sich geändert, seit die KI sie gelesen hat. Übernehmen schreibt eine Konfliktkopie, nichts wird überschrieben.",
+    "open": "Offene KI-Entwürfe",
+    "newNote": "Neu: {{title}}"
+  },
+  "plugins": {
+    "text": "Text",
+    "showAs": "Zeigen als",
+    "mine": "Plugins für mich",
+    "mineText": "Freigegeben hat sie der Betreiber; einschalten tust du sie für dich. Jedes läuft eingesperrt: kein Netz, keine Anmeldung, nur was hier steht.",
+    "may": "darf: {{what}} · kein Netz, eingesperrt",
+    "nothing": "nichts von deinen Notizen",
+    "permission": {
+      "note_read": "die Notiz lesen, auf der es steht",
+      "note_write": "die Notiz schreiben, auf der es steht",
+      "vault_read": "Notizen auflisten, die du lesen darfst"
+    }
   }
 }

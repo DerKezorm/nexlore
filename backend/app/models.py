@@ -23,6 +23,7 @@ from sqlalchemy import (
     Integer,
     LargeBinary,
     String,
+    Text,
     UniqueConstraint,
     text,
 )
@@ -63,7 +64,8 @@ class Setting(Base):
 
 
 class Space(Base):
-    """A folder at the top of the vault. Rights (M4) hang on it; links never cross from one space into another."""
+    """A folder at the top of the vault. Rights (M4) hang on it; a link leads into another space only with that
+    space's name in front."""
 
     __tablename__ = "spaces"
 
@@ -124,7 +126,12 @@ class Link(Base):
         Index("links_space_pair", "space_id", "source_id", "target_id"),
         # Links written with the name of another space in front: looked at again when that space's names change.
         Index("links_via_key", "via", "target_key"),
-        Index("links_target_space", "target_space_id"),
+        # Links that lead into another space, out of a space and into one: few, and read whole by the graph (tiles
+        # and the bundles between spaces), so these cover every column asked for and hold nothing else.
+        Index("links_across_out", "space_id", "source_id", "target_id", "target_space_id",
+              sqlite_where=text("target_space_id IS NOT NULL")),
+        Index("links_across_in", "target_space_id", "target_id", "source_id", "space_id",
+              sqlite_where=text("target_space_id IS NOT NULL")),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -420,3 +427,70 @@ FTS_CREATE = (
     f"CREATE VIRTUAL TABLE IF NOT EXISTS {FTS_TABLE} USING fts5("
     "title, body, tokenize = 'unicode61 remove_diacritics 2')"
 )
+
+
+class McpKey(Base):
+    """A key an account made for AI from outside (MCP, M7). Only the SHA-256 of the token is stored."""
+
+    __tablename__ = "mcp_keys"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    #: ``read``, ``draft`` or ``write`` (``services/mcp.py``).
+    level: Mapped[str] = mapped_column(String(8))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    #: The first characters of the token, to tell keys apart in the interface.
+    prefix: Mapped[str] = mapped_column(String(16))
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    last_used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class Draft(Base):
+    """A change an AI proposed over MCP: a new text for a note, or a new note. Only its account sees it."""
+
+    __tablename__ = "drafts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    #: The key that made it; kept by name when the key is revoked.
+    key_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    key_name: Mapped[str] = mapped_column(String(100), default="")
+    space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"), index=True)
+    #: The note it changes; empty for a new note, which is made at ``path`` (folder and title).
+    file_id: Mapped[int | None] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), nullable=True, index=True)
+    path: Mapped[str] = mapped_column(String(1024))
+    #: The state of the note the AI read: taking the draft over saves against it.
+    base_hash: Mapped[str] = mapped_column(String(64), default="")
+    content: Mapped[bytes] = mapped_column(LargeBinary)
+    reason: Mapped[str] = mapped_column(String(500), default="")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class Plugin(Base):
+    """A plugin the operator installed (M7): from the catalog or, behind the latch, a file of one's own. Its code is
+    kept here, so a backup holds it; ``approved``: let out, so that people may switch it on for themselves."""
+
+    __tablename__ = "plugins"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    version: Mapped[str] = mapped_column(String(16), default="")
+    #: ``catalog`` or ``upload``.
+    source: Mapped[str] = mapped_column(String(8), default="catalog")
+    approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    manifest: Mapped[Any] = mapped_column(JSON, nullable=True)
+    code: Mapped[str] = mapped_column(Text, default="")
+    code_hash: Mapped[str] = mapped_column(String(64), default="")
+    installed_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    installed_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class PluginUser(Base):
+    """Whether an account switched a plugin on for itself, and the little the plugin keeps for it."""
+
+    __tablename__ = "plugin_users"
+
+    plugin_id: Mapped[str] = mapped_column(ForeignKey("plugins.id", ondelete="CASCADE"), primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    data: Mapped[Any] = mapped_column(JSON, nullable=True)

@@ -12,9 +12,11 @@ import {
   FilesSettingsCard,
   LanguagesCard,
   MailCard,
+  McpCard,
   SharesCard,
   SignInCard,
 } from '../components/settings/AdminCards'
+import { AdminPluginsCard } from '../plugins/PluginSettings'
 import { useServerSettings } from '../components/settings/useServerSettings'
 import { SpacesCard } from '../components/settings/SpacesCard'
 import { Symbol, type SymbolName } from '../components/Symbol'
@@ -168,6 +170,8 @@ function OperatorPart() {
         <>
           <SignInCard settings={settings} onChange={setSettings} />
           <SharesCard settings={settings} onChange={setSettings} />
+          <McpCard settings={settings} onChange={setSettings} />
+          <AdminPluginsCard settings={settings} onChange={setSettings} />
           <MailCard settings={settings} onChange={setSettings} />
           <BackupsCard settings={settings} onChange={setSettings} />
         </>

@@ -362,6 +362,30 @@ export function SignInCard({ settings, onChange }: { settings: ServerSettings; o
   )
 }
 
+// --- AI from outside (MCP, M7) ----------------------------------------------------------------------------------------
+
+export function McpCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
+  const { t } = useTranslation()
+  const { problem, run } = useAction()
+  const save = (change: Partial<ServerSettings>) => {
+    onChange({ ...settings, ...change })
+    void run(async () => onChange(await adminApi.saveSettings(change))).then((ok) => ok || onChange(settings))
+  }
+  return (
+    <Card id="mcp" symbol="key" title={t('admin.mcp.title')} text={t('admin.mcp.text')}>
+      <Toggle label={t('admin.mcp.allow')} hint={t('admin.mcp.allowHint')} checked={settings.mcp_allowed} onChange={(value) => save({ mcp_allowed: value })} />
+      <Select
+        label={t('admin.mcp.maxLevel')}
+        value={settings.mcp_max_level}
+        options={(['read', 'draft', 'write'] as const).map((value) => ({ value, label: t(`mcp.level.${value}`) }))}
+        onChange={(value) => save({ mcp_max_level: value })}
+        className="mt-3"
+      />
+      <Feedback problem={problem} />
+    </Card>
+  )
+}
+
 // --- Public pages ---------------------------------------------------------------------------------------------------
 
 export function SharesCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {

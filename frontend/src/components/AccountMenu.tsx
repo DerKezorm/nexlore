@@ -1,11 +1,14 @@
-/** The circle at the top right: who is signed in, the language, the own account, signing out. */
+/** The circle at the top right: who is signed in, open AI drafts (M7), the language, the own account, signing out. */
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 
+import { draftsApi, type DraftInfo } from '../api/client'
 import { languageOptions, type LanguageOption } from '../i18n'
+import { noteUrl } from '../lib/vault'
 import { useAuth } from '../state/auth'
 import { useInstall } from '../lib/install'
+import { DraftCompare } from './DraftCompare'
 import { Symbol } from './Symbol'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
@@ -17,6 +20,22 @@ export function AccountMenu() {
   const [open, setOpen] = useState(false)
   const [options, setOptions] = useState<LanguageOption[]>([])
   const box = useRef<HTMLDivElement>(null)
+  const [drafts, setDrafts] = useState<DraftInfo[]>([])
+  const [draftShown, setDraftShown] = useState<number | null>(null)
+
+  // Open drafts, for the number on the circle: asked now, when the menu opens, and every minute.
+  const signedIn = !!me
+  useEffect(() => {
+    if (!signedIn) return
+    let live = true
+    const ask = () => draftsApi.list().then((found) => live && setDrafts(found), () => undefined)
+    void ask()
+    const timer = window.setInterval(ask, 60_000)
+    return () => {
+      live = false
+      window.clearInterval(timer)
+    }
+  }, [signedIn, open])
 
   useEffect(() => {
     if (!open) return
@@ -44,9 +63,14 @@ export function AccountMenu() {
         aria-expanded={open}
         aria-haspopup="true"
         aria-label={t('account.menu', { name: me.name })}
-        className="flex h-8 w-8 items-center justify-center rounded-full border border-ink-700 bg-accent-500/15 text-sm font-semibold text-accent-400 hover:border-accent-500"
+        className="relative flex h-8 w-8 items-center justify-center rounded-full border border-ink-700 bg-accent-500/15 text-sm font-semibold text-accent-400 hover:border-accent-500"
       >
         {initial}
+        {drafts.length > 0 && (
+          <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-accent-500 px-1 text-[10px] font-bold text-on-accent" data-testid="drafts-count">
+            {drafts.length}
+          </span>
+        )}
       </button>
       {open && (
         <div className="absolute right-0 z-40 mt-2 w-64 rounded-2xl border border-ink-700 bg-ink-900 p-2 text-sm shadow-2xl">
@@ -58,6 +82,29 @@ export function AccountMenu() {
             <div className="font-semibold text-mist-100">{me.name}</div>
             <div className="text-xs text-mist-500">{t(`account.role.${me.role}`)}</div>
           </div>
+          {drafts.length > 0 && (
+            <div className="border-y border-ink-800 py-1">
+              <div className="px-3 pt-1 pb-0.5 text-xs text-mist-500">{t('drafts.open')}</div>
+              {drafts.slice(0, 8).map((draft) => (
+                <button
+                  key={draft.id}
+                  type="button"
+                  onClick={() => {
+                    setOpen(false)
+                    if (draft.new) setDraftShown(draft.id)
+                    else navigate(noteUrl(draft.path))
+                  }}
+                  className="flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left hover:bg-ink-850"
+                >
+                  <Symbol name="sparkle" className="mt-0.5 h-4 w-4 shrink-0 text-accent-400" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-mist-100">{draft.new ? t('drafts.newNote', { title: draft.title }) : draft.title}</span>
+                    <span className="block truncate text-xs text-mist-500">{draft.key_name}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
           <label className="flex items-center justify-between gap-2 rounded-lg px-3 py-2">
             <span className="flex items-center gap-2 text-mist-400">
               <Symbol name="globe" /> {t('account.language')}
@@ -109,6 +156,17 @@ export function AccountMenu() {
             <Symbol name="open" /> {t('account.signOut')}
           </button>
         </div>
+      )}
+      {draftShown !== null && (
+        <DraftCompare
+          draftId={draftShown}
+          onClose={() => setDraftShown(null)}
+          onDone={(result) => {
+            setDraftShown(null)
+            void draftsApi.list().then(setDrafts, () => undefined)
+            if (result.path) navigate(noteUrl(result.path))
+          }}
+        />
       )}
     </div>
   )

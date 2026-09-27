@@ -1,0 +1,34 @@
+{
+  "id": "kanban",
+  "version": "1.0.0",
+  "author": "nexlore",
+  "name": { "en": "Kanban", "de": "Kanban" },
+  "description": {
+    "en": "Notes in the format of the Obsidian Kanban plugin as a board with lanes and cards. Moving a card rewrites only its lines.",
+    "de": "Notizen im Format des Obsidian-Kanban-Plugins als Brett mit Spalten und Karten. Verschieben schreibt nur die Zeilen der Karte um."
+  },
+  "permissions": ["note:read", "note:write"],
+  "place": { "view": { "frontmatter": "kanban-plugin" } },
+  "strings": {
+    "en": {
+      "view": "Board",
+      "add": "Add a card",
+      "left": "Move to the lane on the left",
+      "right": "Move to the lane on the right",
+      "done": "Done",
+      "conflict": "The note changed meanwhile: your move went into a conflict copy. The board shows the note as it is now.",
+      "failed": "Not saved.",
+      "empty": "No lanes: a lane is a heading ## in the note."
+    },
+    "de": {
+      "view": "Brett",
+      "add": "Karte hinzufügen",
+      "left": "In die Spalte links",
+      "right": "In die Spalte rechts",
+      "done": "Erledigt",
+      "conflict": "Die Notiz hat sich inzwischen geändert: dein Verschieben steht in einer Konfliktkopie. Das Brett zeigt die Notiz, wie sie jetzt ist.",
+      "failed": "Nicht gespeichert.",
+      "empty": "Keine Spalten: eine Spalte ist eine Überschrift ## in der Notiz."
+    }
+  }
+}

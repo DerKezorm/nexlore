@@ -1,0 +1,28 @@
+{
+  "id": "toc",
+  "version": "1.0.0",
+  "author": "nexlore",
+  "name": { "en": "Contents", "de": "Inhaltsverzeichnis" },
+  "description": {
+    "en": "The headings of the note, its words and its reading time, in the right column.",
+    "de": "Die Überschriften der Notiz, ihre Wörter und die Lesezeit in der rechten Spalte."
+  },
+  "permissions": ["note:read"],
+  "place": { "panel": true },
+  "strings": {
+    "en": {
+      "words_one": "{{count}} word",
+      "words_other": "{{count}} words",
+      "minutes_one": "{{count}} minute to read",
+      "minutes_other": "{{count}} minutes to read",
+      "none": "No headings."
+    },
+    "de": {
+      "words_one": "{{count}} Wort",
+      "words_other": "{{count}} Wörter",
+      "minutes_one": "{{count}} Minute zu lesen",
+      "minutes_other": "{{count}} Minuten zu lesen",
+      "none": "Keine Überschriften."
+    }
+  }
+}

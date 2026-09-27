@@ -356,6 +356,9 @@ export type ServerSettings = {
   smtp_user: string
   smtp_password_set: boolean
   smtp_from: string
+  mcp_allowed: boolean
+  mcp_max_level: McpLevel
+  plugin_upload_allowed: boolean
 }
 export type ServerSettingsChange = Partial<Omit<ServerSettings, 'smtp_password_set'>> & { smtp_password?: string }
 export type FileSettings = { attachment_folder: string; upload_max_mb: number; quota_mb: number; strip_location: boolean }
@@ -562,4 +565,24 @@ export const everydayApi = {
   options: (space: string) => api<SpaceOptions>(`/api/spaces/${encodeURIComponent(space)}/options`),
   setOptions: (space: string, options: Partial<SpaceOptions>) =>
     api<SpaceOptions>(`/api/spaces/${encodeURIComponent(space)}/options`, { method: 'PUT', body: options }),
+}
+
+// --- Open to the outside (M7): MCP keys, drafts an AI proposed ----------------------------------------------------
+
+export type McpLevel = 'read' | 'draft' | 'write'
+export type McpKey = { id: number; name: string; level: McpLevel; prefix: string; created_at: string; last_used_at: string | null }
+export type DraftInfo = { id: number; path: string; title: string; new: boolean; key_name: string; reason: string; created_at: string }
+export type DraftFull = DraftInfo & { content: string; current: string | null; changed: boolean }
+
+export const mcpApi = {
+  keys: () => api<{ allowed: boolean; max_level: McpLevel; keys: McpKey[] }>('/api/mcp/keys'),
+  make: (name: string, level: McpLevel) => api<{ key: McpKey; token: string }>('/api/mcp/keys', { method: 'POST', body: { name, level } }),
+  revoke: (id: number) => api<void>(`/api/mcp/keys/${id}`, { method: 'DELETE' }),
+}
+
+export const draftsApi = {
+  list: (path?: string) => api<DraftInfo[]>('/api/drafts', { query: { path } }),
+  one: (id: number) => api<DraftFull>(`/api/drafts/${id}`),
+  accept: (id: number) => api<{ path: string; conflict: string | null }>(`/api/drafts/${id}/accept`, { method: 'POST' }),
+  discard: (id: number) => api<void>(`/api/drafts/${id}`, { method: 'DELETE' }),
 }

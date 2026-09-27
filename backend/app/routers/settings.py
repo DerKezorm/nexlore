@@ -34,6 +34,9 @@ class SettingsOut(BaseModel):
     smtp_user: str
     smtp_password_set: bool
     smtp_from: str
+    mcp_allowed: bool
+    mcp_max_level: str
+    plugin_upload_allowed: bool
 
 
 class SettingsIn(BaseModel):
@@ -49,6 +52,9 @@ class SettingsIn(BaseModel):
     #: Empty removes the password; left out keeps it.
     smtp_password: str | None = Field(default=None, max_length=500)
     smtp_from: str | None = Field(default=None, max_length=255)
+    mcp_allowed: bool | None = None
+    mcp_max_level: Literal["read", "draft", "write"] | None = None
+    plugin_upload_allowed: bool | None = None
 
 
 class TestMailIn(BaseModel):
@@ -69,6 +75,9 @@ def _view(db: DbSession) -> SettingsOut:
         smtp_user=values["smtp_user"],
         smtp_password_set=bool(values["smtp_password_enc"]),
         smtp_from=values["smtp_from"],
+        mcp_allowed=bool(values["mcp_allowed"]),
+        mcp_max_level=str(values["mcp_max_level"]),
+        plugin_upload_allowed=bool(values["plugin_upload_allowed"]),
     )
 
 

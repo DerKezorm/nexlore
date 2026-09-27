@@ -24,7 +24,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy import text as sql
 from sqlalchemy.orm import Session
 
@@ -220,7 +220,7 @@ def conflict_name(rel: str, now: datetime) -> str:
     return f"{base} (conflict {now.strftime('%Y-%m-%d %H%M%S')}){suffix}"
 
 
-def save(rel: str, data: bytes, *, base_hash: str, actor: Actor) -> Saved:
+def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str = index.APP) -> Saved:
     """Write a note the client had loaded as ``base_hash``. Changed in between: into a conflict copy instead.
 
     Somebody else holding the note's lock does not refuse the text either: a tab that lost its lock (it ran out, the
@@ -249,7 +249,7 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor) -> Saved:
             copy_name = paths.unique_name(full.parent, conflict_name(rel, datetime.now().astimezone()))
             copy_rel = posixpath.join(posixpath.dirname(rel), copy_name)
             stat = atomic_write(full.parent / copy_name, data)
-            copy = index.record(db, copy_rel, data, stat, source=index.APP, author=actor.name, session=actor.client)
+            copy = index.record(db, copy_rel, data, stat, source=source, author=actor.name, session=actor.client)
             # What is on disk now goes into the history too, before the watcher gets to it (if it did change).
             if index.digest(current) != base_hash:
                 index.record(db, rel, current, full.stat(), source=index.EXTERNAL, file=file)
@@ -263,7 +263,7 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor) -> Saved:
             return Saved(file=file, conflict=copy_rel)
         stat = atomic_write(full, data)
         index.record(
-            db, rel, data, stat, source=index.APP, author=actor.name, session=actor.client,
+            db, rel, data, stat, source=source, author=actor.name, session=actor.client,
             bundle_seconds=BUNDLE_SECONDS, file=file,
         )
         db.commit()
@@ -273,7 +273,7 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor) -> Saved:
     return Saved(file=file)
 
 
-def create_note(folder: str, title: str, data: bytes, *, actor: Actor) -> File:
+def create_note(folder: str, title: str, data: bytes, *, actor: Actor, source: str = index.APP) -> File:
     """A new note in ``folder`` (a space or a folder in it). The file name comes from the title, made safe."""
     folder = _parse(folder) if "/" in folder else _parse_space(folder)
     directory = _full(folder)
@@ -287,7 +287,7 @@ def create_note(folder: str, title: str, data: bytes, *, actor: Actor) -> File:
             # The title held what a file name cannot: it lives on in the front matter.
             data = _front_title(title.strip()) + data
         stat = atomic_write(directory / name, data)
-        file = index.record(db, rel, data, stat, source=index.APP, author=actor.name, session=actor.client)
+        file = index.record(db, rel, data, stat, source=source, author=actor.name, session=actor.client)
         index.reresolve(db, file.space_id, [file.name_key])
         db.commit()
         db.refresh(file)
@@ -580,6 +580,9 @@ def restore_trash(entry_id: str, *, actor: Actor) -> list[str]:
 
 def _forget_for_good(db: Session, files: list[File]) -> None:
     ids = [file.id for file in files]
+    # The database empties the links' target itself (SET NULL); the space of a target in another space goes with it.
+    for part in range(0, len(ids), 500):
+        db.execute(update(Link).where(Link.target_id.in_(ids[part : part + 500])).values(target_space_id=None))
     for file in files:
         db.delete(file)
     db.commit()

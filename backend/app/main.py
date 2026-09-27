@@ -19,10 +19,12 @@ from .config import get_settings
 from .db import SessionLocal, init_db
 from .errors import detail
 from .middleware import GuardMiddleware, RequestContextMiddleware, unhandled_error
-from .routers import about, attachments, auth, everyday, graph, health, imports, members, oidc, shares
+from .routers import about, attachments, auth, drafts, everyday, graph, health, imports, members, oidc, shares
 from .routers import backups as backups_router
 from .routers import locales as locales_router
 from .routers import logs as logs_router
+from .routers import mcp as mcp_router
+from .routers import plugins as plugins_router
 from .routers import settings as settings_router
 from .routers import vault as vault_router
 from .services import backups, graphstore, locales, logs, settings_service, watcher
@@ -31,7 +33,7 @@ logger = logging.getLogger("nexlore")
 
 ROUTERS = [
     health, about, locales_router, logs_router, auth, oidc, members, settings_router, vault_router, attachments,
-    imports, backups_router, shares, graph, everyday,
+    imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router,
 ]
 
 

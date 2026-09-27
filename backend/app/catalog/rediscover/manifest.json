@@ -1,0 +1,16 @@
+{
+  "id": "rediscover",
+  "version": "1.0.0",
+  "author": "nexlore",
+  "name": { "en": "Rediscover", "de": "Wiederentdecken" },
+  "description": {
+    "en": "A random older note, and what was written a year ago today.",
+    "de": "Eine zufällige ältere Notiz und was heute vor einem Jahr geschrieben wurde."
+  },
+  "permissions": ["vault:read"],
+  "place": { "panel": true },
+  "strings": {
+    "en": { "yearAgo": "A year ago today", "random": "At random", "another": "Another one", "nothing": "Nothing." },
+    "de": { "yearAgo": "Heute vor einem Jahr", "random": "Zufällig", "another": "Noch eine", "nothing": "Nichts." }
+  }
+}

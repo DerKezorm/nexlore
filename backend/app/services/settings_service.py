@@ -39,6 +39,11 @@ DEFAULTS: dict[str, Any] = {
     "oidc_auto_create": False,
     #: Public reading pages: a way out, closed until the operator opens it.
     "shares_allowed": False,
+    #: AI from outside (M7): off until the operator opens it, and the highest level a key may have.
+    "mcp_allowed": False,
+    "mcp_max_level": "read",
+    #: Plugin files of one's own, not from the catalog (M7): off until the operator opens it.
+    "plugin_upload_allowed": False,
     #: Invitation mail: without a host nothing is sent, the link to copy is enough.
     "smtp_host": "",
     "smtp_port": 587,

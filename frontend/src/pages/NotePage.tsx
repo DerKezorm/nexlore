@@ -13,9 +13,10 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { ApiError, vaultApi, type Links, type NoteData, type Uploaded, type VersionInfo } from '../api/client'
+import { ApiError, draftsApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ConflictCompare } from '../components/ConflictCompare'
+import { DraftCompare } from '../components/DraftCompare'
 import type { EditorHandle, EditorMode } from '../components/NoteEditor'
 import { Sidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
@@ -31,6 +32,9 @@ import { useStore } from '../state/store'
 import { LocalGraph } from '../components/LocalGraph'
 import { ShareDialog } from '../components/ShareDialog'
 import { folderColor } from '../graph/palette'
+import { PluginFrame } from '../plugins/host'
+import { PluginBlocks, PluginPanels, ViewSwitch } from '../plugins/NotePlugins'
+import { useEnabledPlugins, viewFor } from '../plugins/registry'
 
 // The editor (Milkdown, CodeMirror for code, KaTeX) is most of the weight: loaded when somebody starts editing.
 const NoteEditor = lazy(() => import('../components/NoteEditor').then((module) => ({ default: module.NoteEditor })))
@@ -96,6 +100,9 @@ export function NotePage() {
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [conflict, setConflict] = useState<string | null>(null)
   const [comparing, setComparing] = useState<{ note: string; copy: string } | null>(null)
+  // Drafts an AI proposed for this note over MCP (M7); only the own ones come.
+  const [drafts, setDrafts] = useState<DraftInfo[]>([])
+  const [draftShown, setDraftShown] = useState<number | null>(null)
   const [lockHolder, setLockHolder] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -104,6 +111,10 @@ export function NotePage() {
   const [withOwn, setWithOwn] = useState(true)
   const [notice, setNotice] = useState<string | null>(null)
   const afterOpen = useRef<string | null>(null)
+  // Plugins (M7): panels, code blocks and a view of their own, each in a locked frame.
+  const plugins = useEnabledPlugins()
+  const article = useRef<HTMLElement>(null)
+  const [showText, setShowText] = useState(false)
   // What an upload did, said once (place and device removed, the file was there already).
   const [info, setInfo] = useState<string | null>(null)
 
@@ -255,6 +266,7 @@ export function NotePage() {
     setComparing(null)
     setLockHolder(null)
     setRenaming(null)
+    setShowText(false)
     setNotice(null)
     // A message meant for the note just opened (after a rename: how many notes had their links updated).
     setInfo(afterOpen.current)
@@ -356,6 +368,13 @@ export function NotePage() {
   }, [links])
   const html = useMemo(() => (note ? renderMarkdown(note.content, resolve, note.path) : ''), [note, resolve])
   const copies = useMemo(() => copiesOf(path, siblings), [path, siblings])
+  const view = note ? viewFor(plugins, note) : null
+  const reveal = (heading: string, index: number) => {
+    const found = [...(article.current?.querySelectorAll('h1, h2, h3, h4, h5, h6') ?? [])]
+    const target = found.find((element) => element.textContent?.trim() === heading.trim()) ?? found[index]
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+  const pluginWrote = () => void load(path)
   const originalPath = originalOf(path)
 
   const openFile = (file: string, newTab = false) => {
@@ -457,6 +476,25 @@ export function NotePage() {
     if (removed.has('unchecked')) parts.push(t('note.uploadedUnchecked'))
     if (done.some((item) => item.duplicate)) parts.push(t('note.uploadedDuplicate'))
     setInfo(parts.join(' '))
+  }
+
+  useEffect(() => {
+    let live = true
+    draftsApi.list(path).then(
+      (found) => live && setDrafts(found),
+      () => live && setDrafts([]),
+    )
+    return () => {
+      live = false
+    }
+  }, [path, generation])
+
+  const draftDone = async (result: { path: string | null; conflict: string | null }) => {
+    setDraftShown(null)
+    setDrafts(await draftsApi.list(path).catch(() => []))
+    if (result.conflict) setConflict(result.conflict)
+    await reload()
+    void load(path)
   }
 
   const compared = async () => {
@@ -601,6 +639,21 @@ export function NotePage() {
             </form>
           )}
           {lockedBy && <Banner tone="warn" symbol="lock">{t('note.lockedBanner', { name: lockedBy })}</Banner>}
+          {drafts.length > 0 && (
+            <Banner
+              tone="info"
+              symbol="info"
+              action={
+                <button type="button" onClick={() => setDraftShown(drafts[0].id)} className="rounded-full border border-ink-700 px-3 py-1 text-xs font-semibold hover:bg-ink-850">
+                  {t('drafts.look')}
+                </button>
+              }
+            >
+              {t('drafts.banner', { name: drafts[0].key_name, when: formatDate(drafts[0].created_at) })}
+              {drafts[0].reason ? ` „${drafts[0].reason}“` : ''}
+              {drafts.length > 1 ? ` ${t('drafts.more', { count: drafts.length - 1 })}` : ''}
+            </Banner>
+          )}
           {conflict ? (
             <Banner tone="warn" symbol="alert" action={<CompareButton onClick={() => void compare(path, conflict)} />}>
               {t('note.conflict')}{' '}
@@ -653,8 +706,16 @@ export function NotePage() {
                   onUploadFailed={(code) => setNotice(errorText(code))}
                 />
                 </Suspense>
+              ) : view && !showText ? (
+                <>
+                  <ViewSwitch plugin={view} showText={showText} onChange={setShowText} />
+                  <PluginFrame plugin={view} place="view" note={note} onOpen={open} onWritten={pluginWrote} />
+                </>
               ) : (
+                <>
+                {view && <ViewSwitch plugin={view} showText={showText} onChange={setShowText} />}
                 <article
+                  ref={article}
                   className="nn-prose"
                   onClick={(e) => {
                     const target = (e.target as HTMLElement).closest('a[data-note]')
@@ -668,9 +729,12 @@ export function NotePage() {
                   }}
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
+                <PluginBlocks plugins={plugins} article={article} html={html} note={note} onOpen={open} onWritten={pluginWrote} />
+                </>
               )}
               {!wide && (
-                <div className="mt-10">
+                <div className="mt-10 space-y-6">
+                  <PluginPanels plugins={plugins} note={note} onOpen={open} onWritten={pluginWrote} onReveal={reveal} />
                   <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />
                 </div>
               )}
@@ -683,6 +747,11 @@ export function NotePage() {
           {wide && (
             <div className="mb-5">
               <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />
+            </div>
+          )}
+          {note && (
+            <div className="mb-5">
+              <PluginPanels plugins={plugins} note={note} onOpen={open} onWritten={pluginWrote} onReveal={reveal} />
             </div>
           )}
           <Section symbol="backlink" title={t('note.backlinks')} count={links?.backlinks.length ?? 0}>
@@ -735,6 +804,7 @@ export function NotePage() {
           </div>
         )}
       </ConfirmDialog>
+      {draftShown !== null && <DraftCompare draftId={draftShown} onClose={() => setDraftShown(null)} onDone={(result) => void draftDone(result)} />}
       {comparing && <ConflictCompare notePath={comparing.note} copyPath={comparing.copy} onClose={() => setComparing(null)} onDone={() => void compared()} />}
     </>
   )

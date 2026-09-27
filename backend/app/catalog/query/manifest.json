@@ -1,0 +1,30 @@
+{
+  "id": "query",
+  "version": "1.0.0",
+  "author": "nexlore",
+  "name": { "en": "Queries", "de": "Abfragen" },
+  "description": {
+    "en": "A code block ```query``` shows notes by tag or folder as a list or a table. Reads only; Dataview code is never run.",
+    "de": "Ein Codeblock ```query``` zeigt Notizen nach Tag oder Ordner als Liste oder Tabelle. Nur lesend; Dataview-Code wird nie ausgeführt."
+  },
+  "permissions": ["vault:read"],
+  "place": { "block": "query" },
+  "strings": {
+    "en": {
+      "note": "Note",
+      "folder": "Folder",
+      "changed": "Changed",
+      "nothing": "No note matches.",
+      "unknown": "Unknown line: {{line}}. Known are tag, folder, space, sort, limit and view.",
+      "failed": "The query could not be run."
+    },
+    "de": {
+      "note": "Notiz",
+      "folder": "Ordner",
+      "changed": "Geändert",
+      "nothing": "Keine Notiz passt.",
+      "unknown": "Unbekannte Zeile: {{line}}. Bekannt sind tag, folder, space, sort, limit und view.",
+      "failed": "Die Abfrage ließ sich nicht ausführen."
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "about": "The checked catalog: a plugin is installed only while its files have these hashes (sha256, as in Subresource Integrity). Changing a plugin means reviewing it and pinning the new hashes here (tests/test_plugins.py checks them).",
+  "plugins": [
+    {
+      "id": "toc",
+      "manifest": "sha256-lOy8Z4ZZp4qqUJrN4JG/WjG5CGROmpsA6VdrfCne8QE=",
+      "main": "sha256-hJ82uCmo6FGLC7G+uYOtjU8PEvlQtCyFQcscFS/kyDk="
+    },
+    {
+      "id": "query",
+      "manifest": "sha256-Y72rY6W9R4NZGvGo9wuiCKI4tocobB6u3L7CiDkFGrU=",
+      "main": "sha256-BxS2BzI9Rb/hVxDiQr2UkEIcK/bFJPnOsGxT5FX24/g="
+    },
+    {
+      "id": "kanban",
+      "manifest": "sha256-/RWIWZHRVOh/n9EyLbC2CZhnpQjdlvk6iUBcfrBG9b0=",
+      "main": "sha256-4YK0W9tQD3ldLCvA43ZSZ7pkQZOEOASHjrcvXeK7+nA="
+    },
+    {
+      "id": "rediscover",
+      "manifest": "sha256-PDM+ZJ9fqwV2VTa59kUIBcJ3LzzCHyNcalzUbVC1vhs=",
+      "main": "sha256-R/DRvL5cY0PhKOV0LNyXPLUA8lgO2nO9VfKkGquOtng="
+    }
+  ]
+}

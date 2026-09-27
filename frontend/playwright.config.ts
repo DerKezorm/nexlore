@@ -69,6 +69,11 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Zone/Across.md': '# Across\n\nThe [[Zoo/Across target]], a [[Zoo/Across new]] and [[Zoo/Across rename]].\n',
   'Zoo/Across target.md': '# Across target\n\nReached from another space.\n',
   'Zoo/Across rename.md': '# Across rename\n',
+  // AI from outside (mcp.spec.ts): a note a draft is proposed for.
+  'Zoo/Draft me.md': '# Draft me\r\n\r\nKept line.\r\nOld line.\r\n',
+  // Plugins (plugins.spec.ts): a board, a query, headings for the contents.
+  'Zoo/Board.md': '---\nkanban-plugin: basic\n---\n\n## Todo\n\n- [ ] Dig the bed\n\n## Done\n\n- [x] Buy seeds\n',
+  'Zoo/Sown.md': '# Sown\n\n## Early\n\nPeas. #sown\n\n## Late\n\n```query\ntag: sown\nview: table\n```\n',
   'Switch/From.md': '# From\n\nStart.\n',
   'Switch/To.md': '# To\n\nOther note.\n',
   // The editor (editor.spec.ts): Obsidian's way of writing, kept byte for byte where nothing was changed.
