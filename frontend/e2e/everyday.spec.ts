@@ -116,9 +116,11 @@ test('on a phone the calendar and the tasks fit, and the header reaches them', a
     await expect(page.getByTestId(route === '/calendar' ? 'calendar-page' : 'tasks-page')).toBeVisible()
     await page.waitForTimeout(300)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    // Inside the visible part of the header's menu, not only on the screen: the menu scrolls sideways.
+    const menu = await page.getByRole('navigation', { name: 'Main menu' }).boundingBox()
     for (const link of ['/calendar', '/tasks']) {
       const box = await page.locator(`nav a[href="${link}"]`).boundingBox()
-      expect(box && box.x + box.width <= 360).toBe(true)
+      expect(box && menu && box.x + box.width <= menu.x + menu.width + 0.5).toBe(true)
     }
   }
   expect(problems).toEqual([])
@@ -135,6 +137,10 @@ test('the service worker keeps the app, never anything from /api, and signing ou
   await expect(page.getByTestId('tasks-page')).toBeVisible()
   await page.waitForTimeout(500)
   expect(answers.filter((answer) => answer.url.startsWith('/api/') && answer.worker)).toEqual([])
+  // An address under /api opened on its own (a download in a new tab) goes past the worker too.
+  const direct = await page.goto('/api/health')
+  expect(direct?.fromServiceWorker()).toBe(false)
+  await page.goto('/tasks')
   expect(answers.some((answer) => answer.url.startsWith('/assets/') && answer.worker)).toBe(true)
   const kept = await page.evaluate(async () => {
     const found: string[] = []

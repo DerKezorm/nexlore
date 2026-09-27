@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 import { ApiError, everydayApi, type TaskItem, type Toggled } from '../api/client'
-import { atNoon, dayOf, PRIORITY_MARK } from '../lib/everyday'
+import { atNoon, dayOf, PRIORITY_MARK, taskParts } from '../lib/everyday'
 import { noteUrl } from '../lib/vault'
 import { Symbol } from './Symbol'
 
@@ -73,7 +73,17 @@ export function TaskRow({
               {PRIORITY_MARK[task.priority]}
             </span>
           )}
-          {task.text || '…'}
+          {task.text
+            ? taskParts(task.text).map((part, index) =>
+                part.link ? (
+                  <span key={index} className={done ? '' : 'text-accent-400'}>
+                    {part.text}
+                  </span>
+                ) : (
+                  part.text
+                ),
+              )
+            : '…'}
         </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs">
           {day && (

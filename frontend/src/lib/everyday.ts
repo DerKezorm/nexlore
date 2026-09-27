@@ -92,3 +92,19 @@ export function rememberDailySpace(name: string): void {
     // Not kept, nothing lost.
   }
 }
+
+const WIKI = /\[\[([^\]|#]*)(#[^\]|]*)?(?:\|([^\]]*))?\]\]/g
+
+/** A task's text in pieces, its wiki links as the words they show (`[[Note|shown]]` shows "shown"), as Obsidian does. */
+export function taskParts(text: string): { text: string; link: boolean }[] {
+  const parts: { text: string; link: boolean }[] = []
+  let position = 0
+  for (const match of text.matchAll(WIKI)) {
+    if (match.index > position) parts.push({ text: text.slice(position, match.index), link: false })
+    const shown = (match[3] ?? '').trim() || (match[1] + (match[2] ?? '')).trim()
+    parts.push({ text: shown || match[0], link: true })
+    position = match.index + match[0].length
+  }
+  if (position < text.length) parts.push({ text: text.slice(position), link: false })
+  return parts
+}

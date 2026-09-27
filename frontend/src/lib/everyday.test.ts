@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Space } from '../api/client'
-import { addDays, dailySpace, isoDay, lastDay, monthGrid, rememberDailySpace, shiftMonth, whenOf } from './everyday'
+import { addDays, dailySpace, isoDay, lastDay, monthGrid, rememberDailySpace, shiftMonth, taskParts, whenOf } from './everyday'
 
 describe('dates for the calendar', () => {
   it('writes a local day as JJJJ-MM-TT and counts days over month and year ends', () => {
@@ -68,5 +68,20 @@ describe('the space of the daily note', () => {
     rememberDailySpace('Archive')
     expect(dailySpace(spaces)?.name).toBe('Home')
     expect(dailySpace(spaces.slice(0, 1))).toBeNull()
+  })
+})
+
+describe('the text of a task', () => {
+  it('shows wiki links as the words they show', () => {
+    expect(taskParts('Access only via [[WireGuard]] and [[Vaultwarden|the vault]], see [[Net#Ports]].')).toEqual([
+      { text: 'Access only via ', link: false },
+      { text: 'WireGuard', link: true },
+      { text: ' and ', link: false },
+      { text: 'the vault', link: true },
+      { text: ', see ', link: false },
+      { text: 'Net#Ports', link: true },
+      { text: '.', link: false },
+    ])
+    expect(taskParts('no links')).toEqual([{ text: 'no links', link: false }])
   })
 })
