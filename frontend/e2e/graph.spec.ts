@@ -113,7 +113,7 @@ test('two fingers zoom the map on a phone, one finger moves it', async ({ page }
   const canvas = page.getByTestId('graph-canvas')
   // The map fitted into the screen (not the camera's first value before the overview came).
   await expect(canvas).toHaveAttribute('data-zoom', /\d/)
-  await expect.poll(async () => await canvas.getAttribute('data-zoom')).not.toBe('0.05000')
+  await expect.poll(async () => (await canvas.getAttribute('data-zoom')) ?? '0.05000').not.toBe('0.05000')
   await page.waitForTimeout(300)
   const before = Number(await canvas.getAttribute('data-zoom'))
   const box = (await canvas.boundingBox())!
@@ -177,7 +177,8 @@ test('a folder with more notes than a page loads the rest in the sidebar as it s
 test('the map moves and zooms with the keyboard', async ({ page }) => {
   await page.goto('/')
   const canvas = page.getByTestId('graph-canvas')
-  await expect.poll(async () => await canvas.getAttribute('data-zoom')).not.toBe('0.05000')
+  // Fitted: set, and no longer the camera's first value before the overview came.
+  await expect.poll(async () => (await canvas.getAttribute('data-zoom')) ?? '0.05000').not.toBe('0.05000')
   await page.waitForTimeout(300)
   const fitted = Number(await canvas.getAttribute('data-zoom'))
   await canvas.focus()

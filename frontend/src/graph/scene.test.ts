@@ -104,6 +104,14 @@ describe('the scene of the graph', () => {
     expect(scene.hidden(scene.groups.get(1)!)).toBe(false)
     const flags = scene.pointFlags(points.ids, 10, null, new Set([11]))
     expect([...flags]).toEqual([0, 255, 0, 0, 0, 0, 0, 255])
+    // A daily note among other notes: its group stays, the note itself is hidden.
+    scene.addTiles('Work', 1, [], { tiles: [{ level: -2, x: 0, y: 0, notes: [[12, 2, -400, 40, 6, 1, '2026-09-27', 'Work/Plans/2026-09-27.md']] }], links: [], others: [] })
+    const more = scene.pointBuffer()
+    const daily = scene.pointFlags(more.ids, null, null, new Set())
+    expect(daily[more.ids.indexOf(12) * 4 + 2]).toBe(255)
+    expect(daily[more.ids.indexOf(10) * 4 + 2]).toBe(0)
+    scene.hideDaily = false
+    expect(scene.pointFlags(more.ids, null, null, new Set())[more.ids.indexOf(12) * 4 + 2]).toBe(0)
   })
 
   it('asks only for the tiles of open groups in view, at their level', () => {
