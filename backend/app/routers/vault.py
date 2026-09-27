@@ -148,11 +148,19 @@ class FolderOut(BaseModel):
     path: str
     folders: list[FolderEntry]
     files: list[FileEntry]
+    #: Files directly in the folder, all of them; ``files`` holds the page asked for.
+    total_files: int = 0
 
 
 @router.get("/folder", response_model=FolderOut)
-def folder(path: PathQuery, account: Account) -> FolderOut:
-    """What lies directly in a space or folder: its subfolders with how many notes are below, and its files."""
+def folder(
+    path: PathQuery,
+    account: Account,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int | None, Query(ge=1, le=5000)] = None,
+) -> FolderOut:
+    """What lies directly in a space or folder: its subfolders with how many notes are below, and its files, by
+    name; ``offset`` and ``limit`` give a page of the files (a flat folder can hold tens of thousands)."""
     need(account, path, READ)
     try:
         clean = paths.parse(path)
@@ -195,20 +203,18 @@ def folder(path: PathQuery, account: Account) -> FolderOut:
             continue
         folders.append(FolderEntry(name=entry.name, path=prefix + entry.name, notes=counts.get(entry.name, 0)))
     folders.sort(key=lambda item: paths.fold(item.name))
-    return FolderOut(
-        path=clean,
-        folders=folders,
-        files=sorted(
-            (
-                FileEntry(
-                    id=file.id, name=file.path.rsplit("/", 1)[-1], path=file.path, title=file.title,
-                    is_note=file.is_note, size=file.size, modified=file.mtime_ns // 1_000_000,
-                )
-                for file in files
-            ),
-            key=lambda item: paths.fold(item.name),
+    ordered = sorted(
+        (
+            FileEntry(
+                id=file.id, name=file.path.rsplit("/", 1)[-1], path=file.path, title=file.title,
+                is_note=file.is_note, size=file.size, modified=file.mtime_ns // 1_000_000,
+            )
+            for file in files
         ),
+        key=lambda item: paths.fold(item.name),
     )
+    end = None if limit is None else offset + limit
+    return FolderOut(path=clean, folders=folders, files=ordered[offset:end], total_files=len(ordered))
 
 
 class FolderIn(BaseModel):
@@ -282,6 +288,36 @@ def note(path: PathQuery, account: Account, who: ActorDep) -> NoteOut:
     if not file.is_note:
         raise error("not_a_note", "This file is not a note.")
     return _note_out(file, data, who)
+
+
+_COPY = re.compile(r"^(.*) \(conflict \d{4}-\d{2}-\d{2} \d{6}\)\.md$")
+
+
+@router.get("/note/copies")
+def note_copies(path: PathQuery, account: Account) -> dict[str, list[str]]:
+    """The conflict copies of a note next to it, and for a copy its note: what the note page shows a banner for,
+    without reading the whole folder."""
+    clean = need(account, path, READ)
+    stem = clean[:-3] if clean.lower().endswith(".md") else clean
+    found: list[str] = []
+    with SessionLocal() as db:
+        # A note that is not there answers like one in a space the account may not read.
+        if db.scalar(select(File.id).where(File.path == clean, File.deleted_at.is_(None))) is None:
+            raise error("not_found", "Not found.", 404)
+        prefix = stem + " (conflict "
+        for (candidate,) in db.execute(
+            select(File.path).where(
+                File.deleted_at.is_(None), File.path > prefix, File.path < prefix + "\uffff"
+            )
+        ):
+            if _COPY.match(candidate) and _COPY.match(candidate).group(1) == stem:  # type: ignore[union-attr]
+                found.append(candidate)
+        original = _COPY.match(clean)
+        if original:
+            note_path = original.group(1) + ".md"
+            if db.scalar(select(File.id).where(File.path == note_path, File.deleted_at.is_(None))) is not None:
+                found.append(note_path)
+    return {"paths": sorted(found)}
 
 
 class NoteStateOut(BaseModel):

@@ -8,9 +8,13 @@ The map stays calm. A new, moved or deleted note changes only its own place: it 
 without moving anything else (``refresh``). A full layout runs the first time, when much changed at once, and at
 night after a day with changes; it starts from the old positions, so the map stays recognisable (``build``).
 
-Changes are noticed on the database connection itself: every write to ``files``, ``links`` or ``tags`` counts up
-``changes()``. One worker thread does the work, one job after the other; small spaces are done at once, inside the
-request, so the graph is there on the first look.
+Changes are noticed where notes are written: every note added, changed, moved or deleted through the ORM marks its
+space (``_after_flush``), and the index's bulk insert marks the spaces it filled (``touch``). Only the clouds of a
+marked space are brought up to date, so typing in one space never makes the map of a big other one work. Every write
+to ``files``, ``links`` or ``tags`` also counts up ``changes()``: link counts are counted again from it, and once in a
+while every cloud is checked against it, a net for a way of writing the marks do not see. One worker thread does the
+work, one job after the other; small spaces are done at once, inside the request, so the graph is there on the first
+look.
 """
 
 from __future__ import annotations
@@ -48,6 +52,8 @@ RELAYOUT_MIN = 40
 #: Radius of a group made for a single new note.
 NEW_GROUP_R = 40.0
 NIGHT_HOUR = 3
+#: A job that failed is not tried again before this, unless somebody asks for it directly (a new layout).
+RETRY_SECONDS = 600.0
 DAILY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 # --- Noticing changes ------------------------------------------------------------------------------------------------
@@ -57,22 +63,35 @@ _WRITES = re.compile(
 )
 _counter_lock = threading.Lock()
 _counter = 0
+_space_counters: dict[int, int] = defaultdict(int)
+#: How often every cloud is checked against the global count anyway (a write the marks did not see).
+NET_SECONDS = 600.0
 
 
-def touch() -> None:
+def touch(space_id: int | None = None) -> None:
+    """Something changed; with ``space_id``: in that space, and its clouds are to be brought up to date."""
     global _counter
     with _counter_lock:
         _counter += 1
+        if space_id is not None:
+            _space_counters[space_id] += 1
 
 
-def changes() -> int:
-    return _counter
+def changes(space_id: int | None = None) -> int:
+    return _counter if space_id is None else _space_counters[space_id]
 
 
 @event.listens_for(engine, "after_cursor_execute")
 def _watch(_conn: Any, _cursor: Any, statement: str, _params: Any, _context: Any, _many: bool) -> None:
     if _WRITES.match(statement):
         touch()
+
+
+@event.listens_for(Session, "after_flush")
+def _after_flush(session: Session, _context: Any) -> None:
+    for item in (*session.new, *session.dirty, *session.deleted):
+        if isinstance(item, File) and item.space_id is not None:
+            touch(item.space_id)
 
 
 # --- Reading what the graph is made of -------------------------------------------------------------------------------
@@ -116,9 +135,10 @@ def _load_links(db: Session, space_id: int, ids: set[int]) -> list[tuple[int, in
     return [
         (source, target)
         for source, target in db.execute(
-            select(Link.source_id, Link.target_id).where(
-                Link.space_id == space_id, Link.target_id.is_not(None), Link.source_id != Link.target_id
-            )
+            select(Link.source_id, Link.target_id)
+            .where(Link.space_id == space_id, Link.target_id.is_not(None), Link.source_id != Link.target_id)
+            # A fixed order, so the same links always give the same map (the layout adds up in this order).
+            .order_by(Link.source_id, Link.target_id)
         )
         if source in ids and target in ids
     ]
@@ -578,11 +598,12 @@ def ready(space_id: int, cloud: str) -> str:
         if background and not small:
             worker.ask(("build", space_id, cloud))
             return "building"
+        marker = changes(space_id)
         build(space_id, cloud)
-        _seen[(space_id, cloud)] = changes()
+        _seen[(space_id, cloud)] = marker
         return "ready"
-    if _seen.get((space_id, cloud)) != changes():
-        marker = changes()
+    if _seen.get((space_id, cloud)) != changes(space_id):
+        marker = changes(space_id)
         if background and not small:
             worker.ask(("update", space_id, cloud))
         else:
@@ -600,6 +621,7 @@ def forget() -> None:
     """Drop what is kept in memory (tests start every case with an empty database)."""
     _pairs.clear()
     _seen.clear()
+    _space_counters.clear()
 
 
 def count_links(db: Session, space_id: int, cloud: str) -> list[list[int]]:
@@ -855,10 +877,16 @@ class _Worker:
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._last_changes = -1
+        self._last_net = 0.0
+        #: Jobs that failed, and when: not asked for again for a while (a broken space must not keep the thread busy).
+        self._failed: dict[tuple[str, int, str], float] = {}
         self._last_night: str | None = None
         self.busy: tuple[str, int, str] | None = None
 
     def ask(self, job: tuple[str, int, str]) -> None:
+        failed = self._failed.get(job)
+        if failed is not None and time.monotonic() - failed < RETRY_SECONDS:
+            return
         with self._wake:
             if job not in self._jobs and job != self.busy:
                 self._jobs.append(job)
@@ -901,10 +929,13 @@ class _Worker:
             try:
                 if job is not None:
                     self._do(job)
+                    self._failed.pop(job, None)
                 else:
                     self._look_around()
             except Exception:
                 logger.exception("Graph job failed job=%s", job)
+                if job is not None:
+                    self._failed[job] = time.monotonic()
             finally:
                 self.busy = None
 
@@ -913,7 +944,7 @@ class _Worker:
         if kind == "pairs":
             _recount(space_id, cloud)
             return
-        marker = changes()
+        marker = changes(space_id)
         if kind == "build":
             build(space_id, cloud)
         else:
@@ -921,14 +952,18 @@ class _Worker:
         _seen[(space_id, cloud)] = marker
 
     def _look_around(self) -> None:
-        marker = changes()
         with SessionLocal() as db:
             laid = db.execute(select(GraphState.space_id, GraphState.cloud)).all()
-        if marker != self._last_changes:
-            self._last_changes = marker
+        for space_id, cloud in laid:
+            if _seen.get((space_id, cloud)) != changes(space_id):
+                self.ask(("update", space_id, cloud))
+        # The net: now and then every cloud once more, when anything at all was written since.
+        overall = changes()
+        if overall != self._last_changes and time.monotonic() - self._last_net >= NET_SECONDS:
+            self._last_changes = overall
+            self._last_net = time.monotonic()
             for space_id, cloud in laid:
-                if _seen.get((space_id, cloud)) != marker:
-                    self.ask(("update", space_id, cloud))
+                self.ask(("update", space_id, cloud))
         now = datetime.now().astimezone()
         today = now.date().isoformat()
         if now.hour == NIGHT_HOUR and self._last_night != today:

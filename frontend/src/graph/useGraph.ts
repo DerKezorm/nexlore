@@ -92,12 +92,13 @@ export function useGraph(spaces: Space[], cloud: Cloud, generation: number): Gra
       )
       for (let start = 0; start < missing.length && running.current < PARALLEL; start += BATCH) {
         const part = missing.slice(start, start + BATCH)
+        const version = scene.space(space)?.version ?? 0
         for (const item of part) pending.current.add(item.key)
         running.current++
         graphApi
           .tiles(space, cloud, part.map((item) => item.tile))
           .then((data) => {
-            scene.addTiles(space, part.map((item) => item.key), data)
+            scene.addTiles(space, version, part.map((item) => item.key), data)
             setRevision((value) => value + 1)
           })
           .catch(() => {
@@ -130,7 +131,10 @@ export function useGraph(spaces: Space[], cloud: Cloud, generation: number): Gra
     (camera: Camera, width: number, height: number) => {
       const before = view.current
       view.current = { camera: { ...camera }, width, height }
-      if (before && before.camera.x === camera.x && before.camera.y === camera.y && before.camera.k === camera.k) return
+      const same =
+        before && before.camera.x === camera.x && before.camera.y === camera.y && before.camera.k === camera.k &&
+        before.width === width && before.height === height
+      if (same) return
       window.clearTimeout(timer.current)
       timer.current = window.setTimeout(fetchTiles, SETTLE_MS)
     },

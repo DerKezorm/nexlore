@@ -74,12 +74,12 @@ export function NotePage() {
   useEffect(() => {
     if (links) linkIdx.seed(links.outgoing)
   }, [links, linkIdx])
-  // The other files in the note's folder: its conflict copies, or, for a copy, the original.
+  // The note's conflict copies, or, for a copy, its note (the server looks next to it, the folder is not read).
   const [siblings, setSiblings] = useState<string[]>([])
   useEffect(() => {
     let live = true
-    vaultApi.folder(folderOf(path)).then(
-      (listing) => live && setSiblings(listing.files.map((file) => file.path)),
+    vaultApi.copies(path).then(
+      (found) => live && setSiblings(found.paths),
       () => live && setSiblings([]),
     )
     return () => {

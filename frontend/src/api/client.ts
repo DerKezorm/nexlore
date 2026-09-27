@@ -203,7 +203,10 @@ export function uploadFile(
 export const vaultApi = {
   spaces: () => api<Space[]>('/api/spaces'),
   /** What lies directly in a space or folder. */
-  folder: (path: string) => api<{ path: string; folders: FolderEntry[]; files: FileEntry[] }>('/api/folder', { query: { path } }),
+  folder: (path: string, offset?: number, limit?: number) =>
+    api<{ path: string; folders: FolderEntry[]; files: FileEntry[]; total_files: number }>('/api/folder', { query: { path, offset, limit } }),
+  /** The conflict copies of a note, or for a copy its note. */
+  copies: (path: string) => api<{ paths: string[] }>('/api/note/copies', { query: { path } }),
   createSpace: (name: string) => api<Space>('/api/spaces', { method: 'POST', body: { name } }),
   /** Notes by title or name, the best first; nothing typed: the ones changed last. */
   find: (q: string, space?: string, limit = 20) => api<Found[]>('/api/notes/find', { query: { q, space, limit } }),

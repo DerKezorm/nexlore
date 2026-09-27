@@ -67,12 +67,19 @@ describe('wiki links in the editor, answered by the server', () => {
     expect(server.asked).toEqual([])
   })
 
-  it('wait for the server when a click must know where a link leads', async () => {
+  it('ask the server on every click, never trusting an old "nothing there"', async () => {
     const server = fakeServer()
     const index = new LinkIndex('Work/Ideas/Note.md', () => undefined, server)
     expect(await index.resolveNow('Other/Garden|Alias')).toBe('Work/Other/Garden.md')
     expect(await index.resolveNow('Nowhere')).toBeNull()
     expect(server.asked).toEqual([['Other/Garden'], ['Nowhere']])
+    // Made elsewhere in the meantime: the next click finds it and makes no second note.
+    const later: Asker = { ...server, resolveMany: async () => ({ found: { Nowhere: 'Work/Nowhere.md' } }) }
+    const again = new LinkIndex('Work/Ideas/Note.md', () => undefined, later)
+    again.seed([{ kind: 'wiki', target: 'Nowhere', subpath: '', line: 1, path: null, title: null }])
+    expect(again.exists('Nowhere')).toBe(false)
+    expect(await again.resolveNow('Nowhere')).toBe('Work/Nowhere.md')
+    expect(again.exists('Nowhere')).toBe(true)
     const failing = new LinkIndex('Work/Ideas/Note.md', () => undefined, {
       ...server,
       resolveMany: () => Promise.reject(new Error('offline')),
@@ -92,6 +99,24 @@ describe('wiki links in the editor, answered by the server', () => {
     ])
     // What a suggestion inserts is known to lead there.
     expect(index.resolve('Other/Garden')).toBe('Work/Other/Garden.md')
+  })
+
+  it('ask again after a while about a link that led nowhere', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      const server = fakeServer()
+      const index = new LinkIndex('Work/Ideas/Note.md', () => undefined, server)
+      index.seed([{ kind: 'wiki', target: 'Gone', subpath: '', line: 1, path: null, title: null }])
+      expect(index.exists('Gone')).toBe(false)
+      await settle()
+      expect(server.asked).toEqual([])
+      vi.setSystemTime(Date.now() + 31_000)
+      expect(index.exists('Gone')).toBe(false)
+      await settle()
+      expect(server.asked).toEqual([['Gone']])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('stop asking once closed', async () => {

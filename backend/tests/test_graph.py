@@ -224,8 +224,8 @@ def test_the_overview_has_every_group_with_place_counts_and_links(client: TestCl
     beds, tools, space_group = by_name["Beds"][0], by_name["Tools"][0], by_name["Garden"][0]
     assert counts[tuple(sorted((beds, tools)))] == 1  # Spade -> Tomatoes
     assert counts[tuple(sorted((beds, space_group)))] == 1 and counts[tuple(sorted((tools, space_group)))] == 1
-    # The same colour for a folder as the interface works out (FNV-1a of its key).
-    assert by_name["Beds"][9] == graphstore._colour("f:Beds") and by_name["Garden"][9] == -1
+    # The same colour for a folder as the interface works out (FNV-1a of its key; palette.test.ts has the same 5).
+    assert by_name["Beds"][9] == 5 and by_name["Garden"][9] == -1
 
 
 def test_tiles_bring_the_notes_of_a_level_and_square_with_their_links(client: TestClient, garden: Path) -> None:
@@ -248,11 +248,12 @@ def test_tiles_bring_the_notes_of_a_level_and_square_with_their_links(client: Te
         "/api/graph/tiles", params={"space": "Garden", "t": [f"{tomatoes.level + 3}:{tx}:{ty}"]}
     ).json()
     assert all(tomatoes.file_id != r[0] for tile in other["tiles"] for r in tile["notes"])
-    # Nor a tile of the right level somewhere else.
-    far = client.get(
-        "/api/graph/tiles", params={"space": "Garden", "t": [f"{tomatoes.level}:{tx + 5}:{ty}"]}
-    ).json()
-    assert all(tomatoes.file_id != r[0] for tile in far["tiles"] for r in tile["notes"])
+    # Nor a tile of the right level somewhere else, on either side.
+    for dx, dy in ((5, 0), (-5, 0), (0, 5), (0, -5)):
+        far = client.get(
+            "/api/graph/tiles", params={"space": "Garden", "t": [f"{tomatoes.level}:{tx + dx}:{ty + dy}"]}
+        ).json()
+        assert all(tomatoes.file_id != r[0] for tile in far["tiles"] for r in tile["notes"]), (dx, dy)
     assert client.get("/api/graph/tiles", params={"space": "Garden", "t": ["1:x:2"]}).status_code == 422
     assert client.get("/api/graph/tiles", params={"space": "Garden", "t": ["1:2"]}).status_code == 422
 
@@ -582,3 +583,64 @@ def test_suggestions_say_how_a_link_from_the_source_reaches_each_note(client: Te
     assert {hit["path"]: hit["link"] for hit in other}["Garden/Beds/Basil.md"] in ("Basil", "Beds/Basil")
     assert all(hit["link"] is None for hit in client.get("/api/notes/find", params={"q": "basil"}).json())
     assert client.get("/api/notes/find", params={"q": "basil", "source": "Nowhere/x.md"}).json() == []
+
+
+def test_a_note_restored_from_the_trash_has_its_tags_in_order(client: TestClient, garden: Path) -> None:
+    # Trashed, its tags go; restored, the note is read again and they come back in the order of the file.
+    assert client.delete("/api/files", params={"path": "Garden/Beds/Tomatoes.md"}).status_code == 200
+    entry = next(e for e in client.get("/api/trash").json() if e["path"] == "Garden/Beds/Tomatoes.md")
+    assert client.post(f"/api/trash/{entry['id']}/restore").status_code == 200
+    index.scan()
+    tomatoes = file_id("Garden/Beds/Tomatoes.md")
+    with SessionLocal() as db:
+        order = [t.tag_key for t in db.scalars(select(Tag).where(Tag.file_id == tomatoes).order_by(Tag.pos))]
+    assert order == ["summer", "plants", "veg"]
+    client.get("/api/graph/overview", params={"space": "Garden", "cloud": "tags"})
+    by_id = {g.id: g for g in groups("tags").values()}
+    assert by_id[nodes("tags")[tomatoes].group_id].key == "t:summer"
+
+
+def test_a_failing_job_is_not_asked_for_again_at_once() -> None:
+    worker = graphstore._Worker()
+    job = ("update", 999, "folders")
+    worker._failed[job] = __import__("time").monotonic()
+    worker.ask(job)
+    assert worker._jobs == []
+    worker._failed[job] -= graphstore.RETRY_SECONDS + 1
+    worker.ask(job)
+    assert worker._jobs == [job]
+
+
+def test_typing_in_one_space_leaves_the_map_of_another_alone(client: TestClient, garden: Path) -> None:
+    put(garden, "Other/Note.md", "other")
+    index.scan()
+    client.get("/api/graph/overview", params={"space": "Garden"})
+    client.get("/api/graph/overview", params={"space": "Other"})
+    before = graphstore.changes(space_id("Garden"))
+    put(garden, "Other/Second.md", "second")
+    index.scan()
+    assert graphstore.changes(space_id("Garden")) == before
+    assert graphstore.changes(space_id("Other")) > 0
+    note = client.get("/api/note", params={"path": "Other/Note.md"}).json()
+    client.put("/api/note", json={"path": "Other/Note.md", "content": "changed", "base_hash": note["hash"]})
+    assert graphstore.changes(space_id("Garden")) == before
+
+
+def test_a_folder_comes_in_pages_and_a_note_knows_its_copies(client: TestClient, garden: Path) -> None:
+    for n in range(12):
+        put(garden, f"Garden/Flat/Note {n:02d}.md", f"note {n}")
+    put(garden, "Garden/Flat/Note 03 (conflict 2026-09-27 101010).md", "copy")
+    put(garden, "Garden/Flat/Note 03 extra.md", "not a copy")
+    index.scan()
+    first = client.get("/api/folder", params={"path": "Garden/Flat", "limit": 5}).json()
+    assert [f["name"] for f in first["files"]] == [f"Note {n:02d}.md" for n in range(3)] + [
+        "Note 03 (conflict 2026-09-27 101010).md", "Note 03 extra.md"]
+    assert first["total_files"] == 14
+    rest = client.get("/api/folder", params={"path": "Garden/Flat", "offset": 5, "limit": 50}).json()
+    assert len(rest["files"]) == 9
+    assert len(client.get("/api/folder", params={"path": "Garden/Flat"}).json()["files"]) == 14
+    copies = client.get("/api/note/copies", params={"path": "Garden/Flat/Note 03.md"}).json()
+    assert copies == {"paths": ["Garden/Flat/Note 03 (conflict 2026-09-27 101010).md"]}
+    back = client.get("/api/note/copies", params={"path": "Garden/Flat/Note 03 (conflict 2026-09-27 101010).md"}).json()
+    assert back == {"paths": ["Garden/Flat/Note 03.md"]}
+    assert client.get("/api/note/copies", params={"path": "Garden/Flat/Note 04.md"}).json() == {"paths": []}

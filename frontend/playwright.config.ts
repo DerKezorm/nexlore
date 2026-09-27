@@ -82,6 +82,8 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Media/v1.2.md': '# v1.2\n\nA note whose name ends like a file.\n',
   'Media/Later.md': '# Later\n\nStart.\n',
   'Media/Short lived.md': '# Short lived\n\nStart.\n',
+  // A flat folder longer than one page of the sidebar (graph.spec.ts).
+  ...Object.fromEntries(Array.from({ length: 620 }, (_, n) => [`Many/Flat/Note ${String(n).padStart(3, '0')}.md`, `# Note ${n}\n`])),
 }
 
 const DATA_DIR = external ? '' : dataDir()

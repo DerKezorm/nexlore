@@ -258,15 +258,23 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
       minY = Math.min(minY, space.oy - space.r)
       maxY = Math.max(maxY, space.oy + space.r)
     }
-    const k = Math.min((w * 0.94) / (maxX - minX), (h * 0.94) / (maxY - minY))
-    return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, k }
+    const k = Math.min((w * 0.94) / Math.max(maxX - minX, 1), (h * 0.94) / Math.max(maxY - minY, 1))
+    return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, k: Number.isFinite(k) && k > 0 ? k : 0.05 }
   }, [])
 
-  const clampZoom = useCallback((k: number) => Math.min(MAX_ZOOM, Math.max(fitCamera().k * 0.5, k)), [fitCamera])
+  const clampZoom = useCallback(
+    (k: number) => Math.min(MAX_ZOOM, Math.max(fitCamera().k * 0.5, 1e-4, Number.isFinite(k) ? k : 1e-4)),
+    [fitCamera],
+  )
 
   const fly = useCallback(
     (to: Camera, duration = 700) => {
       flight.current = { from: { ...camera.current }, to: { ...to, k: clampZoom(to.k) }, start: performance.now(), duration }
+      // What was under the mouse moves away: its hint goes, and comes back for whatever is there when the flight ends.
+      if (hover.current) {
+        hover.current = null
+        latest.current.onHover(null)
+      }
       redraw()
     },
     [redraw, clampZoom],
@@ -327,7 +335,8 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
         c.width = Math.max(1, Math.round(rect.width * dpr))
         c.height = Math.max(1, Math.round(rect.height * dpr))
       }
-      if (!fitted.current && latest.current.scene.spaces.length) {
+      // Fitted once the canvas has a size: at 0 wide (a hidden tab) the zoom would be 0 and stay so.
+      if (!fitted.current && latest.current.scene.spaces.length && rect.width > 1 && rect.height > 1) {
         fitted.current = true
         camera.current = fitCamera()
       }
@@ -493,13 +502,32 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
       if (pointers.size === 0) setHover(null)
     }
 
+    // Keys, when the map has the focus: arrows move, plus and minus zoom, 0 shows everything.
+    const onKey = (e: KeyboardEvent) => {
+      const c = camera.current
+      const step = 80 / c.k
+      const moves: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }
+      if (moves[e.key]) {
+        fly({ ...c, x: c.x + moves[e.key][0], y: c.y + moves[e.key][1] }, 160)
+      } else if (e.key === '+' || e.key === '=') {
+        fly({ ...c, k: c.k * 1.6 }, 220)
+      } else if (e.key === '-' || e.key === '_') {
+        fly({ ...c, k: c.k / 1.6 }, 220)
+      } else if (e.key === '0') {
+        fly(fitCamera())
+      } else return
+      e.preventDefault()
+    }
+
     canvas.addEventListener('pointerdown', onDown)
     canvas.addEventListener('pointermove', onMove)
     canvas.addEventListener('pointerup', onUp)
     canvas.addEventListener('pointercancel', onUp)
     canvas.addEventListener('pointerleave', onLeave)
     canvas.addEventListener('wheel', onWheel, { passive: false })
+    canvas.addEventListener('keydown', onKey)
     return () => {
+      canvas.removeEventListener('keydown', onKey)
       canvas.removeEventListener('pointerdown', onDown)
       canvas.removeEventListener('pointermove', onMove)
       canvas.removeEventListener('pointerup', onUp)
@@ -507,17 +535,19 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
       canvas.removeEventListener('pointerleave', onLeave)
       canvas.removeEventListener('wheel', onWheel)
     }
-  }, [clampZoom, fly, redraw])
+  }, [clampZoom, fly, fitCamera, redraw])
 
   return (
     <div className="relative h-full w-full">
       <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-hidden="true" />
       <canvas
         ref={overlayRef}
-        className="absolute inset-0 block h-full w-full touch-none"
+        className="absolute inset-0 block h-full w-full touch-none rounded-none focus-visible:outline-2 focus-visible:outline-accent-500"
         style={{ cursor: 'grab' }}
         role="img"
+        tabIndex={0}
         aria-label={props.label}
+        aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight + - 0"
         data-testid="graph-canvas"
       />
       {unsupported && (

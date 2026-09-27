@@ -120,6 +120,8 @@ export class Scene {
   /** Groups sorted by radius, for working out which are closed at a zoom. */
   private byRadius: SceneGroup[] = []
   private clock = 0
+  /** Tiles touched at or after this tick are in view now and are never pushed out. */
+  private inView = 0
 
   // --- Loading ------------------------------------------------------------------------------------------------------
 
@@ -201,9 +203,11 @@ export class Scene {
     return `${space}|${this.space(space)?.version ?? 0}|${level}:${x}:${y}`
   }
 
-  addTiles(space: string, keys: string[], data: Tiles) {
+  /** Tiles as the server sent them. `version`: the map's version when they were asked for; an answer to an older
+   * version is dropped (its places are those of the old map, and it would count as loaded for the new one). */
+  addTiles(space: string, version: number, keys: string[], data: Tiles) {
     const state = this.space(space)
-    if (!state) return
+    if (!state || state.version !== version) return
     for (const tile of data.tiles) {
       const key = this.tileKey(space, tile.level, tile.x, tile.y)
       const ids: number[] = []
@@ -231,6 +235,7 @@ export class Scene {
   }
 
   touch(keys: Iterable<string>) {
+    this.inView = this.clock + 1
     for (const key of keys) {
       const tile = this.tiles.get(key)
       if (tile) tile.used = ++this.clock
@@ -239,7 +244,11 @@ export class Scene {
 
   private evict() {
     if (this.tiles.size <= MAX_TILES) return
-    const oldest = [...this.tiles.values()].sort((a, b) => a.used - b.used).slice(0, this.tiles.size - MAX_TILES)
+    // Only tiles out of view go; with more in view than the limit, the limit waits.
+    const oldest = [...this.tiles.values()]
+      .filter((tile) => tile.used < this.inView)
+      .sort((a, b) => a.used - b.used)
+      .slice(0, this.tiles.size - MAX_TILES)
     for (const tile of oldest) {
       this.tiles.delete(tile.key)
       for (const id of tile.ids) this.notes.delete(id)

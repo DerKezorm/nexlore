@@ -21,6 +21,8 @@ const fold = (text: string) => text.normalize('NFC').toLocaleLowerCase()
 /** Only notes count here: a picture or PDF a link names is looked up by the editor itself (`isFileTarget`). */
 const noteOnly = (path: string | null | undefined): string | null => (path && /\.md$/i.test(path) ? path : null)
 const ASK_AFTER_MS = 60
+/** "There is nothing" is asked again after this: the note may have been made elsewhere meanwhile. */
+const MISSING_FOR_MS = 30_000
 const FIND_AFTER_MS = 120
 
 export type Asker = {
@@ -35,6 +37,8 @@ const server: Asker = {
 
 export class LinkIndex {
   private known = new Map<string, string | null>()
+  /** When a target was answered with "nothing there". */
+  private missingSince = new Map<string, number>()
   private waiting = new Set<string>()
   private asking = false
   private timer = 0
@@ -60,7 +64,7 @@ export class LinkIndex {
     for (const link of outgoing) {
       if (link.kind !== 'wiki' && link.kind !== 'embed') continue
       const name = linkName(link.target)
-      if (name) this.known.set(fold(name), noteOnly(link.path))
+      if (name) this.remember(fold(name), noteOnly(link.path))
     }
   }
 
@@ -69,9 +73,26 @@ export class LinkIndex {
     const name = linkName(target)
     if (!name) return this.notePath
     const key = fold(name)
-    if (this.known.has(key)) return this.known.get(key) ?? null
+    if (this.known.has(key)) {
+      this.askAgainIfOld(key, name)
+      return this.known.get(key) ?? null
+    }
     this.ask(name)
     return null
+  }
+
+  private remember(key: string, path: string | null) {
+    this.known.set(key, path)
+    if (path === null) this.missingSince.set(key, Date.now())
+    else this.missingSince.delete(key)
+  }
+
+  private askAgainIfOld(key: string, name: string) {
+    const since = this.missingSince.get(key)
+    if (since !== undefined && Date.now() - since > MISSING_FOR_MS) {
+      this.missingSince.set(key, Date.now())
+      this.ask(name)
+    }
   }
 
   /** Is there something at the end of the link? Unknown counts as yes until the server says otherwise. */
@@ -83,20 +104,20 @@ export class LinkIndex {
       this.ask(name)
       return true
     }
+    this.askAgainIfOld(key, name)
     // Files other than notes (pictures, PDFs) the editor looks up itself.
     return this.known.get(key) !== null || isFileTarget(target)
   }
 
-  /** Where a link leads, waiting for the server when it was not asked before: for following a click. */
+  /** Where a link leads, asked from the server every time: a click that finds nothing makes a new note, and that
+   * must never rest on an answer from before (the note may have been made elsewhere in between). */
   async resolveNow(target: string): Promise<string | null> {
     const name = linkName(target)
     if (!name) return this.notePath
-    const key = fold(name)
-    if (!this.known.has(key)) {
-      const answer = await this.asker.resolveMany(this.notePath, [name])
-      this.known.set(key, noteOnly(answer.found[name]))
-    }
-    return this.known.get(key) ?? null
+    const answer = await this.asker.resolveMany(this.notePath, [name])
+    const found = noteOnly(answer.found[name])
+    this.remember(fold(name), found)
+    return found
   }
 
   /** Forget what is known about names that may have changed (a note was made or renamed). */
@@ -121,7 +142,7 @@ export class LinkIndex {
     this.asking = true
     try {
       const answer = await this.asker.resolveMany(this.notePath, names)
-      for (const name of names) this.known.set(fold(name), noteOnly(answer.found[name]))
+      for (const name of names) this.remember(fold(name), noteOnly(answer.found[name]))
       if (!this.closed) this.changed()
     } catch {
       // Asked again the next time the editor wants to know.

@@ -41,8 +41,8 @@ float endAlpha(float kind, float r, float rp) {
 const POINT_VS = `#version 300 es
 in vec2 pos; in float rad; in float home; in vec4 col; in vec4 flag;
 ${COMMON}
-uniform float focusOn;
-out vec4 vColor; out float vPix; out float vRing;
+uniform float focusOn; uniform float maxPoint;
+out vec4 vColor; out float vPix; out float vOuter; out float vRing;
 void main() {
   float a = inner(openness(home)) * col.a;
   if (flag.z > 0.5) a = 0.0;                       // hidden (daily notes switched off)
@@ -51,25 +51,28 @@ void main() {
   vRing = flag.y > 0.5 ? 1.0 : 0.0;
   vColor = vec4(col.rgb, a);
   float outer = r + (vRing > 0.5 ? 6.0 : 1.0);
-  vPix = r;
-  gl_PointSize = 2.0 * outer * dpr;
+  // The device draws points only up to a size: smaller then, but dot and ring in the same proportion.
+  float size = min(2.0 * outer * dpr, maxPoint);
+  float scale = size / (2.0 * outer * dpr);
+  vPix = r * scale;
+  vOuter = outer * scale;
+  gl_PointSize = size;
   gl_Position = toClip(toScreen(pos));
   if (a < 0.004) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
 }`
 
 const POINT_FS = `#version 300 es
 precision mediump float;
-in vec4 vColor; in float vPix; in float vRing;
+in vec4 vColor; in float vPix; in float vOuter; in float vRing;
 uniform vec3 accent; uniform float dpr;
 out vec4 o;
 void main() {
-  float outer = vPix + (vRing > 0.5 ? 6.0 : 1.0);
-  float d = length(gl_PointCoord * 2.0 - 1.0) * outer;     // CSS pixels from the middle
+  float d = length(gl_PointCoord * 2.0 - 1.0) * vOuter;    // CSS pixels from the middle
   float fill = clamp(vPix - d + 0.5, 0.0, 1.0);
   vec3 c = vRing > 0.5 ? accent : vColor.rgb;
   float a = fill;
   if (vRing > 0.5) {
-    float band = clamp(1.2 - abs(d - (vPix + 3.5)), 0.0, 1.0);
+    float band = clamp(1.2 - abs(d - (vPix + (vOuter - vPix) * 0.58)), 0.0, 1.0);
     a = max(fill, band);
   }
   a *= vColor.a;
@@ -179,6 +182,7 @@ void main() {
 
 function compile(gl: WebGL2RenderingContext, vs: string, fs: string): WebGLProgram {
   const program = gl.createProgram()!
+  const shaders: WebGLShader[] = []
   for (const [type, source] of [
     [gl.VERTEX_SHADER, vs],
     [gl.FRAGMENT_SHADER, fs],
@@ -188,8 +192,14 @@ function compile(gl: WebGL2RenderingContext, vs: string, fs: string): WebGLProgr
     gl.compileShader(shader)
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader) ?? 'shader')
     gl.attachShader(program, shader)
+    shaders.push(shader)
   }
   gl.linkProgram(program)
+  // Linked, the program keeps what it needs: the shaders themselves can go.
+  for (const shader of shaders) {
+    gl.detachShader(program, shader)
+    gl.deleteShader(shader)
+  }
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) ?? 'link')
   return program
 }
@@ -271,6 +281,8 @@ export class GraphGL {
     const gl = canvas.getContext('webgl2', { antialias: true, premultipliedAlpha: true, alpha: true })
     if (!gl) throw new Error('webgl2')
     this.gl = gl
+    const range = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE) as Float32Array | null
+    this.pointLimit = range?.[1] && range[1] > 1 ? range[1] : 64
     const F = gl.FLOAT
     const U = gl.UNSIGNED_BYTE
     const points = compile(gl, POINT_VS, POINT_FS)
@@ -315,12 +327,8 @@ export class GraphGL {
     return known.get(name)!
   }
 
-  /** The largest point the device draws: dots bigger than that would be cut. */
-  maxPoint(): number {
-    const range = this.gl.getParameter(this.gl.ALIASED_POINT_SIZE_RANGE) as Float32Array
-    return range?.[1] ?? 64
-  }
-
+  /** The largest point the device draws (device pixels): dots are made smaller than that, never cut. */
+  private readonly pointLimit: number
   render(camera: Camera, width: number, height: number, dpr: number, colors: Colors, focusOn: boolean) {
     const gl = this.gl
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
@@ -334,6 +342,7 @@ export class GraphGL {
       gl.uniform2f(u('size'), width, height)
       gl.uniform1f(u('dpr'), dpr)
       gl.uniform1f(u('focusOn'), focusOn ? 1 : 0)
+      gl.uniform1f(u('maxPoint'), this.pointLimit)
       gl.uniform1f(u('light'), colors.light ? 1 : 0)
       gl.uniform3f(u('edge'), ...colors.edge)
       gl.uniform3f(u('accent'), ...colors.accent)

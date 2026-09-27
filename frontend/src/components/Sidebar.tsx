@@ -17,6 +17,8 @@ import { useStore } from '../state/store'
 import { Symbol } from './Symbol'
 
 const ROW = 28
+/** Files of a folder asked for at a time; more when the list is scrolled to its end. */
+const PAGE = 500
 
 type Props = {
   activeNote: string | null
@@ -25,12 +27,13 @@ type Props = {
   onFolder?: (path: string) => void
 }
 
-type Listing = { folders: FolderEntry[]; notes: FileEntry[] }
+type Listing = { folders: FolderEntry[]; notes: FileEntry[]; loaded: number; total: number; more: boolean }
 
 type Row =
   | { kind: 'folder'; path: string; name: string; depth: number; count: number; color: string; open: boolean; space: boolean }
   | { kind: 'note'; path: string; title: string; depth: number }
   | { kind: 'loading'; path: string; depth: number }
+  | { kind: 'more'; path: string; depth: number }
 
 export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
   const { t } = useTranslation()
@@ -55,6 +58,17 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     return chain
   }, [activeNote])
 
+  // A note chosen (here, in the graph, by a link) is shown: folders on its way that were closed by hand open again.
+  useEffect(() => {
+    if (!activeChain.size) return
+    setToggled((current) => {
+      if (![...activeChain].some((path) => current.get(path) === false)) return current
+      const next = new Map(current)
+      for (const path of activeChain) if (next.get(path) === false) next.delete(path)
+      return next
+    })
+  }, [activeChain])
+
   const isOpen = useCallback(
     (path: string) => toggled.get(path) ?? (!path.includes('/') || activeChain.has(path)),
     [toggled, activeChain],
@@ -63,12 +77,46 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
   const load = useCallback((path: string) => {
     setListings((current) => new Map(current).set(path, 'loading'))
     vaultApi
-      .folder(path)
+      .folder(path, 0, PAGE)
       .then((listing) =>
-        setListings((current) => new Map(current).set(path, { folders: listing.folders, notes: listing.files.filter((file) => file.is_note) })),
+        setListings((current) =>
+          new Map(current).set(path, {
+            folders: listing.folders,
+            notes: listing.files.filter((file) => file.is_note),
+            loaded: listing.files.length,
+            total: listing.total_files,
+            more: false,
+          }),
+        ),
       )
       .catch(() => setListings((current) => new Map(current).set(path, 'failed')))
   }, [])
+
+  // The next page of a long folder, when its end comes into view. Asked once: `more` marks the page on its way.
+  const loadMore = useCallback(
+    (path: string) => {
+      const listing = listings.get(path)
+      if (!listing || typeof listing === 'string' || listing.more || listing.loaded >= listing.total) return
+      setListings((current) => new Map(current).set(path, { ...listing, more: true }))
+      vaultApi
+        .folder(path, listing.loaded, PAGE)
+        .then((page) =>
+          setListings((latest) => {
+            const now = latest.get(path)
+            if (!now || typeof now === 'string') return latest
+            return new Map(latest).set(path, {
+              ...now,
+              notes: [...now.notes, ...page.files.filter((file) => file.is_note)],
+              loaded: now.loaded + page.files.length,
+              total: page.total_files,
+              more: false,
+            })
+          }),
+        )
+        .catch(() => setListings((latest) => new Map(latest).set(path, 'failed')))
+    },
+    [listings],
+  )
 
   // Every open folder that is not read yet.
   const rows = useMemo(() => {
@@ -87,6 +135,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
       if (listing === 'failed') return
       for (const folder of listing.folders) walk(folder.path, folder.name, depth + 1, folder.notes, folderColor(folder.path, true), false)
       for (const note of listing.notes) out.push({ kind: 'note', path: note.path, title: note.title || note.name.replace(/\.md$/i, ''), depth: depth + 1 })
+      if (listing.loaded < listing.total) out.push({ kind: 'more', path, depth: depth + 1 })
     }
     spaces.forEach((space, index) => walk(space.name, space.name, 0, space.notes, spaceColor(index), true))
     return { out, wanted }
@@ -130,9 +179,13 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
 
   const first = Math.max(0, Math.floor(viewport.top / ROW) - 10)
   const last = Math.min(rows.out.length, Math.ceil((viewport.top + viewport.height) / ROW) + 10)
+  const endsInView = rows.out.slice(first, last).filter((row) => row.kind === 'more').map((row) => row.path).join('\n')
+  useEffect(() => {
+    for (const path of endsInView.split('\n').filter(Boolean)) loadMore(path)
+  }, [endsInView, loadMore])
 
   const renderRow = (row: Row) => {
-    if (row.kind === 'loading') {
+    if (row.kind === 'loading' || row.kind === 'more') {
       return <div className="py-1 text-xs text-mist-600" style={{ paddingLeft: row.depth * 12 + 10 }}>{t('common.loading')}</div>
     }
     if (row.kind === 'note') {

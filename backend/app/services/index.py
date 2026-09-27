@@ -346,6 +346,10 @@ def bulk_add(db: Session, items: list[Prepared]) -> list[tuple[int, int, str, st
             })
     if versions:
         connection.execute(insert(Version), versions)
+    from . import graphstore  # the graph imports the index's models; imported here, when first needed
+
+    for space_id in {row["space_id"] for row in rows}:
+        graphstore.touch(space_id)
     return [(file_id, row["space_id"], row["name_key"], row["path"]) for file_id, row in zip(ids, rows, strict=True)]
 
 

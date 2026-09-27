@@ -78,6 +78,7 @@ def test_everybody_sees_only_their_spaces(world: World) -> None:
         "/api/folder?path=Private",
         "/api/note?path=Private/Secret Plan.md",
         "/api/note/state?path=Private/Secret Plan.md",
+        "/api/note/copies?path=Private/Secret Plan.md",
         "/api/links?path=Private/Secret Plan.md",
         "/api/versions?path=Private/Secret Plan.md",
         "/api/files/own?path=Private/Secret Plan.md",

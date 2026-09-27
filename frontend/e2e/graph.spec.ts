@@ -159,3 +159,31 @@ test('the operator may have the topics worked out again', async ({ page }) => {
   await expect(page.getByText(/Topics worked out/)).toBeVisible({ timeout: 20_000 })
   await page.getByRole('radiogroup', { name: 'Group by' }).getByRole('radio', { name: 'Folders' }).click()
 })
+
+test('a folder with more notes than a page loads the rest in the sidebar as it scrolls', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/note/Many/Flat/Note 000.md')
+  const tree = page.getByTestId('sidebar-tree')
+  await expect(tree.getByRole('button', { name: 'Note 000', exact: true })).toBeVisible()
+  // The last note lies beyond the first page of 500: it appears once the list is scrolled to its end.
+  for (let round = 0; round < 40; round++) {
+    await tree.evaluate((element) => element.scrollTo(0, element.scrollHeight))
+    if (await tree.getByRole('button', { name: 'Note 619', exact: true }).isVisible()) break
+    await page.waitForTimeout(150)
+  }
+  await expect(tree.getByRole('button', { name: 'Note 619', exact: true })).toBeVisible()
+})
+
+test('the map moves and zooms with the keyboard', async ({ page }) => {
+  await page.goto('/')
+  const canvas = page.getByTestId('graph-canvas')
+  await expect.poll(async () => await canvas.getAttribute('data-zoom')).not.toBe('0.05000')
+  await page.waitForTimeout(300)
+  const fitted = Number(await canvas.getAttribute('data-zoom'))
+  await canvas.focus()
+  await page.keyboard.press('+')
+  await expect.poll(async () => Number(await canvas.getAttribute('data-zoom'))).toBeGreaterThan(fitted * 1.5)
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('0')
+  await expect.poll(async () => Number(await canvas.getAttribute('data-zoom'))).toBeCloseTo(fitted, 3)
+})

@@ -70,7 +70,7 @@ describe('the scene of the graph', () => {
   it('bundles links between closed groups and draws the rest from the notes', () => {
     const scene = new Scene()
     scene.setOverviews([{ name: 'Work', overview: overview() }])
-    scene.addTiles('Work', [scene.tileKey('Work', -2, -2, -1)], tiles())
+    scene.addTiles('Work', 1, [scene.tileKey('Work', -2, -2, -1)], tiles())
     // Plans and Daily closed: one bundle from the overview's count, nothing thin.
     const closed = scene.lineBuffers(MID / 500, null)
     expect(closed.lineCount).toBe(0)
@@ -94,7 +94,7 @@ describe('the scene of the graph', () => {
   it('puts notes where their space is and hides daily notes on request', () => {
     const scene = new Scene()
     scene.setOverviews([{ name: 'Work', overview: overview() }])
-    scene.addTiles('Work', [], tiles())
+    scene.addTiles('Work', 1, [], tiles())
     const points = scene.pointBuffer()
     expect(points.ids).toEqual([10, 11])
     expect(new Float32Array(points.data).length).toBe((2 * POINT_STRIDE) / 4)
@@ -118,17 +118,23 @@ describe('the scene of the graph', () => {
     // Far out, nothing is open enough.
     expect(scene.wanted({ x: 0, y: 0, k: 0.01 }, 400, 300, 512).size).toBe(0)
     // A version change drops what was loaded for the space.
-    scene.addTiles('Work', [scene.tileKey('Work', -2, -2, -1)], tiles())
+    scene.addTiles('Work', 1, [scene.tileKey('Work', -2, -2, -1)], tiles())
     expect(scene.notes.size).toBe(2)
     scene.setOverviews([{ name: 'Work', overview: overview(2) }])
     expect(scene.notes.size).toBe(0)
     expect(scene.tiles.size).toBe(0)
+    // An answer that was asked for the old version arrives late: dropped, not stored under the new one.
+    scene.addTiles('Work', 1, [scene.tileKey('Work', -2, -2, -1)], tiles())
+    expect(scene.notes.size).toBe(0)
+    expect(scene.tiles.size).toBe(0)
+    scene.addTiles('Work', 2, [scene.tileKey('Work', -2, -2, -1)], tiles())
+    expect(scene.notes.size).toBe(2)
   })
 
   it('hits the note under the pointer, else the deepest closed group', () => {
     const scene = new Scene()
     scene.setOverviews([{ name: 'Work', overview: overview() }])
-    scene.addTiles('Work', [], tiles())
+    scene.addTiles('Work', 1, [], tiles())
     const space = scene.space('Work')!
     const camera = { x: space.ox - 400, y: space.oy, k: 1 }
     // Plans open at zoom 1: the note at -420/10 is hit.
