@@ -7,6 +7,7 @@ import { useAuth } from '../../state/auth'
 import { useStore } from '../../state/store'
 import { ConfirmDialog } from '../ConfirmDialog'
 import { MembersDialog } from '../MembersDialog'
+import { SpaceOptionsDialog } from '../SpaceOptionsDialog'
 import { Button, Card, Feedback } from './ui'
 import { useAction } from './useAction'
 
@@ -16,6 +17,7 @@ export function SpacesCard() {
   const { spaces, reload } = useStore()
   const [name, setName] = useState('')
   const [members, setMembers] = useState<string | null>(null)
+  const [everyday, setEveryday] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const { busy, problem, run } = useAction()
 
@@ -31,6 +33,11 @@ export function SpacesCard() {
               {space.role === 'manage' && (
                 <Button small onClick={() => setMembers(space.name)}>
                   {t('settings.spaces.members')}
+                </Button>
+              )}
+              {space.role === 'manage' && (
+                <Button small onClick={() => setEveryday(space.name)}>
+                  {t('spaceOptions.button')}
                 </Button>
               )}
               {space.role === 'manage' ? (
@@ -88,6 +95,7 @@ export function SpacesCard() {
           }}
         />
       )}
+      {everyday && <SpaceOptionsDialog space={everyday} onClose={() => setEveryday(null)} />}
       <ConfirmDialog
         open={deleting !== null}
         title={t('settings.spaces.deleteTitle', { space: deleting ?? '' })}

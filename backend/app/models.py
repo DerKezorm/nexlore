@@ -70,6 +70,9 @@ class Space(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     folder: Mapped[str] = mapped_column(String(255), unique=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    #: What the space's managers set for everybody in it (M6): where daily notes and templates live.
+    #: ``daily_folder``, ``daily_template``, ``template_folder``; missing keys take the defaults of ``everyday``.
+    options: Mapped[Any] = mapped_column(JSON, nullable=True)
 
 
 class File(Base):
@@ -149,6 +152,41 @@ class Tag(Base):
     tag: Mapped[str] = mapped_column(String(255))
     #: Order in the note, front matter first: the first tag is where the note stands in the graph's tag cloud.
     pos: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class Task(Base):
+    """A line with a checkbox, as the Obsidian Tasks plugin writes it (``services/tasks.py``). Rebuilt with the
+    note's links and tags whenever the note is indexed; the line itself is the truth."""
+
+    __tablename__ = "tasks"
+    __table_args__ = (
+        Index("tasks_space_status_due", "space_id", "status", "due"),
+        Index("tasks_space_status_scheduled", "space_id", "status", "scheduled"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), index=True)
+    space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"))
+    #: From 1, as an editor counts.
+    line: Mapped[int] = mapped_column(Integer)
+    #: The whole line as written, without its end: what ticking it off compares against before it writes.
+    raw: Mapped[str] = mapped_column(String(4000))
+    #: open, done or cancelled; ``mark`` is the character between the brackets.
+    status: Mapped[str] = mapped_column(String(12))
+    mark: Mapped[str] = mapped_column(String(4), default=" ")
+    text: Mapped[str] = mapped_column(String(1000), default="")
+    #: Dates as written, JJJJ-MM-TT: they sort and compare as text.
+    due: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    scheduled: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    start: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    completed: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    #: 0 lowest, 1 low, 2 none, 3 medium, 4 high, 5 highest.
+    priority: Mapped[int] = mapped_column(Integer, default=2)
+    recurrence: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    #: The task's own tags, as written, space-separated; ``tag_keys`` casefolded with a space before and after
+    #: each, for filtering with LIKE.
+    tags: Mapped[str] = mapped_column(String(1000), default="")
+    tag_keys: Mapped[str] = mapped_column(String(1000), default="")
 
 
 class GraphGroup(Base):

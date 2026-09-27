@@ -165,11 +165,12 @@ test('a folder with more notes than a page loads the rest in the sidebar as it s
   await page.goto('/note/Many/Flat/Note 000.md')
   const tree = page.getByTestId('sidebar-tree')
   await expect(tree.getByRole('button', { name: 'Note 000', exact: true })).toBeVisible()
-  // The last note lies beyond the first page of 500: it appears once the list is scrolled to its end.
-  for (let round = 0; round < 40; round++) {
-    await tree.evaluate((element) => element.scrollTo(0, element.scrollHeight))
+  // The last note lies beyond the first page of 500: it appears once the list is scrolled that far. Step by step:
+  // the spaces after this one (sorted by name) fill the end of the list.
+  for (let round = 0; round < 120; round++) {
     if (await tree.getByRole('button', { name: 'Note 619', exact: true }).isVisible()) break
-    await page.waitForTimeout(150)
+    await tree.evaluate((element) => element.scrollBy(0, element.clientHeight / 2))
+    await page.waitForTimeout(100)
   }
   await expect(tree.getByRole('button', { name: 'Note 619', exact: true })).toBeVisible()
 })

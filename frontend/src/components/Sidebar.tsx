@@ -7,12 +7,11 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
 
-import { ApiError, vaultApi, type FolderEntry, type FileEntry } from '../api/client'
+import { vaultApi, type FolderEntry, type FileEntry } from '../api/client'
 import { folderColor, spaceColor } from '../graph/palette'
-import { errorText } from '../lib/errors'
-import { folderOf, noteUrl } from '../lib/vault'
+import { askNewNote } from '../lib/newNote'
+import { folderOf } from '../lib/vault'
 import { useStore } from '../state/store'
 import { Symbol } from './Symbol'
 
@@ -37,13 +36,9 @@ type Row =
 
 export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
   const { t } = useTranslation()
-  const { spaces, generation, reload, scan } = useStore()
-  const navigate = useNavigate()
+  const { spaces, generation, scan } = useStore()
   const [toggled, setToggled] = useState<Map<string, boolean>>(new Map())
   const [listings, setListings] = useState<Map<string, Listing | 'loading' | 'failed'>>(new Map())
-  const [creating, setCreating] = useState(false)
-  const [title, setTitle] = useState('')
-  const [problem, setProblem] = useState<string | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState({ top: 0, height: 600 })
 
@@ -163,20 +158,6 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
 
   const toggle = (path: string) => setToggled((current) => new Map(current).set(path, !isOpen(path)))
 
-  const create = async () => {
-    if (!title.trim() || !target) return
-    try {
-      const note = await vaultApi.create(target, title.trim())
-      setCreating(false)
-      setTitle('')
-      setProblem(null)
-      await reload()
-      navigate(`${noteUrl(note.path)}?edit=1`)
-    } catch (error) {
-      setProblem(error instanceof ApiError ? error.code : 'internal_error')
-    }
-  }
-
   const first = Math.max(0, Math.floor(viewport.top / ROW) - 10)
   const last = Math.min(rows.out.length, Math.ceil((viewport.top + viewport.height) / ROW) + 10)
   const endsInView = rows.out.slice(first, last).filter((row) => row.kind === 'more').map((row) => row.path).join('\n')
@@ -233,7 +214,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
           <span className="text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('sidebar.spaces')}</span>
           <button
             type="button"
-            onClick={() => setCreating((value) => !value)}
+            onClick={() => target && askNewNote(target)}
             disabled={!target}
             className="rounded-md p-1 text-mist-500 hover:bg-ink-850 hover:text-mist-100 disabled:opacity-40"
             title={t('sidebar.newNote')}
@@ -242,27 +223,6 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
             <Symbol name="plus" className="h-4 w-4" />
           </button>
         </div>
-        {creating && target && (
-          <form
-            className="mb-3 px-2"
-            onSubmit={(event) => {
-              event.preventDefault()
-              void create()
-            }}
-          >
-            <input
-              autoFocus
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              onKeyDown={(event) => event.key === 'Escape' && setCreating(false)}
-              placeholder={t('sidebar.newTitle')}
-              aria-label={t('sidebar.newTitle')}
-              className="h-8 w-full rounded-lg border border-ink-700 bg-ink-850 px-2 text-[13px] outline-none focus:border-accent-500"
-            />
-            <p className="mt-1 truncate text-[11px] text-mist-600">{t('sidebar.newIn', { folder: target })}</p>
-            {problem && <p className="mt-1 text-[11px] text-bad-500">{errorText(problem)}</p>}
-          </form>
-        )}
       </div>
       <div ref={scroller} className="nn-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3" data-testid="sidebar-tree">
         {spaces.length === 0 && <p className="px-2 text-sm text-mist-500">{scan.running ? t('scan.plain') : t('sidebar.empty')}</p>}

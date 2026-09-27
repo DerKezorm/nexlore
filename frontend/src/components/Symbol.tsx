@@ -45,6 +45,12 @@ const SYMBOLS = {
   trash: [{ d: 'M5 7h14M10 4h4M7 7l1 13h8l1-13' }, { d: 'M10.5 11v5.5M13.5 11v5.5' }],
   refresh: [{ d: 'M19.5 12a7.5 7.5 0 0 1-13.3 4.8M4.5 12a7.5 7.5 0 0 1 13.3-4.8' }, { d: 'M18 3.5v4h-4M6 20.5v-4h4' }],
   open: [{ d: 'M14 4.5h5.5V10M19.5 4.5 10.5 13.5' }, { d: 'M16.5 13.5v5a1 1 0 0 1-1 1h-10a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1h5' }],
+  calendar: [{ d: 'M4.5 6.5h15v13h-15z' }, { d: 'M4.5 10.5h15M8.5 4v4M15.5 4v4' }],
+  today: [{ d: 'M4.5 6.5h15v13h-15z' }, { d: 'M4.5 10.5h15M8.5 4v4M15.5 4v4' }, { d: 'M12 17.2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z', fill: true }],
+  tasks: [{ d: 'M4.5 5.5h4v4h-4zM4.5 14.5h4v4h-4z' }, { d: 'M5.5 16.5l1 1 2-2.5M11.5 7.5h8M11.5 16.5h8' }],
+  template: [{ d: 'M5.5 4.5h13v15h-13z' }, { d: 'M8.5 8h7M8.5 11.5h7M8.5 15h4' }, { d: 'M15 14.5l1.5 1.5 2.5-3' }],
+  phone: [{ d: 'M7.5 3.5h9a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1Z' }, { d: 'M11 17.5h2' }],
+  chevronLeft: [{ d: 'M14.5 6l-6 6 6 6' }],
 } satisfies Record<string, Path[]>
 
 export type SymbolName = keyof typeof SYMBOLS

@@ -4,6 +4,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { AppShell } from './components/AppShell'
 import { AccountPage } from './pages/AccountPage'
+import { CalendarPage } from './pages/CalendarPage'
 import { FilePage } from './pages/FilePage'
 import { FilesPage } from './pages/FilesPage'
 import { GraphPage } from './pages/GraphPage'
@@ -13,6 +14,7 @@ import { NotePage } from './pages/NotePage'
 import { PublicPage } from './pages/PublicPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SetupPage } from './pages/SetupPage'
+import { TasksPage } from './pages/TasksPage'
 import { useAuth } from './state/auth'
 import { StoreProvider } from './state/store'
 
@@ -48,6 +50,8 @@ export default function App() {
         <Route index element={<GraphPage />} />
         <Route path="note" element={<NotePage />} />
         <Route path="note/*" element={<NotePage />} />
+        <Route path="calendar" element={<CalendarPage />} />
+        <Route path="tasks" element={<TasksPage />} />
         <Route path="files" element={<FilesPage />} />
         <Route path="file/*" element={<FilePage />} />
         <Route path="settings" element={<SettingsPage />} />

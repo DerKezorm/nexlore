@@ -26,7 +26,7 @@ from ..db import SessionLocal
 from ..deps import Account, OperatorAccount, need, readable_spaces
 from ..errors import error
 from ..models import FTS_TABLE, MANAGE, OPERATOR, READ, WRITE, File, Link, Membership, Space, Tag
-from ..services import index, paths, rights, vault
+from ..services import everyday, index, paths, rights, vault
 from ..services.vault import Actor, VaultError
 
 router = APIRouter(prefix="/api", tags=["vault"])
@@ -384,13 +384,26 @@ class CreateIn(BaseModel):
     folder: str = Field(min_length=1, max_length=paths.MAX_PATH_CHARS)
     title: str = Field(min_length=1, max_length=1024)
     content: str = Field(default="", max_length=MAX_NOTE_UPLOAD)
+    #: A template of the same space to start from (M6); its placeholders are filled, ``content`` is then ignored.
+    template: str | None = Field(default=None, max_length=paths.MAX_PATH_CHARS)
 
 
 @router.post("/notes", response_model=NoteOut, status_code=201)
 def create_note(body: CreateIn, account: Account, who: ActorDep) -> NoteOut:
-    need(account, body.folder, WRITE)
+    folder = need(account, body.folder, WRITE)
+    content = body.content
+    if body.template:
+        template = need(account, body.template, READ)
+        if paths.space_of(template) != paths.space_of(folder):
+            raise error("not_found", "Not found.", 404)
+        try:
+            content = everyday.render(
+                template, title=body.title.strip(), when=datetime.now().astimezone(), language=account.language or "en"
+            )
+        except VaultError as exc:
+            raise _fail(exc) from exc
     try:
-        file = vault.create_note(body.folder, body.title, body.content.encode("utf-8"), actor=who)
+        file = vault.create_note(body.folder, body.title, content.encode("utf-8"), actor=who)
         file, data = vault.read(file.path)
     except VaultError as exc:
         raise _fail(exc) from exc

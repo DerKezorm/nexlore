@@ -43,6 +43,14 @@ const LEAFLET_PDF = Buffer.from(
   'base64',
 )
 
+/** A day as `JJJJ-MM-TT` in local time, counted from today: the tasks of everyday.spec.ts are due around now. */
+function day(offset = 0): string {
+  const when = new Date()
+  when.setDate(when.getDate() + offset)
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`
+}
+
 /** An invented vault for the tests; each test works on its own notes, so the order does not matter. */
 const E2E_NOTES: Record<string, string | Buffer> = {
   'Work/Plan.md': '---\ntags: [project]\n---\n# Plan\n\nThe roadmap links to [[Garden]] and to [[Missing note]].\n',
@@ -82,6 +90,11 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Media/v1.2.md': '# v1.2\n\nA note whose name ends like a file.\n',
   'Media/Later.md': '# Later\n\nStart.\n',
   'Media/Short lived.md': '# Short lived\n\nStart.\n',
+  // Everyday use (everyday.spec.ts): tasks around today, templates, a folder for daily notes made on demand.
+  'Year/Chores.md': `# Chores\r\n- [ ] Water the ferns 📅 ${day(0)}\r\n- [ ] Fix the gate 📅 ${day(-1)} #garden\r\n- [ ] Someday maybe\r\n`,
+  'Year/Weekly.md': `# Weekly\n\n- [ ] Sweep the yard 🔁 every week 📅 ${day(0)}\n`,
+  'Year/Templates/Meeting.md': '# {{title}}\n\nStarted {{date}}\n<% tp.date.now() %>\n',
+  'Year/Templates/Day.md': '# Day {{title}}\n\n- [ ] plan the day\n',
   // A flat folder longer than one page of the sidebar (graph.spec.ts).
   ...Object.fromEntries(Array.from({ length: 620 }, (_, n) => [`Many/Flat/Note ${String(n).padStart(3, '0')}.md`, `# Note ${n}\n`])),
 }

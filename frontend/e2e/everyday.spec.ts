@@ -1,0 +1,158 @@
+/**
+ * Everyday use (M6) through the interface, against the real backend and the built app: the task overview and ticking
+ * off, a recurring task, the calendar making a daily note from the template, a new note from a template, "Today",
+ * the phone, and the service worker (built app only: it never answers for /api, and signing out empties its caches).
+ */
+import { expect, test, type Page } from '@playwright/test'
+import fs from 'node:fs'
+import path from 'node:path'
+
+import { OPERATOR } from './global-setup'
+
+const DATA = process.env.NEXLORE_E2E_DATA ?? ''
+
+function onDisk(rel: string): string {
+  return fs.readFileSync(path.join(DATA, 'vault', ...rel.split('/')), 'utf-8')
+}
+
+function day(offset = 0): string {
+  const when = new Date()
+  when.setDate(when.getDate() + offset)
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`
+}
+
+function collectProblems(page: Page): string[] {
+  const problems: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') problems.push(message.text())
+  })
+  page.on('pageerror', (error) => problems.push(error.message))
+  return problems
+}
+
+test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
+
+test('the overview lists the tasks by when they are due, and ticking one off writes only its line', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.goto('/tasks?x=1')
+  await page.getByRole('combobox', { name: 'Space' }).selectOption('Year')
+  const rows = page.getByTestId('task-row')
+  await expect(rows.filter({ hasText: 'Fix the gate' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Overdue/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /^Overdue\s*1$/ })).toBeVisible()
+  const before = onDisk('Year/Chores.md')
+  await rows.filter({ hasText: 'Fix the gate' }).getByRole('button', { name: 'Mark as done' }).click()
+  await expect.poll(() => onDisk('Year/Chores.md')).not.toBe(before)
+  expect(onDisk('Year/Chores.md')).toBe(
+    before.replace(`- [ ] Fix the gate 📅 ${day(-1)} #garden\r\n`, `- [x] Fix the gate 📅 ${day(-1)} #garden ✅ ${day(0)}\r\n`),
+  )
+  await expect(rows.filter({ hasText: 'Fix the gate' })).toHaveCount(0)
+  await page.getByRole('button', { name: /^Done/ }).click()
+  await expect(rows.filter({ hasText: 'Fix the gate' })).toBeVisible()
+  expect(problems).toEqual([])
+})
+
+test('ticking off a recurring task puts its next time above it', async ({ page }) => {
+  await page.goto('/tasks')
+  await page.getByRole('searchbox', { name: 'Search tasks' }).fill('Sweep the yard')
+  const row = page.getByTestId('task-row').filter({ hasText: 'Sweep the yard' })
+  await expect(row).toHaveCount(1)
+  await row.getByRole('button', { name: 'Mark as done' }).click()
+  await expect(page.getByText('Next time added above it.')).toBeVisible()
+  expect(onDisk('Year/Weekly.md')).toBe(
+    `# Weekly\n\n- [ ] Sweep the yard 🔁 every week 📅 ${day(7)}\n- [x] Sweep the yard 🔁 every week 📅 ${day(0)} ✅ ${day(0)}\n`,
+  )
+})
+
+test('a click on a day in the calendar makes its daily note from the template of the space', async ({ page }) => {
+  const problems = collectProblems(page)
+  const set = await page.request.put('/api/spaces/Year/options', {
+    data: { daily_template: 'Templates/Day.md' },
+    headers: { 'X-Nexlore-Client': 'tab-e2e-days' },
+  })
+  expect(set.ok()).toBe(true)
+  const date = day(2)
+  await page.goto('/calendar?space=Year')
+  await page.locator(`[data-date="${date}"]`).click()
+  await page.waitForURL(new RegExp(`/note/Year/Daily/${date}\\.md`))
+  expect(onDisk(`Year/Daily/${date}.md`)).toBe(`# Day ${date}\n\n- [ ] plan the day\n`)
+  await page.goto('/calendar?space=Year')
+  await expect(page.locator(`[data-date="${date}"]`)).toContainText('Daily note')
+  // The same day again opens that note, it does not make a second one.
+  await page.locator(`[data-date="${date}"]`).click()
+  await page.waitForURL(new RegExp(`/note/Year/Daily/${date}\\.md$`))
+  expect(fs.readdirSync(path.join(DATA, 'vault', 'Year', 'Daily')).filter((name) => name.startsWith(date))).toEqual([`${date}.md`])
+  expect(problems).toEqual([])
+})
+
+test('a new note starts from a template, its placeholders filled and Templater left as it was', async ({ page }) => {
+  await page.goto('/note/Year/Chores.md')
+  await page.getByRole('button', { name: 'New note' }).first().click()
+  const dialog = page.getByTestId('new-note-dialog')
+  await dialog.getByLabel('Title').fill('Kick-off')
+  await dialog.getByRole('radio', { name: 'Meeting' }).click()
+  await expect(dialog.getByTestId('template-preview')).toContainText('# Kick-off')
+  await expect(dialog.getByText('Templater commands are never run')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Create' }).click()
+  await page.waitForURL(/\/note\/Year\/Kick-off\.md/)
+  expect(onDisk('Year/Kick-off.md')).toBe(`# Kick-off\n\nStarted ${day(0)}\n<% tp.date.now() %>\n`)
+})
+
+test('"Today" opens the daily note of today in the chosen space', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('nexlore.daily.space', 'Year'))
+  await page.goto('/tasks')
+  await expect(page.getByRole('button', { name: "Open today's daily note (Alt+T)" })).toBeEnabled()
+  await page.keyboard.press('Alt+t')
+  await page.waitForURL(new RegExp(`/note/Year/Daily/${day(0)}\\.md`))
+  expect(fs.existsSync(path.join(DATA, 'vault', 'Year', 'Daily', `${day(0)}.md`))).toBe(true)
+})
+
+test('on a phone the calendar and the tasks fit, and the header reaches them', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.setViewportSize({ width: 360, height: 740 })
+  for (const route of ['/calendar', '/tasks']) {
+    await page.goto(route)
+    await expect(page.getByTestId(route === '/calendar' ? 'calendar-page' : 'tasks-page')).toBeVisible()
+    await page.waitForTimeout(300)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    for (const link of ['/calendar', '/tasks']) {
+      const box = await page.locator(`nav a[href="${link}"]`).boundingBox()
+      expect(box && box.x + box.width <= 360).toBe(true)
+    }
+  }
+  expect(problems).toEqual([])
+})
+
+test('the service worker keeps the app, never anything from /api, and signing out empties it', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => navigator.serviceWorker.ready)
+  await page.reload()
+  await expect.poll(() => page.evaluate(() => !!navigator.serviceWorker.controller)).toBe(true)
+  const answers: { url: string; worker: boolean }[] = []
+  page.on('response', (response) => answers.push({ url: new URL(response.url()).pathname, worker: response.fromServiceWorker() }))
+  await page.goto('/tasks')
+  await expect(page.getByTestId('tasks-page')).toBeVisible()
+  await page.waitForTimeout(500)
+  expect(answers.filter((answer) => answer.url.startsWith('/api/') && answer.worker)).toEqual([])
+  expect(answers.some((answer) => answer.url.startsWith('/assets/') && answer.worker)).toBe(true)
+  const kept = await page.evaluate(async () => {
+    const found: string[] = []
+    for (const name of await caches.keys()) for (const request of await (await caches.open(name)).keys()) found.push(new URL(request.url).pathname)
+    return found
+  })
+  expect(kept.length).toBeGreaterThan(0)
+  expect(kept.filter((url) => url.startsWith('/api'))).toEqual([])
+  // Signing out: a fresh session of its own, so the one the other tests share stays valid.
+  await page.context().clearCookies()
+  const signIn = await page.request.post('/api/auth/login', {
+    data: { name: OPERATOR.name, password: OPERATOR.password },
+    headers: { 'X-Nexlore-Client': 'tab-e2e-sw00' },
+  })
+  expect(signIn.ok()).toBe(true)
+  await page.goto('/')
+  await page.getByRole('button', { name: `Account of ${OPERATOR.name}` }).click()
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await page.waitForURL(/\/login/)
+  await expect.poll(() => page.evaluate(async () => (await caches.keys()).length)).toBe(0)
+})

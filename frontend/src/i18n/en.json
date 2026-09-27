@@ -14,7 +14,9 @@
     "graph": "Graph",
     "notes": "Notes",
     "files": "Files",
-    "settings": "Settings"
+    "settings": "Settings",
+    "calendar": "Calendar",
+    "tasks": "Tasks"
   },
   "search": {
     "button": "Search",
@@ -46,8 +48,6 @@
     "collapse": "Collapse",
     "expand": "Expand",
     "flyTo": "Fly there in the graph",
-    "newTitle": "Title of the new note",
-    "newIn": "in {{folder}}",
     "more_one": "{{count}} more",
     "more_other": "{{count}} more",
     "empty": "No spaces yet."
@@ -322,7 +322,8 @@
       "backup_invalid": "This is not a nexlore backup.",
       "backup_damaged": "The backup is damaged. Nothing was changed.",
       "busy": "nexlore is busy. Try again in a moment.",
-      "scan_running": "The vault is being read already."
+      "scan_running": "The vault is being read already.",
+      "task_changed": "This task changed in its note meanwhile."
     }
   },
   "files": {
@@ -742,5 +743,95 @@
       "upload": "Upload",
       "added": "Language added."
     }
+  },
+  "today": {
+    "button": "Today",
+    "title": "Open today's daily note (Alt+T)",
+    "none": "There is no space you may write in."
+  },
+  "calendar": {
+    "title": "Calendar",
+    "previous": "Previous month",
+    "next": "Next month",
+    "today": "Today",
+    "allSpaces": "All spaces",
+    "space": "Space",
+    "dailyNote": "Daily note",
+    "open": "{{count}} due",
+    "overdue": "{{count}} overdue",
+    "done": "{{count}} done",
+    "hint": "Click a day to open its daily note, or to make it from the template.",
+    "month": "Due this month",
+    "nothing": "Nothing due this month.",
+    "into": "New daily notes go to",
+    "readOnly": "You may only read in this space: a daily note that is not there cannot be made.",
+    "dayLabel": "{{date}}, open the daily note"
+  },
+  "tasks": {
+    "title": "Tasks",
+    "filter": {
+      "open": "Open",
+      "overdue": "Overdue",
+      "today": "Today",
+      "week": "This week",
+      "later": "Later",
+      "none": "No date",
+      "done": "Done"
+    },
+    "groupBy": "Group by",
+    "byDue": "Due date",
+    "byNote": "Note",
+    "space": "Space",
+    "allSpaces": "All spaces",
+    "tag": "Tag",
+    "search": "Search tasks",
+    "empty": "No tasks here.",
+    "more": "Load more",
+    "hint": "Tasks from every space you may read. Ticking one off writes only its line into the note.",
+    "tick": "Mark as done",
+    "untick": "Mark as open",
+    "conflict": "The note was changed elsewhere meanwhile: your tick went into a conflict copy.",
+    "changed": "This task changed in its note meanwhile. The list was loaded again.",
+    "repeated": "Next time added above it.",
+    "today": "today",
+    "priority": {
+      "5": "highest priority",
+      "4": "high priority",
+      "3": "medium priority",
+      "1": "low priority",
+      "0": "lowest priority"
+    }
+  },
+  "newNote": {
+    "title": "New note in “{{folder}}”",
+    "name": "Title",
+    "template": "Template",
+    "blank": "Blank",
+    "folder": "Templates folder “{{folder}}”",
+    "noTemplates": "This space has no templates yet. Notes in its templates folder become templates.",
+    "preview": "Preview, with the placeholders filled in",
+    "empty": "An empty note.",
+    "templater": "Templater commands are never run; they stay in the note as text.",
+    "create": "Create"
+  },
+  "spaceOptions": {
+    "button": "Daily notes",
+    "title": "Daily notes and templates in “{{space}}”",
+    "text": "For everybody who writes in this space. A daily note is always named YYYY-MM-DD.md, as in Obsidian.",
+    "dailyFolder": "Folder for daily notes",
+    "dailyTemplate": "Template for daily notes",
+    "templateFolder": "Folder for templates",
+    "rootHint": "Empty: right in the space; then every note named like a date counts as a daily note.",
+    "none": "None",
+    "placeholders": "Placeholders in templates:",
+    "saved": "Saved."
+  },
+  "install": {
+    "title": "nexlore as an app on your home screen",
+    "text": "A window and an icon of its own. It needs a connection to the server.",
+    "ios": "In Safari, tap “Share”, then “Add to Home Screen”.",
+    "install": "Install",
+    "later": "Don't ask again",
+    "menu": "Install as an app"
   }
 }

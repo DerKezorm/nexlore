@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 
 import { ApiError, authApi, SIGNED_OUT_EVENT, type Me } from '../api/client'
 import { changeLanguage } from '../i18n'
+import { clearCaches } from '../lib/offline'
 
 type Status = 'loading' | 'setup' | 'signedOut' | 'signedIn' | 'error'
 
@@ -54,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const gone = () => {
       setMe(null)
       setStatus('signedOut')
+      void clearCaches()
     }
     window.addEventListener(SIGNED_OUT_EVENT, gone)
     return () => window.removeEventListener(SIGNED_OUT_EVENT, gone)
@@ -63,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await authApi.logout()
     } finally {
+      await clearCaches()
       setMe(null)
       setStatus('signedOut')
     }

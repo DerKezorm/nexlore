@@ -45,8 +45,9 @@ from sqlalchemy import bindparam, delete, event, func, insert, inspect, select, 
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import FTS_TABLE, File, Link, Lock, Space, Tag, Version, utcnow
+from ..models import FTS_TABLE, File, Link, Lock, Setting, Space, Tag, Task, Version, utcnow
 from . import mdparse, paths
+from . import tasks as tasks_service
 from .prepare import (
     MAX_NOTE_BYTES,
     Analysis,
@@ -354,6 +355,7 @@ def add_version(
 def _clear_note_index(db: Session, file_id: int) -> None:
     db.execute(delete(Link).where(Link.source_id == file_id))
     db.execute(delete(Tag).where(Tag.file_id == file_id))
+    db.execute(delete(Task).where(Task.file_id == file_id))
     db.execute(text(f"DELETE FROM {FTS_TABLE} WHERE rowid = :id"), {"id": file_id})  # noqa: S608
 
 
@@ -379,6 +381,7 @@ class _Rows:
     tags: list[dict[str, object]] = field(default_factory=list)
     links: list[dict[str, object]] = field(default_factory=list)
     search: list[dict[str, object]] = field(default_factory=list)
+    tasks: list[dict[str, object]] = field(default_factory=list)
 
     def add(self, file_id: int, space_id: int, rel: str, analysis: Analysis, names: Names | None) -> None:
         self.tags += [
@@ -394,6 +397,7 @@ class _Rows:
         ]
         if analysis.body is not None:
             self.search.append({"id": file_id, "title": analysis.title, "body": analysis.body})
+        self.tasks += [task_row(file_id, space_id, task) for task in analysis.tasks]
 
     def write(self, db: Session) -> None:
         connection = db.connection()
@@ -406,6 +410,18 @@ class _Rows:
                 text(f"INSERT INTO {FTS_TABLE}(rowid, title, body) VALUES (:id, :title, :body)"),  # noqa: S608
                 self.search,
             )
+        if self.tasks:
+            connection.execute(insert(Task), self.tasks)
+
+
+def task_row(file_id: int, space_id: int, task: tasks_service.Task) -> dict[str, object]:
+    return {
+        "file_id": file_id, "space_id": space_id, "line": task.line, "raw": task.raw[:4000], "status": task.status,
+        "mark": task.mark[:4], "text": task.text, "due": task.due, "scheduled": task.scheduled, "start": task.start,
+        "completed": task.completed, "priority": task.priority, "recurrence": task.recurrence,
+        "tags": " ".join(task.tags)[:1000],
+        "tag_keys": (" " + " ".join(paths.fold(tag) for tag in task.tags) + " ")[:1000] if task.tags else "",
+    }
 
 
 def _insert_content(
@@ -998,6 +1014,51 @@ def _merge_move(db: Session, old: File, new_rel: str) -> None:
     data = _read(paths.vault_root(), new_rel)
     if data is not None:
         record(db, new_rel, data[0], data[1], source=RENAME, file=old)
+
+
+#: Set once the tasks of a database indexed before M6 were filled in.
+TASKS_FILLED = "tasks_filled"
+
+
+def fill_tasks() -> int:
+    """Once, for a database indexed before tasks were (M6): the tasks of every note that has any, from its newest
+    version, which is what the file holds (a scan reads unchanged files never again). In parts, each under
+    ``guard``; a note indexed meanwhile has its tasks already. Returns how many notes got theirs."""
+    with SessionLocal() as db:
+        if db.get(Setting, TASKS_FILLED) is not None:
+            return 0
+        known = db.scalar(select(Task.id).limit(1)) is not None
+        ids = [] if known else list(db.scalars(
+            select(File.id).where(
+                File.is_note.is_(True), File.deleted_at.is_(None),
+                func.coalesce(func.json_extract(File.features, "$.tasks"), 0) > 0,
+            ).order_by(File.id)
+        ))
+    filled = 0
+    for part in _chunks(ids, BATCH):
+        with guard, SessionLocal() as db:
+            rows = _Rows()
+            having = set(db.scalars(select(Task.file_id).where(Task.file_id.in_(part)).distinct()))
+            for file in db.scalars(select(File).where(File.id.in_(part), File.deleted_at.is_(None))):
+                if file.id in having:
+                    continue
+                newest = db.scalar(
+                    select(Version.content).where(Version.file_id == file.id)
+                    .order_by(Version.updated_at.desc(), Version.id.desc()).limit(1)
+                )
+                if newest is None:
+                    continue
+                rows.tasks += [task_row(file.id, file.space_id, task) for task in
+                               analyse(file.path, zlib.decompress(newest)).tasks]
+                filled += 1
+            rows.write(db)
+            db.commit()
+    with SessionLocal() as db:
+        db.merge(Setting(key=TASKS_FILLED, value=True))
+        db.commit()
+    if filled:
+        logger.info("Tasks filled in for notes indexed before notes=%s", filled)
+    return filled
 
 
 def refresh(rels: Iterable[str]) -> ScanStats:

@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from . import mdparse, paths, pdftext
+from . import tasks as tasks_service
 
 #: A note larger than this is kept and versioned, but not read for links, tags and search.
 MAX_NOTE_BYTES = 5 * 1024 * 1024
@@ -62,6 +63,8 @@ class Analysis:
     links: list[tuple[str, str, str, str, int]] = field(default_factory=list)
     #: The text for the full-text search; None for anything that is not searched.
     body: str | None = None
+    #: Lines with a checkbox (M6), as the Tasks plugin reads them.
+    tasks: list[tasks_service.Task] = field(default_factory=list)
 
 
 def is_pdf(rel: str) -> bool:
@@ -101,6 +104,7 @@ def analyse(rel: str, data: bytes) -> Analysis:
         for link in parsed.links
     ]
     result.body = parsed.body
+    result.tasks = [task for number, line in parsed.task_lines if (task := tasks_service.parse_line(line, number))]
     return result
 
 

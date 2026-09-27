@@ -73,6 +73,10 @@ async def watch(stop: asyncio.Event) -> None:
 async def scan_forever(stop: asyncio.Event) -> None:
     settings = get_settings()
     last_housekeeping = 0.0
+    try:
+        await asyncio.to_thread(index.fill_tasks)
+    except Exception:
+        logger.exception("Filling in the tasks failed")
     while not stop.is_set():
         try:
             await asyncio.to_thread(index.scan)

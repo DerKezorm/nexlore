@@ -14,7 +14,9 @@
     "graph": "Graph",
     "notes": "Notizen",
     "files": "Dateien",
-    "settings": "Einstellungen"
+    "settings": "Einstellungen",
+    "calendar": "Kalender",
+    "tasks": "Aufgaben"
   },
   "search": {
     "button": "Suchen",
@@ -46,8 +48,6 @@
     "collapse": "Zuklappen",
     "expand": "Aufklappen",
     "flyTo": "Im Graph anfliegen",
-    "newTitle": "Titel der neuen Notiz",
-    "newIn": "in {{folder}}",
     "more_one": "{{count}} weitere",
     "more_other": "{{count}} weitere",
     "empty": "Noch keine Bereiche."
@@ -322,7 +322,8 @@
       "backup_invalid": "Das ist keine nexlore-Sicherung.",
       "backup_damaged": "Die Sicherung ist beschädigt. Nichts wurde geändert.",
       "busy": "nexlore ist gerade beschäftigt. Versuch es gleich noch einmal.",
-      "scan_running": "Der Tresor wird schon eingelesen."
+      "scan_running": "Der Tresor wird schon eingelesen.",
+      "task_changed": "Diese Aufgabe hat sich in ihrer Notiz inzwischen geändert."
     }
   },
   "files": {
@@ -742,5 +743,95 @@
       "upload": "Hochladen",
       "added": "Sprache hinzugefügt."
     }
+  },
+  "today": {
+    "button": "Heute",
+    "title": "Tagesnotiz von heute öffnen (Alt+T)",
+    "none": "Es gibt keinen Bereich, in dem du schreiben darfst."
+  },
+  "calendar": {
+    "title": "Kalender",
+    "previous": "Voriger Monat",
+    "next": "Nächster Monat",
+    "today": "Heute",
+    "allSpaces": "Alle Bereiche",
+    "space": "Bereich",
+    "dailyNote": "Tagesnotiz",
+    "open": "{{count}} fällig",
+    "overdue": "{{count}} überfällig",
+    "done": "{{count}} erledigt",
+    "hint": "Klick auf einen Tag öffnet seine Tagesnotiz oder legt sie aus der Vorlage an.",
+    "month": "Fällig in diesem Monat",
+    "nothing": "In diesem Monat ist nichts fällig.",
+    "into": "Neue Tagesnotizen in",
+    "readOnly": "In diesem Bereich darfst du nur lesen: Eine fehlende Tagesnotiz lässt sich nicht anlegen.",
+    "dayLabel": "{{date}}, Tagesnotiz öffnen"
+  },
+  "tasks": {
+    "title": "Aufgaben",
+    "filter": {
+      "open": "Offen",
+      "overdue": "Überfällig",
+      "today": "Heute",
+      "week": "Diese Woche",
+      "later": "Später",
+      "none": "Ohne Datum",
+      "done": "Erledigt"
+    },
+    "groupBy": "Gruppieren nach",
+    "byDue": "Fälligkeit",
+    "byNote": "Notiz",
+    "space": "Bereich",
+    "allSpaces": "Alle Bereiche",
+    "tag": "Tag",
+    "search": "Aufgaben durchsuchen",
+    "empty": "Hier gibt es keine Aufgaben.",
+    "more": "Mehr laden",
+    "hint": "Aufgaben aus allen Bereichen, die du lesen darfst. Abhaken schreibt nur diese eine Zeile in die Notiz.",
+    "tick": "Als erledigt markieren",
+    "untick": "Als offen markieren",
+    "conflict": "Die Notiz wurde inzwischen anderswo geändert: Dein Haken steht in einer Konfliktkopie.",
+    "changed": "Diese Aufgabe hat sich in ihrer Notiz inzwischen geändert. Die Liste wurde neu geladen.",
+    "repeated": "Das nächste Mal steht darüber.",
+    "today": "heute",
+    "priority": {
+      "5": "höchste Priorität",
+      "4": "hohe Priorität",
+      "3": "mittlere Priorität",
+      "1": "niedrige Priorität",
+      "0": "niedrigste Priorität"
+    }
+  },
+  "newNote": {
+    "title": "Neue Notiz in „{{folder}}“",
+    "name": "Titel",
+    "template": "Vorlage",
+    "blank": "Leer",
+    "folder": "Vorlagen-Ordner „{{folder}}“",
+    "noTemplates": "Dieser Bereich hat noch keine Vorlagen. Notizen im Vorlagen-Ordner werden zu Vorlagen.",
+    "preview": "Vorschau, Platzhalter schon eingesetzt",
+    "empty": "Eine leere Notiz.",
+    "templater": "Templater-Befehle werden nie ausgeführt; sie bleiben als Text in der Notiz stehen.",
+    "create": "Anlegen"
+  },
+  "spaceOptions": {
+    "button": "Tagesnotizen",
+    "title": "Tagesnotizen und Vorlagen in „{{space}}“",
+    "text": "Gilt für alle, die in diesem Bereich schreiben. Eine Tagesnotiz heißt immer JJJJ-MM-TT.md, wie in Obsidian.",
+    "dailyFolder": "Ordner für Tagesnotizen",
+    "dailyTemplate": "Vorlage für Tagesnotizen",
+    "templateFolder": "Ordner für Vorlagen",
+    "rootHint": "Leer: direkt im Bereich; dann gilt jede Notiz, die wie ein Datum heißt, als Tagesnotiz.",
+    "none": "Keine",
+    "placeholders": "Platzhalter in Vorlagen:",
+    "saved": "Gespeichert."
+  },
+  "install": {
+    "title": "nexlore als App auf den Startbildschirm",
+    "text": "Eigenes Fenster, eigenes Symbol. Braucht eine Verbindung zum Server.",
+    "ios": "In Safari auf „Teilen“ tippen, dann „Zum Home-Bildschirm“.",
+    "install": "Installieren",
+    "later": "Nicht mehr fragen",
+    "menu": "Als App installieren"
   }
 }

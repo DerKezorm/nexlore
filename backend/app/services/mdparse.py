@@ -46,7 +46,7 @@ _CALLOUT = re.compile(r"^[ \t]*(?:>[ \t]*)+\[!([\w-]+)\]", re.MULTILINE)
 _HIGHLIGHT = re.compile(r"==[^=\r\n]+==")
 _TEMPLATER = re.compile(r"<%[*_-]?[\s\S]*?[-_]?%>")
 _INLINE_FIELD = re.compile(r"^[ \t]*(?:[-*+][ \t]+)?[\w][\w -]*::[ \t]", re.MULTILINE)
-_TASK = re.compile(r"^[ \t]*(?:>[ \t]*)*[-*+][ \t]+\[(.)\][ \t]", re.MULTILINE)
+_TASK = re.compile(r"^[ \t]*(?:>[ \t]*)*(?:[-*+]|\d{1,9}[.)])[ \t]+\[(.)\](?:[ \t]|$)", re.MULTILINE)
 _MATH_SPAN = re.compile(r"\$\$.+?\$\$", re.DOTALL)
 
 #: Only when one of these can be in a note does markdown-it have to look at it: a fence, a line indented as code, an
@@ -92,6 +92,8 @@ class Parsed:
     features: dict[str, int] = field(default_factory=dict)
     #: Where ``%%…%%`` comments stand (start, end): hidden in reading, left out of anything public.
     comments: list[tuple[int, int]] = field(default_factory=list)
+    #: Lines with a checkbox outside code and comments: (line number from 1, the line as written, without its end).
+    task_lines: list[tuple[int, str]] = field(default_factory=list)
 
 
 def _mask(text: str, spans: list[tuple[int, int]]) -> str:
@@ -319,7 +321,12 @@ def parse(text: str) -> Parsed:
     _count(features, "callouts", len(_CALLOUT.findall(masked)))
     _count(features, "highlights", len(_HIGHLIGHT.findall(masked)))
     _count(features, "dataview_fields", len(_INLINE_FIELD.findall(masked)))
-    tasks = _TASK.findall(masked)
+    tasks = []
+    for match in _TASK.finditer(masked):
+        tasks.append(match.group(1))
+        number = line_of(match.start())
+        end = starts[number] if number < len(starts) else len(text)
+        parsed.task_lines.append((number, text[starts[number - 1] : end].rstrip("\r\n")))
     _count(features, "tasks", len(tasks))
     _count(features, "tasks_open", sum(1 for mark in tasks if mark == " "))
     _count(features, "templater", len(_TEMPLATER.findall(text)))

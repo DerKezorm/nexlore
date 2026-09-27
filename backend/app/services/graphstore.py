@@ -36,7 +36,7 @@ from ..config import get_settings
 from ..db import SessionLocal, engine
 from ..models import File, GraphGroup, GraphNode, GraphState, Link, Setting, Space, Tag, utcnow
 from . import graphlayout as gl
-from . import paths
+from . import paths, spaceopts
 
 logger = logging.getLogger("nexlore.graph")
 
@@ -54,7 +54,6 @@ NEW_GROUP_R = 40.0
 NIGHT_HOUR = 3
 #: A job that failed is not tried again before this, unless somebody asks for it directly (a new layout).
 RETRY_SECONDS = 600.0
-DAILY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 # --- Noticing changes ------------------------------------------------------------------------------------------------
 
@@ -109,6 +108,9 @@ class Notes:
 
 def _load_notes(db: Session, space_id: int, with_tags: bool) -> Notes:
     notes = Notes()
+    space = db.get(Space, space_id)
+    # Which notes are daily notes, the space says (M6: its daily folder); the switch on the map hides them.
+    opts = spaceopts.options_of(space) if space is not None else spaceopts.DEFAULTS
     for file_id, path, title in db.execute(
         select(File.id, File.path, File.title)
         .where(File.space_id == space_id, File.is_note.is_(True), File.deleted_at.is_(None))
@@ -117,8 +119,7 @@ def _load_notes(db: Session, space_id: int, with_tags: bool) -> Notes:
         notes.ids.append(file_id)
         notes.path[file_id] = path
         notes.title[file_id] = title
-        stem = path.rsplit("/", 1)[-1][:-3]
-        if DAILY.match(stem):
+        if spaceopts.is_daily(path, opts):
             notes.daily.add(file_id)
     if with_tags:
         for file_id, key, tag in db.execute(

@@ -19,7 +19,7 @@ from .config import get_settings
 from .db import SessionLocal, init_db
 from .errors import detail
 from .middleware import GuardMiddleware, RequestContextMiddleware, unhandled_error
-from .routers import about, attachments, auth, graph, health, imports, members, oidc, shares
+from .routers import about, attachments, auth, everyday, graph, health, imports, members, oidc, shares
 from .routers import backups as backups_router
 from .routers import locales as locales_router
 from .routers import logs as logs_router
@@ -31,7 +31,7 @@ logger = logging.getLogger("nexlore")
 
 ROUTERS = [
     health, about, locales_router, logs_router, auth, oidc, members, settings_router, vault_router, attachments,
-    imports, backups_router, shares, graph,
+    imports, backups_router, shares, graph, everyday,
 ]
 
 
@@ -125,6 +125,11 @@ def _mount_frontend(target: FastAPI, dist: Path) -> None:
             return JSONResponse(status_code=404, content={"detail": detail("not_found", "Not found.")})
         candidate = (dist / path).resolve()
         if path and candidate.is_file() and root in candidate.parents and candidate != start_page:
+            if path == "sw.js":
+                # The service worker: always the newest, and allowed to act for the whole app.
+                return FileResponse(candidate, media_type="text/javascript", headers={"Cache-Control": "no-cache"})
+            if path.endswith(".webmanifest"):
+                return FileResponse(candidate, media_type="application/manifest+json")
             return FileResponse(candidate)
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
 

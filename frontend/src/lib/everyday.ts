@@ -1,0 +1,94 @@
+/**
+ * Dates and groups for everyday use (M6): the calendar's month, a task's group in the overview, the space daily
+ * notes go to. Dates travel as `JJJJ-MM-TT` in the browser's own time: "today" is the reader's today, not the server's.
+ */
+import type { Space, TaskItem, TaskWhen } from '../api/client'
+
+/** `JJJJ-MM-TT` of a day in local time. */
+export function isoDay(day: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`
+}
+
+export function today(): string {
+  return isoDay(new Date())
+}
+
+/** A date at noon, so that no time zone and no change to summer time moves it to another day. */
+export function atNoon(iso: string): Date {
+  const [year, month, day] = iso.split('-').map(Number)
+  return new Date(year, month - 1, day, 12)
+}
+
+export function addDays(iso: string, days: number): string {
+  const day = atNoon(iso)
+  day.setDate(day.getDate() + days)
+  return isoDay(day)
+}
+
+/** `JJJJ-MM` of a date, and the month before or after it. */
+export function monthOf(iso: string): string {
+  return iso.slice(0, 7)
+}
+
+export function shiftMonth(month: string, by: number): string {
+  const [year, number] = month.split('-').map(Number)
+  const day = new Date(year, number - 1 + by, 1, 12)
+  return isoDay(day).slice(0, 7)
+}
+
+export function lastDay(month: string): string {
+  const [year, number] = month.split('-').map(Number)
+  return isoDay(new Date(year, number, 0, 12))
+}
+
+/** The weeks of a month, Monday first, each seven days; days of other months are null. */
+export function monthGrid(month: string): (string | null)[][] {
+  const first = atNoon(month + '-01')
+  const lead = (first.getDay() + 6) % 7
+  const days: (string | null)[] = Array.from({ length: lead }, () => null)
+  const end = Number(lastDay(month).slice(8))
+  for (let day = 1; day <= end; day++) days.push(`${month}-${String(day).padStart(2, '0')}`)
+  while (days.length % 7) days.push(null)
+  const weeks: (string | null)[][] = []
+  for (let start = 0; start < days.length; start += 7) weeks.push(days.slice(start, start + 7))
+  return weeks
+}
+
+/** The day a task belongs to: its due date, else its scheduled date. */
+export function dayOf(task: Pick<TaskItem, 'due' | 'scheduled'>): string | null {
+  return task.due ?? task.scheduled
+}
+
+/** Which group of the overview an open task stands in, the way the server counts them. */
+export function whenOf(task: Pick<TaskItem, 'due' | 'scheduled'>, now: string): TaskWhen {
+  const day = dayOf(task)
+  if (!day) return 'none'
+  if (day < now) return 'overdue'
+  if (day === now) return 'today'
+  return day <= addDays(now, 6) ? 'week' : 'later'
+}
+
+export const PRIORITY_MARK: Record<number, string> = { 5: '🔺', 4: '⏫', 3: '🔼', 1: '🔽', 0: '⏬' }
+
+const DAILY_SPACE_KEY = 'nexlore.daily.space'
+
+/** The space "Today" opens the daily note in: the one chosen last, else the first one the account may write in. */
+export function dailySpace(spaces: Space[]): Space | null {
+  const writable = spaces.filter((space) => space.role === 'write' || space.role === 'manage')
+  let chosen: string | null = null
+  try {
+    chosen = localStorage.getItem(DAILY_SPACE_KEY)
+  } catch {
+    // Storage blocked: the first one then.
+  }
+  return writable.find((space) => space.name === chosen) ?? writable[0] ?? null
+}
+
+export function rememberDailySpace(name: string): void {
+  try {
+    localStorage.setItem(DAILY_SPACE_KEY, name)
+  } catch {
+    // Not kept, nothing lost.
+  }
+}

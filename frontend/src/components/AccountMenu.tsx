@@ -5,11 +5,14 @@ import { Link, useNavigate } from 'react-router-dom'
 
 import { languageOptions, type LanguageOption } from '../i18n'
 import { useAuth } from '../state/auth'
+import { useInstall } from '../lib/install'
 import { Symbol } from './Symbol'
+import { ThemeSwitcher } from './ThemeSwitcher'
 
 export function AccountMenu() {
   const { t, i18n } = useTranslation()
   const { me, signOut, setLanguage } = useAuth()
+  const install = useInstall()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [options, setOptions] = useState<LanguageOption[]>([])
@@ -47,6 +50,10 @@ export function AccountMenu() {
       </button>
       {open && (
         <div className="absolute right-0 z-40 mt-2 w-64 rounded-2xl border border-ink-700 bg-ink-900 p-2 text-sm shadow-2xl">
+          {/* On a phone the switch has no room in the header: it lives here. */}
+          <div className="flex justify-end px-3 py-2 sm:hidden">
+            <ThemeSwitcher />
+          </div>
           <div className="px-3 py-2">
             <div className="font-semibold text-mist-100">{me.name}</div>
             <div className="text-xs text-mist-500">{t(`account.role.${me.role}`)}</div>
@@ -74,6 +81,23 @@ export function AccountMenu() {
           >
             <Symbol name="users" /> {t('account.page')}
           </Link>
+          {install.can === 'prompt' && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                void install.install()
+              }}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-mist-300 hover:bg-ink-850 hover:text-mist-100"
+            >
+              <Symbol name="phone" /> {t('install.menu')}
+            </button>
+          )}
+          {install.can === 'ios' && (
+            <p className="flex gap-2 px-3 py-2 text-xs text-mist-500">
+              <Symbol name="phone" className="h-4 w-4 shrink-0" /> {t('install.ios')}
+            </p>
+          )}
           <button
             type="button"
             onClick={() => {

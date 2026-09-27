@@ -1,24 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
+import { ApiError, everydayApi } from '../api/client'
 import { errorText } from '../lib/errors'
+import { dailySpace, today as isoToday } from '../lib/everyday'
 import { isNotePath } from '../lib/files'
 import { fileRoute } from '../lib/markdown'
-import { noteUrl } from '../lib/vault'
+import { NEW_NOTE_EVENT } from '../lib/newNote'
+import { folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 import { AccountMenu } from './AccountMenu'
+import { InstallPrompt } from './InstallPrompt'
 import { Logo } from './Logo'
+import { NewNoteDialog } from './NewNoteDialog'
 import { ScanNotice } from './ScanNotice'
 import { SearchDialog } from './SearchDialog'
 import { Symbol, type SymbolName } from './Symbol'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
-type NavItem = { to: string; label: 'nav.graph' | 'nav.notes' | 'nav.files' | 'nav.settings'; symbol: SymbolName; end: boolean; right?: boolean }
+type NavItem = {
+  to: string
+  label: 'nav.graph' | 'nav.notes' | 'nav.calendar' | 'nav.tasks' | 'nav.files' | 'nav.settings'
+  symbol: SymbolName
+  end: boolean
+  right?: boolean
+}
 
 const ITEMS: NavItem[] = [
   { to: '/', label: 'nav.graph', symbol: 'graph', end: true },
   { to: '/note', label: 'nav.notes', symbol: 'note', end: false },
+  { to: '/calendar', label: 'nav.calendar', symbol: 'calendar', end: false },
+  { to: '/tasks', label: 'nav.tasks', symbol: 'tasks', end: false },
   { to: '/files', label: 'nav.files', symbol: 'files', end: false },
   { to: '/settings', label: 'nav.settings', symbol: 'settings', end: false, right: true },
 ]
@@ -26,7 +39,7 @@ const ITEMS: NavItem[] = [
 function navClass(isActive: boolean, right = false): string {
   return (
     (right ? 'ml-auto ' : '') +
-    'inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ' +
+    'inline-flex shrink-0 items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3.5 ' +
     (isActive ? 'bg-accent-500/15 text-accent-400' : 'text-mist-500 hover:bg-ink-850 hover:text-mist-100')
   )
 }
@@ -38,18 +51,56 @@ export function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  const { status, error, spaces, reload } = useStore()
+  const [creating, setCreating] = useState<string | null>(null)
+  const [todayProblem, setTodayProblem] = useState<string | null>(null)
+  const home = dailySpace(spaces)
+
+  const openToday = useCallback(async () => {
+    setTodayProblem(null)
+    // Before the spaces are loaded there is nothing to say yet, and "no space to write in" would be wrong.
+    if (status !== 'ready') return
+    if (!home) {
+      setTodayProblem(t('today.none'))
+      return
+    }
+    try {
+      const made = await everydayApi.daily(home.name, isoToday())
+      if (made.created) void reload()
+      navigate(noteUrl(made.path) + (made.created ? '?edit=1' : ''))
+    } catch (problem) {
+      setTodayProblem(errorText(problem instanceof ApiError ? problem.code : 'internal_error'))
+    }
+  }, [home, navigate, reload, status, t])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setSearching(true)
+      } else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyT') {
+        e.preventDefault()
+        void openToday()
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+  }, [openToday])
+
+  useEffect(() => {
+    const ask = (event: Event) => setCreating((event as CustomEvent<string>).detail)
+    window.addEventListener(NEW_NOTE_EVENT, ask)
+    return () => window.removeEventListener(NEW_NOTE_EVENT, ask)
   }, [])
 
-  const { status, error } = useStore()
+  // The folder a new note goes to on a phone (there is no sidebar there): the open note's, else the daily space.
+  const newNoteFolder = () => {
+    if (location.pathname.startsWith('/note/')) {
+      const path = location.pathname.slice('/note/'.length).split('/').map(decodeURIComponent).join('/')
+      return folderOf(path)
+    }
+    return home?.name ?? null
+  }
 
   const pick = (id: string) => {
     // A PDF found by its text has a page of its own; it is not in the graph.
@@ -61,7 +112,7 @@ export function AppShell() {
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
       <header className="z-20 shrink-0 border-b border-ink-700/80 bg-ink-950/80 backdrop-blur-xl">
-        <div className="flex items-center gap-4 px-4 py-2.5">
+        <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-4">
           <NavLink to="/" className="shrink-0" aria-label={t('app.home')}>
             <Logo withWordmark />
           </NavLink>
@@ -75,6 +126,27 @@ export function AppShell() {
           </nav>
           <button
             type="button"
+            onClick={() => void openToday()}
+            disabled={!home}
+            title={home ? t('today.title') : t('today.none')}
+            aria-label={t('today.title')}
+            className="inline-flex shrink-0 items-center gap-2 rounded-full bg-accent-500 px-3 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-40"
+          >
+            <Symbol name="today" />
+            <span className="hidden sm:inline">{t('today.button')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreating(newNoteFolder())}
+            disabled={!home && !location.pathname.startsWith('/note/')}
+            aria-label={t('sidebar.newNote')}
+            title={t('sidebar.newNote')}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-ink-700 text-mist-300 hover:bg-ink-850 disabled:opacity-40 md:hidden"
+          >
+            <Symbol name="plus" />
+          </button>
+          <button
+            type="button"
             onClick={() => setSearching(true)}
             className="hidden items-center gap-2 rounded-full border border-ink-700 bg-ink-850 py-1.5 pr-2 pl-3 text-sm text-mist-500 hover:text-mist-100 sm:inline-flex"
           >
@@ -82,11 +154,21 @@ export function AppShell() {
             <span className="w-32 text-left">{t('search.button')}</span>
             <kbd className="rounded border border-ink-700 px-1.5 text-[11px]">{t('search.shortcut')}</kbd>
           </button>
-          <ThemeSwitcher />
+          <div className="hidden sm:block">
+            <ThemeSwitcher />
+          </div>
           <AccountMenu />
         </div>
       </header>
       <ScanNotice />
+      {todayProblem && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-warn-500/30 bg-warn-500/10 px-4 py-2 text-sm text-warn-500" role="status">
+          <span className="flex-1">{todayProblem}</span>
+          <button type="button" onClick={() => setTodayProblem(null)} aria-label={t('common.close')} className="rounded p-0.5">
+            <Symbol name="close" className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
       {status === 'error' && (
         <div className="shrink-0 border-b border-bad-500/30 bg-bad-500/10 px-4 py-2 text-sm text-bad-500" role="alert">
           {errorText(error ?? 'internal_error')}
@@ -96,6 +178,18 @@ export function AppShell() {
         <Outlet />
       </div>
       {searching && <SearchDialog onClose={() => setSearching(false)} onPick={pick} />}
+      {creating && (
+        <NewNoteDialog
+          folder={creating}
+          onClose={() => setCreating(null)}
+          onCreated={(path) => {
+            setCreating(null)
+            void reload()
+            navigate(`${noteUrl(path)}?edit=1`)
+          }}
+        />
+      )}
+      <InstallPrompt />
     </div>
   )
 }

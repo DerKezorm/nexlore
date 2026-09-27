@@ -244,8 +244,9 @@ export const vaultApi = {
   /** `keepalive`: the request outlives a closing tab. Browsers allow that only for small bodies (64 KB in all). */
   save: (path: string, content: string, baseHash: string, keepalive = false) =>
     api<Saved>('/api/note', { method: 'PUT', body: { path, content, base_hash: baseHash }, keepalive: keepalive && content.length < 60_000 }),
-  create: (folder: string, title: string, content = '') =>
-    api<NoteData>('/api/notes', { method: 'POST', body: { folder, title, content } }),
+  /** `template`: a template of the same space to start from; its placeholders are filled by the server. */
+  create: (folder: string, title: string, content = '', template?: string) =>
+    api<NoteData>('/api/notes', { method: 'POST', body: { folder, title, content, template } }),
   /** `along`: files only this note uses that go into the trash with it (see `own`). */
   remove: (path: string, along: string[] = []) => api<{ files: number }>('/api/files', { method: 'DELETE', query: { path, along } }),
   /** The files only this note uses. */
@@ -500,4 +501,61 @@ export const graphApi = {
   local: (path: string, depth: number, limit = 150) =>
     api<{ nodes: LocalNode[]; links: [number, number][] }>('/api/graph/local', { query: { path, depth, limit } }),
   topics: (space: string) => api<{ status: string }>('/api/graph/topics', { method: 'POST', query: { space } }),
+}
+
+// --- Everyday use (M6): tasks, the calendar, daily notes, templates, the options of a space ---------------------
+
+export type TaskStatus = 'open' | 'done' | 'cancelled'
+export type TaskWhen = 'overdue' | 'today' | 'week' | 'later' | 'none'
+export type TaskItem = {
+  id: number
+  path: string
+  title: string
+  line: number
+  /** The line as written: ticking it off sends it back, so the server can tell whether it is still there. */
+  raw: string
+  status: TaskStatus
+  text: string
+  due: string | null
+  scheduled: string | null
+  start: string | null
+  completed: string | null
+  /** 0 lowest, 1 low, 2 none, 3 medium, 4 high, 5 highest. */
+  priority: number
+  recurrence: string | null
+  tags: string[]
+}
+export type TaskCounts = Record<'open' | 'done' | TaskWhen, number>
+export type TaskList = { total: number; counts: TaskCounts; items: TaskItem[] }
+export type TaskQuery = {
+  today: string
+  status?: 'open' | 'done' | 'all'
+  when?: TaskWhen
+  on?: string
+  start?: string
+  end?: string
+  space?: string
+  tag?: string
+  q?: string
+  offset?: number
+  limit?: number
+}
+export type Toggled = { path: string; line: number; raw: string; hash: string; conflict: string | null; added: string | null }
+export type CalendarDay = { daily: string[]; open: number; done: number; overdue: number }
+export type SpaceOptions = { daily_folder: string; daily_template: string; template_folder: string }
+export type Template = { path: string; title: string }
+
+export const everydayApi = {
+  tasks: (query: TaskQuery) => api<TaskList>('/api/tasks', { query }),
+  toggle: (task: Pick<TaskItem, 'path' | 'line' | 'raw'>, done: boolean, today: string) =>
+    api<Toggled>('/api/tasks/toggle', { method: 'POST', body: { path: task.path, line: task.line, raw: task.raw, done, today } }),
+  calendar: (month: string, today: string, space?: string) =>
+    api<{ month: string; days: Record<string, CalendarDay> }>('/api/calendar', { query: { month, today, space } }),
+  /** The daily note of a date in a space: opened, or made from the space's template. */
+  daily: (space: string, date: string) => api<{ path: string; created: boolean }>('/api/daily', { method: 'POST', body: { space, date } }),
+  templates: (space: string) => api<Template[]>('/api/templates', { query: { space } }),
+  preview: (path: string, title: string) => api<{ content: string }>('/api/templates/preview', { query: { path, title } }),
+  options: (space: string) => api<SpaceOptions>(`/api/spaces/${encodeURIComponent(space)}/options`),
+  setOptions: (space: string, options: Partial<SpaceOptions>) =>
+    api<SpaceOptions>(`/api/spaces/${encodeURIComponent(space)}/options`, { method: 'PUT', body: options }),
 }
