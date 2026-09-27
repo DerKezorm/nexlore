@@ -1,4 +1,4 @@
-import { LinkIndex, linkName, type Asker } from './links'
+import { LinkIndex, linkedSpace, linkName, type Asker } from './links'
 
 /** A server that knows a few notes of the space `Work`, as `index.resolve` would answer from `Work/Ideas/Note.md`. */
 function fakeServer(): Asker & { asked: string[][] } {
@@ -19,6 +19,7 @@ function fakeServer(): Asker & { asked: string[][] } {
         ? [
             { path: 'Work/Ideas/Garden.md', title: 'Garden', link: 'Garden' },
             { path: 'Work/Other/Garden.md', title: 'Garden', link: 'Other/Garden' },
+            { path: 'Homelab/Garden shed.md', title: 'Garden shed', link: 'Homelab/Garden shed' },
           ]
         : [],
   }
@@ -96,6 +97,8 @@ describe('wiki links in the editor, answered by the server', () => {
     expect(index.search('gar')).toEqual([
       { label: 'Garden', detail: 'Ideas/Garden', insert: 'Garden' },
       { label: 'Garden', detail: 'Other/Garden', insert: 'Other/Garden' },
+      // A note of another space: shown and linked with that space's name in front.
+      { label: 'Garden shed', detail: 'Homelab/Garden shed', insert: 'Homelab/Garden shed' },
     ])
     // What a suggestion inserts is known to lead there.
     expect(index.resolve('Other/Garden')).toBe('Work/Other/Garden.md')
@@ -127,5 +130,26 @@ describe('wiki links in the editor, answered by the server', () => {
     index.close()
     await settle()
     expect(drawn).toBe(0)
+  })
+})
+
+describe('a link that names another space in front', () => {
+  const spaces = [
+    { name: 'Work', role: 'manage' },
+    { name: 'Homelab', role: 'write' },
+    { name: 'Reading', role: 'read' },
+  ]
+
+  it('says which space and what is left, without case', () => {
+    expect(linkedSpace('Homelab/Why ZFS', spaces, 'Work')).toEqual({ space: 'Homelab', role: 'write', rest: 'Why ZFS' })
+    expect(linkedSpace('homelab/Pools/ZFS#Why|so', spaces, 'Work')).toEqual({ space: 'Homelab', role: 'write', rest: 'Pools/ZFS' })
+    expect(linkedSpace('/Reading/Book', spaces, 'Work')?.role).toBe('read')
+  })
+
+  it('is nothing for the own space, a plain name, or a space the account does not know', () => {
+    expect(linkedSpace('Work/Plan', spaces, 'Work')).toBeNull()
+    expect(linkedSpace('Plan', spaces, 'Work')).toBeNull()
+    expect(linkedSpace('Homelab/', spaces, 'Work')).toBeNull()
+    expect(linkedSpace('Secret/Plan', spaces, 'Work')).toBeNull()
   })
 })

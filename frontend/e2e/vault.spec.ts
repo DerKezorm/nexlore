@@ -133,6 +133,8 @@ test('renaming a note carries the links to it along', async ({ page }) => {
   await page.getByLabel('New name').fill('Renamed note')
   await page.getByRole('button', { name: 'Rename', exact: true }).last().click()
   await expect(page).toHaveURL(/\/note\/Work\/Renamed%20note\.md$/)
+  // How many notes had their links updated, said on the renamed note.
+  await expect(page.getByText('Links in 1 note now use the new name.')).toBeVisible()
   expect(onDisk('Work/Points at rename.md')).toBe('See [[Renamed note]] and [it](Renamed%20note.md).\n')
 })
 

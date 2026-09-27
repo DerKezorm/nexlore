@@ -23,7 +23,7 @@ from sqlalchemy import func, select
 from starlette.requests import ClientDisconnect
 
 from ..db import SessionLocal
-from ..deps import Account, OperatorAccount, need
+from ..deps import Account, OperatorAccount, need, readable_spaces
 from ..errors import error
 from ..models import READ, WRITE, File, Link, Space
 from ..services import attachments, media, paths, settings_service
@@ -177,13 +177,15 @@ def listing(
     if "/" in space:
         raise error("not_found", "No such space.", 404)
     need(account, space, READ)
+    readable = readable_spaces(account)
     with SessionLocal() as db:
         if db.scalar(select(Space.id).where(Space.folder == space)) is None:
             raise error("not_found", "No such space.", 404)
         uses = (
             select(Link.target_id, func.count(func.distinct(Link.source_id)).label("uses"))
             .join(File, File.id == Link.source_id)
-            .where(File.deleted_at.is_(None), Link.target_id.is_not(None))
+            # Notes of spaces the account may not read do not count: a file used from there looks unused.
+            .where(File.deleted_at.is_(None), Link.target_id.is_not(None), File.space_id.in_(readable))
             .group_by(Link.target_id)
             .subquery()
         )
@@ -265,10 +267,12 @@ def resolve(
     target: Annotated[str, Query(min_length=1, max_length=paths.MAX_PATH_CHARS)],
     kind: Annotated[str, Query(pattern="^(wiki|embed|md|md_embed)$")] = "embed",
 ) -> ResolveOut:
-    """Where a link written in ``source`` leads, the way the index resolves it (an embed typed but not saved yet)."""
+    """Where a link written in ``source`` leads, the way the index resolves it (an embed typed but not saved yet).
+    Into a space the account may not read, it leads nowhere: the same answer as for a link to nothing."""
     from ..services import index
 
     clean = need(account, source, READ)
+    readable = readable_spaces(account)
     with SessionLocal() as db:
         space_id = db.scalar(select(File.space_id).where(File.path == clean, File.deleted_at.is_(None)))
         if space_id is None:
@@ -277,6 +281,8 @@ def resolve(
         # A Markdown link is written escaped (``Anh%C3%A4nge/Foto%201.png``); the index keeps it decoded.
         found = index.resolve(kind, unquote(target) if kind.startswith("md") else target, clean, names)
         row = db.get(File, found) if found is not None else None
+        if row is not None and row.space_id not in readable:
+            row = None
     return ResolveOut(path=row.path, is_note=row.is_note) if row is not None else ResolveOut(path=None)
 
 
@@ -293,10 +299,12 @@ def resolve_many(
     target: Annotated[list[str], Query(max_length=200)],
     kind: Annotated[str, Query(pattern="^(wiki|embed)$")] = "wiki",
 ) -> ResolveManyOut:
-    """Where the wiki links of a note lead, many at once: the editor colours links it cannot find while typing."""
+    """Where the wiki links of a note lead, many at once: the editor colours links it cannot find while typing.
+    Into a space the account may not read, a link leads nowhere, as in ``resolve``."""
     from ..services import index
 
     clean = need(account, source, READ)
+    readable = readable_spaces(account)
     found: dict[str, str | None] = {}
     with SessionLocal() as db:
         space_id = db.scalar(select(File.space_id).where(File.path == clean, File.deleted_at.is_(None)))
@@ -314,5 +322,5 @@ def resolve_many(
                 continue
             hit = index.resolve(kind, name, clean, names)
             row = db.get(File, hit) if hit is not None else None
-            found[item] = row.path if row is not None else None
+            found[item] = row.path if row is not None and row.space_id in readable else None
     return ResolveManyOut(found=found)

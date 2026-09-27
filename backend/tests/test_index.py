@@ -255,6 +255,9 @@ def linked(vault: Path) -> Path:
     put(vault, "S/B/Only B.md", "")
     put(vault, "S/B/pic.png", b"png")
     put(vault, "T/Note.md", "another space")
+    put(vault, "T/Folder/Deep.md", "deep in another space")
+    put(vault, "B/Note.md", "a space called like a folder of S")
+    put(vault, "B/Else.md", "only in space B")
     return vault
 
 
@@ -274,8 +277,23 @@ def linked(vault: Path) -> Path:
         ("S/A/Note.md", "[x](/B/Only%20B.md)", "S/B/Only B.md"),
         ("S/Home.md", "[[s/B/Note]]", "S/B/Note.md"),  # written from a vault that holds all spaces
         ("S/A/Note.md", "[x](S/B/Only%20B.md)", "S/B/Only B.md"),
-        ("S/Home.md", "[[T/Note]]", None),  # the other space's name does not lead there
-        ("S/Home.md", "[x](../T/Note.md)", None),  # never into another space
+        # Into another space, with its name in front (the design answer of M6).
+        ("S/Home.md", "[[T/Note]]", "T/Note.md"),
+        ("S/Home.md", "[[t/note]]", "T/Note.md"),  # without case, like every link
+        ("S/Home.md", "[x](../T/Note.md)", "T/Note.md"),  # a Markdown path that climbs out of its space
+        ("S/B/Only B.md", "[x](../../T/Note.md)", "T/Note.md"),
+        ("S/Home.md", "[x](/T/Note.md)", "T/Note.md"),  # from the top of the vault
+        ("S/Home.md", "[x](T/Note.md)", "T/Note.md"),
+        ("S/Home.md", "[[T/Nothing]]", None),
+        ("S/Home.md", "[[U/Note]]", None),  # no such space
+        ("S/Home.md", "[[../T/Note]]", None),  # a relative wiki link stays in its space
+        ("S/Home.md", "[[Note#T/Note]]", "S/A/Note.md"),
+        # The own space answers first: its folder B wins over the space B (the case "[[B/Note]]" above).
+        ("S/Home.md", "[[B/Only B]]", "S/B/Only B.md"),
+        ("S/Home.md", "[[B/Else]]", "B/Else.md"),  # nothing of that name in S: the space B
+        ("S/Home.md", "[[T/Deep]]", "T/Folder/Deep.md"),  # a name anywhere in the space
+        ("S/Home.md", "[[T/Folder/Deep]]", "T/Folder/Deep.md"),
+        ("S/Home.md", "[[T/Other/Deep]]", None),
         ("S/Home.md", "[[../../outside]]", None),
     ],
 )

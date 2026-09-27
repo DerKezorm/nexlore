@@ -1,6 +1,6 @@
 /**
- * Loads the graph for the page: the overview of every space (all circles, link counts between groups), then the
- * tiles for what is on screen, as the camera moves. At most two tile requests run at a time; what the camera left
+ * Loads the graph for the page: the overview of every space (all circles, link counts between groups), the counts
+ * between groups of two spaces (`across`, links written as `[[Space/Note]]`), then the tiles for what is on screen, as the camera moves. At most two tile requests run at a time; what the camera left
  * behind before its request went out is not asked for. While a big space is still being laid out on the server, its
  * overview is asked for again every two seconds; after that every thirty, to notice changes made elsewhere.
  */
@@ -65,6 +65,14 @@ export function useGraph(spaces: Space[], cloud: Cloud, generation: number): Gra
         setRevision((value) => value + 1)
         const busy = list.some((item) => item.overview.status === 'building' || item.overview.working)
         poll = window.setTimeout(load, busy ? BUILDING_POLL_MS : READY_POLL_MS)
+        // The counts between spaces after the overviews, which make the maps they refer to. The map stands without
+        // them (they are lines, not places), so it is not held up for them.
+        if (ready.length > 1) {
+          const across = await graphApi.across(cloud).catch(() => null)
+          if (!alive || !across) return
+          scene.across = across.links
+          setRevision((value) => value + 1)
+        }
       } catch {
         if (!alive) return
         setFailed(true)

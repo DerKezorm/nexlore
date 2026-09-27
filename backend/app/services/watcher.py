@@ -77,6 +77,10 @@ async def scan_forever(stop: asyncio.Event) -> None:
         await asyncio.to_thread(index.fill_tasks)
     except Exception:
         logger.exception("Filling in the tasks failed")
+    try:
+        await asyncio.to_thread(index.fill_via)
+    except Exception:
+        logger.exception("Filling in the links into other spaces failed")
     while not stop.is_set():
         try:
             await asyncio.to_thread(index.scan)

@@ -452,7 +452,12 @@ def move(body: MoveIn, account: Account, who: ActorDep) -> dict[str, Any]:
         moved = vault.move(body.source, body.destination, actor=who)
     except VaultError as exc:
         raise _fail(exc) from exc
-    return {"path": moved.path, "files": moved.files, "rewritten": moved.rewritten}
+    # Links follow in every space, also where the mover may only read or not even that (a link into a space must
+    # not die because its note was renamed). The count names only notes the mover may read: any other would tell
+    # that a space they do not know links here.
+    readable = readable_spaces(account)
+    rewritten = sum(1 for space_id in moved.rewritten_spaces if space_id in readable)
+    return {"path": moved.path, "files": moved.files, "rewritten": rewritten}
 
 
 # --- Links, tags, search, graph -------------------------------------------------------------------------------------
@@ -492,26 +497,34 @@ def _live_file(db: Any, path: str) -> File:
 
 @router.get("/links", response_model=LinksOut)
 def links(path: PathQuery, account: Account) -> LinksOut:
-    # Links never cross spaces (M1): whoever may read the note may read what it links to and what links to it.
+    # Links can lead into another space (``[[Space/Note]]``): a target there, and a note there that links here, is
+    # shown only to whoever may read that space. For anybody else the link leads nowhere, exactly like one whose
+    # note does not exist, and the backlink is not there.
     need(account, path, READ)
+    readable = readable_spaces(account)
     with SessionLocal() as db:
         file = _live_file(db, path)
         target_file = File.__table__.alias("target")
-        outgoing = [
-            Outgoing(kind=kind, target=target, subpath=subpath, line=line, path=target_path, title=target_title)
-            for kind, target, subpath, line, target_path, target_title in db.execute(
-                select(Link.kind, Link.target, Link.subpath, Link.line, target_file.c.path, target_file.c.title)
-                .outerjoin(target_file, target_file.c.id == Link.target_id)
-                .where(Link.source_id == file.id)
-                .order_by(Link.line, Link.id)
+        outgoing = []
+        for kind, target, subpath, line, target_path, target_title, target_space in db.execute(
+            select(Link.kind, Link.target, Link.subpath, Link.line, target_file.c.path, target_file.c.title,
+                   target_file.c.space_id)
+            .outerjoin(target_file, target_file.c.id == Link.target_id)
+            .where(Link.source_id == file.id)
+            .order_by(Link.line, Link.id)
+        ):
+            if target_space is not None and target_space not in readable:
+                target_path = target_title = None
+            outgoing.append(
+                Outgoing(kind=kind, target=target, subpath=subpath, line=line, path=target_path, title=target_title)
             )
-        ]
         backlinks = [
             Backlink(path=source_path, title=title, line=line, kind=kind)
             for source_path, title, line, kind in db.execute(
                 select(File.path, File.title, Link.line, Link.kind)
                 .join(File, File.id == Link.source_id)
-                .where(Link.target_id == file.id, File.deleted_at.is_(None), Link.source_id != file.id)
+                .where(Link.target_id == file.id, File.deleted_at.is_(None), Link.source_id != file.id,
+                       File.space_id.in_(readable))
                 .order_by(File.path, Link.line)
             )
         ]
@@ -604,19 +617,24 @@ def find_notes(
 ) -> list[Found]:
     """Notes by title or file name, for the quick switcher and the suggestions after ``[[``: those that start with
     what was typed first, then those that contain it; nothing typed: the ones changed last. Readable spaces only.
-    ``source``: a note being edited; then only its space, and each result says how to link to it from there."""
+    ``source``: a note being edited; then each result says how to link to it from there, notes of its own space
+    come first, and those of another space (readable, like everything here) link with the space's name in front."""
     readable = readable_spaces(account)
     words = q.strip()
     clean = need(account, source, READ) if source else None
-    if clean is not None:
-        space = paths.space_of(clean)
     with SessionLocal() as db:
         query = select(File.id, File.path, File.title, File.name_key, File.space_id).where(
             File.is_note.is_(True), File.deleted_at.is_(None), File.space_id.in_(readable)
         )
         if space:
             query = query.join(Space, Space.id == File.space_id).where(Space.folder == space)
+        home = paths.space_of(clean) if clean is not None else None
+        if home is not None and db.scalar(select(Space.id).where(Space.folder == home)) is None:
+            return []
         if not words:
+            if home is not None:
+                # Nothing typed while writing a link: the notes changed last in the note's own space.
+                query = query.where(File.path > home + "/", File.path < home + "0")
             rows = list(db.execute(query.order_by(File.mtime_ns.desc()).limit(limit)).all())
         else:
             folded = paths.fold(words)
@@ -626,17 +644,22 @@ def find_notes(
                 ).limit(2000)
             ).all()
 
-            def rank(row: Any) -> tuple[int, int, str]:
+            def rank(row: Any) -> tuple[int, int, int, str]:
                 starts = row.name_key.startswith(folded) or paths.fold(row.title).startswith(folded)
-                return (0 if starts else 1, len(row.title), paths.fold(row.title))
+                elsewhere = home is not None and paths.space_of(row.path) != home
+                return (1 if elsewhere else 0, 0 if starts else 1, len(row.title), paths.fold(row.title))
 
             rows = sorted(found, key=rank)[:limit]
         links: dict[int, str] = {}
         if clean is not None and rows:
             names = index.Names(db, rows[0].space_id, preload=False)
             for row in rows:
-                inside = row.path.split("/", 1)[1][:-3]
+                space_name, _, inside = row.path.partition("/")
+                inside = inside[:-3]
                 name = inside.rsplit("/", 1)[-1]
+                if space_name != home:
+                    # Into another space: its name in front, the note's name alone where that leads there.
+                    name, inside = f"{space_name}/{name}", f"{space_name}/{inside}"
                 links[row.id] = name if index.resolve("wiki", name, clean, names) == row.id else inside
     return [Found(path=row.path, title=row.title, link=links.get(row.id)) for row in rows]
 

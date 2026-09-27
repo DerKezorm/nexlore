@@ -18,6 +18,25 @@ export function linkName(target: string): string {
 }
 
 const fold = (text: string) => text.normalize('NFC').toLocaleLowerCase()
+
+/**
+ * The space a wiki link names in front (`[[Homelab/Why ZFS]]`), when it is another space the account can see, with
+ * the rest of the path. Null for a link inside the own space, and for a space the account does not know: it only
+ * knows the spaces it may read, so a link into any other looks like a link to a folder that is not there.
+ */
+export function linkedSpace(
+  target: string,
+  spaces: { name: string; role: string }[],
+  own: string,
+): { space: string; role: string; rest: string } | null {
+  const name = linkName(target).replace(/^\/+/, '')
+  const slash = name.indexOf('/')
+  if (slash <= 0 || !name.slice(slash + 1).trim()) return null
+  const first = fold(name.slice(0, slash))
+  if (first === fold(own)) return null
+  const space = spaces.find((item) => fold(item.name) === first)
+  return space ? { space: space.name, role: space.role, rest: name.slice(slash + 1).replace(/\/+$/, '') } : null
+}
 /** Only notes count here: a picture or PDF a link names is looked up by the editor itself (`isFileTarget`). */
 const noteOnly = (path: string | null | undefined): string | null => (path && /\.md$/i.test(path) ? path : null)
 const ASK_AFTER_MS = 60
@@ -164,8 +183,10 @@ export class LinkIndex {
         .then((hits) => {
           const space = this.notePath.split('/')[0]
           const items = hits.map((hit) => {
-            const inSpace = hit.path.slice(space.length + 1).replace(/\.md$/i, '')
-            return { label: hit.title || inSpace.split('/').pop()!, detail: inSpace, insert: hit.link ?? inSpace }
+            // A note of another space shows (and is linked) with that space's name in front.
+            const own = hit.path.startsWith(space + '/')
+            const shown = (own ? hit.path.slice(space.length + 1) : hit.path).replace(/\.md$/i, '')
+            return { label: hit.title || shown.split('/').pop()!, detail: shown, insert: hit.link ?? shown }
           })
           this.found.set(key, items)
           for (const hit of hits) {

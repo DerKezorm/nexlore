@@ -64,6 +64,11 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Home/Shopping.md': '# Shopping\n\nMilk, flour and quinceapple jam.\n',
   // "#" and "%" are legal in names on every system and mean something in an address.
   'Home/50% C# done.md': '# Odd name\n\nThe zebracorn lives here.\n',
+  // Links between spaces (across.spec.ts): written with the other space's name in front. Two spaces of their own,
+  // after the others: notes added before Work push Plan out of the visible part of the sidebar (graph.spec.ts).
+  'Zone/Across.md': '# Across\n\nThe [[Zoo/Across target]], a [[Zoo/Across new]] and [[Zoo/Across rename]].\n',
+  'Zoo/Across target.md': '# Across target\n\nReached from another space.\n',
+  'Zoo/Across rename.md': '# Across rename\n',
   'Switch/From.md': '# From\n\nStart.\n',
   'Switch/To.md': '# To\n\nOther note.\n',
   // The editor (editor.spec.ts): Obsidian's way of writing, kept byte for byte where nothing was changed.

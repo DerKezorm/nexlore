@@ -115,6 +115,8 @@ export class Scene {
   groups = new Map<number, SceneGroup>()
   notes = new Map<number, SceneNote>()
   others = new Map<number, Other>()
+  /** Link counts between groups of two different spaces (`[[Space/Note]]`): group ids are unique over all spaces. */
+  across: [number, number, number][] = []
   /** Links between loaded notes (or a loaded note and one outside): `min|max` of the ids. */
   links = new Map<string, [number, number]>()
   tiles = new Map<string, Tile>()
@@ -451,9 +453,9 @@ export class Scene {
       bundle.hot ||= hot
       bundles.set(key, bundle)
     }
-    // Between closed groups: from the counts of the overview.
-    for (const space of this.spaces) {
-      for (const [ga, gb, count] of space.pairs) {
+    // Between closed groups: from the counts of the overviews, and between spaces from the counts across them.
+    for (const pairs of [...this.spaces.map((space) => space.pairs), this.across]) {
+      for (const [ga, gb, count] of pairs) {
         if (hiddenGroup(ga) || hiddenGroup(gb)) continue
         const ra = this.representative(ga, k, memo)
         const rb = this.representative(gb, k, memo)

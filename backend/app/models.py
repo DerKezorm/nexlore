@@ -122,6 +122,9 @@ class Link(Base):
         Index("links_space_target_key", "space_id", "target_key"),
         # Covers the graph's reading of every link of a space (who links to whom), without a look into the table.
         Index("links_space_pair", "space_id", "source_id", "target_id"),
+        # Links written with the name of another space in front: looked at again when that space's names change.
+        Index("links_via_key", "via", "target_key"),
+        Index("links_target_space", "target_space_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -140,6 +143,13 @@ class Link(Base):
         ForeignKey("files.id", ondelete="SET NULL"), nullable=True, index=True
     )
     line: Mapped[int] = mapped_column(Integer, default=0)
+    #: The first part of the target, casefolded, where it could name another space (``[[Team/Note]]``,
+    #: ``../Team/Note.md``); empty where the link cannot leave its space. Which space it names is looked up when
+    #: the link is resolved: a space can appear after the link was written.
+    via: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    #: The space of the target, set only where it lies in another space than the note that links it. Whoever may
+    #: not read that space sees the link as leading nowhere.
+    target_space_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class Tag(Base):

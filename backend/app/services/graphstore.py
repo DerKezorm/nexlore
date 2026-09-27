@@ -29,8 +29,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, event, func, insert, select, update
-from sqlalchemy.orm import Session
+from sqlalchemy import and_, delete, event, func, insert, or_, select, update
+from sqlalchemy.orm import Session, aliased
 
 from ..config import get_settings
 from ..db import SessionLocal, engine
@@ -621,6 +621,7 @@ PAIRS_SECONDS = 10.0
 def forget() -> None:
     """Drop what is kept in memory (tests start every case with an empty database)."""
     _pairs.clear()
+    _across.clear()
     _seen.clear()
     _space_counters.clear()
 
@@ -677,6 +678,46 @@ def _recount(space_id: int, cloud: str) -> None:
     _pairs[(space_id, cloud)] = (version, marker, time.monotonic(), pairs)
 
 
+_across: dict[tuple[str, frozenset[int]], tuple[tuple[int, int], float, list[list[int]]]] = {}
+
+
+def count_across(db: Session, cloud: str, readable: set[int]) -> list[list[int]]:
+    """How many links run between groups of two different spaces, both in ``readable``: ``[group, group, count]``,
+    each pair once. Group ids are unique over all spaces, so the browser adds them up like the counts inside one.
+    Kept like ``group_links``: counted again at most every few seconds while links change."""
+    key = (cloud, frozenset(readable))
+    now = time.monotonic()
+    # A map built or laid out anew changes where notes stand without a write to files, links or tags: its version
+    # counts as a change too.
+    maps = tuple(db.execute(
+        select(GraphState.space_id, GraphState.version, GraphState.built_at)
+        .where(GraphState.cloud == cloud, GraphState.space_id.in_(readable))
+        .order_by(GraphState.space_id)
+    ).all())
+    marker = (changes(), hash(maps))
+    cached = _across.get(key)
+    if cached and (cached[0] == marker or (cached[0][1] == marker[1] and now - cached[1] < PAIRS_SECONDS)):
+        return cached[2]
+    source_node = aliased(GraphNode)
+    target_node = aliased(GraphNode)
+    counts: dict[tuple[int, int], int] = defaultdict(int)
+    for a, b, count in db.execute(
+        select(source_node.group_id, target_node.group_id, func.count())
+        .select_from(Link)
+        .join(source_node, and_(source_node.file_id == Link.source_id, source_node.cloud == cloud))
+        .join(target_node, and_(target_node.file_id == Link.target_id, target_node.cloud == cloud))
+        .where(Link.target_space_id.is_not(None), Link.target_space_id.in_(readable), Link.space_id.in_(readable))
+        .group_by(source_node.group_id, target_node.group_id)
+    ):
+        if a != b:
+            counts[(a, b) if a < b else (b, a)] += count
+    pairs = [[a, b, count] for (a, b), count in sorted(counts.items())]
+    if len(_across) > 256:
+        _across.clear()
+    _across[key] = (marker, now, pairs)
+    return pairs
+
+
 def overview(db: Session, space_id: int, cloud: str) -> dict[str, Any]:
     found = state(db, space_id, cloud)
     if found is None:
@@ -712,9 +753,13 @@ TILE = 512.0
 MAX_TILES = 64
 
 
-def tiles(db: Session, space_id: int, cloud: str, wanted: list[tuple[int, int, int]]) -> dict[str, Any]:
+def tiles(
+    db: Session, space_id: int, cloud: str, wanted: list[tuple[int, int, int]], readable: set[int]
+) -> dict[str, Any]:
     """The notes that become visible at a zoom level, inside a square of the map, with their links. For the ends of
-    those links outside the squares only the group is sent: a line to a note not loaded ends at its closed circle."""
+    those links outside the squares only the group is sent: a line to a note not loaded ends at its closed circle.
+    A link into or out of another space comes along only where ``readable`` holds that space: to anybody else it
+    is not there, and neither is the note at its other end."""
     out_tiles: list[dict[str, Any]] = []
     inside: set[int] = set()
     for level, tx, ty in wanted[:MAX_TILES]:
@@ -738,7 +783,7 @@ def tiles(db: Session, space_id: int, cloud: str, wanted: list[tuple[int, int, i
     ids = sorted(inside)
     for start in range(0, len(ids), 500):
         part = ids[start : start + 500]
-        for source, target in _links_touching(db, space_id, part):
+        for source, target in _links_touching(db, part, readable):
             links.append([source, target])
             for end in (source, target):
                 if end not in inside:
@@ -759,14 +804,23 @@ def tiles(db: Session, space_id: int, cloud: str, wanted: list[tuple[int, int, i
     }
 
 
-def _links_touching(db: Session, space_id: int, ids: list[int]) -> list[tuple[int, int]]:
-    """Links from or to these notes. Two queries, one per direction: an OR of both makes SQLite read every link."""
+def _readable_link(readable: set[int]) -> Any:
+    """A link both of whose ends lie in spaces of ``readable``: its note's space, and the target's where that is
+    another one."""
+    return and_(
+        Link.space_id.in_(readable), or_(Link.target_space_id.is_(None), Link.target_space_id.in_(readable))
+    )
+
+
+def _links_touching(db: Session, ids: list[int], readable: set[int]) -> list[tuple[int, int]]:
+    """Links from or to these notes, both ends readable. Two queries, one per direction: an OR of both makes SQLite
+    read every link."""
     found: set[tuple[int, int]] = set()
     for column in (Link.source_id, Link.target_id):
         for source, target in db.execute(
             select(Link.source_id, Link.target_id).where(
-                column.in_(ids), Link.space_id == space_id, Link.target_id.is_not(None),
-                Link.source_id != Link.target_id,
+                column.in_(ids), Link.target_id.is_not(None), Link.source_id != Link.target_id,
+                _readable_link(readable),
             )
         ):
             found.add((source, target))
@@ -784,9 +838,9 @@ def locate(db: Session, file_id: int, cloud: str) -> dict[str, Any] | None:
     return {"id": file_id, "x": row.x, "y": row.y, "group": row.group_id, "level": row.level}
 
 
-def local(db: Session, file_id: int, space_id: int, depth: int, limit: int) -> dict[str, Any]:
+def local(db: Session, file_id: int, depth: int, limit: int, readable: set[int]) -> dict[str, Any]:
     """The neighbourhood of a note: every note up to ``depth`` links away, either direction, at most ``limit``;
-    the nearest first, the best linked first among equals."""
+    the nearest first, the best linked first among equals. Across spaces too, as far as ``readable`` reaches."""
     distance = {file_id: 0}
     frontier = [file_id]
     edges: set[tuple[int, int]] = set()
@@ -796,13 +850,14 @@ def local(db: Session, file_id: int, space_id: int, depth: int, limit: int) -> d
         found: dict[int, int] = defaultdict(int)
         for start in range(0, len(frontier), 500):
             part = frontier[start : start + 500]
-            for source, target in _links_touching(db, space_id, part):
+            for source, target in _links_touching(db, part, readable):
                 for other in (source, target):
                     if other not in distance:
                         found[other] += 1
         # Notes only, and only live ones: a link to a picture or to a note in the trash leads nowhere here.
         live = set(
             db.scalars(
+                # Readable only, as the links that led here (``_links_touching``).
                 select(File.id).where(File.id.in_(list(found)), File.deleted_at.is_(None), File.is_note.is_(True))
             )
         ) if found else set()
@@ -816,7 +871,7 @@ def local(db: Session, file_id: int, space_id: int, depth: int, limit: int) -> d
         part = ids[start : start + 500]
         for source, target in db.execute(
             select(Link.source_id, Link.target_id).where(
-                Link.space_id == space_id, Link.source_id.in_(part), Link.target_id.in_(ids)
+                Link.source_id.in_(part), Link.target_id.in_(ids), _readable_link(readable)
             )
         ):
             if source != target:

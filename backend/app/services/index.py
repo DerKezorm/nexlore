@@ -188,12 +188,42 @@ status = Status()
 # --- Names and link resolution -------------------------------------------------------------------------------------
 
 
-class Names:
-    """Answers "which file is called so" for one space. Loaded whole for big changes, asked row by row for small."""
+class _Family:
+    """The spaces one resolution may reach: their names by folder, and the ``Names`` made so far for each."""
 
-    def __init__(self, db: Session, space_id: int, *, preload: bool) -> None:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+        self.names: dict[int, Names] = {}
+        self._folders: dict[int, str] | None = None
+        self._ids: dict[str, int] = {}
+
+    def _load(self) -> dict[int, str]:
+        if self._folders is None:
+            self._folders = {space_id: folder for space_id, folder in self.db.execute(select(Space.id, Space.folder))}
+            for space_id, folder in sorted(self._folders.items()):
+                self._ids.setdefault(paths.fold(folder), space_id)
+        return self._folders
+
+    def folder_of(self, space_id: int) -> str | None:
+        return self._load().get(space_id)
+
+    def id_of(self, key: str) -> int | None:
+        self._load()
+        return self._ids.get(key)
+
+
+class Names:
+    """Answers "which file is called so" for one space. Loaded whole for big changes, asked row by row for small.
+
+    A link can lead into another space when written with that space's name in front (``[[Team/Note]]``). The names
+    of such a space come from the same family: made when first needed, asked row by row (such links are few), so
+    they are always current."""
+
+    def __init__(self, db: Session, space_id: int, *, preload: bool, family: _Family | None = None) -> None:
         self.db = db
         self.space_id = space_id
+        self.family = family if family is not None else _Family(db)
+        self.family.names.setdefault(space_id, self)
         self._by_path: dict[str, int] | None = None
         self._by_name: dict[str, list[tuple[int, str]]] | None = None
         if preload:
@@ -227,6 +257,24 @@ class Names:
         )
         return [(file_id, path) for file_id, path in rows]
 
+    @property
+    def folder(self) -> str | None:
+        return self.family.folder_of(self.space_id)
+
+    def named(self, key: str) -> Names | None:
+        """The names of the space whose folder, casefolded, is ``key``; None when there is no such space."""
+        space_id = self.family.id_of(key)
+        if space_id is None:
+            return None
+        found = self.family.names.get(space_id)
+        return found if found is not None else Names(self.db, space_id, preload=False, family=self.family)
+
+    def home(self, space: str) -> Names:
+        """The names of the space a note lies in (``space``, its folder): these, or those of its family."""
+        if self.family.folder_of(self.space_id) in (space, None):
+            return self
+        return self.named(paths.fold(space)) or self
+
 
 def inside(space: str, joined: str) -> str | None:
     normal = posixpath.normpath(joined)
@@ -242,20 +290,92 @@ def by_path(names: Names, candidate: str | None) -> int | None:
     return found
 
 
-def _pick(candidates: list[tuple[int, str]], source: str) -> int | None:
-    """Several files of one name: the one next to the note, else the one nearest the top, else alphabetical."""
+def _pick(candidates: list[tuple[int, str]], folder: str) -> int | None:
+    """Several files of one name: the one in ``folder`` (the note's), else the one nearest the top, else
+    alphabetical."""
     if not candidates:
         return None
     if len(candidates) == 1:
         return candidates[0][0]
-    folder = paths.fold(posixpath.dirname(source))
+    folder = paths.fold(folder)
     beside = [item for item in candidates if paths.fold(posixpath.dirname(item[1])) == folder]
     if beside:
         return beside[0][0]
     return min(candidates, key=lambda item: (item[1].count("/"), paths.fold(item[1])))[0]
 
 
+def crossing(kind: str, target: str, source: str) -> tuple[str, str] | None:
+    """Where a link written in ``source`` could lead into another space: the first part of its path, casefolded (the
+    space's name, if there is such a space), and the rest. None where it cannot: a plain name, a relative wiki link,
+    a Markdown path that stays inside the note's space.
+
+    Wiki links name the space in front (``[[Team/Folder/Note]]``). Markdown links do so from the top of the vault
+    (``/Team/Note.md``, ``Team/Note.md``, the way Obsidian writes them on a whole vault), or climb out of their space
+    (``../../Team/Note.md``)."""
+    text_target = target.strip()
+    rooted = text_target.startswith("/")
+    text_target = text_target.lstrip("/")
+    if kind in (mdparse.MARKDOWN, mdparse.MARKDOWN_EMBED) and not rooted:
+        joined = posixpath.normpath(posixpath.join(posixpath.dirname(source), text_target))
+        if not joined.startswith(paths.space_of(source) + "/"):
+            text_target = joined
+    # A relative wiki link (``./``, ``../``) starts with a dot: never a space's name, it stays in its space.
+    first, slash, rest = text_target.partition("/")
+    rest = rest.strip("/")
+    if not slash or not rest or first in ("", ".", ".."):
+        return None
+    return paths.fold(first), rest
+
+
+def via_of(kind: str, target: str, source: str) -> str | None:
+    found = crossing(kind, target, source)
+    return found[0][:255] if found is not None else None
+
+
 def resolve(kind: str, target: str, source: str, names: Names) -> int | None:
+    """The file a link points at, the way Obsidian finds it: in the space of ``source`` first, then, for a link
+    written with the name of another space in front, in that space. ``names`` may be those of any space."""
+    return resolve_full(kind, target, source, names)[0]
+
+
+def resolve_full(kind: str, target: str, source: str, names: Names) -> tuple[int | None, int | None]:
+    """``resolve``, plus the space of the target where it lies in another space than ``source`` (else None).
+
+    The space of the note comes first, always: what another space holds, or whether there is one of that name,
+    never changes where a link leads that its own space can answer. So a person who may not read the other space
+    learns nothing from their own links."""
+    space = paths.space_of(source)
+    home = names.home(space)
+    found = _within(kind, target, source, home)
+    if found is not None:
+        return found, None
+    across = crossing(kind, target, source)
+    if across is None or across[0] == paths.fold(space):
+        return None, None
+    other = home.named(across[0])
+    folder = other.folder if other is not None else None
+    if other is None or folder is None or other.space_id == home.space_id:
+        return None, None
+    rest = across[1]
+    joined = inside(folder, f"{folder}/{rest}")
+    if kind in (mdparse.MARKDOWN, mdparse.MARKDOWN_EMBED):
+        # A path, read strictly: the way other programs read it.
+        found = by_path(other, joined)
+    else:
+        found = by_path(other, joined)
+        if found is None and "/" in rest:
+            tail = "/" + paths.fold(rest)
+            found = _pick([
+                item for item in other.by_name(target_key(rest))
+                if paths.fold(item[1]).endswith((tail, tail + paths.NOTE_SUFFIX))
+            ], folder)
+        elif found is None:
+            # ``[[Team/Note]]``: a note of that name anywhere in the space, the one nearest its top.
+            found = _pick(other.by_name(target_key(rest)), folder)
+    return (found, other.space_id) if found is not None else (None, None)
+
+
+def _within(kind: str, target: str, source: str, names: Names) -> int | None:
     """The file a link points at, the way Obsidian finds it, within the space of ``source``."""
     space = paths.space_of(source)
     folder = posixpath.dirname(source)
@@ -274,7 +394,7 @@ def resolve(kind: str, target: str, source: str, names: Names) -> int | None:
         found = None if rooted else by_path(names, inside(space, f"{folder}/{text_target}"))
         found = found or by_path(names, inside(space, f"{space}/{text_target}")) or with_space
         if found is None and "/" not in text_target:
-            found = _pick(names.by_name(target_key(text_target)), source)
+            found = _pick(names.by_name(target_key(text_target)), folder)
         return found
     if text_target.startswith(("./", "../")):
         return by_path(names, inside(space, f"{folder}/{text_target}"))
@@ -287,8 +407,8 @@ def resolve(kind: str, target: str, source: str, names: Names) -> int | None:
             item for item in names.by_name(target_key(text_target))
             if paths.fold(item[1]).endswith((tail, tail + paths.NOTE_SUFFIX))
         ]
-        return _pick(matching, source)
-    return _pick(names.by_name(target_key(text_target)), source)
+        return _pick(matching, folder)
+    return _pick(names.by_name(target_key(text_target)), folder)
 
 
 # --- Reading and recording files -----------------------------------------------------------------------------------
@@ -387,14 +507,13 @@ class _Rows:
         self.tags += [
             {"file_id": file_id, "tag_key": key, "tag": tag, "pos": pos} for pos, (key, tag) in enumerate(analysis.tags)
         ]
-        self.links += [
-            {
+        for kind, target, subpath, key, line in analysis.links:
+            found, found_space = resolve_full(kind, target, rel, names) if names is not None else (None, None)
+            self.links.append({
                 "source_id": file_id, "space_id": space_id, "kind": kind, "target": target, "subpath": subpath,
-                "target_key": key, "line": line,
-                "target_id": resolve(kind, target, rel, names) if names is not None else None,
-            }
-            for kind, target, subpath, key, line in analysis.links
-        ]
+                "target_key": key, "line": line, "target_id": found, "target_space_id": found_space,
+                "via": via_of(kind, target, rel),
+            })
         if analysis.body is not None:
             self.search.append({"id": file_id, "title": analysis.title, "body": analysis.body})
         self.tasks += [task_row(file_id, space_id, task) for task in analysis.tasks]
@@ -545,7 +664,8 @@ def reresolve(
     names: Names | None = None,
 ) -> int:
     """Look at every link again whose target has one of these names, and at every link of these notes;
-    ``keys`` None: at every link of the space. ``names``: the space's names, loaded already. Returns how many
+    ``keys`` None: at every link of the space. Links of other spaces written with this space's name in front
+    (``[[Space/Note]]``) are looked at the same way. ``names``: the space's names, loaded already. Returns how many
     changed their target."""
     wanted = None if keys is None else {key for key in keys if key}
     sources = sources or set()
@@ -553,24 +673,32 @@ def reresolve(
         return 0
     big = wanted is None or len(wanted) + len(sources) > SMALL_CHANGE
     names = names or Names(db, space_id, preload=big)
-    base = select(Link.id, Link.kind, Link.target, Link.target_id, File.path).join(File, File.id == Link.source_id)
-    base = base.where(Link.space_id == space_id)
-    rows: dict[int, tuple[str, str, int | None, str]] = {}
+    base = select(Link.id, Link.kind, Link.target, Link.target_id, Link.target_space_id, File.path).join(
+        File, File.id == Link.source_id
+    )
+    own = base.where(Link.space_id == space_id)
+    folder = names.folder
+    across = base.where(Link.via == paths.fold(folder)[:255], Link.space_id != space_id) if folder else None
+    rows: dict[int, tuple[str, str, int | None, int | None, str]] = {}
     if wanted is None:
-        queries = [base]
+        queries = [own] + ([across] if across is not None else [])
     else:
-        queries = [base.where(Link.target_key.in_(part)) for part in _chunks(sorted(wanted), 500)]
-        queries += [base.where(Link.source_id.in_(part)) for part in _chunks(sorted(sources), 500)]
+        queries = [own.where(Link.target_key.in_(part)) for part in _chunks(sorted(wanted), 500)]
+        if across is not None:
+            queries += [across.where(Link.target_key.in_(part)) for part in _chunks(sorted(wanted), 500)]
+        queries += [own.where(Link.source_id.in_(part)) for part in _chunks(sorted(sources), 500)]
     for query in queries:
-        for link_id, kind, target, current, source in db.execute(query):
-            rows[link_id] = (kind, target, current, source)
+        for link_id, kind, target, current, current_space, source in db.execute(query):
+            rows[link_id] = (kind, target, current, current_space, source)
     changes: list[dict[str, int | None]] = []
-    for link_id, (kind, target, current, source) in rows.items():
-        found = resolve(kind, target, source, names)
-        if found != current:
-            changes.append({"link_id": link_id, "found": found})
+    for link_id, (kind, target, current, current_space, source) in rows.items():
+        found, found_space = resolve_full(kind, target, source, names)
+        if found != current or found_space != current_space:
+            changes.append({"link_id": link_id, "found": found, "found_space": found_space})
     if changes:
-        statement = update(Link).where(Link.id == bindparam("link_id")).values(target_id=bindparam("found"))
+        statement = update(Link).where(Link.id == bindparam("link_id")).values(
+            target_id=bindparam("found"), target_space_id=bindparam("found_space")
+        )
         db.connection().execute(statement, changes)
     return len(changes)
 
@@ -1063,6 +1191,58 @@ def fill_tasks() -> int:
     if filled:
         logger.info("Tasks filled in for notes indexed before notes=%s", filled)
     return filled
+
+
+#: Set once the links of a database indexed before links could cross spaces know where they could cross.
+VIA_FILLED = "links_via_filled"
+VIA_PART = 2000
+
+
+def fill_via() -> int:
+    """Once, for a database indexed before links could lead into another space: every link with a path gets its
+    ``via``, and those that lead nowhere in their own space but into another one get their target there. In parts
+    by id, each under ``guard``; done is noted only at the end. Returns how many links found a target."""
+    with SessionLocal() as db:
+        if db.get(Setting, VIA_FILLED) is not None:
+            return 0
+        top = db.scalar(select(func.max(Link.id))) or 0
+    found = 0
+    for start in range(0, top + 1, VIA_PART):
+        with guard, SessionLocal() as db:
+            rows = db.execute(
+                select(Link.id, Link.kind, Link.target, Link.target_id, File.path, File.space_id)
+                .join(File, File.id == Link.source_id)
+                .where(Link.id >= start, Link.id < start + VIA_PART, Link.target.like("%/%"), Link.via.is_(None))
+            ).all()
+            # Names of any space: each link finds those of its own space and of the one it names in the same family.
+            names: Names | None = None
+            changes: list[dict[str, object]] = []
+            for link_id, kind, target, current, source, space_id in rows:
+                via = via_of(kind, target, source)
+                if via is None:
+                    continue
+                change: dict[str, object] = {"link_id": link_id, "via": via, "found": current, "found_space": None}
+                if current is None:
+                    names = names or Names(db, space_id, preload=False)
+                    hit, hit_space = resolve_full(kind, target, source, names)
+                    if hit is not None:
+                        change.update(found=hit, found_space=hit_space)
+                        found += 1
+                changes.append(change)
+            if changes:
+                db.connection().execute(
+                    update(Link).where(Link.id == bindparam("link_id")).values(
+                        via=bindparam("via"), target_id=bindparam("found"), target_space_id=bindparam("found_space")
+                    ),
+                    changes,
+                )
+            db.commit()
+    with SessionLocal() as db:
+        db.merge(Setting(key=VIA_FILLED, value=True))
+        db.commit()
+    if found:
+        logger.info("Links into other spaces found for links indexed before links=%s", found)
+    return found
 
 
 def refresh(rels: Iterable[str]) -> ScanStats:

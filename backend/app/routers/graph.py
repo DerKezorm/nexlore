@@ -1,8 +1,9 @@
 """The graph over HTTP: the circles of a space, the notes of a part of the map, a note's neighbourhood.
 
 Every route asks for the right to read the space first (``deps.need``); a space the account may not read answers
-exactly like one that does not exist, so not even its name or size gets out. Links never cross spaces, so whatever a
-route returns about links stays inside the space that was asked about.
+exactly like one that does not exist, so not even its name or size gets out. A link can lead into another space
+(``[[Space/Note]]``): tiles, the neighbourhood and the counts between spaces (``across``) carry such a link only where
+the account may read both ends, so a space it may not read never shows, not even as a line going somewhere.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from sqlalchemy import select
 
 from ..config import get_settings
 from ..db import SessionLocal
-from ..deps import Account, need
+from ..deps import Account, need, readable_spaces
 from ..errors import error
 from ..models import MANAGE, READ, File, Space
 from ..services import graphstore, paths, rights
@@ -86,8 +87,18 @@ def tiles(
         if not found:
             raise error("invalid_input", "The input is not valid.", 422, fields=["t"])
         wanted.append((int(found.group(1)), int(found.group(2)), int(found.group(3))))
+    readable = readable_spaces(account)
     with SessionLocal() as db:
-        return _packed(request, graphstore.tiles(db, space_id, cloud, wanted))
+        return _packed(request, graphstore.tiles(db, space_id, cloud, wanted, readable))
+
+
+@router.get("/across")
+def across(request: Request, account: Account, cloud: Cloud = "folders") -> Response:
+    """How many links run between groups of two spaces, for the bundles between spaces: only between spaces the
+    account may read."""
+    readable = readable_spaces(account)
+    with SessionLocal() as db:
+        return _packed(request, {"links": graphstore.count_across(db, cloud, readable)})
 
 
 def _note(account: Any, path: str) -> tuple[int, int]:
@@ -121,9 +132,10 @@ def local(
     limit: Annotated[int, Query(ge=2, le=400)] = 150,
 ) -> dict[str, Any]:
     """The neighbourhood of a note, up to ``depth`` links away in either direction, for the note page."""
-    file_id, space_id = _note(account, path)
+    file_id, _space_id = _note(account, path)
+    readable = readable_spaces(account)
     with SessionLocal() as db:
-        return graphstore.local(db, file_id, space_id, depth, limit)
+        return graphstore.local(db, file_id, depth, limit, readable)
 
 
 @router.post("/topics", status_code=202)

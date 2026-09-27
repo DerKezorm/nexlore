@@ -67,6 +67,35 @@ describe('the scene of the graph', () => {
     expect(scene.band(MID / 2000)).toBe(5)
   })
 
+  it('bundles links between groups of two spaces from the counts across them', () => {
+    const other: Overview = {
+      ...overview(1, []),
+      groups: [
+        [101, null, 'space', 'Homelab', 3, 0, 0, 0, 400, -1, 'space', -3],
+        [102, 101, 'folder', 'Storage', 3, 0, 0, 0, 200, 2, 'f:Storage', -2],
+      ],
+    }
+    const scene = new Scene()
+    scene.setOverviews([
+      { name: 'Work', overview: overview(1, []) },
+      { name: 'Homelab', overview: other },
+    ])
+    const k = MID / 500 // Plans (300) and Storage (200) closed, the spaces open
+    expect(scene.lineBuffers(k, null).bandCount).toBe(0)
+    scene.across = [[2, 102, 3]]
+    const drawn = scene.lineBuffers(k, null)
+    expect(drawn.bandCount).toBe(6)
+    const band = new Float32Array(drawn.bands)
+    // From Plans to Storage, in the places the packing gave each space.
+    const plans = scene.groups.get(2)!
+    const storage = scene.groups.get(102)!
+    expect([band[2], band[3], band[4], band[5]]).toEqual([plans.x, plans.y, storage.x, storage.y])
+    expect(band[12]).toBeCloseTo(1 + Math.log2(3) * 1.3)
+    // A pair with a group the scene does not know (a space not shown) draws nothing.
+    scene.across = [[2, 999, 5]]
+    expect(scene.lineBuffers(k, null).bandCount).toBe(0)
+  })
+
   it('bundles links between closed groups and draws the rest from the notes', () => {
     const scene = new Scene()
     scene.setOverviews([{ name: 'Work', overview: overview() }])

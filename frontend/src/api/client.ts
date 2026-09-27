@@ -496,6 +496,8 @@ export type LocalNode = [number, string, string, number]
 export const graphApi = {
   overview: (space: string, cloud: Cloud) => api<Overview>('/api/graph/overview', { query: { space, cloud } }),
   tiles: (space: string, cloud: Cloud, tiles: string[]) => api<Tiles>('/api/graph/tiles', { query: { space, cloud, t: tiles } }),
+  /** Link counts between groups of two spaces (links written as `[[Space/Note]]`), readable ones only. */
+  across: (cloud: Cloud) => api<{ links: [number, number, number][] }>('/api/graph/across', { query: { cloud } }),
   locate: (path: string, cloud: Cloud) =>
     api<{ id: number; x: number; y: number; group: number; level: number }>('/api/graph/locate', { query: { path, cloud } }),
   local: (path: string, depth: number, limit = 150) =>

@@ -22,9 +22,10 @@ import { Symbol } from '../components/Symbol'
 import { copiesOf, originalOf } from '../lib/compare'
 import { errorText } from '../lib/errors'
 import { isFileTarget, isNotePath } from '../lib/files'
-import { LinkIndex } from '../lib/links'
+import { LinkIndex, linkedSpace, linkName } from '../lib/links'
 import { fileRoute, formatDate, renderMarkdown } from '../lib/markdown'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
+import { versionSource } from '../lib/versions'
 import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
 import { LocalGraph } from '../components/LocalGraph'
@@ -102,6 +103,7 @@ export function NotePage() {
   const [own, setOwn] = useState<string[]>([])
   const [withOwn, setWithOwn] = useState(true)
   const [notice, setNotice] = useState<string | null>(null)
+  const afterOpen = useRef<string | null>(null)
   // What an upload did, said once (place and device removed, the file was there already).
   const [info, setInfo] = useState<string | null>(null)
 
@@ -254,7 +256,9 @@ export function NotePage() {
     setLockHolder(null)
     setRenaming(null)
     setNotice(null)
-    setInfo(null)
+    // A message meant for the note just opened (after a rename: how many notes had their links updated).
+    setInfo(afterOpen.current)
+    afterOpen.current = null
     setSaveState('idle')
     if (path) void load(path)
   }, [path, load])
@@ -381,10 +385,22 @@ export function NotePage() {
       return
     }
     // A link to a note not written yet: like Obsidian, a click makes it next to this one and opens it for writing.
-    const title = target.split('#')[0].split('/').pop()?.trim()
+    // One into another space (`[[Homelab/Why ZFS]]`) makes it there, where the link looks for it.
+    let folder = folderOf(path)
+    let title = target.split('#')[0].split('/').pop()?.trim()
+    const across = linkedSpace(target, spaces, path.split('/')[0])
+    if (across) {
+      if (across.role === 'read') {
+        setNotice(t('note.missingAcross', { name: linkName(target), space: across.space }))
+        return
+      }
+      const parts = across.rest.split('/')
+      title = parts.pop()?.trim()
+      folder = [across.space, ...parts].join('/')
+    }
     if (!title) return
     try {
-      const made = await vaultApi.create(folderOf(path), title)
+      const made = await vaultApi.create(folder, title)
       await reload()
       navigate(`${noteUrl(made.path)}?edit=1`)
     } catch (error) {
@@ -399,6 +415,8 @@ export function NotePage() {
     try {
       const moved = await vaultApi.move(note.path, destination)
       setRenaming(null)
+      // Counts only notes the account may read: the server leaves out the others (they follow all the same).
+      if (moved.rewritten > 0) afterOpen.current = t('note.linksFollowed', { count: moved.rewritten })
       await reload()
       open(moved.path)
     } catch (error) {
@@ -810,7 +828,7 @@ function Versions({ path, disabled, onRestored }: { path: string; disabled: bool
             <li key={version.id} className="rounded-lg px-2 py-1.5 text-sm hover:bg-ink-850">
               <div className="flex items-center gap-2">
                 <span className="flex-1 text-mist-300">{formatDate(version.updated_at)}</span>
-                <span className="text-[11px] text-mist-600">{t(`note.source.${version.source}`, { defaultValue: version.source })}</span>
+                <span className="text-[11px] text-mist-600">{versionSource(version, t)}</span>
               </div>
               <div className="mt-0.5 flex gap-3 text-xs">
                 <button

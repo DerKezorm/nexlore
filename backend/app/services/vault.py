@@ -19,7 +19,7 @@ import time
 import uuid
 import zlib
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
@@ -732,6 +732,9 @@ class Moved:
     path: str
     files: int
     rewritten: int
+    #: The space of every note whose links were rewritten: the count shown afterwards names only those the mover
+    #: may read, or it would tell of spaces they do not know.
+    rewritten_spaces: list[int] = field(default_factory=list)
 
 
 def _link_text(link: mdparse.LinkRef, target_rel: str, source_rel: str, names: index.Names, target_id: int) -> str:
@@ -739,15 +742,28 @@ def _link_text(link: mdparse.LinkRef, target_rel: str, source_rel: str, names: i
     space = paths.space_of(target_rel)
     within = target_rel[len(space) + 1 :]
     keep_suffix = link.target.lower().endswith(paths.NOTE_SUFFIX)
+    # Into another space: the link names that space in front, as it did before (links never change their space).
+    across = space != paths.space_of(source_rel)
     if link.kind in (mdparse.MARKDOWN, mdparse.MARKDOWN_EMBED):
         if link.target.startswith("/"):
-            new = "/" + within
+            new = "/" + (target_rel if across else within)
+        elif across and not link.target.startswith("."):
+            new = target_rel
         else:
             new = posixpath.relpath(target_rel, posixpath.dirname(source_rel))
         if link.encoded or (not link.angle and any(char in new for char in " ()<>")):
             new = quote(new, safe="/")
         return new
-    if link.target.startswith(("./", "../")):
+    if across:
+        written, _, rest = link.target.strip().lstrip("/").partition("/")
+        prefix = written if paths.fold(written) == paths.fold(space) else space
+        new = f"{prefix}/{within}"
+        if "/" not in rest.strip("/"):
+            # Written as ``[[Space/Name]]``: the name alone again, where it still leads there.
+            short = f"{prefix}/{paths.stem(target_rel)}"
+            if index.resolve(link.kind, short, source_rel, names) == target_id:
+                new = short
+    elif link.target.startswith(("./", "../")):
         new = posixpath.relpath(target_rel, posixpath.dirname(source_rel))
         if not new.startswith("."):
             new = "./" + new
@@ -764,14 +780,24 @@ def _link_text(link: mdparse.LinkRef, target_rel: str, source_rel: str, names: i
     return new
 
 
-def _still_right(link: mdparse.LinkRef, source_rel: str, names: index.Names, target_id: int) -> bool:
+def _still_right(
+    link: mdparse.LinkRef, source_rel: str, names: index.Names, target_id: int, target_rel: str
+) -> bool:
     """Whether a link still finds its file. A relative Markdown link must do so as a path, not by the name
     fallback: other programs (GitHub, VS Code) read it strictly."""
     relative = link.kind in (mdparse.MARKDOWN, mdparse.MARKDOWN_EMBED) and not link.target.startswith("/")
+    space = paths.space_of(source_rel)
+    if paths.space_of(target_rel) != space:
+        across = index.crossing(link.kind, link.target, source_rel)
+        other = names.home(space).named(across[0]) if across is not None else None
+        folder = other.folder if other is not None else None
+        if relative and link.target.startswith(".") and other is not None and folder is not None:
+            # Climbing out of its space (``../Team/Note.md``): a path in that space, read just as strictly.
+            return index.by_path(other, index.inside(folder, f"{folder}/{across[1]}")) == target_id
+        return index.resolve(link.kind, link.target, source_rel, names) == target_id
     if relative or link.target.startswith(("./", "../")):
-        space = paths.space_of(source_rel)
         joined = index.inside(space, f"{posixpath.dirname(source_rel)}/{link.target}")
-        return index.by_path(names, joined) == target_id
+        return index.by_path(names.home(space), joined) == target_id
     return index.resolve(link.kind, link.target, source_rel, names) == target_id
 
 
@@ -865,6 +891,7 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
         # Rewrite the links, now that every file is at its new place.
         after = index.Names(db, space_id, preload=len(plans) > index.SMALL_CHANGE)
         rewritten_ids: set[int] = set()
+        rewritten_spaces: list[int] = []
         for source_id, (data, wanted) in plans.items():
             note = db.get(File, source_id)
             assert note is not None
@@ -877,7 +904,7 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
                 if target is None:
                     continue
                 # Still pointing at the right file from the new place: leave the link as written.
-                if _still_right(link, note.path, after, target_id):
+                if _still_right(link, note.path, after, target_id, target.path):
                     continue
                 text = _link_text(link, target.path, note.path, after, target_id)
                 pieces.append(content[position : link.target_start])
@@ -895,6 +922,7 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
             index.record(db, note.path, new_data, stat, source=index.RENAME, author=actor.name, file=note,
                          names=after)
             rewritten_ids.add(source_id)
+            rewritten_spaces.append(note.space_id)
 
         # The moved files themselves: new stat, their own links resolved from the new place.
         keys = _old_keys(files, source, destination)
@@ -924,7 +952,7 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
         index.reresolve(db, space_id, keys)
         db.commit()
     logger.info("Moved files=%s notes_rewritten=%s", len(files), len(rewritten_ids))
-    return Moved(path=destination, files=len(files), rewritten=len(rewritten_ids))
+    return Moved(path=destination, files=len(files), rewritten=len(rewritten_ids), rewritten_spaces=rewritten_spaces)
 
 
 def _its_own(db: Session, note: File) -> list[File]:

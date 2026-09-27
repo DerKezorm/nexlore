@@ -194,8 +194,11 @@ def page(db: Session, share: Share, note: File) -> Page:
         targets.setdefault((kind, target), found if found is not None and found.deleted_at is None else None)
 
     def public(found: File | None) -> bool:
-        # A note of the share, or a file this note uses (it belongs to the note).
-        return found is not None and (not found.is_note or inside(share, found.path))
+        # A note of the share, or a file this note uses (it belongs to the note). Never anything of another space
+        # (``[[Space/Note]]``): a public page shows such a link as its words.
+        if found is None or found.space_id != share.space_id:
+            return False
+        return not found.is_note or inside(share, found.path)
 
     # Front matter and comments stay at home: they are notes to oneself, not part of the page. A link out of the
     # share becomes its words: the path it pointed to is nobody's business outside.
