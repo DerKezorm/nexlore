@@ -148,3 +148,13 @@ test('a public page shows the shared folder and nothing beyond it', async ({ pag
   await visitor.reload()
   await expect(visitor.getByRole('heading', { name: 'This page does not exist' })).toBeVisible()
 })
+
+test('the sign-in page opens without a single console error', async ({ browser }) => {
+  const page = await stranger(browser)
+  const problems: string[] = []
+  page.on('console', (message) => message.type() === 'error' && problems.push(message.text()))
+  page.on('pageerror', (error) => problems.push(error.message))
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
+  expect(problems).toEqual([])
+})

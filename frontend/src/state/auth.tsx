@@ -32,9 +32,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refresh = useCallback(async () => {
     try {
       const setup = await authApi.setupState()
-      if (setup.needs_setup) {
+      if (setup.needs_setup || !setup.signed_in) {
         setMe(null)
-        setStatus('setup')
+        setStatus(setup.needs_setup ? 'setup' : 'signedOut')
         return null
       }
       const account = await authApi.me()

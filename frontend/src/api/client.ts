@@ -261,7 +261,7 @@ export type Account = {
 }
 export type Me = Account & { shares_allowed: boolean; mail: boolean }
 export type AdminAccount = Account & { spaces: number; locked: boolean }
-export type SetupState = { needs_setup: boolean; version: string; min_password: number }
+export type SetupState = { needs_setup: boolean; signed_in: boolean; version: string; min_password: number }
 export type Methods = { password: boolean; oidc: boolean; oidc_name: string }
 export type Member = { name: string; role: Role; you: boolean }
 export type Invite = { id: number; role: string; email: string; by: string | null; created_at: string; expires_at: string }

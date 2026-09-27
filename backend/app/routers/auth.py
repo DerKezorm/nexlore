@@ -117,9 +117,16 @@ def sign_in(db: DbSession, request: Request, response: Response, account: Accoun
     return account_view(account)
 
 
-@router.get("/setup", summary="Does nexlore still need its first account?")
-def setup_state(db: DbSession) -> dict[str, Any]:
-    return {"needs_setup": accounts.count(db) == 0, "version": __version__, "min_password": MIN_PASSWORD}
+@router.get("/setup", summary="Does nexlore still need its first account, and is this browser signed in?")
+def setup_state(request: Request, db: DbSession) -> dict[str, Any]:
+    # ``signed_in`` lets the page ask for the account only when there is one: a 401 would show as an error in the
+    # browser's console on every visit of the sign-in page.
+    return {
+        "needs_setup": accounts.count(db) == 0,
+        "signed_in": session_account(db, request.cookies.get(SESSION_COOKIE)) is not None,
+        "version": __version__,
+        "min_password": MIN_PASSWORD,
+    }
 
 
 @router.post("/setup", summary="Create the operator account")

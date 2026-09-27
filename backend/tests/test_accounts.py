@@ -39,6 +39,7 @@ def test_setup_refuses_a_language_nexlore_does_not_have(client: TestClient) -> N
 def test_sign_in_and_out(client: TestClient) -> None:
     make_account("anna")
     assert client.get("/api/auth/me").status_code == 401
+    assert client.get("/api/setup").json()["signed_in"] is False
     wrong = client.post("/api/auth/login", json={"name": "anna", "password": "wrong password here"})
     unknown = client.post("/api/auth/login", json={"name": "nobody", "password": "wrong password here"})
     # The same answer for a wrong password and an unknown name.
@@ -54,6 +55,7 @@ def test_sign_in_and_out(client: TestClient) -> None:
         assert db.scalar(select(AuthSession).where(AuthSession.token_hash == token)) is None
         assert db.scalar(select(AuthSession).where(AuthSession.token_hash == hash_token(token))) is not None
     assert client.get("/api/auth/me").json()["name"] == "anna"
+    assert client.get("/api/setup").json()["signed_in"] is True
     assert client.post("/api/auth/logout").status_code == 204
     client.cookies.set(SESSION_COOKIE, token)
     assert client.get("/api/auth/me").status_code == 401
