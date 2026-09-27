@@ -192,3 +192,13 @@ def test_the_operator_uploads_and_removes_a_language(client: TestClient, folder:
     assert client.delete("/api/locales/es").status_code == 204
     assert client.delete("/api/locales/es").status_code == 404
     assert client.get("/api/locales").json() == []
+
+
+def test_a_file_too_large_is_refused_before_it_is_read(folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    put(folder, "es.json", b" " * (locales.MAX_BYTES + 1))
+
+    def never(self: Path) -> bytes:
+        raise AssertionError(f"{self.name} was read whole")
+
+    monkeypatch.setattr(Path, "read_bytes", never)
+    assert locales.available() == []

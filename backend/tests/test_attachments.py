@@ -420,3 +420,17 @@ def test_file_settings_are_the_operators(client: TestClient, filled: Path, accou
     client.put("/api/settings/files", json={**current, "attachment_folder": "Anhänge"}, headers=TAB)
     placed = upload(client, b"x", name="x.txt").json()
     assert placed["path"] == "Home/Anhänge/x.txt" and placed["link"] == "Anhänge/x.txt"
+
+
+def test_an_upload_beyond_the_space_left_stops_before_a_byte_is_stored(client: TestClient, filled: Path) -> None:
+    from app.services import attachments
+    from app.services.vault import Actor
+
+    settings(quota_mb=1)
+    plan = attachments.plan(
+        note="Home/Shopping.md", folder=None, name="huge.bin", pasted=False, actor=Actor(name="tester", client="tab-a")
+    )
+    # Refused on the declared size alone, before the body is read into a file.
+    with pytest.raises(attachments.VaultError) as refused:
+        attachments.check_size(plan, 2 * 1024 * 1024)
+    assert refused.value.code == "quota_exceeded"
