@@ -197,7 +197,8 @@ def test_a_free_spot_is_inside_and_touches_nothing() -> None:
 
 @pytest.fixture
 def garden(vault: Path, account: object) -> Path:
-    put(vault, "Garden/Beds/Tomatoes.md", "---\ntags: [plants, summer]\n---\nTomatoes like [[Basil]]. #veg")
+    # Front matter first, and not in the order of the alphabet: the first tag is "summer".
+    put(vault, "Garden/Beds/Tomatoes.md", "---\ntags: [summer, plants]\n---\nTomatoes like [[Basil]]. #veg")
     put(vault, "Garden/Beds/Basil.md", "Basil next to [[Tomatoes]] #herbs/kitchen")
     put(vault, "Garden/Tools/Spade.md", "A spade for the [[Tomatoes]].")
     put(vault, "Garden/Plan.md", "The plan: [[Spade]] and [[Basil]].")
@@ -247,6 +248,11 @@ def test_tiles_bring_the_notes_of_a_level_and_square_with_their_links(client: Te
         "/api/graph/tiles", params={"space": "Garden", "t": [f"{tomatoes.level + 3}:{tx}:{ty}"]}
     ).json()
     assert all(tomatoes.file_id != r[0] for tile in other["tiles"] for r in tile["notes"])
+    # Nor a tile of the right level somewhere else.
+    far = client.get(
+        "/api/graph/tiles", params={"space": "Garden", "t": [f"{tomatoes.level}:{tx + 5}:{ty}"]}
+    ).json()
+    assert all(tomatoes.file_id != r[0] for tile in far["tiles"] for r in tile["notes"])
     assert client.get("/api/graph/tiles", params={"space": "Garden", "t": ["1:x:2"]}).status_code == 422
     assert client.get("/api/graph/tiles", params={"space": "Garden", "t": ["1:2"]}).status_code == 422
 
@@ -344,11 +350,11 @@ def test_much_at_once_lays_the_map_out_anew(client: TestClient, garden: Path) ->
 def test_the_tag_cloud_puts_a_note_under_its_first_tag(client: TestClient, garden: Path) -> None:
     answer = client.get("/api/graph/overview", params={"space": "Garden", "cloud": "tags"}).json()
     names = {row[3] for row in answer["groups"] if row[2] == "tag"}
-    assert names == {"plants", "herbs", "herbs/kitchen"}
+    assert names == {"summer", "herbs", "herbs/kitchen"}
     placed = nodes("tags")
     by_id = {g.id: g for g in groups("tags").values()}
-    # Front matter first: Tomatoes has plants, summer and veg, and stands under plants.
-    assert by_id[placed[file_id("Garden/Beds/Tomatoes.md")].group_id].key == "t:plants"
+    # Front matter first: Tomatoes has summer, plants and veg, and stands under summer.
+    assert by_id[placed[file_id("Garden/Beds/Tomatoes.md")].group_id].key == "t:summer"
     assert by_id[placed[file_id("Garden/Beds/Basil.md")].group_id].key == "t:herbs/kitchen"
     assert by_id[placed[file_id("Garden/Plan.md")].group_id].key == "untagged"
     assert by_id[by_id[placed[file_id("Garden/Beds/Basil.md")].group_id].parent_id].key == "t:herbs"  # type: ignore[index]
@@ -374,7 +380,7 @@ def test_tag_order_is_read_again_once_for_old_databases(client: TestClient, gard
     assert graphstore.fix_tag_order() == 1
     with SessionLocal() as db:
         order = [t.tag_key for t in db.scalars(select(Tag).where(Tag.file_id == tomatoes).order_by(Tag.pos))]
-        assert order == ["plants", "summer", "veg"]
+        assert order == ["summer", "plants", "veg"]
         assert db.get(Setting, graphstore.TAG_ORDER_DONE) is not None
     assert graphstore.fix_tag_order() == 0
 

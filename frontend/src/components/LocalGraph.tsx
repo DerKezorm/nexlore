@@ -165,7 +165,11 @@ export function LocalGraph({ path, generation, onOpen, onShowInGraph }: { path: 
       drawRef.current()
     }
     const onDown = (event: PointerEvent) => {
-      element.setPointerCapture(event.pointerId)
+      try {
+        element.setPointerCapture(event.pointerId)
+      } catch {
+        // A pointer the browser no longer knows (lifted in between): the gesture works without the capture.
+      }
       pointers.set(event.pointerId, local(event))
       moved = 0
       if (pointers.size === 2) {

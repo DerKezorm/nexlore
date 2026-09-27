@@ -227,6 +227,9 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
     }
     drawLabels(ctx, items, withAlpha(col.bg, 0.9), w, h)
 
+    // The zoom, readable from outside (tests of the finger gestures); written only when it changed.
+    const zoom = cam.k.toPrecision(4)
+    if (overlay.dataset.zoom !== zoom) overlay.dataset.zoom = zoom
     const centre = scene.centre(cam)
     if ((centre?.id ?? null) !== centreId.current) {
       centreId.current = centre?.id ?? null
@@ -407,7 +410,11 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
     }
 
     const onDown = (e: PointerEvent) => {
-      canvas.setPointerCapture(e.pointerId)
+      try {
+        canvas.setPointerCapture(e.pointerId)
+      } catch {
+        // A pointer the browser no longer knows (lifted in between): the gesture works without the capture.
+      }
       pointers.set(e.pointerId, local(e))
       moved = 0
       if (pointers.size === 2) {

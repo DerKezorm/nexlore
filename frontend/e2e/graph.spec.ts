@@ -107,6 +107,46 @@ test('on a phone the clouds sit in a sheet, and nothing is wider than the screen
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360)
 })
 
+test('two fingers zoom the map on a phone, one finger moves it', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 })
+  await page.goto('/')
+  const canvas = page.getByTestId('graph-canvas')
+  // The map fitted into the screen (not the camera's first value before the overview came).
+  await expect(canvas).toHaveAttribute('data-zoom', /\d/)
+  await expect.poll(async () => await canvas.getAttribute('data-zoom')).not.toBe('0.05000')
+  await page.waitForTimeout(300)
+  const before = Number(await canvas.getAttribute('data-zoom'))
+  const box = (await canvas.boundingBox())!
+  const cx = box.x + box.width / 2
+  const cy = box.y + box.height / 2
+  // Two touch pointers, moving apart to four times their distance.
+  await canvas.evaluate((element, [x, y]) => {
+    const send = (type: string, id: number, px: number, py: number) =>
+      element.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: 'touch', clientX: px, clientY: py, bubbles: true, isPrimary: id === 1 }))
+    send('pointerdown', 1, x - 20, y)
+    send('pointerdown', 2, x + 20, y)
+    for (let step = 1; step <= 10; step++) {
+      send('pointermove', 1, x - 20 - step * 6, y)
+      send('pointermove', 2, x + 20 + step * 6, y)
+    }
+    send('pointerup', 1, x - 80, y)
+    send('pointerup', 2, x + 80, y)
+  }, [cx, cy])
+  await expect.poll(async () => Number(await canvas.getAttribute('data-zoom'))).toBeGreaterThan(before * 3.5)
+  const zoomed = Number(await canvas.getAttribute('data-zoom'))
+  expect(zoomed).toBeLessThan(before * 4.5)
+  // One finger moves the map and does not zoom.
+  await canvas.evaluate((element, [x, y]) => {
+    const send = (type: string, px: number) =>
+      element.dispatchEvent(new PointerEvent(type, { pointerId: 3, pointerType: 'touch', clientX: px, clientY: y, bubbles: true, isPrimary: true }))
+    send('pointerdown', x)
+    for (let step = 1; step <= 10; step++) send('pointermove', x + step * 10)
+    send('pointerup', x + 100)
+  }, [cx, cy])
+  await page.waitForTimeout(200)
+  expect(Number(await canvas.getAttribute('data-zoom'))).toBeCloseTo(zoomed, 5)
+})
+
 test('the operator may have the topics worked out again', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('radiogroup', { name: 'Group by' }).getByRole('radio', { name: 'Topics' }).click()
