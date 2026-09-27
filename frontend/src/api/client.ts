@@ -456,8 +456,8 @@ export type TileNote = [number, number, number, number, number, number, string, 
 export type Tiles = {
   tiles: { level: number; x: number; y: number; notes: TileNote[] }[]
   links: [number, number][]
-  /** Ends of those links outside the tiles: id, group, x, y, level. */
-  others: [number, number, number, number, number][]
+  /** Ends of those links outside the tiles: id and group (a line to one ends at its closed circle). */
+  others: [number, number][]
 }
 /** id, path, title, distance in links. */
 export type LocalNode = [number, string, string, number]

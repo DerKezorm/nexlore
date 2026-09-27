@@ -115,7 +115,11 @@ class File(Base):
 
 class Link(Base):
     __tablename__ = "links"
-    __table_args__ = (Index("links_space_target_key", "space_id", "target_key"),)
+    __table_args__ = (
+        Index("links_space_target_key", "space_id", "target_key"),
+        # Covers the graph's reading of every link of a space (who links to whom), without a look into the table.
+        Index("links_space_pair", "space_id", "source_id", "target_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), index=True)

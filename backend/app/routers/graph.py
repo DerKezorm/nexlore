@@ -7,10 +7,13 @@ route returns about links stays inside the space that was asked about.
 
 from __future__ import annotations
 
+import gzip
+import json
 import re
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
+from fastapi.responses import Response
 from sqlalchemy import select
 
 from ..config import get_settings
@@ -28,6 +31,17 @@ PathQuery = Annotated[str, Query(min_length=1, max_length=paths.MAX_PATH_CHARS)]
 TILE = re.compile(r"^(-?\d{1,3}):(-?\d{1,9}):(-?\d{1,9})$")
 
 
+def _packed(request: Request, data: dict[str, Any]) -> Response:
+    """JSON, compressed when the browser takes gzip: an overview with every link count between groups is a few
+    hundred kilobytes for 30,000 notes, and a quarter of that compressed."""
+    body = json.dumps(data, separators=(",", ":"), ensure_ascii=False).encode()
+    headers = {"Vary": "Accept-Encoding", "Cache-Control": "no-store"}
+    if len(body) > 1024 and "gzip" in request.headers.get("accept-encoding", "").lower():
+        return Response(gzip.compress(body, 5), media_type="application/json",
+                        headers=headers | {"Content-Encoding": "gzip"})
+    return Response(body, media_type="application/json", headers=headers)
+
+
 def _space_id(account: Any, name: str, role: str = READ) -> int:
     if "/" in name:
         raise error("not_found", "Not found.", 404)
@@ -40,7 +54,7 @@ def _space_id(account: Any, name: str, role: str = READ) -> int:
 
 
 @router.get("/overview")
-def overview(account: Account, space: SpaceName, cloud: Cloud = "folders") -> dict[str, Any]:
+def overview(request: Request, account: Account, space: SpaceName, cloud: Cloud = "folders") -> Response:
     """Every circle of the space's map with its place and size, and how many links run between groups. While the
     map is still being worked out (a big space, the first time): ``status`` is ``building`` and nothing else."""
     space_id = _space_id(account, space)
@@ -53,16 +67,17 @@ def overview(account: Account, space: SpaceName, cloud: Cloud = "folders") -> di
     result["open_from"] = graphstore.OPEN_FROM
     result["tile"] = graphstore.TILE
     result["working"] = graphstore.worker.pending(space_id, cloud)
-    return result
+    return _packed(request, result)
 
 
 @router.get("/tiles")
 def tiles(
+    request: Request,
     account: Account,
     space: SpaceName,
     t: Annotated[list[str], Query(max_length=graphstore.MAX_TILES)],
     cloud: Cloud = "folders",
-) -> dict[str, Any]:
+) -> Response:
     """Notes that appear at a zoom level in squares of the map (``t=level:x:y``), with their links."""
     space_id = _space_id(account, space)
     wanted: list[tuple[int, int, int]] = []
@@ -72,7 +87,7 @@ def tiles(
             raise error("invalid_input", "The input is not valid.", 422, fields=["t"])
         wanted.append((int(found.group(1)), int(found.group(2)), int(found.group(3))))
     with SessionLocal() as db:
-        return graphstore.tiles(db, space_id, cloud, wanted)
+        return _packed(request, graphstore.tiles(db, space_id, cloud, wanted))
 
 
 def _note(account: Any, path: str) -> tuple[int, int]:

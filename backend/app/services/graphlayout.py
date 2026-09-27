@@ -240,18 +240,28 @@ def _simulate(
     if edges:
         src = np.array([e[0] for e in edges])
         dst = np.array([e[1] for e in edges])
+        # As d3 does it: a link's pull is shared out by how many links each end has. Without that, an item linked to
+        # seventy others gets seventy full pulls a tick, and the simulation swings itself apart.
+        count = np.bincount(src, minlength=n) + np.bincount(dst, minlength=n)
         strength = np.minimum(0.5, 0.08 * np.array([e[2] for e in edges], dtype=np.float64))
+        strength = strength / np.minimum(count[src], count[dst])
+        bias = count[src] / (count[src] + count[dst])
         rest = radius[src] + radius[dst] + gap
     reach = radius[:, None] + radius[None, :] + gap / 2
     np.fill_diagonal(reach, 0)
+    # No item moves further than its own size in a tick: a last guard against swinging.
+    limit = np.maximum(radius, 1.0)[:, None]
     for _ in range(ticks):
         if edges:
             delta = pos[dst] + velocity[dst] - pos[src] - velocity[src]
             length = np.sqrt((delta**2).sum(axis=1)) + 1e-9
-            pull = ((length - rest) / length * alpha * strength)[:, None] * delta * 0.5
+            pull = ((length - rest) / length * alpha * strength)[:, None] * delta
             for axis in (0, 1):
-                velocity[:, axis] += np.bincount(src, pull[:, axis], n) - np.bincount(dst, pull[:, axis], n)
+                velocity[:, axis] += np.bincount(src, pull[:, axis] * (1 - bias), n)
+                velocity[:, axis] -= np.bincount(dst, pull[:, axis] * bias, n)
         velocity -= pos * (0.06 * alpha)
+        speed = np.sqrt((velocity**2).sum(axis=1, keepdims=True)) + 1e-12
+        velocity *= np.minimum(1.0, limit / speed)
         pos += velocity * 0.6
         velocity *= 0.6
         # Collision: pairs closer than their radii are pushed apart, half each.
@@ -261,6 +271,8 @@ def _simulate(
         if overlap.any():
             pos += ((overlap / dist * 0.5)[:, :, None] * diff).sum(axis=1) * 0.7
         alpha -= alpha * decay
+    if not np.isfinite(pos).all():
+        raise FloatingPointError("layout diverged")
 
 
 #: Nearest neighbours on a golden-angle sunflower with step 1 lie this far apart (measured, any size).

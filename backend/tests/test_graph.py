@@ -131,6 +131,29 @@ def test_layout_is_nested_without_overlaps_and_the_same_each_time() -> None:
     assert {k: (p.x, p.y) for k, p in first.notes.items()} == {k: (p.x, p.y) for k, p in second.notes.items()}
 
 
+def test_many_groups_all_linked_to_each_other_stay_packed() -> None:
+    # Like tools/lastprobe.py: dozens of folders side by side, every one linked to every other thousands of times.
+    # Every folder got the full pull of each of its links at once, and the map swung itself to 10^21.
+    import random
+
+    rng = random.Random(1)
+    root = gl.Group("space", "space", "S")
+    count = 0
+    for a in range(40):
+        leaf = gl.Group(f"f:{a}/x", "folder", "x", notes=list(range(count, count + 30)))
+        root.children.append(gl.Group(f"f:{a}", "folder", str(a), children=[leaf]))
+        count += 30
+    links = [(i, rng.randrange(count)) for i in range(count) for _ in range(8)]
+    degree: dict[int, int] = {}
+    for a, b in links:
+        degree[a] = degree.get(a, 0) + 1
+        degree[b] = degree.get(b, 0) + 1
+    result = gl.layout(root, links, degree, seed="s")
+    area = math.sqrt(sum(result.groups[c.key].r ** 2 for c in root.children))
+    assert result.groups["space"].r < 2.2 * area
+    inside_and_apart(result, root)
+
+
 def test_a_new_layout_starts_where_things_were() -> None:
     root = gl.Group("space", "space", "S", children=[gl.Group("f:A", "folder", "A", notes=list(range(40)))])
     first = gl.layout(root, [], {}, seed="s")
@@ -210,6 +233,17 @@ def test_tiles_bring_the_notes_of_a_level_and_square_with_their_links(client: Te
     assert all(tomatoes.file_id != r[0] for tile in other["tiles"] for r in tile["notes"])
     assert client.get("/api/graph/tiles", params={"space": "Garden", "t": ["1:x:2"]}).status_code == 422
     assert client.get("/api/graph/tiles", params={"space": "Garden", "t": ["1:2"]}).status_code == 422
+
+
+def test_big_answers_come_compressed_when_the_browser_takes_gzip(client: TestClient, garden: Path) -> None:
+    for n in range(40):
+        put(garden, f"Garden/Folder {n}/Note {n}.md", f"note {n} [[Basil]]")
+    index.scan()
+    raw = client.get("/api/graph/overview", params={"space": "Garden"}, headers={"Accept-Encoding": "identity"})
+    packed = client.get("/api/graph/overview", params={"space": "Garden"}, headers={"Accept-Encoding": "gzip"})
+    assert raw.headers.get("content-encoding") is None and packed.headers["content-encoding"] == "gzip"
+    assert packed.json() == raw.json() and packed.headers["vary"] == "Accept-Encoding"
+    assert int(packed.headers["content-length"]) < len(raw.content)
 
 
 def test_levels_follow_the_size_of_the_home_group(client: TestClient, garden: Path) -> None:

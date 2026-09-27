@@ -56,11 +56,9 @@ export type SceneNote = {
   path: string
 }
 
-type Other = { id: number; space: string; group: number; lx: number; ly: number }
+type Other = { id: number; space: string; group: number }
 type Tile = { key: string; space: string; ids: number[]; used: number }
 type SpaceState = { name: string; index: number; root: number; ox: number; oy: number; r: number; version: number; pairs: [number, number, number][] }
-
-export type Label = { x: number; y: number; w: number; h: number; priority: number; text: string; font: string; color: string; alpha: number; align: 'center'; baseline: 'middle' | 'top'; halo: boolean }
 
 function ease(a: number, b: number, v: number): number {
   const t = Math.min(1, Math.max(0, (v - a) / (b - a)))
@@ -218,8 +216,8 @@ export class Scene {
     }
     // A tile that came back empty is loaded too: nothing to ask for again.
     for (const key of keys) if (!this.tiles.has(key)) this.tiles.set(key, { key, space, ids: [], used: ++this.clock })
-    for (const [id, group, x, y] of data.others) {
-      if (!this.notes.has(id)) this.others.set(id, { id, space, group, lx: x, ly: y })
+    for (const [id, group] of data.others) {
+      if (!this.notes.has(id)) this.others.set(id, { id, space, group })
     }
     for (const [a, b] of data.links) this.links.set(a < b ? `${a}|${b}` : `${b}|${a}`, a < b ? [a, b] : [b, a])
     this.evict()

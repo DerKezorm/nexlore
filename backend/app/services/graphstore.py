@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import delete, event, func, insert, select, text, update
+from sqlalchemy import delete, event, func, insert, select, update
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
@@ -554,7 +554,12 @@ def state(db: Session, space_id: int, cloud: str) -> GraphState | None:
     return db.get(GraphState, (space_id, cloud))
 
 
-def note_count(db: Session, space_id: int) -> int:
+def note_count(db: Session, space_id: int, cloud: str | None = None) -> int:
+    """Notes of a space: from its map when there is one (the map's index answers at once), else from the files."""
+    if cloud is not None and state(db, space_id, cloud) is not None:
+        return db.scalar(
+            select(func.count()).where(GraphNode.space_id == space_id, GraphNode.cloud == cloud)
+        ) or 0
     return db.scalar(
         select(func.count()).where(File.space_id == space_id, File.is_note.is_(True), File.deleted_at.is_(None))
     ) or 0
@@ -568,7 +573,7 @@ def ready(space_id: int, cloud: str) -> str:
     background = not get_settings().disable_background
     with SessionLocal() as db:
         found = state(db, space_id, cloud)
-        small = note_count(db, space_id) <= INLINE_NOTES
+        small = note_count(db, space_id, cloud) <= INLINE_NOTES
     if found is None:
         if background and not small:
             worker.ask(("build", space_id, cloud))
@@ -586,7 +591,8 @@ def ready(space_id: int, cloud: str) -> str:
     return "ready"
 
 
-_pairs: dict[tuple[int, str], tuple[tuple[int, str], float, list[list[int]]]] = {}
+_pairs: dict[tuple[int, str], tuple[tuple[int, str], int, float, list[list[int]]]] = {}
+#: Link counts are counted again at most this often while links change; until then the last count is shown.
 PAIRS_SECONDS = 10.0
 
 
@@ -596,30 +602,56 @@ def forget() -> None:
     _seen.clear()
 
 
+def count_links(db: Session, space_id: int, cloud: str) -> list[list[int]]:
+    """How many links run between the notes of two groups: ``[group, group, count]``, each pair once."""
+    home = dict(
+        db.execute(
+            select(GraphNode.file_id, GraphNode.group_id).where(
+                GraphNode.space_id == space_id, GraphNode.cloud == cloud
+            )
+        ).all()
+    )
+    counts: dict[tuple[int, int], int] = defaultdict(int)
+    for source, target in db.execute(
+        select(Link.source_id, Link.target_id).where(Link.space_id == space_id, Link.target_id.is_not(None))
+    ):
+        a = home.get(source)
+        b = home.get(target)
+        if a is None or b is None or a == b:
+            continue
+        counts[(a, b) if a < b else (b, a)] += 1
+    return [[a, b, count] for (a, b), count in sorted(counts.items())]
+
+
 def group_links(db: Session, space_id: int, cloud: str, version: tuple[int, str]) -> list[list[int]]:
-    """How many links run between the notes of two groups: ``[group, group, count]``. The browser adds them up
-    to whatever circles are closed on screen. Kept for a few seconds; typing a link need not count everything."""
+    """The link counts between groups for the overview; the browser adds them up to whatever circles are closed.
+    Kept, and while links keep changing counted again at most every few seconds (in the background for big
+    spaces): typing a link must not make everybody's map wait for a count of every link."""
     key = (space_id, cloud)
     cached = _pairs.get(key)
     now = time.monotonic()
-    if cached and cached[0] == version and now - cached[1] < PAIRS_SECONDS:
-        return cached[2]
-    rows = db.execute(
-        text(
-            "SELECT a.group_id, b.group_id, COUNT(*) FROM links l "
-            "JOIN graph_nodes a ON a.cloud = :cloud AND a.file_id = l.source_id "
-            "JOIN graph_nodes b ON b.cloud = :cloud AND b.file_id = l.target_id "
-            "WHERE l.space_id = :space AND l.target_id IS NOT NULL AND l.source_id != l.target_id "
-            "AND a.group_id != b.group_id GROUP BY a.group_id, b.group_id"
-        ),
-        {"cloud": cloud, "space": space_id},
-    ).all()
-    merged: dict[tuple[int, int], int] = defaultdict(int)
-    for a, b, count in rows:
-        merged[(a, b) if a < b else (b, a)] += count
-    pairs = [[a, b, count] for (a, b), count in sorted(merged.items())]
-    _pairs[key] = (version, now, pairs)
+    if cached and cached[0] == version:
+        stale = cached[1] != changes() and now - cached[2] >= PAIRS_SECONDS
+        if not stale:
+            return cached[3]
+        if not get_settings().disable_background and note_count(db, space_id, cloud) > INLINE_NOTES:
+            worker.ask(("pairs", space_id, cloud))
+            return cached[3]
+    marker = changes()
+    pairs = count_links(db, space_id, cloud)
+    _pairs[key] = (version, marker, now, pairs)
     return pairs
+
+
+def _recount(space_id: int, cloud: str) -> None:
+    with SessionLocal() as db:
+        found = state(db, space_id, cloud)
+        if found is None:
+            return
+        version = (found.version, found.built_at.isoformat() if found.built_at else "")
+        marker = changes()
+        pairs = count_links(db, space_id, cloud)
+    _pairs[(space_id, cloud)] = (version, marker, time.monotonic(), pairs)
 
 
 def overview(db: Session, space_id: int, cloud: str) -> dict[str, Any]:
@@ -658,8 +690,8 @@ MAX_TILES = 64
 
 
 def tiles(db: Session, space_id: int, cloud: str, wanted: list[tuple[int, int, int]]) -> dict[str, Any]:
-    """The notes that become visible at a zoom level, inside a square of the map, with their links. Links to notes
-    outside come with where those are and which group they are in, so the line can end at the right circle."""
+    """The notes that become visible at a zoom level, inside a square of the map, with their links. For the ends of
+    those links outside the squares only the group is sent: a line to a note not loaded ends at its closed circle."""
     out_tiles: list[dict[str, Any]] = []
     inside: set[int] = set()
     for level, tx, ty in wanted[:MAX_TILES]:
@@ -683,30 +715,39 @@ def tiles(db: Session, space_id: int, cloud: str, wanted: list[tuple[int, int, i
     ids = sorted(inside)
     for start in range(0, len(ids), 500):
         part = ids[start : start + 500]
-        for source, target in db.execute(
-            select(Link.source_id, Link.target_id).where(
-                Link.space_id == space_id, Link.target_id.is_not(None), Link.source_id != Link.target_id,
-                (Link.source_id.in_(part)) | (Link.target_id.in_(part)),
-            )
-        ):
+        for source, target in _links_touching(db, space_id, part):
             links.append([source, target])
             for end in (source, target):
                 if end not in inside:
                     others[end] = []
     missing = sorted(others)
     for start in range(0, len(missing), 500):
-        for file_id, group_id, x, y, level in db.execute(
-            select(GraphNode.file_id, GraphNode.group_id, GraphNode.x, GraphNode.y, GraphNode.level).where(
+        for file_id, group_id in db.execute(
+            select(GraphNode.file_id, GraphNode.group_id).where(
                 GraphNode.cloud == cloud, GraphNode.file_id.in_(missing[start : start + 500])
             )
         ):
-            others[file_id] = [file_id, group_id, round(x, 1), round(y, 1), level]
+            others[file_id] = [file_id, group_id]
     unique = {tuple(sorted(pair)) for pair in links if others.get(pair[0]) != [] and others.get(pair[1]) != []}
     return {
         "tiles": out_tiles,
         "links": [list(pair) for pair in sorted(unique)],
         "others": [value for value in others.values() if value],
     }
+
+
+def _links_touching(db: Session, space_id: int, ids: list[int]) -> list[tuple[int, int]]:
+    """Links from or to these notes. Two queries, one per direction: an OR of both makes SQLite read every link."""
+    found: set[tuple[int, int]] = set()
+    for column in (Link.source_id, Link.target_id):
+        for source, target in db.execute(
+            select(Link.source_id, Link.target_id).where(
+                column.in_(ids), Link.space_id == space_id, Link.target_id.is_not(None),
+                Link.source_id != Link.target_id,
+            )
+        ):
+            found.add((source, target))
+    return sorted(found)
 
 
 def locate(db: Session, file_id: int, cloud: str) -> dict[str, Any] | None:
@@ -732,20 +773,15 @@ def local(db: Session, file_id: int, space_id: int, depth: int, limit: int) -> d
         found: dict[int, int] = defaultdict(int)
         for start in range(0, len(frontier), 500):
             part = frontier[start : start + 500]
-            for source, target in db.execute(
-                select(Link.source_id, Link.target_id)
-                .join(File, File.id == Link.target_id)
-                .where(
-                    Link.space_id == space_id, Link.target_id.is_not(None), Link.source_id != Link.target_id,
-                    File.is_note.is_(True), File.deleted_at.is_(None),
-                    (Link.source_id.in_(part)) | (Link.target_id.in_(part)),
-                )
-            ):
+            for source, target in _links_touching(db, space_id, part):
                 for other in (source, target):
                     if other not in distance:
                         found[other] += 1
+        # Notes only, and only live ones: a link to a picture or to a note in the trash leads nowhere here.
         live = set(
-            db.scalars(select(File.id).where(File.id.in_(list(found)), File.deleted_at.is_(None)))
+            db.scalars(
+                select(File.id).where(File.id.in_(list(found)), File.deleted_at.is_(None), File.is_note.is_(True))
+            )
         ) if found else set()
         ranked = sorted((n for n in found if n in live), key=lambda n: (-found[n], n))
         room = limit - len(distance)
@@ -874,6 +910,9 @@ class _Worker:
 
     def _do(self, job: tuple[str, int, str]) -> None:
         kind, space_id, cloud = job
+        if kind == "pairs":
+            _recount(space_id, cloud)
+            return
         marker = changes()
         if kind == "build":
             build(space_id, cloud)
