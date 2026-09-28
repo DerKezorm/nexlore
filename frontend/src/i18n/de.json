@@ -843,7 +843,10 @@
     "preview": "Vorschau, Platzhalter schon eingesetzt",
     "empty": "Eine leere Notiz.",
     "templater": "Templater-Befehle werden nie ausgeführt; sie bleiben als Text in der Notiz stehen.",
-    "create": "Anlegen"
+    "create": "Anlegen",
+    "where": "Ort",
+    "change": "Ändern",
+    "chosen": "Fertig"
   },
   "spaceOptions": {
     "button": "Tagesnotizen",

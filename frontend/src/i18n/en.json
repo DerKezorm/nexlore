@@ -843,7 +843,10 @@
     "preview": "Preview, with the placeholders filled in",
     "empty": "An empty note.",
     "templater": "Templater commands are never run; they stay in the note as text.",
-    "create": "Create"
+    "create": "Create",
+    "where": "Place",
+    "change": "Change",
+    "chosen": "Done"
   },
   "spaceOptions": {
     "button": "Daily notes",

@@ -203,3 +203,22 @@ test('the service worker keeps the app, never anything from /api, and signing ou
   await page.waitForURL(/\/login/)
   await expect.poll(() => page.evaluate(async () => (await caches.keys()).length)).toBe(0)
 })
+
+test('a new note can go to another place, and the templates follow the space', async ({ page }) => {
+  await page.goto('/note/Year/Chores.md')
+  await expect(page.locator('article')).toContainText('Water the ferns')
+  await page.keyboard.press('Alt+n')
+  const dialog = page.getByTestId('new-note-dialog')
+  await expect(dialog.getByTestId('new-note-where')).toHaveText('Year')
+  // Year has templates.
+  await expect(dialog.getByRole('radio', { name: 'Meeting' })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Change' }).click()
+  await dialog.getByRole('button', { name: 'Zone', exact: true }).click()
+  await expect(dialog.getByTestId('new-note-where')).toHaveText('Zone')
+  await expect(dialog).toContainText('New note in “Zone”')
+  await expect(dialog.getByRole('radio', { name: 'Meeting' })).toHaveCount(0)
+  await dialog.getByLabel('Title').fill('Placed elsewhere')
+  await dialog.getByRole('button', { name: 'Create' }).click()
+  await page.waitForURL(/\/note\/Zone\/Placed%20elsewhere\.md/)
+  expect(fs.existsSync(path.join(DATA, 'vault', 'Zone', 'Placed elsewhere.md'))).toBe(true)
+})

@@ -1,6 +1,9 @@
 /**
  * A new note in a folder (M6): a title, and a template of the space to start from, with a preview whose placeholders
  * are filled in by the server just as the note will be. Templater commands are shown, never run.
+ *
+ * The folder it goes to is shown on top and can be changed ("Change"): every space one may write in, opened as it is
+ * asked for. The templates follow the space chosen (each space has a templates folder of its own).
  */
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +11,8 @@ import { useTranslation } from 'react-i18next'
 import { ApiError, everydayApi, type Template, vaultApi } from '../api/client'
 import { showModalOnce } from '../lib/dialog'
 import { errorText } from '../lib/errors'
+import { useStore } from '../state/store'
+import { FolderTree } from './FolderTree'
 import { Symbol } from './Symbol'
 
 const TEMPLATER = /<%[\s\S]*?%>/
@@ -15,7 +20,11 @@ const TEMPLATER = /<%[\s\S]*?%>/
 export function NewNoteDialog({ folder, onClose, onCreated }: { folder: string; onClose: () => void; onCreated: (path: string) => void }) {
   const { t } = useTranslation()
   const dialog = useRef<HTMLDialogElement>(null)
-  const space = folder.split('/')[0]
+  const { spaces } = useStore()
+  const [where, setWhere] = useState(folder)
+  const [choosing, setChoosing] = useState(false)
+  const space = where.split('/')[0]
+  const writable = spaces.filter((item) => item.role === 'write' || item.role === 'manage').map((item) => item.name)
   const [title, setTitle] = useState('')
   const [templates, setTemplates] = useState<Template[] | null>(null)
   const [templateFolder, setTemplateFolder] = useState('')
@@ -30,6 +39,9 @@ export function NewNoteDialog({ folder, onClose, onCreated }: { folder: string; 
 
   useEffect(() => {
     let alive = true
+    // Another space, other templates: the one picked belonged to the space before.
+    setPicked('')
+    setTemplates(null)
     void Promise.all([everydayApi.templates(space), everydayApi.options(space)])
       .then(([list, options]) => {
         if (!alive) return
@@ -66,7 +78,7 @@ export function NewNoteDialog({ folder, onClose, onCreated }: { folder: string; 
     setBusy(true)
     setProblem(null)
     try {
-      const note = await vaultApi.create(folder, title.trim(), '', picked || undefined)
+      const note = await vaultApi.create(where, title.trim(), '', picked || undefined)
       onCreated(note.path)
     } catch (error) {
       setProblem(error instanceof ApiError ? error.code : 'internal_error')
@@ -96,13 +108,39 @@ export function NewNoteDialog({ folder, onClose, onCreated }: { folder: string; 
       >
         <div className="flex items-start gap-3 border-b border-ink-700 px-4 py-3 sm:px-5">
           <h2 id="new-note-title" className="min-w-0 flex-1 text-base font-semibold break-words text-mist-100">
-            {t('newNote.title', { folder: folder.split('/').join(' / ') })}
+            {t('newNote.title', { folder: where.split('/').join(' / ') })}
           </h2>
           <button type="button" onClick={onClose} aria-label={t('common.close')} className="rounded-full p-1 text-mist-500 hover:bg-ink-850">
             <Symbol name="close" />
           </button>
         </div>
         <div className="grid min-h-0 gap-4 overflow-y-auto p-4 sm:grid-cols-[12rem_1fr] sm:p-5">
+          <div className="text-sm sm:col-span-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-mist-500">{t('newNote.where')}</span>
+              <span className="min-w-0 flex-1 truncate text-mist-200" data-testid="new-note-where">{where.split('/').join(' / ')}</span>
+              <button
+                type="button"
+                aria-expanded={choosing}
+                onClick={() => setChoosing((open) => !open)}
+                className="rounded-full border border-ink-700 px-2.5 py-0.5 text-xs text-mist-300 hover:bg-ink-850"
+              >
+                {choosing ? t('newNote.chosen') : t('newNote.change')}
+              </button>
+            </div>
+            {choosing && (
+              <div className="mt-2">
+                <FolderTree
+                  roots={writable}
+                  selected={where}
+                  onSelect={(at) => {
+                    setWhere(at)
+                    setChoosing(false)
+                  }}
+                />
+              </div>
+            )}
+          </div>
           <label className="block text-sm sm:col-span-2">
             <span className="text-xs text-mist-500">{t('newNote.name')}</span>
             <input

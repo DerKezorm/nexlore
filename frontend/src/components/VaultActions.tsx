@@ -9,13 +9,14 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { ApiError, vaultApi, type FolderEntry } from '../api/client'
+import { ApiError, vaultApi } from '../api/client'
 import { errorText } from '../lib/errors'
 import { fileRoute } from '../lib/markdown'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { announceLeaving, forget, reveal, VAULT_ACTION_EVENT, within, type VaultAction } from '../lib/vaultActions'
 import { useStore } from '../state/store'
 import { ConfirmDialog } from './ConfirmDialog'
+import { FolderTree } from './FolderTree'
 import { Symbol } from './Symbol'
 
 /** The note or folder the address stands on, as a vault path (`/note/…`, `/file/…`), or null. */
@@ -246,81 +247,22 @@ function NameDialog({ title, hint, confirm, initial, onClose, onSubmit }: { titl
   )
 }
 
-/** The folders of the space, opened one level at a time; the item itself and what lies in it cannot be the target. */
+/** The folders of the space; the item itself and what lies in it cannot be the target. */
 function MoveDialog({ path, folder, onClose, onMove }: { path: string; folder: boolean; onClose: () => void; onMove: (target: string) => Promise<void> }) {
   const { t } = useTranslation()
-  const space = path.split('/')[0]
-  const [children, setChildren] = useState<Map<string, FolderEntry[] | 'loading' | 'failed'>>(new Map())
-  const [open, setOpen] = useState<Set<string>>(new Set([space]))
   const [target, setTarget] = useState<string | null>(null)
   const { busy, problem, submit } = useSubmit(() => onMove(target!))
-
-  const load = useCallback((at: string) => {
-    setChildren((current) => new Map(current).set(at, 'loading'))
-    vaultApi.folder(at, 0, 1).then(
-      (listing) => setChildren((current) => new Map(current).set(at, listing.folders)),
-      () => setChildren((current) => new Map(current).set(at, 'failed')),
-    )
-  }, [])
-  useEffect(() => load(space), [load, space])
-
-  const blocked = (at: string) => at === folderOf(path) || (folder && within(at, path))
-  const row = (at: string, name: string, depth: number) => {
-    const list = children.get(at)
-    const expanded = open.has(at)
-    return (
-      <li key={at}>
-        <div className="flex items-center gap-1" style={{ paddingLeft: depth * 14 }}>
-          <button
-            type="button"
-            aria-label={`${expanded ? t('sidebar.collapse') : t('sidebar.expand')} ${name}`}
-            onClick={() => {
-              setOpen((current) => {
-                const next = new Set(current)
-                if (expanded) next.delete(at)
-                else next.add(at)
-                return next
-              })
-              if (!expanded && (list === undefined || list === 'failed')) load(at)
-            }}
-            className="rounded p-1 text-mist-600 hover:text-mist-100"
-          >
-            <Symbol name={expanded ? 'chevronDown' : 'chevronRight'} className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            disabled={blocked(at)}
-            aria-pressed={target === at}
-            onClick={() => setTarget(at)}
-            className={
-              'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left text-sm disabled:opacity-40 ' +
-              (target === at ? 'bg-accent-500/15 text-accent-400' : 'hover:bg-ink-850')
-            }
-          >
-            <Symbol name={depth === 0 ? 'space' : 'folder'} className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{name}</span>
-          </button>
-        </div>
-        {expanded && (
-          <ul>
-            {list === 'loading' || list === undefined ? (
-              <li className="py-1 text-xs text-mist-600" style={{ paddingLeft: depth * 14 + 30 }}>{t('common.loading')}</li>
-            ) : list === 'failed' ? (
-              <li className="py-1 text-xs text-bad-500" style={{ paddingLeft: depth * 14 + 30 }}>{t('sidebar.loadFailed')}</li>
-            ) : (
-              list.filter((entry) => !(folder && entry.path === path)).map((entry) => row(entry.path, entry.name, depth + 1))
-            )}
-          </ul>
-        )}
-      </li>
-    )
-  }
-
   return (
     <Frame title={t('actions.moveTitle', { name: baseName(path) })} onClose={onClose} onSubmit={() => target && void submit()} testId="move-dialog">
       <div className="min-h-0 space-y-2 overflow-y-auto p-4">
         <p className="text-xs text-mist-500">{t('actions.moveHint')}</p>
-        <ul className="rounded-xl border border-ink-700 p-1.5">{row(space, space, 0)}</ul>
+        <FolderTree
+          roots={[path.split('/')[0]]}
+          selected={target}
+          onSelect={setTarget}
+          blocked={(at) => at === folderOf(path) || (folder && within(at, path))}
+          hidden={(at) => folder && at === path}
+        />
         {problem && <p role="alert" className="text-sm text-bad-500">{errorText(problem)}</p>}
       </div>
       <Buttons confirm={t('actions.moveHere')} busy={busy} disabled={!target} onClose={onClose} />
