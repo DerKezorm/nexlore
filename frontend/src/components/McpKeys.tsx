@@ -1,18 +1,41 @@
 /**
  * The own MCP keys on the account page: list, make, revoke. A key is shown once, right after it was made, with the
  * address a program needs; afterwards only its first characters. Levels above what the operator allows are not
- * offered. A key sees every space its account may read, or only those chosen when it was made. Nothing here when the
- * operator has not switched MCP on.
+ * offered. A key sees every space its account may read, or only those chosen when it was made.
+ *
+ * It explains itself: right after a key is made, the lines a program needs, ready to copy (JSON in the mcp.json
+ * format); later the same with a stand-in for the key. When the operator has not
+ * switched MCP on, it says so, and the operator gets the way to the switch.
  */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 import { ApiError, mcpApi, vaultApi, type McpKey, type McpLevel, type Space } from '../api/client'
 import { errorText } from '../lib/errors'
 import { formatDate } from '../lib/markdown'
+import { mcpJson } from '../lib/mcp'
+import { copyText } from '../lib/vaultActions'
+import { useAuth } from '../state/auth'
 import { Symbol } from './Symbol'
 
 const LEVELS: McpLevel[] = ['read', 'draft', 'write']
+
+/** One way to connect: what it is for, the text, and a button that copies it. */
+function Recipe({ label, text, copied, onCopy }: { label: string; text: string; copied: boolean; onCopy: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <div className="mt-2">
+      <div className="mb-1 flex items-center gap-2 text-xs text-mist-400">
+        <span className="flex-1">{label}</span>
+        <button type="button" onClick={onCopy} aria-label={t('mcp.copyNamed', { what: label })} className="rounded-full border border-ink-700 px-2 py-0.5 text-[11px] text-mist-300 hover:bg-ink-850">
+          {copied ? t('mcp.copied') : t('mcp.copy')}
+        </button>
+      </div>
+      <pre className="nn-scroll max-h-48 overflow-auto rounded-lg bg-ink-950 px-2 py-1.5 font-mono text-[11px] leading-5 whitespace-pre text-mist-200">{text}</pre>
+    </div>
+  )
+}
 
 export function McpKeys() {
   const { t } = useTranslation()
@@ -24,7 +47,8 @@ export function McpKeys() {
   // null: every space the account may read, later ones too; otherwise the ids chosen.
   const [chosen, setChosen] = useState<number[] | null>(null)
   const [shown, setShown] = useState<{ name: string; token: string } | null>(null)
-  const [copied, setCopied] = useState(false)
+  const [copied, setCopied] = useState<string | null>(null)
+  const { me } = useAuth()
   const [problem, setProblem] = useState<string | null>(null)
 
   const load = () => mcpApi.keys().then(setState, () => setState(null))
@@ -40,17 +64,34 @@ export function McpKeys() {
     }
   }, [making])
 
-  if (!state?.allowed) return null
+  if (!state) return null
+  if (!state.allowed)
+    return (
+      <section id="mcp" className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="mcp-title">
+        <h2 id="mcp-title" className="mb-1 flex items-center gap-2 font-semibold">
+          <Symbol name="key" className="h-4 w-4 text-mist-500" /> {t('mcp.title')}
+        </h2>
+        <p className="text-sm text-mist-500" data-testid="mcp-off">
+          {t('mcp.off')}{' '}
+          {me?.role === 'operator' && (
+            <Link to="/settings?tab=server&sub=extensions#mcp" className="text-accent-400 hover:underline">
+              {t('mcp.offOperator')}
+            </Link>
+          )}
+        </p>
+      </section>
+    )
   const ready = Boolean(name.trim()) && (chosen === null || chosen.length > 0)
   const offered = LEVELS.slice(0, LEVELS.indexOf(state.max_level) + 1)
   const address = `${window.location.origin}/api/mcp`
+  const copy = (what: string, text: string) => void copyText(text).then((done) => done && setCopied(what))
 
   const make = async () => {
     setProblem(null)
     try {
       const made = await mcpApi.make(name.trim(), level, chosen)
       setShown({ name: made.key.name, token: made.token })
-      setCopied(false)
+      setCopied(null)
       setMaking(false)
       setName('')
       setLevel('read')
@@ -62,7 +103,7 @@ export function McpKeys() {
   }
 
   return (
-    <section className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="mcp-title">
+    <section id="mcp" className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="mcp-title">
       <h2 id="mcp-title" className="mb-1 flex items-center gap-2 font-semibold">
         <Symbol name="key" className="h-4 w-4 text-accent-400" /> {t('mcp.title')}
       </h2>
@@ -75,15 +116,17 @@ export function McpKeys() {
             <code className="min-w-0 flex-1 truncate rounded-lg bg-ink-950 px-2 py-1.5 font-mono text-xs text-mist-200">{shown.token}</code>
             <button
               type="button"
-              onClick={() => void navigator.clipboard?.writeText(shown.token).then(() => setCopied(true), () => undefined)}
+              onClick={() => copy('token', shown.token)}
               className="shrink-0 rounded-full bg-accent-500 px-3 py-1 text-xs font-semibold text-on-accent"
             >
-              {copied ? t('mcp.copied') : t('mcp.copy')}
+              {copied === 'token' ? t('mcp.copied') : t('mcp.copy')}
             </button>
           </div>
           <p className="mt-2 text-xs text-mist-400">
             {t('mcp.address')} <code className="font-mono break-all">{address}</code>
           </p>
+          <p className="mt-3 text-xs text-mist-300">{t('mcp.nextStep')}</p>
+          <Recipe label={t('mcp.recipeJson')} text={mcpJson(address, shown.token)} copied={copied === 'json'} onCopy={() => copy('json', mcpJson(address, shown.token))} />
           <button type="button" onClick={() => setShown(null)} className="mt-2 text-xs text-mist-400 underline">
             {t('mcp.done')}
           </button>
@@ -115,6 +158,13 @@ export function McpKeys() {
             </li>
           ))}
         </ul>
+      )}
+      {!shown && state.keys.length > 0 && (
+        <details className="mt-3 rounded-xl border border-ink-700 px-3 py-2 text-sm">
+          <summary className="cursor-pointer text-mist-300">{t('mcp.howTo')}</summary>
+          <p className="mt-2 text-xs text-mist-400">{t('mcp.howToText')}</p>
+          <Recipe label={t('mcp.recipeJson')} text={mcpJson(address, t('mcp.yourKey'))} copied={copied === 'json-later'} onCopy={() => copy('json-later', mcpJson(address, t('mcp.yourKey')))} />
+        </details>
       )}
       {!making ? (
         <button

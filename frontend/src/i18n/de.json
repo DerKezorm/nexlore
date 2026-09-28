@@ -751,7 +751,10 @@
       "text": "Ab Werk aus. Eingeschaltet legt jedes Konto eigene Schlüssel an; ein Schlüssel sieht nie mehr als sein Konto.",
       "allow": "MCP erlauben",
       "allowHint": "Programme von außen erreichen Notizen mit einem Schlüssel je Konto.",
-      "maxLevel": "Höchste Stufe eines Schlüssels"
+      "maxLevel": "Höchste Stufe eines Schlüssels",
+      "keysWhere": "Schlüssel legt jedes Konto selbst an, unter Mein Konto → KI von außen, samt den Zeilen zum Einfügen ins Programm.",
+      "keysLater": "Sobald es an ist, legt jedes Konto seine Schlüssel unter Mein Konto an.",
+      "keysLink": "Zu meinen Schlüsseln"
     },
     "plugins": {
       "title": "Plugins",
@@ -906,7 +909,15 @@
       "read": "Suchen, Notizen lesen, Links und Aufgaben. Nichts wird geändert.",
       "draft": "Zusätzlich Vorschläge, die du auf der Notiz übernimmst oder verwirfst.",
       "write": "Ändert Notizen direkt: jede Änderung eine Version, eine Konfliktkopie, wenn sich die Notiz inzwischen geändert hat."
-    }
+    },
+    "off": "Der Betreiber hat KI von außen nicht eingeschaltet, deshalb gibt es hier keine Schlüssel.",
+    "offOperator": "Einschalten unter Einstellungen → Server → KI und Plugins.",
+    "nextStep": "Als Nächstes: Adresse und Schlüssel in dein KI-Programm eintragen. Programme, die eine mcp.json lesen (etwa Cursor oder die .mcp.json eines Projekts), nehmen das JSON unten; andere fragen in ihren eigenen Einstellungen nach denselben zwei Dingen. Der Schlüssel gilt, bis du ihn widerrufst.",
+    "recipeJson": "JSON im mcp.json-Format",
+    "copyNamed": "Kopieren: {{what}}",
+    "howTo": "So verbindest du ein Programm",
+    "howToText": "Der Schlüssel wurde nur einmal gezeigt. Setz ihn dort ein, wo DEIN-SCHLÜSSEL steht, oder leg einen neuen an.",
+    "yourKey": "DEIN-SCHLÜSSEL"
   },
   "drafts": {
     "banner": "Entwurf von {{name}}, {{when}}.",

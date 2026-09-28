@@ -4,6 +4,7 @@
  */
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 import {
   adminApi,
@@ -435,6 +436,13 @@ export function McpCard({ settings, onChange }: { settings: ServerSettings; onCh
         onChange={(value) => save({ mcp_max_level: value })}
         className="mt-3"
       />
+      {/* Where it goes on: the keys belong to the accounts, not to this card. */}
+      <p className="mt-3 text-sm text-mist-400" data-testid="mcp-where-keys">
+        {settings.mcp_allowed ? t('admin.mcp.keysWhere') : t('admin.mcp.keysLater')}{' '}
+        <Link to="/account#mcp" className="text-accent-400 hover:underline">
+          {t('admin.mcp.keysLink')}
+        </Link>
+      </p>
       <Feedback problem={problem} />
     </Card>
   )

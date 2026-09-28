@@ -40,7 +40,16 @@ test('a key made on the account page proposes a draft that the note takes over',
   await expect(shown).toContainText('It is shown only now.')
   const token = (await shown.locator('code').first().textContent())!.trim()
   expect(token).toMatch(/^nxl_/)
+  // What to do with it: the lines for a program, with this address and this key, ready to copy.
+  const address = `${new URL(page.url()).origin}/api/mcp`
+  const json = JSON.parse((await shown.locator('pre').nth(0).textContent())!)
+  expect(json).toEqual({ mcpServers: { nexlore: { type: 'http', url: address, headers: { Authorization: `Bearer ${token}` } } } })
+  await shown.getByRole('button', { name: 'Copy: JSON in the mcp.json format' }).click()
+  await expect(shown.getByRole('button', { name: 'Copy: JSON in the mcp.json format' })).toHaveText('Copied')
   await shown.getByRole('button', { name: 'I have it' }).click()
+  // Later the same lines, with a stand-in for the key shown only once.
+  await page.getByText('How to connect a program').click()
+  await expect(page.getByText(/Bearer YOUR-KEY/).first()).toBeVisible()
   await expect(page.getByTestId('mcp-token')).toHaveCount(0)
   await expect(page.getByText('nxl_')).toHaveCount(1) // only the first characters stay
 
@@ -118,11 +127,18 @@ test('a key made for one space sees no other', async ({ page, playwright, baseUR
   expect(problems).toEqual([])
 })
 
-test('the operator switches MCP off again, and the key card goes', async ({ page }) => {
+test('the operator switches MCP off again, and both pages say where it goes on', async ({ page }) => {
   const closed = await page.request.put('/api/settings', { data: { mcp_allowed: false }, headers: { 'X-Nexlore-Client': 'tab-e2e-mcp0' } })
   expect(closed.ok()).toBe(true)
+  // The account page says why there are no keys, and shows the operator the way to the switch.
   await page.goto('/account')
-  await expect(page.getByRole('heading', { name: 'AI from outside (MCP)' })).toHaveCount(0)
-  await page.goto('/settings?tab=server&sub=extensions')
+  await expect(page.getByTestId('mcp-off')).toContainText('has not switched on AI from outside')
+  await expect(page.getByRole('button', { name: 'New key' })).toHaveCount(0)
+  await page.getByRole('link', { name: /Switch it on under Settings/ }).click()
+  await expect(page).toHaveURL(/\/settings\?tab=server&sub=extensions/)
   await expect(page.getByRole('heading', { name: 'AI from outside (MCP)' })).toBeVisible()
+  // The operator's card says where the keys are made, and leads there.
+  await expect(page.getByTestId('mcp-where-keys')).toContainText('Once it is on')
+  await page.getByRole('link', { name: 'Go to my keys' }).click()
+  await expect(page).toHaveURL(/\/account#mcp$/)
 })
