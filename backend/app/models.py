@@ -529,11 +529,12 @@ class Plugin(Base):
 
 
 class PluginUser(Base):
-    """Whether an account switched a plugin on for itself, and the little the plugin keeps for it."""
+    """Whether an account switched a plugin on for itself."""
 
     __tablename__ = "plugin_users"
 
     plugin_id: Mapped[str] = mapped_column(ForeignKey("plugins.id", ondelete="CASCADE"), primary_key=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: Unused: no plugin could reach it (the page offered no way). Kept, because columns are never dropped here.
     data: Mapped[Any] = mapped_column(JSON, nullable=True)

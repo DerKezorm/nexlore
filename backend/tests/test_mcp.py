@@ -291,7 +291,7 @@ def test_reading_tools(world: World) -> None:
     note = value(call(token, "read_note", path="Garden/Plan.md"))
     assert note["content"] == NOTE and note["hash"] == index.digest(NOTE.encode())
     hits = value(call(token, "search", query="second"))
-    assert hits[0]["path"] == "Garden/Plan.md" and "**" in hits[0]["snippet"]
+    assert hits[0]["path"] == "Garden/Plan.md" and "«Second»" in hits[0]["snippet"]
     assert value(call(token, "list_folder", path="Garden"))["files"][0]["path"] == "Garden/Plan.md"
     assert "must be a text" in failure(call(token, "read_note", path=7))
 

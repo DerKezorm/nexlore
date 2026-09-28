@@ -21,6 +21,8 @@ hash and its first characters, to tell keys apart.
 | Drafts | the above, plus `propose_change` and `propose_note` |
 | Write | the above, plus `write_note`, `edit_note` and `create_note` |
 
+Search results mark the words found «like this» in their snippet.
+
 A tool above the key's level does not exist for it. A space the key may not see answers "Not found.", exactly like
 one that does not exist.
 
@@ -70,6 +72,7 @@ curl -s https://notes.example.com/api/mcp \
 - MCP switched off: 404, even with a valid key.
 - No key, a wrong or revoked key, a locked account, or an account that must set up its second factor first: 401.
 - More than 240 requests a minute with one key: 429 with `Retry-After`.
+- An `MCP-Protocol-Version` header naming a version this server does not speak: 400.
 - The session cookie of the browser counts for nothing here.
 
 An account holds at most 20 keys and 200 open drafts of at most 5 MB each.

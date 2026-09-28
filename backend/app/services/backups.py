@@ -475,6 +475,10 @@ def apply_pending() -> bool:
     # The vault may be a folder Obsidian or Syncthing also use, even a mount: its content is swapped, not the folder.
     aside = root / f".nexlore-replaced-{time.time_ns()}"
     aside.mkdir()
+    # What came in from the backup: only that goes back to the pending folder if the swap fails. A failure while the
+    # old files are still being set aside (Windows: a file some program holds open) leaves old files in the vault,
+    # and they belong there, not among the backup's.
+    brought: list[str] = []
     try:
         for entry in list(root.iterdir()):
             if entry.name == aside.name or entry.name.startswith(".nexlore-"):
@@ -482,12 +486,12 @@ def apply_pending() -> bool:
             os.rename(entry, aside / entry.name)
         for entry in list((pending / "vault").iterdir()):
             shutil.move(str(entry), str(root / entry.name))
+            brought.append(entry.name)
     except OSError:
         # Half swapped is the worst of both: put the old vault back and leave the pending folder for another try.
         logger.exception("Restoring the vault failed, the previous state is put back")
-        for entry in list(root.iterdir()):
-            if entry.name != aside.name and not entry.name.startswith(".nexlore-"):
-                shutil.move(str(entry), str(pending / "vault" / entry.name))
+        for name in brought:
+            shutil.move(str(root / name), str(pending / "vault" / name))
         for entry in list(aside.iterdir()):
             os.rename(entry, root / entry.name)
         aside.rmdir()

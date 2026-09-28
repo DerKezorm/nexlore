@@ -141,7 +141,8 @@ def public_state(token: Token, request: Request, db: DbSession) -> dict[str, Any
     open_ = shares.unlocked(share, request.cookies.get(shares.COOKIE_PREFIX + str(share.id)))
     result: dict[str, Any] = {
         "folder": share.is_folder,
-        "name": share.path.rsplit("/", 1)[-1],
+        # Behind a password even the name waits: "Notice to Miller.md" tells enough.
+        "name": share.path.rsplit("/", 1)[-1] if open_ else "",
         "password": bool(share.password_hash),
         "unlocked": open_,
         "expires_at": share.expires_at.isoformat() if share.expires_at else None,

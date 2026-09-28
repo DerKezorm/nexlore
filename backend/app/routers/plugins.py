@@ -104,32 +104,6 @@ def frame(plugin_id: PluginId, account: Account, db: DbSession) -> HTMLResponse:
     })
 
 
-@router.get("/api/plugins/{plugin_id}/data")
-def data(plugin_id: PluginId, account: Account, db: DbSession) -> dict[str, Any]:
-    if plugins.enabled_for(db, plugin_id, account.id) is None:
-        raise error("not_found", "Not found.", 404)
-    choice = db.get(PluginUser, (plugin_id, account.id))
-    return {"data": choice.data if choice is not None and choice.data is not None else {}}
-
-
-class DataIn(BaseModel):
-    data: dict[str, Any]
-
-
-@router.put("/api/plugins/{plugin_id}/data", status_code=204)
-def save_data(plugin_id: PluginId, body: DataIn, account: Account, db: DbSession) -> None:
-    if plugins.enabled_for(db, plugin_id, account.id) is None:
-        raise error("not_found", "Not found.", 404)
-    import json
-
-    if len(json.dumps(body.data).encode()) > plugins.MAX_DATA:
-        raise error("too_large", "A plugin keeps at most 64 KB per account.", 413)
-    choice = db.get(PluginUser, (plugin_id, account.id))
-    assert choice is not None
-    choice.data = body.data
-    db.commit()
-
-
 class Listed(BaseModel):
     path: str
     title: str

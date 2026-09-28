@@ -215,6 +215,14 @@ class Saved:
     changed: bool = True
 
 
+def _is_utf8(data: bytes) -> bool:
+    try:
+        data.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    return True
+
+
 def conflict_name(rel: str, now: datetime) -> str:
     name = posixpath.basename(rel)
     base, suffix = os.path.splitext(name)
@@ -226,7 +234,8 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str = i
 
     Somebody else holding the note's lock does not refuse the text either: a tab that lost its lock (it ran out, the
     heartbeat failed) still has words nobody saved, often in a last request as the tab closes. They go into a
-    conflict copy; the note itself stays with the lock holder.
+    conflict copy; the note itself stays with the lock holder. So does a text for a note that is not UTF-8 on disk:
+    it was read with its bytes replaced, and writing it back would lose them.
     """
     rel = _parse(rel)
     if not paths.is_note(rel):
@@ -245,7 +254,8 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str = i
         if current is not None and index.digest(current) == index.digest(data):
             db.expunge(file)
             return Saved(file=file, changed=False)
-        if current is not None and (locked_out or index.digest(current) != base_hash):
+        not_text = current is not None and not _is_utf8(current)
+        if current is not None and (locked_out or not_text or index.digest(current) != base_hash):
             # Local time in the name: it is read by people, next to the files' own times (TZ in the container).
             copy_name = paths.unique_name(full.parent, conflict_name(rel, datetime.now().astimezone()))
             copy_rel = posixpath.join(posixpath.dirname(rel), copy_name)
@@ -258,7 +268,7 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str = i
             db.commit()
             logger.info(
                 "Save conflict, copy written file_id=%s copy_id=%s reason=%s",
-                file.id, copy.id, "locked" if locked_out else "changed",
+                file.id, copy.id, "locked" if locked_out else "not utf-8" if not_text else "changed",
             )
             db.expunge(file)
             return Saved(file=file, conflict=copy_rel)

@@ -41,7 +41,6 @@ BLOCK_PATTERN = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
 RESERVED_BLOCKS = {"dataview", "dataviewjs", "tasks", "mermaid", "math", "latex", "query-results"}
 MAX_CODE = 512 * 1024
 MAX_MANIFEST = 64 * 1024
-MAX_DATA = 64 * 1024
 
 
 class PluginError(Exception):

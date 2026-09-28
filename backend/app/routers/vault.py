@@ -558,7 +558,8 @@ _TERM = re.compile(r"[^\s\"]+")
 
 def fts_query(raw: str) -> str | None:
     """User words as an FTS5 query: every word must occur, each as a prefix. No operator of FTS5 gets through."""
-    terms = [term.replace('"', "") for term in _TERM.findall(raw)][:12]
+    # A NUL ends a string for SQLite and leaves the quote open: FTS5 answered "unterminated string" with a 500.
+    terms = [term.replace('"', "").replace("\x00", "") for term in _TERM.findall(raw)][:12]
     terms = [term for term in terms if term]
     if not terms:
         return None

@@ -47,7 +47,10 @@ LOG_FORMAT = "%(asctime)s %(levelname)-8s %(name)s [%(ctx)s] | %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 #: Libraries that would otherwise log every request.
-NOISY_LOGGERS = ("httpx", "httpcore", "watchfiles", "multipart", "sqlalchemy.engine", "uvicorn.access")
+NOISY_LOGGERS = ("httpx", "httpcore", "watchfiles", "multipart", "uvicorn.access")
+#: Never finer than WARNING, whatever the level: SQLAlchemy writes every statement with its values from INFO on, and
+#: the values are note texts, password and key hashes, sealed seeds.
+SILENT_LOGGERS = ("sqlalchemy.engine", "sqlalchemy.pool")
 
 MODES: dict[str, dict[str, int]] = {
     "quiet": {"app": logging.WARNING, "root": logging.WARNING, "libs": logging.WARNING},
@@ -209,6 +212,8 @@ def apply_mode(mode: str) -> None:
     logging.getLogger("nexlore").setLevel(levels["app"])
     for name in NOISY_LOGGERS:
         logging.getLogger(name).setLevel(levels["libs"])
+    for name in SILENT_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
     if _handler is not None:
         _handler.maxBytes = MAX_BYTES_DEEP if mode in DEEP_MODES else MAX_BYTES_NORMAL
     if _console is not None:

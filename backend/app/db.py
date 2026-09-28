@@ -33,6 +33,8 @@ engine = create_engine(
     f"sqlite:///{_settings.database_path}",
     connect_args={"check_same_thread": False, "timeout": BUSY_SECONDS},
     poolclass=NullPool,
+    # A failed statement names its values in the exception, and exceptions reach the log: never note texts or hashes.
+    hide_parameters=True,
 )
 
 

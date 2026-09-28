@@ -123,10 +123,13 @@ def test_a_password_guards_the_page_and_its_titles(site: TestClient) -> None:
     visitor = stranger()
     state = visitor.get(f"/api/public/{token}").json()
     assert state["password"] is True and state["unlocked"] is False and "notes" not in state
+    # Not even the name before the password: it can tell enough on its own.
+    assert state["name"] == "" and "Public" not in str(state)
     assert visitor.get(f"/api/public/{token}/page", params={"path": "Roses.md"}).status_code == 401
     assert visitor.post(f"/api/public/{token}/unlock", json={"password": "wrong"}).status_code == 401
     assert visitor.post(f"/api/public/{token}/unlock", json={"password": "rose garden key"}).status_code == 204
     assert visitor.get(f"/api/public/{token}/page", params={"path": "Roses.md"}).status_code == 200
+    assert visitor.get(f"/api/public/{token}").json()["name"] == "Public"
     # A made-up pass is worth nothing.
     forger = stranger()
     with SessionLocal() as db:

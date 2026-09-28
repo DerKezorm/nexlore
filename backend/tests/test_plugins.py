@@ -219,12 +219,3 @@ def test_writing_needs_a_plugin_that_may_write_and_the_right_to_write(world: Wor
     assert carl.put("/api/plugins/kanban/enabled", json={"enabled": True}).status_code == 200
     assert carl.put("/api/plugins/note", json=body).status_code == 403
     assert (world.vault / "Garden" / "Board.md").read_bytes() == NOTE.encode()
-
-
-def test_a_plugin_keeps_a_little_data_per_account(world: World) -> None:
-    world.ready("rediscover")
-    assert world.anna.get("/api/plugins/rediscover/data").json() == {"data": {}}
-    assert world.anna.put("/api/plugins/rediscover/data", json={"data": {"seen": [1, 2]}}).status_code == 204
-    assert world.anna.get("/api/plugins/rediscover/data").json() == {"data": {"seen": [1, 2]}}
-    assert world.anna.put("/api/plugins/rediscover/data", json={"data": {"x": "y" * 70_000}}).status_code == 413
-    assert world.bob.get("/api/plugins/rediscover/data").status_code == 404

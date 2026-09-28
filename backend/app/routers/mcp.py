@@ -59,7 +59,8 @@ TOOLS: list[dict[str, Any]] = [
     {"name": "list_spaces", "level": "read", "description": "The spaces you may read, with your right in each.",
      "inputSchema": {"type": "object", "properties": {}}},
     {"name": "search", "level": "read",
-     "description": "Full text search over notes and PDFs. Every word must occur; words match as prefixes.",
+     "description": "Full text search over notes and PDFs. Every word must occur; words match as prefixes. "
+                    "The words found are marked «like this» in the snippet.",
      "inputSchema": {"type": "object", "required": ["query"], "properties": {
          "query": {"type": "string"}, "space": {"type": "string"},
          "limit": {"type": "integer", "minimum": 1, "maximum": 50}}}},
@@ -164,7 +165,8 @@ def _call(caller: Caller, client: str, name: str, args: dict[str, Any]) -> Any:
     if name == "search":
         hits = vault_routes.search(account, _text(args, "query", limit=200),
                                    _text(args, "space", required=False, limit=255) or None, _limit(args))
-        clean = str.maketrans({vault_routes.HIT_START: "**", vault_routes.HIT_END: "**"})
+        # Not "**": the note may be bold right there, and "****" reads as nothing.
+        clean = str.maketrans({vault_routes.HIT_START: "«", vault_routes.HIT_END: "»"})
         return [{"path": h.path, "title": h.title, "snippet": h.snippet.translate(clean)} for h in hits]
     if name == "find_notes":
         found = vault_routes.find_notes(account, _text(args, "title", limit=200),
@@ -318,6 +320,11 @@ def _refuse(status: int, code: str, text: str, headers: dict[str, str] | None = 
 async def endpoint(request: Request) -> Response:
     if request.headers.get("origin"):
         return _refuse(403, "origin_refused", "MCP is not for web pages.")
+    # After initialize, a client names the version it agreed on; one this server does not speak is refused (the
+    # transport's rule). Without the header the client is taken to speak the oldest, which is spoken.
+    asked = request.headers.get("mcp-protocol-version")
+    if asked is not None and asked not in PROTOCOL_VERSIONS:
+        return _refuse(400, "protocol_version", "This MCP protocol version is not spoken here.")
     header = request.headers.get("authorization", "")
     token = header[7:].strip() if header[:7].lower() == "bearer " else None
     with SessionLocal() as db:

@@ -37,7 +37,8 @@ nexlore is one of the nex apps and looks like them: turquoise, dark and light.
   the operator opens it.
 - **Versions and trash**: every save is a version (bundled per session, thinned out over time), deleted files wait
   30 days in the trash.
-- **Backups** of the database and every file on a schedule, with a check that shows what a restore would change.
+- **Backups** of the database and every file on a schedule, with a check that shows what a restore would change,
+  and a download (the password is asked again) to keep a copy somewhere else.
 - **AI from outside over MCP** (off by default): keys per account at three levels (read, drafts, write), each key
   optionally limited to some spaces. Drafts wait on the note until you take them over. See [docs/mcp.md](docs/mcp.md).
 - **Plugins**, locked up in the browser: installed from the checked catalog that comes with nexlore (contents and
@@ -87,6 +88,9 @@ Syncthing also works on, mount it and point nexlore at it:
       NEXLORE_VAULT_DIR: /vault
 ```
 
+The container adjusts the owner of `/data` to `PUID`/`PGID` on every start, but not of a vault mounted elsewhere:
+that folder must already be writable for the user `PUID`/`PGID`.
+
 Every folder at the top of the vault is a space. A space without members belongs to the operator; invite people
 into it under Settings.
 
@@ -106,6 +110,15 @@ backups (Settings, Backups), which copy it consistently while it runs, never by 
 second factors). It goes into every backup. A different key means second factors can no longer be checked; the
 operator resets them.
 
+A backup archive is a plain ZIP: the database, every note and file, and `secret.key`. Whoever has it has everything,
+so keep downloaded copies as carefully as the data directory itself.
+
+## Updating
+
+With an image: `docker compose pull && docker compose up -d`. Built from source: pull the new code and run
+`docker compose up -d --build`. nexlore adds what the database lacks at the start and backs the database up first;
+nothing needs doing by hand. Make a backup before a big jump anyway (Settings, Backups).
+
 ## Environment
 
 | Variable | Default | Meaning |
@@ -122,6 +135,7 @@ operator resets them.
 | `NEXLORE_LOG_LEVEL` | stored setting | `quiet`, `normal`, `detailed` or `trace`; overrides the setting, the way out when the app does not start |
 | `NEXLORE_COOKIE_SECURE` | `auto` | `on`, `off` or `auto` (from the request or `X-Forwarded-Proto`) |
 | `NEXLORE_API_DOCS` | `false` | Serves `/api/docs` and `/api/openapi.json` |
+| `NEXLORE_PORT` | `8000` | Port inside the container, for host networking |
 | `PUID`, `PGID` | `1000` | Owner of the files in the data directory |
 
 ## Working next to Obsidian
@@ -137,8 +151,8 @@ macOS and Linux (a title with other characters goes into the front matter as `ti
 
 ## Security in short
 
-- Passwords are hashed with Argon2id. Ten failed checks in a row lock an account for fifteen minutes, whatever
-  address they come from; a brake per sender slows guessing on top.
+- Passwords are at least 12 characters and hashed with Argon2id. Ten failed checks in a row lock an account for
+  fifteen minutes, whatever address they come from; a brake per sender slows guessing on top.
 - With a second factor, the password alone opens nothing: the sign-in waits for the code at most five minutes and
   five tries, a code counts once, and a right password does not reset the count of wrong codes. The seed is stored
   encrypted, recovery codes as hashes.

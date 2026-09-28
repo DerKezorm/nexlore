@@ -118,6 +118,12 @@ async def _validation_error(_request: Request, exc: RequestValidationError) -> J
     )
 
 
+@app.exception_handler(OverflowError)
+async def _too_large_a_number(_request: Request, _exc: OverflowError) -> JSONResponse:
+    # A number past what SQLite holds (an id like 99999999999999999999 in the address): not a fault of the server.
+    return JSONResponse(status_code=422, content={"detail": detail("invalid_input", "The input is not valid.")})
+
+
 app.add_exception_handler(Exception, unhandled_error)
 
 for module in ROUTERS:
