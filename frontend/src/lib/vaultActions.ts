@@ -6,6 +6,7 @@
 
 export type VaultAction =
   | { kind: 'new-folder'; parent: string }
+  | { kind: 'new-space' }
   | { kind: 'rename' | 'move' | 'delete'; path: string; folder: boolean }
 
 export const VAULT_ACTION_EVENT = 'nexlore:vault-action'

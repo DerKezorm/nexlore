@@ -62,6 +62,15 @@ describe('the context menu', () => {
     expect(onClose).toHaveBeenCalledTimes(2)
   })
 
+  it('closes when the page is scrolled by hand, not when it scrolls by itself', () => {
+    const onClose = show([{ label: 'One', onSelect: () => undefined }])
+    act(() => void window.dispatchEvent(new Event('scroll')))
+    act(() => void document.body.dispatchEvent(new Event('scroll', { bubbles: true })))
+    expect(onClose).not.toHaveBeenCalled()
+    act(() => void document.body.dispatchEvent(new Event('wheel', { bubbles: true })))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
   it('opens a submenu with the arrow to the right, and leaves it with the arrow to the left', () => {
     const ran: string[] = []
     show([{ label: 'Format', items: [{ label: 'Bold', onSelect: () => ran.push('bold') }] }])

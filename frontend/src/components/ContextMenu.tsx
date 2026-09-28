@@ -1,7 +1,8 @@
 /**
  * A menu at the pointer: the right mouse button, or a long press on a touch screen (`menuTriggers`). Kept inside the
  * window, driven by the keys a menu has (arrows, Enter, Escape; arrow right opens a submenu), closed by a click
- * elsewhere, by scrolling and by leaving the window.
+ * elsewhere, by scrolling by hand (wheel, finger) and by leaving the window. A scroll the page does by itself (the
+ * sidebar reading a folder again, showing the open note) leaves it open: it came right after a right click at times.
  *
  * Items keep the focus where it was when pressed (the editor keeps its selection), then the menu closes and the item
  * runs.
@@ -42,12 +43,17 @@ export function ContextMenu({ x, y, items, onClose, sub = false }: { x: number; 
     }
     const leave = () => onClose()
     document.addEventListener('pointerdown', away, true)
-    window.addEventListener('scroll', leave, true)
+    const byHand = (event: Event) => {
+      if (!(event.target instanceof Element) || !event.target.closest('[data-context-menu]')) onClose()
+    }
+    window.addEventListener('wheel', byHand, { capture: true, passive: true })
+    window.addEventListener('touchmove', byHand, { capture: true, passive: true })
     window.addEventListener('resize', leave)
     window.addEventListener('blur', leave)
     return () => {
       document.removeEventListener('pointerdown', away, true)
-      window.removeEventListener('scroll', leave, true)
+      window.removeEventListener('wheel', byHand, true)
+      window.removeEventListener('touchmove', byHand, true)
       window.removeEventListener('resize', leave)
       window.removeEventListener('blur', leave)
     }

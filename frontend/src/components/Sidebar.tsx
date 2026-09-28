@@ -16,7 +16,7 @@ import { vaultApi, type FolderEntry, type FileEntry } from '../api/client'
 import { folderColor, spaceColor } from '../graph/palette'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
-import { baseName, folderOf, noteUrl } from '../lib/vault'
+import { baseName, noteUrl } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, REVEAL_EVENT, within } from '../lib/vaultActions'
 import { useStore } from '../state/store'
 import { Symbol } from './Symbol'
@@ -204,14 +204,11 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     }
   }, [])
 
-  // Where a new note goes: beside the open note, or in the chosen folder, or the first space one may write in; never
-  // into a space one may only read (the server would refuse it, the button says so before).
+  // Whether one may write in the space of a path: the menu offers what the server would allow.
   const writable = (path: string | null | undefined) => {
     const role = path ? spaces.find((space) => space.name === path.split('/')[0])?.role : undefined
     return role === 'write' || role === 'manage'
   }
-  const wanted = activeNote ? folderOf(activeNote) : activeFolder || null
-  const target = writable(wanted) ? wanted : spaces.find((space) => writable(space.name))?.name
 
   const toggle = (path: string) => {
     // Opened again after it could not be read: read it again.
@@ -405,11 +402,10 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
           <span className="text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('sidebar.spaces')}</span>
           <button
             type="button"
-            onClick={() => target && askNewNote(target)}
-            disabled={!target}
-            className="rounded-md p-1 text-mist-500 hover:bg-ink-850 hover:text-mist-100 disabled:opacity-40"
-            title={t('sidebar.newNote')}
-            aria-label={t('sidebar.newNote')}
+            onClick={() => askVaultAction({ kind: 'new-space' })}
+            className="rounded-md p-1 text-mist-500 hover:bg-ink-850 hover:text-mist-100"
+            title={t('sidebar.newSpace')}
+            aria-label={t('sidebar.newSpace')}
           >
             <Symbol name="plus" className="h-4 w-4" />
           </button>

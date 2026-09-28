@@ -80,6 +80,21 @@ export function VaultActions() {
 
   return (
     <>
+      {action.kind === 'new-space' && (
+        <NameDialog
+          title={t('actions.newSpaceTitle')}
+          hint={t('actions.newSpaceHint')}
+          confirm={t('actions.create')}
+          initial=""
+          onClose={close}
+          onSubmit={async (name) => {
+            const made = await vaultApi.createSpace(name)
+            await reload()
+            reveal(made.name)
+            done(t('actions.spaceMade', { name: made.name }))
+          }}
+        />
+      )}
       {action.kind === 'new-folder' && (
         <NameDialog
           title={t('actions.newFolderTitle', { folder: action.parent.split('/').join(' / ') })}

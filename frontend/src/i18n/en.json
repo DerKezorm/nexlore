@@ -55,7 +55,8 @@
     "empty": "No spaces yet.",
     "loadFailed": "Could not be loaded.",
     "retry": "Try again",
-    "menuFor": "Menu for {{name}}"
+    "menuFor": "Menu for {{name}}",
+    "newSpace": "New space"
   },
   "graph": {
     "canvas": "Graph",
@@ -970,7 +971,10 @@
     "moveHere": "Move here",
     "moved": "Moved to “{{folder}}”.",
     "trashFolderTitle": "Move the folder “{{name}}” to the trash?",
-    "trashFolderText": "With every note and file in it. It all stays in the trash for 30 days and comes back from the Files page."
+    "trashFolderText": "With every note and file in it. It all stays in the trash for 30 days and comes back from the Files page.",
+    "newSpaceTitle": "New space",
+    "newSpaceHint": "A folder at the top of the vault. You manage it and can invite others; nobody else sees it until then.",
+    "spaceMade": "Space “{{name}}” made."
   },
   "menu": {
     "newNote": "New note",

@@ -55,7 +55,8 @@
     "empty": "Noch keine Bereiche.",
     "loadFailed": "Konnte nicht geladen werden.",
     "retry": "Erneut versuchen",
-    "menuFor": "Menü für {{name}}"
+    "menuFor": "Menü für {{name}}",
+    "newSpace": "Neuer Bereich"
   },
   "graph": {
     "canvas": "Graph",
@@ -970,7 +971,10 @@
     "moveHere": "Hierher verschieben",
     "moved": "Verschoben nach „{{folder}}“.",
     "trashFolderTitle": "Den Ordner „{{name}}“ in den Papierkorb legen?",
-    "trashFolderText": "Mit allen Notizen und Dateien darin. Alles bleibt 30 Tage im Papierkorb und kommt über die Seite Dateien zurück."
+    "trashFolderText": "Mit allen Notizen und Dateien darin. Alles bleibt 30 Tage im Papierkorb und kommt über die Seite Dateien zurück.",
+    "newSpaceTitle": "Neuer Bereich",
+    "newSpaceHint": "Ein Ordner ganz oben im Tresor. Du verwaltest ihn und kannst andere einladen; bis dahin sieht ihn niemand sonst.",
+    "spaceMade": "Bereich „{{name}}“ angelegt."
   },
   "menu": {
     "newNote": "Neue Notiz",
