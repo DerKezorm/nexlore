@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from ..deps import DbSession, OperatorAccount
 from ..errors import error
+from ..models import SIGN_IN_PASSWORD
 from ..security import encrypt_secret
 from ..services import accounts, mailer, settings_service
 
@@ -25,6 +26,7 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 class SettingsOut(BaseModel):
     public_url: str
     password_login: bool
+    two_factor_required: bool
     shares_allowed: bool
     backup_schedule: str
     backup_keep: int
@@ -42,6 +44,7 @@ class SettingsOut(BaseModel):
 class SettingsIn(BaseModel):
     public_url: str | None = Field(default=None, max_length=255)
     password_login: bool | None = None
+    two_factor_required: bool | None = None
     shares_allowed: bool | None = None
     backup_schedule: Literal["off", "daily", "weekly"] | None = None
     backup_keep: int | None = Field(default=None, ge=1, le=100)
@@ -66,6 +69,7 @@ def _view(db: DbSession) -> SettingsOut:
     return SettingsOut(
         public_url=values["public_url"],
         password_login=values["password_login"],
+        two_factor_required=bool(values["two_factor_required"]),
         shares_allowed=values["shares_allowed"],
         backup_schedule=values["backup_schedule"],
         backup_keep=values["backup_keep"],
@@ -101,6 +105,11 @@ def save(payload: SettingsIn, operator: OperatorAccount, db: DbSession) -> Setti
             value = value.strip()
             if value and not accounts.EMAIL_PATTERN.match(value):
                 raise error("invalid_email", "This is not a mail address.", 422)
+        elif key == "two_factor_required" and value and operator.sign_in == SIGN_IN_PASSWORD and not (
+            operator.totp_secret_enc
+        ):
+            # Else the operator would be the first one sent to the account page, with nothing else in reach.
+            raise error("own_second_factor_first", "Set up your own second factor first.", 409)
         elif key == "smtp_password":
             changes["smtp_password_enc"] = encrypt_secret(value)
             continue

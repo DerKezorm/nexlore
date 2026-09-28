@@ -26,14 +26,15 @@ from .routers import logs as logs_router
 from .routers import mcp as mcp_router
 from .routers import plugins as plugins_router
 from .routers import settings as settings_router
+from .routers import totp as totp_router
 from .routers import vault as vault_router
-from .services import backups, graphstore, locales, logs, settings_service, watcher
+from .services import backups, graphstore, locales, logs, settings_service, totp, watcher
 
 logger = logging.getLogger("nexlore")
 
 ROUTERS = [
-    health, about, locales_router, logs_router, auth, oidc, members, settings_router, vault_router, attachments,
-    imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router,
+    health, about, locales_router, logs_router, auth, totp_router, oidc, members, settings_router, vault_router,
+    attachments, imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router,
 ]
 
 
@@ -48,6 +49,16 @@ def _read_log_mode() -> tuple[str, datetime | None]:
 def _write_log_mode(mode: str, until: datetime | None) -> None:
     with SessionLocal() as db:
         settings_service.save(db, {"log_mode": mode, "log_mode_until": until.isoformat() if until else None})
+
+
+async def _sweep_forever(stop: asyncio.Event) -> None:
+    """Enrolments and sign-ins waiting for their second factor run out; what ran out goes from memory."""
+    while not stop.is_set():
+        totp.sweep()
+        try:
+            await asyncio.wait_for(stop.wait(), 60)
+        except TimeoutError:
+            continue
 
 
 @asynccontextmanager
@@ -72,6 +83,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         tasks.append(asyncio.create_task(watcher.scan_forever(stop)))
         tasks.append(asyncio.create_task(watcher.watch(stop)))
         tasks.append(asyncio.create_task(backups.run_forever(stop)))
+        tasks.append(asyncio.create_task(_sweep_forever(stop)))
         graphstore.worker.start()
     logger.info("nexlore %s started vault=%s", __version__, settings.vault_dir)
     try:

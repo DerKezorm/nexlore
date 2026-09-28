@@ -329,7 +329,16 @@
       "backup_damaged": "The backup is damaged. Nothing was changed.",
       "busy": "nexlore is busy. Try again in a moment.",
       "scan_running": "The vault is being read already.",
-      "task_changed": "This task changed in its note meanwhile."
+      "task_changed": "This task changed in its note meanwhile.",
+      "totp_enabled": "The second factor is on already.",
+      "totp_not_enabled": "The second factor is not on.",
+      "totp_enrolment_expired": "The setup took too long. Start again.",
+      "totp_code_wrong": "The code is not right. Check the time on your phone and try the next one.",
+      "second_factor_expired": "Too many wrong codes, or too long a wait. Start again with your password.",
+      "second_factor_unavailable": "The second factor cannot be checked on this installation. Ask the operator to reset it.",
+      "second_factor_setup_required": "Set up your second factor first.",
+      "own_second_factor_first": "Set up your own second factor first, on your account page.",
+      "use_disable": "Turn your own second factor off on your account page."
     }
   },
   "files": {
@@ -637,7 +646,12 @@
       "deleteText": "Its rights go with it; its notes stay where they are. A space it was alone in becomes yours.",
       "inviteTitle": "Invite into nexlore",
       "inviteText": "Without a space: the new account makes its own spaces or is added to others later.",
-      "noEmail": "no address"
+      "noEmail": "no address",
+      "twoFactor": "second factor on",
+      "resetFactor": "Reset second factor",
+      "resetTitle": "Reset the second factor of {{name}}?",
+      "resetText": "For a lost phone. The account is signed out everywhere and signs in with its password alone until it sets up a new one.",
+      "resetDone": "Second factor reset. The account was signed out everywhere."
     },
     "spaces": {
       "title": "All spaces",
@@ -653,7 +667,9 @@
       "password": "Sign-in with a password",
       "passwordHint": "Off, only the provider lets members in. You as the operator can always use your password.",
       "address": "Public address",
-      "addressHint": "The address people use to reach nexlore. Invitation links, public pages and the provider use it."
+      "addressHint": "The address people use to reach nexlore. Invitation links, public pages and the provider use it.",
+      "twoFactor": "Require a second factor",
+      "twoFactorHint": "Every account that signs in with a password must set one up before it gets any further. Accounts from the provider bring its own."
     },
     "oidc": {
       "title": "OpenID Connect",
@@ -932,5 +948,36 @@
       "note_write": "write the note it sits on",
       "vault_read": "list notes you may read"
     }
+  },
+  "twofactor": {
+    "title": "Second factor",
+    "lead": "Besides the password, a code from an app on your phone (any authenticator app that takes a QR code). Recovery codes on paper get you in when the phone is gone.",
+    "provider": "You sign in through the provider; its second factor applies.",
+    "off": "Off.",
+    "on_one": "On. {{count}} recovery code left.",
+    "on_other": "On. {{count}} recovery codes left.",
+    "enable": "Set up",
+    "scan": "Scan this code with the app, or type the key below into it. Then give the code the app shows, and your password.",
+    "qr": "QR code for the authenticator app",
+    "secret": "Key to type in:",
+    "code": "Code from the app",
+    "codeHint": "Six digits. Or one of your recovery codes.",
+    "passwordHint": "Proves it is you at the keyboard.",
+    "confirm": "Turn on",
+    "codesTitle": "Your recovery codes",
+    "codesLead": "Each one signs you in once, when the phone is not at hand. They are shown only now: copy them or save them as a file, and keep them apart from the phone.",
+    "codesCopy": "Copy",
+    "codesDownload": "Save as file",
+    "codesDone": "I have them",
+    "renew": "New recovery codes",
+    "renewText": "The old recovery codes stop working. Give your password to make new ones.",
+    "disable": "Turn off",
+    "disableText": "From then on the password alone signs you in. Give it to turn the second factor off.",
+    "lowCodes": "Few recovery codes left. Make new ones while you can still sign in.",
+    "loginTitle": "Second factor",
+    "loginText": "The code from your app, or a recovery code.",
+    "back": "Start over with the password",
+    "requiredTitle": "Set up a second factor",
+    "requiredText": "The operator requires a second factor for every account that signs in with a password. Set it up to go on."
   }
 }

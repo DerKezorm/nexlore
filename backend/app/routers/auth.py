@@ -27,7 +27,7 @@ from ..security import (
     session_account,
     start_session,
 )
-from ..services import accounts, locales, mailer, settings_service
+from ..services import accounts, locales, mailer, settings_service, totp
 from ..services.accounts import AccountError
 
 logger = logging.getLogger("nexlore.auth")
@@ -36,6 +36,8 @@ router = APIRouter(prefix="/api", tags=["auth"])
 
 #: The languages inside the frontend; others come as files from the operator.
 SHIPPED = ("en", "de")
+#: Names a sign-in waiting for its second factor (``services/totp.py``), and nothing else.
+PENDING_COOKIE = "nexlore_2fa"
 
 
 class SetupIn(BaseModel):
@@ -105,6 +107,8 @@ def account_view(account: AccountRow) -> dict[str, Any]:
         "email": account.email,
         "language": account.language,
         "oidc_linked": bool(account.oidc_subject),
+        "two_factor": bool(account.totp_secret_enc),
+        "two_factor_recovery_left": len(totp.load_recovery(account.totp_recovery)) if account.totp_secret_enc else 0,
         "created_at": account.created_at.isoformat(),
         "last_seen_at": account.last_seen_at.isoformat() if account.last_seen_at else None,
     }
@@ -174,6 +178,19 @@ def login(payload: LoginIn, request: Request, response: Response, db: DbSession)
     if not settings_service.get(db, "password_login") and account.role != OPERATOR:
         # The operator keeps the password as the way in when the provider is down.
         raise error("password_login_off", "Sign-in with a password is turned off.", 403)
+    if account.totp_secret_enc:
+        # Nothing opens yet: the browser gets a short-lived cookie that names the waiting sign-in and nothing else.
+        response.set_cookie(
+            PENDING_COOKIE,
+            totp.start_pending(account.id),
+            max_age=totp.PENDING_SECONDS,
+            httponly=True,
+            samesite="lax",
+            secure=secure_cookie(request),
+            path="/api/auth",
+        )
+        logger.info("Password accepted, second factor waiting name=%s", account.name)
+        return {"second_factor": True}
     return sign_in(db, request, response, account)
 
 
@@ -199,6 +216,7 @@ def me(account: Account, db: DbSession) -> dict[str, Any]:
         **account_view(account),
         "shares_allowed": bool(settings_service.get(db, "shares_allowed")),
         "mail": mailer.configured(db),
+        "second_factor_setup_required": totp.setup_required(db, account),
     }
 
 
@@ -269,6 +287,7 @@ def delete_account(account_id: int, operator: OperatorAccount, db: DbSession) ->
     name = row.name
     db.delete(row)
     db.commit()
+    totp.forget_account(account_id)
     logger.warning("Account deleted name=%s by=%s", name, operator.name)
 
 

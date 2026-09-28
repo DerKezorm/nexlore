@@ -297,10 +297,13 @@ export type Account = {
   email: string
   language: string
   oidc_linked: boolean
+  two_factor: boolean
+  two_factor_recovery_left: number
   created_at: string
   last_seen_at: string | null
 }
-export type Me = Account & { shares_allowed: boolean; mail: boolean }
+/** `second_factor_setup_required`: the operator requires a second factor this account has not set up yet. */
+export type Me = Account & { shares_allowed: boolean; mail: boolean; second_factor_setup_required: boolean }
 export type AdminAccount = Account & { spaces: number; locked: boolean }
 export type SetupState = { needs_setup: boolean; signed_in: boolean; version: string; min_password: number }
 export type Methods = { password: boolean; oidc: boolean; oidc_name: string }
@@ -316,7 +319,9 @@ export const authApi = {
   setup: (name: string, password: string, language: string) =>
     api<Account>('/api/setup', { method: 'POST', body: { name, password, language } }),
   methods: () => api<Methods>('/api/auth/methods'),
-  login: (name: string, password: string) => api<Account>('/api/auth/login', { method: 'POST', body: { name, password } }),
+  /** Signed in, or `second_factor`: the password was right, the code from the app comes next. */
+  login: (name: string, password: string) =>
+    api<Account | { second_factor: true }>('/api/auth/login', { method: 'POST', body: { name, password } }),
   logout: () => api<void>('/api/auth/logout', { method: 'POST' }),
   logoutEverywhere: () => api<void>('/api/auth/logout-all', { method: 'POST' }),
   me: () => api<Me>('/api/auth/me'),
@@ -342,11 +347,26 @@ export const authApi = {
   deleteSpace: (space: string) => api<{ files: number }>('/api/files', { method: 'DELETE', query: { path: space } }),
 }
 
+export type TotpEnrolment = { secret: string; uri: string; qr_svg: string }
+
+export const totpApi = {
+  begin: () => api<TotpEnrolment>('/api/auth/totp/begin', { method: 'POST' }),
+  confirm: (code: string, password: string) =>
+    api<{ recovery_codes: string[]; account: Account }>('/api/auth/totp/confirm', { method: 'POST', body: { code, password } }),
+  disable: (password: string) => api<Account>('/api/auth/totp/disable', { method: 'POST', body: { password } }),
+  recovery: (password: string) =>
+    api<{ recovery_codes: string[]; account: Account }>('/api/auth/totp/recovery', { method: 'POST', body: { password } }),
+  /** The second step of a sign-in: a code from the app or a recovery code. */
+  code: (code: string) => api<Account>('/api/auth/login/totp', { method: 'POST', body: { code } }),
+  cancel: () => api<void>('/api/auth/login/totp/cancel', { method: 'POST' }),
+}
+
 // --- The operator ---------------------------------------------------------------------------------------------------
 
 export type ServerSettings = {
   public_url: string
   password_login: boolean
+  two_factor_required: boolean
   shares_allowed: boolean
   backup_schedule: 'off' | 'daily' | 'weekly'
   backup_keep: number
@@ -400,6 +420,7 @@ export const adminApi = {
   accounts: () => api<AdminAccount[]>('/api/accounts'),
   deleteAccount: (id: number) => api<void>(`/api/accounts/${id}`, { method: 'DELETE' }),
   signOutAccount: (id: number) => api<void>(`/api/accounts/${id}/sign-out`, { method: 'POST' }),
+  resetSecondFactor: (id: number) => api<Account>(`/api/accounts/${id}/totp/reset`, { method: 'POST' }),
   setRole: (id: number, role: 'operator' | 'member') => api<Account>(`/api/accounts/${id}/role`, { method: 'PUT', body: { role } }),
   setPassword: (id: number, password: string) => api<void>(`/api/accounts/${id}/password`, { method: 'PUT', body: { password } }),
   spaces: () => api<AdminSpace[]>('/api/admin/spaces'),

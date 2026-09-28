@@ -329,7 +329,16 @@
       "backup_damaged": "Die Sicherung ist beschädigt. Nichts wurde geändert.",
       "busy": "nexlore ist gerade beschäftigt. Versuch es gleich noch einmal.",
       "scan_running": "Der Tresor wird schon eingelesen.",
-      "task_changed": "Diese Aufgabe hat sich in ihrer Notiz inzwischen geändert."
+      "task_changed": "Diese Aufgabe hat sich in ihrer Notiz inzwischen geändert.",
+      "totp_enabled": "Der zweite Faktor ist schon an.",
+      "totp_not_enabled": "Der zweite Faktor ist nicht an.",
+      "totp_enrolment_expired": "Das Einrichten hat zu lange gedauert. Fang neu an.",
+      "totp_code_wrong": "Der Code stimmt nicht. Prüfe die Uhrzeit auf dem Handy und nimm den nächsten.",
+      "second_factor_expired": "Zu viele falsche Codes oder zu lange gewartet. Fang mit dem Passwort neu an.",
+      "second_factor_unavailable": "Der zweite Faktor lässt sich auf dieser Installation nicht prüfen. Bitte den Betreiber, ihn zurückzusetzen.",
+      "second_factor_setup_required": "Richte zuerst deinen zweiten Faktor ein.",
+      "own_second_factor_first": "Richte zuerst deinen eigenen zweiten Faktor ein, auf deiner Kontoseite.",
+      "use_disable": "Schalte deinen eigenen zweiten Faktor auf deiner Kontoseite aus."
     }
   },
   "files": {
@@ -637,7 +646,12 @@
       "deleteText": "Seine Rechte gehen mit, seine Notizen bleiben, wo sie sind. Ein Bereich, in dem es allein war, gehört dann dir.",
       "inviteTitle": "Zu nexlore einladen",
       "inviteText": "Ohne Bereich: Das neue Konto legt eigene Bereiche an oder wird später zu anderen hinzugefügt.",
-      "noEmail": "keine Adresse"
+      "noEmail": "keine Adresse",
+      "twoFactor": "zweiter Faktor an",
+      "resetFactor": "Zweiten Faktor zurücksetzen",
+      "resetTitle": "Den zweiten Faktor von {{name}} zurücksetzen?",
+      "resetText": "Für ein verlorenes Handy. Das Konto wird überall abgemeldet und meldet sich mit dem Passwort allein an, bis es einen neuen einrichtet.",
+      "resetDone": "Zweiter Faktor zurückgesetzt. Das Konto wurde überall abgemeldet."
     },
     "spaces": {
       "title": "Alle Bereiche",
@@ -653,7 +667,9 @@
       "password": "Anmeldung mit Passwort",
       "passwordHint": "Aus: Mitglieder kommen nur über den Anbieter herein. Du als Betreiber kannst dein Passwort immer nutzen.",
       "address": "Öffentliche Adresse",
-      "addressHint": "Die Adresse, unter der man nexlore erreicht. Einladungen, öffentliche Seiten und der Anbieter nutzen sie."
+      "addressHint": "Die Adresse, unter der man nexlore erreicht. Einladungen, öffentliche Seiten und der Anbieter nutzen sie.",
+      "twoFactor": "Zweiten Faktor verlangen",
+      "twoFactorHint": "Jedes Konto, das sich mit Passwort anmeldet, muss ihn einrichten, bevor es weiterkommt. Konten vom Anbieter bringen dessen eigenen mit."
     },
     "oidc": {
       "title": "OpenID Connect",
@@ -932,5 +948,36 @@
       "note_write": "die Notiz schreiben, auf der es steht",
       "vault_read": "Notizen auflisten, die du lesen darfst"
     }
+  },
+  "twofactor": {
+    "title": "Zweiter Faktor",
+    "lead": "Neben dem Passwort ein Code aus einer App auf dem Handy (jede Authenticator-App, die einen QR-Code nimmt). Wiederherstellungscodes auf Papier bringen dich hinein, wenn das Handy weg ist.",
+    "provider": "Du meldest dich über den Anbieter an; dort gilt sein zweiter Faktor.",
+    "off": "Aus.",
+    "on_one": "An. Noch {{count}} Wiederherstellungscode.",
+    "on_other": "An. Noch {{count}} Wiederherstellungscodes.",
+    "enable": "Einrichten",
+    "scan": "Scanne diesen Code mit der App oder tippe den Schlüssel darunter ein. Dann gib den Code ein, den die App zeigt, und dein Passwort.",
+    "qr": "QR-Code für die Authenticator-App",
+    "secret": "Schlüssel zum Eintippen:",
+    "code": "Code aus der App",
+    "codeHint": "Sechs Ziffern. Oder einer deiner Wiederherstellungscodes.",
+    "passwordHint": "Zeigt, dass du selbst an der Tastatur sitzt.",
+    "confirm": "Einschalten",
+    "codesTitle": "Deine Wiederherstellungscodes",
+    "codesLead": "Jeder meldet dich einmal an, wenn das Handy nicht zur Hand ist. Sie werden nur jetzt gezeigt: Kopiere sie oder speichere sie als Datei und bewahre sie getrennt vom Handy auf.",
+    "codesCopy": "Kopieren",
+    "codesDownload": "Als Datei speichern",
+    "codesDone": "Ich habe sie",
+    "renew": "Neue Wiederherstellungscodes",
+    "renewText": "Die alten Wiederherstellungscodes gelten dann nicht mehr. Gib dein Passwort ein, um neue zu erzeugen.",
+    "disable": "Ausschalten",
+    "disableText": "Danach meldet dich das Passwort allein an. Gib es ein, um den zweiten Faktor auszuschalten.",
+    "lowCodes": "Nur noch wenige Wiederherstellungscodes. Erzeuge neue, solange du dich noch anmelden kannst.",
+    "loginTitle": "Zweiter Faktor",
+    "loginText": "Der Code aus deiner App oder ein Wiederherstellungscode.",
+    "back": "Mit dem Passwort neu anfangen",
+    "requiredTitle": "Zweiten Faktor einrichten",
+    "requiredText": "Der Betreiber verlangt einen zweiten Faktor für jedes Konto, das sich mit Passwort anmeldet. Richte ihn ein, um weiterzumachen."
   }
 }

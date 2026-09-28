@@ -49,6 +49,7 @@ export function AccountsCard() {
   const [made, setMade] = useState<NewInvite | null>(null)
   const [password, setPassword] = useState<{ id: number; value: string } | null>(null)
   const [removing, setRemoving] = useState<AdminAccount | null>(null)
+  const [resetting, setResetting] = useState<AdminAccount | null>(null)
   const { busy, problem, done, run } = useAction()
 
   const load = useCallback(async () => {
@@ -70,6 +71,7 @@ export function AccountsCard() {
               <span className="ml-2 text-xs text-mist-500">
                 {t(`account.role.${account.role}`)} · {t(`admin.accounts.signIn.${account.sign_in}`)} ·{' '}
                 {account.last_seen_at ? formatDate(account.last_seen_at) : t('admin.accounts.never')}
+                {account.two_factor && ` · ${t('admin.accounts.twoFactor')}`}
                 {account.locked && ` · ${t('admin.accounts.locked')}`}
               </span>
             </span>
@@ -91,6 +93,11 @@ export function AccountsCard() {
                 <Button small busy={busy} onClick={() => void run(() => adminApi.signOutAccount(account.id), t('admin.accounts.signedOut'))}>
                   {t('admin.accounts.signOut')}
                 </Button>
+                {account.two_factor && (
+                  <Button small onClick={() => setResetting(account)}>
+                    {t('admin.accounts.resetFactor')}
+                  </Button>
+                )}
                 <Button small danger onClick={() => setRemoving(account)}>
                   {t('admin.accounts.delete')}
                 </Button>
@@ -187,6 +194,21 @@ export function AccountsCard() {
       >
         {t('admin.accounts.deleteText')}
       </ConfirmDialog>
+      <ConfirmDialog
+        open={resetting !== null}
+        title={t('admin.accounts.resetTitle', { name: resetting?.name ?? '' })}
+        confirm={t('admin.accounts.resetFactor')}
+        danger
+        busy={busy}
+        onCancel={() => setResetting(null)}
+        onConfirm={() => void run(async () => {
+          await adminApi.resetSecondFactor(resetting!.id)
+          setResetting(null)
+          await load()
+        }, t('admin.accounts.resetDone'))}
+      >
+        {t('admin.accounts.resetText')}
+      </ConfirmDialog>
     </Card>
   )
 }
@@ -267,6 +289,12 @@ export function SignInCard({ settings, onChange }: { settings: ServerSettings; o
     <Card id="sign-in" symbol="shield" title={t('admin.signIn.title')} text={t('admin.signIn.text')}>
       <div className="space-y-3">
         <Toggle label={t('admin.signIn.password')} hint={t('admin.signIn.passwordHint')} checked={settings.password_login} onChange={(value) => save({ password_login: value })} />
+        <Toggle
+          label={t('admin.signIn.twoFactor')}
+          hint={t('admin.signIn.twoFactorHint')}
+          checked={settings.two_factor_required}
+          onChange={(value) => save({ two_factor_required: value })}
+        />
         <form
           className="flex flex-wrap items-end gap-2"
           onSubmit={(event) => {

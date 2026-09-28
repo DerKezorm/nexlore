@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { AppShell } from './components/AppShell'
+import { AuthFrame } from './components/AuthFrame'
+import { SecondFactor } from './components/SecondFactor'
 import { AccountPage } from './pages/AccountPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { FilePage } from './pages/FilePage'
@@ -21,7 +23,7 @@ import { StoreProvider } from './state/store'
 /** The app itself only for a signed-in account; everybody else goes to the sign-in, and back here afterwards. */
 function SignedIn({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
-  const { status } = useAuth()
+  const { status, me } = useAuth()
   const location = useLocation()
   if (status === 'loading') return <p className="p-6 text-sm text-mist-500">{t('common.loading')}</p>
   if (status === 'setup') return <Navigate to="/setup" replace />
@@ -30,7 +32,25 @@ function SignedIn({ children }: { children: ReactNode }) {
     return <Navigate to={here === '/' ? '/login' : `/login?next=${encodeURIComponent(here)}`} replace />
   }
   if (status === 'error') return <p className="p-6 text-sm text-bad-500">{t('errors.byCode.internal_error')}</p>
+  if (me?.second_factor_setup_required) return <SecondFactorFirst />
   return <StoreProvider>{children}</StoreProvider>
+}
+
+/**
+ * The operator requires a second factor and this account has none yet. The server answers everything else with 403,
+ * so nothing else is offered: setting it up, or signing out.
+ */
+function SecondFactorFirst() {
+  const { t } = useTranslation()
+  const { me, signOut } = useAuth()
+  return (
+    <AuthFrame title={t('twofactor.requiredTitle')} text={t('twofactor.requiredText')}>
+      {me && <SecondFactor me={me} />}
+      <button type="button" onClick={() => void signOut()} className="mt-5 w-full text-center text-xs text-mist-500 hover:text-mist-300">
+        {t('account.signOut')}
+      </button>
+    </AuthFrame>
+  )
 }
 
 export default function App() {

@@ -389,6 +389,11 @@ class Account(Base):
     last_seen_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     failed_logins: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: The second factor (``services/totp.py``): the seed encrypted with the server secret, empty while off; the
+    #: recovery codes as a JSON list of SHA-256 hashes; the time step of the last code taken (no replay).
+    totp_secret_enc: Mapped[str] = mapped_column(Text, default="")
+    totp_recovery: Mapped[str] = mapped_column(Text, default="")
+    totp_last_step: Mapped[int] = mapped_column(Integer, default=0)
     #: Not stored. Set on the account an MCP key acts as when the key may see only some spaces (``services/mcp.py``):
     #: ``rights`` then answers for every other space as if it did not exist.
     key_spaces: ClassVar[frozenset[int] | None] = None

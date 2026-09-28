@@ -30,6 +30,9 @@ DEFAULTS: dict[str, Any] = {
     "public_url": "",
     #: Members may sign in with a password. The operator always may: the emergency exit when OIDC fails.
     "password_login": True,
+    #: Every account that signs in with a password needs a second factor; until it has one, it reaches only its
+    #: account page. Accounts from OIDC bring their provider's.
+    "two_factor_required": False,
     #: OIDC: issuer, client id and the encrypted client secret; empty means not set up.
     "oidc_issuer": "",
     "oidc_client_id": "",

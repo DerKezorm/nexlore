@@ -146,7 +146,10 @@ def authenticate(db: Session, name: str, password: str) -> Account:
     if not verify_password(password, account.password_hash):
         note_failure(db, account)
         raise AccountError("wrong_credentials", "Name or password is wrong.", 401)
-    note_success(db, account)
+    if not account.totp_secret_enc:
+        # With a second factor, only the code resets the count of failures: otherwise whoever knows the password
+        # could guess codes forever, a new password step before each lockout.
+        note_success(db, account)
     return account
 
 

@@ -34,7 +34,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..models import Account, Draft, McpKey, utcnow
-from . import rights, settings_service
+from . import rights, settings_service, totp
 
 logger = logging.getLogger("nexlore.mcp")
 
@@ -124,6 +124,9 @@ def authenticate(db: Session, token: str | None) -> Caller | None:
         return None
     account = db.get(Account, key.account_id)
     if account is None or (account.locked_until is not None and account.locked_until > utcnow()):
+        return None
+    if totp.setup_required(db, account):
+        # The operator requires a second factor this account has not set up: its keys wait like its sessions.
         return None
     now = utcnow()
     if key.last_used_at is None or now - key.last_used_at >= USED_EVERY:

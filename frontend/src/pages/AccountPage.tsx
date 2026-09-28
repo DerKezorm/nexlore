@@ -1,4 +1,7 @@
-/** The own account: password, the link to the provider, signing out everywhere, keys for AI from outside (MCP). */
+/**
+ * The own account: password, second factor, the link to the provider, signing out everywhere, keys for AI from
+ * outside (MCP).
+ */
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
@@ -6,6 +9,7 @@ import { useSearchParams } from 'react-router-dom'
 import { ApiError, authApi } from '../api/client'
 import { Field, Problem } from '../components/AuthFrame'
 import { McpKeys } from '../components/McpKeys'
+import { SecondFactor } from '../components/SecondFactor'
 import { MyPluginsCard } from '../plugins/PluginSettings'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { errorText } from '../lib/errors'
@@ -91,6 +95,10 @@ export function AccountPage() {
             </form>
           </Section>
         )}
+
+        <Section symbol="shield" title={t('twofactor.title')}>
+          <SecondFactor me={me} />
+        </Section>
 
         <Section symbol="shield" title={t('account.oidc.title')}>
           {me.sign_in === 'oidc' ? (

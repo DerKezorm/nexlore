@@ -1,9 +1,13 @@
-/** Signing in: name and password, or the provider's button when the operator set one up. */
+/**
+ * Signing in: name and password, or the provider's button when the operator set one up. An account with a second
+ * factor gives the code from its app (or a recovery code) in a second step; too many wrong codes or too long a wait
+ * start over with the password.
+ */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 
-import { ApiError, authApi, type Methods } from '../api/client'
+import { ApiError, authApi, totpApi, type Methods } from '../api/client'
 import { AuthFrame, Field, PrimaryButton, Problem } from '../components/AuthFrame'
 import { safeNext } from '../lib/auth'
 import { errorText } from '../lib/errors'
@@ -17,6 +21,8 @@ export function LoginPage() {
   const [methods, setMethods] = useState<Methods | null>(null)
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
+  const [step, setStep] = useState<'password' | 'code'>('password')
+  const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(params.get('error'))
   const next = safeNext(params.get('next'))
@@ -33,14 +39,59 @@ export function LoginPage() {
     setBusy(true)
     setProblem(null)
     try {
-      await authApi.login(name.trim(), password)
+      if (step === 'code') {
+        await totpApi.code(code.trim())
+      } else {
+        const answer = await authApi.login(name.trim(), password)
+        if ('second_factor' in answer) {
+          setPassword('')
+          setStep('code')
+          return
+        }
+      }
       await refresh()
       navigate(next, { replace: true })
     } catch (error) {
-      setProblem(error instanceof ApiError ? error.code : 'internal_error')
+      const found = error instanceof ApiError ? error.code : 'internal_error'
+      setProblem(found)
+      // Too many wrong codes, or too long a wait: the password once more.
+      if (found === 'second_factor_expired') {
+        setStep('password')
+        setCode('')
+      }
     } finally {
       setBusy(false)
     }
+  }
+
+  if (step === 'code') {
+    return (
+      <AuthFrame title={t('twofactor.loginTitle')} text={t('twofactor.loginText')}>
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (code.trim()) void submit()
+          }}
+        >
+          <Problem text={problem ? errorText(problem) : null} />
+          <Field label={t('twofactor.code')} value={code} onChange={setCode} autoComplete="one-time-code" autoFocus hint={t('twofactor.codeHint')} />
+          <PrimaryButton busy={busy}>{t('auth.login.submit')}</PrimaryButton>
+          <button
+            type="button"
+            className="w-full text-center text-xs text-mist-500 hover:text-mist-300"
+            onClick={() => {
+              void totpApi.cancel().catch(() => undefined)
+              setStep('password')
+              setCode('')
+              setProblem(null)
+            }}
+          >
+            {t('twofactor.back')}
+          </button>
+        </form>
+      </AuthFrame>
+    )
   }
 
   return (
