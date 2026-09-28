@@ -80,6 +80,10 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Zoo/Reading.md':
     '# Reading\n\n> [!tip]- Folded tip\n> Hidden until opened.\n\nA ==marked== word and %%a secret remark%% here.\n\n' +
     '| Link | Note |\n|---|---|\n| [[Embedded\\|the embedded one]] | cell |\n\n![[Embedded#Part two]]\n',
+  // The editor's toolbar (toolbar.spec.ts).
+  'Zoo/Toolbar.md': '# Toolbar\n\nMake this word bold.\n\nPut a link here.\n\n- one\n- two\n',
+  'Zoo/Toolbar hide.md': '# Toolbar hide\n',
+  'Zoo/Toolbar phone.md': '# Toolbar phone\n\nTyped on a phone.\n',
   // The sidebar's context menus (sidebar.spec.ts): a folder to tidy, notes to rename, move and trash.
   'Zoo/Menu.md': '# Menu\n\nMake this word bold.\n\nA line to become a heading.\n\nSee [[Across target]].\n',
   'Zoo/Tidy/Keep.md':'# Keep\n\nSee [[Move me]] and [[Open me]].\n',

@@ -407,7 +407,8 @@
       "edit": "Bearbeiten",
       "hide": "Ausblenden",
       "preview": "Vorschau"
-    }
+    },
+    "linkText": "Link"
   },
   "properties": {
     "pickDate": "Datum wählen",
@@ -1070,6 +1071,40 @@
       "8": "Smaragd",
       "9": "Indigo",
       "10": "Grau"
+    }
+  },
+  "toolbar": {
+    "label": "Formatierung",
+    "undo": "Rückgängig",
+    "redo": "Wiederholen",
+    "block": "Absatzart",
+    "clear": "Formatierung entfernen",
+    "link": "Weblink",
+    "indent": "Einrücken",
+    "outdent": "Ausrücken",
+    "hide": "Werkzeugleiste ausblenden",
+    "show": "Werkzeugleiste zeigen",
+    "rowBefore": "Zeile darüber",
+    "rowAfter": "Zeile darunter",
+    "colBefore": "Spalte links",
+    "colAfter": "Spalte rechts",
+    "deleteRow": "Zeile löschen",
+    "deleteCol": "Spalte löschen",
+    "deleteTable": "Tabelle löschen",
+    "callouts": {
+      "note": "Notiz",
+      "tip": "Tipp",
+      "info": "Info",
+      "warning": "Warnung",
+      "danger": "Gefahr",
+      "question": "Frage",
+      "example": "Beispiel",
+      "quote": "Zitat",
+      "success": "Erfolg",
+      "failure": "Fehlschlag",
+      "bug": "Fehler",
+      "todo": "Zu tun",
+      "abstract": "Zusammenfassung"
     }
   }
 }

@@ -10,6 +10,11 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   plugins: [react()],
+  // Found only while a test runs, these would be bundled a second time and Vite reloads the test: the editor's
+  // toolbar then asks Crepe for a link box of another copy ("not found"). Bundled from the start instead.
+  optimizeDeps: {
+    include: ['@milkdown/kit/component/link-tooltip', '@milkdown/kit/prose/history', '@milkdown/kit/prose/schema-list', '@milkdown/kit/prose/tables'],
+  },
   test: {
     include: ['src/**/*.browser.test.{ts,tsx}'],
     globals: true,

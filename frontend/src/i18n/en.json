@@ -407,7 +407,8 @@
       "edit": "Edit",
       "hide": "Hide",
       "preview": "Preview"
-    }
+    },
+    "linkText": "link"
   },
   "properties": {
     "pickDate": "Pick a date",
@@ -1070,6 +1071,40 @@
       "8": "Emerald",
       "9": "Indigo",
       "10": "Grey"
+    }
+  },
+  "toolbar": {
+    "label": "Formatting",
+    "undo": "Undo",
+    "redo": "Redo",
+    "block": "Kind of paragraph",
+    "clear": "Clear formatting",
+    "link": "Web link",
+    "indent": "Indent",
+    "outdent": "Outdent",
+    "hide": "Hide the toolbar",
+    "show": "Show the toolbar",
+    "rowBefore": "Row above",
+    "rowAfter": "Row below",
+    "colBefore": "Column to the left",
+    "colAfter": "Column to the right",
+    "deleteRow": "Delete row",
+    "deleteCol": "Delete column",
+    "deleteTable": "Delete table",
+    "callouts": {
+      "note": "Note",
+      "tip": "Tip",
+      "info": "Info",
+      "warning": "Warning",
+      "danger": "Danger",
+      "question": "Question",
+      "example": "Example",
+      "quote": "Quote",
+      "success": "Success",
+      "failure": "Failure",
+      "bug": "Bug",
+      "todo": "To do",
+      "abstract": "Summary"
     }
   }
 }

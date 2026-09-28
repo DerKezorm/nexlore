@@ -14,13 +14,16 @@
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { editorViewCtx, parserCtx, remarkCtx, serializerCtx } from '@milkdown/kit/core'
 import type { Ctx, MilkdownPlugin } from '@milkdown/kit/ctx'
+import { linkTooltipAPI } from '@milkdown/kit/component/link-tooltip'
 import { uploadConfig } from '@milkdown/kit/plugin/upload'
 import {
   createCodeBlockCommand,
   insertHrCommand,
+  liftListItemCommand,
   listItemSchema,
   remarkInlineLinkPlugin,
   remarkPreserveEmptyLinePlugin,
+  sinkListItemCommand,
   toggleEmphasisCommand,
   toggleInlineCodeCommand,
   toggleStrongCommand,
@@ -31,10 +34,20 @@ import {
   wrapInHeadingCommand,
   wrapInOrderedListCommand,
 } from '@milkdown/kit/preset/commonmark'
-import { insertTableCommand, toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm'
+import {
+  addColAfterCommand,
+  addColBeforeCommand,
+  addRowAfterCommand,
+  addRowBeforeCommand,
+  insertTableCommand,
+  toggleStrikethroughCommand,
+} from '@milkdown/kit/preset/gfm'
+import { redo, redoDepth, undo, undoDepth } from '@milkdown/kit/prose/history'
 import type { Node as ProseNode, Schema, Slice } from '@milkdown/kit/prose/model'
 import { Fragment, Slice as ProseSlice } from '@milkdown/kit/prose/model'
 import { AllSelection, Plugin, TextSelection } from '@milkdown/kit/prose/state'
+import { liftListItem, sinkListItem } from '@milkdown/kit/prose/schema-list'
+import { deleteColumn, deleteRow, deleteTable } from '@milkdown/kit/prose/tables'
 import type { EditorView } from '@milkdown/kit/prose/view'
 import { $prose, callCommand } from '@milkdown/kit/utils'
 import type { Root } from 'mdast'
@@ -50,6 +63,8 @@ export type EditorLabels = {
   placeholder: string
   suggestions: string
   link: string
+  /** The words a web link gets when nothing was selected for it. */
+  linkText: string
   code: { search: string; copy: string; noResult: string; edit: string; hide: string; preview: string; loading: string }
   slash: {
     text: string
@@ -102,16 +117,38 @@ export type EditorOptions = {
   plugins?: MilkdownPlugin[]
 }
 
-/** What the editor's context menu (and anyone else) can ask of the editor, the same commands as its toolbar and "/". */
+/** What the toolbar, the context menu (and anyone else) can ask of the editor, the same commands as "/". */
 export type EditorCommand =
-  | 'bold' | 'italic' | 'strike' | 'code' | 'highlight' | 'wikiLink'
-  | 'text' | 'h1' | 'h2' | 'h3' | 'quote' | 'bulletList' | 'orderedList' | 'taskList' | 'codeBlock'
-  | 'callout' | 'table' | 'divider' | 'attachment' | 'selectAll'
+  | 'undo' | 'redo'
+  | 'bold' | 'italic' | 'strike' | 'code' | 'highlight' | 'clear' | 'wikiLink' | 'link' | 'embed'
+  | 'text' | 'h1' | 'h2' | 'h3' | 'quote' | 'bulletList' | 'orderedList' | 'taskList' | 'indent' | 'outdent'
+  | 'codeBlock' | 'math' | 'callout' | 'divider' | 'attachment' | 'selectAll'
+  | 'table' | 'rowBefore' | 'rowAfter' | 'colBefore' | 'colAfter' | 'deleteRow' | 'deleteCol' | 'deleteTable'
+
+/** What holds where the caret is: the toolbar lights it. */
+export type EditorStatus = {
+  /** Marks on the selection (all of it) or at the caret: `strong`, `emphasis`, `strike_through`, `inlineCode`, `link`. */
+  marks: string[]
+  block: 'text' | 'h1' | 'h2' | 'h3' | 'code' | 'math'
+  list: 'bullet' | 'ordered' | 'task' | null
+  quote: boolean
+  table: boolean
+  /** In the head row of a table: no row goes above it, and it stays. */
+  headerRow: boolean
+  canUndo: boolean
+  canRedo: boolean
+  canIndent: boolean
+  canOutdent: boolean
+}
 
 export type NoteEditor = {
   readonly view: EditorView
-  /** Runs a command where the selection is. */
-  run: (command: EditorCommand) => void
+  /** Runs a command where the selection is; `option` is the kind of a callout. */
+  run: (command: EditorCommand, option?: string) => void
+  /** What holds where the caret is. */
+  status: () => EditorStatus
+  /** Told of every change of the document or the selection; returns the way to stop. */
+  subscribe: (listener: () => void) => () => void
   readonly tools: Tools
   /** What to save: the editor's Markdown with every unchanged block as it was in the original. */
   text: () => string
@@ -170,6 +207,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
   const icon = (text: string) => `<span class="nx-slash-icon">${text}</span>`
   // A new original from the server is no change of the person typing.
   let quiet = false
+  const listeners = new Set<() => void>()
 
   const crepe = new Crepe({
     root: options.root,
@@ -290,6 +328,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
             view: () => ({
               update: (view, previous) => {
                 if (!quiet && !view.state.doc.eq(previous.doc)) options.onChange()
+                for (const listener of listeners) listener()
               },
             }),
             props: { transformPasted: withoutLocalImages },
@@ -397,9 +436,99 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
 
   const call = (key: Parameters<typeof callCommand>[0], payload?: unknown) => crepe.editor.action(callCommand(key, payload))
 
-  const run = (command: EditorCommand) => {
+  /** Every mark but links goes (Word's "clear formatting" keeps them too); with nothing selected, for what is typed next. */
+  const clear = () => {
+    const { from, to, empty } = view.state.selection
+    const { marks } = view.state.schema
+    let tr = view.state.tr
+    if (empty) tr = tr.setStoredMarks([])
+    else for (const type of Object.values(marks)) if (type !== marks.link) tr = tr.removeMark(from, to, type)
+    view.dispatch(tr)
+  }
+
+  /** A web link on the selection, its address asked in Crepe's own box; with nothing selected, on words put there. */
+  const webLink = () => {
+    let { from, to } = view.state.selection
+    if (from === to) {
+      view.dispatch(view.state.tr.insertText(labels.linkText, from))
+      to = from + labels.linkText.length
+      view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, from, to)))
+    }
+    ;({ from, to } = view.state.selection)
+    ctx.get(linkTooltipAPI.key).addLink(from, to)
+  }
+
+  const inHeaderRow = () => {
+    const { $from } = view.state.selection
+    for (let depth = $from.depth; depth > 0; depth--) if ($from.node(depth).type.name === 'table_header_row') return true
+    return false
+  }
+
+  const table = (command: (state: typeof view.state, dispatch?: typeof view.dispatch) => boolean) => command(view.state, view.dispatch)
+
+  const status = (): EditorStatus => {
+    const { state } = view
+    const { $from, from, to, empty } = state.selection
+    const marks = empty
+      ? (state.storedMarks ?? $from.marks()).map((mark) => mark.type.name)
+      : Object.values(state.schema.marks).filter((type) => state.doc.rangeHasMark(from, to, type)).map((type) => type.name)
+    const parent = $from.parent
+    let block: EditorStatus['block'] = 'text'
+    if (parent.type.name === 'heading' && Number(parent.attrs.level) <= 3) block = `h${parent.attrs.level}` as 'h1'
+    else if (parent.type.name === 'code_block') block = parent.attrs.language === 'LaTeX' ? 'math' : 'code'
+    let list: EditorStatus['list'] = null
+    let quote = false
+    let inTable = false
+    for (let depth = $from.depth; depth > 0; depth--) {
+      const node = $from.node(depth)
+      const name = node.type.name
+      if (!list && name === 'list_item' && node.attrs.checked !== null && node.attrs.checked !== undefined) list = 'task'
+      else if (!list && name === 'bullet_list') list = 'bullet'
+      else if (!list && name === 'ordered_list') list = 'ordered'
+      else if (name === 'blockquote') quote = true
+      else if (name === 'table') inTable = true
+    }
+    const item = state.schema.nodes.list_item
+    return {
+      marks, block, list, quote, table: inTable, headerRow: inTable && inHeaderRow(),
+      canUndo: undoDepth(state) > 0, canRedo: redoDepth(state) > 0,
+      canIndent: sinkListItem(item)(state), canOutdent: liftListItem(item)(state),
+    }
+  }
+
+  const run = (command: EditorCommand, option?: string) => {
     view.focus()
     switch (command) {
+      case 'undo':
+        return undo(view.state, view.dispatch)
+      case 'redo':
+        return redo(view.state, view.dispatch)
+      case 'clear':
+        return clear()
+      case 'link':
+        return webLink()
+      case 'embed':
+        return surround('![[', ']]')
+      case 'indent':
+        return call(sinkListItemCommand.key)
+      case 'outdent':
+        return call(liftListItemCommand.key)
+      case 'math':
+        return call(createCodeBlockCommand.key, 'LaTeX')
+      case 'rowBefore':
+        return inHeaderRow() ? undefined : call(addRowBeforeCommand.key)
+      case 'rowAfter':
+        return call(addRowAfterCommand.key)
+      case 'colBefore':
+        return call(addColBeforeCommand.key)
+      case 'colAfter':
+        return call(addColAfterCommand.key)
+      case 'deleteRow':
+        return inHeaderRow() ? undefined : table(deleteRow)
+      case 'deleteCol':
+        return table(deleteColumn)
+      case 'deleteTable':
+        return table(deleteTable)
       case 'bold':
         return call(toggleStrongCommand.key)
       case 'italic':
@@ -432,7 +561,8 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
         // A quote whose first line names the kind, as Obsidian writes it; the paragraph's words become its title.
         call(wrapInBlockquoteCommand.key)
         const { $from } = view.state.selection
-        return view.dispatch(view.state.tr.insertText('[!note] ', $from.start()).scrollIntoView())
+        const kind = /^[a-z-]+$/.test(option ?? '') ? option : 'note'
+        return view.dispatch(view.state.tr.insertText(`[!${kind}] `, $from.start()).scrollIntoView())
       }
       case 'table':
         return call(insertTableCommand.key, { row: 3, col: 3 })
@@ -449,6 +579,11 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     view,
     tools,
     run,
+    status,
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => void listeners.delete(listener)
+    },
     markdown: () => serialize(view.state.doc),
     text: () => {
       const edited = serialize(view.state.doc)

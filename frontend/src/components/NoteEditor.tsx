@@ -23,7 +23,9 @@ import type { LinkHelpers } from '../editor/live'
 import { fileKind, isFileTarget, isPasted, relativeTarget } from '../lib/files'
 import type { LinkIndex } from '../lib/links'
 import { useContextMenu, type MenuItem } from '../lib/menu'
+import { rememberToolbar, toolbarHidden } from '../lib/toolbar'
 import { baseName } from '../lib/vault'
+import { EditorToolbar, ShowToolbar } from './EditorToolbar'
 import { Properties } from './Properties'
 
 export type EditorMode = 'visual' | 'source'
@@ -46,6 +48,8 @@ type Props = {
   onChange: () => void
   onLeave: (text: string) => void
   onOpenLink: (target: string, newTab: boolean) => void
+  /** The toolbar's way to the plain Markdown view. */
+  onSource?: () => void
   onFileRefused?: () => void
   /** Files were uploaded (what came out of them is in each). */
   onUploaded?: (done: Uploaded[]) => void
@@ -54,12 +58,15 @@ type Props = {
 }
 
 export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
-  { path, content, links, mode, readOnly = false, onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed },
+  { path, content, links, mode, readOnly = false, onChange, onLeave, onOpenLink, onSource, onFileRefused, onUploaded, onUploadFailed },
   ref,
 ) {
   const { t } = useTranslation()
   const host = useRef<HTMLDivElement>(null)
   const engine = useRef<Engine | null>(null)
+  // The same editor for the toolbar, which draws again when it comes.
+  const [ready, setReady] = useState<Engine | null>(null)
+  const [toolbarOff, setToolbarOff] = useState(toolbarHidden)
   // Files that wiki links name, as the server resolves them: vault path, or null when there is none.
   const fileTargets = useRef(new Map<string, string | null>())
   // The note as last shown or typed: head and body kept apart; `body` is only current while no editor runs.
@@ -177,6 +184,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         if (!alive) return void editor.destroy()
         made = editor
         engine.current = editor
+        setReady(editor)
         // The note was loaded again while the editor was starting.
         if (body.current !== started) editor.replace(body.current)
         if (!readOnly) editor.view.focus()
@@ -184,6 +192,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       .catch(() => setProblem('editor_failed'))
     return () => {
       alive = false
+      setReady(null)
       if (made) {
         body.current = made.text()
         if (engine.current === made) engine.current = null
@@ -301,8 +310,29 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
 
   if (problem) return <p className="text-sm text-bad-500">{t('note.editorFailed')}</p>
 
+  const toolbar = mode === 'visual' && !readOnly
   return (
-    <div className="nx-note-editor">
+    <div className={'nx-note-editor' + (toolbar && !toolbarOff ? ' pb-14 sm:pb-0' : '')}>
+      {toolbar &&
+        (toolbarOff ? (
+          <ShowToolbar
+            onShow={() => {
+              rememberToolbar(false)
+              setToolbarOff(false)
+              engine.current?.view.focus()
+            }}
+          />
+        ) : (
+          <EditorToolbar
+            editor={ready}
+            onSource={() => onSource?.()}
+            onHide={() => {
+              rememberToolbar(true)
+              setToolbarOff(true)
+            }}
+            openMenu={menu.open}
+          />
+        ))}
       {mode === 'visual' && (
         <Properties
           key={head === '' ? 'none' : 'head'}
@@ -342,6 +372,7 @@ function editorLabels(t: (key: string) => string): EditorLabels {
     placeholder: t('note.editorPlaceholder'),
     suggestions: t('editor.suggestions'),
     link: t('editor.link'),
+    linkText: t('editor.linkText'),
     code: {
       search: t('editor.code.search'), copy: t('editor.code.copy'), noResult: t('editor.code.noResult'),
       edit: t('editor.code.edit'), hide: t('editor.code.hide'), preview: t('editor.code.preview'),
