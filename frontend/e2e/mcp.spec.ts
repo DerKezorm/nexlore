@@ -135,7 +135,7 @@ test('the operator switches MCP off again, and both pages say where it goes on',
   await page.goto('/account')
   await expect(page.getByTestId('mcp-off')).toContainText('has not switched on AI from outside')
   await expect(page.getByRole('button', { name: 'New key' })).toHaveCount(0)
-  await page.getByRole('link', { name: /Switch it on under Settings/ }).click()
+  await page.getByTestId('mcp-off').getByRole('link', { name: /Switch it on under Settings/ }).click()
   await expect(page).toHaveURL(/\/settings\?tab=server&sub=extensions/)
   await expect(page.getByRole('heading', { name: 'AI from outside (MCP)' })).toBeVisible()
   // The operator's card says where the keys are made, and leads there.
