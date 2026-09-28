@@ -710,7 +710,8 @@ export function NotePage() {
 
           {/* Body */}
           <div className="nn-scroll min-h-0 flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-3xl px-6 py-6">
+            {/* Room on the left for the editor's grip beside each block (reading keeps the same place, so nothing jumps). */}
+            <div className="mx-auto max-w-3xl px-6 py-6 md:pl-16">
               <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-mist-500">
                 <span>{t('note.changed', { when: formatDate(note.modified) })}</span>
                 <span>·</span>

@@ -14,7 +14,8 @@
  * 2. E0 against E1, block by block (longest common subsequence). Unchanged blocks are equal as text, because the
  *    same editor wrote them.
  * 3. A unit whose E0 blocks all stand unchanged in E1 is copied from O, including the space to a neighbouring copied
- *    unit. Everything else comes from E1.
+ *    unit. Everything else comes from E1, except a block that only moved: new at its place in E1, but unchanged
+ *    and a unit of its own in E0, it is copied from O too.
  *
  * Without a change E1 = E0, every unit is clean, and the result is O itself, line endings and end of file included,
  * however lossy the editor is.
@@ -299,8 +300,26 @@ function assemble(plan: Plan, edited: string, e1: Block[]): string {
     else insertedAfter.set(lastE0, [...(insertedAfter.get(lastE0) ?? []), l])
   }
 
+  // A block that only moved (dragged by its grip, cut and pasted) is new in E1 but stands unchanged in E0 elsewhere:
+  // when it is a unit of its own, its original text goes to the new place, not the editor's way of writing it.
+  const moved = new Map<number, Unit>()
+  const unitOf = new Map<number, Unit>()
+  for (const unit of units) if (unit.e0.length === 1) unitOf.set(unit.e0[0], unit)
+  const left = new Map<string, number[]>()
+  plan.e0Texts.forEach((text, j) => match[j] < 0 && unitOf.has(j) && left.set(text, [...(left.get(text) ?? []), j]))
+  for (const list of insertedAfter.values())
+    for (const l of list) {
+      const j = left.get(e1Texts[l])?.shift()
+      if (j !== undefined) moved.set(l, unitOf.get(j)!)
+    }
+
   const segments: Segment[] = []
-  const pushNew = (list: number[] | undefined) => list?.forEach((l) => segments.push({ from: 'e1', block: l }))
+  const pushNew = (list: number[] | undefined) =>
+    list?.forEach((l) => {
+      const unit = moved.get(l)
+      if (unit && unit.oTo > unit.oFrom) segments.push({ from: 'o', first: unit.oFrom, last: unit.oTo - 1 })
+      else segments.push({ from: 'e1', block: l })
+    })
   pushNew(insertedAfter.get(-1))
   for (const unit of units) {
     const inner = unit.e0.slice(0, -1)

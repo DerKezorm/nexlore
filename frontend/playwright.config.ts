@@ -83,6 +83,7 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   // The editor's toolbar (toolbar.spec.ts).
   'Zoo/Toolbar.md': '# Toolbar\n\nMake this word bold.\n\nPut a link here.\n\n- one\n- two\n',
   'Zoo/Toolbar hide.md': '# Toolbar hide\n',
+  'Zoo/Grip.md': '# Grip\n\nFirst *paragraph*  \nwith a hard break.\n\nSecond paragraph.\n\n- [ ] Third, a task.\n',
   'Zoo/Toolbar phone.md': '# Toolbar phone\n\nTyped on a phone.\n',
   // The sidebar's context menus (sidebar.spec.ts): a folder to tidy, notes to rename, move and trash.
   'Zoo/Menu.md': '# Menu\n\nMake this word bold.\n\nA line to become a heading.\n\nSee [[Across target]].\n',

@@ -14,7 +14,8 @@ test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 async function edit(page: Page, note: string) {
   await page.goto(`/note/${note}`)
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
-  await expect(page.locator('.ProseMirror')).toBeVisible()
+  // The first note of a run waits for the lock while the server still reads the vault, then for the editor's code.
+  await expect(page.locator('.ProseMirror')).toBeVisible({ timeout: 15_000 })
 }
 
 async function select(page: Page, text: string) {
@@ -104,4 +105,27 @@ test('on a phone the toolbar is one row above the keyboard, swiped sideways', as
   await bar.getByRole('button', { name: 'Italic' }).click()
   await saved(page)
   expect(onDisk('Zoo/Toolbar phone.md')).toBe('# Toolbar phone\n\nTyped on a *phone.*\n')
+})
+
+test('the grip beside a block says what it does, selects the block on a click and moves it when dragged', async ({ page }) => {
+  await edit(page, 'Zoo/Grip.md')
+  const before = onDisk('Zoo/Grip.md')
+  const second = page.locator('.ProseMirror p', { hasText: 'Second paragraph.' })
+  await second.hover()
+  const grip = page.getByRole('button', { name: 'Drag to move, click to select' })
+  await expect(grip).toBeVisible()
+  await expect(grip).toHaveAttribute('title', 'Drag to move, click to select')
+  await expect(page.getByRole('button', { name: 'Add a block below' })).toHaveAttribute('title', 'Add a block below')
+  await grip.click()
+  await expect(second).toHaveClass(/ProseMirror-selectednode/)
+
+  // Dragged above the first paragraph: only the order changes, every block as it was written.
+  await second.hover()
+  const first = page.locator('.ProseMirror p', { hasText: 'First' })
+  const box = (await first.boundingBox())!
+  await grip.dragTo(first, { targetPosition: { x: 20, y: 2 } })
+  await expect(page.locator('.ProseMirror > p').first()).toHaveText('Second paragraph.')
+  await saved(page)
+  expect(onDisk('Zoo/Grip.md')).toBe(before.replace('Second paragraph.\n\n', '').replace('# Grip\n\n', '# Grip\n\nSecond paragraph.\n\n'))
+  expect(box.height).toBeGreaterThan(0)
 })

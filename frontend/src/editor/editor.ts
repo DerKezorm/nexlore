@@ -65,6 +65,8 @@ export type EditorLabels = {
   link: string
   /** The words a web link gets when nothing was selected for it. */
   linkText: string
+  /** What the two buttons beside a block do (Crepe draws them without a word). */
+  handle: { add: string; drag: string }
   code: { search: string; copy: string; noResult: string; edit: string; hide: string; preview: string; loading: string }
   slash: {
     text: string
@@ -341,6 +343,20 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
   await crepe.editor.remove([remarkInlineLinkPlugin, remarkPreserveEmptyLinePlugin, ...replaced].flat())
   await crepe.create()
   crepe.setReadonly(!!options.readOnly)
+  // The "+" and the eight dots beside a block: a tooltip each, and a name for screen readers. Crepe draws them a
+  // moment after the editor is there, so they are named when they come.
+  const nameHandle = () => {
+    const [addButton, dragButton] = options.root.querySelectorAll<HTMLElement>('.milkdown-block-handle .operation-item')
+    if (!dragButton) return false
+    for (const [button, label] of [[addButton, labels.handle.add], [dragButton, labels.handle.drag]] as const) {
+      button.title = label
+      button.setAttribute('role', 'button')
+      button.setAttribute('aria-label', label)
+    }
+    return true
+  }
+  const handleWatch = new MutationObserver(() => nameHandle() && handleWatch.disconnect())
+  if (!nameHandle()) handleWatch.observe(options.root, { childList: true, subtree: true })
 
   const ctx = crepe.editor.ctx
   const view = ctx.get(editorViewCtx)
@@ -596,6 +612,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
       refreshSuggest(view)
     },
     destroy: async () => {
+      handleWatch.disconnect()
       for (const key of forcedKeys) releaseRaw(key)
       await crepe.destroy()
     },

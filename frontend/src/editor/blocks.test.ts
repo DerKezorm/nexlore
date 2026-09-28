@@ -56,6 +56,16 @@ for (const [label, maxCells] of [['by table', undefined], ['by window', 0]] as c
       expect(save(original, serialize(original), maxCells)).toBe(original)
     })
 
+    it('keeps the text of blocks that only changed places', () => {
+      // Both ways round: whichever of the two the matching takes as moved, it comes from the original.
+      expect(save('Up  one\n\nDown  two\n\nEnd\n', 'Down two\n\nUp one\n\nEnd\n', maxCells)).toBe('Down  two\n\nUp  one\n\nEnd\n')
+      expect(save('First\n\nSecond  x\n\nThird  y\n', 'Third y\n\nFirst\n\nSecond x\n', maxCells)).toBe('Third  y\n\nFirst\n\nSecond  x\n')
+      // A moved block that was also changed is the editor's, as any changed block.
+      expect(save('Up  one\n\nDown  two\n', 'Down two!\n\nUp one\n', maxCells)).toBe('Down two!\n\nUp  one\n')
+      // Part of an original block the editor splits in two moved away: the editor's text for it, nothing twice.
+      expect(save('A\n\nCTX x y\n\nB\n', 'x\n\nA\n\ny\n\nB\n', maxCells)).toBe('x\n\nA\n\ny\n\nB\n')
+    })
+
     it('keeps a new block typed between two parts of one original block', () => {
       const original = 'A\n\nCTX x y\n\nB\n'
       expect(serialize(original)).toBe('A\n\nx\n\ny\n\nB\n')

@@ -15,6 +15,7 @@ export const LABELS: EditorLabels = {
   suggestions: 'Notes',
   link: 'Paste a link',
   linkText: 'link',
+  handle: { add: 'Add a block below', drag: 'Drag to move, click to select' },
   code: { search: 'Search', copy: 'Copy', noResult: 'None', edit: 'Edit', hide: 'Hide', preview: 'Preview', loading: 'Loading' },
   slash: {
     text: 'Text', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3', quote: 'Quote', divider: 'Divider',

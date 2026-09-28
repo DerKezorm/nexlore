@@ -408,7 +408,9 @@
       "hide": "Hide",
       "preview": "Preview"
     },
-    "linkText": "link"
+    "linkText": "link",
+    "handleAdd": "Add a block below",
+    "handleDrag": "Drag to move, click to select"
   },
   "properties": {
     "pickDate": "Pick a date",
