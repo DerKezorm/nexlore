@@ -916,12 +916,13 @@
     },
     "off": "The operator has not switched on AI from outside, so there are no keys to make here.",
     "offOperator": "Switch it on under Settings → Server → AI and plugins.",
-    "nextStep": "Next: give your AI program the address and the key. Programs that read an mcp.json (Cursor, for example, or a project’s .mcp.json) take the JSON below; others ask for the same two things in their own settings. The key works until you revoke it.",
+    "nextStep": "Next: give your AI program the address and the key. Programs that read an mcp.json (Cursor, for example, or a project’s .mcp.json) take the JSON below; Claude Code takes the command. Others ask for the same two things in their own settings. The key works until you revoke it.",
     "recipeJson": "JSON in the mcp.json format",
     "copyNamed": "Copy: {{what}}",
     "howTo": "How to connect a program",
     "howToText": "The key was shown only once. Put it where it says YOUR-KEY, or make a new key.",
-    "yourKey": "YOUR-KEY"
+    "yourKey": "YOUR-KEY",
+    "recipeCommand": "Command for Claude Code"
   },
   "drafts": {
     "banner": "Draft by {{name}}, {{when}}.",

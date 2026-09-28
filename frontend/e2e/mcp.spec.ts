@@ -44,8 +44,9 @@ test('a key made on the account page proposes a draft that the note takes over',
   const address = `${new URL(page.url()).origin}/api/mcp`
   const json = JSON.parse((await shown.locator('pre').nth(0).textContent())!)
   expect(json).toEqual({ mcpServers: { nexlore: { type: 'http', url: address, headers: { Authorization: `Bearer ${token}` } } } })
-  await shown.getByRole('button', { name: 'Copy: JSON in the mcp.json format' }).click()
-  await expect(shown.getByRole('button', { name: 'Copy: JSON in the mcp.json format' })).toHaveText('Copied')
+  await expect(shown.locator('pre').nth(1)).toHaveText(`claude mcp add --transport http nexlore ${address} --header "Authorization: Bearer ${token}"`)
+  await shown.getByRole('button', { name: 'Copy: Command for Claude Code' }).click()
+  await expect(shown.getByRole('button', { name: 'Copy: Command for Claude Code' })).toHaveText('Copied')
   await shown.getByRole('button', { name: 'I have it' }).click()
   // Later the same lines, with a stand-in for the key shown only once.
   await page.getByText('How to connect a program').click()

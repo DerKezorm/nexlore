@@ -25,6 +25,24 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 WORDS = [("cla" + "ude"), ("anthro" + "pic"), ("co-" + "authored-by"), ("generated " + "with")]
 PATTERN = re.compile("|".join(re.escape(word) for word in WORDS), re.IGNORECASE)
+_C, _A = "cla" + "ude", "anthro" + "pic"
+#: Product names that may stand as such, only in these files (decided 28.09.2026: the MCP page shows the command of
+#: that program, the AI settings a tile for that provider). The same list as in the hook's scanner. They are taken out
+#: of the text before the check, so an attribution next to them is still found.
+PRODUCT_NAMES = {
+    "frontend/src/lib/mcp.ts": re.compile(f"{_C} mcp add|{_C.capitalize()} Code"),
+    "frontend/e2e/mcp.spec.ts": re.compile(f"{_C} mcp add|{_C.capitalize()} Code"),
+    "frontend/src/i18n/en.json": re.compile(f"{_C.capitalize()} Code"),
+    "frontend/src/i18n/de.json": re.compile(f"{_C.capitalize()} Code"),
+    "frontend/src/lib/aiProviders.ts": re.compile(rf"console\.{_A}\.com|api\.{_A}\.com|{_A.capitalize()}"),
+}
+
+
+def without_products(relative: str, text: str) -> str:
+    allowed = PRODUCT_NAMES.get(relative)
+    return allowed.sub("PRODUCT", text) if allowed else text
+
+
 BINARY = (".png", ".jpg", ".jpeg", ".webp", ".ico", ".woff2", ".gif", ".pdf")
 #: The repository holds more than this; fewer means the listing went wrong. M0: about 70.
 FLOOR = 50
@@ -67,6 +85,7 @@ def test_no_file_names_an_assistant_or_carries_an_attribution() -> None:
         text = text_of(path)
         if text is None:
             continue
+        text = without_products(relative, text)
         hits = [number for number, line in enumerate(text.splitlines(), 1) if PATTERN.search(line)]
         found += [f"{relative}:{number}" for number in hits]
         # "generated" at the end of one line and "with" at the start of the next is the same attribution.
@@ -101,3 +120,13 @@ def test_the_check_knows_an_attribution_when_it_sees_one() -> None:
     assert PATTERN.search("Co-" + "Authored-By: someone")
     assert PATTERN.search("made by " + "ANTHRO" + "PIC")
     assert not PATTERN.search("claws, clause and anthology are fine")
+
+
+def test_product_names_pass_only_in_their_files_and_never_hide_an_attribution() -> None:
+    name = _C.capitalize() + " Code"
+    assert not PATTERN.search(without_products("frontend/src/lib/mcp.ts", f"the command for {name}"))
+    assert PATTERN.search(without_products("frontend/src/lib/other.ts", f"the command for {name}"))
+    assert PATTERN.search(without_products("frontend/src/i18n/en.json", _A.capitalize()))
+    assert PATTERN.search(without_products("frontend/src/lib/mcp.ts", "Co-" + f"Authored-By: {name}"))
+    assert PATTERN.search(without_products("frontend/src/lib/mcp.ts", "Written by " + _C.capitalize()))
+    assert PATTERN.search(without_products("frontend/src/lib/aiProviders.ts", "Generated " + f"with {_A.capitalize()}"))

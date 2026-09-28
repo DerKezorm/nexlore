@@ -4,7 +4,7 @@
  * offered. A key sees every space its account may read, or only those chosen when it was made.
  *
  * It explains itself: right after a key is made, the lines a program needs, ready to copy (JSON in the mcp.json
- * format); later the same with a stand-in for the key. When the operator has not
+ * format, and the command line of a coding assistant); later the same with a stand-in for the key. When the operator has not
  * switched MCP on, it says so, and the operator gets the way to the switch.
  */
 import { useEffect, useState } from 'react'
@@ -14,7 +14,7 @@ import { Link } from 'react-router-dom'
 import { ApiError, mcpApi, vaultApi, type McpKey, type McpLevel, type Space } from '../api/client'
 import { errorText } from '../lib/errors'
 import { formatDate } from '../lib/markdown'
-import { mcpJson } from '../lib/mcp'
+import { mcpCommand, mcpJson } from '../lib/mcp'
 import { copyText } from '../lib/vaultActions'
 import { useAuth } from '../state/auth'
 import { Symbol } from './Symbol'
@@ -127,6 +127,7 @@ export function McpKeys() {
           </p>
           <p className="mt-3 text-xs text-mist-300">{t('mcp.nextStep')}</p>
           <Recipe label={t('mcp.recipeJson')} text={mcpJson(address, shown.token)} copied={copied === 'json'} onCopy={() => copy('json', mcpJson(address, shown.token))} />
+          <Recipe label={t('mcp.recipeCommand')} text={mcpCommand(address, shown.token)} copied={copied === 'command'} onCopy={() => copy('command', mcpCommand(address, shown.token))} />
           <button type="button" onClick={() => setShown(null)} className="mt-2 text-xs text-mist-400 underline">
             {t('mcp.done')}
           </button>
@@ -164,6 +165,7 @@ export function McpKeys() {
           <summary className="cursor-pointer text-mist-300">{t('mcp.howTo')}</summary>
           <p className="mt-2 text-xs text-mist-400">{t('mcp.howToText')}</p>
           <Recipe label={t('mcp.recipeJson')} text={mcpJson(address, t('mcp.yourKey'))} copied={copied === 'json-later'} onCopy={() => copy('json-later', mcpJson(address, t('mcp.yourKey')))} />
+          <Recipe label={t('mcp.recipeCommand')} text={mcpCommand(address, t('mcp.yourKey'))} copied={copied === 'command-later'} onCopy={() => copy('command-later', mcpCommand(address, t('mcp.yourKey')))} />
         </details>
       )}
       {!making ? (

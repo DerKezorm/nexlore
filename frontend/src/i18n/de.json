@@ -916,12 +916,13 @@
     },
     "off": "Der Betreiber hat KI von außen nicht eingeschaltet, deshalb gibt es hier keine Schlüssel.",
     "offOperator": "Einschalten unter Einstellungen → Server → KI und Plugins.",
-    "nextStep": "Als Nächstes: Adresse und Schlüssel in dein KI-Programm eintragen. Programme, die eine mcp.json lesen (etwa Cursor oder die .mcp.json eines Projekts), nehmen das JSON unten; andere fragen in ihren eigenen Einstellungen nach denselben zwei Dingen. Der Schlüssel gilt, bis du ihn widerrufst.",
+    "nextStep": "Als Nächstes: Adresse und Schlüssel in dein KI-Programm eintragen. Programme, die eine mcp.json lesen (etwa Cursor oder die .mcp.json eines Projekts), nehmen das JSON unten; Claude Code nimmt den Befehl. Andere fragen in ihren eigenen Einstellungen nach denselben zwei Dingen. Der Schlüssel gilt, bis du ihn widerrufst.",
     "recipeJson": "JSON im mcp.json-Format",
     "copyNamed": "Kopieren: {{what}}",
     "howTo": "So verbindest du ein Programm",
     "howToText": "Der Schlüssel wurde nur einmal gezeigt. Setz ihn dort ein, wo DEIN-SCHLÜSSEL steht, oder leg einen neuen an.",
-    "yourKey": "DEIN-SCHLÜSSEL"
+    "yourKey": "DEIN-SCHLÜSSEL",
+    "recipeCommand": "Befehl für Claude Code"
   },
   "drafts": {
     "banner": "Entwurf von {{name}}, {{when}}.",
