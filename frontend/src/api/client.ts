@@ -326,7 +326,13 @@ export type Account = {
   last_seen_at: string | null
 }
 /** `second_factor_setup_required`: the operator requires a second factor this account has not set up yet. */
-export type Me = Account & { shares_allowed: boolean; mail: boolean; second_factor_setup_required: boolean }
+export type Me = Account & {
+  shares_allowed: boolean
+  mail: boolean
+  second_factor_setup_required: boolean
+  /** The editor offers AI: the operator allows it and the account switched its own service on. */
+  ai_ready?: boolean
+}
 export type AdminAccount = Account & { spaces: number; locked: boolean }
 export type SetupState = { needs_setup: boolean; signed_in: boolean; version: string; min_password: number }
 export type Methods = { password: boolean; oidc: boolean; oidc_name: string }
@@ -402,6 +408,7 @@ export type ServerSettings = {
   mcp_allowed: boolean
   mcp_max_level: McpLevel
   plugin_upload_allowed: boolean
+  ai_allowed: boolean
 }
 export type ServerSettingsChange = Partial<Omit<ServerSettings, 'smtp_password_set'>> & { smtp_password?: string }
 export type FileSettings = { attachment_folder: string; upload_max_mb: number; quota_mb: number; strip_location: boolean }
@@ -433,6 +440,35 @@ export type BackupCheck = {
   examples: { add: string[]; change: string[]; remove: string[] }
 }
 export type AddedLanguage = { code: string; name: string; keys: number }
+
+// --- AI in notes, with the account's own service (services/ai.py) ----------------------------------------------------
+
+export type AiTask = 'spelling' | 'rewrite' | 'translate' | 'summarize' | 'write'
+export type AiAccess = { active: boolean; url: string; model: string; key_set: boolean }
+export type AiState = { allowed: boolean; ready: boolean; access: AiAccess; tones: string[] }
+export type AiModel = { id: string; name: string }
+export type AiEvent = {
+  id: number
+  at: string
+  model: string
+  task: AiTask
+  target: string
+  tokens_in: number
+  tokens_out: number
+  error: string
+  /** The request as it went out; shown as text, never rendered. */
+  body: unknown
+}
+
+export const aiApi = {
+  state: () => api<AiState>('/api/ai'),
+  save: (change: Partial<{ active: boolean; url: string; model: string; key: string }>) => api<AiState>('/api/ai', { method: 'PUT', body: change }),
+  models: (url?: string, key?: string) => api<AiModel[]>('/api/ai/models', { method: 'POST', body: { url, key } }),
+  run: (task: AiTask, text: string, target = '', instruction = '') =>
+    api<{ text: string }>('/api/ai/run', { method: 'POST', body: { task, text, target, instruction } }),
+  events: () => api<AiEvent[]>('/api/ai/events'),
+  clear: () => api<{ removed: number }>('/api/ai/events', { method: 'DELETE' }),
+}
 
 export const adminApi = {
   settings: () => api<ServerSettings>('/api/settings'),

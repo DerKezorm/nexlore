@@ -8,6 +8,7 @@ import { useSearchParams } from 'react-router-dom'
 
 import { ApiError, authApi } from '../api/client'
 import { Field, Problem } from '../components/AuthFrame'
+import { AiAccess } from '../components/AiAccess'
 import { McpKeys } from '../components/McpKeys'
 import { SecondFactor } from '../components/SecondFactor'
 import { MyPluginsCard } from '../plugins/PluginSettings'
@@ -152,6 +153,7 @@ export function AccountPage() {
           </button>
         </Section>
 
+        <AiAccess />
         <McpKeys />
         <MyPluginsCard />
       </div>

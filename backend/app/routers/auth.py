@@ -36,7 +36,7 @@ from ..security import (
     session_account,
     start_session,
 )
-from ..services import accounts, locales, mailer, settings_service, totp
+from ..services import accounts, ai, locales, mailer, settings_service, totp
 from ..services.accounts import AccountError
 
 logger = logging.getLogger("nexlore.auth")
@@ -226,6 +226,8 @@ def me(account: Account, db: DbSession) -> dict[str, Any]:
         "shares_allowed": bool(settings_service.get(db, "shares_allowed")),
         "mail": mailer.configured(db),
         "second_factor_setup_required": totp.setup_required(db, account),
+        # The editor offers AI only when the operator allows it and the account switched its own service on.
+        "ai_ready": ai.ready(db, account),
     }
 
 

@@ -26,6 +26,15 @@ from . import index, paths, vault
 logger = logging.getLogger("nexlore.watcher")
 
 HOUSEKEEPING_SECONDS = 24 * 3600
+
+
+def _purge_ai_events() -> None:
+    """The list of what went out to AI services keeps 14 days (``services/ai.py``)."""
+    from ..db import SessionLocal
+    from . import ai
+
+    with SessionLocal() as db:
+        ai.purge_events(db)
 #: How long the watcher collects events before it hands them over, in milliseconds.
 DEBOUNCE_MS = 1500
 RETRY_SECONDS = 30
@@ -91,6 +100,7 @@ async def scan_forever(stop: asyncio.Event) -> None:
             await asyncio.to_thread(index.scan)
             if time.monotonic() - last_housekeeping >= HOUSEKEEPING_SECONDS or last_housekeeping == 0.0:
                 await asyncio.to_thread(vault.purge_expired)
+                await asyncio.to_thread(_purge_ai_events)
                 await asyncio.to_thread(vault.thin_all)
                 last_housekeeping = time.monotonic()
         except Exception:

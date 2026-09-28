@@ -53,12 +53,14 @@ function useKeyboardInset(on: boolean): number {
 
 type Props = {
   editor: NoteEditor | null
+  /** The AI's menu, when the account has AI switched on. */
+  ai?: () => MenuItem[]
   onSource: () => void
   onHide: () => void
   openMenu: (x: number, y: number, items: MenuItem[]) => void
 }
 
-export function EditorToolbar({ editor, onSource, onHide, openMenu }: Props) {
+export function EditorToolbar({ editor, ai, onSource, onHide, openMenu }: Props) {
   const { t } = useTranslation()
   const [status, setStatus] = useState<EditorStatus>(NONE)
   const phone = usePhone()
@@ -165,6 +167,15 @@ export function EditorToolbar({ editor, onSource, onHide, openMenu }: Props) {
     gap('g6'),
     button('attachment', s('attachment'), 'clip', () => run('attachment')),
     button('embed', s('embed'), 'embed', () => run('embed')),
+    ...(ai
+      ? [
+          gap('g-ai'),
+          button('ai', t('toolbar.ai'), 'sparkle', (event) => {
+            const at = below(event)
+            openMenu(at.x, at.y, ai())
+          }, { text: t('toolbar.ai'), menu: true }),
+        ]
+      : []),
   ]
   const end = [
     button('source', t('note.sourceMode'), null, onSource, { text: 'MD' }),

@@ -735,6 +735,7 @@ export function NotePage() {
                   }}
                   onOpenLink={(target, newTab) => void openLink(target, newTab)}
                   onSource={() => setMode('source')}
+                  onNotice={setNotice}
                   onFileRefused={() => setNotice(t('note.fileRefused'))}
                   onUploaded={uploaded}
                   onUploadFailed={(code) => setNotice(errorText(code))}

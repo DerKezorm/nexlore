@@ -83,7 +83,12 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   // The editor's toolbar (toolbar.spec.ts).
   'Zoo/Toolbar.md': '# Toolbar\n\nMake this word bold.\n\nPut a link here.\n\n- one\n- two\n',
   'Zoo/Toolbar hide.md': '# Toolbar hide\n',
-  'Zoo/Grip.md': '# Grip\n\nFirst *paragraph*  \nwith a hard break.\n\nSecond paragraph.\n\n- [ ] Third, a task.\n',
+  // AI in notes against the stand-in service (ai.spec.ts).
+  'Zoo/Ai.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',
+  'Zoo/Ai whole.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',
+  'Zoo/Ai insert.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',
+  'Zoo/Ai off.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',
+  'Zoo/Grip.md':'# Grip\n\nFirst *paragraph*  \nwith a hard break.\n\nSecond paragraph.\n\n- [ ] Third, a task.\n',
   'Zoo/Toolbar phone.md': '# Toolbar phone\n\nTyped on a phone.\n',
   // The sidebar's context menus (sidebar.spec.ts): a folder to tidy, notes to rename, move and trash.
   'Zoo/Menu.md': '# Menu\n\nMake this word bold.\n\nA line to become a heading.\n\nSee [[Across target]].\n',
@@ -151,7 +156,8 @@ export default defineConfig({
   },
   webServer: external
     ? undefined
-    : {
+    : [
+      {
         command: `${python} -m uvicorn app.main:app --host 127.0.0.1 --port ${PORT}`,
         cwd: path.join('..', 'backend'),
         url: `http://127.0.0.1:${PORT}/api/health`,
@@ -168,4 +174,13 @@ export default defineConfig({
           NEXLORE_ARGON2_PARALLELISM: '1',
         },
       },
+      // A stand-in AI service (ai.spec.ts): the chat interface, answering by rule.
+      {
+        command: 'node e2e/fake-ai.mjs',
+        url: 'http://127.0.0.1:8478/health',
+        reuseExistingServer: false,
+        timeout: 20_000,
+        env: { FAKE_AI_PORT: '8478' },
+      },
+    ],
 })

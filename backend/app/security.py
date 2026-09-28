@@ -165,20 +165,26 @@ def _server_key() -> bytes:
     return hashlib.sha256(b"nexlore-secrets:" + secret).digest()
 
 
-def encrypt_secret(text: str) -> str:
+def _aad(context: str) -> bytes:
+    # A context of its own per kind of secret: an AI key sealed for one account cannot be passed off as another's,
+    # nor as a request of the AI list. Without one, the old secrets (OIDC, mail) read as before.
+    return _AAD + b":" + context.encode("utf-8") if context else _AAD
+
+
+def encrypt_secret(text: str, context: str = "") -> str:
     """AES-256-GCM with a key from ``secret.key``, stored as hex."""
     if not text:
         return ""
     nonce = os.urandom(_NONCE)
-    return (nonce + AESGCM(_server_key()).encrypt(nonce, text.encode("utf-8"), _AAD)).hex()
+    return (nonce + AESGCM(_server_key()).encrypt(nonce, text.encode("utf-8"), _aad(context))).hex()
 
 
-def decrypt_secret(stored: str) -> str:
+def decrypt_secret(stored: str, context: str = "") -> str:
     if not stored:
         return ""
     try:
         sealed = bytes.fromhex(stored)
-        return AESGCM(_server_key()).decrypt(sealed[:_NONCE], sealed[_NONCE:], _AAD).decode("utf-8")
+        return AESGCM(_server_key()).decrypt(sealed[:_NONCE], sealed[_NONCE:], _aad(context)).decode("utf-8")
     except (InvalidTag, ValueError):
         # A different secret.key than the one that encrypted it: the value is lost, not the app.
         return ""

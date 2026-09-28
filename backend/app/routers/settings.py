@@ -39,6 +39,7 @@ class SettingsOut(BaseModel):
     mcp_allowed: bool
     mcp_max_level: str
     plugin_upload_allowed: bool
+    ai_allowed: bool
 
 
 class SettingsIn(BaseModel):
@@ -58,6 +59,7 @@ class SettingsIn(BaseModel):
     mcp_allowed: bool | None = None
     mcp_max_level: Literal["read", "draft", "write"] | None = None
     plugin_upload_allowed: bool | None = None
+    ai_allowed: bool | None = None
 
 
 class TestMailIn(BaseModel):
@@ -82,6 +84,7 @@ def _view(db: DbSession) -> SettingsOut:
         mcp_allowed=bool(values["mcp_allowed"]),
         mcp_max_level=str(values["mcp_max_level"]),
         plugin_upload_allowed=bool(values["plugin_upload_allowed"]),
+        ai_allowed=bool(values["ai_allowed"]),
     )
 
 

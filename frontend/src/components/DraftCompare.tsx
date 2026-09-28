@@ -3,32 +3,19 @@
  * conflict copy, the changed words marked, then take it over or throw it away. Taking over saves against the state
  * the AI read: a note changed since gets a conflict copy, never an overwrite (the server says so, `conflict`).
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError, draftsApi, type DraftFull } from '../api/client'
-import { compareTexts, wordDiff, type Part } from '../lib/compare'
 import { showModalOnce } from '../lib/dialog'
 import { errorText } from '../lib/errors'
+import { CompareRows } from './CompareRows'
 
 type Props = {
   draftId: number
   onClose: () => void
   /** Taken over (with the path it went to, and the conflict copy if there was one) or thrown away. */
   onDone: (result: { path: string | null; conflict: string | null }) => void
-}
-
-function Words({ parts, tone }: { parts: Part[]; tone: 'old' | 'new' }) {
-  const mark = tone === 'old' ? 'bg-bad-500/20 text-bad-400' : 'bg-accent-500/20 text-accent-300'
-  return (
-    <div>
-      {parts.map((part, index) => (
-        <span key={index} className={part.changed ? mark : ''}>
-          {part.text}
-        </span>
-      ))}
-    </div>
-  )
 }
 
 export function DraftCompare({ draftId, onClose, onDone }: Props) {
@@ -49,8 +36,6 @@ export function DraftCompare({ draftId, onClose, onDone }: Props) {
       alive = false
     }
   }, [draftId])
-
-  const rows = useMemo(() => (draft ? compareTexts(draft.current ?? '', draft.content) : []), [draft])
 
   const run = async (work: () => Promise<{ path: string | null; conflict: string | null }>) => {
     setBusy(true)
@@ -111,25 +96,7 @@ export function DraftCompare({ draftId, onClose, onDone }: Props) {
           <div>{draft?.new ? t('drafts.nothingYet') : t('drafts.now')}</div>
           <div>{t('drafts.draft')}</div>
         </div>
-        <div className="nn-scroll min-h-0 flex-1 overflow-y-auto px-5 py-3" data-testid="draft-rows">
-          {rows.map((row, index) => {
-            if (row.kind === 'same') {
-              return (
-                <div key={index} className="grid grid-cols-2 gap-4 py-1 font-mono text-xs whitespace-pre-wrap text-mist-600">
-                  <div>{row.left.trimEnd()}</div>
-                  <div>{row.right.trimEnd()}</div>
-                </div>
-              )
-            }
-            const words = wordDiff(row.left.join('').trimEnd(), row.right.join('').trimEnd())
-            return (
-              <div key={index} className="my-2 grid grid-cols-2 gap-4 rounded-xl border border-accent-500/30 bg-accent-500/5 p-2 font-mono text-xs whitespace-pre-wrap">
-                <Words parts={words.left} tone="old" />
-                <Words parts={words.right} tone="new" />
-              </div>
-            )
-          })}
-        </div>
+        {draft && <CompareRows left={draft.current ?? ''} right={draft.content} testId="draft-rows" />}
       </div>
     </dialog>
   )

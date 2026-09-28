@@ -22,9 +22,12 @@ import { splitNote } from '../editor/frontmatter'
 import type { LinkHelpers } from '../editor/live'
 import { fileKind, isFileTarget, isPasted, relativeTarget } from '../lib/files'
 import type { LinkIndex } from '../lib/links'
+import { aiMenu, type AiAsk } from '../lib/aiMenu'
 import { useContextMenu, type MenuItem } from '../lib/menu'
 import { rememberToolbar, toolbarHidden } from '../lib/toolbar'
 import { baseName } from '../lib/vault'
+import { useAuth } from '../state/auth'
+import { AiDialog } from './AiDialog'
 import { EditorToolbar, ShowToolbar } from './EditorToolbar'
 import { Properties } from './Properties'
 
@@ -50,6 +53,8 @@ type Props = {
   onOpenLink: (target: string, newTab: boolean) => void
   /** The toolbar's way to the plain Markdown view. */
   onSource?: () => void
+  /** A line for the page's notice (an AI result taken over, a note made from it). */
+  onNotice?: (text: string) => void
   onFileRefused?: () => void
   /** Files were uploaded (what came out of them is in each). */
   onUploaded?: (done: Uploaded[]) => void
@@ -58,7 +63,7 @@ type Props = {
 }
 
 export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
-  { path, content, links, mode, readOnly = false, onChange, onLeave, onOpenLink, onSource, onFileRefused, onUploaded, onUploadFailed },
+  { path, content, links, mode, readOnly = false, onChange, onLeave, onOpenLink, onSource, onNotice, onFileRefused, onUploaded, onUploadFailed },
   ref,
 ) {
   const { t } = useTranslation()
@@ -67,6 +72,10 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   // The same editor for the toolbar, which draws again when it comes.
   const [ready, setReady] = useState<Engine | null>(null)
   const [toolbarOff, setToolbarOff] = useState(toolbarHidden)
+  // AI in the editor: only when the operator allows it and the account switched its own service on.
+  const { me } = useAuth()
+  const aiReady = !!me?.ai_ready && !readOnly
+  const [aiAsk, setAiAsk] = useState<AiAsk | null>(null)
   // Files that wiki links name, as the server resolves them: vault path, or null when there is none.
   const fileTargets = useRef(new Map<string, string | null>())
   // The note as last shown or typed: head and body kept apart; `body` is only current while no editor runs.
@@ -292,6 +301,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
           { label: s('code'), onSelect: run('codeBlock') },
         ],
       },
+      ...(aiReady ? ([{ label: t('ai.menu'), symbol: 'sparkle', items: aiMenu(t, setAiAsk) }] satisfies MenuItem[]) : []),
       {
         label: t('editorMenu.insert'),
         items: [
@@ -325,6 +335,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         ) : (
           <EditorToolbar
             editor={ready}
+            ai={aiReady ? () => aiMenu(t, setAiAsk) : undefined}
             onSource={() => onSource?.()}
             onHide={() => {
               rememberToolbar(true)
@@ -362,6 +373,9 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         <div ref={host} className="nx-editor-host" onContextMenu={openMenu} />
       )}
       {menu.element}
+      {aiAsk && ready && (
+        <AiDialog engine={ready} ask={aiAsk} notePath={path} onClose={() => setAiAsk(null)} onNotice={(text) => onNotice?.(text)} />
+      )}
     </div>
   )
 })

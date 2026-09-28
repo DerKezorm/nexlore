@@ -127,6 +127,9 @@ export type EditorCommand =
   | 'codeBlock' | 'math' | 'callout' | 'divider' | 'attachment' | 'selectAll'
   | 'table' | 'rowBefore' | 'rowAfter' | 'colBefore' | 'colAfter' | 'deleteRow' | 'deleteCol' | 'deleteTable'
 
+/** A piece of the note for the AI, and where it stood (read when the AI is asked: a dialog takes the selection away). */
+export type AiScope = { markdown: string; from: number; to: number; whole: boolean }
+
 /** What holds where the caret is: the toolbar lights it. */
 export type EditorStatus = {
   /** Marks on the selection (all of it) or at the caret: `strong`, `emphasis`, `strike_through`, `inlineCode`, `link`. */
@@ -151,6 +154,12 @@ export type NoteEditor = {
   status: () => EditorStatus
   /** Told of every change of the document or the selection; returns the way to stop. */
   subscribe: (listener: () => void) => () => void
+  /** What the AI works on: the selection as Markdown, or the whole text when nothing is selected; and where it was. */
+  aiScope: () => AiScope
+  /** Markdown in place of what `aiScope` gave, as one step that undo takes back. */
+  replaceMarkdown: (markdown: string, scope: AiScope) => void
+  /** Markdown after the block the caret is in. */
+  insertMarkdown: (markdown: string) => void
   readonly tools: Tools
   /** What to save: the editor's Markdown with every unchanged block as it was in the original. */
   text: () => string
@@ -512,6 +521,35 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     }
   }
 
+  const aiScope = (): AiScope => {
+    const { from, to, empty } = view.state.selection
+    const size = view.state.doc.content.size
+    if (empty || (from <= 1 && to >= size - 1)) return { markdown: serialize(view.state.doc), from: 0, to: size, whole: true }
+    // The selection with the blocks around it cut down to it: a sentence out of a paragraph is that sentence.
+    return { markdown: serialize(view.state.doc.cut(from, to)), from, to, whole: false }
+  }
+
+  const replaceMarkdown = (markdown: string, scope: AiScope) => {
+    const parsed = parse(markdown)
+    let tr = view.state.tr
+    if (scope.whole) tr = tr.replaceWith(0, view.state.doc.content.size, parsed.content)
+    else {
+      // One paragraph back for words out of a paragraph: its words go in place, not a paragraph of their own.
+      const inline = parsed.childCount === 1 && parsed.firstChild?.type.name === 'paragraph'
+      tr = tr.replaceRange(scope.from, scope.to, new ProseSlice(parsed.content, inline ? 1 : 0, inline ? 1 : 0))
+    }
+    view.dispatch(tr.scrollIntoView())
+    view.focus()
+  }
+
+  const insertMarkdown = (markdown: string) => {
+    const parsed = parse(markdown)
+    const { $to } = view.state.selection
+    const at = $to.depth >= 1 ? $to.after(1) : view.state.selection.to
+    view.dispatch(view.state.tr.insert(at, parsed.content).scrollIntoView())
+    view.focus()
+  }
+
   const run = (command: EditorCommand, option?: string) => {
     view.focus()
     switch (command) {
@@ -596,6 +634,9 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     tools,
     run,
     status,
+    aiScope,
+    replaceMarkdown,
+    insertMarkdown,
     subscribe: (listener) => {
       listeners.add(listener)
       return () => void listeners.delete(listener)

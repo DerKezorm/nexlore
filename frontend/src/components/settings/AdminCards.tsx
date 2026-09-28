@@ -448,6 +448,34 @@ export function McpCard({ settings, onChange }: { settings: ServerSettings; onCh
   )
 }
 
+// --- AI in notes, with each account's own service ---------------------------------------------------------------------
+
+export function AiCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
+  const { t } = useTranslation()
+  const { refresh } = useAuth()
+  const { problem, run } = useAction()
+  const save = (value: boolean) => {
+    onChange({ ...settings, ai_allowed: value })
+    void run(async () => {
+      onChange(await adminApi.saveSettings({ ai_allowed: value }))
+      // The editor reads it from the own account.
+      await refresh()
+    }).then((ok) => ok || onChange(settings))
+  }
+  return (
+    <Card id="ai" symbol="sparkle" title={t('admin.ai.title')} text={t('admin.ai.text')}>
+      <Toggle label={t('admin.ai.allow')} hint={t('admin.ai.allowHint')} checked={settings.ai_allowed} onChange={save} />
+      <p className="mt-3 text-sm text-mist-400" data-testid="ai-where-access">
+        {t('admin.ai.where')}{' '}
+        <Link to="/account#ai" className="text-accent-400 hover:underline">
+          {t('admin.ai.whereLink')}
+        </Link>
+      </p>
+      <Feedback problem={problem} />
+    </Card>
+  )
+}
+
 // --- Public pages ---------------------------------------------------------------------------------------------------
 
 export function SharesCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {

@@ -394,6 +394,12 @@ class Account(Base):
     totp_secret_enc: Mapped[str] = mapped_column(Text, default="")
     totp_recovery: Mapped[str] = mapped_column(Text, default="")
     totp_last_step: Mapped[int] = mapped_column(Integer, default=0)
+    #: The account's own AI service for its notes (``services/ai.py``): an OpenAI-shaped address, the model, the key
+    #: encrypted with the server secret, and whether the account switched it on. Off and empty from the start.
+    ai_url: Mapped[str] = mapped_column(String(500), default="")
+    ai_model: Mapped[str] = mapped_column(String(200), default="")
+    ai_key_enc: Mapped[str] = mapped_column(Text, default="")
+    ai_active: Mapped[bool] = mapped_column(Boolean, default=False)
     #: Not stored. Set on the account an MCP key acts as when the key may see only some spaces (``services/mcp.py``):
     #: ``rights`` then answers for every other space as if it did not exist.
     key_spaces: ClassVar[frozenset[int] | None] = None
@@ -501,6 +507,28 @@ class McpKey(Base):
     spaces: Mapped[Any] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     last_used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class AiEvent(Base):
+    """What went out to an account's AI service, word for word, encrypted: the proof of what left the house. Kept
+    14 days (``services/ai.py``), cleared at once on request; a failure is in it too, a request refused before
+    sending is not."""
+
+    __tablename__ = "ai_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow, index=True)
+    model: Mapped[str] = mapped_column(String(200), default="")
+    task: Mapped[str] = mapped_column(String(32), default="")
+    #: The tone or the language, where the task has one.
+    target: Mapped[str] = mapped_column(String(64), default="")
+    #: The request body as sent (JSON), encrypted with the server secret under a context of its own.
+    body_enc: Mapped[str] = mapped_column(Text, default="")
+    tokens_in: Mapped[int] = mapped_column(Integer, default=0)
+    tokens_out: Mapped[int] = mapped_column(Integer, default=0)
+    #: The error code when it failed after sending; empty when it worked.
+    error: Mapped[str] = mapped_column(String(64), default="")
 
 
 class Draft(Base):

@@ -47,6 +47,8 @@ DEFAULTS: dict[str, Any] = {
     "mcp_max_level": "read",
     #: Plugin files of one's own, not from the catalog (M7): off until the operator opens it.
     "plugin_upload_allowed": False,
+    #: AI in notes, with each account's own service: note text leaves the house, so closed until the operator opens it.
+    "ai_allowed": False,
     #: Invitation mail: without a host nothing is sent, the link to copy is enough.
     "smtp_host": "",
     "smtp_port": 587,

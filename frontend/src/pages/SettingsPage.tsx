@@ -14,6 +14,7 @@ import {
   FilesSettingsCard,
   LanguagesCard,
   MailCard,
+  AiCard,
   McpCard,
   SharesCard,
   SignInCard,
@@ -88,6 +89,7 @@ function ServerPart({ part }: { part: Part }) {
         settings && (
           <>
             <McpCard settings={settings} onChange={setSettings} />
+            <AiCard settings={settings} onChange={setSettings} />
             <AdminPluginsCard settings={settings} onChange={setSettings} />
           </>
         )
