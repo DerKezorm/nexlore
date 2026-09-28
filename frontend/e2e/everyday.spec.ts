@@ -222,3 +222,27 @@ test('a new note can go to another place, and the templates follow the space', a
   await page.waitForURL(/\/note\/Zone\/Placed%20elsewhere\.md/)
   expect(fs.existsSync(path.join(DATA, 'vault', 'Zone', 'Placed elsewhere.md'))).toBe(true)
 })
+
+test('templates can be found: made from the new note dialog, saved from the menu, marked in the sidebar', async ({ page }) => {
+  // A space without templates: the dialog offers to make one, and says what the placeholders do.
+  await page.goto('/note/Zone/Across.md')
+  await expect(page.locator('article')).toContainText('Across')
+  await page.keyboard.press('Alt+n')
+  const dialog = page.getByTestId('new-note-dialog')
+  await expect(dialog).toContainText('{{title}}')
+  await dialog.getByRole('button', { name: 'New template' }).click()
+  await page.waitForURL(/\/note\/Zone\/Templates\/New%20template\.md\?edit=1|\/note\/Zone\/Templates\/New%20template\.md$/)
+  await expect.poll(() => fs.existsSync(path.join(DATA, 'vault', 'Zone', 'Templates', 'New template.md'))).toBe(true)
+  expect(onDisk('Zone/Templates/New template.md')).toContain('{{title}}')
+  // The templates folder has its own symbol.
+  const tree = page.getByTestId('sidebar-tree')
+  await expect(tree.locator('li', { has: page.getByRole('button', { name: /^Templates \d+$/ }) }).locator('[data-look="template"]')).toBeVisible()
+
+  // A note of its own saved as a template, from the menu.
+  await page.goto('/note/Zone/Across.md')
+  await tree.getByRole('button', { name: 'Across', exact: true }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Save as template …' }).click()
+  await page.getByRole('dialog', { name: /as a template/ }).getByRole('button', { name: 'Save as template' }).click()
+  await expect(page.getByRole('status')).toContainText('Saved as a template in “Zone / Templates”')
+  expect(onDisk('Zone/Templates/Across.md')).toBe(onDisk('Zone/Across.md'))
+})

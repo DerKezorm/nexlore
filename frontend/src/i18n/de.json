@@ -846,7 +846,10 @@
     "create": "Anlegen",
     "where": "Ort",
     "change": "Ändern",
-    "chosen": "Fertig"
+    "chosen": "Fertig",
+    "makeTemplate": "Neue Vorlage",
+    "templateName": "Neue Vorlage",
+    "placeholders": "Eine Vorlage ist eine Notiz im Vorlagen-Ordner. Darin werden {{title}}, {{date}}, {{time}} und {{date:DD.MM.YYYY}} beim Anlegen einer Notiz ersetzt."
   },
   "spaceOptions": {
     "button": "Tagesnotizen",
@@ -977,7 +980,12 @@
     "trashFolderText": "Mit allen Notizen und Dateien darin. Alles bleibt 30 Tage im Papierkorb und kommt über die Seite Dateien zurück.",
     "newSpaceTitle": "Neuer Bereich",
     "newSpaceHint": "Ein Ordner ganz oben im Tresor. Du verwaltest ihn und kannst andere einladen; bis dahin sieht ihn niemand sonst.",
-    "spaceMade": "Bereich „{{name}}“ angelegt."
+    "spaceMade": "Bereich „{{name}}“ angelegt.",
+    "asTemplateTitle": "„{{name}}“ als Vorlage speichern?",
+    "asTemplateDo": "Als Vorlage speichern",
+    "asTemplateText": "Eine Kopie kommt in den Vorlagen-Ordner des Bereichs und erscheint unter „Neue Notiz“. Die Notiz selbst bleibt, wie sie ist.",
+    "asTemplateDone": "Als Vorlage gespeichert in „{{folder}}“.",
+    "asTemplateFailed": "Die Vorlage ließ sich nicht speichern."
   },
   "menu": {
     "newNote": "Neue Notiz",
@@ -991,7 +999,8 @@
     "copied": "Kopiert: {{text}}",
     "trash": "In den Papierkorb",
     "spaceSettings": "Mitglieder und Einstellungen",
-    "look": "Symbol und Farbe …"
+    "look": "Symbol und Farbe …",
+    "asTemplate": "Als Vorlage speichern …"
   },
   "editorMenu": {
     "openLink": "Notiz öffnen",

@@ -846,7 +846,10 @@
     "create": "Create",
     "where": "Place",
     "change": "Change",
-    "chosen": "Done"
+    "chosen": "Done",
+    "makeTemplate": "New template",
+    "templateName": "New template",
+    "placeholders": "A template is a note in the templates folder. In it, {{title}}, {{date}}, {{time}} and {{date:DD.MM.YYYY}} are filled in when a note is made from it."
   },
   "spaceOptions": {
     "button": "Daily notes",
@@ -977,7 +980,12 @@
     "trashFolderText": "With every note and file in it. It all stays in the trash for 30 days and comes back from the Files page.",
     "newSpaceTitle": "New space",
     "newSpaceHint": "A folder at the top of the vault. You manage it and can invite others; nobody else sees it until then.",
-    "spaceMade": "Space “{{name}}” made."
+    "spaceMade": "Space “{{name}}” made.",
+    "asTemplateTitle": "Save “{{name}}” as a template?",
+    "asTemplateDo": "Save as template",
+    "asTemplateText": "A copy goes into the templates folder of the space and shows up under “New note”. The note itself stays as it is.",
+    "asTemplateDone": "Saved as a template in “{{folder}}”.",
+    "asTemplateFailed": "The template could not be saved."
   },
   "menu": {
     "newNote": "New note",
@@ -991,7 +999,8 @@
     "copied": "Copied: {{text}}",
     "trash": "Move to the trash",
     "spaceSettings": "Members and settings",
-    "look": "Symbol and colour …"
+    "look": "Symbol and colour …",
+    "asTemplate": "Save as template …"
   },
   "editorMenu": {
     "openLink": "Open the note",

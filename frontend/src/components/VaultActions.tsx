@@ -9,8 +9,9 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { ApiError, looksApi, vaultApi } from '../api/client'
+import { ApiError, everydayApi, looksApi, vaultApi } from '../api/client'
 import { errorText } from '../lib/errors'
+import { ensureFolder } from '../lib/folders'
 import { fileRoute } from '../lib/markdown'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { announceLeaving, forget, reveal, VAULT_ACTION_EVENT, within, type VaultAction } from '../lib/vaultActions'
@@ -82,6 +83,28 @@ export function VaultActions() {
 
   return (
     <>
+      {action.kind === 'as-template' && (
+        <ConfirmDialog
+          open
+          title={t('actions.asTemplateTitle', { name: baseName(action.path) })}
+          confirm={t('actions.asTemplateDo')}
+          onCancel={close}
+          onConfirm={() =>
+            void (async () => {
+              const space = action.path.split('/')[0]
+              const [note, options] = await Promise.all([vaultApi.note(action.path), everydayApi.options(space)])
+              const folder = `${space}/${options.template_folder}`
+              await ensureFolder(folder)
+              await vaultApi.create(folder, baseName(action.path), note.content)
+              await reload()
+              reveal(folder)
+              done(t('actions.asTemplateDone', { folder: folder.split('/').join(' / ') }))
+            })().catch(() => done(t('actions.asTemplateFailed')))
+          }
+        >
+          {t('actions.asTemplateText')}
+        </ConfirmDialog>
+      )}
       {action.kind === 'look' && (
         <LookDialog
           path={action.path}

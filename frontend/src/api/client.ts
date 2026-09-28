@@ -104,7 +104,16 @@ async function once<T>(path: string, options: Options): Promise<T> {
 }
 
 export type Role = 'read' | 'write' | 'manage'
-export type Space = { id: number; name: string; notes: number; files: number; role: Role }
+export type Space = {
+  id: number
+  name: string
+  notes: number
+  files: number
+  role: Role
+  /** Where the space keeps its templates and its daily notes. */
+  template_folder?: string
+  daily_folder?: string
+}
 export type Lock = { holder: string; mine: boolean; expires_at: string }
 export type NoteData = {
   id: number

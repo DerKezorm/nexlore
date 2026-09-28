@@ -161,6 +161,19 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     [listings],
   )
 
+  /** The templates folder and the daily notes' folder of a space have a symbol of their own, unless one is chosen. */
+  const folderIcon = useCallback(
+    (path: string): SymbolName | null => {
+      const [name, ...rest] = path.split('/')
+      const space = spaces.find((item) => item.name === name)
+      if (!space || !rest.length) return null
+      if (rest.join('/') === (space.template_folder ?? 'Templates')) return 'template'
+      if (rest.join('/') === (space.daily_folder ?? 'Daily')) return 'calendar'
+      return null
+    },
+    [spaces],
+  )
+
   // Every open folder that is not read yet.
   const rows = useMemo(() => {
     const out: Row[] = []
@@ -169,7 +182,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
       const open = isOpen(path)
       // A symbol and colour chosen by hand come first; else the colour nexlore works out, and a dot.
       const look = lookOf(looks, path)
-      out.push({ kind: 'folder', path, name, depth, count, color: look.color ?? color, icon: look.icon, open, space })
+      out.push({ kind: 'folder', path, name, depth, count, color: look.color ?? color, icon: look.icon ?? folderIcon(path), open, space })
       if (!open) return
       const listing = listings.get(path)
       if (listing === undefined || listing === 'loading') {
@@ -187,7 +200,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     }
     spaces.forEach((space, index) => walk(space.name, space.name, 0, space.notes, spaceColor(index), true))
     return { out, wanted }
-  }, [spaces, listings, isOpen, looks])
+  }, [spaces, listings, isOpen, looks, folderIcon])
 
   useEffect(() => {
     for (const path of rows.wanted) load(path)
@@ -310,6 +323,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     if (write) {
       items.push({ label: t('menu.rename'), symbol: 'pencil', onSelect: () => askVaultAction({ kind: 'rename', path: row.path, folder: false }) })
       items.push({ label: t('menu.move'), symbol: 'move', onSelect: () => askVaultAction({ kind: 'move', path: row.path, folder: false }) })
+      items.push({ label: t('menu.asTemplate'), symbol: 'template', onSelect: () => askVaultAction({ kind: 'as-template', path: row.path }) })
     }
     items.push({ label: t('menu.showInGraph'), symbol: 'graph', onSelect: () => (onFolder ? onNote(row.path) : navigate('/?focus=' + encodeURIComponent(row.path))) })
     items.push({

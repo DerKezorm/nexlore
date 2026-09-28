@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { ApiError, everydayApi, type Template, vaultApi } from '../api/client'
 import { showModalOnce } from '../lib/dialog'
 import { errorText } from '../lib/errors'
+import { ensureFolder, TEMPLATE_START } from '../lib/folders'
 import { useStore } from '../state/store'
 import { FolderTree } from './FolderTree'
 import { Symbol } from './Symbol'
@@ -80,6 +81,22 @@ export function NewNoteDialog({ folder, onClose, onCreated }: { folder: string; 
     try {
       const note = await vaultApi.create(where, title.trim(), '', picked || undefined)
       onCreated(note.path)
+    } catch (error) {
+      setProblem(error instanceof ApiError ? error.code : 'internal_error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** A new template in the space's templates folder (made if it is not there yet), opened for writing. */
+  const makeTemplate = async () => {
+    setBusy(true)
+    setProblem(null)
+    try {
+      const folderPath = `${space}/${templateFolder || 'Templates'}`
+      await ensureFolder(folderPath)
+      const made = await vaultApi.create(folderPath, t('newNote.templateName'), TEMPLATE_START)
+      onCreated(made.path)
     } catch (error) {
       setProblem(error instanceof ApiError ? error.code : 'internal_error')
     } finally {
@@ -175,6 +192,17 @@ export function NewNoteDialog({ folder, onClose, onCreated }: { folder: string; 
               ))}
             </ul>
             {templates && templates.length === 0 && !problem && <p className="mt-2 text-xs text-mist-600">{t('newNote.noTemplates')}</p>}
+            {writable.includes(space) && (
+              <button
+                type="button"
+                onClick={() => void makeTemplate()}
+                disabled={busy}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-ink-700 px-2.5 py-1 text-xs text-mist-300 hover:bg-ink-850"
+              >
+                <Symbol name="plus" className="h-3.5 w-3.5" /> {t('newNote.makeTemplate')}
+              </button>
+            )}
+            <p className="mt-2 text-[11px] leading-4 text-mist-600">{t('newNote.placeholders')}</p>
           </div>
           <div className="min-w-0">
             <p className="mb-1 text-xs text-mist-500">{t('newNote.preview')}</p>

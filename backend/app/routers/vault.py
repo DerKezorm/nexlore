@@ -26,7 +26,7 @@ from ..db import SessionLocal
 from ..deps import Account, OperatorAccount, need, readable_spaces
 from ..errors import error
 from ..models import FTS_TABLE, MANAGE, OPERATOR, READ, WRITE, File, Link, Membership, Space, Tag
-from ..services import everyday, index, paths, rights, vault
+from ..services import everyday, index, paths, rights, spaceopts, vault
 from ..services.vault import Actor, VaultError
 
 router = APIRouter(prefix="/api", tags=["vault"])
@@ -77,6 +77,9 @@ class SpaceOut(BaseModel):
     files: int
     #: The own right: read, write or manage.
     role: str
+    #: Where the space keeps its templates and daily notes (the sidebar marks the templates folder).
+    template_folder: str = "Templates"
+    daily_folder: str = "Daily"
 
 
 class NameIn(BaseModel):
@@ -104,7 +107,11 @@ def spaces(account: Account) -> list[SpaceOut]:
         if role is None or not (root / space.folder).is_dir():
             continue
         notes, files = counts.get(space.id, (0, 0))
-        result.append(SpaceOut(id=space.id, name=space.folder, notes=int(notes), files=files, role=role))
+        opts = spaceopts.options_of(space)
+        result.append(SpaceOut(
+            id=space.id, name=space.folder, notes=int(notes), files=files, role=role,
+            template_folder=opts["template_folder"], daily_folder=opts["daily_folder"],
+        ))
     return result
 
 
