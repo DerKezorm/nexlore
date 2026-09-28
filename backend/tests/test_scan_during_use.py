@@ -174,10 +174,12 @@ def test_signing_in_and_saving_answer_quickly_while_a_big_scan_runs(
             number += 1
             if index.status.running:
                 seen_running += 1
-            began = time.perf_counter()
+            # Only the sign-in is timed: entering a TestClient starts the whole app (its database check waits for the
+            # scan as well), which a running server never does for a sign-in.
             with TestClient(app, headers={"X-Nexlore-Client": "tab-signin00"}) as fresh:
+                began = time.perf_counter()
                 answer = fresh.post("/api/auth/login", json={"name": "tester", "password": PASSWORD})
-            timings.append(("login", answer.status_code, time.perf_counter() - began))
+                timings.append(("login", answer.status_code, time.perf_counter() - began))
             began = time.perf_counter()
             answer = client.put("/api/note", json={
                 "path": "Work/Diary.md", "content": f"day {number}\n", "base_hash": note["hash"]})

@@ -93,8 +93,14 @@ def test_names_this_system_cannot_hold_are_renamed_and_reported(tmp_path: Path, 
     archive.write_bytes(make_zip({"Plan: Q3.md": "x", "Note.md": "a", "note.md": "b", "sub/con.md": "c"}))
     report = importer.import_archive(archive, "Space")
     names = sorted(path.name for path in (vault / "Space").rglob("*") if path.is_file())
-    assert names == ["Note.md", "Plan Q3.md", "con_.md", "note 2.md"]
-    assert report.renamed_on_import.count == 3
+    # Two names that differ only in case: Windows and macOS hold one of them, so the second gets a number; Linux holds
+    # both as they are, and the report names them as case twins (Obsidian on Windows would lose one).
+    probe = tmp_path / "Case"
+    probe.write_bytes(b"")
+    case_blind = (tmp_path / "case").exists()
+    assert names == ["Note.md", "Plan Q3.md", "con_.md", "note 2.md" if case_blind else "note.md"]
+    assert report.renamed_on_import.count == (3 if case_blind else 2)
+    assert report.case_collisions.count == (0 if case_blind else 1)
 
 
 def test_the_report_finds_case_twins_and_unportable_names_on_disk(vault: Path) -> None:
