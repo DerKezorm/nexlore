@@ -1266,5 +1266,9 @@
     "taken": "Taken over. Undo brings the old text back.",
     "madeNote": "Made the note “{{title}}”.",
     "untouchedNote": "The note is unchanged. The proposal replaces its text only when you take it over."
+  },
+  "tabs": {
+    "label": "Open notes",
+    "close": "Close “{{name}}”"
   }
 }

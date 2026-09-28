@@ -17,7 +17,8 @@ import { folderColor, spaceColor } from '../graph/palette'
 import { fileRoute } from '../lib/markdown'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
-import { baseName, noteUrl } from '../lib/vault'
+import { openInTab } from '../lib/tabs'
+import { baseName } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } from '../lib/vaultActions'
 import { useStore } from '../state/store'
 import { lookOf } from '../lib/looks'
@@ -339,7 +340,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     const write = writable(row.path)
     const items: MenuItem[] = [
       { label: t('menu.open'), symbol: 'note', onSelect: () => onNote(row.path) },
-      { label: t('menu.openNewTab'), symbol: 'open', onSelect: () => window.open(noteUrl(row.path), '_blank', 'noopener') },
+      { label: t('menu.openNewTab'), symbol: 'open', onSelect: () => openInTab(row.path, navigate) },
       'separator',
     ]
     if (write) {
@@ -389,7 +390,13 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
       return (
         <button
           type="button"
-          onClick={() => onNote(row.path)}
+          // With Ctrl or Cmd, or the middle button: in a tab of its own.
+          onClick={(event) => (event.ctrlKey || event.metaKey ? openInTab(row.path, navigate) : onNote(row.path))}
+          onAuxClick={(event) => {
+            if (event.button !== 1) return
+            event.preventDefault()
+            openInTab(row.path, navigate)
+          }}
           {...menuTriggers((x, y) => menu.open(x, y, noteMenu(row)))}
           className={
             'flex h-full w-full items-center gap-2 rounded-lg pr-2 text-left text-[13px] ' +

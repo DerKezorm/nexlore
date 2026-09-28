@@ -20,6 +20,8 @@ import { DraftCompare } from '../components/DraftCompare'
 import type { EditorHandle, EditorMode } from '../components/NoteEditor'
 import { Sidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
+import { TabBar } from '../components/TabBar'
+import { openInTab } from '../lib/tabs'
 import { copiesOf, originalOf } from '../lib/compare'
 import { errorText } from '../lib/errors'
 import { isFileTarget, isNotePath } from '../lib/files'
@@ -413,7 +415,7 @@ export function NotePage() {
       return
     }
     if (found) {
-      if (newTab) window.open(noteUrl(found), '_blank', 'noopener')
+      if (newTab) openInTab(found, navigate)
       else open(found)
       return
     }
@@ -544,8 +546,11 @@ export function NotePage() {
     return (
       <>
         <Sidebar activeNote={path} onNote={open} />
-        <main className="flex flex-1 items-center justify-center px-6 text-center text-mist-500">
-          {problem ? (problem === 'not_found' ? t('note.notFound') : errorText(problem)) : t('common.loading')}
+        <main className="flex min-w-0 flex-1 flex-col">
+          <TabBar path={path} />
+          <div className="flex flex-1 items-center justify-center px-6 text-center text-mist-500">
+            {problem ? (problem === 'not_found' ? t('note.notFound') : errorText(problem)) : t('common.loading')}
+          </div>
         </main>
       </>
     )
@@ -564,6 +569,7 @@ export function NotePage() {
       <Sidebar key={'tree-' + note.path} activeNote={note.path} onNote={open} />
       <main className="flex min-w-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
+          <TabBar path={note.path} />
           {/* Toolbar */}
           <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-ink-700/80 px-6 py-2.5">
             <div className="min-w-0 flex-1 truncate text-sm text-mist-500">

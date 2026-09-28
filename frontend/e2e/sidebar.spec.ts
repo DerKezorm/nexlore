@@ -251,3 +251,32 @@ test('favorites: the star on a note and the menu of a folder put them on top of 
   await expect(page.getByTestId('sidebar-favorites')).toHaveCount(0)
   expect(problems).toEqual([])
 })
+
+test('tabs: a note opens in a tab of its own with Ctrl or from the menu, and closing one shows its neighbour', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.goto('/note/Zoo/Menu.md')
+  await expect(page.locator('article')).toContainText('Make this word bold.')
+  const tabs = page.getByTestId('note-tabs')
+  // One note open: no row of tabs.
+  await expect(tabs).toHaveCount(0)
+  await row(page, 'Linked').click({ modifiers: ['ControlOrMeta'] })
+  await expect(page).toHaveURL(/\/note\/Zoo\/Linked\.md$/)
+  await expect(tabs.getByRole('tab')).toHaveText(['Menu', 'Linked'])
+  await expect(tabs.getByRole('tab', { name: 'Linked' })).toHaveAttribute('aria-selected', 'true')
+  // A plain click shows a note in the tab in front.
+  await row(page, 'Reading').click()
+  await expect(tabs.getByRole('tab')).toHaveText(['Menu', 'Reading'])
+  await row(page, 'Menu').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Open in a new tab' }).click()
+  await expect(tabs.getByRole('tab', { name: 'Menu' })).toHaveAttribute('aria-selected', 'true')
+  // Kept in this browser.
+  await page.reload()
+  await expect(tabs.getByRole('tab')).toHaveText(['Menu', 'Reading'])
+  await tabs.getByRole('tab', { name: 'Reading' }).click()
+  await expect(page).toHaveURL(/\/note\/Zoo\/Reading\.md$/)
+  // Closing the tab in front shows its neighbour; one tab left is no row any more.
+  await tabs.getByRole('button', { name: 'Close “Reading”' }).click()
+  await expect(page).toHaveURL(/\/note\/Zoo\/Menu\.md$/)
+  await expect(tabs).toHaveCount(0)
+  expect(problems).toEqual([])
+})

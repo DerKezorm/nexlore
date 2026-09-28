@@ -1266,5 +1266,9 @@
     "taken": "Übernommen. Rückgängig holt den alten Text zurück.",
     "madeNote": "Notiz „{{title}}“ angelegt.",
     "untouchedNote": "Die Notiz ist unverändert. Der Vorschlag ersetzt ihren Text erst, wenn du ihn übernimmst."
+  },
+  "tabs": {
+    "label": "Offene Notizen",
+    "close": "„{{name}}“ schließen"
   }
 }
