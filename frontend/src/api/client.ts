@@ -473,6 +473,8 @@ export const aiApi = {
 export const adminApi = {
   settings: () => api<ServerSettings>('/api/settings'),
   saveSettings: (change: ServerSettingsChange) => api<ServerSettings>('/api/settings', { method: 'PUT', body: change }),
+  /** The space with the guide, again, next to what is there ("nexlore 2" when "nexlore" is taken). */
+  makeGuide: (language: string) => api<{ space: string }>('/api/settings/guide', { method: 'POST', body: { language } }),
   mailTest: (to: string) => api<void>('/api/settings/mail-test', { method: 'POST', body: { to } }),
   fileSettings: () => api<FileSettings>('/api/settings/files'),
   saveFileSettings: (values: FileSettings) => api<FileSettings>('/api/settings/files', { method: 'PUT', body: values }),

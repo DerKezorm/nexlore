@@ -814,6 +814,14 @@
       "allowHint": "Off: nothing goes out, and the editor offers no AI. Accounts keep their access for later.",
       "where": "Each account sets up its service under My account → AI in notes.",
       "whereLink": "Go to my access"
+    },
+    "guide": {
+      "title": "The guide",
+      "text": "The space “nexlore” explains nexlore with notes that use what they explain. It is made at the first start; here it is made again, next to what is there. Nothing is overwritten.",
+      "language": "Language",
+      "make": "Make the guide again",
+      "made": "Made the space “{{space}}”.",
+      "open": "Open it"
     }
   },
   "today": {

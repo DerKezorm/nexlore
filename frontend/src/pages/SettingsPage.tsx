@@ -15,6 +15,7 @@ import {
   LanguagesCard,
   MailCard,
   AiCard,
+  GuideCard,
   McpCard,
   SharesCard,
   SignInCard,
@@ -95,7 +96,12 @@ function ServerPart({ part }: { part: Part }) {
         )
       )
     case 'files':
-      return <FilesSettingsCard />
+      return (
+        <>
+          <FilesSettingsCard />
+          <GuideCard />
+        </>
+      )
     case 'backups':
       return settings && <BackupsCard settings={settings} onChange={setSettings} />
     case 'languages':

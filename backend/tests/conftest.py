@@ -16,6 +16,8 @@ os.environ["NEXLORE_VAULT_DIR"] = os.path.join(_DATA, "vault")
 os.environ["NEXLORE_LOCALES_DIR"] = os.path.join(_DATA, "locales")
 os.environ["NEXLORE_LOG_LEVEL"] = ""
 os.environ["NEXLORE_API_DOCS"] = "false"
+# The guide space only where a test asks for it (test_guide.py): an empty vault at the setup would get one.
+os.environ["NEXLORE_WELCOME_GUIDE"] = "0"
 # Argon2 as cheap as it goes: the tests make hundreds of accounts. The strength itself is Argon2's business.
 os.environ["NEXLORE_ARGON2_TIME"] = "1"
 os.environ["NEXLORE_ARGON2_MEMORY_KIB"] = "1024"

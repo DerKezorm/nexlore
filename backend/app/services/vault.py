@@ -128,7 +128,7 @@ def _file(db: Session, rel: str) -> File:
     return file
 
 
-def _taken(full: Path) -> bool:
+def taken(full: Path) -> bool:
     """Whether a name is taken in its folder, compared without case."""
     if not full.parent.is_dir():
         return False
@@ -329,7 +329,7 @@ def create_folder(parent: str, name: str) -> str:
     if not directory.is_dir():
         raise VaultError("not_found", "no such folder", 404)
     target = directory / name
-    if _taken(target):
+    if taken(target):
         raise VaultError("exists", "a file or folder of that name exists", 409)
     target.mkdir()
     return f"{parent}/{name}"
@@ -340,7 +340,7 @@ def create_space(name: str) -> str:
     root = paths.vault_root()
     root.mkdir(parents=True, exist_ok=True)
     target = root / name
-    if _taken(target):
+    if taken(target):
         raise VaultError("exists", "a space of that name exists", 409)
     target.mkdir()
     with index.guard, SessionLocal() as db:
@@ -565,7 +565,7 @@ def restore_trash(entry_id: str, *, actor: Actor) -> list[str]:
                 continue
             target = paths.vault_root().joinpath(*file.path.split("/"))
             rel = file.path
-            if live(db, rel) is not None or _taken(target):
+            if live(db, rel) is not None or taken(target):
                 name = paths.unique_name(target.parent, target.name)
                 rel = posixpath.join(posixpath.dirname(rel), name)
                 target = target.parent / name
@@ -834,7 +834,7 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
     if paths.fold(destination).startswith(paths.fold(source) + "/"):
         raise VaultError("path_invalid", "a folder cannot move into itself")
     case_only = paths.fold(source) == paths.fold(destination)
-    if not case_only and (full_destination.exists() or _taken(full_destination)):
+    if not case_only and (full_destination.exists() or taken(full_destination)):
         raise VaultError("exists", "a file or folder of that name exists", 409)
     is_folder = full_source.is_dir()
     if not is_folder and paths.is_note(source) != paths.is_note(destination):

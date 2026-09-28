@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     #: Extra languages as JSON files, one per language (``es.json``). Empty: ``<data_dir>/locales``.
     locales_dir: Path | None = None
     disable_background: bool = False
+    #: The space "nexlore" with the guide, made at the setup when the vault is still empty (``services/guide.py``).
+    welcome_guide: bool = True
     frontend_dist: Path = PROJECT_DIR / "frontend" / "dist"
     #: Overrides the stored log level; the emergency exit when the app does not even start.
     log_level: str = ""

@@ -16,7 +16,7 @@ from ..deps import DbSession, OperatorAccount
 from ..errors import error
 from ..models import SIGN_IN_PASSWORD
 from ..security import encrypt_secret
-from ..services import accounts, mailer, settings_service
+from ..services import accounts, guide, mailer, settings_service
 
 logger = logging.getLogger("nexlore.settings")
 
@@ -133,3 +133,15 @@ def mail_test(payload: TestMailIn, _operator: OperatorAccount, db: DbSession) ->
         mailer.send_test(db, to)
     except mailer.MailError as exc:
         raise error(exc.code, str(exc), 502) from exc
+
+
+class GuideIn(BaseModel):
+    #: "de" or "en"; empty: the operator's own language.
+    language: str = Field(default="", max_length=16)
+
+
+@router.post("/guide", status_code=201, summary="Make the space with the guide again, next to what is there")
+def make_guide(payload: GuideIn, operator: OperatorAccount) -> dict[str, str]:
+    name = guide.create(operator.id, payload.language or operator.language or "en")
+    logger.info("Guide made again space=%s by=%s", name, operator.name)
+    return {"space": name}

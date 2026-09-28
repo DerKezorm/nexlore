@@ -36,7 +36,7 @@ from ..security import (
     session_account,
     start_session,
 )
-from ..services import accounts, ai, locales, mailer, settings_service, totp
+from ..services import accounts, ai, guide, locales, mailer, settings_service, totp
 from ..services.accounts import AccountError
 
 logger = logging.getLogger("nexlore.auth")
@@ -152,6 +152,8 @@ def setup(payload: SetupIn, request: Request, response: Response, db: DbSession)
         raise fail(exc) from exc
     account.language = language
     db.commit()
+    # A first start with an empty vault: the guide, in the language chosen here.
+    guide.on_first_start(account.id, language)
     return sign_in(db, request, response, account)
 
 

@@ -814,6 +814,14 @@
       "allowHint": "Aus: Nichts geht hinaus, und der Editor bietet keine KI an. Die Konten behalten ihren Zugang für später.",
       "where": "Jedes Konto richtet seinen Dienst unter Mein Konto → KI in Notizen ein.",
       "whereLink": "Zu meinem Zugang"
+    },
+    "guide": {
+      "title": "Die Anleitung",
+      "text": "Der Bereich „nexlore“ erklärt nexlore mit Notizen, die benutzen, was sie erklären. Er entsteht beim ersten Start; hier wird er neu angelegt, neben dem, was da ist. Nichts wird überschrieben.",
+      "language": "Sprache",
+      "make": "Anleitung neu anlegen",
+      "made": "Bereich „{{space}}“ angelegt.",
+      "open": "Öffnen"
     }
   },
   "today": {

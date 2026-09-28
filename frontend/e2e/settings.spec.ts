@@ -49,3 +49,20 @@ test('an account that is not the operator sees no Server tab, not even by the ad
   await expect(tab.locator('#backups')).toHaveCount(0)
   await member.close()
 })
+
+test('the operator makes the guide again, and it opens at its start note', async ({ page }) => {
+  await page.goto('/settings?tab=server&sub=files')
+  const card = page.locator('#guide')
+  await card.getByLabel('Language').selectOption('en')
+  await card.getByRole('button', { name: 'Make the guide again' }).click()
+  await expect(card.getByRole('status')).toContainText('Made the space “nexlore”.')
+  await card.getByRole('link', { name: 'Open it' }).click()
+  await expect(page.locator('article h1')).toHaveText('Welcome to nexlore')
+  // Its pictures are there, and its links lead to its notes.
+  await page.goto('/note/nexlore/01%20Notes%2C%20folders%20and%20spaces.md')
+  await expect(page.locator('article img').first()).toHaveJSProperty('complete', true)
+  expect(await page.locator('article img').first().evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(100)
+  // Gone again, so the sidebar of later tests stays as it was.
+  const gone = await page.request.delete('/api/files', { params: { path: 'nexlore' }, headers: { 'X-Nexlore-Client': 'tab-e2e-guide' } })
+  expect(gone.ok()).toBe(true)
+})

@@ -25,6 +25,8 @@ import {
 import { resetAddedLanguages, languageOptions, type LanguageOption } from '../../i18n'
 import { formatDate, formatDay } from '../../lib/markdown'
 import { useAuth } from '../../state/auth'
+import { useStore } from '../../state/store'
+import { noteUrl } from '../../lib/vault'
 import { ConfirmDialog } from '../ConfirmDialog'
 import { MembersDialog } from '../MembersDialog'
 import { Button, Card, CopyLink, Feedback, Input, Select, Toggle } from './ui'
@@ -443,6 +445,53 @@ export function McpCard({ settings, onChange }: { settings: ServerSettings; onCh
           {t('admin.mcp.keysLink')}
         </Link>
       </p>
+      <Feedback problem={problem} />
+    </Card>
+  )
+}
+
+// --- The guide (the space "nexlore") ------------------------------------------------------------------------------------
+
+/** The guide's start note in each language (`backend/app/guide`). */
+const GUIDE_START: Record<string, string> = { de: '00 Willkommen.md', en: '00 Welcome.md' }
+
+export function GuideCard() {
+  const { t, i18n } = useTranslation()
+  const { reload } = useStore()
+  const [language, setLanguage] = useState(i18n.language.startsWith('de') ? 'de' : 'en')
+  const [made, setMade] = useState<{ space: string; language: string } | null>(null)
+  const { busy, problem, run } = useAction()
+  return (
+    <Card id="guide" symbol="book" title={t('admin.guide.title')} text={t('admin.guide.text')}>
+      <div className="flex flex-wrap items-end gap-2">
+        <Select
+          label={t('admin.guide.language')}
+          value={language}
+          options={[{ value: 'de', label: 'Deutsch' }, { value: 'en', label: 'English' }]}
+          onChange={setLanguage}
+        />
+        <Button
+          primary
+          busy={busy}
+          onClick={() =>
+            void run(async () => {
+              const answer = await adminApi.makeGuide(language)
+              setMade({ space: answer.space, language })
+              await reload()
+            })
+          }
+        >
+          {t('admin.guide.make')}
+        </Button>
+      </div>
+      {made && (
+        <p role="status" className="mt-3 text-sm text-accent-400">
+          {t('admin.guide.made', { space: made.space })}{' '}
+          <Link to={noteUrl(`${made.space}/${GUIDE_START[made.language]}`)} className="underline">
+            {t('admin.guide.open')}
+          </Link>
+        </p>
+      )}
       <Feedback problem={problem} />
     </Card>
   )
