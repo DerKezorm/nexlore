@@ -112,6 +112,47 @@ test('the board moves a card by rewriting only its lines', async ({ page }) => {
   await expect(page.locator('article')).toContainText('Dig the bed')
 })
 
+test("the latch for plugin files of one's own opens, and uploads, only after a plain warning", async ({ page }) => {
+  const problems = collectProblems(page)
+  const latched = async () => (await (await page.request.get('/api/settings')).json()).plugin_upload_allowed
+  await page.goto('/settings')
+  const toggle = page.getByRole('checkbox', { name: "Allow plugin files of one's own" })
+  await toggle.click()
+  const warning = page.getByRole('dialog', { name: 'Allow plugins nobody checked?' })
+  await expect(warning).toContainText('WebRTC')
+  await warning.getByRole('button', { name: 'Cancel' }).click()
+  await expect(warning).toHaveCount(0)
+  await expect(toggle).not.toBeChecked()
+  expect(await latched()).toBe(false)
+
+  await toggle.click()
+  await warning.getByRole('button', { name: 'Allow anyway' }).click()
+  await expect(toggle).toBeChecked()
+  await expect.poll(latched).toBe(true)
+  await expect(page.getByTestId('plugin-upload-warning')).toContainText('WebRTC')
+
+  const manifest = { id: 'mine', version: '1.0.0', name: { en: 'Mine' }, permissions: ['note:read'], place: { panel: true } }
+  const card = page.locator('#plugins')
+  await card.getByLabel('manifest.json').setInputFiles({ name: 'manifest.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(manifest)) })
+  await card.getByLabel('main.js').setInputFiles({ name: 'main.js', mimeType: 'text/javascript', buffer: Buffer.from('nexlore.ready(function () {})') })
+  await card.getByRole('button', { name: 'Upload', exact: true }).click()
+  const asked = page.getByRole('dialog', { name: 'Upload code nobody checked?' })
+  await expect(asked).toContainText('WebRTC')
+  await asked.getByRole('button', { name: 'Cancel' }).click()
+  await expect(page.getByTestId('plugin-mine')).toHaveCount(0)
+  await card.getByRole('button', { name: 'Upload', exact: true }).click()
+  await asked.getByRole('button', { name: 'Upload anyway' }).click()
+  await expect(page.getByTestId('plugin-mine')).toContainText('own file, not checked')
+
+  // Away again, and the latch closed without a question.
+  await page.getByTestId('plugin-mine').getByRole('button', { name: 'Remove' }).click()
+  await expect(page.getByTestId('plugin-mine')).toHaveCount(0)
+  await toggle.click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect.poll(latched).toBe(false)
+  expect(problems).toEqual([])
+})
+
 test('switched off again, the frames are gone', async ({ page }) => {
   for (const id of ['toc', 'query', 'kanban']) {
     const answer = await page.request.put(`/api/plugins/${id}/enabled`, { data: { enabled: false }, headers: TAB })

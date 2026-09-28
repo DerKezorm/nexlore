@@ -770,6 +770,13 @@
       "own": "eigene Datei, ungeprüft",
       "uploadAllow": "Eigene Plugin-Dateien erlauben",
       "uploadHint": "Von niemandem geprüft; sie laufen genauso eingesperrt.",
+      "warnShort": "Ungeprüfter Code: Über WebRTC könnte er die Notizen, die er gezeigt bekommt, nach draußen schicken.",
+      "warnTitle": "Ungeprüfte Plugins erlauben?",
+      "warnText": "Eine eigene Plugin-Datei ist Code, den niemand geprüft hat. Sie läuft eingesperrt in ihrem Rahmen und erreicht nexlore nicht von sich aus, aber Browser lassen nexlore nicht jeden Weg nach draußen sperren: Über WebRTC könnte ein solches Plugin schicken, was es gezeigt bekommt (die Notiz, auf der es läuft, und was es lesen darf). Erlaube nur Dateien, deren Code du gelesen hast oder deren Urheber du vertraust.",
+      "warnConfirm": "Trotzdem erlauben",
+      "uploadTitle": "Ungeprüften Code hochladen?",
+      "uploadText": "Sobald du es freigibst, läuft dieses Plugin für alle, die es einschalten. Über WebRTC könnte es die Notizen, die es gezeigt bekommt, nach draußen schicken. Lade nur Code hoch, den du gelesen hast oder dessen Urheber du vertraust.",
+      "uploadConfirm": "Trotzdem hochladen",
       "upload": "Hochladen"
     }
   },

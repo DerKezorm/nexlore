@@ -1,11 +1,14 @@
 /**
  * Plugins in the settings (M7). The operator installs from the catalog and lets out (`AdminPluginsCard`); a file of
- * one's own only behind the latch. Each account switches let-out plugins on for itself (`MyPluginsCard`).
+ * one's own only behind the latch, and only after a plain warning, when the latch is opened and before each upload:
+ * code nobody checked could send what it is shown elsewhere through WebRTC, which no Content Security Policy blocks in
+ * every browser. Each account switches let-out plugins on for itself (`MyPluginsCard`).
  */
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { adminApi, api, type ServerSettings } from '../api/client'
+import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Symbol } from '../components/Symbol'
 import { Button, Card, Feedback, Toggle } from '../components/settings/ui'
 import { useAction } from '../components/settings/useAction'
@@ -37,6 +40,7 @@ export function AdminPluginsCard({ settings, onChange }: { settings: ServerSetti
   const { t, i18n } = useTranslation()
   const [list, setList] = useState<AdminList | null>(null)
   const [files, setFiles] = useState<{ manifest: File | null; code: File | null }>({ manifest: null, code: null })
+  const [asking, setAsking] = useState<'latch' | 'upload' | null>(null)
   const { busy, problem, done, run } = useAction()
   const load = useCallback(async () => setList(await adminPlugins.list()), [])
   useEffect(() => {
@@ -49,6 +53,19 @@ export function AdminPluginsCard({ settings, onChange }: { settings: ServerSetti
       await load()
       pluginsChanged()
     })
+
+  const latch = (value: boolean) => {
+    onChange({ ...settings, plugin_upload_allowed: value })
+    void run(async () => {
+      onChange(await adminApi.saveSettings({ plugin_upload_allowed: value }))
+      await load()
+    }).then((ok) => ok || onChange(settings))
+  }
+  const upload = () => {
+    const { manifest, code } = files
+    if (!manifest || !code) return
+    change(async () => adminPlugins.upload(JSON.parse(await manifest.text()), await code.text()))
+  }
 
   const installed = new Map((list?.installed ?? []).map((plugin) => [plugin.id, plugin]))
   const own = (list?.installed ?? []).filter((plugin) => plugin.source === 'upload')
@@ -102,22 +119,20 @@ export function AdminPluginsCard({ settings, onChange }: { settings: ServerSetti
           label={t('admin.plugins.uploadAllow')}
           hint={t('admin.plugins.uploadHint')}
           checked={settings.plugin_upload_allowed}
-          onChange={(value) => {
-            onChange({ ...settings, plugin_upload_allowed: value })
-            void run(async () => {
-              onChange(await adminApi.saveSettings({ plugin_upload_allowed: value }))
-              await load()
-            }).then((ok) => ok || onChange(settings))
-          }}
+          onChange={(value) => (value ? setAsking('latch') : latch(false))}
         />
+        {settings.plugin_upload_allowed && (
+          <p role="note" data-testid="plugin-upload-warning" className="mt-3 flex gap-2 rounded-lg border border-warn-500/40 bg-warn-500/10 px-3 py-2 text-xs text-warn-500">
+            <Symbol name="alert" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            {t('admin.plugins.warnShort')}
+          </p>
+        )}
         {settings.plugin_upload_allowed && (
           <form
             className="mt-3 grid gap-2 text-xs text-mist-400 sm:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault()
-              const { manifest, code } = files
-              if (!manifest || !code) return
-              change(async () => adminPlugins.upload(JSON.parse(await manifest.text()), await code.text()))
+              if (files.manifest && files.code) setAsking('upload')
             }}
           >
             <label className="block">
@@ -137,6 +152,21 @@ export function AdminPluginsCard({ settings, onChange }: { settings: ServerSetti
         )}
       </div>
       <Feedback problem={problem} done={done} />
+      <ConfirmDialog
+        open={asking !== null}
+        danger
+        title={asking === 'upload' ? t('admin.plugins.uploadTitle') : t('admin.plugins.warnTitle')}
+        confirm={asking === 'upload' ? t('admin.plugins.uploadConfirm') : t('admin.plugins.warnConfirm')}
+        onCancel={() => setAsking(null)}
+        onConfirm={() => {
+          const what = asking
+          setAsking(null)
+          if (what === 'upload') upload()
+          else latch(true)
+        }}
+      >
+        <p>{asking === 'upload' ? t('admin.plugins.uploadText') : t('admin.plugins.warnText')}</p>
+      </ConfirmDialog>
     </Card>
   )
 }

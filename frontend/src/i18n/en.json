@@ -770,6 +770,13 @@
       "own": "own file, not checked",
       "uploadAllow": "Allow plugin files of one's own",
       "uploadHint": "Not checked by anybody; they run just as locked up.",
+      "warnShort": "Code nobody checked: through WebRTC it could send the notes it is shown to somewhere else.",
+      "warnTitle": "Allow plugins nobody checked?",
+      "warnText": "A plugin file of your own is code nobody has checked. It runs locked up in its frame and cannot reach nexlore by itself, but browsers do not let nexlore block every way out: through WebRTC such a plugin could send what it is shown (the note it runs on, and what it may read) to somewhere else. Allow only files whose code you have read, or whose author you trust.",
+      "warnConfirm": "Allow anyway",
+      "uploadTitle": "Upload code nobody checked?",
+      "uploadText": "Once you let it out, this plugin runs for everybody who switches it on. Through WebRTC it could send the notes it is shown to somewhere else. Upload only code you have read, or whose author you trust.",
+      "uploadConfirm": "Upload anyway",
       "upload": "Upload"
     }
   },

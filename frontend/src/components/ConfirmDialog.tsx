@@ -2,7 +2,7 @@
  * nexlore's own question before something goes, instead of the browser's `confirm`: a modal `<dialog>` (focus stays
  * inside, Escape cancels), the safe choice focused first.
  */
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Symbol } from './Symbol'
@@ -24,6 +24,8 @@ export function ConfirmDialog({ open, title, children, confirm, danger = false, 
   const { t } = useTranslation()
   const dialog = useRef<HTMLDialogElement>(null)
   const cancel = useRef<HTMLButtonElement>(null)
+  // Its own id: two dialogs on one page must not both be named by the first one's title.
+  const titleId = useId()
 
   useEffect(() => {
     const element = dialog.current
@@ -37,7 +39,7 @@ export function ConfirmDialog({ open, title, children, confirm, danger = false, 
   return (
     <dialog
       ref={dialog}
-      aria-labelledby="confirm-title"
+      aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault()
         if (!busy) onCancel()
@@ -49,7 +51,7 @@ export function ConfirmDialog({ open, title, children, confirm, danger = false, 
       className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-2xl border border-ink-700 bg-ink-900 p-0 text-mist-200 shadow-2xl backdrop:bg-scrim"
     >
       <div className="p-5">
-        <h2 id="confirm-title" className="flex items-center gap-2 text-base font-semibold text-mist-100">
+        <h2 id={titleId} className="flex items-center gap-2 text-base font-semibold text-mist-100">
           <Symbol name="alert" className={'h-4 w-4 ' + (danger ? 'text-bad-500' : 'text-warn-500')} />
           {title}
         </h2>
