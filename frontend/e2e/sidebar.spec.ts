@@ -207,3 +207,18 @@ test('a folder gets a symbol and a colour of its own, and the folders in it take
   await expect(tidy.locator('[data-look]')).toHaveCount(0)
   expect(problems).toEqual([])
 })
+
+test('the open note stays in sight while the folders above it are read after it', async ({ page }) => {
+  // Every listing but that of the note's own space comes late: their rows arrive above the note once it is shown.
+  await page.route('**/api/folder?**', async (route) => {
+    const asked = new URL(route.request().url()).searchParams.get('path') ?? ''
+    if (!asked.startsWith('Zone')) await new Promise((resolve) => setTimeout(resolve, 1500))
+    await route.continue()
+  })
+  await page.goto('/note/Zone/Across.md')
+  const across = page.getByTestId('sidebar-tree').getByRole('button', { name: 'Across', exact: true })
+  await expect(across).toBeInViewport()
+  // The late listings are in (the space above has its notes), and the note is still where it was seen.
+  await expect(page.getByTestId('sidebar-tree').getByRole('button', { name: 'Linking', exact: true })).toBeAttached({ timeout: 10_000 })
+  await expect(across).toBeInViewport()
+})

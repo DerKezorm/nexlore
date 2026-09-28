@@ -239,14 +239,21 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
   }
 
   // The note opened is scrolled into view once its row is there (a note far down the tree would stay out of sight).
-  // Once per note: scrolling by hand afterwards is not undone.
-  const shownFor = useRef<string | null>(null)
+  // Once per note: scrolling by hand afterwards is not undone. Rows that come above it later (a folder listing that
+  // loaded after its own) move the view along, so the note keeps its place on screen instead of sliding away.
+  const shownFor = useRef<{ note: string; index: number } | null>(null)
   useEffect(() => {
     const element = scroller.current
-    if (!activeNote || !element || shownFor.current === activeNote) return
+    if (!activeNote || !element) return
     const index = rows.out.findIndex((item) => item.kind === 'note' && item.path === activeNote)
     if (index < 0) return
-    shownFor.current = activeNote
+    const shown = shownFor.current
+    if (shown?.note === activeNote) {
+      if (index !== shown.index) element.scrollTop += (index - shown.index) * ROW
+      shown.index = index
+      return
+    }
+    shownFor.current = { note: activeNote, index }
     const top = index * ROW
     if (top < element.scrollTop || top + ROW > element.scrollTop + element.clientHeight) {
       element.scrollTop = Math.max(0, top - element.clientHeight / 2)

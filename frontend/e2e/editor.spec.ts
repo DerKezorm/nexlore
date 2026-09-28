@@ -156,7 +156,8 @@ test('[[ suggests notes, and Enter writes the link', async ({ page }) => {
 test('the Markdown view edits the text itself', async ({ page }) => {
   await edit(page, 'Writing/Source.md')
   await page.getByLabel('More').click()
-  await page.getByRole('button', { name: 'Markdown source' }).click()
+  // The note's menu (the toolbar has a button of the same name).
+  await page.locator('details[open]').getByRole('button', { name: 'Markdown source' }).click()
   const source = page.getByRole('textbox', { name: 'Markdown source of the note' })
   await expect(source).toHaveValue('# Source\n\nPlain text.\n')
   await source.fill('# Source\n\nPlain **text**.\n')
