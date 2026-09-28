@@ -104,8 +104,8 @@ test('the board moves a card by rewriting only its lines', async ({ page }) => {
   await expect(board.getByText('Dig the bed')).toBeVisible()
   await board.getByRole('button', { name: 'Move to the lane on the right' }).click()
   await expect.poll(() => onDisk('Zoo/Board.md')).toBe(
-    // Only the card's line moved; the blank line it stood before stays where it was.
-    '---\nkanban-plugin: basic\n---\n\n## Todo\n\n\n## Done\n\n- [x] Buy seeds\n- [ ] Dig the bed\n',
+    // The two lanes as the Obsidian Kanban plugin writes them: three blank lines under an empty lane.
+    '---\nkanban-plugin: basic\n---\n\n## Todo\n\n\n\n## Done\n\n- [x] Buy seeds\n- [ ] Dig the bed\n',
   )
   // The text is one click away.
   await page.getByRole('radio', { name: 'Text' }).click()

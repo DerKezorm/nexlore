@@ -8,9 +8,12 @@
  *   - [ ] a card
  *
  * A lane is a heading ##, a card a list item below it (with the lines indented under it). Everything after the
- * lanes (the archive after ***, the plugin's settings in %% kanban:settings %%) stays as it is. Moving, adding or
- * ticking off a card changes only that card's lines; the note is written against the state it was read in, so a
- * change made meanwhile ends in a conflict copy, never lost.
+ * lanes (the archive after ***, the plugin's settings in %% kanban:settings %%) stays as it is. Ticking off a card
+ * changes only its line. Moving or adding one writes the lanes it touches the way the Obsidian Kanban plugin writes
+ * every lane (its laneToMd): the heading, one blank line, the cards, two blank lines before the next lane, three
+ * under an empty one. A board the plugin wrote changes in the card's lines alone; lanes not touched stay as they are.
+ * The note is written against the state it was read in, so a change made meanwhile ends in a conflict copy, never
+ * lost.
  */
 (function () {
   'use strict'
@@ -32,7 +35,8 @@
       if (/^\*\*\*\s*$/.test(line) || /^%%\s*kanban:settings/.test(line)) break
       var heading = /^##\s+(.*)$/.exec(line)
       if (heading) {
-        lane = { title: heading[1].trim(), heading: i, cards: [], end: i + 1 }
+        if (lane) lane.next = i
+        lane = { title: heading[1].trim(), heading: i, cards: [], end: i + 1, next: lines.length }
         lanes.push(lane)
         continue
       }
@@ -47,7 +51,49 @@
         lane.end = i + 1
       }
     }
+    if (lane) lane.next = i
     return { lines: lines, eol: eol, lanes: lanes }
+  }
+
+  /* What a lane holds between its heading and the next lane, blank lines left out; `skip` is a card taken out. */
+  function body(state, lane, skip) {
+    var kept = []
+    for (var i = lane.heading + 1; i < lane.next; i++) {
+      if (skip && i >= skip.start && i < skip.end) continue
+      if (state.lines[i].trim()) kept.push(state.lines[i])
+    }
+    return kept
+  }
+
+  /* The lane's body with `cards` put after its last card, or at its top (below the plugin's **Complete**). */
+  function withCards(state, lane, cards) {
+    var kept = body(state, lane)
+    var last = lane.cards.length ? lane.cards[lane.cards.length - 1] : null
+    var at = 0
+    if (last) at = body(state, { heading: lane.heading, next: last.end }).length
+    else if (kept.length && /^\*\*Complete\*\*$/.test(kept[0].trim())) at = 1
+    return kept.slice(0, at).concat(cards, kept.slice(at))
+  }
+
+  /* The note with the lanes in `bodies` (by number) written as the Kanban plugin writes a lane. */
+  function rebuild(state, bodies) {
+    var lines = state.lines
+    var out = lines.slice(0, state.lanes[0].heading)
+    state.lanes.forEach(function (lane, index) {
+      if (!(index in bodies)) {
+        out = out.concat(lines.slice(lane.heading, lane.next))
+        return
+      }
+      // Before the next lane: two blank lines. Before the archive, the settings or the end of the file: the blank
+      // lines that were there (the plugin writes those as part of what follows).
+      var tail = ['', '']
+      if (lane.next >= lines.length || !/^##\s+/.test(lines[lane.next])) {
+        tail = []
+        for (var i = lane.next - 1; i > lane.heading && !lines[i].trim(); i--) tail.push('')
+      }
+      out = out.concat([lines[lane.heading], ''], bodies[index], tail)
+    })
+    return out.concat(lines.slice(state.lanes[state.lanes.length - 1].next))
   }
 
   function write(lines, eol) {
@@ -75,25 +121,16 @@
 
   function move(state, from, index, to) {
     var card = state.lanes[from].cards[index]
-    var target = state.lanes[to]
-    var taken = state.lines.slice(card.start, card.end)
-    var lines = state.lines.slice()
-    // Where it goes: after the last card of the lane, or right under its heading (after one blank line).
-    var at = target.cards.length ? target.cards[target.cards.length - 1].end : target.heading + 1
-    if (!target.cards.length && lines[at] === '') at++
-    if (at > card.start) at -= taken.length
-    lines.splice(card.start, taken.length)
-    Array.prototype.splice.apply(lines, [at, 0].concat(taken))
-    write(lines, state.eol)
+    var bodies = {}
+    bodies[from] = body(state, state.lanes[from], card)
+    bodies[to] = withCards(state, state.lanes[to], state.lines.slice(card.start, card.end))
+    write(rebuild(state, bodies), state.eol)
   }
 
   function add(state, to, text) {
-    var target = state.lanes[to]
-    var lines = state.lines.slice()
-    var at = target.cards.length ? target.cards[target.cards.length - 1].end : target.heading + 1
-    if (!target.cards.length && lines[at] === '') at++
-    lines.splice(at, 0, '- [ ] ' + text.replace(/[\r\n]+/g, ' '))
-    write(lines, state.eol)
+    var bodies = {}
+    bodies[to] = withCards(state, state.lanes[to], ['- [ ] ' + text.replace(/[\r\n]+/g, ' ')])
+    write(rebuild(state, bodies), state.eol)
   }
 
   function tick(state, from, index) {

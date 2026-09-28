@@ -13,8 +13,8 @@
     },
     {
       "id": "kanban",
-      "manifest": "sha256-/RWIWZHRVOh/n9EyLbC2CZhnpQjdlvk6iUBcfrBG9b0=",
-      "main": "sha256-4YK0W9tQD3ldLCvA43ZSZ7pkQZOEOASHjrcvXeK7+nA="
+      "manifest": "sha256-T4aySroXHZTki0d3vYJgcz9U+Sp1UsIQyrudNHMW770=",
+      "main": "sha256-eEr6zLrGb8DxboYdQneOCjKM8ti3PCP2nXFkiXxAq5k="
     },
     {
       "id": "rediscover",
