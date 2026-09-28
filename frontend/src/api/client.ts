@@ -251,6 +251,7 @@ export const vaultApi = {
   create: (folder: string, title: string, content = '', template?: string) =>
     api<NoteData>('/api/notes', { method: 'POST', body: { folder, title, content, template } }),
   /** `along`: files only this note uses that go into the trash with it (see `own`). */
+  createFolder: (parent: string, name: string) => api<{ path: string }>('/api/folders', { method: 'POST', body: { parent, name } }),
   remove: (path: string, along: string[] = []) => api<{ files: number }>('/api/files', { method: 'DELETE', query: { path, along } }),
   /** The files only this note uses. */
   own: (path: string) => api<{ paths: string[] }>('/api/files/own', { query: { path } }),

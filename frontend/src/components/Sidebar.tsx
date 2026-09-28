@@ -3,15 +3,21 @@
  *
  * A folder is read from the server when it opens (`/api/folder`), never the whole vault at once, and only the rows
  * in view are drawn: a folder with ten thousand notes scrolls as quickly as one with ten. Spaces and the folders of
- * the active note are open unless closed by hand.
+ * the active note are open unless closed by hand. A click on a folder's name opens or closes it, everywhere.
+ *
+ * The right mouse button (or a long press on a touch screen) opens a menu: a new note or folder, renaming, moving,
+ * the graph, the trash. A folder that could not be read says so and offers to try again.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 
 import { vaultApi, type FolderEntry, type FileEntry } from '../api/client'
 import { folderColor, spaceColor } from '../graph/palette'
+import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
-import { folderOf } from '../lib/vault'
+import { baseName, folderOf, noteUrl } from '../lib/vault'
+import { askVaultAction, copyText, FORGET_EVENT, REVEAL_EVENT, within } from '../lib/vaultActions'
 import { useStore } from '../state/store'
 import { Symbol } from './Symbol'
 
@@ -33,17 +39,19 @@ type Row =
   | { kind: 'note'; path: string; title: string; depth: number }
   | { kind: 'loading'; path: string; depth: number }
   | { kind: 'more'; path: string; depth: number }
+  | { kind: 'failed'; path: string; depth: number }
 
 export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
   const { t } = useTranslation()
   const { spaces, generation, scan } = useStore()
+  const navigate = useNavigate()
+  const menu = useContextMenu()
+  const [copied, setCopied] = useState<string | null>(null)
   const [toggled, setToggled] = useState<Map<string, boolean>>(new Map())
   const [listings, setListings] = useState<Map<string, Listing | 'loading' | 'failed'>>(new Map())
   const scroller = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState({ top: 0, height: 600 })
 
-  // Everything read before is stale once the vault changed.
-  useEffect(() => setListings(new Map()), [generation])
 
   const activeChain = useMemo(() => {
     const chain = new Set<string>()
@@ -87,6 +95,45 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
       .catch(() => setListings((current) => new Map(current).set(path, 'failed')))
   }, [])
 
+  // Everything read before is stale once the vault changed: read again in the background, the old rows standing
+  // meanwhile. Dropping them first made the tree shrink for a moment, and the browser pulled the scroll back up.
+  const shown = useRef(listings)
+  shown.current = listings
+  const seen = useRef(generation)
+  useEffect(() => {
+    if (seen.current === generation) return
+    seen.current = generation
+    for (const [path, listing] of shown.current) {
+      if (typeof listing === 'string') {
+        setListings((current) => {
+          const next = new Map(current)
+          next.delete(path)
+          return next
+        })
+        continue
+      }
+      vaultApi.folder(path, 0, Math.max(PAGE, listing.loaded)).then(
+        (fresh) =>
+          setListings((current) =>
+            new Map(current).set(path, {
+              folders: fresh.folders,
+              notes: fresh.files.filter((file) => file.is_note),
+              loaded: fresh.files.length,
+              total: fresh.total_files,
+              more: false,
+            }),
+          ),
+        // Gone meanwhile (moved, in the trash): its parent no longer shows it.
+        () =>
+          setListings((current) => {
+            const next = new Map(current)
+            next.delete(path)
+            return next
+          }),
+      )
+    }
+  }, [generation])
+
   // The next page of a long folder, when its end comes into view. Asked once: `more` marks the page on its way.
   const loadMore = useCallback(
     (path: string) => {
@@ -127,7 +174,10 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
         out.push({ kind: 'loading', path, depth: depth + 1 })
         return
       }
-      if (listing === 'failed') return
+      if (listing === 'failed') {
+        out.push({ kind: 'failed', path, depth: depth + 1 })
+        return
+      }
       for (const folder of listing.folders) walk(folder.path, folder.name, depth + 1, folder.notes, folderColor(folder.path, true), false)
       for (const note of listing.notes) out.push({ kind: 'note', path: note.path, title: note.title || note.name.replace(/\.md$/i, ''), depth: depth + 1 })
       if (listing.loaded < listing.total) out.push({ kind: 'more', path, depth: depth + 1 })
@@ -163,7 +213,118 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
   const wanted = activeNote ? folderOf(activeNote) : activeFolder || null
   const target = writable(wanted) ? wanted : spaces.find((space) => writable(space.name))?.name
 
-  const toggle = (path: string) => setToggled((current) => new Map(current).set(path, !isOpen(path)))
+  const toggle = (path: string) => {
+    // Opened again after it could not be read: read it again.
+    if (!isOpen(path) && listings.get(path) === 'failed') {
+      setListings((current) => {
+        const next = new Map(current)
+        next.delete(path)
+        return next
+      })
+    }
+    setToggled((current) => new Map(current).set(path, !isOpen(path)))
+  }
+
+  // The note opened is scrolled into view once its row is there (a note far down the tree would stay out of sight).
+  // Once per note: scrolling by hand afterwards is not undone.
+  const shownFor = useRef<string | null>(null)
+  useEffect(() => {
+    const element = scroller.current
+    if (!activeNote || !element || shownFor.current === activeNote) return
+    const index = rows.out.findIndex((item) => item.kind === 'note' && item.path === activeNote)
+    if (index < 0) return
+    shownFor.current = activeNote
+    const top = index * ROW
+    if (top < element.scrollTop || top + ROW > element.scrollTop + element.clientHeight) {
+      element.scrollTop = Math.max(0, top - element.clientHeight / 2)
+    }
+  }, [activeNote, rows.out])
+
+  // A folder just made (or moved into) is shown: it and the folders on its way open.
+  useEffect(() => {
+    const show = (event: Event) => {
+      const parts = (event as CustomEvent<string>).detail.split('/')
+      setToggled((current) => {
+        const next = new Map(current)
+        for (let i = 1; i <= parts.length; i++) next.set(parts.slice(0, i).join('/'), true)
+        return next
+      })
+    }
+    window.addEventListener(REVEAL_EVENT, show)
+    return () => window.removeEventListener(REVEAL_EVENT, show)
+  }, [])
+
+  useEffect(() => {
+    const drop = (event: Event) => {
+      const gone = (event as CustomEvent<string>).detail
+      // Its own listing goes, and so does its row in the listing above it (which is read again only afterwards).
+      setListings((current) => {
+        const next = new Map<string, Listing | 'loading' | 'failed'>()
+        for (const [path, listing] of current) {
+          if (within(path, gone)) continue
+          next.set(path, typeof listing === 'string' ? listing : { ...listing, folders: listing.folders.filter((folder) => !within(folder.path, gone)) })
+        }
+        return next
+      })
+    }
+    window.addEventListener(FORGET_EVENT, drop)
+    return () => window.removeEventListener(FORGET_EVENT, drop)
+  }, [])
+
+  useEffect(() => {
+    if (!copied) return
+    const timer = window.setTimeout(() => setCopied(null), 3000)
+    return () => window.clearTimeout(timer)
+  }, [copied])
+
+  const folderMenu = (row: Extract<Row, { kind: 'folder' }>): MenuItem[] => {
+    const write = writable(row.path)
+    const manage = row.space && spaces.find((space) => space.name === row.path)?.role === 'manage'
+    const items: MenuItem[] = []
+    if (write) {
+      items.push({ label: t('menu.newNote'), symbol: 'plus', onSelect: () => askNewNote(row.path) })
+      items.push({ label: t('menu.newFolder'), symbol: 'folderPlus', onSelect: () => askVaultAction({ kind: 'new-folder', parent: row.path }) })
+      items.push('separator')
+    }
+    if (write && !row.space) {
+      items.push({ label: t('menu.rename'), symbol: 'pencil', onSelect: () => askVaultAction({ kind: 'rename', path: row.path, folder: true }) })
+      items.push({ label: t('menu.move'), symbol: 'move', onSelect: () => askVaultAction({ kind: 'move', path: row.path, folder: true }) })
+    }
+    items.push({ label: t('menu.showInGraph'), symbol: 'graph', onSelect: () => (onFolder ? onFolder(row.path) : navigate('/?folder=' + encodeURIComponent(row.path))) })
+    if (manage) items.push({ label: t('menu.spaceSettings'), symbol: 'users', onSelect: () => navigate('/settings?tab=spaces') })
+    if (write && !row.space) {
+      items.push('separator')
+      items.push({ label: t('menu.trash'), symbol: 'trash', danger: true, onSelect: () => askVaultAction({ kind: 'delete', path: row.path, folder: true }) })
+    }
+    return items
+  }
+
+  const noteMenu = (row: Extract<Row, { kind: 'note' }>): MenuItem[] => {
+    const write = writable(row.path)
+    const items: MenuItem[] = [
+      { label: t('menu.open'), symbol: 'note', onSelect: () => onNote(row.path) },
+      { label: t('menu.openNewTab'), symbol: 'open', onSelect: () => window.open(noteUrl(row.path), '_blank', 'noopener') },
+      'separator',
+    ]
+    if (write) {
+      items.push({ label: t('menu.rename'), symbol: 'pencil', onSelect: () => askVaultAction({ kind: 'rename', path: row.path, folder: false }) })
+      items.push({ label: t('menu.move'), symbol: 'move', onSelect: () => askVaultAction({ kind: 'move', path: row.path, folder: false }) })
+    }
+    items.push({ label: t('menu.showInGraph'), symbol: 'graph', onSelect: () => (onFolder ? onNote(row.path) : navigate('/?focus=' + encodeURIComponent(row.path))) })
+    items.push({
+      label: t('menu.copyLink'),
+      symbol: 'copy',
+      onSelect: () => {
+        const text = `[[${baseName(row.path)}]]`
+        void copyText(text).then((ok) => ok && setCopied(text))
+      },
+    })
+    if (write) {
+      items.push('separator')
+      items.push({ label: t('menu.trash'), symbol: 'trash', danger: true, onSelect: () => askVaultAction({ kind: 'delete', path: row.path, folder: false }) })
+    }
+    return items
+  }
 
   const first = Math.max(0, Math.floor(viewport.top / ROW) - 10)
   const last = Math.min(rows.out.length, Math.ceil((viewport.top + viewport.height) / ROW) + 10)
@@ -176,11 +337,22 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     if (row.kind === 'loading' || row.kind === 'more') {
       return <div className="py-1 text-xs text-mist-600" style={{ paddingLeft: row.depth * 12 + 10 }}>{t('common.loading')}</div>
     }
+    if (row.kind === 'failed') {
+      return (
+        <div className="flex h-full items-center gap-2 text-xs text-bad-500" style={{ paddingLeft: row.depth * 12 + 10 }}>
+          <span className="truncate">{t('sidebar.loadFailed')}</span>
+          <button type="button" onClick={() => load(row.path)} className="shrink-0 rounded px-1.5 py-0.5 text-accent-400 hover:bg-ink-850">
+            {t('sidebar.retry')}
+          </button>
+        </div>
+      )
+    }
     if (row.kind === 'note') {
       return (
         <button
           type="button"
           onClick={() => onNote(row.path)}
+          {...menuTriggers((x, y) => menu.open(x, y, noteMenu(row)))}
           className={
             'flex h-full w-full items-center gap-2 rounded-lg pr-2 text-left text-[13px] ' +
             (activeNote === row.path ? 'bg-accent-500/15 text-accent-400' : 'text-mist-400 hover:bg-ink-850 hover:text-mist-100')
@@ -196,15 +368,16 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
       <div
         className={'group flex h-full items-center gap-1 rounded-lg pr-1.5 ' + (activeFolder === row.path ? 'bg-accent-500/10 text-accent-400' : 'text-mist-300 hover:bg-ink-850')}
         style={{ paddingLeft: row.depth * 12 + 4 }}
+        {...menuTriggers((x, y) => menu.open(x, y, folderMenu(row)))}
       >
         <button type="button" onClick={() => toggle(row.path)} className="rounded p-1 text-mist-600 hover:text-mist-100" aria-label={row.open ? t('sidebar.collapse') : t('sidebar.expand')} aria-expanded={row.open}>
           <Symbol name={row.open ? 'chevronDown' : 'chevronRight'} className="h-3.5 w-3.5" />
         </button>
         <button
           type="button"
-          onClick={() => (onFolder ? onFolder(row.path) : toggle(row.path))}
+          onClick={() => toggle(row.path)}
+          aria-expanded={row.open}
           className={'flex min-w-0 flex-1 items-center gap-2 text-left ' + (row.space ? 'text-[13px] font-semibold text-mist-100' : 'text-[13px]')}
-          title={onFolder ? t('sidebar.flyTo') : undefined}
         >
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: row.color }} />
           <span className="truncate">{row.name}</span>
@@ -252,6 +425,12 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
           ))}
         </ul>
       </div>
+      {copied && (
+        <p role="status" className="border-t border-ink-700/80 px-4 py-2 text-xs text-mist-400">
+          {t('menu.copied', { text: copied })}
+        </p>
+      )}
+      {menu.element}
     </aside>
   )
 }

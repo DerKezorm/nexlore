@@ -27,6 +27,7 @@ import { LinkIndex, linkedSpace, linkName } from '../lib/links'
 import { fileRoute, formatDate, renderMarkdown } from '../lib/markdown'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { versionSource } from '../lib/versions'
+import { LEAVING_EVENT, within, type Leaving } from '../lib/vaultActions'
 import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
 import { LocalGraph } from '../components/LocalGraph'
@@ -87,7 +88,8 @@ export function NotePage() {
   const [gone, setGone] = useState<string | null>(null)
   const leaving = gone === path
   useEffect(() => {
-    if (leaving) return
+    // No note chosen (the notes page itself): nothing to ask after.
+    if (leaving || !path) return
     let live = true
     vaultApi.copies(path).then(
       (found) => live && setSiblings(found.paths),
@@ -264,6 +266,19 @@ export function NotePage() {
     await Promise.all([load(path), reload()])
     return true
   }, [save, path, load, reload])
+
+  // The sidebar is about to move this note, or rename or trash it or a folder it lies in: what is typed is saved
+  // first, and the page stops asking after the old path (it follows to the new one, or leaves).
+  useEffect(() => {
+    const leaving = (event: Event) => {
+      const detail = (event as CustomEvent<Leaving>).detail
+      if (!path || !within(path, detail.path)) return
+      if (editingNow.current) detail.wait(stopEditing())
+      setGone(path)
+    }
+    window.addEventListener(LEAVING_EVENT, leaving)
+    return () => window.removeEventListener(LEAVING_EVENT, leaving)
+  }, [path, stopEditing])
 
   // A different note: back to reading, fresh data.
   useEffect(() => {
@@ -487,7 +502,7 @@ export function NotePage() {
   }
 
   useEffect(() => {
-    if (leaving) return
+    if (leaving || !path) return
     let live = true
     draftsApi.list(path).then(
       (found) => live && setDrafts(found),
@@ -753,7 +768,7 @@ export function NotePage() {
               {!wide && (
                 <div className="mt-10 space-y-6">
                   <PluginPanels plugins={plugins} note={note} onOpen={open} onWritten={pluginWrote} onReveal={reveal} />
-                  {!leaving && <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />}
+                  {!leaving && note.path === path && <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />}
                 </div>
               )}
             </div>
@@ -764,7 +779,7 @@ export function NotePage() {
         <aside className="nn-scroll hidden w-80 shrink-0 overflow-y-auto border-l border-ink-700/80 px-4 py-4 xl:block">
           {wide && (
             <div className="mb-5">
-              {!leaving && <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />}
+              {!leaving && note.path === path && <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />}
             </div>
           )}
           {note && (

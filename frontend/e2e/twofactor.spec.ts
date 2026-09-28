@@ -106,12 +106,14 @@ test('an account sets up its second factor and signs in with it', async ({ page,
 
 test('the operator requires it only with one of their own, and resets it for an account', async ({ page }) => {
   const problems = collectProblems(page)
-  await page.goto('/settings')
+  await page.goto('/settings?tab=server&sub=signin')
   const toggle = page.getByRole('checkbox', { name: 'Require a second factor' })
   await toggle.click()
   await expect(page.getByText('Set up your own second factor first, on your account page.')).toBeVisible()
   await expect(toggle).not.toBeChecked()
 
+  // The accounts are one tab further along.
+  await page.getByRole('tab', { name: 'Accounts' }).click()
   const row = page.getByRole('listitem').filter({ hasText: /^factor/ })
   await expect(row).toContainText('second factor on')
   await row.getByRole('button', { name: 'Reset second factor' }).click()

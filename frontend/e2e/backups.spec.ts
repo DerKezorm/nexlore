@@ -10,7 +10,7 @@ import { OPERATOR } from './global-setup'
 test.skip(!!process.env.E2E_BASE_URL, 'makes a backup; not against a running instance')
 
 test('a backup is downloaded only with the password once more', async ({ page }) => {
-  await page.goto('/settings')
+  await page.goto('/settings?tab=server&sub=backups')
   const card = page.locator('#backups')
   await card.getByLabel('Note for this backup').fill('to carry away')
   await card.getByRole('button', { name: 'Back up now' }).click()

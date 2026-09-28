@@ -52,7 +52,10 @@
     "flyTo": "Im Graph anfliegen",
     "more_one": "{{count}} weitere",
     "more_other": "{{count}} weitere",
-    "empty": "Noch keine Bereiche."
+    "empty": "Noch keine Bereiche.",
+    "loadFailed": "Konnte nicht geladen werden.",
+    "retry": "Erneut versuchen",
+    "menuFor": "Menü für {{name}}"
   },
   "graph": {
     "canvas": "Graph",
@@ -204,6 +207,20 @@
       "delete": "Bereich löschen",
       "deleteTitle": "Den Bereich {{space}} löschen?",
       "deleteText": "Alle Notizen und Dateien des Bereichs gehen in den Papierkorb, und der Bereich verschwindet für alle Mitglieder. Aus dem Papierkorb kommt er 30 Tage lang samt Mitgliedern zurück."
+    },
+    "tabs": {
+      "general": "Allgemein",
+      "spaces": "Bereiche",
+      "server": "Server"
+    },
+    "parts": {
+      "accounts": "Konten",
+      "signin": "Anmeldung",
+      "shares": "Öffentliche Seiten",
+      "extensions": "KI und Plugins",
+      "files": "Dateien",
+      "backups": "Sicherung",
+      "languages": "Sprachen"
     }
   },
   "errors": {
@@ -939,5 +956,55 @@
     "back": "Mit dem Passwort neu anfangen",
     "requiredTitle": "Zweiten Faktor einrichten",
     "requiredText": "Der Betreiber verlangt einen zweiten Faktor für jedes Konto, das sich mit Passwort anmeldet. Richte ihn ein, um weiterzumachen."
+  },
+  "actions": {
+    "newFolderTitle": "Neuer Ordner in „{{folder}}“",
+    "name": "Name",
+    "create": "Anlegen",
+    "folderMade": "Ordner „{{name}}“ angelegt.",
+    "renameTitle": "„{{name}}“ umbenennen",
+    "renameDo": "Umbenennen",
+    "renameHint": "Links darauf in anderen Notizen ziehen mit, in jedem Bereich.",
+    "moveTitle": "„{{name}}“ verschieben",
+    "moveHint": "In einen Ordner desselben Bereichs. Links darauf ziehen mit.",
+    "moveHere": "Hierher verschieben",
+    "moved": "Verschoben nach „{{folder}}“.",
+    "trashFolderTitle": "Den Ordner „{{name}}“ in den Papierkorb legen?",
+    "trashFolderText": "Mit allen Notizen und Dateien darin. Alles bleibt 30 Tage im Papierkorb und kommt über die Seite Dateien zurück."
+  },
+  "menu": {
+    "newNote": "Neue Notiz",
+    "newFolder": "Neuer Ordner",
+    "rename": "Umbenennen …",
+    "move": "Verschieben …",
+    "showInGraph": "Im Graph zeigen",
+    "open": "Öffnen",
+    "openNewTab": "In neuem Tab öffnen",
+    "copyLink": "Wiki-Link kopieren",
+    "copied": "Kopiert: {{text}}",
+    "trash": "In den Papierkorb",
+    "spaceSettings": "Mitglieder und Einstellungen"
+  },
+  "editorMenu": {
+    "openLink": "Notiz öffnen",
+    "openLinkNewTab": "In neuem Tab öffnen",
+    "cut": "Ausschneiden",
+    "copy": "Kopieren",
+    "paste": "Einfügen",
+    "format": "Format",
+    "bold": "Fett",
+    "italic": "Kursiv",
+    "strike": "Durchgestrichen",
+    "code": "Code",
+    "highlight": "Markieren",
+    "paragraph": "Absatz",
+    "insert": "Hinzufügen",
+    "selectAll": "Alles auswählen",
+    "keyCut": "Strg+X",
+    "keyCopy": "Strg+C",
+    "keyPaste": "Strg+V",
+    "keyBold": "Strg+B",
+    "keyItalic": "Strg+I",
+    "keySelectAll": "Strg+A"
   }
 }

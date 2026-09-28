@@ -8,6 +8,7 @@ import { dailySpace, today as isoToday } from '../lib/everyday'
 import { isNotePath } from '../lib/files'
 import { fileRoute } from '../lib/markdown'
 import { NEW_NOTE_EVENT } from '../lib/newNote'
+import { VaultActions } from './VaultActions'
 import { folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 import { AccountMenu } from './AccountMenu'
@@ -132,9 +133,9 @@ export function AppShell() {
           </NavLink>
           <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label={t('app.mainMenu')}>
             {ITEMS.map((item) => (
-              <NavLink key={item.to} to={item.to} end={item.end} className={({ isActive }) => navClass(isActive, item.right)}>
+              <NavLink key={item.to} to={item.to} end={item.end} aria-label={t(item.label)} title={t(item.label)} className={({ isActive }) => navClass(isActive, item.right)}>
                 <Symbol name={item.symbol} />
-                <span className="hidden lg:inline">{t(item.label)}</span>
+                <span className="hidden xl:inline">{t(item.label)}</span>
               </NavLink>
             ))}
           </nav>
@@ -155,19 +156,22 @@ export function AppShell() {
             disabled={!newNoteTarget}
             aria-label={t('sidebar.newNote')}
             title={t('sidebar.newNoteShortcut')}
-            className="inline-flex h-8 shrink-0 items-center gap-2 rounded-full border border-accent-500/60 px-2 text-sm font-semibold text-accent-400 hover:bg-accent-500/10 disabled:opacity-40 sm:px-3"
+            className="inline-flex h-8 shrink-0 items-center gap-2 rounded-full border border-accent-500/60 px-2 text-sm font-semibold text-accent-400 hover:bg-accent-500/10 disabled:opacity-40 2xl:px-3"
           >
             <Symbol name="plus" />
-            <span className="hidden sm:inline">{t('sidebar.newNote')}</span>
+            <span className="hidden 2xl:inline">{t('sidebar.newNote')}</span>
           </button>
           <button
             type="button"
             onClick={() => setSearching(true)}
-            className="hidden items-center gap-2 rounded-full border border-ink-700 bg-ink-850 py-1.5 pr-2 pl-3 text-sm text-mist-500 hover:text-mist-100 sm:inline-flex"
+            aria-label={t('search.button')}
+            title={`${t('search.button')} (${t('search.shortcut')})`}
+            className="hidden items-center gap-2 rounded-full border border-ink-700 bg-ink-850 px-2 py-1.5 text-sm text-mist-500 hover:text-mist-100 sm:inline-flex 2xl:pr-2 2xl:pl-3"
           >
             <Symbol name="search" />
-            <span className="w-32 text-left">{t('search.button')}</span>
-            <kbd className="rounded border border-ink-700 px-1.5 text-[11px]">{t('search.shortcut')}</kbd>
+            {/* The words from wide screens on; below, the menu's words need the room. */}
+            <span className="hidden w-32 text-left 2xl:inline">{t('search.button')}</span>
+            <kbd className="hidden rounded border border-ink-700 px-1.5 text-[11px] 2xl:inline">{t('search.shortcut')}</kbd>
           </button>
           <div className="hidden sm:block">
             <ThemeSwitcher />
@@ -193,6 +197,7 @@ export function AppShell() {
         <Outlet />
       </div>
       {searching && <SearchDialog onClose={() => setSearching(false)} onPick={pick} />}
+      <VaultActions />
       {creating && (
         <NewNoteDialog
           folder={creating}

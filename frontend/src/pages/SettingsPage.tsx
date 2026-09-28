@@ -1,9 +1,11 @@
 /**
- * Settings: the language, the own spaces, and for the operator the server (accounts, sign-in, public pages, mail,
- * files, backups, languages). AI access over MCP and plugins are still sketches (M7).
+ * Settings in tabs, as in Nexview and nextrmnl: General (the language), Spaces (one's own, with members), and for the
+ * operator Server, with a second row for its parts. The tab is in the address (`?tab=server&sub=backups`), so a link
+ * can point at one; a tab someone may not see falls back to General.
  */
 import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 
 import {
   AccountsCard,
@@ -20,53 +22,83 @@ import { AdminPluginsCard } from '../plugins/PluginSettings'
 import { useServerSettings } from '../components/settings/useServerSettings'
 import { SpacesCard } from '../components/settings/SpacesCard'
 import { Symbol, type SymbolName } from '../components/Symbol'
+import { TabRow, type Tab } from '../components/TabRow'
 import { downloadTemplate, languageOptions, type LanguageOption } from '../i18n'
 import { useAuth } from '../state/auth'
+
+type Top = 'general' | 'spaces' | 'server'
+type Part = 'accounts' | 'signin' | 'shares' | 'extensions' | 'files' | 'backups' | 'languages'
+const TOPS: Top[] = ['general', 'spaces', 'server']
+const PARTS: Part[] = ['accounts', 'signin', 'shares', 'extensions', 'files', 'backups', 'languages']
+const TOP_SYMBOL: Record<Top, SymbolName> = { general: 'globe', spaces: 'space', server: 'shield' }
+const PART_SYMBOL: Record<Part, SymbolName> = {
+  accounts: 'users', signin: 'key', shares: 'globe', extensions: 'plug', files: 'files', backups: 'history', languages: 'globe',
+}
 
 export function SettingsPage() {
   const { t } = useTranslation()
   const { me } = useAuth()
+  const [params, setParams] = useSearchParams()
+  const operator = me?.role === 'operator'
+  const asked = params.get('tab') as Top | null
+  const top: Top = asked && TOPS.includes(asked) && (asked !== 'server' || operator) ? asked : 'general'
+  const askedPart = params.get('sub') as Part | null
+  const part: Part = askedPart && PARTS.includes(askedPart) ? askedPart : 'accounts'
+  const go = (next: Top, sub?: Part) => setParams(next === 'general' ? {} : sub ? { tab: next, sub } : { tab: next }, { replace: true })
+
+  const tops: Tab<Top>[] = TOPS.filter((value) => value !== 'server' || operator).map((value) => ({
+    value, label: t(`settings.tabs.${value}`), symbol: TOP_SYMBOL[value],
+  }))
+  const parts: Tab<Part>[] = PARTS.map((value) => ({ value, label: t(`settings.parts.${value}`), symbol: PART_SYMBOL[value] }))
 
   return (
     <main className="nn-scroll flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('settings.title')}</h1>
+      <div className="mx-auto max-w-4xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
+        <h1 className="text-2xl font-bold tracking-tight">{t('settings.title')}</h1>
+        <TabRow tabs={tops} active={top} onChange={(value) => go(value)} label={t('settings.title')} />
+        {top === 'server' && <TabRow under tabs={parts} active={part} onChange={(value) => go('server', value)} label={t('settings.tabs.server')} />}
+        <div className="space-y-6 pt-1">
+          {top === 'general' && <LanguageCard />}
+          {top === 'spaces' && <SpacesCard />}
+          {top === 'server' && <ServerPart part={part} />}
         </div>
-
-        <LanguageCard />
-        <SpacesCard />
-        {me?.role === 'operator' && <OperatorPart />}
-
       </div>
     </main>
   )
 }
 
-/** The server, for the operator. */
-function OperatorPart() {
-  const { t } = useTranslation()
+/** One part of the server, for the operator. */
+function ServerPart({ part }: { part: Part }) {
   const [settings, setSettings] = useServerSettings()
-  return (
-    <>
-      <h2 className="pt-4 text-lg font-semibold">{t('admin.title')}</h2>
-      <p className="-mt-4 text-sm text-mist-500">{t('admin.text')}</p>
-      <AccountsCard />
-      <AllSpacesCard />
-      {settings && (
+  switch (part) {
+    case 'accounts':
+      return (
         <>
-          <SignInCard settings={settings} onChange={setSettings} />
-          <SharesCard settings={settings} onChange={setSettings} />
-          <McpCard settings={settings} onChange={setSettings} />
-          <AdminPluginsCard settings={settings} onChange={setSettings} />
-          <MailCard settings={settings} onChange={setSettings} />
-          <BackupsCard settings={settings} onChange={setSettings} />
+          <AccountsCard />
+          <AllSpacesCard />
+          {settings && <MailCard settings={settings} onChange={setSettings} />}
         </>
-      )}
-      <FilesSettingsCard />
-      <LanguagesCard />
-    </>
-  )
+      )
+    case 'signin':
+      return settings && <SignInCard settings={settings} onChange={setSettings} />
+    case 'shares':
+      return settings && <SharesCard settings={settings} onChange={setSettings} />
+    case 'extensions':
+      return (
+        settings && (
+          <>
+            <McpCard settings={settings} onChange={setSettings} />
+            <AdminPluginsCard settings={settings} onChange={setSettings} />
+          </>
+        )
+      )
+    case 'files':
+      return <FilesSettingsCard />
+    case 'backups':
+      return settings && <BackupsCard settings={settings} onChange={setSettings} />
+    case 'languages':
+      return <LanguagesCard />
+  }
 }
 
 function LanguageCard() {

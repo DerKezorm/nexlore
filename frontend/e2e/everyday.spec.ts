@@ -107,7 +107,8 @@ test('a new note starts from a template, its placeholders filled and Templater l
 })
 
 test('a new note is one click away: in the header, beside each folder, and with Alt+N', async ({ page }) => {
-  await page.setViewportSize({ width: 1400, height: 900 })
+  // Wide enough for the button's words (below, the menu's words need the room).
+  await page.setViewportSize({ width: 1600, height: 900 })
   await page.goto('/note/Year/Templates/Day.md')
   const dialog = page.getByTestId('new-note-dialog')
   // The header, with its words on a wide screen: beside the open note.
@@ -122,12 +123,10 @@ test('a new note is one click away: in the header, beside each folder, and with 
   await expect(dialog).toContainText('New note in “Year / Templates”')
   await dialog.getByRole('button', { name: 'Cancel' }).click()
   // Beside a folder of the sidebar: into that folder, not the open note's.
-  // The first row of the tree is a space; which one depends on what other tests made before.
-  const plus = page.getByTestId('sidebar-tree').getByRole('button', { name: /^New note in / }).first()
-  const space = (await plus.getAttribute('aria-label'))!.replace('New note in ', '')
-  await plus.hover()
-  await plus.click()
-  await expect(dialog).toContainText(`New note in “${space}”`)
+  // The space right above the open note (the sidebar shows the note, and so this row).
+  await page.getByTestId('sidebar-tree').getByRole('button', { name: /^Year \d+$/ }).hover()
+  await page.getByRole('button', { name: 'New note in Year' }).click()
+  await expect(dialog).toContainText('New note in “Year”')
 })
 
 test('"Today" opens the daily note of today in the chosen space', async ({ page }) => {
@@ -137,6 +136,17 @@ test('"Today" opens the daily note of today in the chosen space', async ({ page 
   await page.keyboard.press('Alt+t')
   await page.waitForURL(new RegExp(`/note/Year/Daily/${day(0)}\\.md`))
   expect(fs.existsSync(path.join(DATA, 'vault', 'Year', 'Daily', `${day(0)}.md`))).toBe(true)
+})
+
+test('the header fits at every width of a desktop, the settings included', async ({ page }) => {
+  for (const width of [1024, 1152, 1280, 1366, 1440, 1600]) {
+    await page.setViewportSize({ width, height: 800 })
+    await page.goto('/tasks')
+    const menu = page.getByRole('navigation', { name: 'Main menu' })
+    await expect(menu.getByRole('link', { name: 'Settings' })).toBeVisible()
+    const fits = await menu.evaluate((nav) => nav.scrollWidth <= nav.clientWidth + 1)
+    expect(fits, `the menu overflows at ${width} px`).toBe(true)
+  }
 })
 
 test('on a phone the calendar and the tasks fit, and the header reaches them', async ({ page }) => {

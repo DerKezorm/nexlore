@@ -291,6 +291,8 @@ export function livePreview(helpers: () => LinkHelpers) {
     props: {
       decorations: (state) => liveKey.getState(state),
       handleClick: (view: EditorView, _pos: number, event: MouseEvent) => {
+        // Only the main button: the right one opens the editor's menu, not the link.
+        if (event.button !== 0) return false
         // A click on an embedded picture puts the cursor into its link, which then shows as text to edit.
         const media = (event.target as HTMLElement | null)?.closest?.('.nx-embed-media')
         if (media && view.dom.contains(media)) {

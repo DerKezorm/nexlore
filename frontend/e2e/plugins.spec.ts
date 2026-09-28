@@ -28,7 +28,7 @@ test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 
 test('the operator lets plugins out in the settings, the account switches them on', async ({ page }) => {
   const problems = collectProblems(page)
-  await page.goto('/settings')
+  await page.goto('/settings?tab=server&sub=extensions')
   for (const id of ['toc', 'query', 'kanban']) {
     const card = page.getByTestId(`plugin-${id}`)
     await card.getByRole('button', { name: 'Install' }).click()
@@ -115,7 +115,7 @@ test('the board moves a card by rewriting only its lines', async ({ page }) => {
 test("the latch for plugin files of one's own opens, and uploads, only after a plain warning", async ({ page }) => {
   const problems = collectProblems(page)
   const latched = async () => (await (await page.request.get('/api/settings')).json()).plugin_upload_allowed
-  await page.goto('/settings')
+  await page.goto('/settings?tab=server&sub=extensions')
   const toggle = page.getByRole('checkbox', { name: "Allow plugin files of one's own" })
   await toggle.click()
   const warning = page.getByRole('dialog', { name: 'Allow plugins nobody checked?' })

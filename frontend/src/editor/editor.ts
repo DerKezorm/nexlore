@@ -15,12 +15,28 @@ import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { editorViewCtx, parserCtx, remarkCtx, serializerCtx } from '@milkdown/kit/core'
 import type { Ctx, MilkdownPlugin } from '@milkdown/kit/ctx'
 import { uploadConfig } from '@milkdown/kit/plugin/upload'
-import { remarkInlineLinkPlugin, remarkPreserveEmptyLinePlugin } from '@milkdown/kit/preset/commonmark'
+import {
+  createCodeBlockCommand,
+  insertHrCommand,
+  listItemSchema,
+  remarkInlineLinkPlugin,
+  remarkPreserveEmptyLinePlugin,
+  toggleEmphasisCommand,
+  toggleInlineCodeCommand,
+  toggleStrongCommand,
+  turnIntoTextCommand,
+  wrapInBlockquoteCommand,
+  wrapInBlockTypeCommand,
+  wrapInBulletListCommand,
+  wrapInHeadingCommand,
+  wrapInOrderedListCommand,
+} from '@milkdown/kit/preset/commonmark'
+import { insertTableCommand, toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm'
 import type { Node as ProseNode, Schema, Slice } from '@milkdown/kit/prose/model'
 import { Fragment, Slice as ProseSlice } from '@milkdown/kit/prose/model'
-import { Plugin, TextSelection } from '@milkdown/kit/prose/state'
+import { AllSelection, Plugin, TextSelection } from '@milkdown/kit/prose/state'
 import type { EditorView } from '@milkdown/kit/prose/view'
-import { $prose } from '@milkdown/kit/utils'
+import { $prose, callCommand } from '@milkdown/kit/utils'
 import type { Root } from 'mdast'
 
 import { Plan, type Block, type Tools } from './blocks'
@@ -86,8 +102,16 @@ export type EditorOptions = {
   plugins?: MilkdownPlugin[]
 }
 
+/** What the editor's context menu (and anyone else) can ask of the editor, the same commands as its toolbar and "/". */
+export type EditorCommand =
+  | 'bold' | 'italic' | 'strike' | 'code' | 'highlight' | 'wikiLink'
+  | 'text' | 'h1' | 'h2' | 'h3' | 'quote' | 'bulletList' | 'orderedList' | 'taskList' | 'codeBlock'
+  | 'callout' | 'table' | 'divider' | 'attachment' | 'selectAll'
+
 export type NoteEditor = {
   readonly view: EditorView
+  /** Runs a command where the selection is. */
+  run: (command: EditorCommand) => void
   readonly tools: Tools
   /** What to save: the editor's Markdown with every unchanged block as it was in the original. */
   text: () => string
@@ -351,9 +375,80 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
   }
   load(options.original, false)
 
+  /** Text around the selection (`==…==`, `[[…]]`); with nothing selected, the caret between the two. */
+  const surround = (open: string, close: string) => {
+    const { from, to, empty } = view.state.selection
+    let tr = view.state.tr.insertText(close, to).insertText(open, from)
+    tr = tr.setSelection(TextSelection.create(tr.doc, empty ? from + open.length : to + open.length + close.length))
+    view.dispatch(tr.scrollIntoView())
+  }
+
+  const attach = () => {
+    const files = options.files
+    if (!files) return options.onFileRefused?.()
+    void pickFiles().then(async (chosen) => {
+      if (!chosen.length) return
+      const nodes = insertedNodes(view.state.schema, await files.upload(chosen))
+      if (!nodes.length) return
+      view.dispatch(view.state.tr.replaceSelectionWith(nodes.length === 1 ? nodes[0] : view.state.schema.nodes.paragraph.create(null, nodes)).scrollIntoView())
+      view.focus()
+    })
+  }
+
+  const call = (key: Parameters<typeof callCommand>[0], payload?: unknown) => crepe.editor.action(callCommand(key, payload))
+
+  const run = (command: EditorCommand) => {
+    view.focus()
+    switch (command) {
+      case 'bold':
+        return call(toggleStrongCommand.key)
+      case 'italic':
+        return call(toggleEmphasisCommand.key)
+      case 'strike':
+        return call(toggleStrikethroughCommand.key)
+      case 'code':
+        return call(toggleInlineCodeCommand.key)
+      case 'highlight':
+        return surround('==', '==')
+      case 'wikiLink':
+        return surround('[[', ']]')
+      case 'text':
+        return call(turnIntoTextCommand.key)
+      case 'h1':
+      case 'h2':
+      case 'h3':
+        return call(wrapInHeadingCommand.key, Number(command[1]))
+      case 'quote':
+        return call(wrapInBlockquoteCommand.key)
+      case 'bulletList':
+        return call(wrapInBulletListCommand.key)
+      case 'orderedList':
+        return call(wrapInOrderedListCommand.key)
+      case 'taskList':
+        return crepe.editor.action((ctx) => callCommand(wrapInBlockTypeCommand.key, { nodeType: listItemSchema.type(ctx), attrs: { checked: false } })(ctx))
+      case 'codeBlock':
+        return call(createCodeBlockCommand.key)
+      case 'callout': {
+        // A quote whose first line names the kind, as Obsidian writes it; the paragraph's words become its title.
+        call(wrapInBlockquoteCommand.key)
+        const { $from } = view.state.selection
+        return view.dispatch(view.state.tr.insertText('[!note] ', $from.start()).scrollIntoView())
+      }
+      case 'table':
+        return call(insertTableCommand.key, { row: 3, col: 3 })
+      case 'divider':
+        return call(insertHrCommand.key)
+      case 'attachment':
+        return attach()
+      case 'selectAll':
+        return view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)))
+    }
+  }
+
   return {
     view,
     tools,
+    run,
     markdown: () => serialize(view.state.doc),
     text: () => {
       const edited = serialize(view.state.doc)

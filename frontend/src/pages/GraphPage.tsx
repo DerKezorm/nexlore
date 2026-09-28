@@ -152,6 +152,14 @@ export function GraphPage() {
     [scene],
   )
 
+  // "Show in the graph" from the sidebar of another page lands here with ?folder=<folder>, once its space is there.
+  const folderParam = params.get('folder')
+  useEffect(() => {
+    if (!folderParam || !scene.space(folderParam.split('/')[0])) return
+    flyToFolder(folderParam)
+    setParams({}, { replace: true })
+  }, [folderParam, scene, revision, flyToFolder, setParams])
+
   const crumbs = useMemo(() => {
     const chain: SceneGroup[] = []
     for (let g: SceneGroup | undefined = centre ?? undefined; g; g = g.parent !== null ? scene.groups.get(g.parent) : undefined) chain.unshift(g)

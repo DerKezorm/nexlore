@@ -52,7 +52,10 @@
     "flyTo": "Fly there in the graph",
     "more_one": "{{count}} more",
     "more_other": "{{count}} more",
-    "empty": "No spaces yet."
+    "empty": "No spaces yet.",
+    "loadFailed": "Could not be loaded.",
+    "retry": "Try again",
+    "menuFor": "Menu for {{name}}"
   },
   "graph": {
     "canvas": "Graph",
@@ -204,6 +207,20 @@
       "delete": "Delete space",
       "deleteTitle": "Delete the space {{space}}?",
       "deleteText": "Every note and file of the space goes into the trash, and the space disappears for all its members. From the trash it comes back with its members for 30 days."
+    },
+    "tabs": {
+      "general": "General",
+      "spaces": "Spaces",
+      "server": "Server"
+    },
+    "parts": {
+      "accounts": "Accounts",
+      "signin": "Sign-in",
+      "shares": "Public pages",
+      "extensions": "AI and plugins",
+      "files": "Files",
+      "backups": "Backups",
+      "languages": "Languages"
     }
   },
   "errors": {
@@ -939,5 +956,55 @@
     "back": "Start over with the password",
     "requiredTitle": "Set up a second factor",
     "requiredText": "The operator requires a second factor for every account that signs in with a password. Set it up to go on."
+  },
+  "actions": {
+    "newFolderTitle": "New folder in “{{folder}}”",
+    "name": "Name",
+    "create": "Create",
+    "folderMade": "Folder “{{name}}” made.",
+    "renameTitle": "Rename “{{name}}”",
+    "renameDo": "Rename",
+    "renameHint": "Links to it in other notes follow, in every space.",
+    "moveTitle": "Move “{{name}}”",
+    "moveHint": "Into a folder of the same space. Links to it follow.",
+    "moveHere": "Move here",
+    "moved": "Moved to “{{folder}}”.",
+    "trashFolderTitle": "Move the folder “{{name}}” to the trash?",
+    "trashFolderText": "With every note and file in it. It all stays in the trash for 30 days and comes back from the Files page."
+  },
+  "menu": {
+    "newNote": "New note",
+    "newFolder": "New folder",
+    "rename": "Rename …",
+    "move": "Move …",
+    "showInGraph": "Show in the graph",
+    "open": "Open",
+    "openNewTab": "Open in a new tab",
+    "copyLink": "Copy wiki link",
+    "copied": "Copied: {{text}}",
+    "trash": "Move to the trash",
+    "spaceSettings": "Members and settings"
+  },
+  "editorMenu": {
+    "openLink": "Open the note",
+    "openLinkNewTab": "Open in a new tab",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "format": "Format",
+    "bold": "Bold",
+    "italic": "Italic",
+    "strike": "Strikethrough",
+    "code": "Code",
+    "highlight": "Highlight",
+    "paragraph": "Paragraph",
+    "insert": "Insert",
+    "selectAll": "Select all",
+    "keyCut": "Ctrl+X",
+    "keyCopy": "Ctrl+C",
+    "keyPaste": "Ctrl+V",
+    "keyBold": "Ctrl+B",
+    "keyItalic": "Ctrl+I",
+    "keySelectAll": "Ctrl+A"
   }
 }

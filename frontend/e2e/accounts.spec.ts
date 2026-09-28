@@ -18,14 +18,14 @@ async function stranger(browser: Browser): Promise<Page> {
 
 /** A space of the operator's with one note, made through the API of the signed-in page. */
 async function space(page: Page, name: string, note: string, content: string) {
-  await page.goto('/settings')
+  await page.goto('/settings?tab=spaces')
   const headers = { 'X-Nexlore-Client': 'tab-e2espaces' }
   expect((await page.request.post('/api/spaces', { data: { name }, headers })).status()).toBe(201)
   expect((await page.request.post('/api/notes', { data: { folder: name, title: note, content }, headers })).status()).toBe(201)
 }
 
 async function inviteLink(page: Page, spaceName: string, role: 'Read' | 'Write'): Promise<string> {
-  await page.goto('/settings')
+  await page.goto('/settings?tab=spaces')
   const row = page.locator('#spaces li', { hasText: spaceName })
   await row.getByRole('button', { name: 'Members' }).click()
   const dialog = page.getByRole('dialog', { name: `Members of ${spaceName}` })
@@ -73,7 +73,7 @@ test('an invitation brings a new account into exactly one space', async ({ page,
   await space(page, 'Team', 'Agenda', '# Agenda\n\nPlan the harvest festival.\n')
   const link = await inviteLink(page, 'Team', 'Write')
   const dora = await accept(browser, link, 'dora')
-  await dora.goto('/settings')
+  await dora.goto('/settings?tab=spaces')
   const spaces = dora.locator('#spaces li')
   await expect(spaces).toHaveCount(1)
   await expect(spaces.first()).toContainText('Team')
@@ -118,7 +118,7 @@ test('a public page shows the shared folder and nothing beyond it', async ({ pag
   await expect(page.getByText('Prune in March.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Rename', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Share', exact: true })).toHaveCount(0)
-  await page.goto('/settings')
+  await page.goto('/settings?tab=server&sub=shares')
   await page.locator('#shares').getByLabel('Allow public pages').check()
   await expect(page.locator('#shares').getByLabel('Allow public pages')).toBeChecked()
   await page.reload()

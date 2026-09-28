@@ -9,18 +9,20 @@
  * When the editor goes away (another note, back to reading), it hands its last text to `onLeave` first: layout
  * effects are cleaned up before the page's own effects, so the page's last save has the words typed just before.
  */
-import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { TextSelection } from '@milkdown/kit/prose/state'
 import { useTranslation } from 'react-i18next'
 
 import '@milkdown/crepe/theme/common/style.css'
 import '../styles/editor.css'
 
 import { ApiError, fileUrl, uploadFile, vaultApi, type Uploaded } from '../api/client'
-import { createEditor, type EditorLabels, type FileHelpers, type NoteEditor as Engine } from '../editor/editor'
+import { createEditor, type EditorCommand, type EditorLabels, type FileHelpers, type NoteEditor as Engine } from '../editor/editor'
 import { splitNote } from '../editor/frontmatter'
 import type { LinkHelpers } from '../editor/live'
 import { fileKind, isFileTarget, isPasted, relativeTarget } from '../lib/files'
 import type { LinkIndex } from '../lib/links'
+import { useContextMenu, type MenuItem } from '../lib/menu'
 import { baseName } from '../lib/vault'
 import { Properties } from './Properties'
 
@@ -68,6 +70,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   const [source, setSource] = useState('')
   const sourceRef = useRef('')
   const [problem, setProblem] = useState<string | null>(null)
+  const menu = useContextMenu()
 
   const latest = useRef({ onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed })
   latest.current = { onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed }
@@ -211,6 +214,91 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     return () => latest.current.onLeave(current())
   }, [])
 
+  /**
+   * The editor's own menu for the right mouse button: clipboard, format, paragraph, insert; on a wiki link its note
+   * first. A long press on a touch screen keeps the phone's own menu (selecting text needs it).
+   */
+  const openMenu = (event: MouseEvent) => {
+    const engineNow = engine.current
+    if (!engineNow || readOnly || (event.nativeEvent as PointerEvent).pointerType === 'touch') return
+    event.preventDefault()
+    // A click outside the selection puts the caret where it was: the menu works on what was clicked.
+    const { view } = engineNow
+    const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
+    const { from, to } = view.state.selection
+    if (at !== undefined && (at < from || at > to)) view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(at))))
+    const run = (command: EditorCommand) => () => engineNow.run(command)
+    const clip = (what: 'cut' | 'copy') => () => {
+      engineNow.view.focus()
+      document.execCommand(what)
+    }
+    const s = (key: string) => t(`editor.slash.${key}`)
+    const target = (event.target as Element).closest('.nx-wiki[data-target]')?.getAttribute('data-target')
+    // Reading the clipboard needs a secure page (https); on plain http the keyboard still pastes.
+    const canPaste = window.isSecureContext && !!navigator.clipboard?.readText
+    const items: MenuItem[] = [
+      ...(target
+        ? ([
+            { label: t('editorMenu.openLink'), symbol: 'note', onSelect: () => latest.current.onOpenLink(target, false) },
+            { label: t('editorMenu.openLinkNewTab'), symbol: 'open', onSelect: () => latest.current.onOpenLink(target, true) },
+            'separator',
+          ] satisfies MenuItem[])
+        : []),
+      { label: t('editorMenu.cut'), symbol: 'cut', hint: t('editorMenu.keyCut'), onSelect: clip('cut') },
+      { label: t('editorMenu.copy'), symbol: 'copy', hint: t('editorMenu.keyCopy'), onSelect: clip('copy') },
+      {
+        label: t('editorMenu.paste'),
+        symbol: 'paste',
+        hint: t('editorMenu.keyPaste'),
+        disabled: !canPaste,
+        onSelect: () => {
+          void navigator.clipboard.readText().then((text) => {
+            engineNow.view.focus()
+            engineNow.view.dispatch(engineNow.view.state.tr.insertText(text).scrollIntoView())
+          })
+        },
+      },
+      'separator',
+      {
+        label: t('editorMenu.format'),
+        items: [
+          { label: t('editorMenu.bold'), hint: t('editorMenu.keyBold'), onSelect: run('bold') },
+          { label: t('editorMenu.italic'), hint: t('editorMenu.keyItalic'), onSelect: run('italic') },
+          { label: t('editorMenu.strike'), onSelect: run('strike') },
+          { label: t('editorMenu.code'), onSelect: run('code') },
+          { label: t('editorMenu.highlight'), onSelect: run('highlight') },
+        ],
+      },
+      {
+        label: t('editorMenu.paragraph'),
+        items: [
+          { label: s('text'), onSelect: run('text') },
+          { label: s('h1'), onSelect: run('h1') },
+          { label: s('h2'), onSelect: run('h2') },
+          { label: s('h3'), onSelect: run('h3') },
+          { label: s('quote'), onSelect: run('quote') },
+          { label: s('bulletList'), onSelect: run('bulletList') },
+          { label: s('orderedList'), onSelect: run('orderedList') },
+          { label: s('taskList'), onSelect: run('taskList') },
+          { label: s('code'), onSelect: run('codeBlock') },
+        ],
+      },
+      {
+        label: t('editorMenu.insert'),
+        items: [
+          { label: s('wikiLink'), symbol: 'link', onSelect: run('wikiLink') },
+          { label: s('callout'), onSelect: run('callout') },
+          { label: s('table'), onSelect: run('table') },
+          { label: s('divider'), onSelect: run('divider') },
+          { label: s('attachment'), symbol: 'clip', onSelect: run('attachment') },
+        ],
+      },
+      'separator',
+      { label: t('editorMenu.selectAll'), hint: t('editorMenu.keySelectAll'), onSelect: run('selectAll') },
+    ]
+    menu.open(event.clientX, event.clientY, items)
+  }
+
   if (problem) return <p className="text-sm text-bad-500">{t('note.editorFailed')}</p>
 
   return (
@@ -241,8 +329,9 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
           className="nx-source min-h-[60vh] w-full resize-y rounded-xl border border-ink-700 bg-ink-900 p-4 font-mono text-[13px] leading-6 text-mist-200 outline-none focus:border-accent-500"
         />
       ) : (
-        <div ref={host} className="nx-editor-host" />
+        <div ref={host} className="nx-editor-host" onContextMenu={openMenu} />
       )}
+      {menu.element}
     </div>
   )
 })

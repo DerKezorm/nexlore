@@ -80,7 +80,14 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Zoo/Reading.md':
     '# Reading\n\n> [!tip]- Folded tip\n> Hidden until opened.\n\nA ==marked== word and %%a secret remark%% here.\n\n' +
     '| Link | Note |\n|---|---|\n| [[Embedded\\|the embedded one]] | cell |\n\n![[Embedded#Part two]]\n',
-  'Zoo/Embedded.md': '# Embedded\n\n## Part one\n\nNot in the embed.\n\n## Part two\n\nIn the embed, with a link to [[Across target]].\n\n![[Reading]]\n',
+  // The sidebar's context menus (sidebar.spec.ts): a folder to tidy, notes to rename, move and trash.
+  'Zoo/Menu.md': '# Menu\n\nMake this word bold.\n\nA line to become a heading.\n\nSee [[Across target]].\n',
+  'Zoo/Tidy/Keep.md':'# Keep\n\nSee [[Move me]] and [[Open me]].\n',
+  'Zoo/Tidy/Move me.md': '# Move me\n',
+  'Zoo/Tidy/Open me.md': '# Open me\n\nBeing read while it is renamed.\n',
+  'Zoo/Tidy/Box/Inside.md': '# Inside\n',
+  'Zoo/Tidy/Old/Gone.md': '# Gone\n',
+  'Zoo/Embedded.md':'# Embedded\n\n## Part one\n\nNot in the embed.\n\n## Part two\n\nIn the embed, with a link to [[Across target]].\n\n![[Reading]]\n',
   'Switch/From.md': '# From\n\nStart.\n',
   'Switch/To.md': '# To\n\nOther note.\n',
   // The editor (editor.spec.ts): Obsidian's way of writing, kept byte for byte where nothing was changed.

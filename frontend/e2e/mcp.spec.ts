@@ -123,6 +123,6 @@ test('the operator switches MCP off again, and the key card goes', async ({ page
   expect(closed.ok()).toBe(true)
   await page.goto('/account')
   await expect(page.getByRole('heading', { name: 'AI from outside (MCP)' })).toHaveCount(0)
-  await page.goto('/settings')
+  await page.goto('/settings?tab=server&sub=extensions')
   await expect(page.getByRole('heading', { name: 'AI from outside (MCP)' })).toBeVisible()
 })
