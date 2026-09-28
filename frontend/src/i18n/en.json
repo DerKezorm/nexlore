@@ -777,7 +777,11 @@
       "uploadTitle": "Upload code nobody checked?",
       "uploadText": "Once you let it out, this plugin runs for everybody who switches it on. Through WebRTC it could send the notes it is shown to somewhere else. Upload only code you have read, or whose author you trust.",
       "uploadConfirm": "Upload anyway",
-      "upload": "Upload"
+      "upload": "Upload",
+      "nextStep": "Let out: every account can now switch it on for itself under My account → Plugins for me.",
+      "toMine": "Go there",
+      "enableMine": "Switch it on for me",
+      "enabledMine": "On for you"
     }
   },
   "today": {
@@ -945,6 +949,16 @@
       "note_read": "read the note it sits on",
       "note_write": "write the note it sits on",
       "vault_read": "list notes you may read"
+    },
+    "where": {
+      "panel": "Shows in the right column beside every note (on a phone below the text).",
+      "block": "Write a code block ```{{lang}} into a note: when the note is read, the plugin shows its result in its place.",
+      "view": "A note with the property “{{key}}” shows this view instead of its text when read; a switch leads back to the text."
+    },
+    "example": "For example:",
+    "examples": {
+      "query": "```query\ntag: project\nfolder: Projects\nsort: modified\nview: table\n```",
+      "kanban": "---\nkanban-plugin: basic\n---\n\n## To do\n\n- [ ] A first card\n\n## Done\n"
     }
   },
   "twofactor": {

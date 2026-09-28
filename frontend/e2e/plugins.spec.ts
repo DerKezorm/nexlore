@@ -34,10 +34,25 @@ test('the operator lets plugins out in the settings, the account switches them o
     await card.getByRole('button', { name: 'Install' }).click()
     await card.getByRole('button', { name: 'Let it out' }).click()
     await expect(card.getByText(/let out/)).toBeVisible()
+    // What comes next: every account switches it on for itself, over there.
+    await expect(card.getByTestId(`plugin-next-${id}`)).toContainText('every account can now switch it on')
+    await expect(card.getByRole('link', { name: 'Go there' })).toHaveAttribute('href', '/account#plugins')
   }
+  // Where each shows up, and an example where one helps.
+  await expect(page.getByTestId('plugin-howto-toc')).toContainText('right column beside every note')
+  await expect(page.getByTestId('plugin-howto-query')).toContainText('code block ```query')
+  await expect(page.getByTestId('plugin-howto-query').locator('pre')).toContainText('tag: project')
+  await expect(page.getByTestId('plugin-howto-kanban')).toContainText('property “kanban-plugin”')
+  // The operator switches one on for themselves right here.
+  const query = page.getByTestId('plugin-query')
+  await query.getByRole('button', { name: 'Switch it on for me' }).click()
+  await expect(query.getByText('On for you')).toBeVisible()
+
   await page.goto('/account')
   const mine = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Plugins for me' }) })
-  for (const name of ['Contents', 'Queries', 'Kanban']) {
+  await expect(mine.getByRole('checkbox', { name: 'Queries' })).toBeChecked()
+  await expect(mine.getByTestId('plugin-howto-query')).toContainText('code block ```query')
+  for (const name of ['Contents', 'Kanban']) {
     const toggle = mine.getByRole('checkbox', { name })
     // Switched on once the server said so.
     await toggle.click()

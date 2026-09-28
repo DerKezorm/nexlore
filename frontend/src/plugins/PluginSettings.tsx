@@ -3,9 +3,13 @@
  * one's own only behind the latch, and only after a plain warning, when the latch is opened and before each upload:
  * code nobody checked could send what it is shown elsewhere through WebRTC, which no Content Security Policy blocks in
  * every browser. Each account switches let-out plugins on for itself (`MyPluginsCard`).
+ *
+ * Both cards say what comes next: where a plugin shows up (from its place: the right column, a code block, a view of
+ * its own), with an example where one helps; after letting one out, that every account switches it on for itself.
  */
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 import { adminApi, api, type ServerSettings } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -36,13 +40,49 @@ function Permissions({ plugin }: { plugin: PluginInfo }) {
   )
 }
 
+/** Where the plugin shows up and how it is used: from its place, and an example for the catalog's own where one helps. */
+function HowTo({ plugin }: { plugin: PluginInfo }) {
+  const { t, i18n } = useTranslation()
+  const { place } = plugin
+  const where = place.view
+    ? t('plugins.where.view', { key: place.view.frontmatter })
+    : place.block
+      ? t('plugins.where.block', { lang: place.block })
+      : place.panel
+        ? t('plugins.where.panel')
+        : null
+  const exampleKey = `plugins.examples.${plugin.id}`
+  const example = plugin.source === 'catalog' && i18n.exists(exampleKey) ? t(exampleKey) : null
+  if (!where) return null
+  return (
+    <div className="mt-1.5 text-xs text-mist-400" data-testid={`plugin-howto-${plugin.id}`}>
+      <p className="flex gap-1">
+        <Symbol name="info" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-mist-500" />
+        <span>{where}</span>
+      </p>
+      {example && (
+        <>
+          <p className="mt-1 ml-[18px] text-mist-500">{t('plugins.example')}</p>
+          <pre className="nn-scroll mt-1 ml-[18px] overflow-x-auto rounded-lg bg-ink-950 px-2 py-1.5 font-mono text-[11px] leading-5 text-mist-300">{example}</pre>
+        </>
+      )}
+    </div>
+  )
+}
+
 export function AdminPluginsCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
   const { t, i18n } = useTranslation()
   const [list, setList] = useState<AdminList | null>(null)
   const [files, setFiles] = useState<{ manifest: File | null; code: File | null }>({ manifest: null, code: null })
   const [asking, setAsking] = useState<'latch' | 'upload' | null>(null)
+  // The operator's own switches, for "Switch it on for me" right after letting one out.
+  const [mine, setMine] = useState<Map<string, boolean>>(new Map())
   const { busy, problem, done, run } = useAction()
-  const load = useCallback(async () => setList(await adminPlugins.list()), [])
+  const load = useCallback(async () => {
+    const [all, own] = await Promise.all([adminPlugins.list(), pluginsApi.mine()])
+    setList(all)
+    setMine(new Map(own.map((plugin) => [plugin.id, plugin.enabled])))
+  }, [])
   useEffect(() => {
     void run(load)
   }, [run, load])
@@ -89,6 +129,26 @@ export function AdminPluginsCard({ settings, onChange }: { settings: ServerSetti
               </div>
               <p className="mt-0.5 text-xs text-mist-400">{pluginText(plugin.description, i18n.language)}</p>
               <Permissions plugin={plugin} />
+              <HowTo plugin={plugin} />
+              {here?.approved && (
+                <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-accent-500/10 px-2.5 py-1.5 text-xs text-mist-300" data-testid={`plugin-next-${plugin.id}`}>
+                  <span>{t('admin.plugins.nextStep')}</span>
+                  <Link to="/account#plugins" className="text-accent-400 hover:underline">
+                    {t('admin.plugins.toMine')}
+                  </Link>
+                  {mine.get(plugin.id) ? (
+                    <span className="ml-auto inline-flex items-center gap-1 text-accent-400">
+                      <Symbol name="check" className="h-3.5 w-3.5" /> {t('admin.plugins.enabledMine')}
+                    </span>
+                  ) : (
+                    <span className="ml-auto">
+                      <Button small busy={busy} onClick={() => change(() => pluginsApi.enable(plugin.id, true))}>
+                        {t('admin.plugins.enableMine')}
+                      </Button>
+                    </span>
+                  )}
+                </p>
+              )}
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 {!here ? (
                   <Button small busy={busy} onClick={() => change(() => adminPlugins.install(plugin.id))}>
@@ -181,7 +241,7 @@ export function MyPluginsCard() {
   }, [])
   if (!list?.length) return null
   return (
-    <section className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="my-plugins">
+    <section id="plugins" className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="my-plugins">
       <h2 id="my-plugins" className="mb-1 flex items-center gap-2 font-semibold">
         <Symbol name="plug" className="h-4 w-4 text-accent-400" /> {t('plugins.mine')}
       </h2>
@@ -202,6 +262,7 @@ export function MyPluginsCard() {
               }
             />
             <Permissions plugin={plugin} />
+            <HowTo plugin={plugin} />
           </li>
         ))}
       </ul>

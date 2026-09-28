@@ -777,7 +777,11 @@
       "uploadTitle": "Ungeprüften Code hochladen?",
       "uploadText": "Sobald du es freigibst, läuft dieses Plugin für alle, die es einschalten. Über WebRTC könnte es die Notizen, die es gezeigt bekommt, nach draußen schicken. Lade nur Code hoch, den du gelesen hast oder dessen Urheber du vertraust.",
       "uploadConfirm": "Trotzdem hochladen",
-      "upload": "Hochladen"
+      "upload": "Hochladen",
+      "nextStep": "Freigegeben: Jetzt kann jedes Konto es für sich einschalten, unter Mein Konto → Plugins für mich.",
+      "toMine": "Dorthin",
+      "enableMine": "Für mich einschalten",
+      "enabledMine": "Für dich an"
     }
   },
   "today": {
@@ -945,6 +949,16 @@
       "note_read": "die Notiz lesen, auf der es steht",
       "note_write": "die Notiz schreiben, auf der es steht",
       "vault_read": "Notizen auflisten, die du lesen darfst"
+    },
+    "where": {
+      "panel": "Erscheint in der rechten Spalte neben jeder Notiz (auf dem Handy unter dem Text).",
+      "block": "Schreib einen Codeblock ```{{lang}} in eine Notiz: Beim Lesen zeigt das Plugin an seiner Stelle das Ergebnis.",
+      "view": "Eine Notiz mit der Eigenschaft „{{key}}“ zeigt beim Lesen diese Ansicht statt des Texts; ein Umschalter führt zum Text."
+    },
+    "example": "Zum Beispiel:",
+    "examples": {
+      "query": "```query\ntag: projekt\nfolder: Projekte\nsort: modified\nview: table\n```",
+      "kanban": "---\nkanban-plugin: basic\n---\n\n## Zu tun\n\n- [ ] Eine erste Karte\n\n## Erledigt\n"
     }
   },
   "twofactor": {
