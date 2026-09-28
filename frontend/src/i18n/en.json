@@ -990,7 +990,8 @@
     "copyLink": "Copy wiki link",
     "copied": "Copied: {{text}}",
     "trash": "Move to the trash",
-    "spaceSettings": "Members and settings"
+    "spaceSettings": "Members and settings",
+    "look": "Symbol and colour …"
   },
   "editorMenu": {
     "openLink": "Open the note",
@@ -1013,5 +1014,53 @@
     "keyBold": "Ctrl+B",
     "keyItalic": "Ctrl+I",
     "keySelectAll": "Ctrl+A"
+  },
+  "looks": {
+    "title": "Symbol and colour for “{{name}}”",
+    "symbol": "Symbol",
+    "noSymbol": "None",
+    "color": "Colour",
+    "automatic": "Automatic",
+    "hint": "Everybody in the space sees it so, in the sidebar and on the map. A folder’s colour holds for the folders in it too.",
+    "saved": "Symbol and colour saved.",
+    "icons": {
+      "folder": "Folder",
+      "book": "Book",
+      "server": "Server",
+      "cooking": "Cooking",
+      "travel": "Travel",
+      "tool": "Tools",
+      "star": "Star",
+      "heart": "Heart",
+      "home": "Home",
+      "work": "Work",
+      "code": "Code",
+      "music": "Music",
+      "image": "Pictures",
+      "calendar": "Calendar",
+      "idea": "Idea",
+      "users": "People",
+      "money": "Money",
+      "health": "Health",
+      "school": "Learning",
+      "archive": "Archive",
+      "lock": "Private",
+      "globe": "World",
+      "leaf": "Nature",
+      "template": "Templates"
+    },
+    "colors": {
+      "0": "Turquoise",
+      "1": "Violet",
+      "2": "Yellow",
+      "3": "Red",
+      "4": "Blue",
+      "5": "Green",
+      "6": "Orange",
+      "7": "Pink",
+      "8": "Emerald",
+      "9": "Indigo",
+      "10": "Grey"
+    }
   }
 }

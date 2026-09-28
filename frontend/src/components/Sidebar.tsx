@@ -19,7 +19,8 @@ import { askNewNote } from '../lib/newNote'
 import { baseName, noteUrl } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, REVEAL_EVENT, within } from '../lib/vaultActions'
 import { useStore } from '../state/store'
-import { Symbol } from './Symbol'
+import { lookOf } from '../lib/looks'
+import { Symbol, type SymbolName } from './Symbol'
 
 const ROW = 28
 /** Files of a folder asked for at a time; more when the list is scrolled to its end. */
@@ -35,7 +36,7 @@ type Props = {
 type Listing = { folders: FolderEntry[]; notes: FileEntry[]; loaded: number; total: number; more: boolean }
 
 type Row =
-  | { kind: 'folder'; path: string; name: string; depth: number; count: number; color: string; open: boolean; space: boolean }
+  | { kind: 'folder'; path: string; name: string; depth: number; count: number; color: string; icon: SymbolName | null; open: boolean; space: boolean }
   | { kind: 'note'; path: string; title: string; depth: number }
   | { kind: 'loading'; path: string; depth: number }
   | { kind: 'more'; path: string; depth: number }
@@ -43,7 +44,7 @@ type Row =
 
 export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
   const { t } = useTranslation()
-  const { spaces, generation, scan } = useStore()
+  const { spaces, generation, scan, looks } = useStore()
   const navigate = useNavigate()
   const menu = useContextMenu()
   const [copied, setCopied] = useState<string | null>(null)
@@ -166,7 +167,9 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     const wanted: string[] = []
     const walk = (path: string, name: string, depth: number, count: number, color: string, space: boolean) => {
       const open = isOpen(path)
-      out.push({ kind: 'folder', path, name, depth, count, color, open, space })
+      // A symbol and colour chosen by hand come first; else the colour nexlore works out, and a dot.
+      const look = lookOf(looks, path)
+      out.push({ kind: 'folder', path, name, depth, count, color: look.color ?? color, icon: look.icon, open, space })
       if (!open) return
       const listing = listings.get(path)
       if (listing === undefined || listing === 'loading') {
@@ -184,7 +187,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     }
     spaces.forEach((space, index) => walk(space.name, space.name, 0, space.notes, spaceColor(index), true))
     return { out, wanted }
-  }, [spaces, listings, isOpen])
+  }, [spaces, listings, isOpen, looks])
 
   useEffect(() => {
     for (const path of rows.wanted) load(path)
@@ -283,6 +286,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
       items.push({ label: t('menu.newFolder'), symbol: 'folderPlus', onSelect: () => askVaultAction({ kind: 'new-folder', parent: row.path }) })
       items.push('separator')
     }
+    if (write) items.push({ label: t('menu.look'), symbol: 'star', onSelect: () => askVaultAction({ kind: 'look', path: row.path }) })
     if (write && !row.space) {
       items.push({ label: t('menu.rename'), symbol: 'pencil', onSelect: () => askVaultAction({ kind: 'rename', path: row.path, folder: true }) })
       items.push({ label: t('menu.move'), symbol: 'move', onSelect: () => askVaultAction({ kind: 'move', path: row.path, folder: true }) })
@@ -376,7 +380,13 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
           aria-expanded={row.open}
           className={'flex min-w-0 flex-1 items-center gap-2 text-left ' + (row.space ? 'text-[13px] font-semibold text-mist-100' : 'text-[13px]')}
         >
-          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: row.color }} />
+          {row.icon ? (
+            <span className="shrink-0" style={{ color: row.color }} data-look={row.icon}>
+              <Symbol name={row.icon} className="h-3.5 w-3.5" />
+            </span>
+          ) : (
+            <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: row.color }} />
+          )}
           <span className="truncate">{row.name}</span>
           <span className="ml-auto shrink-0 text-[11px] text-mist-600 tabular-nums">{row.count}</span>
         </button>

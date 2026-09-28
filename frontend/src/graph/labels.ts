@@ -3,6 +3,8 @@
  * placed is left out. A grid of cells keeps the overlap check quick when a few thousand notes are in view.
  */
 
+import { SYMBOLS, type SymbolName } from '../lib/symbols'
+
 export type LabelItem = {
   /** Middle of the text. */
   x: number
@@ -22,6 +24,10 @@ export type LabelItem = {
   halo?: boolean
   /** Wider than this, the text breaks into lines (at " · " first, then at spaces). */
   maxWidth?: number
+  /** A symbol of `lib/symbols` drawn above the text (a space or folder with one chosen by hand). */
+  icon?: string | null
+  /** Its colour: the space's or folder's, where the text may be in another. */
+  iconColor?: string
 }
 
 /**
@@ -86,7 +92,9 @@ export function drawLabels(ctx: CanvasRenderingContext2D, items: LabelItem[], ba
     const h = item.size * (item.sub ? 2.2 : 1.35) + extra
     const top = item.baseline === 'top' ? item.y : item.y - (item.sub ? item.size * 0.95 : item.size * 0.6) - extra / 2
     const half = Math.max(w, subW) / 2 + 2
-    const box = { x0: item.x - half, y0: top, x1: item.x + half, y1: top + h }
+    const paths = item.icon ? SYMBOLS[item.icon as SymbolName] : undefined
+    const iconSize = Math.round(item.size * 1.25)
+    const box = { x0: item.x - half, y0: top - (paths ? iconSize + 3 : 0), x1: item.x + half, y1: top + h }
     if (box.x1 < 0 || box.x0 > width || box.y1 < 0 || box.y0 > height) continue
     const keys = cells(box)
     const clash = keys.some((key) =>
@@ -99,6 +107,22 @@ export function drawLabels(ctx: CanvasRenderingContext2D, items: LabelItem[], ba
       else grid.set(key, [box])
     }
     ctx.globalAlpha = Math.min(1, item.alpha)
+    if (paths) {
+      ctx.save()
+      ctx.translate(item.x - iconSize / 2, top - iconSize - 3)
+      ctx.scale(iconSize / 24, iconSize / 24)
+      ctx.lineWidth = 1.8
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.strokeStyle = item.iconColor ?? item.color
+      ctx.fillStyle = item.iconColor ?? item.color
+      for (const path of paths as { d: string; fill?: boolean }[]) {
+        const shape = new Path2D(path.d)
+        if (path.fill) ctx.fill(shape)
+        else ctx.stroke(shape)
+      }
+      ctx.restore()
+    }
     ctx.textAlign = 'center'
     ctx.font = font(item.size, item.weight)
     const lineY = (item.baseline === 'top' ? item.y : item.sub ? item.y - item.size * 0.35 : item.y) - (item.baseline === 'top' ? 0 : extra / 2)

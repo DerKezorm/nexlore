@@ -4,6 +4,7 @@
  * behind before its request went out is not asked for. While a big space is still being laid out on the server, its
  * overview is asked for again every two seconds; after that every thirty, to notice changes made elsewhere.
  */
+import type { Looks } from '../api/client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { graphApi, type Cloud, type Overview, type Space } from '../api/client'
@@ -29,7 +30,10 @@ export type GraphData = {
   refresh: () => void
 }
 
-export function useGraph(spaces: Space[], cloud: Cloud, generation: number): GraphData {
+/** One empty object for "no looks": a new one on every render would count as a change every time. */
+const NO_LOOKS: Looks = {}
+
+export function useGraph(spaces: Space[], cloud: Cloud, generation: number, looks: Looks = NO_LOOKS): GraphData {
   // A new scene for every cloud: the same notes stand elsewhere in each.
   const scene = useMemo(() => new Scene(), [cloud]) // eslint-disable-line react-hooks/exhaustive-deps
   const [revision, setRevision] = useState(0)
@@ -44,6 +48,12 @@ export function useGraph(spaces: Space[], cloud: Cloud, generation: number): Gra
   const tileSize = useRef(512)
   const again = useRef<() => void>(() => undefined)
   const names = spaces.map((space) => space.name).join('\n')
+
+  // Symbols and colours chosen by hand: on the scene as it stands, and on every overview that comes later.
+  useEffect(() => {
+    scene.applyLooks(looks)
+    setRevision((value) => value + 1)
+  }, [scene, looks])
 
   useEffect(() => {
     let alive = true

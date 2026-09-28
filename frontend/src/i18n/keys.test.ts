@@ -35,6 +35,10 @@ describe('translation keys used in the code', () => {
       ...['nav.graph', 'nav.notes', 'nav.files', 'nav.settings'],
       ...['folders', 'tags', 'topics'].map((cloud) => `graph.cloud.${cloud}`),
       ...['pending', 'saving', 'saved', 'failed', 'refreshed'].map((state) => `note.save.${state}`),
+      // The symbols and colours to choose for a space or folder, as the server lists them (services/looks.py).
+      ...['folder', 'book', 'server', 'cooking', 'travel', 'tool', 'star', 'heart', 'home', 'work', 'code', 'music', 'image',
+        'calendar', 'idea', 'users', 'money', 'health', 'school', 'archive', 'lock', 'globe', 'leaf', 'template'].map((icon) => `looks.icons.${icon}`),
+      ...Array.from({ length: 11 }, (_, index) => `looks.colors.${index}`),
       // The editor's slash menu, the kinds of a property, the choices in the comparison.
       ...[
         'text', 'h1', 'h2', 'h3', 'quote', 'divider', 'bulletList', 'orderedList', 'taskList', 'code', 'table', 'math',

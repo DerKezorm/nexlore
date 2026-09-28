@@ -38,7 +38,7 @@ type Chosen = { id: number; path: string; title: string }
 
 export function GraphPage() {
   const { t } = useTranslation()
-  const { spaces, generation, status, scan } = useStore()
+  const { spaces, generation, status, scan, looks } = useStore()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const graph = useRef<GraphHandle>(null)
@@ -50,7 +50,7 @@ export function GraphPage() {
   const [hover, setHover] = useState<Hover | null>(null)
   const [hintOpen, setHintOpen] = useState(true)
   const [sheet, setSheet] = useState(false)
-  const data = useGraph(spaces, cloud, generation)
+  const data = useGraph(spaces, cloud, generation, looks)
   const { scene, revision, overviews } = data
 
   const setCloud = (next: Cloud) => {

@@ -9,12 +9,13 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { ApiError, vaultApi } from '../api/client'
+import { ApiError, looksApi, vaultApi } from '../api/client'
 import { errorText } from '../lib/errors'
 import { fileRoute } from '../lib/markdown'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { announceLeaving, forget, reveal, VAULT_ACTION_EVENT, within, type VaultAction } from '../lib/vaultActions'
 import { useStore } from '../state/store'
+import type { SymbolName } from '../lib/symbols'
 import { ConfirmDialog } from './ConfirmDialog'
 import { FolderTree } from './FolderTree'
 import { Symbol } from './Symbol'
@@ -81,6 +82,17 @@ export function VaultActions() {
 
   return (
     <>
+      {action.kind === 'look' && (
+        <LookDialog
+          path={action.path}
+          onClose={close}
+          onSave={async (icon, color) => {
+            await looksApi.put(action.path, icon, color)
+            await reload()
+            done(t('looks.saved'))
+          }}
+        />
+      )}
       {action.kind === 'new-space' && (
         <NameDialog
           title={t('actions.newSpaceTitle')}
@@ -266,6 +278,56 @@ function MoveDialog({ path, folder, onClose, onMove }: { path: string; folder: b
         {problem && <p role="alert" className="text-sm text-bad-500">{errorText(problem)}</p>}
       </div>
       <Buttons confirm={t('actions.moveHere')} busy={busy} disabled={!target} onClose={onClose} />
+    </Frame>
+  )
+}
+
+/** A symbol and a colour for a space or folder; "none" and "automatic" give it back to nexlore. */
+function LookDialog({ path, onClose, onSave }: { path: string; onClose: () => void; onSave: (icon: string | null, color: string | null) => Promise<void> }) {
+  const { t } = useTranslation()
+  const { looks, choices } = useStore()
+  const [space, ...rest] = path.split('/')
+  const now = looks[space]?.[rest.join('/')]
+  const [icon, setIcon] = useState<string | null>(now?.icon ?? null)
+  const [color, setColor] = useState<string | null>(now?.color ?? null)
+  const { busy, problem, submit } = useSubmit(() => onSave(icon, color))
+  const choice = (selected: boolean) =>
+    'grid h-9 w-9 place-items-center rounded-lg border ' + (selected ? 'border-accent-500 bg-accent-500/15' : 'border-ink-700 hover:bg-ink-850')
+  return (
+    <Frame title={t('looks.title', { name: rest.length ? rest[rest.length - 1] : space })} onClose={onClose} onSubmit={() => void submit()} testId="look-dialog">
+      <div className="min-h-0 space-y-4 overflow-y-auto p-4">
+        <fieldset>
+          <legend className="mb-2 text-xs text-mist-500">{t('looks.symbol')}</legend>
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" aria-pressed={icon === null} onClick={() => setIcon(null)} className={choice(icon === null) + ' w-auto px-2.5 text-xs text-mist-400'}>
+              {t('looks.noSymbol')}
+            </button>
+            {choices.icons.map((name) => (
+              <button key={name} type="button" aria-pressed={icon === name} aria-label={t(`looks.icons.${name}`)} title={t(`looks.icons.${name}`)} onClick={() => setIcon(name)} className={choice(icon === name)}>
+                <span style={{ color: color ?? undefined }}>
+                  <Symbol name={name as SymbolName} className="h-4.5 w-4.5" />
+                </span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend className="mb-2 text-xs text-mist-500">{t('looks.color')}</legend>
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" aria-pressed={color === null} onClick={() => setColor(null)} className={choice(color === null) + ' w-auto px-2.5 text-xs text-mist-400'}>
+              {t('looks.automatic')}
+            </button>
+            {choices.colors.map((value, index) => (
+              <button key={value} type="button" aria-pressed={color === value} aria-label={t(`looks.colors.${index}`)} title={t(`looks.colors.${index}`)} onClick={() => setColor(value)} className={choice(color === value)}>
+                <span className="h-4 w-4 rounded-full" style={{ background: value }} />
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        <p className="text-xs text-mist-500">{t('looks.hint')}</p>
+        {problem && <p role="alert" className="text-sm text-bad-500">{errorText(problem)}</p>}
+      </div>
+      <Buttons confirm={t('common.save')} busy={busy} onClose={onClose} />
     </Frame>
   )
 }

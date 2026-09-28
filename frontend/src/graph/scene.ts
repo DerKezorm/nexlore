@@ -11,6 +11,8 @@
  * one bundle, thicker the more links it carries. Which groups are closed depends only on the zoom, and it changes in
  * steps: groups sorted by radius, the count of closed ones says everything (`band`).
  */
+import type { Looks } from '../api/client'
+import { lookOf } from '../lib/looks'
 import type { GroupKind, GroupRow, Overview, TileNote, Tiles } from '../api/client'
 import { BAND_STRIDE, BUBBLE_STRIDE, LINE_STRIDE, MAX_DOT, MIN_DOT, OPEN_FROM, OPEN_TO, POINT_STRIDE, type Camera } from './gl'
 import { slotColor, spaceColor } from './palette'
@@ -39,6 +41,10 @@ export type SceneGroup = {
   r: number
   level: number
   color: string
+  /** The colour nexlore works out; `color` is the one chosen by hand where there is one. */
+  auto: string
+  /** A symbol chosen by hand for the space or folder, drawn above its name. */
+  icon: string | null
   depth: number
   children: number[]
   parentR: number
@@ -129,6 +135,21 @@ export class Scene {
 
   // --- Loading ------------------------------------------------------------------------------------------------------
 
+  /** Symbols and colours chosen by hand (`/api/looks`); they hold in the folder cloud, where groups are folders. */
+  private looks: Looks = {}
+
+  applyLooks(looks: Looks) {
+    this.looks = looks
+    for (const group of this.groups.values()) this.look(group)
+  }
+
+  private look(group: SceneGroup) {
+    const path = group.key === 'space' ? group.space : group.key.startsWith('f:') ? `${group.space}/${group.key.slice(2)}` : null
+    const shown = path ? lookOf(this.looks, path) : null
+    group.color = shown?.color ?? group.auto
+    group.icon = shown?.icon ?? null
+  }
+
   /** The overviews of every space shown, in the order of the space list. */
   setOverviews(list: { name: string; overview: Overview }[]) {
     const previous = new Map(this.spaces.map((s) => [s.name, s]))
@@ -170,9 +191,10 @@ export class Scene {
       const parentRow = parent !== null ? byId.get(parent) : undefined
       this.groups.set(id, {
         id, space, parent, kind, name, key, total, daily, own: total, x, y, r, level,
-        color: kind === 'space' ? spaceColor(index) : slotColor(slot),
+        color: kind === 'space' ? spaceColor(index) : slotColor(slot), auto: kind === 'space' ? spaceColor(index) : slotColor(slot), icon: null,
         depth: depthOf(row), children: [], parentR: parentRow ? parentRow[8] : 0,
       })
+      this.look(this.groups.get(id)!)
     }
     for (const row of rows) {
       const group = this.groups.get(row[0])!

@@ -229,6 +229,16 @@ export function uploadFile(
   })
 }
 
+/** A space's or folder's symbol and colour chosen by hand; null: nexlore's own. */
+export type Look = { icon: string | null; color: string | null }
+/** Space name, then folder within it ("" is the space itself). */
+export type Looks = Record<string, Record<string, Look>>
+
+export const looksApi = {
+  get: () => api<{ looks: Looks; icons: string[]; colors: string[] }>('/api/looks'),
+  put: (path: string, icon: string | null, color: string | null) => api<void>('/api/looks', { method: 'PUT', body: { path, icon, color } }),
+}
+
 export const vaultApi = {
   spaces: () => api<Space[]>('/api/spaces'),
   /** What lies directly in a space or folder. */

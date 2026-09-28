@@ -182,3 +182,28 @@ test('the + beside SPACES makes a space, which its maker manages', async ({ page
   await expect(page.getByRole('menuitem', { name: 'Members and settings' })).toBeVisible()
   expect(problems).toEqual([])
 })
+
+test('a folder gets a symbol and a colour of its own, and the folders in it take the colour', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.goto('/note/Zoo/Tidy/Keep.md')
+  await row(page, 'Tidy').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Symbol and colour …' }).click()
+  const dialog = page.getByTestId('look-dialog')
+  await dialog.getByRole('button', { name: 'Star' }).click()
+  await dialog.getByRole('button', { name: 'Red' }).click()
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByRole('status')).toContainText('Symbol and colour saved.')
+  const tidy = page.getByTestId('sidebar-tree').locator('li', { has: page.getByRole('button', { name: /^Tidy \d+$/ }) })
+  await expect(tidy.locator('[data-look="star"]')).toHaveCSS('color', 'rgb(251, 113, 133)')
+  // A folder in it: the colour, as a dot (no symbol of its own).
+  const box = page.getByTestId('sidebar-tree').locator('li', { has: page.getByRole('button', { name: /^Box \d+$/ }) })
+  await expect(box.locator('span.rounded-full')).toHaveCSS('background-color', 'rgb(251, 113, 133)')
+  // Back to what nexlore works out.
+  await row(page, 'Tidy').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Symbol and colour …' }).click()
+  await dialog.getByRole('button', { name: 'None' }).click()
+  await dialog.getByRole('button', { name: 'Automatic' }).click()
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  await expect(tidy.locator('[data-look]')).toHaveCount(0)
+  expect(problems).toEqual([])
+})

@@ -23,6 +23,7 @@ from .routers import about, attachments, auth, drafts, everyday, graph, health, 
 from .routers import backups as backups_router
 from .routers import locales as locales_router
 from .routers import logs as logs_router
+from .routers import looks as looks_router
 from .routers import mcp as mcp_router
 from .routers import plugins as plugins_router
 from .routers import settings as settings_router
@@ -34,7 +35,7 @@ logger = logging.getLogger("nexlore")
 
 ROUTERS = [
     health, about, locales_router, logs_router, auth, totp_router, oidc, members, settings_router, vault_router,
-    attachments, imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router,
+    attachments, imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router, looks_router,
 ]
 
 

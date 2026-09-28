@@ -990,7 +990,8 @@
     "copyLink": "Wiki-Link kopieren",
     "copied": "Kopiert: {{text}}",
     "trash": "In den Papierkorb",
-    "spaceSettings": "Mitglieder und Einstellungen"
+    "spaceSettings": "Mitglieder und Einstellungen",
+    "look": "Symbol und Farbe …"
   },
   "editorMenu": {
     "openLink": "Notiz öffnen",
@@ -1013,5 +1014,53 @@
     "keyBold": "Strg+B",
     "keyItalic": "Strg+I",
     "keySelectAll": "Strg+A"
+  },
+  "looks": {
+    "title": "Symbol und Farbe für „{{name}}“",
+    "symbol": "Symbol",
+    "noSymbol": "Keins",
+    "color": "Farbe",
+    "automatic": "Automatisch",
+    "hint": "Alle im Bereich sehen es so, in der Seitenleiste und auf der Karte. Die Farbe eines Ordners gilt auch für die Ordner darin.",
+    "saved": "Symbol und Farbe gespeichert.",
+    "icons": {
+      "folder": "Ordner",
+      "book": "Buch",
+      "server": "Server",
+      "cooking": "Kochen",
+      "travel": "Reisen",
+      "tool": "Werkzeug",
+      "star": "Stern",
+      "heart": "Herz",
+      "home": "Zuhause",
+      "work": "Arbeit",
+      "code": "Code",
+      "music": "Musik",
+      "image": "Bilder",
+      "calendar": "Kalender",
+      "idea": "Idee",
+      "users": "Menschen",
+      "money": "Geld",
+      "health": "Gesundheit",
+      "school": "Lernen",
+      "archive": "Archiv",
+      "lock": "Privat",
+      "globe": "Welt",
+      "leaf": "Natur",
+      "template": "Vorlagen"
+    },
+    "colors": {
+      "0": "Türkis",
+      "1": "Violett",
+      "2": "Gelb",
+      "3": "Rot",
+      "4": "Blau",
+      "5": "Grün",
+      "6": "Orange",
+      "7": "Pink",
+      "8": "Smaragd",
+      "9": "Indigo",
+      "10": "Grau"
+    }
   }
 }

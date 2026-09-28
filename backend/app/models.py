@@ -462,6 +462,20 @@ class Share(Base):
     password_hash: Mapped[str] = mapped_column(String(255), default="")
 
 
+class Look(Base):
+    """A symbol and a colour of its own for a space or folder (``services/looks``): in the database, never in the
+    folders. ``folder`` is the path within the space, "" for the space itself."""
+
+    __tablename__ = "looks"
+    __table_args__ = (Index("looks_space_folder", "space_id", "folder", unique=True),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"))
+    folder: Mapped[str] = mapped_column(String(1024), default="")
+    icon: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    color: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
+
 #: The full-text index, created by ``db.init_db`` (SQLAlchemy has no FTS5 table). rowid is ``files.id``.
 FTS_TABLE = "notes_fts"
 FTS_CREATE = (

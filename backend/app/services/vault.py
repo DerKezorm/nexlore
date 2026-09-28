@@ -30,8 +30,8 @@ from sqlalchemy import text as sql
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import FTS_TABLE, File, Link, Lock, MoveJob, MoveJobNote, Share, TrashBlob, Version, utcnow
-from . import index, mdparse, paths, settings_service
+from ..models import FTS_TABLE, File, Link, Lock, MoveJob, MoveJobNote, Share, Space, TrashBlob, Version, utcnow
+from . import index, looks, mdparse, paths, settings_service
 
 logger = logging.getLogger("nexlore.vault")
 
@@ -407,6 +407,10 @@ def delete_path(rel: str, *, actor: Actor, along: Iterable[str] = ()) -> int:
     with index.guard, SessionLocal() as db:
         if full.is_dir():
             files = below(db, rel)
+            # Its symbol and colour go with it (the space's own too, when the whole space goes).
+            space = db.scalar(select(Space).where(Space.folder == paths.space_of(rel)))
+            if space is not None:
+                looks.gone(db, space.id, rel.partition("/")[2])
         else:
             files = [_file(db, rel)]
             wanted = set(along)
@@ -886,6 +890,9 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
             file.path_key = paths.fold(file.path)
             file.name_key = index.name_key(file.path)
         db.flush()
+        # A folder's symbol and colour follow it, and those of the folders in it.
+        if is_folder:
+            looks.moved(db, space_id, source.partition("/")[2], destination.partition("/")[2])
         # Public pages follow what they show.
         for share in db.scalars(select(Share).where(Share.space_id == space_id)):
             if share.path == source:

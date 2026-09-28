@@ -199,3 +199,26 @@ describe('the scene of the graph', () => {
     expect(scene.centre({ x: space.ox - 400, y: space.oy, k: 1 })?.id).toBe(2)
   })
 })
+
+describe('symbols and colours chosen by hand', () => {
+  it('colour a folder and the folders in it, mark it with its symbol, and go back to nexlore’s own when taken away', () => {
+    const scene = new Scene()
+    scene.setOverviews([{ name: 'Work', overview: overview() }])
+    const byKey = (key: string) => [...scene.groups.values()].find((group) => group.key === key)!
+    const own = { plans: byKey('f:Plans').color, old: byKey('f:Plans/Old').color, daily: byKey('f:Daily').color, space: byKey('space').color }
+    scene.applyLooks({ Work: { '': { icon: 'home', color: null }, Plans: { icon: 'star', color: '#fb7185' } } })
+    expect(byKey('f:Plans')).toMatchObject({ color: '#fb7185', icon: 'star' })
+    // The folder in it takes the colour, not the symbol; a folder beside it keeps its own; the space its colour.
+    expect(byKey('f:Plans/Old')).toMatchObject({ color: '#fb7185', icon: null })
+    expect(byKey('f:Daily').color).toBe(own.daily)
+    expect(byKey('space')).toMatchObject({ color: own.space, icon: 'home' })
+    // A group that is not a folder (a bucket of the split) knows no looks.
+    expect(byKey('space|b9').icon).toBeNull()
+    // New overviews keep them; taking them away brings nexlore's colours back.
+    scene.setOverviews([{ name: 'Work', overview: overview(2) }])
+    expect(byKey('f:Plans').color).toBe('#fb7185')
+    scene.applyLooks({})
+    expect(byKey('f:Plans')).toMatchObject({ color: own.plans, icon: null })
+    expect(byKey('f:Plans/Old').color).toBe(own.old)
+  })
+})

@@ -188,7 +188,7 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
         const dimmed = marked && !marked.has(group.id) ? 0.5 : 1
         const fontSize = Math.max(11, Math.min(20, r * 0.2))
         items.push({
-          x, y, text: name, sub: r > 34 ? latest.current.countLabel(group.total) : undefined, size: fontSize, weight: 600,
+          x, y, text: name, sub: r > 34 ? latest.current.countLabel(group.total) : undefined, size: fontSize, weight: 600, icon: group.icon, iconColor: group.color,
           // Opening, the name in the middle fades faster than the bubble, so it never lies over the names inside.
           color: col.text, subColor: col.dim, alpha: alpha.closed * (1 - alpha.open) * dimmed, baseline: 'middle',
           priority: closedLabelPriority(r, alpha.open), maxWidth: Math.max(60, r * 1.7),
@@ -199,7 +199,7 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
       if (openAlpha > 0.02) {
         const top = y - r + (group.depth === 1 ? 22 : 16)
         items.push({
-          x, y: top, text: group.depth === 1 ? name.toUpperCase() : name, size: group.depth === 1 ? 15 : 12,
+          x, y: top, text: group.depth === 1 ? name.toUpperCase() : name, size: group.depth === 1 ? 15 : 12, icon: group.icon,
           weight: group.depth === 1 ? 700 : 600, color: group.color, alpha: openAlpha * 0.95, baseline: 'middle',
           priority: 400 - group.depth,
         })

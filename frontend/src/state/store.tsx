@@ -11,7 +11,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
-import { ApiError, type IndexProgress, vaultApi, type Space } from '../api/client'
+import { ApiError, type IndexProgress, looksApi, type Looks, vaultApi, type Space } from '../api/client'
 
 type Status = 'loading' | 'ready' | 'error'
 
@@ -19,6 +19,9 @@ type Store = {
   status: Status
   error: string | null
   spaces: Space[]
+  /** Symbols and colours chosen by hand for spaces and folders, and what there is to choose from. */
+  looks: Looks
+  choices: { icons: string[]; colors: string[] }
   /** Counts up with every load. */
   generation: number
   reload: () => Promise<void>
@@ -35,13 +38,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>('loading')
   const [error, setError] = useState<string | null>(null)
   const [spaces, setSpaces] = useState<Space[]>([])
+  const [looks, setLooks] = useState<Looks>({})
+  const [choices, setChoices] = useState<{ icons: string[]; colors: string[] }>({ icons: [], colors: [] })
   const [generation, setGeneration] = useState(0)
   const loading = useRef<Promise<void> | null>(null)
 
   const reload = useCallback(() => {
     loading.current ??= (async () => {
       try {
-        setSpaces(await vaultApi.spaces())
+        // The looks with the spaces; without them the tree still stands, as nexlore colours it itself.
+        const [list, looked] = await Promise.all([vaultApi.spaces(), looksApi.get().catch(() => null)])
+        setSpaces(list)
+        if (looked) {
+          setLooks(looked.looks)
+          setChoices({ icons: looked.icons, colors: looked.colors })
+        }
         setGeneration((value) => value + 1)
         setError(null)
         setStatus('ready')
@@ -91,8 +102,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [reload])
 
   const store = useMemo<Store>(
-    () => ({ status, error, spaces, generation, reload, scan }),
-    [status, error, spaces, generation, reload, scan],
+    () => ({ status, error, spaces, looks, choices, generation, reload, scan }),
+    [status, error, spaces, looks, choices, generation, reload, scan],
   )
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
