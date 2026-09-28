@@ -15,6 +15,7 @@ import logging
 import os
 import posixpath
 import shutil
+import threading
 import time
 import uuid
 import zlib
@@ -24,12 +25,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy import text as sql
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import FTS_TABLE, File, Link, Lock, Share, TrashBlob, Version, utcnow
+from ..models import FTS_TABLE, File, Link, Lock, MoveJob, MoveJobNote, Share, TrashBlob, Version, utcnow
 from . import index, mdparse, paths, settings_service
 
 logger = logging.getLogger("nexlore.vault")
@@ -841,31 +842,22 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
         moved_ids = {file.id for file in files}
         space_id = files[0].space_id if files else index.ensure_space(db, paths.space_of(source)).id
 
-        # Which notes must be rewritten: those linking here, and the moved notes themselves.
-        sources = set(
-            db.scalars(select(Link.source_id).where(Link.target_id.in_(moved_ids)).distinct())
-        ) | {file.id for file in files if file.is_note}
-        before = index.Names(db, space_id, preload=len(sources) > index.SMALL_CHANGE)
-        plans: dict[int, tuple[bytes, list[tuple[mdparse.LinkRef, int]]]] = {}
-        for source_id in sources:
-            note = db.get(File, source_id)
-            if note is None or note.deleted_at is not None or not note.is_note:
-                continue
-            note_full = paths.vault_root().joinpath(*note.path.split("/"))
-            try:
-                data = note_full.read_bytes()
-            except OSError:
-                continue
-            content = index.decode(data)
-            wanted = []
-            for link in mdparse.parse(content).links:
-                target_id = index.resolve(link.kind, link.target, note.path, before)
-                if target_id is None:
-                    continue
-                if target_id in moved_ids or source_id in moved_ids:
-                    wanted.append((link, target_id))
-            if wanted:
-                plans[source_id] = (data, wanted)
+        # Which links must be rewritten, read from the index before anything moves (afterwards the old names lead
+        # nowhere): those pointing at a moved file, and every resolved link of a moved note.
+        plan: dict[int, dict[tuple[str, str], int]] = {}
+        for chunk in _chunks(sorted(moved_ids)):
+            for source_id, kind, target, target_id in db.execute(
+                select(Link.source_id, Link.kind, Link.target, Link.target_id).where(Link.target_id.in_(chunk))
+            ):
+                plan.setdefault(source_id, {})[(kind, target)] = target_id
+        moved_notes = [file.id for file in files if file.is_note]
+        for chunk in _chunks(moved_notes):
+            for source_id, kind, target, target_id in db.execute(
+                select(Link.source_id, Link.kind, Link.target, Link.target_id).where(
+                    Link.source_id.in_(chunk), Link.target_id.is_not(None)
+                )
+            ):
+                plan.setdefault(source_id, {})[(kind, target)] = target_id
 
         # The move on disk.
         full_destination.parent.mkdir(parents=True, exist_ok=True)
@@ -891,71 +883,204 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
             elif share.path.startswith(source + "/"):
                 share.path = destination + share.path[len(source) :]
 
-        # Rewrite the links, now that every file is at its new place.
-        after = index.Names(db, space_id, preload=len(plans) > index.SMALL_CHANGE)
-        rewritten_ids: set[int] = set()
-        rewritten_spaces: list[int] = []
-        for source_id, (data, wanted) in plans.items():
-            note = db.get(File, source_id)
-            assert note is not None
-            content = index.decode(data)
-            pieces: list[str] = []
-            position = 0
-            changes = 0
-            for link, target_id in wanted:
-                target = db.get(File, target_id)
-                if target is None:
-                    continue
-                # Still pointing at the right file from the new place: leave the link as written.
-                if _still_right(link, note.path, after, target_id, target.path):
-                    continue
-                text = _link_text(link, target.path, note.path, after, target_id)
-                pieces.append(content[position : link.target_start])
-                pieces.append(text)
-                position = link.target_end
-                changes += 1
-            if not changes:
-                continue
-            pieces.append(content[position:])
-            new_data = "".join(pieces).encode("utf-8")
-            if data.startswith(b"\xef\xbb\xbf"):
-                new_data = b"\xef\xbb\xbf" + new_data
-            note_full = paths.vault_root().joinpath(*note.path.split("/"))
-            stat = atomic_write(note_full, new_data)
-            index.record(db, note.path, new_data, stat, source=index.RENAME, author=actor.name, file=note,
-                         names=after)
-            rewritten_ids.add(source_id)
-            rewritten_spaces.append(note.space_id)
-
-        # The moved files themselves: new stat, their own links resolved from the new place.
+        # Files other than notes: same content in a new place. Their row, hash and search text stay; the name they
+        # are found by follows.
         keys = _old_keys(files, source, destination)
         for file in files:
             keys.add(file.name_key)
-            if file.id in rewritten_ids:
-                continue
-            file_full = paths.vault_root().joinpath(*file.path.split("/"))
-            if not file.is_note:
-                # Same content in a new place: its row, hash and search text stay; the name it is found by follows.
-                try:
-                    file.mtime_ns = file_full.stat().st_mtime_ns
-                except OSError:
-                    continue
-                file.title = paths.stem(file.path)
-                db.execute(
-                    sql(f"UPDATE {FTS_TABLE} SET title = :title WHERE rowid = :id"),  # noqa: S608
-                    {"title": file.title, "id": file.id},
-                )
+            if file.is_note:
                 continue
             try:
-                data = file_full.read_bytes()
+                file.mtime_ns = paths.vault_root().joinpath(*file.path.split("/")).stat().st_mtime_ns
             except OSError:
                 continue
-            index.record(db, file.path, data, file_full.stat(), source=index.RENAME, author=actor.name, file=file,
-                         names=after)
-        index.reresolve(db, space_id, keys)
+            file.title = paths.stem(file.path)
+            db.execute(
+                sql(f"UPDATE {FTS_TABLE} SET title = :title WHERE rowid = :id"),  # noqa: S608
+                {"title": file.title, "id": file.id},
+            )
+
+        # The links follow part by part (``_follow``), after this transaction: written down with it, so that a
+        # server stopped half way carries on at its next start. The moved notes come first.
+        job = MoveJob(space_id=space_id, author=actor.name, keys=sorted(keys))
+        db.add(job)
+        db.flush()
+        order = moved_notes + sorted(note_id for note_id in plan if note_id not in moved_ids)
+        rows = [
+            {"job_id": job.id, "note_id": note_id, "position": position, "moved": note_id in moved_ids,
+             "links": [[kind, target, target_id] for (kind, target), target_id in plan.get(note_id, {}).items()]}
+            for position, note_id in enumerate(order)
+        ]
+        for chunk in _chunks(rows):
+            db.execute(insert(MoveJobNote), chunk)
+        job_id = job.id
+        claimed = _claim(job_id)
+        assert claimed, "a new move job is never worked on yet"
+        try:
+            db.commit()
+        except BaseException:
+            _release(job_id)
+            raise
+    rewritten_spaces: list[int] = []
+    try:
+        _follow(job_id, rewritten_spaces)
+    except Exception:
+        # The file has moved; what is left of its links follows before the next full scan (``resume_moves``).
+        logger.exception("Rewriting the links of a move stopped half way job=%s", job_id)
+    logger.info("Moved files=%s notes_rewritten=%s", len(files), len(rewritten_spaces))
+    return Moved(path=destination, files=len(files), rewritten=len(rewritten_spaces),
+                 rewritten_spaces=rewritten_spaces)
+
+
+# --- The links of a move, part by part -----------------------------------------------------------------------------
+
+#: How many notes a move rewrites at a time, each part under ``index.guard`` and in a transaction of its own, so that
+#: saving waits for one part at most. Measured on a test server with 100,000 notes: all 1,841 notes of one rename in one
+#: go held the lock for 16 s.
+MOVE_PART = 100
+#: And for how long at most: on Windows, where a virus scanner looks at every file written, 100 notes held the lock
+#: for 2.9 s. The part ends with the note that goes past this.
+MOVE_PART_SECONDS = 0.3
+#: How much of a link's target the index keeps (``prepare.analyse``): a move finds its links again by that.
+TARGET_CHARS = 1024
+
+_claimed: set[int] = set()
+_claimed_lock = threading.Lock()
+
+
+def _chunks[T](items: list[T], size: int = 500) -> Iterable[list[T]]:
+    for start in range(0, len(items), size):
+        yield items[start : start + size]
+
+
+def _claim(job_id: int) -> bool:
+    """Mark a job as being worked on; False when someone already works on it."""
+    with _claimed_lock:
+        if job_id in _claimed:
+            return False
+        _claimed.add(job_id)
+        return True
+
+
+def _release(job_id: int) -> None:
+    with _claimed_lock:
+        _claimed.discard(job_id)
+
+
+def _follow(job_id: int, spaces: list[int]) -> None:
+    """Rewrite the links of a move job, part by part, then resolve the old and new names once more and let the job
+    go. ``spaces`` gets the space of every note rewritten. The job must be claimed; it is released at the end, also
+    when a part fails (it is taken up again by ``resume_moves``). Between two parts a link not yet rewritten shows the
+    old name and leads nowhere on its note page; the index keeps it pointing at its file until the end."""
+    try:
+        while True:
+            done, part = _follow_part(job_id)
+            spaces += part
+            if done:
+                break
+        _finish(job_id)
+    finally:
+        _release(job_id)
+
+
+def _follow_part(job_id: int) -> tuple[bool, list[int]]:
+    with index.guard, SessionLocal() as db:
+        job = db.get(MoveJob, job_id)
+        if job is None:
+            return True, []
+        rows = db.scalars(
+            select(MoveJobNote).where(MoveJobNote.job_id == job_id).order_by(MoveJobNote.position).limit(MOVE_PART)
+        ).all()
+        if not rows:
+            return True, []
+        # Row by row, always current: the names change between parts when someone else renames something.
+        names = index.Names(db, job.space_id, preload=False)
+        spaces = []
+        done = []
+        began = time.monotonic()
+        for row in rows:
+            space_id = _follow_note(db, row, names, job.author)
+            if space_id is not None:
+                spaces.append(space_id)
+            done.append(row.note_id)
+            if time.monotonic() - began >= MOVE_PART_SECONDS:
+                break
+        db.execute(delete(MoveJobNote).where(MoveJobNote.job_id == job_id, MoveJobNote.note_id.in_(done)))
         db.commit()
-    logger.info("Moved files=%s notes_rewritten=%s", len(files), len(rewritten_ids))
-    return Moved(path=destination, files=len(files), rewritten=len(rewritten_ids), rewritten_spaces=rewritten_spaces)
+    return False, spaces
+
+
+def _follow_note(db: Session, row: MoveJobNote, names: index.Names, author: str | None) -> int | None:
+    """Rewrite the links of one note that pointed at a moved file, as the note reads now: someone may have changed it
+    since the move, and a link is found again by how it was written. Returns the note's space when it was rewritten."""
+    note = db.get(File, row.note_id)
+    if note is None or note.deleted_at is not None or not note.is_note:
+        return None
+    note_full = paths.vault_root().joinpath(*note.path.split("/"))
+    try:
+        data = note_full.read_bytes()
+    except OSError:
+        return None
+    wanted = {(kind, target): target_id for kind, target, target_id in row.links}
+    content = index.decode(data)
+    pieces: list[str] = []
+    position = 0
+    for link in mdparse.parse(content).links:
+        target_id = wanted.get((link.kind, link.target[:TARGET_CHARS]))
+        if target_id is None:
+            continue
+        # A target in the trash still has its path: the link follows it there and finds it again when it comes back.
+        target = db.get(File, target_id)
+        if target is None:
+            continue
+        # Still pointing at the right file from where it is now: leave the link as written.
+        if _still_right(link, note.path, names, target_id, target.path):
+            continue
+        pieces.append(content[position : link.target_start])
+        pieces.append(_link_text(link, target.path, note.path, names, target_id))
+        position = link.target_end
+    if pieces:
+        pieces.append(content[position:])
+        new_data = "".join(pieces).encode("utf-8")
+        if data.startswith(b"\xef\xbb\xbf"):
+            new_data = b"\xef\xbb\xbf" + new_data
+        stat = atomic_write(note_full, new_data)
+        index.record(db, note.path, new_data, stat, source=index.RENAME, author=author, file=note, names=names)
+        return note.space_id
+    # A moved note is read again at its new place (title, links from there). So is one that differs from its index:
+    # a server stopped after writing it, before its part was committed.
+    if row.moved or index.digest(data) != note.hash:
+        index.record(db, note.path, data, note_full.stat(), source=index.RENAME, author=author, file=note, names=names)
+    return None
+
+
+def _finish(job_id: int) -> None:
+    with SessionLocal() as db:
+        job = db.get(MoveJob, job_id)
+        if job is None:
+            return
+        space_id, keys = job.space_id, set(job.keys or [])
+    # Now every link reads the new name: resolve both names once more (a link still written with the old one, in a
+    # note that could not be read, leads nowhere; one written with the new one already finds it).
+    index.relink(space_id, keys, set(), progress=False)
+    with index.guard, SessionLocal() as db:
+        db.execute(delete(MoveJob).where(MoveJob.id == job_id))
+        db.commit()
+
+
+def resume_moves() -> int:
+    """Carry on with every move whose links are not all rewritten yet and nobody works on: a server stopped half
+    way. Runs before each full scan. Returns how many jobs it finished."""
+    with SessionLocal() as db:
+        ids = list(db.scalars(select(MoveJob.id).order_by(MoveJob.id)))
+    finished = 0
+    for job_id in ids:
+        if not _claim(job_id):
+            continue
+        logger.info("Carrying on with the links of an unfinished move job=%s", job_id)
+        _follow(job_id, [])
+        finished += 1
+    return finished
 
 
 def _its_own(db: Session, note: File) -> list[File]:

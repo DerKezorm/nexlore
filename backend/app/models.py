@@ -11,7 +11,7 @@ its row with ``deleted_at`` set; that is the trash.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from sqlalchemy import (
     JSON,
@@ -274,6 +274,39 @@ class GraphState(Base):
     built_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     #: The last change that placed or removed notes without a new layout; the night orders the map again after one.
     changed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class MoveJob(Base):
+    """A rename or move whose links are still being rewritten, part by part (``vault.move``). Kept in the database,
+    so that a server stopped half way carries on at its next start instead of leaving links under the old name."""
+
+    __tablename__ = "move_jobs"
+    # A number is never given twice: a job that just ended must not hand its number to the next while the first is
+    # still marked as being worked on (``vault._claimed``).
+    __table_args__: ClassVar[dict[str, object]] = {"sqlite_autoincrement": True}
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"))
+    #: Who moved: the versions of the rewritten notes name them.
+    author: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    #: The names the moved files had and have: links written with them are resolved again at the end.
+    keys: Mapped[Any] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class MoveJobNote(Base):
+    """One note a move still has to look at: its links that pointed at a moved file, by how they were written, and
+    whether it moved itself (then its own relative links are rewritten from its new place)."""
+
+    __tablename__ = "move_job_notes"
+
+    job_id: Mapped[int] = mapped_column(ForeignKey("move_jobs.id", ondelete="CASCADE"), primary_key=True)
+    note_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), primary_key=True)
+    #: The moved notes come first: the note someone renamed shows its new name right away.
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    moved: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: ``[kind, target as written, id of the file it pointed at]`` for every link to rewrite.
+    links: Mapped[Any] = mapped_column(JSON)
 
 
 class Version(Base):

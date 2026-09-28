@@ -83,6 +83,11 @@ async def scan_forever(stop: asyncio.Event) -> None:
         logger.exception("Filling in the links into other spaces failed")
     while not stop.is_set():
         try:
+            # A move whose links a stopped server left half rewritten: carried on before anything else.
+            await asyncio.to_thread(vault.resume_moves)
+        except Exception:
+            logger.exception("Carrying on with an unfinished move failed")
+        try:
             await asyncio.to_thread(index.scan)
             if time.monotonic() - last_housekeeping >= HOUSEKEEPING_SECONDS or last_housekeeping == 0.0:
                 await asyncio.to_thread(vault.purge_expired)

@@ -752,11 +752,12 @@ def _count_renames(session: Session, _context: object) -> None:
                 break
 
 
-def relink(space_id: int, keys: set[str], sources: set[int]) -> int:
+def relink(space_id: int, keys: set[str], sources: set[int], *, progress: bool = True) -> int:
     """``reresolve`` for a big scan, part by part, each part under ``guard`` and in a transaction of its own: saving
     waits for one part at most, and nobody waits for SQLite's write lock for long. The names of the space are loaded
     once and again only when a file of the space came, went or moved in between (``renames``): measured on Windows
-    with 100,000 notes, loading them again for every save made a part hold the lock 2.3 s."""
+    with 100,000 notes, loading them again for every save made a part hold the lock 2.3 s. ``progress`` False: not
+    part of a scan, the scan's count is left alone (a move ends with this)."""
     parts: list[tuple[list[str], set[int]]] = [(part, set()) for part in _chunks(sorted(keys), RELINK_PART)]
     parts += [([], set(part)) for part in _chunks(sorted(sources), RELINK_PART)]
     names: Names | None = None
@@ -770,7 +771,8 @@ def relink(space_id: int, keys: set[str], sources: set[int]) -> int:
                 marker = now
             changed += reresolve(db, space_id, part_keys, sources=part_sources, names=names)
             db.commit()
-        status.done += len(part_keys) + len(part_sources)
+        if progress:
+            status.done += len(part_keys) + len(part_sources)
     return changed
 
 
