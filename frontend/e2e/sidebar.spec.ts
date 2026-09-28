@@ -204,6 +204,8 @@ test('a folder gets a symbol and a colour of its own, and the folders in it take
   await dialog.getByRole('button', { name: 'None' }).click()
   await dialog.getByRole('button', { name: 'Automatic' }).click()
   await dialog.getByRole('button', { name: 'Save' }).click()
+  // Saved and the spaces read again: under the load of the whole run that took longer than five seconds once.
+  await expect(dialog).toBeHidden({ timeout: 15_000 })
   await expect(tidy.locator('[data-look]')).toHaveCount(0)
   expect(problems).toEqual([])
 })
