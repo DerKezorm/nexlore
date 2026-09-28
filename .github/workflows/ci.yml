@@ -1,5 +1,5 @@
 # Tests on both systems the project is worked on, Linux and Windows, and a trial build of the image.
-# Nothing is published from here: images and releases come later, and only on command.
+# Nothing is published from here: an image goes out only from release.yml, when a tag is pushed.
 name: CI
 
 on:
