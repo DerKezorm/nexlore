@@ -509,6 +509,17 @@ class McpKey(Base):
     last_used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
 
+class Favorite(Base):
+    """A note or folder an account wants at hand (``services/favorites``): the vault path, per account."""
+
+    __tablename__ = "favorites"
+    __table_args__ = (Index("favorites_account_path", "account_id", "path", unique=True),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    path: Mapped[str] = mapped_column(String(1024))
+
+
 class AiEvent(Base):
     """What went out to an account's AI service, word for word, encrypted: the proof of what left the house. Kept
     14 days (``services/ai.py``), cleared at once on request; a failure is in it too, a request refused before

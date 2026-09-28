@@ -11,7 +11,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 
-import { ApiError, type IndexProgress, looksApi, type Looks, vaultApi, type Space } from '../api/client'
+import { ApiError, favoritesApi, type Favorite, type IndexProgress, looksApi, type Looks, vaultApi, type Space } from '../api/client'
 
 type Status = 'loading' | 'ready' | 'error'
 
@@ -22,6 +22,10 @@ type Store = {
   /** Symbols and colours chosen by hand for spaces and folders, and what there is to choose from. */
   looks: Looks
   choices: { icons: string[]; colors: string[] }
+  /** The own favorites, at the top of the sidebar. */
+  favorites: Favorite[]
+  /** A note or folder a favorite or not any more; the list follows. */
+  setFavorite: (path: string, on: boolean) => Promise<void>
   /** Counts up with every load. */
   generation: number
   reload: () => Promise<void>
@@ -40,6 +44,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [spaces, setSpaces] = useState<Space[]>([])
   const [looks, setLooks] = useState<Looks>({})
   const [choices, setChoices] = useState<{ icons: string[]; colors: string[] }>({ icons: [], colors: [] })
+  const [favorites, setFavorites] = useState<Favorite[]>([])
   const [generation, setGeneration] = useState(0)
   const loading = useRef<Promise<void> | null>(null)
 
@@ -47,8 +52,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     loading.current ??= (async () => {
       try {
         // The looks with the spaces; without them the tree still stands, as nexlore colours it itself.
-        const [list, looked] = await Promise.all([vaultApi.spaces(), looksApi.get().catch(() => null)])
+        const [list, looked, favored] = await Promise.all([
+          vaultApi.spaces(),
+          looksApi.get().catch(() => null),
+          favoritesApi.list().catch(() => null),
+        ])
         setSpaces(list)
+        if (favored) setFavorites(favored)
         if (looked) {
           setLooks(looked.looks)
           setChoices({ icons: looked.icons, colors: looked.colors })
@@ -101,9 +111,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [reload])
 
+  const setFavorite = useCallback(async (path: string, on: boolean) => {
+    await favoritesApi.set(path, on)
+    setFavorites(await favoritesApi.list())
+  }, [])
+
   const store = useMemo<Store>(
-    () => ({ status, error, spaces, looks, choices, generation, reload, scan }),
-    [status, error, spaces, looks, choices, generation, reload, scan],
+    () => ({ status, error, spaces, looks, choices, favorites, setFavorite, generation, reload, scan }),
+    [status, error, spaces, looks, choices, favorites, setFavorite, generation, reload, scan],
   )
 
   return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>

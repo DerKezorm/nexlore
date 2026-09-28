@@ -56,7 +56,8 @@
     "loadFailed": "Konnte nicht geladen werden.",
     "retry": "Erneut versuchen",
     "menuFor": "Menü für {{name}}",
-    "newSpace": "Neuer Bereich"
+    "newSpace": "Neuer Bereich",
+    "favorites": "Favoriten"
   },
   "graph": {
     "canvas": "Graph",
@@ -184,7 +185,10 @@
       "alone": "Noch keine Verbindungen.",
       "canvas": "Nachbarschaft der Notiz",
       "limited": "Die nächsten {{count}} Notizen."
-    }
+    },
+    "favorite": "Favorit",
+    "favoriteAdd": "Zu den Favoriten",
+    "favoriteRemove": "Aus den Favoriten entfernen"
   },
   "settings": {
     "title": "Einstellungen",
@@ -1069,7 +1073,9 @@
     "trash": "In den Papierkorb",
     "spaceSettings": "Mitglieder und Einstellungen",
     "look": "Symbol und Farbe …",
-    "asTemplate": "Als Vorlage speichern …"
+    "asTemplate": "Als Vorlage speichern …",
+    "favorite": "Zu den Favoriten",
+    "unfavorite": "Aus den Favoriten entfernen"
   },
   "editorMenu": {
     "openLink": "Notiz öffnen",

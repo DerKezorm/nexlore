@@ -31,7 +31,7 @@ from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import FTS_TABLE, File, Link, Lock, MoveJob, MoveJobNote, Share, Space, TrashBlob, Version, utcnow
-from . import index, looks, mdparse, paths, settings_service
+from . import favorites, index, looks, mdparse, paths, settings_service
 
 logger = logging.getLogger("nexlore.vault")
 
@@ -417,6 +417,8 @@ def delete_path(rel: str, *, actor: Actor, along: Iterable[str] = ()) -> int:
             if wanted and files[0].is_note:
                 files += [file for file in _its_own(db, files[0]) if file.path in wanted]
         _refuse_foreign_lock(db, files, actor)
+        # Favorites of it, and of what lies in it, go too.
+        favorites.gone(db, rel)
         keys: set[str] = set()
         space_id = None
         moved: list[File] = []
@@ -893,6 +895,8 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
         # A folder's symbol and colour follow it, and those of the folders in it.
         if is_folder:
             looks.moved(db, space_id, source.partition("/")[2], destination.partition("/")[2])
+        # Favorites follow, of a note as of a folder and what lies in it.
+        favorites.moved(db, source, destination)
         # Public pages follow what they show.
         for share in db.scalars(select(Share).where(Share.space_id == space_id)):
             if share.path == source:

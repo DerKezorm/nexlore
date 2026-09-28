@@ -224,3 +224,30 @@ test('the open note stays in sight while the folders above it are read after it'
   await expect(page.getByTestId('sidebar-tree').getByRole('button', { name: 'Linking', exact: true })).toBeAttached({ timeout: 10_000 })
   await expect(across).toBeInViewport()
 })
+
+test('favorites: the star on a note and the menu of a folder put them on top of the sidebar, for good', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.goto('/note/Zoo/Menu.md')
+  const star = page.getByRole('button', { name: 'Favorite', exact: true })
+  await expect(star).toHaveAttribute('aria-pressed', 'false')
+  await star.click()
+  await expect(star).toHaveAttribute('aria-pressed', 'true')
+  const favorites = page.getByTestId('sidebar-favorites')
+  await expect(favorites.getByRole('button', { name: 'Menu' })).toBeVisible()
+  await row(page, 'Tidy').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Add to favorites' }).click()
+  await expect(favorites.getByRole('button')).toHaveText(['Menu', 'Tidy'])
+  // Kept on the server: after a reload, and on any other device.
+  await page.reload()
+  await expect(favorites.getByRole('button')).toHaveText(['Menu', 'Tidy'])
+  // A favorite folder opens in the tree.
+  await favorites.getByRole('button', { name: 'Tidy' }).click()
+  await expect(page.getByTestId('sidebar-tree').getByRole('button', { name: /^Tidy \d+$/ })).toHaveAttribute('aria-expanded', 'true')
+  // Out again: from the favorite's own menu, and with the star.
+  await favorites.getByRole('button', { name: 'Tidy' }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Remove from favorites' }).click()
+  await expect(favorites.getByRole('button')).toHaveText(['Menu'])
+  await star.click()
+  await expect(page.getByTestId('sidebar-favorites')).toHaveCount(0)
+  expect(problems).toEqual([])
+})

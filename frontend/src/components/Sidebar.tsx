@@ -12,12 +12,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
-import { vaultApi, type FolderEntry, type FileEntry } from '../api/client'
+import { vaultApi, type Favorite, type FolderEntry, type FileEntry } from '../api/client'
 import { folderColor, spaceColor } from '../graph/palette'
+import { fileRoute } from '../lib/markdown'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
 import { baseName, noteUrl } from '../lib/vault'
-import { askVaultAction, copyText, FORGET_EVENT, REVEAL_EVENT, within } from '../lib/vaultActions'
+import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } from '../lib/vaultActions'
 import { useStore } from '../state/store'
 import { lookOf } from '../lib/looks'
 import { Symbol, type SymbolName } from './Symbol'
@@ -44,7 +45,7 @@ type Row =
 
 export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
   const { t } = useTranslation()
-  const { spaces, generation, scan, looks } = useStore()
+  const { spaces, generation, scan, looks, favorites, setFavorite } = useStore()
   const navigate = useNavigate()
   const menu = useContextMenu()
   const [copied, setCopied] = useState<string | null>(null)
@@ -297,6 +298,19 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     return () => window.clearTimeout(timer)
   }, [copied])
 
+  /** Into the favorites, or out of them. */
+  const favoriteItem = (path: string): MenuItem => {
+    const on = favorites.some((favorite) => favorite.path === path)
+    return { label: on ? t('menu.unfavorite') : t('menu.favorite'), symbol: 'star', onSelect: () => void setFavorite(path, !on) }
+  }
+
+  /** A favorite opens where it is: a note in the note page, a folder in the tree, a file on its page. */
+  const openFavorite = (favorite: Favorite) => {
+    if (favorite.kind === 'note') onNote(favorite.path)
+    else if (favorite.kind === 'folder') reveal(favorite.path)
+    else navigate(fileRoute(favorite.path))
+  }
+
   const folderMenu = (row: Extract<Row, { kind: 'folder' }>): MenuItem[] => {
     const write = writable(row.path)
     const manage = row.space && spaces.find((space) => space.name === row.path)?.role === 'manage'
@@ -312,6 +326,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
       items.push({ label: t('menu.move'), symbol: 'move', onSelect: () => askVaultAction({ kind: 'move', path: row.path, folder: true }) })
     }
     items.push({ label: t('menu.showInGraph'), symbol: 'graph', onSelect: () => (onFolder ? onFolder(row.path) : navigate('/?folder=' + encodeURIComponent(row.path))) })
+    items.push(favoriteItem(row.path))
     if (manage) items.push({ label: t('menu.spaceSettings'), symbol: 'users', onSelect: () => navigate('/settings?tab=spaces') })
     if (write && !row.space) {
       items.push('separator')
@@ -333,6 +348,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
       items.push({ label: t('menu.asTemplate'), symbol: 'template', onSelect: () => askVaultAction({ kind: 'as-template', path: row.path }) })
     }
     items.push({ label: t('menu.showInGraph'), symbol: 'graph', onSelect: () => (onFolder ? onNote(row.path) : navigate('/?focus=' + encodeURIComponent(row.path))) })
+    items.push(favoriteItem(row.path))
     items.push({
       label: t('menu.copyLink'),
       symbol: 'copy',
@@ -428,6 +444,35 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-ink-700/80 bg-ink-950/60 md:flex">
+      {favorites.length > 0 && (
+        <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-favorites">
+          <span className="mb-1 block px-2 text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('sidebar.favorites')}</span>
+          <ul className="nn-scroll max-h-44 overflow-y-auto">
+            {favorites.map((favorite) => (
+              <li key={favorite.path}>
+                <button
+                  type="button"
+                  onClick={() => openFavorite(favorite)}
+                  {...menuTriggers((x, y) =>
+                    menu.open(x, y, [
+                      { label: t('menu.open'), symbol: 'note', onSelect: () => openFavorite(favorite) },
+                      { label: t('menu.unfavorite'), symbol: 'star', onSelect: () => void setFavorite(favorite.path, false) },
+                    ]),
+                  )}
+                  title={favorite.path}
+                  className={
+                    'flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] hover:bg-ink-850 ' +
+                    (favorite.path === activeNote ? 'bg-accent-500/10 text-accent-300' : 'text-mist-300')
+                  }
+                >
+                  <Symbol name={favorite.kind === 'folder' ? 'folder' : favorite.kind === 'note' ? 'note' : 'file'} className="h-3.5 w-3.5 shrink-0 text-warn-500" />
+                  <span className="min-w-0 flex-1 truncate">{favorite.title}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="px-2 pt-3">
         <div className="mb-2 flex items-center justify-between px-2">
           <span className="text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('sidebar.spaces')}</span>

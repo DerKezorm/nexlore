@@ -56,7 +56,8 @@
     "loadFailed": "Could not be loaded.",
     "retry": "Try again",
     "menuFor": "Menu for {{name}}",
-    "newSpace": "New space"
+    "newSpace": "New space",
+    "favorites": "Favorites"
   },
   "graph": {
     "canvas": "Graph",
@@ -184,7 +185,10 @@
       "alone": "No links yet.",
       "canvas": "Neighbourhood of the note",
       "limited": "The nearest {{count}} notes."
-    }
+    },
+    "favorite": "Favorite",
+    "favoriteAdd": "Add to favorites",
+    "favoriteRemove": "Remove from favorites"
   },
   "settings": {
     "title": "Settings",
@@ -1069,7 +1073,9 @@
     "trash": "Move to the trash",
     "spaceSettings": "Members and settings",
     "look": "Symbol and colour …",
-    "asTemplate": "Save as template …"
+    "asTemplate": "Save as template …",
+    "favorite": "Add to favorites",
+    "unfavorite": "Remove from favorites"
   },
   "editorMenu": {
     "openLink": "Open the note",

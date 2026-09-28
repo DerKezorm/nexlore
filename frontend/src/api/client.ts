@@ -441,6 +441,15 @@ export type BackupCheck = {
 }
 export type AddedLanguage = { code: string; name: string; keys: number }
 
+// --- Favorites (services/favorites.py) -------------------------------------------------------------------------------
+
+export type Favorite = { path: string; kind: 'note' | 'folder' | 'file'; title: string }
+
+export const favoritesApi = {
+  list: () => api<Favorite[]>('/api/favorites'),
+  set: (path: string, on: boolean) => api<void>('/api/favorites', { method: 'PUT', body: { path, on } }),
+}
+
 // --- AI in notes, with the account's own service (services/ai.py) ----------------------------------------------------
 
 export type AiTask = 'spelling' | 'rewrite' | 'translate' | 'summarize' | 'write'

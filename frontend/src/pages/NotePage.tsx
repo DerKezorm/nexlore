@@ -66,7 +66,7 @@ export function NotePage() {
   const path = useParams()['*'] ?? ''
   const [params, setParams] = useSearchParams()
   const { t } = useTranslation()
-  const { reload, spaces, generation } = useStore()
+  const { reload, spaces, generation, favorites, setFavorite } = useStore()
   const { me } = useAuth()
   const navigate = useNavigate()
   const [sharing, setSharing] = useState(false)
@@ -606,6 +606,21 @@ export function NotePage() {
             <Link to={`/?focus=${encodeURIComponent(note.path)}`} className="inline-flex items-center gap-1.5 rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850">
               <Symbol name="graph" className="h-3.5 w-3.5" /> {t('note.inGraph')}
             </Link>
+            {(() => {
+              const favorite = favorites.some((item) => item.path === note.path)
+              return (
+                <button
+                  type="button"
+                  aria-pressed={favorite}
+                  onClick={() => void setFavorite(note.path, !favorite)}
+                  title={favorite ? t('note.favoriteRemove') : t('note.favoriteAdd')}
+                  aria-label={t('note.favorite')}
+                  className={'rounded-full border px-2 py-1 text-sm ' + (favorite ? 'border-warn-500/50 bg-warn-500/10 text-warn-500' : 'border-ink-700 text-mist-400 hover:bg-ink-850 hover:text-mist-100')}
+                >
+                  <Symbol name="star" className="h-4 w-4" />
+                </button>
+              )
+            })()}
             {editing ? (
               <details ref={menu} className="relative">
                 <summary className="cursor-pointer list-none rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850" aria-label={t('note.menu')}>
