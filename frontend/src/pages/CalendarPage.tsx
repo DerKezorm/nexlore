@@ -11,7 +11,7 @@ import { ApiError, everydayApi, type CalendarDay, type TaskItem } from '../api/c
 import { Symbol } from '../components/Symbol'
 import { TaskRow } from '../components/TaskRow'
 import { errorText } from '../lib/errors'
-import { atNoon, dailySpace, dayOf, lastDay, monthGrid, monthOf, rememberDailySpace, shiftMonth, today as todayIso } from '../lib/everyday'
+import { atNoon, dailySpace, dayOf, lastDay, monthGrid, monthOf, rememberDailySpace, shiftMonth, taskPlain, today as todayIso } from '../lib/everyday'
 import { noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 
@@ -192,7 +192,7 @@ export function CalendarPage() {
                   )}
                   {due.slice(0, daily ? 1 : 2).map((task) => (
                     <span key={task.id} className={'block w-full truncate ' + (late ? 'text-bad-500' : 'text-mist-300')}>
-                      {task.text}
+                      {taskPlain(task.text)}
                     </span>
                   ))}
                   {(info?.open ?? 0) > (daily ? 1 : 2) && (

@@ -24,6 +24,15 @@ export type LabelItem = {
   maxWidth?: number
 }
 
+/**
+ * Which name of a closed bubble goes first where names would overlap. Bigger bubbles first: their names say more, and
+ * a small neighbour gives way. A bubble that is already opening (its name in the middle fading out, the one on top
+ * fading in) gives way to every closed bubble inside it, or its fading name hides theirs.
+ */
+export function closedLabelPriority(radius: number, opening: number): number {
+  return (opening > 0.02 ? 200 : 300) + Math.min(99, radius / 10)
+}
+
 type Box = { x0: number; y0: number; x1: number; y1: number }
 
 const CELL = 64

@@ -86,6 +86,13 @@ test('a click on a day in the calendar makes its daily note from the template of
   expect(problems).toEqual([])
 })
 
+test('the calendar shows a wiki link in a task as the words it shows', async ({ page }) => {
+  await page.goto('/calendar?space=Zoo')
+  const cell = page.locator(`[data-date="${day(0).slice(0, 8)}15"]`)
+  await expect(cell).toContainText('Call the plumber')
+  await expect(cell).not.toContainText('[[')
+})
+
 test('a new note starts from a template, its placeholders filled and Templater left as it was', async ({ page }) => {
   await page.goto('/note/Year/Chores.md')
   await page.getByRole('button', { name: 'New note' }).first().click()

@@ -68,6 +68,15 @@ jobs:
           npm run test:browser
           npx playwright test
 
+      # A red end-to-end run leaves its picture and page snapshot, so it can be read instead of guessed at.
+      - name: Keep what a failed end-to-end test saw
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ matrix.os }}
+          path: frontend/test-results/
+          retention-days: 7
+
   image:
     name: Trial build of the image
     runs-on: ubuntu-latest

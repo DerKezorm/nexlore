@@ -163,6 +163,9 @@
   .nn-prose audio {
     @apply my-2 block w-full max-w-md;
   }
+  .nn-prose .nn-tag {
+    @apply rounded-full bg-accent-500/10 px-1.5 py-0.5 text-[0.9em] text-accent-400;
+  }
   .nn-prose mark {
     @apply rounded-sm px-0.5 text-mist-100;
     background: color-mix(in srgb, var(--color-warn-500) 30%, transparent);

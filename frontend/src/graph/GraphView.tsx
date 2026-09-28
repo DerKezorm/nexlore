@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 
 import { THEME_EVENT } from '../lib/theme'
 import { GraphGL, MAX_DOT, MIN_DOT, OPEN_TO, type Camera, type Colors } from './gl'
-import { drawLabels, type LabelItem } from './labels'
+import { closedLabelPriority, drawLabels, type LabelItem } from './labels'
 import type { Scene, SceneGroup } from './scene'
 
 const MAX_ZOOM = 12
@@ -189,9 +189,9 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
         const fontSize = Math.max(11, Math.min(20, r * 0.2))
         items.push({
           x, y, text: name, sub: r > 34 ? latest.current.countLabel(group.total) : undefined, size: fontSize, weight: 600,
-          color: col.text, subColor: col.dim, alpha: alpha.closed * dimmed, baseline: 'middle',
-          // Bigger bubbles first: their names say more, and a small neighbour gives way.
-          priority: 300 + Math.min(99, r / 10), maxWidth: Math.max(60, r * 1.7),
+          // Opening, the name in the middle fades faster than the bubble, so it never lies over the names inside.
+          color: col.text, subColor: col.dim, alpha: alpha.closed * (1 - alpha.open) * dimmed, baseline: 'middle',
+          priority: closedLabelPriority(r, alpha.open), maxWidth: Math.max(60, r * 1.7),
         })
       }
       const fade = 1 - smoothstep(Math.max(w, h) * 0.9, Math.max(w, h) * 1.6, r)

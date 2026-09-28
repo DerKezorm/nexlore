@@ -56,6 +56,17 @@ test('a note chosen in the sidebar gets its card on the map, and the card opens 
   expect(problems).toEqual([])
 })
 
+test('a note chosen before the map has come is shown once it has', async ({ page }) => {
+  // A slow server (seen on a CI machine): the sidebar is there, the map of the space is not yet.
+  await page.route('**/api/graph/overview?*', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 2500))
+    await route.continue()
+  })
+  await page.goto('/')
+  await page.getByTestId('sidebar-tree').getByRole('button', { name: 'Plan', exact: true }).click()
+  await expect(page.getByTestId('graph-card').getByRole('heading', { name: 'Plan' })).toBeVisible({ timeout: 15_000 })
+})
+
 test('a search hit flies to the note on the map', async ({ page }) => {
   await page.goto('/?focus=' + encodeURIComponent('Work/Ideas/Garden.md'))
   await expect(page.getByTestId('graph-card').getByRole('heading', { name: 'Garden' })).toBeVisible()

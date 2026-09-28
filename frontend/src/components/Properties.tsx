@@ -6,6 +6,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { locale } from '../i18n'
+import { shownDate } from '../lib/markdown'
+
 import { headYaml, readProperties, writeProperties, writeYaml, type Property, type PropertyKind } from '../editor/frontmatter'
 
 type Props = {
@@ -146,6 +149,43 @@ function convert(item: Property, kind: PropertyKind): Property['value'] {
   return text === 'false' && item.kind === 'checkbox' ? '' : text
 }
 
+/**
+ * A date or a date with time. The browser's own date field writes the date the way the computer is set up, not
+ * in the app's language; so the date is shown as text, and a click opens the browser's calendar.
+ */
+function DateValue({ item, readOnly, onChange, className }: { item: Property; readOnly: boolean; onChange: (value: Property['value']) => void; className: string }) {
+  const { t, i18n } = useTranslation()
+  const picker = useRef<HTMLInputElement>(null)
+  const withTime = item.kind === 'datetime'
+  const raw = withTime ? String(item.value).replace(' ', 'T') : String(item.value)
+  const shown = raw ? shownDate(raw, withTime, i18n.language || locale()) : ''
+  const open = () => {
+    const input = picker.current
+    if (!input) return
+    try {
+      input.showPicker()
+    } catch {
+      input.focus()
+    }
+  }
+  return (
+    <span className="relative block">
+      <button type="button" disabled={readOnly} onClick={open} aria-label={item.key} data-value={raw} className={className + ' text-left disabled:cursor-default'}>
+        {shown || <span className="text-mist-600">{t('properties.pickDate')}</span>}
+      </button>
+      <input
+        ref={picker}
+        type={withTime ? 'datetime-local' : 'date'}
+        value={raw}
+        tabIndex={-1}
+        aria-hidden="true"
+        onChange={(event) => onChange(event.target.value)}
+        className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
+      />
+    </span>
+  )
+}
+
 function Value({ item, readOnly, onChange }: { item: Property; readOnly: boolean; onChange: (value: Property['value']) => void }) {
   const { t } = useTranslation()
   const [adding, setAdding] = useState('')
@@ -157,16 +197,7 @@ function Value({ item, readOnly, onChange }: { item: Property; readOnly: boolean
       )
     case 'date':
     case 'datetime':
-      return (
-        <input
-          type={item.kind === 'date' ? 'date' : 'datetime-local'}
-          value={item.kind === 'datetime' ? String(item.value).replace(' ', 'T') : String(item.value)}
-          readOnly={readOnly}
-          aria-label={item.key}
-          onChange={(event) => onChange(event.target.value)}
-          className={field}
-        />
-      )
+      return <DateValue item={item} readOnly={readOnly} onChange={onChange} className={field} />
     case 'list': {
       const values = item.value as string[]
       const add = () => {

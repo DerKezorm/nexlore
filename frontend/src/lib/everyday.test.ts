@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Space } from '../api/client'
-import { addDays, dailySpace, isoDay, lastDay, monthGrid, rememberDailySpace, shiftMonth, taskParts, whenOf } from './everyday'
+import { addDays, dailySpace, isoDay, lastDay, monthGrid, rememberDailySpace, shiftMonth, taskParts, taskPlain, whenOf } from './everyday'
 
 describe('dates for the calendar', () => {
   it('writes a local day as JJJJ-MM-TT and counts days over month and year ends', () => {
@@ -83,5 +83,6 @@ describe('the text of a task', () => {
       { text: '.', link: false },
     ])
     expect(taskParts('no links')).toEqual([{ text: 'no links', link: false }])
+    expect(taskPlain('Test a restore of [[Paperless]] and [[Vaultwarden|the vault]]')).toBe('Test a restore of Paperless and the vault')
   })
 })

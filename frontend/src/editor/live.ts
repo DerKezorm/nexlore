@@ -210,7 +210,17 @@ function decorateBlock(state: EditorState, block: ProseNode, start: number, help
     decorations.push(Decoration.node(pos, pos + quote.nodeSize, { class: `nx-callout nx-callout-${type}`, 'data-callout': type }))
     const from = pos + 2
     const to = from + marker[0].length
-    const lineEnd = text.indexOf('\n')
+    // The title ends at the first line break. Milkdown keeps a soft break as a node of its own (`hardbreak`), not
+    // as "\n"; it would show as a space, so the text below the title is set on a line of its own, as in Obsidian.
+    let lineEnd = text.indexOf('\n')
+    let offset = 0
+    first.forEach((child) => {
+      if (child.type.name === 'hardbreak' && (lineEnd < 0 || offset < lineEnd)) {
+        lineEnd = offset
+        decorations.push(Decoration.inline(from + offset, from + offset + child.nodeSize, { class: 'nx-callout-break' }))
+      }
+      offset += child.nodeSize
+    })
     const titleTo = from + (lineEnd < 0 ? text.length : lineEnd)
     if (touches(state, from, titleTo)) {
       decorations.push(Decoration.inline(from, to, { class: 'nx-callout-marker' }))

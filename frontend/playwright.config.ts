@@ -74,6 +74,8 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   // Plugins (plugins.spec.ts): a board, a query, headings for the contents.
   'Zoo/Board.md': '---\nkanban-plugin: basic\n---\n\n## Todo\n\n- [ ] Dig the bed\n\n## Done\n\n- [x] Buy seeds\n',
   'Zoo/Sown.md': '# Sown\n\n## Early\n\nPeas. #sown\n\n## Late\n\n```query\ntag: sown\nview: table\n```\n',
+  // The calendar (everyday.spec.ts): a task with a wiki link, due on the 15th of this month (always in the grid).
+  'Zoo/Linked.md': `# Linked\n\n- [ ] Call [[Board|the plumber]] 📅 ${day(0).slice(0, 8)}15\n`,
   // The reading view (reading.spec.ts): Obsidian's own writing, and a note embedded in another.
   'Zoo/Reading.md':
     '# Reading\n\n> [!tip]- Folded tip\n> Hidden until opened.\n\nA ==marked== word and %%a secret remark%% here.\n\n' +

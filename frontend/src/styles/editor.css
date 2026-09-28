@@ -154,6 +154,12 @@
   font-family: var(--font-mono);
   font-size: 0.9em;
 }
+/* The soft break after a callout's title: the text below starts on a line of its own. */
+.nx-callout-break {
+  display: block;
+  height: 0;
+  overflow: hidden;
+}
 .nx-callout-title {
   font-weight: 650;
   color: var(--color-mist-100);

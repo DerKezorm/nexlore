@@ -224,6 +224,21 @@ function obsidian(resolve: (target: string) => string | null, targets: Targets):
       renderer: (token) => wikiLink(token.embed as boolean, token.inner as string, resolve, targets),
     },
     {
+      // `#tag` after a blank or at the start of a line, as the server reads tags (not only digits, `/` nests).
+      name: 'tag',
+      level: 'inline',
+      start(src) {
+        const found = /(^|\s)#[\p{L}\p{N}_/-]/u.exec(src)
+        return found ? found.index + found[1].length : undefined
+      },
+      tokenizer(src) {
+        const found = /^#([\p{L}\p{N}_/-]+)/u.exec(src)
+        const tag = found?.[1].replace(/\/+$/, '')
+        if (tag && !/^[\d/]+$/.test(tag)) return { type: 'tag', raw: '#' + tag, tag }
+      },
+      renderer: (token) => `<span class="nn-tag">#${escape(token.tag as string)}</span>`,
+    },
+    {
       name: 'highlight',
       level: 'inline',
       start: (src) => src.match(/==/)?.index,
@@ -322,4 +337,14 @@ export function formatDate(when: string | number): string {
 /** A day, as a date: for end dates, which lie ahead (`formatDate` speaks of the past). */
 export function formatDay(when: string | number): string {
   return new Date(when).toLocaleDateString(locale(), { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+/** A date of the front matter as the app's language writes it; the file keeps what it says (2026-09-19). */
+export function shownDate(raw: string, withTime: boolean, language: string): string {
+  const found = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(raw)
+  if (!found) return raw
+  const [, year, month, day, hour, minute] = found
+  const when = new Date(Number(year), Number(month) - 1, Number(day), Number(hour ?? 0), Number(minute ?? 0))
+  if (Number.isNaN(when.getTime()) || when.getMonth() !== Number(month) - 1) return raw
+  return when.toLocaleString(language, withTime ? { dateStyle: 'medium', timeStyle: 'short' } : { dateStyle: 'medium' })
 }

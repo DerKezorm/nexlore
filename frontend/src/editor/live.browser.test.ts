@@ -6,6 +6,7 @@ import { TextSelection } from '@milkdown/kit/prose/state'
 import { afterEach, expect, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
 
+import '../styles/editor.css'
 import { openEditor } from './harness'
 import type { EmbedShown } from './live'
 
@@ -98,6 +99,15 @@ it('highlights, dims comments, marks tags and block ids, and labels a callout', 
   expect(shown(open.root, '.nx-blockid')).toEqual(['^block-1'])
   expect(shown(open.root, '.nx-callout-label')).toEqual(['warning'])
   expect(open.root.querySelector('.nx-callout')?.getAttribute('data-callout')).toBe('warning')
+  // Only the first line is the title; the text below it is text, on a line of its own (as Obsidian shows it).
+  expect(shown(open.root, '.nx-callout-title').join('').trim()).toBe('Careful')
+  const title = open.root.querySelector('.nx-callout-title')!.getBoundingClientRect()
+  const walker = document.createTreeWalker(open.root.querySelector('.nx-callout')!, NodeFilter.SHOW_TEXT)
+  let inside: Text | null = null
+  while (walker.nextNode()) if (walker.currentNode.textContent?.includes('Inside.')) inside = walker.currentNode as Text
+  const range = document.createRange()
+  range.selectNodeContents(inside!)
+  expect(range.getBoundingClientRect().top).toBeGreaterThanOrEqual(title.bottom - 1)
 })
 
 it('opens a link on a click, in a new tab with Ctrl', async () => {

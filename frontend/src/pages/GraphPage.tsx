@@ -102,9 +102,17 @@ export function GraphPage() {
     [scene],
   )
 
+  // A note asked for before the map of its space has come (a click in the sidebar on a slow server): kept, and
+  // flown to once the space is there, instead of the click going nowhere.
+  const [waiting, setWaiting] = useState<{ path: string; title?: string } | null>(null)
+
   /** Fly to a note by its path (search, sidebar, backlinks). */
   const focusPath = useCallback(
     async (path: string, title?: string) => {
+      if (!scene.space(path.split('/')[0])) {
+        setWaiting({ path, title })
+        return
+      }
       try {
         const place = await graphApi.locate(path, cloud)
         const space = scene.space(path.split('/')[0])
@@ -127,6 +135,11 @@ export function GraphPage() {
     void focusPath(focusParam)
     setParams({}, { replace: true })
   }, [focusParam, ready, focusPath, setParams])
+  useEffect(() => {
+    if (!waiting || !scene.space(waiting.path.split('/')[0])) return
+    setWaiting(null)
+    void focusPath(waiting.path, waiting.title)
+  }, [waiting, scene, revision, focusPath])
 
   const flyToFolder = useCallback(
     (path: string) => {

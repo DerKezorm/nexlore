@@ -392,6 +392,7 @@
     }
   },
   "properties": {
+    "pickDate": "Datum wählen",
     "title": "Eigenschaften",
     "notYaml": "Das Frontmatter ist keine Liste aus Namen und Werten, deshalb wird es hier als Text bearbeitet.",
     "yaml": "Frontmatter als YAML",

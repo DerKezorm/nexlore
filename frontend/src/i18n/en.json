@@ -392,6 +392,7 @@
     }
   },
   "properties": {
+    "pickDate": "Pick a date",
     "title": "Properties",
     "notYaml": "The front matter is not a list of names and values, so it is edited as text here.",
     "yaml": "Front matter as YAML",

@@ -1,6 +1,6 @@
 /** The reading view never turns a note into code that runs. */
 
-import { appTargets, noteSection, renderMarkdown, safeUrl, withoutFrontMatter } from './markdown'
+import { appTargets, noteSection, renderMarkdown, safeUrl, shownDate, withoutFrontMatter } from './markdown'
 
 const nowhere = () => null
 
@@ -103,6 +103,22 @@ describe("Obsidian's own writing in the reading view", () => {
     expect(renderMarkdown('`%%code%%`', nowhere)).toContain('%%code%%')
   })
 
+  it('shows #tags in the text as tags, the way the server reads them', () => {
+    const html = renderMarkdown('#start of a line, a #tag, a #nested/tag/, an #äpfel and **#bold**\n\n#123 a#b C# `#code` [x](https://example.com/#top)', nowhere)
+    expect(html.match(/<span class="nn-tag">[^<]*<\/span>/g)).toEqual([
+      '<span class="nn-tag">#start</span>',
+      '<span class="nn-tag">#tag</span>',
+      '<span class="nn-tag">#nested/tag</span>',
+      '<span class="nn-tag">#äpfel</span>',
+      '<span class="nn-tag">#bold</span>',
+    ])
+    expect(html).toContain('#123 a#b C#')
+    expect(html).toContain('<code>#code</code>')
+    expect(html).toContain('href="https://example.com/#top"')
+    // A heading stays a heading.
+    expect(renderMarkdown('# Title', nowhere)).toContain('<h1>Title</h1>')
+  })
+
   it('marks ==highlights==, with Markdown inside', () => {
     expect(renderMarkdown('a ==very **important**== b', nowhere)).toContain('<mark>very <strong>important</strong></mark>')
     expect(renderMarkdown('a == b and c == d', nowhere)).not.toContain('<mark>')
@@ -157,5 +173,17 @@ describe("Obsidian's own writing in the reading view", () => {
   it('leaves out the front matter', () => {
     expect(withoutFrontMatter('---\ntags: [a]\n---\n# Title')).toBe('# Title')
     expect(withoutFrontMatter('text\n---\nnot front matter\n---\n')).toBe('text\n---\nnot front matter\n---\n')
+  })
+})
+
+describe('dates of the properties', () => {
+  it("are written in the app's language, not the computer's; what cannot be read stays as written", () => {
+    expect(shownDate('2026-09-19', false, 'en')).toBe('Sep 19, 2026')
+    expect(shownDate('2026-09-19', false, 'de')).toBe('19.09.2026')
+    // Some ICU versions put a narrow no-break space before AM.
+    expect(shownDate('2026-09-19T08:05', true, 'en').replace(/\s/g, ' ')).toBe('Sep 19, 2026, 8:05 AM')
+    expect(shownDate('2026-09-19 08:05', true, 'de')).toBe('19.09.2026, 08:05')
+    expect(shownDate('2026-02-30', false, 'en')).toBe('2026-02-30')
+    expect(shownDate('someday', false, 'en')).toBe('someday')
   })
 })

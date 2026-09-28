@@ -108,3 +108,8 @@ export function taskParts(text: string): { text: string; link: boolean }[] {
   if (position < text.length) parts.push({ text: text.slice(position), link: false })
   return parts
 }
+
+/** A task's text as one line of words, its wiki links as they show (the calendar, where there is no room for more). */
+export function taskPlain(text: string): string {
+  return taskParts(text).map((part) => part.text).join('')
+}
