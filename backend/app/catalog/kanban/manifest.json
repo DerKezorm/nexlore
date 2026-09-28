@@ -4,8 +4,8 @@
   "author": "nexlore",
   "name": { "en": "Kanban", "de": "Kanban" },
   "description": {
-    "en": "Notes in the format of the Obsidian Kanban plugin as a board with lanes and cards. Moving a card rewrites only its lines.",
-    "de": "Notizen im Format des Obsidian-Kanban-Plugins als Brett mit Spalten und Karten. Verschieben schreibt nur die Zeilen der Karte um."
+    "en": "Notes in the format of the Obsidian Kanban plugin as a board with lanes and cards. Moving a card writes the lanes it touches the way that plugin does.",
+    "de": "Notizen im Format des Obsidian-Kanban-Plugins als Brett mit Spalten und Karten. Verschieben schreibt die berührten Spalten so, wie jenes Plugin es tut."
   },
   "permissions": ["note:read", "note:write"],
   "place": { "view": { "frontmatter": "kanban-plugin" } },
