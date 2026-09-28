@@ -28,4 +28,6 @@ regexes = [
   '''A-long-enough-password''',
   '''correct-horse-battery''',
   '''demo-password-123''',
+  # The made-up share token of the public page tests.
+  '''tok_en-123456789012345678''',
 ]
