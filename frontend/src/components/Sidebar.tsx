@@ -210,6 +210,17 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
           <span className="truncate">{row.name}</span>
           <span className="ml-auto shrink-0 text-[11px] text-mist-600 tabular-nums">{row.count}</span>
         </button>
+        {writable(row.path) && (
+          <button
+            type="button"
+            onClick={() => askNewNote(row.path)}
+            className="shrink-0 rounded p-0.5 text-mist-500 opacity-0 group-hover:opacity-100 hover:bg-ink-800 hover:text-mist-100 focus-visible:opacity-100"
+            aria-label={t('sidebar.newNoteIn', { folder: row.name })}
+            title={t('sidebar.newNoteIn', { folder: row.name })}
+          >
+            <Symbol name="plus" className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
     )
   }

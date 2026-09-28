@@ -6,6 +6,36 @@ work on the same folder at the same time.
 
 nexlore is one of the nex apps and looks like them: turquoise, dark and light.
 
+![Zoomed into a folder of the graph, with the notes and their links](docs/screenshots/graph.png)
+
+*The graph. Folders are bubbles; zoom in and they open to show their notes and the links between them. It is drawn
+with WebGL and stays smooth with 100,000 notes. Folders, tags or topics found in the text, at the switch on top.*
+
+## Screenshots
+
+![A note in the reading view, with a callout, a table, tasks and an embedded part of another note](docs/screenshots/note.png)
+
+*Reading: callouts, tables, tasks, highlights and a part of another note embedded, the way Obsidian shows them. On
+the right the local graph, the backlinks and every link of the note.*
+
+![The editor with properties, a table and a numbered list](docs/screenshots/editor.png)
+
+*Editing: a visual editor with the front matter as a table of properties, a toolbar on selection and `/` to insert.
+Only the blocks you touch are written back; the rest of the file stays byte for byte as it was.*
+
+![All open tasks, grouped by when they are due](docs/screenshots/tasks.png)
+
+*Tasks from every note in the format of the Obsidian Tasks plugin, by due date or by note. Ticking one off writes
+that one line and nothing else. Next to it: a calendar with the daily notes, and a daily note one key away.*
+
+<p>
+  <img src="docs/screenshots/light.png" alt="A note shared between spaces, in the light theme" width="68%">
+  <img src="docs/screenshots/phone.png" alt="The same app on a phone" width="28%">
+</p>
+
+*Light and dark, and on the phone as an installable web app. Spaces for a team, with links from one space into
+another that only resolve for people who may read both.*
+
 ## What it does
 
 - **Files are the truth.** Every note is a Markdown file in a folder you choose. Changes from outside (Obsidian,

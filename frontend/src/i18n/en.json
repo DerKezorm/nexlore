@@ -45,6 +45,8 @@
   "sidebar": {
     "spaces": "Spaces",
     "newNote": "New note",
+    "newNoteShortcut": "New note (Alt+N)",
+    "newNoteIn": "New note in {{folder}}",
     "collapse": "Collapse",
     "expand": "Expand",
     "flyTo": "Fly there in the graph",
@@ -182,7 +184,6 @@
   },
   "settings": {
     "title": "Settings",
-    "sketch": "Sketch in the mockup: nothing here is saved yet.",
     "language": {
       "title": "Language",
       "text": "English and German come with nexlore. The operator can add more as JSON files in data/locales; whatever a file leaves out appears in English.",
@@ -203,61 +204,7 @@
       "delete": "Delete space",
       "deleteTitle": "Delete the space {{space}}?",
       "deleteText": "Every note and file of the space goes into the trash, and the space disappears for all its members. From the trash it comes back with its members for 30 days."
-    },
-    "mcp": {
-      "title": "AI access (MCP)",
-      "text": "Lets AI assistants search, read and write notes. Every key belongs to an account and sees only what that account may see.",
-      "allow": "Allow AI access",
-      "allowHint": "Off by default. The operator turns it on for everybody.",
-      "mode": {
-        "read": "Read only",
-        "readText": "Search, read, backlinks.",
-        "drafts": "Write drafts",
-        "draftsText": "New notes and changes are marked as AI drafts until you accept them.",
-        "write": "Write freely",
-        "writeText": "Like a person with the right to write. Every change is in the history."
-      },
-      "address": "Address",
-      "createdDraft": "Created “{{title}}” (draft)",
-      "readNotes_one": "Read {{count}} note",
-      "readNotes_other": "Read {{count}} notes",
-      "revoke": "Revoke",
-      "newKey": "New key"
-    },
-    "plugins": {
-      "title": "Plugins",
-      "text": "Plugins run locked away in the browser and see only what they ask for when installed. They may not go online.",
-      "noNetwork": "no network",
-      "enable": "Turn on {{name}}",
-      "install": "Install",
-      "right": {
-        "readNotes": "reads notes",
-        "readOpen": "reads the open note",
-        "writeOpen": "reads and writes the open note",
-        "writeNew": "writes new notes"
-      },
-      "calendar": {
-        "name": "Calendar",
-        "text": "Daily notes as a month view."
-      },
-      "mermaid": {
-        "name": "Mermaid diagrams",
-        "text": "Draws ```mermaid blocks in the reading view."
-      },
-      "kanban": {
-        "name": "Kanban board",
-        "text": "A note with headings as columns."
-      },
-      "templates": {
-        "name": "Templates",
-        "text": "A new note from a template, with date and placeholders."
-      },
-      "readingTime": {
-        "name": "Reading time",
-        "text": "Shows under the title how long reading takes."
-      }
-    },
-    "later": "Coming later"
+    }
   },
   "errors": {
     "byCode": {

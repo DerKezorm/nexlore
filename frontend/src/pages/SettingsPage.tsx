@@ -21,28 +21,10 @@ import { useServerSettings } from '../components/settings/useServerSettings'
 import { SpacesCard } from '../components/settings/SpacesCard'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { downloadTemplate, languageOptions, type LanguageOption } from '../i18n'
-import { formatDate } from '../lib/markdown'
-import { MCP_KEYS } from '../mock/later'
 import { useAuth } from '../state/auth'
-
-type Right = 'readNotes' | 'readOpen' | 'writeOpen' | 'writeNew'
-type Plugin = { id: 'calendar' | 'mermaid' | 'kanban' | 'templates' | 'readingTime'; rights: Right[]; on: boolean; installed: boolean }
-
-const PLUGINS: Plugin[] = [
-  { id: 'calendar', rights: ['readNotes'], on: true, installed: true },
-  { id: 'mermaid', rights: ['readOpen'], on: true, installed: true },
-  { id: 'kanban', rights: ['writeOpen'], on: false, installed: true },
-  { id: 'templates', rights: ['writeNew'], on: false, installed: false },
-  { id: 'readingTime', rights: ['readOpen'], on: false, installed: false },
-]
-
-const MCP_MODES = ['read', 'drafts', 'write'] as const
 
 export function SettingsPage() {
   const { t } = useTranslation()
-  const [mcpOn, setMcpOn] = useState(true)
-  const [mode, setMode] = useState<(typeof MCP_MODES)[number]>('drafts')
-  const [plugins, setPlugins] = useState(PLUGINS)
   const { me } = useAuth()
 
   return (
@@ -56,101 +38,6 @@ export function SettingsPage() {
         <SpacesCard />
         {me?.role === 'operator' && <OperatorPart />}
 
-        <h2 className="pt-4 text-lg font-semibold">{t('settings.later')}</h2>
-        <p className="-mt-4 text-sm text-mist-500">{t('settings.sketch')}</p>
-
-        <Card symbol="sparkle" title={t('settings.mcp.title')} text={t('settings.mcp.text')}>
-          <label className="flex items-center justify-between gap-4 rounded-xl border border-ink-700 bg-ink-850 px-4 py-3 text-sm">
-            <span>
-              <span className="font-medium">{t('settings.mcp.allow')}</span>
-              <span className="block text-xs text-mist-500">{t('settings.mcp.allowHint')}</span>
-            </span>
-            <input type="checkbox" checked={mcpOn} onChange={(e) => setMcpOn(e.target.checked)} className="h-5 w-5 accent-accent-500" />
-          </label>
-          {mcpOn && (
-            <>
-              <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                {MCP_MODES.map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setMode(value)}
-                    className={'rounded-xl border px-3 py-2.5 text-left text-sm ' + (mode === value ? 'border-accent-500 bg-accent-500/10' : 'border-ink-700 hover:bg-ink-850')}
-                  >
-                    <span className="block font-medium">{t(`settings.mcp.mode.${value}`)}</span>
-                    <span className="mt-0.5 block text-xs text-mist-500">{t(`settings.mcp.mode.${value}Text`)}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="mt-4 rounded-xl border border-ink-700">
-                <div className="flex items-center gap-3 border-b border-ink-700 px-4 py-2.5 text-sm">
-                  <span className="text-mist-500">{t('settings.mcp.address')}</span>
-                  <code className="rounded bg-ink-800 px-2 py-0.5 font-mono text-xs">https://notes.example.com/mcp</code>
-                </div>
-                {MCP_KEYS.map((entry) => (
-                  <div key={entry.name} className="flex flex-wrap items-center gap-3 border-b border-ink-700/60 px-4 py-3 text-sm last:border-0">
-                    <Symbol name="key" className="h-4 w-4 text-mist-500" />
-                    <span className="font-medium">{entry.name}</span>
-                    <span className="font-mono text-xs text-mist-600">{entry.key}</span>
-                    <span className="ml-auto text-xs text-mist-500">
-                      {formatDate(entry.used)} ·{' '}
-                      {entry.did.kind === 'draft'
-                        ? t('settings.mcp.createdDraft', { title: entry.did.title })
-                        : t('settings.mcp.readNotes', { count: entry.did.count })}
-                    </span>
-                    <button type="button" className="rounded-full border border-ink-700 px-2.5 py-0.5 text-xs text-mist-400 hover:border-bad-500/50 hover:text-bad-500">
-                      {t('settings.mcp.revoke')}
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="mt-3 inline-flex items-center gap-2 rounded-full border border-ink-700 px-3.5 py-1.5 text-sm text-mist-300 hover:bg-ink-850">
-                <Symbol name="plus" /> {t('settings.mcp.newKey')}
-              </button>
-            </>
-          )}
-        </Card>
-
-        <Card symbol="plug" title={t('settings.plugins.title')} text={t('settings.plugins.text')}>
-          <ul className="divide-y divide-ink-700 rounded-xl border border-ink-700">
-            {plugins.map((plugin, index) => {
-              const name = t(`settings.plugins.${plugin.id}.name`)
-              return (
-                <li key={plugin.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-                  <span className="min-w-0 flex-1">
-                    <span className="font-medium">{name}</span>
-                    <span className="block text-xs text-mist-500">{t(`settings.plugins.${plugin.id}.text`)}</span>
-                    <span className="mt-1.5 flex flex-wrap gap-1">
-                      {plugin.rights.map((right) => (
-                        <span key={right} className="rounded-full bg-ink-800 px-2 py-0.5 text-[11px] text-mist-400">
-                          {t(`settings.plugins.right.${right}`)}
-                        </span>
-                      ))}
-                      <span className="rounded-full bg-ink-800 px-2 py-0.5 text-[11px] text-mist-600">{t('settings.plugins.noNetwork')}</span>
-                    </span>
-                  </span>
-                  {plugin.installed ? (
-                    <input
-                      type="checkbox"
-                      checked={plugin.on}
-                      onChange={(e) => setPlugins((list) => list.map((p, i) => (i === index ? { ...p, on: e.target.checked } : p)))}
-                      className="h-5 w-5 accent-accent-500"
-                      aria-label={t('settings.plugins.enable', { name })}
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setPlugins((list) => list.map((p, i) => (i === index ? { ...p, installed: true, on: true } : p)))}
-                      className="rounded-full bg-accent-500 px-3 py-1 text-xs font-semibold text-on-accent hover:bg-accent-400"
-                    >
-                      {t('settings.plugins.install')}
-                    </button>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-        </Card>
       </div>
     </main>
   )

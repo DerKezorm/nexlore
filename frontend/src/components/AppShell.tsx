@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
@@ -59,6 +59,7 @@ export function AppShell() {
 
   const { status, error, spaces, reload } = useStore()
   const [creating, setCreating] = useState<string | null>(null)
+  const newNoteAt = useRef<string | null>(null)
   const [todayProblem, setTodayProblem] = useState<string | null>(null)
   const home = dailySpace(spaces)
 
@@ -87,6 +88,9 @@ export function AppShell() {
       } else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyT' && !typing(e.target)) {
         e.preventDefault()
         void openToday()
+      } else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN' && !typing(e.target)) {
+        e.preventDefault()
+        if (newNoteAt.current) setCreating(newNoteAt.current)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -99,7 +103,8 @@ export function AppShell() {
     return () => window.removeEventListener(NEW_NOTE_EVENT, ask)
   }, [])
 
-  // The folder a new note goes to on a phone (there is no sidebar there): the open note's, else the daily space.
+  // The folder a new note from the header (or Alt+N) goes to: the open note's, else the space last chosen for the
+  // daily note. The sidebar has a + of its own beside each folder.
   const newNoteFolder = (): string | null => {
     if (location.pathname.startsWith('/note/')) {
       const path = location.pathname.slice('/note/'.length).split('/').map(decodeURIComponent).join('/')
@@ -109,6 +114,7 @@ export function AppShell() {
     return home?.name ?? null
   }
   const newNoteTarget = newNoteFolder()
+  newNoteAt.current = newNoteTarget
 
   const pick = (id: string) => {
     // A PDF found by its text has a page of its own; it is not in the graph.
@@ -148,10 +154,11 @@ export function AppShell() {
             onClick={() => setCreating(newNoteTarget)}
             disabled={!newNoteTarget}
             aria-label={t('sidebar.newNote')}
-            title={t('sidebar.newNote')}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-ink-700 text-mist-300 hover:bg-ink-850 disabled:opacity-40 md:hidden"
+            title={t('sidebar.newNoteShortcut')}
+            className="inline-flex h-8 shrink-0 items-center gap-2 rounded-full border border-accent-500/60 px-2 text-sm font-semibold text-accent-400 hover:bg-accent-500/10 disabled:opacity-40 sm:px-3"
           >
             <Symbol name="plus" />
+            <span className="hidden sm:inline">{t('sidebar.newNote')}</span>
           </button>
           <button
             type="button"

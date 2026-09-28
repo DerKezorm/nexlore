@@ -99,6 +99,30 @@ test('a new note starts from a template, its placeholders filled and Templater l
   expect(onDisk('Year/Kick-off.md')).toBe(`# Kick-off\n\nStarted ${day(0)}\n<% tp.date.now() %>\n`)
 })
 
+test('a new note is one click away: in the header, beside each folder, and with Alt+N', async ({ page }) => {
+  await page.setViewportSize({ width: 1400, height: 900 })
+  await page.goto('/note/Year/Templates/Day.md')
+  const dialog = page.getByTestId('new-note-dialog')
+  // The header, with its words on a wide screen: beside the open note.
+  const header = page.getByRole('banner').getByRole('button', { name: 'New note' })
+  await expect(header).toContainText('New note')
+  await header.click()
+  await expect(dialog).toContainText('New note in “Year / Templates”')
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog).toHaveCount(0)
+  // Alt+N, the same.
+  await page.keyboard.press('Alt+n')
+  await expect(dialog).toContainText('New note in “Year / Templates”')
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  // Beside a folder of the sidebar: into that folder, not the open note's.
+  // The first row of the tree is a space; which one depends on what other tests made before.
+  const plus = page.getByTestId('sidebar-tree').getByRole('button', { name: /^New note in / }).first()
+  const space = (await plus.getAttribute('aria-label'))!.replace('New note in ', '')
+  await plus.hover()
+  await plus.click()
+  await expect(dialog).toContainText(`New note in “${space}”`)
+})
+
 test('"Today" opens the daily note of today in the chosen space', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('nexlore.daily.space', 'Year'))
   await page.goto('/tasks')

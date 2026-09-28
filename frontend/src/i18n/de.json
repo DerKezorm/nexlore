@@ -45,6 +45,8 @@
   "sidebar": {
     "spaces": "Bereiche",
     "newNote": "Neue Notiz",
+    "newNoteShortcut": "Neue Notiz (Alt+N)",
+    "newNoteIn": "Neue Notiz in {{folder}}",
     "collapse": "Zuklappen",
     "expand": "Aufklappen",
     "flyTo": "Im Graph anfliegen",
@@ -182,7 +184,6 @@
   },
   "settings": {
     "title": "Einstellungen",
-    "sketch": "Skizze der Attrappe: hier wird noch nichts gespeichert.",
     "language": {
       "title": "Sprache",
       "text": "Englisch und Deutsch bringt nexlore mit. Der Betreiber kann weitere als JSON-Dateien in data/locales ablegen; was einer Datei fehlt, erscheint auf Englisch.",
@@ -203,61 +204,7 @@
       "delete": "Bereich löschen",
       "deleteTitle": "Den Bereich {{space}} löschen?",
       "deleteText": "Alle Notizen und Dateien des Bereichs gehen in den Papierkorb, und der Bereich verschwindet für alle Mitglieder. Aus dem Papierkorb kommt er 30 Tage lang samt Mitgliedern zurück."
-    },
-    "mcp": {
-      "title": "KI-Zugang (MCP)",
-      "text": "Damit KI-Assistenten Notizen suchen, lesen und schreiben. Jeder Schlüssel gehört zu einem Konto und sieht nur, was dieses Konto sehen darf.",
-      "allow": "KI-Zugang erlauben",
-      "allowHint": "Ab Werk aus. Der Betreiber schaltet ihn für alle frei.",
-      "mode": {
-        "read": "Nur lesen",
-        "readText": "Suchen, lesen, Rückverweise.",
-        "drafts": "Entwürfe schreiben",
-        "draftsText": "Neue Notizen und Änderungen sind als KI-Entwurf markiert, bis du sie übernimmst.",
-        "write": "Frei schreiben",
-        "writeText": "Wie ein Mensch mit Schreibrecht. Jede Änderung steht im Verlauf."
-      },
-      "address": "Adresse",
-      "createdDraft": "„{{title}}“ angelegt (Entwurf)",
-      "readNotes_one": "{{count}} Notiz gelesen",
-      "readNotes_other": "{{count}} Notizen gelesen",
-      "revoke": "Sperren",
-      "newKey": "Neuer Schlüssel"
-    },
-    "plugins": {
-      "title": "Plugins",
-      "text": "Plugins laufen eingesperrt im Browser und sehen nur, was sie beim Installieren anfragen. Ins Netz dürfen sie nicht.",
-      "noNetwork": "kein Netz",
-      "enable": "{{name}} einschalten",
-      "install": "Installieren",
-      "right": {
-        "readNotes": "liest Notizen",
-        "readOpen": "liest die offene Notiz",
-        "writeOpen": "liest und schreibt die offene Notiz",
-        "writeNew": "schreibt neue Notizen"
-      },
-      "calendar": {
-        "name": "Kalender",
-        "text": "Tagesnotizen als Monatsansicht."
-      },
-      "mermaid": {
-        "name": "Mermaid-Diagramme",
-        "text": "Zeichnet ```mermaid-Blöcke in der Leseansicht."
-      },
-      "kanban": {
-        "name": "Kanban-Tafel",
-        "text": "Eine Notiz mit Überschriften als Spalten."
-      },
-      "templates": {
-        "name": "Vorlagen",
-        "text": "Neue Notiz aus einer Vorlage, mit Datum und Platzhaltern."
-      },
-      "readingTime": {
-        "name": "Lesezeit",
-        "text": "Zeigt unter dem Titel, wie lange man zum Lesen braucht."
-      }
-    },
-    "later": "Kommt später"
+    }
   },
   "errors": {
     "byCode": {

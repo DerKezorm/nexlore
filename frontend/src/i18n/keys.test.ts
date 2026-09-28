@@ -34,9 +34,6 @@ describe('translation keys used in the code', () => {
     const composed = [
       ...['nav.graph', 'nav.notes', 'nav.files', 'nav.settings'],
       ...['folders', 'tags', 'topics'].map((cloud) => `graph.cloud.${cloud}`),
-      ...['read', 'drafts', 'write'].flatMap((mode) => [`settings.mcp.mode.${mode}`, `settings.mcp.mode.${mode}Text`]),
-      ...['calendar', 'mermaid', 'kanban', 'templates', 'readingTime'].flatMap((id) => [`settings.plugins.${id}.name`, `settings.plugins.${id}.text`]),
-      ...['readNotes', 'readOpen', 'writeOpen', 'writeNew'].map((right) => `settings.plugins.right.${right}`),
       ...['pending', 'saving', 'saved', 'failed', 'refreshed'].map((state) => `note.save.${state}`),
       // The editor's slash menu, the kinds of a property, the choices in the comparison.
       ...[
