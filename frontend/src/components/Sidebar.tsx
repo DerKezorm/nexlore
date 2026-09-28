@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { vaultApi, type Favorite, type FolderEntry, type FileEntry } from '../api/client'
 import { folderColor, spaceColor } from '../graph/palette'
@@ -48,6 +48,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
   const { t } = useTranslation()
   const { spaces, generation, scan, looks, favorites, setFavorite } = useStore()
   const navigate = useNavigate()
+  const location = useLocation()
   const menu = useContextMenu()
   const [copied, setCopied] = useState<string | null>(null)
   const [toggled, setToggled] = useState<Map<string, boolean>>(new Map())
@@ -299,6 +300,12 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     return () => window.clearTimeout(timer)
   }, [copied])
 
+  /** Beside the note open now (on the notes page); elsewhere it simply opens. */
+  const openRight = (path: string) => {
+    const left = location.pathname.startsWith('/note/') ? location.pathname : null
+    navigate(left ? `${left}?right=${encodeURIComponent(path)}` : `/note/${path.split('/').map(encodeURIComponent).join('/')}`)
+  }
+
   /** Into the favorites, or out of them. */
   const favoriteItem = (path: string): MenuItem => {
     const on = favorites.some((favorite) => favorite.path === path)
@@ -341,6 +348,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
     const items: MenuItem[] = [
       { label: t('menu.open'), symbol: 'note', onSelect: () => onNote(row.path) },
       { label: t('menu.openNewTab'), symbol: 'open', onSelect: () => openInTab(row.path, navigate) },
+      { label: t('menu.openRight'), symbol: 'columns', onSelect: () => openRight(row.path) },
       'separator',
     ]
     if (write) {

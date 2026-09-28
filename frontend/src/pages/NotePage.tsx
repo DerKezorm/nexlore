@@ -11,7 +11,7 @@
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { ApiError, draftsApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -63,10 +63,46 @@ function useWide(): boolean {
 
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'failed' | 'refreshed'
 
+/**
+ * The notes page: the sidebar, the note, and on request a second note beside it (`?right=`, from the menu "Open to
+ * the right"). Each note is a pane of its own with everything a note has; the right one changes only `right` when a
+ * link in it is followed. On a narrow screen only the left one shows.
+ */
 export function NotePage() {
   // Already decoded by the router; decoding again breaks names with a "%" in them.
   const path = useParams()['*'] ?? ''
+  const [params] = useSearchParams()
+  const right = path ? params.get('right') : null
+  const navigate = useNavigate()
+  const { t } = useTranslation()
+  const open = useCallback((next: string) => navigate(noteUrl(next) + (right ? `?right=${encodeURIComponent(right)}` : '')), [navigate, right])
+  return (
+    <>
+      <Sidebar key={'tree-' + path} activeNote={path || null} onNote={open} />
+      {path ? (
+        <NotePane path={path} side="left" right={right} />
+      ) : (
+        <main className="flex flex-1 items-center justify-center px-6 text-center text-mist-500">{t('note.pick')}</main>
+      )}
+      {right && <NotePane path={right} side="right" right={right} mirror={right === path} />}
+    </>
+  )
+}
+
+type PaneProps = {
+  path: string
+  /** Left: the note of the address. Right: the second note, beside it. */
+  side: 'left' | 'right'
+  /** The note on the right, if any: the left pane keeps it when it moves on, and gives up its right column. */
+  right: string | null
+  /** The same note on both sides: the right one only reads (two editors on one note would write over each other). */
+  mirror?: boolean
+}
+
+function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const [params, setParams] = useSearchParams()
+  const location = useLocation()
+  const split = right !== null
   const { t } = useTranslation()
   const { reload, spaces, generation, favorites, setFavorite } = useStore()
   const { me } = useAuth()
@@ -143,7 +179,22 @@ export function NotePage() {
   const editingNow = useRef(editing)
   editingNow.current = editing
 
-  const open = useCallback((next: string) => navigate(noteUrl(next)), [navigate])
+  /** Where a note opens from this pane: the right pane changes only `right`; the left one keeps the right note. */
+  const go = useCallback(
+    (next: string, edit = false) => {
+      if (side === 'right') {
+        navigate({ pathname: location.pathname, search: `?right=${encodeURIComponent(next)}` })
+        return
+      }
+      const query = new URLSearchParams()
+      if (right) query.set('right', right)
+      if (edit) query.set('edit', '1')
+      const search = query.toString()
+      navigate(noteUrl(next) + (search ? `?${search}` : ''))
+    },
+    [side, right, navigate, location.pathname],
+  )
+  const open = useCallback((next: string) => go(next), [go])
 
   // The "More" menu closes on a click elsewhere and on Escape, like any menu.
   const menu = useRef<HTMLDetailsElement>(null)
@@ -300,11 +351,18 @@ export function NotePage() {
 
   // Coming from "new note" (or a click on a link to a note not yet written): straight into the editor.
   useEffect(() => {
-    if (note && params.get('edit') === '1' && !editing) {
-      setParams({}, { replace: true })
+    if (side === 'left' && note && params.get('edit') === '1' && !editing) {
+      // Only "edit" goes: a note open on the right stays.
+      setParams(
+        (current) => {
+          current.delete('edit')
+          return current
+        },
+        { replace: true },
+      )
       void startEditing()
     }
-  }, [note, params, editing, setParams, startEditing])
+  }, [side, note, params, editing, setParams, startEditing])
 
   // While editing: keep the lock, and give it back (with the last words saved) when the page goes.
   useEffect(() => {
@@ -444,7 +502,7 @@ export function NotePage() {
     try {
       const made = await vaultApi.create(folder, title)
       await reload()
-      navigate(`${noteUrl(made.path)}?edit=1`)
+      go(made.path, true)
     } catch (error) {
       setProblem(error instanceof ApiError ? error.code : 'internal_error')
     }
@@ -481,7 +539,9 @@ export function NotePage() {
     try {
       await vaultApi.remove(note.path, withOwn ? own : [])
       await reload()
-      navigate('/')
+      // The right one closes; for the left one the note on the right (if any) comes into its place.
+      if (side === 'right') navigate({ pathname: location.pathname, search: '' })
+      else navigate(right && right !== note.path ? noteUrl(right) : '/')
     } catch (error) {
       setGone(null)
       setProblem(error instanceof ApiError ? error.code : 'internal_error')
@@ -533,21 +593,14 @@ export function NotePage() {
     else void load(path)
   }
 
-  if (!path) {
-    return (
-      <>
-        <Sidebar activeNote={null} onNote={open} />
-        <main className="flex flex-1 items-center justify-center px-6 text-center text-mist-500">{t('note.pick')}</main>
-      </>
-    )
-  }
+  const paneClass = side === 'right' ? 'hidden min-w-0 flex-1 border-l border-ink-700/80 lg:flex' : 'flex min-w-0 flex-1'
+  const closeRight = () => navigate({ pathname: location.pathname, search: '' })
 
   if (!note) {
     return (
       <>
-        <Sidebar activeNote={path} onNote={open} />
-        <main className="flex min-w-0 flex-1 flex-col">
-          <TabBar path={path} />
+        <main className={paneClass + ' flex-col'}>
+          {side === 'left' && <TabBar path={path} />}
           <div className="flex flex-1 items-center justify-center px-6 text-center text-mist-500">
             {problem ? (problem === 'not_found' ? t('note.notFound') : errorText(problem)) : t('common.loading')}
           </div>
@@ -566,12 +619,16 @@ export function NotePage() {
 
   return (
     <>
-      <Sidebar key={'tree-' + note.path} activeNote={note.path} onNote={open} />
-      <main className="flex min-w-0 flex-1">
+      <main className={paneClass} data-pane={side}>
         <div className="flex min-w-0 flex-1 flex-col">
-          <TabBar path={note.path} />
+          {side === 'left' && <TabBar path={note.path} />}
           {/* Toolbar */}
           <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-ink-700/80 px-6 py-2.5">
+            {side === 'right' && (
+              <button type="button" onClick={closeRight} aria-label={t('note.closeRight')} title={t('note.closeRight')} className="rounded-full p-1 text-mist-500 hover:bg-ink-850 hover:text-mist-100">
+                <Symbol name="close" className="h-4 w-4" />
+              </button>
+            )}
             <div className="min-w-0 flex-1 truncate text-sm text-mist-500">
               {chain.map((c, i) => (
                 <span key={c.id}>
@@ -594,9 +651,11 @@ export function NotePage() {
                 type="button"
                 onClick={() => !editing && void startEditing()}
                 aria-pressed={editing}
-                disabled={!!lockedBy || note.readonly || !mayWrite}
+                disabled={!!lockedBy || note.readonly || !mayWrite || mirror}
                 title={
-                  !mayWrite
+                  mirror
+                    ? t('note.mirror')
+                    : !mayWrite
                     ? t('note.readOnlyRight')
                     : lockedBy
                       ? t('note.lockedTitle', { name: lockedBy })
@@ -789,7 +848,7 @@ export function NotePage() {
                 <NoteEmbeds article={article} html={html} onOpen={open} />
                 </>
               )}
-              {!wide && (
+              {(!wide || split) && (
                 <div className="mt-10 space-y-6">
                   <PluginPanels plugins={plugins} note={note} onOpen={open} onWritten={pluginWrote} onReveal={reveal} />
                   {!leaving && note.path === path && <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />}
@@ -800,8 +859,9 @@ export function NotePage() {
         </div>
 
         {/* Right column */}
-        <aside className="nn-scroll hidden w-80 shrink-0 overflow-y-auto border-l border-ink-700/80 px-4 py-4 xl:block">
-          {wide && (
+        {/* Two notes side by side: they need the room, the right column gives it. */}
+        <aside className={'nn-scroll hidden w-80 shrink-0 overflow-y-auto border-l border-ink-700/80 px-4 py-4 ' + (split ? '' : 'xl:block')}>
+          {wide && !split && (
             <div className="mb-5">
               {!leaving && note.path === path && <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />}
             </div>

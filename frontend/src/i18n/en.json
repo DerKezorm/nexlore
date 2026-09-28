@@ -188,7 +188,9 @@
     },
     "favorite": "Favorite",
     "favoriteAdd": "Add to favorites",
-    "favoriteRemove": "Remove from favorites"
+    "favoriteRemove": "Remove from favorites",
+    "closeRight": "Close this side",
+    "mirror": "Open on the left already; edit it there."
   },
   "settings": {
     "title": "Settings",
@@ -1075,7 +1077,8 @@
     "look": "Symbol and colour …",
     "asTemplate": "Save as template …",
     "favorite": "Add to favorites",
-    "unfavorite": "Remove from favorites"
+    "unfavorite": "Remove from favorites",
+    "openRight": "Open to the right"
   },
   "editorMenu": {
     "openLink": "Open the note",

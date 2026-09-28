@@ -188,7 +188,9 @@
     },
     "favorite": "Favorit",
     "favoriteAdd": "Zu den Favoriten",
-    "favoriteRemove": "Aus den Favoriten entfernen"
+    "favoriteRemove": "Aus den Favoriten entfernen",
+    "closeRight": "Diese Seite schließen",
+    "mirror": "Links schon geöffnet; dort bearbeiten."
   },
   "settings": {
     "title": "Einstellungen",
@@ -1075,7 +1077,8 @@
     "look": "Symbol und Farbe …",
     "asTemplate": "Als Vorlage speichern …",
     "favorite": "Zu den Favoriten",
-    "unfavorite": "Aus den Favoriten entfernen"
+    "unfavorite": "Aus den Favoriten entfernen",
+    "openRight": "Rechts daneben öffnen"
   },
   "editorMenu": {
     "openLink": "Notiz öffnen",

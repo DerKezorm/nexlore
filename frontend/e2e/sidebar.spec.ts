@@ -280,3 +280,34 @@ test('tabs: a note opens in a tab of its own with Ctrl or from the menu, and clo
   await expect(tabs).toHaveCount(0)
   expect(problems).toEqual([])
 })
+
+test('two notes side by side: the right one follows its own links, the left one keeps it, and it closes', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.setViewportSize({ width: 1400, height: 900 })
+  await page.goto('/note/Zoo/Menu.md')
+  await expect(page.locator('[data-pane="left"] article')).toContainText('Make this word bold.')
+  await row(page, 'Linked').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Open to the right' }).click()
+  await expect(page).toHaveURL(/\/note\/Zoo\/Menu\.md\?right=Zoo%2FLinked\.md$/)
+  const right = page.locator('[data-pane="right"]')
+  await expect(right.locator('article')).toContainText('Call')
+  // A link on the right changes the right side only.
+  await right.locator('article a[data-note]').first().click()
+  await expect(page).toHaveURL(/\/note\/Zoo\/Menu\.md\?right=Zoo%2FBoard\.md$/)
+  await expect(page.locator('[data-pane="left"] article')).toContainText('Make this word bold.')
+  // A link on the left moves the left side on, and the right one stays.
+  await page.locator('[data-pane="left"] article a[data-note]').first().click()
+  await expect(page).toHaveURL(/\/note\/Zoo\/Across%20target\.md\?right=Zoo%2FBoard\.md$/)
+  // So does the sidebar.
+  await row(page, 'Reading').click()
+  await expect(page).toHaveURL(/\/note\/Zoo\/Reading\.md\?right=Zoo%2FBoard\.md$/)
+  await expect(right).toBeVisible()
+  // The same note on both sides: the right one only reads.
+  await page.goto('/note/Zoo/Reading.md?right=Zoo%2FReading.md')
+  await expect(right.getByRole('button', { name: 'Edit', exact: true })).toBeDisabled()
+  await expect(page.locator('[data-pane="left"]').getByRole('button', { name: 'Edit', exact: true })).toBeEnabled()
+  await right.getByRole('button', { name: 'Close this side' }).click()
+  await expect(page).toHaveURL(/\/note\/Zoo\/Reading\.md$/)
+  await expect(right).toHaveCount(0)
+  expect(problems).toEqual([])
+})
