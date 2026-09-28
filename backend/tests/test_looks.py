@@ -62,6 +62,9 @@ def test_only_known_symbols_and_colours_and_only_folders_that_are_there(people: 
     assert anna.put("/api/looks", json={"path": "Garden", "icon": "skull"}).status_code == 422
     assert anna.put("/api/looks", json={"path": "Garden", "color": "red"}).status_code == 422
     assert anna.put("/api/looks", json={"path": "Garden/Nowhere", "icon": "star"}).status_code == 404
+    # A note is no folder: it has no look of its own.
+    assert anna.post("/api/notes", json={"folder": "Garden", "title": "Seeds"}).status_code == 201
+    assert anna.put("/api/looks", json={"path": "Garden/Seeds.md", "icon": "star"}).status_code == 404
     # Neither symbol nor colour: back to what nexlore works out.
     assert anna.put("/api/looks", json={"path": "Garden", "icon": "star"}).status_code == 204
     assert anna.put("/api/looks", json={"path": "Garden", "icon": None, "color": None}).status_code == 204
@@ -71,6 +74,9 @@ def test_only_known_symbols_and_colours_and_only_folders_that_are_there(people: 
 def test_they_follow_a_folder_that_moves_and_go_with_one_in_the_trash(people: tuple[TestClient, TestClient, TestClient]) -> None:
     anna, _, _ = people
     assert anna.post("/api/folders", json={"parent": "Garden", "name": "Sheds"}).status_code == 201
+    # A neighbour whose name starts like the folder that moves: it stays where it is.
+    assert anna.post("/api/folders", json={"parent": "Garden", "name": "Bedside"}).status_code == 201
+    anna.put("/api/looks", json={"path": "Garden/Bedside", "icon": "star"})
     anna.put("/api/looks", json={"path": "Garden/Beds", "icon": "home"})
     anna.put("/api/looks", json={"path": "Garden/Beds/Roses", "icon": "heart", "color": "#fb7185"})
     anna.put("/api/looks", json={"path": "Garden/Sheds", "icon": "tool"})
@@ -79,6 +85,8 @@ def test_they_follow_a_folder_that_moves_and_go_with_one_in_the_trash(people: tu
         "Plots": {"icon": "home", "color": None},
         "Plots/Roses": {"icon": "heart", "color": "#fb7185"},
         "Sheds": {"icon": "tool", "color": None},
+        "Bedside": {"icon": "star", "color": None},
     }
     assert anna.delete("/api/files", params={"path": "Garden/Plots"}).status_code == 200
-    assert looks_of(anna)["Garden"] == {"Sheds": {"icon": "tool", "color": None}}
+    assert anna.delete("/api/files", params={"path": "Garden/Bed"}).status_code == 404
+    assert looks_of(anna)["Garden"] == {"Sheds": {"icon": "tool", "color": None}, "Bedside": {"icon": "star", "color": None}}

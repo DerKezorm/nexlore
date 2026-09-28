@@ -206,19 +206,25 @@ describe('symbols and colours chosen by hand', () => {
     scene.setOverviews([{ name: 'Work', overview: overview() }])
     const byKey = (key: string) => [...scene.groups.values()].find((group) => group.key === key)!
     const own = { plans: byKey('f:Plans').color, old: byKey('f:Plans/Old').color, daily: byKey('f:Daily').color, space: byKey('space').color }
-    scene.applyLooks({ Work: { '': { icon: 'home', color: null }, Plans: { icon: 'star', color: '#fb7185' } } })
-    expect(byKey('f:Plans')).toMatchObject({ color: '#fb7185', icon: 'star' })
+    // A colour none of them has of its own: otherwise a look that is ignored looks the same as one that holds.
+    const chosen = ['#fb7185', '#38bdf8', '#a3e635', '#9a9aa8'].find((colour) => !Object.values(own).includes(colour))!
+    scene.applyLooks({ Work: { '': { icon: 'home', color: null }, Plans: { icon: 'star', color: chosen } } })
+    expect(byKey('f:Plans')).toMatchObject({ color: chosen, icon: 'star' })
     // The folder in it takes the colour, not the symbol; a folder beside it keeps its own; the space its colour.
-    expect(byKey('f:Plans/Old')).toMatchObject({ color: '#fb7185', icon: null })
+    expect(byKey('f:Plans/Old')).toMatchObject({ color: chosen, icon: null })
     expect(byKey('f:Daily').color).toBe(own.daily)
     expect(byKey('space')).toMatchObject({ color: own.space, icon: 'home' })
     // A group that is not a folder (a bucket of the split) knows no looks.
     expect(byKey('space|b9').icon).toBeNull()
     // New overviews keep them; taking them away brings nexlore's colours back.
     scene.setOverviews([{ name: 'Work', overview: overview(2) }])
-    expect(byKey('f:Plans').color).toBe('#fb7185')
+    expect(byKey('f:Plans').color).toBe(chosen)
     scene.applyLooks({})
     expect(byKey('f:Plans')).toMatchObject({ color: own.plans, icon: null })
     expect(byKey('f:Plans/Old').color).toBe(own.old)
+    // The colour of a space is its own: its folders keep theirs.
+    scene.applyLooks({ Work: { '': { icon: null, color: chosen } } })
+    expect(byKey('space').color).toBe(chosen)
+    expect(byKey('f:Daily').color).toBe(own.daily)
   })
 })

@@ -248,6 +248,9 @@ def test_the_options_of_a_space_belong_to_its_managers(world: World) -> None:
     assert world.bob.get("/api/spaces/Private/options").status_code == 404
     changed = world.anna.put("/api/spaces/Shared/options", json={"daily_folder": "/Journal/2026/", "template_folder": ""})
     assert changed.json() == {"daily_folder": "Journal/2026", "daily_template": "", "template_folder": ""}
+    # The list of spaces says it too: the sidebar marks the two folders with it.
+    shared = next(space for space in world.bob.get("/api/spaces").json() if space["name"] == "Shared")
+    assert (shared["daily_folder"], shared["template_folder"]) == ("Journal/2026", "")
     assert world.anna.put("/api/spaces/Shared/options", json={"daily_folder": "../out"}).status_code == 400
     assert world.anna.put("/api/spaces/Shared/options", json={"daily_template": "Templates/x.png"}).status_code == 400
     made = world.anna.post("/api/daily", json={"space": "Shared", "date": "2026-09-08"})
