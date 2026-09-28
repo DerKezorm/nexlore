@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import os
 import re
 import shutil
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -176,6 +178,22 @@ def test_lists_for_plugins_show_only_readable_notes(world: World) -> None:
     assert world.anna.get("/api/plugins/query", params={"day": "1999-01-01"}).json() == []
     # A day that the pattern lets through but no calendar has: refused, not a server error.
     assert world.anna.get("/api/plugins/query", params={"day": "2026-13-40"}).status_code == 422
+
+
+def test_a_day_finds_the_notes_changed_on_it_and_the_daily_note_named_after_it(world: World) -> None:
+    """What rediscover asks for: "a year ago today" (UTC days, both ends measured)."""
+    changed = world.vault / "Garden" / "Old.md"
+    changed.write_bytes(b"# Old\n")
+    late = world.vault / "Garden" / "Late.md"
+    late.write_bytes(b"# Late\n")
+    first = datetime(2025, 9, 28, 0, 0, 1, tzinfo=UTC).timestamp()
+    os.utime(changed, (first, first))
+    next_day = datetime(2025, 9, 29, 0, 0, 1, tzinfo=UTC).timestamp()
+    os.utime(late, (next_day, next_day))
+    (world.vault / "Garden" / "2025-09-28.md").write_bytes(b"# That day\n")
+    index.scan()
+    found = {item["path"] for item in world.anna.get("/api/plugins/query", params={"day": "2025-09-28"}).json()}
+    assert found == {"Garden/Old.md", "Garden/2025-09-28.md"}
 
 
 def test_a_plugin_writes_its_note_keeping_unchanged_lines(world: World) -> None:

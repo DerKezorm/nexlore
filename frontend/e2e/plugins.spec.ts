@@ -168,8 +168,54 @@ test("the latch for plugin files of one's own opens, and uploads, only after a p
   expect(problems).toEqual([])
 })
 
+test('rediscover shows what was written a year ago today and a note at random, each opened with a click', async ({ page }) => {
+  const problems = collectProblems(page)
+  for (const [method, url, data] of [
+    ['post', '/api/admin/plugins/rediscover/install', undefined],
+    ['put', '/api/admin/plugins/rediscover', { approved: true }],
+    ['put', '/api/plugins/rediscover/enabled', { enabled: true }],
+  ] as const) {
+    const answer = await page.request.fetch(url, { method, data, headers: TAB })
+    expect(answer.ok()).toBe(true)
+  }
+  // A daily note of a year ago today, named as the plugin asks for it (the day in the browser's time).
+  const day = await page.evaluate(() => {
+    const when = new Date()
+    when.setFullYear(when.getFullYear() - 1)
+    const pad = (value: number) => String(value).padStart(2, '0')
+    return `${when.getFullYear()}-${pad(when.getMonth() + 1)}-${pad(when.getDate())}`
+  })
+  expect((await page.request.post('/api/notes', { data: { folder: 'Zoo', title: day }, headers: TAB })).ok()).toBe(true)
+
+  await page.setViewportSize({ width: 1400, height: 900 })
+  await page.goto('/note/Zoo/Sown.md')
+  const panel = await frameOf(page, 'rediscover')
+  await expect(panel.getByText('A year ago today')).toBeVisible()
+  await panel.getByRole('button', { name: day }).click()
+  await expect(page).toHaveURL(new RegExp(`/note/Zoo/${day}\\.md$`))
+
+  // At random: some note, which opens; "Another one" asks again.
+  const again = await frameOf(page, 'rediscover')
+  const random = again.locator('ul').nth(1).getByRole('button')
+  await expect(random).toHaveCount(1)
+  await again.getByRole('button', { name: 'Another one' }).click()
+  await expect(random).toHaveCount(1)
+  const title = (await random.textContent())!.trim()
+  expect(title.length).toBeGreaterThan(0)
+  // It may be any note, even the one open: opened means the page shows a note after the click.
+  await page.goto('/note/Zoo/Sown.md')
+  const later = await frameOf(page, 'rediscover')
+  await later.locator('ul').nth(1).getByRole('button').click()
+  await expect(page).not.toHaveURL(/\/note\/Zoo\/Sown\.md$/, { timeout: 10_000 }).catch(async () => {
+    // The random note was this one: nothing to go to, which is right too.
+    await expect(later.locator('ul').nth(1).getByRole('button')).toHaveText('Sown')
+  })
+  await expect(page).toHaveURL(/\/note\//)
+  expect(problems).toEqual([])
+})
+
 test('switched off again, the frames are gone', async ({ page }) => {
-  for (const id of ['toc', 'query', 'kanban']) {
+  for (const id of ['toc', 'query', 'kanban', 'rediscover']) {
     const answer = await page.request.put(`/api/plugins/${id}/enabled`, { data: { enabled: false }, headers: TAB })
     expect(answer.ok()).toBe(true)
   }
