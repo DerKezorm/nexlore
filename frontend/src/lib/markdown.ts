@@ -1,5 +1,8 @@
-/** Markdown to HTML for the reading view, with [[wiki links]] turned into clickable links. */
-import { Marked, type Token } from 'marked'
+/**
+ * Markdown to HTML for the reading view, with Obsidian's own writing: [[wiki links]] and embeds, callouts,
+ * `%%comments%%` and `==highlights==`. Each is a marked extension, so none of it applies inside code.
+ */
+import { Marked, type Token, type TokenizerAndRendererExtension, type Tokens } from 'marked'
 
 import { fileUrl } from '../api/client'
 import i18n, { locale } from '../i18n'
@@ -46,24 +49,203 @@ export type Targets = {
   missing?: (text: string) => string
   /** A relative Markdown link that may not lead anywhere (out of a share): shown as its text. */
   closed?: (href: string) => boolean
+  /**
+   * An embedded note (`![[Note]]`, `![[Note#Heading]]`): in the app a holder the note page fills (`NoteEmbeds`).
+   * Left out (public pages, and inside an embedded note: one level deep), the embed is a link to the note.
+   */
+  embedNote?: (path: string, section: string, text: string) => string
 }
 
 /** Marks a Markdown link that is shown as its text; the mark never survives into the page. */
 const PLAIN = '#nn-plain'
 
-export function appTargets(notePath: string | null): Targets {
+/** `embeds`: whether notes embedded in this one are shown; false inside an embed, so it goes one level deep. */
+export function appTargets(notePath: string | null, embeds = true): Targets {
+  const noteAttributes = (path: string) => `data-note="${escape(path)}"`
   return {
     fileUrl: (path) => fileUrl(path),
     fileHref: fileRoute,
-    noteAttributes: (path) => `data-note="${escape(path)}"`,
+    noteAttributes,
     relative: (href) => (notePath ? relativeTarget(notePath, href) : null),
+    // The link stays inside as long as nothing is filled in (too many embeds, or no page to fill them).
+    embedNote: embeds
+      ? (path, section, text) =>
+          `<span class="nn-embed-note" data-embed="${escape(path)}" data-section="${escape(section)}"><a class="nn-wikilink" ${noteAttributes(path)}>${text}</a></span>`
+      : undefined,
   }
 }
 
-function markdownFor(targets: Targets) {
-  return new Marked({
+/** Where a heading or a block of a note begins and ends, as lines; code blocks are not looked into. */
+export function noteSection(body: string, section: string): string | null {
+  const lines = withoutFrontMatter(body).split(/\r?\n/)
+  const fold = (text: string) => text.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim()
+  let fence: string | null = null
+  const outside = lines.map((line) => {
+    const mark = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1]
+    if (fence === null && mark) {
+      fence = mark
+      return false
+    }
+    if (fence !== null) {
+      if (mark && mark[0] === fence[0] && mark.length >= fence.length && !line.trim().slice(mark.length)) fence = null
+      return false
+    }
+    return true
+  })
+  const heading = (index: number) => (outside[index] ? /^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/.exec(lines[index]) : null)
+  if (section.startsWith('^')) {
+    // A block: the line that ends in `^id`; a paragraph around it, a list item alone. The mark itself is left out.
+    const id = section.slice(1).trim()
+    const end = new RegExp(`(?:^|\\s)\\^${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[ \t]*$`)
+    const at = lines.findIndex((line, index) => outside[index] && end.test(line))
+    if (!id || at < 0) return null
+    // The mark stands at the end of its block: a paragraph reaches up from it.
+    let first = at
+    if (!/^\s*(?:[-*+]|\d+[.)])\s/.test(lines[at])) {
+      while (first > 0 && lines[first - 1].trim() && !heading(first - 1)) first -= 1
+    }
+    return lines.slice(first, at + 1).join('\n').replace(end, '')
+  }
+  // A heading; `Note#Part#Subpart` means the subpart.
+  const wanted = fold(section.split('#').pop() ?? '')
+  const start = lines.findIndex((_, index) => fold(heading(index)?.[2] ?? '\u0000') === wanted)
+  if (!wanted || start < 0) return null
+  const level = heading(start)![1].length
+  let stop = start + 1
+  while (stop < lines.length && !((heading(stop)?.[1].length ?? 7) <= level)) stop += 1
+  return lines.slice(start, stop).join('\n')
+}
+
+/** `Target#Part|Shown` into its three parts; a table cell writes the bar as `\|`. */
+function wikiParts(inner: string): { target: string; section: string; label?: string } {
+  const bar = /\\?\|/.exec(inner)
+  const pathPart = bar ? inner.slice(0, bar.index) : inner
+  const hash = pathPart.indexOf('#')
+  return {
+    target: (hash < 0 ? pathPart : pathPart.slice(0, hash)).trim(),
+    section: hash < 0 ? '' : pathPart.slice(hash + 1).trim(),
+    label: bar ? inner.slice(bar.index + bar[0].length) : undefined,
+  }
+}
+
+/** Obsidian's callout types that share a colour; anything else looks like a note. */
+const CALLOUT_KIND = /^[a-z0-9-]{1,40}$/
+
+function wikiLink(embed: boolean, inner: string, resolve: (target: string) => string | null, targets: Targets): string {
+  const { target, section, label } = wikiParts(inner)
+  const path = target ? resolve(target) : null
+  // An embed's `|300` is its width, not a caption.
+  const width = embed && label && /^\d+(x\d+)?$/.test(label.trim()) ? label.trim().split('x')[0] : ''
+  const text = escape((width || label === undefined ? target : label).trim() || target)
+  if (path && !isNotePath(path)) return embed ? embedded(path, text, width, targets) : fileLink(path, text, targets)
+  if (path && embed && targets.embedNote) return targets.embedNote(path, section, text)
+  return path
+    ? `<a class="nn-wikilink" ${targets.noteAttributes(path)}>${text}</a>`
+    : targets.missing
+      ? targets.missing(text)
+      : `<a class="nn-wikilink nn-wikilink-missing" title="${escape(i18n.t('note.missingLink'))}">${text}</a>`
+}
+
+/** The extensions for Obsidian's own writing. A new set for each note, because wiki links need its `resolve`. */
+function obsidian(resolve: (target: string) => string | null, targets: Targets): TokenizerAndRendererExtension[] {
+  const WIKI = /^(!?)\[\[([^[\]\r\n]+?)\]\]/
+  return [
+    {
+      // `%% … %%` on lines of its own, over as many lines as it takes: nothing of it is shown.
+      name: 'commentBlock',
+      level: 'block',
+      start: (src) => /^ {0,3}%%/m.exec(src)?.index,
+      tokenizer(src) {
+        const found = /^ {0,3}%%(?:(?!%%)[\s\S])*%%[ \t]*(?:\n+|$)/.exec(src)
+        if (found) return { type: 'commentBlock', raw: found[0] }
+      },
+      renderer: () => '',
+    },
+    {
+      // A note embedded on a line of its own is a block, not a paragraph (the note it shows has paragraphs).
+      name: 'embedBlock',
+      level: 'block',
+      tokenizer(src) {
+        const found = /^ {0,3}!\[\[([^[\]\r\n]+?)\]\][ \t]*(?:\n+|$)/.exec(src)
+        if (!found || !targets.embedNote) return
+        const path = resolve(wikiParts(found[1]).target)
+        if (path && isNotePath(path)) return { type: 'embedBlock', raw: found[0], inner: found[1] }
+      },
+      renderer: (token) => `<div class="nn-embed-block">${wikiLink(true, token.inner as string, resolve, targets)}</div>\n`,
+    },
+    {
+      // `> [!type]± Title` and the quote below it; `-` folds it shut, `+` open. Callouts may hold callouts.
+      name: 'callout',
+      level: 'block',
+      start: (src) => /^ {0,3}>/m.exec(src)?.index,
+      tokenizer(src) {
+        const found = /^ {0,3}>[ \t]?\[!([^\]\r\n]+)\]([+-]?)[ \t]*([^\n]*)(?:\n|$)((?: {0,3}>[^\n]*(?:\n|$))*)/.exec(src)
+        if (!found) return
+        const kind = found[1].trim().toLowerCase()
+        const body = found[4].replace(/^ {0,3}> ?/gm, '')
+        return {
+          type: 'callout',
+          raw: found[0],
+          kind: CALLOUT_KIND.test(kind) ? kind : 'note',
+          fold: found[2],
+          title: this.lexer.inlineTokens(found[3].trim() || kind.charAt(0).toUpperCase() + kind.slice(1)),
+          tokens: this.lexer.blockTokens(body),
+        }
+      },
+      renderer(token) {
+        const title = this.parser.parseInline(token.title as Token[])
+        const body = `<div class="nn-callout-content">${this.parser.parse(token.tokens ?? [])}</div>`
+        const kind = token.kind as string
+        const attributes = `class="nn-callout nn-callout-${kind}" data-callout="${kind}"`
+        return token.fold
+          ? `<details ${attributes}${token.fold === '+' ? ' open' : ''}><summary class="nn-callout-title">${title}</summary>${body}</details>\n`
+          : `<div ${attributes}><div class="nn-callout-title">${title}</div>${body}</div>\n`
+      },
+      childTokens: ['title', 'tokens'],
+    },
+    {
+      name: 'comment',
+      level: 'inline',
+      start: (src) => src.match(/%%/)?.index,
+      tokenizer(src) {
+        const found = /^%%[\s\S]*?%%/.exec(src)
+        if (found) return { type: 'comment', raw: found[0] }
+      },
+      renderer: () => '',
+    },
+    {
+      name: 'wiki',
+      level: 'inline',
+      start: (src) => src.match(/!?\[\[/)?.index,
+      tokenizer(src) {
+        const found = WIKI.exec(src)
+        if (found) return { type: 'wiki', raw: found[0], embed: found[1] === '!', inner: found[2] }
+      },
+      renderer: (token) => wikiLink(token.embed as boolean, token.inner as string, resolve, targets),
+    },
+    {
+      name: 'highlight',
+      level: 'inline',
+      start: (src) => src.match(/==/)?.index,
+      tokenizer(src) {
+        const found = /^==(?=[^\s=])([\s\S]*?[^\s=])==(?!=)/.exec(src)
+        if (found) return { type: 'highlight', raw: found[0], tokens: this.lexer.inlineTokens(found[1]) }
+      },
+      renderer(token) {
+        return `<mark>${this.parser.parseInline(token.tokens ?? [])}</mark>`
+      },
+    },
+  ]
+}
+
+function markdownFor(resolve: (target: string) => string | null, targets: Targets) {
+  const marked = new Marked({
     async: false,
     gfm: true,
+    // Raw HTML in a note is shown as text, not executed: notes can come from other people and from an AI.
+    renderer: {
+      html: ({ text }: Tokens.HTML | Tokens.Tag) => escape(text),
+    },
     walkTokens(token: Token) {
       if (token.type !== 'link' && token.type !== 'image') return
       if (!safeUrl(token.href)) {
@@ -82,6 +264,8 @@ function markdownFor(targets: Targets) {
       else if (targets.noteHref) token.href = targets.noteHref(target)
     },
   })
+  marked.use({ extensions: obsidian(resolve, targets) })
+  return marked
 }
 
 /** The front matter at the top of a note: shown as properties, not as text. */
@@ -120,21 +304,7 @@ export function renderMarkdown(
   notePath: string | null = null,
   targets: Targets = appTargets(notePath),
 ): string {
-  // Raw HTML in a note is shown as text, not executed: notes can come from other people and from an AI.
-  const safe = withoutFrontMatter(body).replace(/</g, '&lt;')
-  const linked = safe.replace(/(!?)\[\[([^\]|#]*)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g, (_, embed: string, target: string, label?: string) => {
-    const path = target.trim() ? resolve(target.trim()) : null
-    // An embed's `|300` is its width, not a caption.
-    const width = embed && label && /^\d+(x\d+)?$/.test(label.trim()) ? label.trim().split('x')[0] : ''
-    const text = escape((width ? target : (label ?? target)).trim())
-    if (path && !isNotePath(path)) return embed ? embedded(path, text, width, targets) : fileLink(path, text, targets)
-    return path
-      ? `<a class="nn-wikilink" ${targets.noteAttributes(path)}>${text}</a>`
-      : targets.missing
-        ? targets.missing(text)
-        : `<a class="nn-wikilink nn-wikilink-missing" title="${escape(i18n.t('note.missingLink'))}">${text}</a>`
-  })
-  const html = markdownFor(targets).parse(linked) as string
+  const html = markdownFor(resolve, targets).parse(withoutFrontMatter(body)) as string
   return html.replace(/<a href="#nn-plain"[^>]*>([\s\S]*?)<\/a>/g, '$1')
 }
 

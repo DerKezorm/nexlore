@@ -12,11 +12,9 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from ..db import SessionLocal
-from ..deps import OperatorAccount, reauth_failed, reauth_guard, reauth_succeeded
+from ..deps import OperatorAccount, confirm_operator
 from ..errors import error
-from ..models import SIGN_IN_PASSWORD
-from ..models import Account as AccountRow
-from ..services import accounts, backups
+from ..services import backups
 
 logger = logging.getLogger("nexlore.backups")
 
@@ -72,14 +70,7 @@ def download(name: BackupName, body: DownloadIn, request: Request, operator: Ope
     """The archive holds everything: the database, every note, ``secret.key``. A stolen session alone must not be
     enough to carry it away, so the password is asked again and counted like a sign-in."""
     with SessionLocal() as db:
-        row = db.get(AccountRow, operator.id)
-        assert row is not None
-        if row.sign_in == SIGN_IN_PASSWORD:
-            reauth_guard(request, row)
-            if not accounts.check_password(row, body.password):
-                reauth_failed(request, db, row)
-                raise error("wrong_password", "The current password is wrong.", 401)
-            reauth_succeeded(request, db, row)
+        confirm_operator(request, db, operator, body.password)
     try:
         path = backups.path_of(name)
     except backups.BackupError as exc:

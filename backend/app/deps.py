@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from .config import get_settings
 from .db import SessionLocal, get_db
 from .errors import detail, error
-from .models import OPERATOR
+from .models import OPERATOR, SIGN_IN_PASSWORD
 from .models import Account as AccountRow
 from .security import SESSION_COOKIE, brake, session_account
 from .services import accounts, logs, paths, rights, totp
@@ -121,6 +121,21 @@ def reauth_failed(request: Request, db: Session, account: AccountRow) -> None:
 def reauth_succeeded(request: Request, db: Session, account: AccountRow) -> None:
     brake.succeeded(_reauth_key(request))
     accounts.note_success(db, account)
+
+
+def confirm_operator(request: Request, db: Session, operator: AccountRow, password: str) -> None:
+    """The operator's password once more, before an act a stolen session must not be enough for: carrying a backup
+    away, giving another account a password, taking its second factor, changing a role, deleting an account. An
+    operator who signs in through the provider has no password here and is not asked."""
+    row = db.get(AccountRow, operator.id)
+    assert row is not None
+    if row.sign_in != SIGN_IN_PASSWORD:
+        return
+    reauth_guard(request, row)
+    if not accounts.check_password(row, password):
+        reauth_failed(request, db, row)
+        raise error("wrong_password", "The current password is wrong.", 401)
+    reauth_succeeded(request, db, row)
 
 
 # --- Rights in a space -----------------------------------------------------------------------------------------------

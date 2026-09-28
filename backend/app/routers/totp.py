@@ -12,13 +12,22 @@ from typing import Annotated, Any
 from fastapi import APIRouter, HTTPException, Path, Request, Response
 from pydantic import BaseModel, Field
 
-from ..deps import Account, DbSession, OperatorAccount, client_ip, reauth_failed, reauth_guard, reauth_succeeded
+from ..deps import (
+    Account,
+    DbSession,
+    OperatorAccount,
+    client_ip,
+    confirm_operator,
+    reauth_failed,
+    reauth_guard,
+    reauth_succeeded,
+)
 from ..errors import detail, error
 from ..models import SIGN_IN_PASSWORD
 from ..models import Account as AccountRow
 from ..security import brake, end_all_sessions
 from ..services import accounts, totp
-from .auth import PENDING_COOKIE, account_view, sign_in
+from .auth import PENDING_COOKIE, OperatorConfirmIn, account_view, sign_in
 
 logger = logging.getLogger("nexlore.auth")
 
@@ -129,7 +138,14 @@ def _reset(db: DbSession, row: AccountRow) -> None:
 
 
 @router.post("/accounts/{account_id}/totp/reset", summary="Operator: take the second factor of a locked-out account")
-def operator_reset(account_id: Annotated[int, Path(ge=1)], operator: OperatorAccount, db: DbSession) -> dict[str, Any]:
+def operator_reset(
+    account_id: Annotated[int, Path(ge=1)],
+    payload: OperatorConfirmIn,
+    request: Request,
+    operator: OperatorAccount,
+    db: DbSession,
+) -> dict[str, Any]:
+    confirm_operator(request, db, operator, payload.current_password)
     if account_id == operator.id:
         raise error("use_disable", "Turn your own second factor off on your account page, with your password.", 409)
     row = db.get(AccountRow, account_id)

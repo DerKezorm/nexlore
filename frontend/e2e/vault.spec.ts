@@ -138,6 +138,17 @@ test('renaming a note carries the links to it along', async ({ page }) => {
   expect(onDisk('Work/Points at rename.md')).toBe('See [[Renamed note]] and [it](Renamed%20note.md).\n')
 })
 
+test('Escape closes the rename bar and leaves the name as it was', async ({ page }) => {
+  await page.goto('/note/Zoo/Embedded.md')
+  await page.getByRole('button', { name: 'Rename', exact: true }).first().click()
+  const field = page.getByLabel('New name')
+  await field.fill('Something else')
+  await field.press('Escape')
+  await expect(field).toHaveCount(0)
+  await expect(page).toHaveURL(/\/note\/Zoo\/Embedded\.md$/)
+  expect(fs.existsSync(path.join(DATA, 'vault', 'Zoo', 'Embedded.md'))).toBe(true)
+})
+
 test('a deleted note waits in the trash and comes back', async ({ page }) => {
   await page.goto('/note/Work/Delete me.md')
   // exact: the sidebar also has a button "Delete me" once the vault has loaded, and that may be before or after.
@@ -148,9 +159,16 @@ test('a deleted note waits in the trash and comes back', async ({ page }) => {
   await question.getByRole('button', { name: 'Cancel' }).click()
   await expect(question).toBeHidden()
   expect(fs.existsSync(path.join(DATA, 'vault', 'Work', 'Delete me.md'))).toBe(true)
+  // Leaving the deleted note, nothing asks after it any more (its copies, drafts, local graph): no 404.
+  const gone: string[] = []
+  page.on('response', (response) => {
+    if (response.status() === 404 && response.url().includes('/api/')) gone.push(response.url())
+  })
   await page.getByRole('button', { name: 'Delete', exact: true }).click()
   await question.getByRole('button', { name: 'Move to the trash' }).click()
   await expect(page).toHaveURL(/\/$/)
+  await page.waitForLoadState('networkidle')
+  expect(gone).toEqual([])
   expect(fs.existsSync(path.join(DATA, 'vault', 'Work', 'Delete me.md'))).toBe(false)
   await page.goto('/files')
   const entry = page.getByRole('listitem').filter({ hasText: 'Work/Delete me.md' })

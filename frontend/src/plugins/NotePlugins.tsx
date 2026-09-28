@@ -58,8 +58,7 @@ export function PluginBlocks({ plugins, article, html, note, onOpen, onWritten }
           holder.className = 'nn-plugin-block my-3 rounded-xl border border-ink-700 bg-ink-900/60 px-3 py-2'
           holder.dataset.plugin = plugin.id
           pre.replaceWith(holder)
-          // The note's "<" was escaped before Markdown ran; the block's text is what the note says.
-          found.push({ holder, plugin, source: (code.textContent ?? '').replaceAll('&lt;', '<'), key: `${plugin.id}-${index}` })
+          found.push({ holder, plugin, source: code.textContent ?? '', key: `${plugin.id}-${index}` })
         })
       }
     }

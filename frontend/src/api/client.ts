@@ -48,6 +48,8 @@ type Options = {
   body?: unknown
   form?: FormData
   keepalive?: boolean
+  /** The answer is a file (a backup archive), not JSON. */
+  blob?: boolean
 }
 
 /** How often a read or a save is tried again when the server says it is busy (503 `busy`), and how long apart. */
@@ -87,6 +89,7 @@ async function once<T>(path: string, options: Options): Promise<T> {
     keepalive: options.keepalive,
   })
   if (response.status === 204) return undefined as T
+  if (options.blob && response.ok) return (await response.blob()) as T
   const data = await response.json().catch(() => null)
   if (!response.ok) {
     const detail = data?.detail
@@ -418,11 +421,16 @@ export const adminApi = {
   fileSettings: () => api<FileSettings>('/api/settings/files'),
   saveFileSettings: (values: FileSettings) => api<FileSettings>('/api/settings/files', { method: 'PUT', body: values }),
   accounts: () => api<AdminAccount[]>('/api/accounts'),
-  deleteAccount: (id: number) => api<void>(`/api/accounts/${id}`, { method: 'DELETE' }),
+  // The four acts on another account carry the operator's own password once more (empty for a provider account).
+  deleteAccount: (id: number, current_password: string) =>
+    api<void>(`/api/accounts/${id}`, { method: 'DELETE', body: { current_password } }),
   signOutAccount: (id: number) => api<void>(`/api/accounts/${id}/sign-out`, { method: 'POST' }),
-  resetSecondFactor: (id: number) => api<Account>(`/api/accounts/${id}/totp/reset`, { method: 'POST' }),
-  setRole: (id: number, role: 'operator' | 'member') => api<Account>(`/api/accounts/${id}/role`, { method: 'PUT', body: { role } }),
-  setPassword: (id: number, password: string) => api<void>(`/api/accounts/${id}/password`, { method: 'PUT', body: { password } }),
+  resetSecondFactor: (id: number, current_password: string) =>
+    api<Account>(`/api/accounts/${id}/totp/reset`, { method: 'POST', body: { current_password } }),
+  setRole: (id: number, role: 'operator' | 'member', current_password: string) =>
+    api<Account>(`/api/accounts/${id}/role`, { method: 'PUT', body: { role, current_password } }),
+  setPassword: (id: number, password: string, current_password: string) =>
+    api<void>(`/api/accounts/${id}/password`, { method: 'PUT', body: { password, current_password } }),
   spaces: () => api<AdminSpace[]>('/api/admin/spaces'),
   shares: () => api<ShareInfo[]>('/api/admin/shares'),
   oidc: () => api<OidcConfig>('/api/oidc/config'),
@@ -434,6 +442,9 @@ export const adminApi = {
   checkBackup: (name: string) => api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/check`, { method: 'POST' }),
   restoreBackup: (name: string) => api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/restore`, { method: 'POST' }),
   deleteBackup: (name: string) => api<void>(`/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+  /** The archive itself; the password is asked again (empty for an account that signs in through the provider). */
+  downloadBackup: (name: string, password: string) =>
+    api<Blob>(`/api/backups/${encodeURIComponent(name)}/download`, { method: 'POST', body: { password }, blob: true }),
   /** The JSON file itself as the body. */
   uploadLanguage: async (code: string, file: Blob): Promise<AddedLanguage> => {
     const response = await fetch(`/api/locales/${encodeURIComponent(code)}`, {

@@ -74,6 +74,11 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   // Plugins (plugins.spec.ts): a board, a query, headings for the contents.
   'Zoo/Board.md': '---\nkanban-plugin: basic\n---\n\n## Todo\n\n- [ ] Dig the bed\n\n## Done\n\n- [x] Buy seeds\n',
   'Zoo/Sown.md': '# Sown\n\n## Early\n\nPeas. #sown\n\n## Late\n\n```query\ntag: sown\nview: table\n```\n',
+  // The reading view (reading.spec.ts): Obsidian's own writing, and a note embedded in another.
+  'Zoo/Reading.md':
+    '# Reading\n\n> [!tip]- Folded tip\n> Hidden until opened.\n\nA ==marked== word and %%a secret remark%% here.\n\n' +
+    '| Link | Note |\n|---|---|\n| [[Embedded\\|the embedded one]] | cell |\n\n![[Embedded#Part two]]\n',
+  'Zoo/Embedded.md': '# Embedded\n\n## Part one\n\nNot in the embed.\n\n## Part two\n\nIn the embed, with a link to [[Across target]].\n\n![[Reading]]\n',
   'Switch/From.md': '# From\n\nStart.\n',
   'Switch/To.md': '# To\n\nOther note.\n',
   // The editor (editor.spec.ts): Obsidian's way of writing, kept byte for byte where nothing was changed.

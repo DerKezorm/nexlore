@@ -17,7 +17,7 @@ from app.db import SessionLocal
 from app.main import app
 from app.models import OPERATOR, Account, Invite, Version, utcnow
 
-from .conftest import make_account, sign_in
+from .conftest import PASSWORD, make_account, sign_in
 
 SECRET = "classified pineapple"
 
@@ -274,7 +274,8 @@ def test_a_new_space_belongs_to_whoever_makes_it(world: World) -> None:
 
 def test_deleting_the_only_member_hands_the_space_to_the_operator(world: World) -> None:
     ids = {row["name"]: row["id"] for row in world.operator.get("/api/accounts").json()}
-    assert world.operator.delete(f"/api/accounts/{ids['anna']}").status_code == 204
+    gone = world.operator.request("DELETE", f"/api/accounts/{ids['anna']}", json={"current_password": PASSWORD})
+    assert gone.status_code == 204
     assert "Private" in names(world.operator)
 
 

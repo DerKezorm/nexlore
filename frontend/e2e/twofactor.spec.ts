@@ -116,10 +116,29 @@ test('the operator requires it only with one of their own, and resets it for an 
   await expect(row).toContainText('second factor on')
   await row.getByRole('button', { name: 'Reset second factor' }).click()
   const dialog = page.getByRole('dialog', { name: 'Reset the second factor of factor?' })
+  // Only with the operator's own password once more: a session alone is not enough.
+  await dialog.getByRole('button', { name: 'Reset second factor' }).click()
+  await expect(page.getByText('The password is wrong.')).toBeVisible()
+  await expect(row).toContainText('second factor on')
+  await dialog.getByLabel('Your own password').fill(OPERATOR.password)
   await dialog.getByRole('button', { name: 'Reset second factor' }).click()
   await expect(page.getByText('Second factor reset. The account was signed out everywhere.')).toBeVisible()
   await expect(row).not.toContainText('second factor on')
-  expect(problems).toEqual([])
+
+  // A role, the same way; the field starts empty each time.
+  await row.getByRole('button', { name: 'Make operator' }).click()
+  const promote = page.getByRole('dialog', { name: 'Make factor an operator?' })
+  await expect(promote.getByLabel('Your own password')).toHaveValue('')
+  await promote.getByLabel('Your own password').fill(OPERATOR.password)
+  await promote.getByRole('button', { name: 'Make operator' }).click()
+  await expect(row).toContainText('Operator')
+  await row.getByRole('button', { name: 'Make member' }).click()
+  const demote = page.getByRole('dialog', { name: 'Make factor a member?' })
+  await demote.getByLabel('Your own password').fill(OPERATOR.password)
+  await demote.getByRole('button', { name: 'Make member' }).click()
+  await expect(row).not.toContainText('Operator')
+  // The wrong password above counted like a failed sign-in, and nothing more.
+  expect(problems.filter((problem) => !problem.includes('401'))).toEqual([])
 })
 
 test('an account that must set one up sees nothing else until it has', async ({ page, browser, baseURL }) => {

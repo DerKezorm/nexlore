@@ -179,19 +179,19 @@ def test_the_operator_manages_accounts(client: TestClient, operator: Account) ->
     listed = client.get("/api/accounts").json()
     assert [row["name"] for row in listed] == ["tester", "anna"]
     assert "password_hash" not in listed[0]
-    assert client.put(f"/api/accounts/{operator.id}/role", json={"role": "member"}).status_code == 409
-    assert client.delete(f"/api/accounts/{operator.id}").status_code == 409
+    assert client.put(f"/api/accounts/{operator.id}/role", json={"role": "member", "current_password": PASSWORD}).status_code == 409
+    assert client.request("DELETE", f"/api/accounts/{operator.id}", json={"current_password": PASSWORD}).status_code == 409
     anna_client = TestClient(client.app, headers={"X-Nexlore-Client": "tab-anna00000"})
     sign_in(anna_client, anna)
     assert anna_client.get("/api/accounts").status_code == 403
-    assert client.put(f"/api/accounts/{anna.id}/password", json={"password": GOOD}).status_code == 204
+    assert client.put(f"/api/accounts/{anna.id}/password", json={"password": GOOD, "current_password": PASSWORD}).status_code == 204
     # A new password from the operator ends the account's sessions.
     assert anna_client.get("/api/auth/me").status_code == 401
     sign_in(anna_client, anna)
     assert client.post(f"/api/accounts/{anna.id}/sign-out").status_code == 204
     assert anna_client.get("/api/auth/me").status_code == 401
-    assert client.put(f"/api/accounts/{anna.id}/role", json={"role": "operator"}).json()["role"] == OPERATOR
-    assert client.delete(f"/api/accounts/{anna.id}").status_code == 204
+    assert client.put(f"/api/accounts/{anna.id}/role", json={"role": "operator", "current_password": PASSWORD}).json()["role"] == OPERATOR
+    assert client.request("DELETE", f"/api/accounts/{anna.id}", json={"current_password": PASSWORD}).status_code == 204
     assert [row["name"] for row in client.get("/api/accounts").json()] == ["tester"]
 
 

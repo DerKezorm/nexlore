@@ -221,3 +221,72 @@ def test_mcp_marks_hits_so_that_bold_text_stays_readable_and_refuses_an_unknown_
         ping = program.post("/api/mcp", json={"jsonrpc": "2.0", "id": 2, "method": "ping"},
                             headers=headers | {"MCP-Protocol-Version": version})
         assert ping.status_code == status, version
+
+
+# --- Acts on another account ask for the operator's password once more (design answer, 28.09.2026) ------------------
+
+ACTS = {
+    "password": ("PUT", "/api/accounts/{id}/password", {"password": "a brand new password"}),
+    "role": ("PUT", "/api/accounts/{id}/role", {"role": "operator"}),
+    "second factor": ("POST", "/api/accounts/{id}/totp/reset", {}),
+    "delete": ("DELETE", "/api/accounts/{id}", {}),
+}
+
+
+def _anna_as_she_was() -> tuple[int, tuple[object, ...]]:
+    anna = make_account("anna")
+    with SessionLocal() as db:
+        row = db.get(Account, anna.id)
+        assert row is not None
+        row.totp_secret_enc = "sealed seed"
+        db.commit()
+    return anna.id, _state_of(anna.id)
+
+
+def _state_of(account_id: int) -> tuple[object, ...]:
+    with SessionLocal() as db:
+        row = db.get(Account, account_id)
+        if row is None:
+            return ("gone",)
+        return (row.role, row.password_hash, row.totp_secret_enc)
+
+
+def _failures(account_id: int) -> int:
+    with SessionLocal() as db:
+        row = db.get(Account, account_id)
+        assert row is not None
+        return row.failed_logins
+
+
+@pytest.mark.parametrize("act", ACTS)
+def test_the_operator_acts_on_another_account_only_with_the_password_once_more(
+    client: TestClient, operator: Account, act: str
+) -> None:
+    """A stolen operator session gave another account a new password (and so its private spaces) in one request."""
+    method, path, body = ACTS[act]
+    anna_id, before = _anna_as_she_was()
+    url = path.format(id=anna_id)
+    for given in ({}, {"current_password": ""}, {"current_password": "not the password"}):
+        refused = client.request(method, url, json={**body, **given})
+        assert refused.status_code == 401 and refused.json()["detail"]["code"] == "wrong_password"
+        assert _state_of(anna_id) == before
+    # Counted like a failed sign-in, and still signed in.
+    assert _failures(operator.id) == 3
+    assert client.get("/api/auth/me").status_code == 200
+    done = client.request(method, url, json={**body, "current_password": PASSWORD})
+    assert done.status_code in (200, 204)
+    assert _state_of(anna_id) != before
+    assert _failures(operator.id) == 0
+
+
+def test_an_operator_from_the_provider_is_not_asked_for_a_password_it_has_not_got(
+    client: TestClient, operator: Account
+) -> None:
+    with SessionLocal() as db:
+        row = db.get(Account, operator.id)
+        assert row is not None
+        row.sign_in = "oidc"
+        db.commit()
+    anna_id, before = _anna_as_she_was()
+    assert client.put(f"/api/accounts/{anna_id}/role", json={"role": "operator"}).status_code == 200
+    assert _state_of(anna_id) != before

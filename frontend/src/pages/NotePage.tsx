@@ -30,6 +30,7 @@ import { versionSource } from '../lib/versions'
 import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
 import { LocalGraph } from '../components/LocalGraph'
+import { NoteEmbeds } from '../components/NoteEmbeds'
 import { ShareDialog } from '../components/ShareDialog'
 import { folderColor } from '../graph/palette'
 import { PluginFrame } from '../plugins/host'
@@ -81,7 +82,12 @@ export function NotePage() {
   }, [links, linkIdx])
   // The note's conflict copies, or, for a copy, its note (the server looks next to it, the folder is not read).
   const [siblings, setSiblings] = useState<string[]>([])
+  // A note just deleted: the page stays for a moment while the router moves on, and the spaces loaded again in that
+  // moment must not make it ask after the note (a 404 in the console). Set before the delete, in the click.
+  const [gone, setGone] = useState<string | null>(null)
+  const leaving = gone === path
   useEffect(() => {
+    if (leaving) return
     let live = true
     vaultApi.copies(path).then(
       (found) => live && setSiblings(found.paths),
@@ -90,7 +96,7 @@ export function NotePage() {
     return () => {
       live = false
     }
-  }, [path, generation])
+  }, [path, generation, leaving])
   const [problem, setProblem] = useState<string | null>(null)
   // Editing belongs to one note: moving on to another ends it in the same render, so nothing of the old note's
   // editor (its text, its lock, its save) can ever run against the new path.
@@ -329,7 +335,7 @@ export function NotePage() {
 
   // Changes made elsewhere: asked for every few seconds while the page is visible.
   useEffect(() => {
-    if (!note) return
+    if (!note || leaving) return
     const tick = async () => {
       if (document.visibilityState !== 'visible' || saving.current) return
       const state = await vaultApi.noteState(path).catch(() => null)
@@ -352,7 +358,7 @@ export function NotePage() {
     }
     const every = window.setInterval(() => void tick(), POLL)
     return () => window.clearInterval(every)
-  }, [path, note, load])
+  }, [path, note, load, leaving])
 
   const onChange = () => {
     edits.current += 1
@@ -454,11 +460,13 @@ export function NotePage() {
   const remove = async () => {
     if (!note) return
     setDeleting(false)
+    setGone(note.path)
     try {
       await vaultApi.remove(note.path, withOwn ? own : [])
       await reload()
       navigate('/')
     } catch (error) {
+      setGone(null)
       setProblem(error instanceof ApiError ? error.code : 'internal_error')
     }
   }
@@ -479,6 +487,7 @@ export function NotePage() {
   }
 
   useEffect(() => {
+    if (leaving) return
     let live = true
     draftsApi.list(path).then(
       (found) => live && setDrafts(found),
@@ -487,7 +496,7 @@ export function NotePage() {
     return () => {
       live = false
     }
-  }, [path, generation])
+  }, [path, generation, leaving])
 
   const draftDone = async (result: { path: string | null; conflict: string | null }) => {
     setDraftShown(null)
@@ -632,7 +641,15 @@ export function NotePage() {
               }}
             >
               <label htmlFor="rename" className="text-mist-400">{t('note.renameLabel')}</label>
-              <input id="rename" autoFocus value={renaming} onChange={(event) => setRenaming(event.target.value)} className="h-8 min-w-0 flex-1 rounded-lg border border-ink-700 bg-ink-900 px-2 outline-none focus:border-accent-500" />
+              <input
+                id="rename"
+                autoFocus
+                value={renaming}
+                onChange={(event) => setRenaming(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') setRenaming(null)
+                }}
+                className="h-8 min-w-0 flex-1 rounded-lg border border-ink-700 bg-ink-900 px-2 outline-none focus:border-accent-500" />
               <button type="submit" className="rounded-full bg-accent-500 px-3 py-1 font-semibold text-on-accent">{t('note.renameDo')}</button>
               <button type="button" onClick={() => setRenaming(null)} className="rounded-full px-3 py-1 text-mist-400 hover:text-mist-100">{t('common.cancel')}</button>
               <p className="w-full text-xs text-mist-500">{t('note.renameHint')}</p>
@@ -730,12 +747,13 @@ export function NotePage() {
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
                 <PluginBlocks plugins={plugins} article={article} html={html} note={note} onOpen={open} onWritten={pluginWrote} />
+                <NoteEmbeds article={article} html={html} onOpen={open} />
                 </>
               )}
               {!wide && (
                 <div className="mt-10 space-y-6">
                   <PluginPanels plugins={plugins} note={note} onOpen={open} onWritten={pluginWrote} onReveal={reveal} />
-                  <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />
+                  {!leaving && <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />}
                 </div>
               )}
             </div>
@@ -746,7 +764,7 @@ export function NotePage() {
         <aside className="nn-scroll hidden w-80 shrink-0 overflow-y-auto border-l border-ink-700/80 px-4 py-4 xl:block">
           {wide && (
             <div className="mb-5">
-              <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />
+              {!leaving && <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />}
             </div>
           )}
           {note && (

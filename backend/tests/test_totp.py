@@ -342,10 +342,10 @@ def test_the_operator_resets_a_member_but_not_the_other_way_round(
     anna_id = anna.get("/api/auth/me").json()["id"]
     assert anna.post(f"/api/accounts/{operator.id}/totp/reset").status_code == 403
     # The operator turns their own off on the account page, not here.
-    assert client.post(f"/api/accounts/{operator.id}/totp/reset").status_code == 409
-    reset = client.post(f"/api/accounts/{anna_id}/totp/reset")
+    assert client.post(f"/api/accounts/{operator.id}/totp/reset", json={"current_password": PASSWORD}).status_code == 409
+    reset = client.post(f"/api/accounts/{anna_id}/totp/reset", json={"current_password": PASSWORD})
     assert reset.status_code == 200 and reset.json()["two_factor"] is False
-    assert client.post(f"/api/accounts/{anna_id}/totp/reset").status_code == 409
+    assert client.post(f"/api/accounts/{anna_id}/totp/reset", json={"current_password": PASSWORD}).status_code == 409
     # Every session of the account ended with it.
     assert anna.get("/api/auth/me").status_code == 401
     listed = {row["name"]: row["two_factor"] for row in client.get("/api/accounts").json()}

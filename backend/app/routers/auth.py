@@ -14,7 +14,16 @@ from sqlalchemy import select
 
 from .. import __version__
 from ..config import get_settings
-from ..deps import Account, DbSession, OperatorAccount, client_ip, reauth_failed, reauth_guard, reauth_succeeded
+from ..deps import (
+    Account,
+    DbSession,
+    OperatorAccount,
+    client_ip,
+    confirm_operator,
+    reauth_failed,
+    reauth_guard,
+    reauth_succeeded,
+)
 from ..errors import detail, error
 from ..models import OPERATOR, ROLES, SIGN_IN_PASSWORD, Membership
 from ..models import Account as AccountRow
@@ -253,10 +262,17 @@ def set_language(payload: LanguageIn, account: Account, db: DbSession) -> dict[s
 
 class RoleIn(BaseModel):
     role: str = Field(max_length=16)
+    #: The operator's own password once more (see ``confirm_operator``); empty for an account from a provider.
+    current_password: str = Field(default="", max_length=200)
 
 
 class PasswordSetIn(BaseModel):
     password: str = Field(max_length=200)
+    current_password: str = Field(default="", max_length=200)
+
+
+class OperatorConfirmIn(BaseModel):
+    current_password: str = Field(default="", max_length=200)
 
 
 def _row(db: DbSession, account_id: int) -> AccountRow:
@@ -278,9 +294,12 @@ def list_accounts(_operator: OperatorAccount, db: DbSession) -> list[dict[str, A
 
 
 @router.delete("/accounts/{account_id}", status_code=204, summary="Delete an account")
-def delete_account(account_id: int, operator: OperatorAccount, db: DbSession) -> None:
+def delete_account(
+    account_id: int, payload: OperatorConfirmIn, request: Request, operator: OperatorAccount, db: DbSession,
+) -> None:
     """Its rights go with it; its notes stay where they are. A space it was the only member of has no members any
     more and so belongs to the operator (who runs the disk it lies on anyway)."""
+    confirm_operator(request, db, operator, payload.current_password)
     if account_id == operator.id:
         raise error("cannot_delete_self", "You cannot delete your own account.", 409)
     row = _row(db, account_id)
@@ -299,7 +318,10 @@ def sign_out_account(account_id: int, operator: OperatorAccount, db: DbSession) 
 
 
 @router.put("/accounts/{account_id}/role", summary="Make an account operator or member")
-def set_role(account_id: int, payload: RoleIn, operator: OperatorAccount, db: DbSession) -> dict[str, Any]:
+def set_role(
+    account_id: int, payload: RoleIn, request: Request, operator: OperatorAccount, db: DbSession,
+) -> dict[str, Any]:
+    confirm_operator(request, db, operator, payload.current_password)
     if payload.role not in ROLES:
         raise error("invalid_role", "Unknown role.", 422)
     row = _row(db, account_id)
@@ -312,7 +334,10 @@ def set_role(account_id: int, payload: RoleIn, operator: OperatorAccount, db: Db
 
 
 @router.put("/accounts/{account_id}/password", status_code=204, summary="Give an account a new password")
-def set_password(account_id: int, payload: PasswordSetIn, operator: OperatorAccount, db: DbSession) -> None:
+def set_password(
+    account_id: int, payload: PasswordSetIn, request: Request, operator: OperatorAccount, db: DbSession,
+) -> None:
+    confirm_operator(request, db, operator, payload.current_password)
     check_password(payload.password)
     row = _row(db, account_id)
     accounts.set_password(db, row, payload.password)

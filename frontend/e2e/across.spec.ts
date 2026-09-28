@@ -46,7 +46,10 @@ test('a missing link into another space makes the note there', async ({ page }) 
   await page.goto('/note/Zone/Across.md?edit=1')
   await expect(page.locator('.ProseMirror')).toBeVisible()
   await page.locator('.ProseMirror .nx-wiki', { hasText: 'Zoo/Across new' }).click()
-  await expect(page).toHaveURL(/\/note\/Zoo\/Across%20new\.md\?edit=1$/)
+  // Made there and open for writing; the page drops `?edit=1` as soon as the editor is open, so the address may
+  // already be without it when it is looked at.
+  await expect(page).toHaveURL(/\/note\/Zoo\/Across%20new\.md(\?edit=1)?$/)
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveAttribute('aria-pressed', 'true')
   expect(fs.existsSync(path.join(DATA, 'vault', 'Zone', 'Across new.md'))).toBe(false)
   await page.goto('/note/Zone/Across.md')
   await expect(page.locator('article .nn-wikilink-missing')).toHaveCount(0)

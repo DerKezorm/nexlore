@@ -1,6 +1,6 @@
 /** The reading view never turns a note into code that runs. */
 
-import { renderMarkdown, safeUrl, withoutFrontMatter } from './markdown'
+import { appTargets, noteSection, renderMarkdown, safeUrl, withoutFrontMatter } from './markdown'
 
 const nowhere = () => null
 
@@ -61,6 +61,97 @@ describe('the reading view', () => {
     expect(html).toContain('<audio class="nn-embed" src="/api/file?path=Home%2FA%2Fsong.mp3" controls')
     expect(html).toContain('data-file="Home/A/doc.pdf" href="/file/Home/A/doc.pdf">doc.pdf</a>')
     expect(html).toContain('data-file="Home/A/doc.pdf" href="/file/Home/A/doc.pdf">the doc</a>')
+  })
+
+  it('shows a less-than sign in code as it is written, not as an entity', () => {
+    const html = renderMarkdown('```\nif a < b && c\n```\n\nand `x<y`', nowhere)
+    expect(html).toContain('if a &lt; b &amp;&amp; c')
+    expect(html).toContain('<code>x&lt;y</code>')
+    expect(html).not.toContain('&amp;lt;')
+  })
+
+  it('keeps links and pictures in callouts and highlights to the same rules', () => {
+    const html = renderMarkdown('> [!note] [t](javascript:alert(1))\n> [b](javascript:alert(2)) ![p](data:text/html,x)\n\n==[h](javascript:alert(3))==', nowhere)
+    expect(html.toLowerCase()).not.toMatch(/(?:href|src)="(?:javascript|data):/)
+    expect(renderMarkdown('> [!note] <img src=x onerror=alert(1)>\n> <script>alert(1)</script>', nowhere)).not.toMatch(/<img|<script/)
+  })
+})
+
+describe("Obsidian's own writing in the reading view", () => {
+  const plan = (target: string) => (target === 'Plan' ? 'S/Plan.md' : null)
+
+  it('finds the target of a wiki link in a table, where the bar is written \\|', () => {
+    const html = renderMarkdown('| a | b |\n|---|---|\n| [[Plan\\|the plan]] | x |\n\n[[Plan\\|outside]]', plan)
+    expect(html).toContain('<td><a class="nn-wikilink" data-note="S/Plan.md">the plan</a></td>')
+    expect(html).toContain('data-note="S/Plan.md">outside</a>')
+    expect(html).not.toContain('missing')
+  })
+
+  it('leaves wiki links in code as they are written', () => {
+    const html = renderMarkdown('`[[Plan]]`\n\n```\n[[Plan]]\n```', plan)
+    expect(html).not.toContain('data-note')
+    expect(html.match(/\[\[Plan\]\]/g)).toHaveLength(2)
+  })
+
+  it('hides %%comments%% within a line and over lines of their own', () => {
+    const html = renderMarkdown('seen %%hidden one%% seen too\n\n%%\nhidden two\n\nhidden three\n%%\n\nlast %%a%% and %%b%%', nowhere)
+    expect(html).not.toMatch(/hidden|%%/)
+    expect(html).toContain('seen  seen too')
+    expect(html).toContain('last  and')
+    // A comment that ends before the line does is not a block: the rest of the line stays.
+    expect(renderMarkdown('%%a%% visible %%b%%', nowhere)).toContain('visible')
+    expect(renderMarkdown('`%%code%%`', nowhere)).toContain('%%code%%')
+  })
+
+  it('marks ==highlights==, with Markdown inside', () => {
+    expect(renderMarkdown('a ==very **important**== b', nowhere)).toContain('<mark>very <strong>important</strong></mark>')
+    expect(renderMarkdown('a == b and c == d', nowhere)).not.toContain('<mark>')
+    expect(renderMarkdown('`==x==`', nowhere)).not.toContain('<mark>')
+  })
+
+  it('shows callouts with their kind and title, folded shut with -, open with +, and nested', () => {
+    const html = renderMarkdown('> [!Warning] Mind **this**\n> First line\n> - a point\n\nafter', nowhere)
+    expect(html).toContain('<div class="nn-callout nn-callout-warning" data-callout="warning"><div class="nn-callout-title">Mind <strong>this</strong></div>')
+    expect(html).toContain('<p>First line</p>')
+    expect(html).toContain('<li>a point</li>')
+    expect(html).toContain('<p>after</p>')
+    expect(html).not.toContain('[!')
+    expect(renderMarkdown('> [!tip]\n> text', nowhere)).toContain('<div class="nn-callout-title">Tip</div>')
+    const shut = renderMarkdown('> [!faq]- Why?\n> Because.', nowhere)
+    expect(shut).toContain('<details class="nn-callout nn-callout-faq" data-callout="faq"><summary class="nn-callout-title">Why?</summary>')
+    expect(shut).not.toContain(' open')
+    expect(renderMarkdown('> [!faq]+ Why?\n> Because.', nowhere)).toContain('data-callout="faq" open><summary')
+    const nested = renderMarkdown('> [!note] Outer\n> > [!danger] Inner\n> > deep', nowhere)
+    expect(nested).toMatch(/nn-callout-note[\s\S]*nn-callout-danger[\s\S]*<p>deep<\/p>\n<\/div><\/div>\n<\/div><\/div>/)
+    // A kind that could break out of the class is a note.
+    expect(renderMarkdown('> [!x" onclick="a] t', nowhere)).toContain('data-callout="note"')
+    // An ordinary quote stays a quote.
+    expect(renderMarkdown('> just a quote', nowhere)).toContain('<blockquote>')
+  })
+
+  it('embeds a note in a holder the note page fills, one level deep, and as a link elsewhere', () => {
+    const html = renderMarkdown('![[Plan#Next steps]]\n\ntext ![[Plan]] more\n\n![[Nowhere]]', plan, 'S/Home.md')
+    expect(html).toContain(
+      '<div class="nn-embed-block"><span class="nn-embed-note" data-embed="S/Plan.md" data-section="Next steps"><a class="nn-wikilink" data-note="S/Plan.md">Plan</a></span></div>',
+    )
+    expect(html).toContain('<p>text <span class="nn-embed-note" data-embed="S/Plan.md" data-section="">')
+    expect(html).toContain('nn-wikilink-missing')
+    const inside = renderMarkdown('![[Plan]]', plan, 'S/Plan.md', appTargets('S/Plan.md', false))
+    expect(inside).not.toContain('data-embed')
+    expect(inside).toContain('<a class="nn-wikilink" data-note="S/Plan.md">Plan</a>')
+  })
+
+  it('cuts a section out of a note: a heading down to the next of its level, or a block by its id', () => {
+    const body = '---\na: 1\n---\n# Top\nintro\n## Next steps\none\n```\n# not a heading\n```\n### deeper\ntwo\n## Other\nthree'
+    expect(noteSection(body, 'Next steps')).toBe('## Next steps\none\n```\n# not a heading\n```\n### deeper\ntwo')
+    expect(noteSection(body, 'top#next  STEPS')).toContain('### deeper')
+    expect(noteSection(body, 'Other')).toBe('## Other\nthree')
+    expect(noteSection(body, 'not a heading')).toBeNull()
+    expect(noteSection(body, 'Missing')).toBeNull()
+    const blocks = 'First line\nsecond line ^para\n\n- item one\n- item two ^item\n- item three'
+    expect(noteSection(blocks, '^para')).toBe('First line\nsecond line')
+    expect(noteSection(blocks, '^item')).toBe('- item two')
+    expect(noteSection(blocks, '^none')).toBeNull()
   })
 
   it('leaves out the front matter', () => {

@@ -163,4 +163,74 @@
   .nn-prose audio {
     @apply my-2 block w-full max-w-md;
   }
+  .nn-prose mark {
+    @apply rounded-sm px-0.5 text-mist-100;
+    background: color-mix(in srgb, var(--color-warn-500) 30%, transparent);
+  }
+
+  /* Callouts: Obsidian's kinds share a few colours, as in the editor. */
+  .nn-prose .nn-callout {
+    --nn-callout: var(--color-accent-500);
+    @apply my-4 rounded-r-xl border-l-[3px] px-4 py-2;
+    border-left-color: var(--nn-callout);
+    background: color-mix(in srgb, var(--nn-callout) 8%, transparent);
+  }
+  .nn-prose .nn-callout-warning,
+  .nn-prose .nn-callout-caution,
+  .nn-prose .nn-callout-attention,
+  .nn-prose .nn-callout-question,
+  .nn-prose .nn-callout-help,
+  .nn-prose .nn-callout-faq {
+    --nn-callout: var(--color-warn-500);
+  }
+  .nn-prose .nn-callout-danger,
+  .nn-prose .nn-callout-error,
+  .nn-prose .nn-callout-bug,
+  .nn-prose .nn-callout-failure,
+  .nn-prose .nn-callout-fail,
+  .nn-prose .nn-callout-missing {
+    --nn-callout: var(--color-bad-500);
+  }
+  .nn-prose .nn-callout-success,
+  .nn-prose .nn-callout-check,
+  .nn-prose .nn-callout-done {
+    --nn-callout: var(--color-ok-500);
+  }
+  .nn-prose .nn-callout-example {
+    --nn-callout: var(--color-ai-500);
+  }
+  .nn-prose .nn-callout-quote,
+  .nn-prose .nn-callout-cite {
+    --nn-callout: var(--color-mist-500);
+  }
+  .nn-prose .nn-callout-title {
+    @apply font-semibold text-mist-100;
+    color: color-mix(in srgb, var(--nn-callout) 55%, var(--color-mist-100));
+  }
+  .nn-prose summary.nn-callout-title {
+    @apply cursor-pointer;
+  }
+  .nn-prose .nn-callout-content > :first-child {
+    @apply mt-1;
+  }
+  .nn-prose .nn-callout-content > :last-child {
+    @apply mb-1;
+  }
+
+  /* A note embedded in another. */
+  .nn-prose .nn-embed-note {
+    @apply block;
+  }
+  .nn-prose .nn-embedded {
+    @apply my-3 block rounded-xl border border-ink-700 bg-ink-900/40 px-4 py-2;
+  }
+  .nn-prose .nn-embedded-title {
+    @apply flex items-center gap-1.5 text-xs font-semibold text-mist-400 hover:text-accent-400;
+  }
+  .nn-prose .nn-embedded-note {
+    @apply block py-1 text-sm text-mist-500;
+  }
+  .nn-prose .nn-embedded-body {
+    @apply block;
+  }
 }

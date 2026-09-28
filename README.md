@@ -14,8 +14,9 @@ nexlore is one of the nex apps and looks like them: turquoise, dark and light.
 - **An editor that keeps what it did not change.** A visual editor (Milkdown) with a toolbar on selection, `/` to
   insert, Markdown shortcuts, properties from the front matter as a table. Only the blocks you touched are written
   back; every other line stays byte for byte as it was, line endings included.
-- **Obsidian's way of writing**: wiki links `[[Note]]`, `[[Note#Heading|shown]]`, embeds `![[picture.png|300]]`,
-  callouts, highlights, comments `%%…%%`, tags, front matter, tasks in the format of the Tasks plugin. Plugin syntax
+- **Obsidian's way of writing**: wiki links `[[Note]]`, `[[Note#Heading|shown]]`, embeds `![[picture.png|300]]`
+  and of notes or their parts (`![[Note#Heading]]`, `![[Note#^block]]`, one level deep), callouts (folding with
+  `-` and `+`), highlights, comments `%%…%%`, tags, front matter, tasks in the format of the Tasks plugin. Plugin syntax
   (Dataview, Templater, Excalidraw) is shown as code and never touched. `.obsidian/` is left alone.
 - **Links follow a rename.** Rename or move a note or a folder and every link to it is rewritten in the style it was
   written in, also in other spaces. Large renames rewrite their links in small parts, so nobody waits, and a server
@@ -156,6 +157,10 @@ macOS and Linux (a title with other characters goes into the front matter as `ti
 - With a second factor, the password alone opens nothing: the sign-in waits for the code at most five minutes and
   five tries, a code counts once, and a right password does not reset the count of wrong codes. The seed is stored
   encrypted, recovery codes as hashes.
+- A session alone is not enough for what would hand over other people's notes: downloading a backup, giving
+  another account a password, resetting its second factor, changing a role or deleting an account ask for the
+  operator's own password once more, counted like a sign-in. An operator who signs in through the provider has no
+  password in nexlore and is not asked.
 - Every changing request needs the header `X-Nexlore-Client`, which a page on another site cannot send.
 - A space somebody may not read answers exactly like one that does not exist, in every route.
 - Uploaded files are served with their own sandboxing policy; SVG, HTML and PDF only as downloads.

@@ -50,12 +50,24 @@ export function AccountsCard() {
   const [password, setPassword] = useState<{ id: number; value: string } | null>(null)
   const [removing, setRemoving] = useState<AdminAccount | null>(null)
   const [resetting, setResetting] = useState<AdminAccount | null>(null)
+  const [promoting, setPromoting] = useState<AdminAccount | null>(null)
+  // Acting on another account asks for the operator's own password once more; one signing in through the provider
+  // has none here and is not asked.
+  const [own, setOwn] = useState('')
+  const asks = me?.sign_in === 'password'
+  const ownField = asks && (
+    <Input label={t('admin.accounts.yourPassword')} value={own} onChange={setOwn} type="password" autoComplete="current-password" className="mt-3" />
+  )
   const { busy, problem, done, run } = useAction()
 
   const load = useCallback(async () => {
     setAccounts(await adminApi.accounts())
     setInvites(await authApi.invites())
   }, [])
+  const ask = (open: () => void) => {
+    setOwn('')
+    open()
+  }
 
   useEffect(() => {
     void run(load)
@@ -77,28 +89,21 @@ export function AccountsCard() {
             </span>
             {account.id !== me?.id && (
               <span className="flex flex-wrap gap-1.5">
-                <Button
-                  small
-                  busy={busy}
-                  onClick={() => void run(async () => {
-                    await adminApi.setRole(account.id, account.role === 'operator' ? 'member' : 'operator')
-                    await load()
-                  })}
-                >
+                <Button small onClick={() => ask(() => setPromoting(account))}>
                   {account.role === 'operator' ? t('admin.accounts.makeMember') : t('admin.accounts.makeOperator')}
                 </Button>
-                <Button small onClick={() => setPassword({ id: account.id, value: '' })}>
+                <Button small onClick={() => ask(() => setPassword({ id: account.id, value: '' }))}>
                   {t('admin.accounts.newPassword')}
                 </Button>
                 <Button small busy={busy} onClick={() => void run(() => adminApi.signOutAccount(account.id), t('admin.accounts.signedOut'))}>
                   {t('admin.accounts.signOut')}
                 </Button>
                 {account.two_factor && (
-                  <Button small onClick={() => setResetting(account)}>
+                  <Button small onClick={() => ask(() => setResetting(account))}>
                     {t('admin.accounts.resetFactor')}
                   </Button>
                 )}
-                <Button small danger onClick={() => setRemoving(account)}>
+                <Button small danger onClick={() => ask(() => setRemoving(account))}>
                   {t('admin.accounts.delete')}
                 </Button>
               </span>
@@ -109,12 +114,16 @@ export function AccountsCard() {
                 onSubmit={(event) => {
                   event.preventDefault()
                   void run(async () => {
-                    await adminApi.setPassword(account.id, password.value)
+                    await adminApi.setPassword(account.id, password.value, own)
                     setPassword(null)
+                    setOwn('')
                   }, t('admin.accounts.passwordSet'))
                 }}
               >
                 <Input label={t('admin.accounts.newPassword')} value={password.value} onChange={(value) => setPassword({ id: account.id, value })} type="password" autoComplete="new-password" className="flex-1" />
+                {asks && (
+                  <Input label={t('admin.accounts.yourPassword')} value={own} onChange={setOwn} type="password" autoComplete="current-password" className="flex-1" />
+                )}
                 <Button type="submit" primary busy={busy}>
                   {t('common.save')}
                 </Button>
@@ -187,12 +196,13 @@ export function AccountsCard() {
         busy={busy}
         onCancel={() => setRemoving(null)}
         onConfirm={() => void run(async () => {
-          await adminApi.deleteAccount(removing!.id)
+          await adminApi.deleteAccount(removing!.id, own)
           setRemoving(null)
           await load()
         })}
       >
         {t('admin.accounts.deleteText')}
+        {ownField}
       </ConfirmDialog>
       <ConfirmDialog
         open={resetting !== null}
@@ -202,12 +212,28 @@ export function AccountsCard() {
         busy={busy}
         onCancel={() => setResetting(null)}
         onConfirm={() => void run(async () => {
-          await adminApi.resetSecondFactor(resetting!.id)
+          await adminApi.resetSecondFactor(resetting!.id, own)
           setResetting(null)
           await load()
         }, t('admin.accounts.resetDone'))}
       >
         {t('admin.accounts.resetText')}
+        {ownField}
+      </ConfirmDialog>
+      <ConfirmDialog
+        open={promoting !== null}
+        title={t(promoting?.role === 'operator' ? 'admin.accounts.memberTitle' : 'admin.accounts.operatorTitle', { name: promoting?.name ?? '' })}
+        confirm={promoting?.role === 'operator' ? t('admin.accounts.makeMember') : t('admin.accounts.makeOperator')}
+        busy={busy}
+        onCancel={() => setPromoting(null)}
+        onConfirm={() => void run(async () => {
+          await adminApi.setRole(promoting!.id, promoting!.role === 'operator' ? 'member' : 'operator', own)
+          setPromoting(null)
+          await load()
+        })}
+      >
+        {t(promoting?.role === 'operator' ? 'admin.accounts.memberText' : 'admin.accounts.operatorText')}
+        {ownField}
       </ConfirmDialog>
     </Card>
   )
@@ -589,9 +615,23 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
   const [backups, setBackups] = useState<Backup[]>([])
   const [checked, setChecked] = useState<BackupCheck | null>(null)
   const [restoring, setRestoring] = useState<string | null>(null)
+  // The archive holds everything, so it is handed out only against the password once more.
+  const [fetching, setFetching] = useState<{ name: string; password: string } | null>(null)
   const [note, setNote] = useState('')
+  const { me } = useAuth()
   const { busy, problem, done, run } = useAction()
   const load = useCallback(async () => setBackups(await adminApi.backups()), [])
+  const download = (name: string, password: string) =>
+    void run(async () => {
+      const archive = await adminApi.downloadBackup(name, password)
+      const url = URL.createObjectURL(archive)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = name
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      setFetching(null)
+    }, t('admin.backups.downloaded'))
   useEffect(() => {
     void run(load)
   }, [run, load])
@@ -641,9 +681,39 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
             <Button small busy={busy} onClick={() => void run(async () => setChecked(await adminApi.checkBackup(backup.name)))}>
               {t('admin.backups.check')}
             </Button>
+            <Button
+              small
+              busy={busy}
+              onClick={() => (me?.sign_in === 'password' ? setFetching({ name: backup.name, password: '' }) : download(backup.name, ''))}
+            >
+              {t('admin.backups.download')}
+            </Button>
             <Button small onClick={() => setRestoring(backup.name)}>
               {t('admin.backups.restore')}
             </Button>
+            {fetching?.name === backup.name && (
+              <form
+                className="flex w-full flex-wrap items-end gap-2 pt-1"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  download(backup.name, fetching.password)
+                }}
+              >
+                <p className="w-full text-xs text-mist-400">{t('admin.backups.downloadText')}</p>
+                <Input
+                  label={t('admin.backups.password')}
+                  value={fetching.password}
+                  onChange={(password) => setFetching({ name: backup.name, password })}
+                  type="password"
+                  autoComplete="current-password"
+                  className="min-w-52 flex-1"
+                />
+                <Button type="submit" primary busy={busy}>
+                  {t('admin.backups.download')}
+                </Button>
+                <Button onClick={() => setFetching(null)}>{t('common.cancel')}</Button>
+              </form>
+            )}
             <Button small danger busy={busy} onClick={() => void run(async () => {
               await adminApi.deleteBackup(backup.name)
               await load()
