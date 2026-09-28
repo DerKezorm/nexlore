@@ -79,6 +79,45 @@ test('a key made on the account page proposes a draft that the note takes over',
   expect(problems).toEqual([])
 })
 
+test('a key made for one space sees no other', async ({ page, playwright, baseURL }) => {
+  const problems = collectProblems(page)
+  const opened = await page.request.put('/api/settings', {
+    data: { mcp_allowed: true, mcp_max_level: 'write' },
+    headers: { 'X-Nexlore-Client': 'tab-e2e-mcp0' },
+  })
+  expect(opened.ok()).toBe(true)
+  await page.goto('/account')
+  await page.getByRole('button', { name: 'New key' }).click()
+  await page.getByLabel('Name').fill('Zoo only')
+  await page.getByRole('radio', { name: 'Only these' }).check()
+  const make = page.getByRole('button', { name: 'Make the key' })
+  await expect(make).toBeDisabled()
+  await page.getByRole('checkbox', { name: 'Zoo', exact: true }).check()
+  await make.click()
+  const shown = page.getByTestId('mcp-token')
+  const token = (await shown.locator('code').first().textContent())!.trim()
+  await shown.getByRole('button', { name: 'I have it' }).click()
+  await expect(page.getByRole('listitem').filter({ hasText: 'Zoo only' }).getByTestId('mcp-key-spaces')).toHaveText('Zoo')
+
+  const program = await playwright.request.newContext({ baseURL })
+  const call = async (name: string, args: object) => {
+    const answer = await program.post('/api/mcp', {
+      data: { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } },
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    expect(answer.status()).toBe(200)
+    return (await answer.json()).result
+  }
+  const listed = JSON.parse((await call('list_spaces', {})).content[0].text)
+  expect(listed.map((space: { name: string }) => space.name)).toEqual(['Zoo'])
+  const foreign = await call('read_note', { path: 'Zone/Across.md' })
+  expect(foreign.isError).toBe(true)
+  expect(foreign.content[0].text).toBe('Not found.')
+  expect((await call('read_note', { path: 'Zoo/Across target.md' })).isError).toBe(false)
+  await program.dispose()
+  expect(problems).toEqual([])
+})
+
 test('the operator switches MCP off again, and the key card goes', async ({ page }) => {
   const closed = await page.request.put('/api/settings', { data: { mcp_allowed: false }, headers: { 'X-Nexlore-Client': 'tab-e2e-mcp0' } })
   expect(closed.ok()).toBe(true)

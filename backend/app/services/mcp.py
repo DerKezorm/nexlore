@@ -34,7 +34,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..models import Account, Draft, McpKey, utcnow
-from . import settings_service
+from . import rights, settings_service
 
 logger = logging.getLogger("nexlore.mcp")
 
@@ -76,10 +76,18 @@ def digest(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def make_key(db: Session, account: Account, name: str, level: str) -> tuple[McpKey, str]:
-    """A new key; the token is returned once and never stored."""
+def make_key(
+    db: Session, account: Account, name: str, level: str, spaces: list[int] | None = None
+) -> tuple[McpKey, str]:
+    """A new key; the token is returned once and never stored. ``spaces``: the key sees only these, of the spaces
+    the account may read; None: all it may read, now and later."""
     if level not in LEVELS:
         raise McpError("invalid_input", "No such level.", 422)
+    if spaces is not None:
+        # A space the account may not read is refused like one that does not exist.
+        if not spaces or not set(spaces) <= rights.readable_ids(db, account):
+            raise McpError("invalid_input", "Choose spaces you may read.", 422)
+        spaces = sorted(set(spaces))
     if not at_least(max_level(db), level):
         raise McpError("level_not_allowed", "The operator does not allow keys of this level.", 403)
     count = len(db.scalars(select(McpKey.id).where(McpKey.account_id == account.id)).all())
@@ -87,17 +95,18 @@ def make_key(db: Session, account: Account, name: str, level: str) -> tuple[McpK
         raise McpError("too_many_keys", "An account holds at most 20 keys.", 409)
     token = TOKEN_PREFIX + secrets.token_urlsafe(32)
     row = McpKey(account_id=account.id, name=name.strip()[:100] or "MCP", level=level, token_hash=digest(token),
-                 prefix=token[: len(TOKEN_PREFIX) + 4], created_at=utcnow())
+                 prefix=token[: len(TOKEN_PREFIX) + 4], spaces=spaces, created_at=utcnow())
     db.add(row)
     db.commit()
     db.refresh(row)
-    logger.info("MCP key made key_id=%s level=%s", row.id, level)
+    logger.info("MCP key made key_id=%s level=%s spaces=%s", row.id, level, "all" if spaces is None else len(spaces))
     return row, token
 
 
 @dataclass
 class Caller:
-    """Who calls over MCP: the account, detached, and its key."""
+    """Who calls over MCP: the account, detached, and its key. A key limited to some spaces has them on the account
+    (``Account.key_spaces``), so every right checked for it sees only those."""
 
     account: Account
     key_id: int
@@ -123,6 +132,8 @@ def authenticate(db: Session, token: str | None) -> Caller | None:
     ceiling = max_level(db)
     level = key.level if at_least(ceiling, key.level) else ceiling
     db.expunge(account)
+    if key.spaces is not None:
+        account.key_spaces = frozenset(int(space_id) for space_id in key.spaces)
     return Caller(account=account, key_id=key.id, key_name=key.name, level=level)
 
 

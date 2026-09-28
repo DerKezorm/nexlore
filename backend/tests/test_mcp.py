@@ -205,6 +205,87 @@ def test_a_foreign_space_answers_like_a_missing_one(world: World) -> None:
     assert (world.vault / "Secret" / "Diary.md").read_bytes() == b"# Diary\n\nnothing for anna, zucchini\n"
 
 
+def space_ids(client: TestClient) -> dict[str, int]:
+    return {space["name"]: space["id"] for space in client.get("/api/spaces").json()}
+
+
+def test_a_key_for_some_spaces_sees_no_other_even_where_its_account_may(world: World) -> None:
+    assert world.anna.post("/api/spaces", json={"name": "Kitchen"}).status_code == 201
+    (world.vault / "Kitchen" / "Recipe.md").write_bytes(b"# Recipe\n\n- [ ] buy zucchini\n\n[[Garden/Plan]]\n")
+    (world.vault / "Garden" / "Plan.md").write_bytes(NOTE.encode() + b"\n[[Kitchen/Recipe]]\n- [ ] dig\n")
+    index.scan()
+    ids = space_ids(world.anna)
+    made = world.anna.post("/api/mcp/keys", json={"name": "garden only", "level": "write", "spaces": [ids["Garden"]]})
+    assert made.status_code == 201, made.text
+    assert made.json()["key"]["spaces"] == ["Garden"]
+    token = made.json()["token"]
+    everything = world.key("write")
+
+    assert [space["name"] for space in value(call(token, "list_spaces"))] == ["Garden"]
+    assert [space["name"] for space in value(call(everything, "list_spaces"))] == ["Garden", "Kitchen"]
+    assert value(call(token, "search", query="zucchini")) == []
+    assert value(call(everything, "search", query="zucchini")) != []
+    assert value(call(token, "find_notes", title="Recipe")) == []
+    assert [task["text"] for task in value(call(token, "list_tasks"))] == ["dig"]
+    assert failure(call(token, "list_tasks", space="Kitchen")) == failure(call(token, "list_tasks", space="Nowhere"))
+    links = value(call(token, "note_links", path="Garden/Plan.md"))
+    assert [(link["target"], link["path"]) for link in links["outgoing"]] == [("Kitchen/Recipe", None)]
+    assert links["backlinks"] == []
+    assert value(call(everything, "note_links", path="Garden/Plan.md"))["backlinks"] != []
+    base = index.digest(b"# Recipe\n\n- [ ] buy zucchini\n\n[[Garden/Plan]]\n")
+    for tool, arguments in (
+        ("read_note", {"path": "Kitchen/Recipe.md"}),
+        ("list_folder", {"path": "Kitchen"}),
+        ("note_links", {"path": "Kitchen/Recipe.md"}),
+        ("write_note", {"path": "Kitchen/Recipe.md", "content": "x", "base_hash": base}),
+        ("edit_note", {"path": "Kitchen/Recipe.md", "base_hash": base, "edits": [{"old": "buy", "new": "sell"}]}),
+        ("propose_change", {"path": "Kitchen/Recipe.md", "content": "x", "base_hash": base}),
+        ("create_note", {"folder": "Kitchen", "title": "x", "content": "x"}),
+        ("propose_note", {"folder": "Kitchen", "title": "x", "content": "x"}),
+    ):
+        foreign = failure(call(token, tool, **arguments))
+        missing = failure(call(token, tool, **{key: v.replace("Kitchen", "Nowhere") if isinstance(v, str) else v
+                                                  for key, v in arguments.items()}))
+        assert foreign == missing == "Not found.", tool
+    assert (world.vault / "Kitchen" / "Recipe.md").read_bytes().startswith(b"# Recipe\n\n- [ ] buy")
+    assert sorted(path.name for path in (world.vault / "Kitchen").iterdir()) == ["Recipe.md"]
+    with SessionLocal() as db:
+        assert db.scalars(select(Draft.id)).all() == []
+    # The account itself, in the interface, still sees both.
+    assert world.anna.get("/api/note", params={"path": "Kitchen/Recipe.md"}).status_code == 200
+    # A space made later: the key for all sees it, the chosen one does not.
+    assert world.anna.post("/api/spaces", json={"name": "Later"}).status_code == 201
+    assert "Later" in [space["name"] for space in value(call(everything, "list_spaces"))]
+    assert "Later" not in [space["name"] for space in value(call(token, "list_spaces"))]
+
+
+def test_a_key_is_made_only_for_spaces_its_account_may_read(world: World) -> None:
+    ids = space_ids(world.bob)
+    foreign = world.anna.post("/api/mcp/keys", json={"name": "x", "level": "read", "spaces": [ids["Secret"]]})
+    missing = world.anna.post("/api/mcp/keys", json={"name": "x", "level": "read", "spaces": [987654]})
+    assert foreign.status_code == missing.status_code == 422
+    assert foreign.json() == missing.json()
+    assert world.anna.post("/api/mcp/keys", json={"name": "x", "level": "read", "spaces": []}).status_code == 422
+    assert world.anna.get("/api/mcp/keys").json()["keys"] == []
+
+
+def test_a_space_the_account_lost_drops_out_of_its_key(world: World) -> None:
+    shared = world.bob.put("/api/spaces/Secret/members/anna",
+                           json={"role": "read"})
+    assert shared.status_code in (200, 201, 204), shared.text
+    anna_ids = space_ids(world.anna)
+    made = world.anna.post("/api/mcp/keys", json={"name": "x", "level": "read",
+                                                   "spaces": [anna_ids["Secret"], anna_ids["Garden"]]})
+    assert made.status_code == 201, made.text
+    token = made.json()["token"]
+    assert [space["name"] for space in value(call(token, "list_spaces"))] == ["Garden", "Secret"]
+    gone = world.bob.delete("/api/spaces/Secret/members/anna")
+    assert gone.status_code in (200, 204), gone.text
+    assert [space["name"] for space in value(call(token, "list_spaces"))] == ["Garden"]
+    assert failure(call(token, "read_note", path="Secret/Diary.md")) == "Not found."
+    assert world.anna.get("/api/mcp/keys").json()["keys"][0]["spaces"] == ["Garden"]
+
+
 def test_reading_tools(world: World) -> None:
     token = world.key()
     note = value(call(token, "read_note", path="Garden/Plan.md"))

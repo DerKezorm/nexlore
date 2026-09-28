@@ -45,7 +45,9 @@ def _members(db: Session, space_id: int) -> int:
 
 def role_in(db: Session, account: Account, space_id: int | None) -> str | None:
     """The account's right in the space, or None. ``space_id`` None: a folder on disk the index has not met yet,
-    which like any space without members is the operator's."""
+    which like any space without members is the operator's. An MCP key limited to some spaces sees no other."""
+    if account.key_spaces is not None and space_id not in account.key_spaces:
+        return None
     if space_id is not None:
         membership = db.get(Membership, (space_id, account.id))
         if membership is not None:
@@ -61,6 +63,8 @@ def readable_ids(db: Session, account: Account) -> set[int]:
     if account.role == OPERATOR:
         with_members = set(db.scalars(select(Membership.space_id).distinct()))
         own |= set(db.scalars(select(Space.id))) - with_members
+    if account.key_spaces is not None:
+        own &= account.key_spaces
     return own
 
 

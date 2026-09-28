@@ -31,7 +31,7 @@ from ..db import SessionLocal
 from ..deps import Account, DbSession, need
 from ..errors import error
 from ..models import WRITE, File, McpKey, Space, Version
-from ..services import index, logs, mcp, paths, textblocks, vault
+from ..services import index, logs, mcp, paths, rights, textblocks, vault
 from ..services.mcp import Caller, McpError
 from ..services.vault import Actor, VaultError
 from . import everyday as everyday_routes
@@ -357,6 +357,8 @@ class KeyOut(BaseModel):
     prefix: str
     created_at: Any
     last_used_at: Any = None
+    #: The names of the spaces the key may see, of those the account may read now; None: all of them.
+    spaces: list[str] | None = None
 
 
 class KeysOut(BaseModel):
@@ -368,6 +370,8 @@ class KeysOut(BaseModel):
 class KeyIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     level: str = Field(pattern="^(read|draft|write)$")
+    #: Ids of spaces; left out: every space the account may read.
+    spaces: list[int] | None = Field(default=None, max_length=1000)
 
 
 class MadeOut(BaseModel):
@@ -376,15 +380,22 @@ class MadeOut(BaseModel):
     token: str
 
 
-def _key_out(row: McpKey) -> KeyOut:
+def _key_out(db: Any, account: Any, row: McpKey) -> KeyOut:
+    names = None
+    if row.spaces is not None:
+        # Only spaces the account may still read: one it lost since tells nothing (and the key does not see it).
+        readable = rights.readable_ids(db, account)
+        wanted = [space_id for space_id in row.spaces if space_id in readable]
+        names = sorted(db.scalars(select(Space.folder).where(Space.id.in_(wanted)))) if wanted else []
     return KeyOut(id=row.id, name=row.name, level=row.level, prefix=row.prefix, created_at=row.created_at,
-                  last_used_at=row.last_used_at)
+                  last_used_at=row.last_used_at, spaces=names)
 
 
 @router.get("/api/mcp/keys", response_model=KeysOut)
 def keys(account: Account, db: DbSession) -> KeysOut:
     rows = db.scalars(select(McpKey).where(McpKey.account_id == account.id).order_by(McpKey.id)).all()
-    return KeysOut(allowed=mcp.allowed(db), max_level=mcp.max_level(db), keys=[_key_out(row) for row in rows])
+    return KeysOut(allowed=mcp.allowed(db), max_level=mcp.max_level(db),
+                   keys=[_key_out(db, account, row) for row in rows])
 
 
 @router.post("/api/mcp/keys", response_model=MadeOut, status_code=201)
@@ -392,10 +403,10 @@ def make_key(body: KeyIn, account: Account, db: DbSession) -> MadeOut:
     if not mcp.allowed(db):
         raise error("mcp_off", "The operator has not switched MCP on.", 403)
     try:
-        row, token = mcp.make_key(db, account, body.name, body.level)
+        row, token = mcp.make_key(db, account, body.name, body.level, body.spaces)
     except McpError as exc:
         raise error(exc.code, exc.text, exc.status) from exc
-    return MadeOut(key=_key_out(row), token=token)
+    return MadeOut(key=_key_out(db, account, row), token=token)
 
 
 @router.delete("/api/mcp/keys/{key_id}", status_code=204)

@@ -1,12 +1,13 @@
 /**
  * The own MCP keys on the account page: list, make, revoke. A key is shown once, right after it was made, with the
  * address a program needs; afterwards only its first characters. Levels above what the operator allows are not
- * offered. Nothing here when the operator has not switched MCP on.
+ * offered. A key sees every space its account may read, or only those chosen when it was made. Nothing here when the
+ * operator has not switched MCP on.
  */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { ApiError, mcpApi, type McpKey, type McpLevel } from '../api/client'
+import { ApiError, mcpApi, vaultApi, type McpKey, type McpLevel, type Space } from '../api/client'
 import { errorText } from '../lib/errors'
 import { formatDate } from '../lib/markdown'
 import { Symbol } from './Symbol'
@@ -19,6 +20,9 @@ export function McpKeys() {
   const [making, setMaking] = useState(false)
   const [name, setName] = useState('')
   const [level, setLevel] = useState<McpLevel>('read')
+  const [spaces, setSpaces] = useState<Space[]>([])
+  // null: every space the account may read, later ones too; otherwise the ids chosen.
+  const [chosen, setChosen] = useState<number[] | null>(null)
   const [shown, setShown] = useState<{ name: string; token: string } | null>(null)
   const [copied, setCopied] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -27,20 +31,30 @@ export function McpKeys() {
   useEffect(() => {
     void load()
   }, [])
+  useEffect(() => {
+    if (!making) return
+    let current = true
+    vaultApi.spaces().then((found) => current && setSpaces(found), () => undefined)
+    return () => {
+      current = false
+    }
+  }, [making])
 
   if (!state?.allowed) return null
+  const ready = Boolean(name.trim()) && (chosen === null || chosen.length > 0)
   const offered = LEVELS.slice(0, LEVELS.indexOf(state.max_level) + 1)
   const address = `${window.location.origin}/api/mcp`
 
   const make = async () => {
     setProblem(null)
     try {
-      const made = await mcpApi.make(name.trim(), level)
+      const made = await mcpApi.make(name.trim(), level, chosen)
       setShown({ name: made.key.name, token: made.token })
       setCopied(false)
       setMaking(false)
       setName('')
       setLevel('read')
+      setChosen(null)
       await load()
     } catch (error) {
       setProblem(errorText(error instanceof ApiError ? error.code : 'internal_error'))
@@ -83,6 +97,9 @@ export function McpKeys() {
             <li key={key.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm">
               <span className="font-medium text-mist-100">{key.name}</span>
               <span className="rounded-full bg-ink-800 px-2 py-0.5 text-xs text-mist-300">{t(`mcp.level.${key.level}`)}</span>
+              <span className="text-xs text-mist-400" data-testid="mcp-key-spaces">
+                {key.spaces === null ? t('mcp.spacesAll') : key.spaces.length ? key.spaces.join(', ') : t('mcp.spacesNone')}
+              </span>
               <code className="font-mono text-xs text-mist-500">{key.prefix}…</code>
               <span className="text-xs text-mist-500">
                 {key.last_used_at ? t('mcp.used', { when: formatDate(key.last_used_at) }) : t('mcp.unused')}
@@ -112,7 +129,7 @@ export function McpKeys() {
           className="mt-4 space-y-3 rounded-xl border border-ink-700 p-3"
           onSubmit={(event) => {
             event.preventDefault()
-            if (name.trim()) void make()
+            if (ready) void make()
           }}
         >
           <label className="block text-sm text-mist-300">
@@ -138,11 +155,40 @@ export function McpKeys() {
               </label>
             ))}
           </fieldset>
+          <fieldset className="space-y-2">
+            <legend className="text-sm text-mist-300">{t('mcp.where')}</legend>
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-mist-100">
+              <input type="radio" name="mcp-spaces" checked={chosen === null} onChange={() => setChosen(null)} />
+              {t('mcp.allSpaces')}
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-mist-100">
+              <input type="radio" name="mcp-spaces" checked={chosen !== null} onChange={() => setChosen([])} />
+              {t('mcp.someSpaces')}
+            </label>
+            {chosen !== null && (
+              <div className="ml-6 flex flex-wrap gap-2">
+                {spaces.map((space) => (
+                  <label key={space.id} className={'flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-sm ' + (chosen.includes(space.id) ? 'border-accent-500/60 bg-accent-500/10 text-mist-100' : 'border-ink-700 text-mist-300')}>
+                    <input
+                      type="checkbox"
+                      checked={chosen.includes(space.id)}
+                      onChange={(event) =>
+                        setChosen((before) =>
+                          event.target.checked ? [...(before ?? []), space.id] : (before ?? []).filter((id) => id !== space.id),
+                        )
+                      }
+                    />
+                    {space.name}
+                  </label>
+                ))}
+              </div>
+            )}
+          </fieldset>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setMaking(false)} className="rounded-full px-3 py-1 text-sm text-mist-400">
               {t('common.cancel')}
             </button>
-            <button type="submit" disabled={!name.trim()} className="rounded-full bg-accent-500 px-3 py-1 text-sm font-semibold text-on-accent disabled:opacity-50">
+            <button type="submit" disabled={!ready} className="rounded-full bg-accent-500 px-3 py-1 text-sm font-semibold text-on-accent disabled:opacity-50">
               {t('mcp.make')}
             </button>
           </div>

@@ -389,6 +389,9 @@ class Account(Base):
     last_seen_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     failed_logins: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: Not stored. Set on the account an MCP key acts as when the key may see only some spaces (``services/mcp.py``):
+    #: ``rights`` then answers for every other space as if it did not exist.
+    key_spaces: ClassVar[frozenset[int] | None] = None
 
 
 class AuthSession(Base):
@@ -475,6 +478,8 @@ class McpKey(Base):
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     #: The first characters of the token, to tell keys apart in the interface.
     prefix: Mapped[str] = mapped_column(String(16))
+    #: The ids of the spaces the key may see, of those its account may read; empty (None): all of them.
+    spaces: Mapped[Any] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     last_used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 

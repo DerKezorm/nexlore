@@ -570,13 +570,15 @@ export const everydayApi = {
 // --- Open to the outside (M7): MCP keys, drafts an AI proposed ----------------------------------------------------
 
 export type McpLevel = 'read' | 'draft' | 'write'
-export type McpKey = { id: number; name: string; level: McpLevel; prefix: string; created_at: string; last_used_at: string | null }
+/** `spaces`: the names of the spaces the key may see; null: every space the account may read. */
+export type McpKey = { id: number; name: string; level: McpLevel; prefix: string; created_at: string; last_used_at: string | null; spaces: string[] | null }
 export type DraftInfo = { id: number; path: string; title: string; new: boolean; key_name: string; reason: string; created_at: string }
 export type DraftFull = DraftInfo & { content: string; current: string | null; changed: boolean }
 
 export const mcpApi = {
   keys: () => api<{ allowed: boolean; max_level: McpLevel; keys: McpKey[] }>('/api/mcp/keys'),
-  make: (name: string, level: McpLevel) => api<{ key: McpKey; token: string }>('/api/mcp/keys', { method: 'POST', body: { name, level } }),
+  make: (name: string, level: McpLevel, spaces: number[] | null = null) =>
+    api<{ key: McpKey; token: string }>('/api/mcp/keys', { method: 'POST', body: { name, level, spaces } }),
   revoke: (id: number) => api<void>(`/api/mcp/keys/${id}`, { method: 'DELETE' }),
 }
 
