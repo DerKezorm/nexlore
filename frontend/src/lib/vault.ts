@@ -13,6 +13,16 @@ export function noteUrl(path: string): string {
   return '/note/' + path.split('/').map(encodeURIComponent).join('/')
 }
 
+/** The note an address shows (the reverse of `noteUrl`), or null for any other page. */
+export function notePathOf(pathname: string): string | null {
+  if (!pathname.startsWith('/note/')) return null
+  try {
+    return pathname.slice('/note/'.length).split('/').map(decodeURIComponent).join('/') || null
+  } catch {
+    return null
+  }
+}
+
 /** The folder part of a vault path: `Space/Folder` of `Space/Folder/Note.md`. */
 export function folderOf(path: string): string {
   const index = path.lastIndexOf('/')

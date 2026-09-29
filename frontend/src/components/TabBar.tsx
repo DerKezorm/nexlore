@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { closeTab, followTab, forgetTabs, readTabs, TABS_EVENT, type Tabs } from '../lib/tabs'
 import { FORGET_EVENT } from '../lib/vaultActions'
-import { baseName, noteUrl } from '../lib/vault'
+import { baseName, notePathOf, noteUrl } from '../lib/vault'
 import { Symbol } from './Symbol'
 
 /** The tabs as they are now; showing `path` brings its tab to the front (or puts it into the one in front). */
@@ -37,7 +37,10 @@ export function TabBar({ path }: { path: string }) {
   const tabs = useNoteTabs(path)
   const [hover, setHover] = useState<string | null>(null)
   const close = (target: string) => {
-    const { front, next } = closeTab(target, path)
+    // The note in front is the one in the address now: a click on a tab changes it at once, the row is drawn again
+    // only afterwards (on a slow machine a quick second click came in between and left the closed tab in front).
+    const shown = notePathOf(window.location.pathname) ?? path
+    const { front, next } = closeTab(target, shown)
     if (front) navigate(next ? noteUrl(next) : '/note')
   }
   // One note open is no row of tabs: the space stays for the note (a phone has little of it).

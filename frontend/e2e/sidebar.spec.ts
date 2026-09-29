@@ -279,10 +279,14 @@ test('tabs: a note opens in a tab of its own with Ctrl or from the menu, and clo
   // Kept in this browser.
   await page.reload()
   await expect(tabs.getByRole('tab')).toHaveText(['Menu', 'Reading'])
+  // A slow machine (seen on a CI runner): the tab is closed before the row was drawn again after the click.
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 30 })
   await tabs.getByRole('tab', { name: 'Reading' }).click()
   await expect(page).toHaveURL(/\/note\/Zoo\/Reading\.md$/)
   // Closing the tab in front shows its neighbour; one tab left is no row any more.
   await tabs.getByRole('button', { name: 'Close “Reading”' }).click()
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
   await expect(page).toHaveURL(/\/note\/Zoo\/Menu\.md$/)
   await expect(tabs).toHaveCount(0)
   expect(problems).toEqual([])

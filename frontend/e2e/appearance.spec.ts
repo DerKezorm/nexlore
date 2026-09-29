@@ -19,11 +19,14 @@ test('the look is chosen under settings, shows at once, and comes back with the 
   const card = page.getByTestId('appearance')
   await card.getByRole('radio', { name: /Literata/ }).click()
   await card.getByRole('radiogroup', { name: 'Width of the text' }).getByRole('radio', { name: 'Narrow' }).click()
+  // Saved behind what is shown: leaving the page before the answer (a slow CI machine did) would read the old look.
+  const saved = page.waitForResponse((response) => response.url().includes('/api/me/appearance') && response.request().postData()?.includes('"size":18') === true)
   await card.getByLabel('Text size').fill('18')
   const sample = page.getByTestId('appearance-sample')
   await expect(sample).toHaveCSS('font-size', '18px')
   await expect.poll(() => sample.evaluate((node) => getComputedStyle(node).fontFamily)).toContain('Literata')
   // A note: the same letters, size and width; the font's files came from nexlore itself.
+  await saved
   await page.goto('/note/Zyx/Palette.md')
   const prose = page.locator('article.nn-prose')
   await expect(prose).toHaveCSS('font-size', '18px')

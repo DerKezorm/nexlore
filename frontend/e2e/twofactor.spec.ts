@@ -90,6 +90,8 @@ test('an account sets up its second factor and signs in with it', async ({ page,
   // Signing in now takes two steps; a wrong code is refused, a recovery code goes through once.
   await own.getByRole('button', { name: 'Account of factor' }).click()
   await own.getByRole('button', { name: 'Sign out', exact: true }).click()
+  // Signed out once the login page is there; going there before (a slow CI machine did) finds the session alive.
+  await expect(own).toHaveURL(/\/login(\?|$)/)
   await signIn(own, 'factor')
   await expect(own.getByRole('heading', { name: 'Second factor' })).toBeVisible()
   await own.getByLabel('Code from the app').fill('000000')
