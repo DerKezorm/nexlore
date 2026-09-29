@@ -1110,6 +1110,7 @@
     "automatic": "Automatic",
     "hint": "Everybody in the space sees it so, in the sidebar and on the map. A folder’s colour holds for the folders in it too.",
     "saved": "Symbol and colour saved.",
+    "notSaved": "The symbol and colour could not be saved; try again from the context menu.",
     "icons": {
       "folder": "Folder",
       "book": "Book",

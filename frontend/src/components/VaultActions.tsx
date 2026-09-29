@@ -124,12 +124,14 @@ export function VaultActions() {
           hint={t('actions.newSpaceHint')}
           confirm={t('actions.create')}
           initial=""
+          look
           onClose={close}
-          onSubmit={async (name) => {
+          onSubmit={async (name, icon, color) => {
             const made = await vaultApi.createSpace(name)
+            const looked = await lookOf(made.name, icon, color)
             await reload()
             reveal(made.name)
-            done(t('actions.spaceMade', { name: made.name }))
+            done(t('actions.spaceMade', { name: made.name }) + (looked ? '' : ' ' + t('looks.notSaved')))
           }}
         />
       )}
@@ -138,12 +140,14 @@ export function VaultActions() {
           title={t('actions.newFolderTitle', { folder: action.parent.split('/').join(' / ') })}
           confirm={t('actions.create')}
           initial=""
+          look
           onClose={close}
-          onSubmit={async (name) => {
+          onSubmit={async (name, icon, color) => {
             const made = await vaultApi.createFolder(action.parent, name)
+            const looked = await lookOf(made.path, icon, color)
             await reload()
             reveal(made.path)
-            done(t('actions.folderMade', { name }))
+            done(t('actions.folderMade', { name }) + (looked ? '' : ' ' + t('looks.notSaved')))
           }}
         />
       )}
@@ -178,6 +182,17 @@ export function VaultActions() {
       {action.kind === 'delete' && <TrashDialog path={action.path} folder={action.folder} onClose={close} onTrash={async (along) => { await trash(action.path, along); done(null) }} />}
     </>
   )
+}
+
+/** The look of a space or folder just made: that stands already, so a failure here is said, not thrown. */
+async function lookOf(path: string, icon: string | null, color: string | null): Promise<boolean> {
+  if (!icon && !color) return true
+  try {
+    await looksApi.put(path, icon, color)
+    return true
+  } catch {
+    return false
+  }
 }
 
 function Notice({ text }: { text: string }) {
@@ -258,14 +273,17 @@ function useSubmit(run: () => Promise<void>) {
   return { busy, problem, submit }
 }
 
-function NameDialog({ title, hint, confirm, initial, onClose, onSubmit }: { title: string; hint?: string; confirm: string; initial: string; onClose: () => void; onSubmit: (name: string) => Promise<void> }) {
+/** A name; for a new space or folder (`look`) also its symbol and colour, chosen right away. */
+function NameDialog({ title, hint, confirm, initial, look = false, onClose, onSubmit }: { title: string; hint?: string; confirm: string; initial: string; look?: boolean; onClose: () => void; onSubmit: (name: string, icon: string | null, color: string | null) => Promise<void> }) {
   const { t } = useTranslation()
   const [name, setName] = useState(initial)
-  const { busy, problem, submit } = useSubmit(() => onSubmit(name.trim()))
+  const [icon, setIcon] = useState<string | null>(null)
+  const [color, setColor] = useState<string | null>(null)
+  const { busy, problem, submit } = useSubmit(() => onSubmit(name.trim(), icon, color))
   const unchanged = !name.trim() || name.trim() === initial
   return (
     <Frame title={title} onClose={onClose} onSubmit={() => !unchanged && void submit()} testId="name-dialog">
-      <div className="space-y-2 p-4">
+      <div className="min-h-0 space-y-2 overflow-y-auto p-4">
         <label className="block text-sm">
           <span className="text-xs text-mist-500">{t('actions.name')}</span>
           <input
@@ -277,6 +295,11 @@ function NameDialog({ title, hint, confirm, initial, onClose, onSubmit }: { titl
           />
         </label>
         {hint && <p className="text-xs text-mist-500">{hint}</p>}
+        {look && (
+          <div className="space-y-4 pt-2">
+            <LookPicker icon={icon} color={color} onIcon={setIcon} onColor={setColor} />
+          </div>
+        )}
         {problem && <p role="alert" className="text-sm text-bad-500">{errorText(problem)}</p>}
       </div>
       <Buttons confirm={confirm} busy={busy} disabled={unchanged} onClose={onClose} />
@@ -310,11 +333,28 @@ function MoveDialog({ path, folder, onClose, onMove }: { path: string; folder: b
 /** A symbol and a colour for a space or folder; "none" and "automatic" give it back to nexlore. */
 function LookDialog({ path, onClose, onSave }: { path: string; onClose: () => void; onSave: (icon: string | null, color: string | null) => Promise<void> }) {
   const { t } = useTranslation()
-  const { looks, choices } = useStore()
+  const { looks } = useStore()
   const [space, ...rest] = path.split('/')
   const now = looks[space]?.[rest.join('/')]
   const [icon, setIcon] = useState<string | null>(now?.icon ?? null)
   const [color, setColor] = useState<string | null>(now?.color ?? null)
+  const { busy, problem, submit } = useSubmit(() => onSave(icon, color))
+  return (
+    <Frame title={t('looks.title', { name: rest.length ? rest[rest.length - 1] : space })} onClose={onClose} onSubmit={() => void submit()} testId="look-dialog">
+      <div className="min-h-0 space-y-4 overflow-y-auto p-4">
+        <LookPicker icon={icon} color={color} onIcon={setIcon} onColor={setColor} />
+        <p className="text-xs text-mist-500">{t('looks.hint')}</p>
+        {problem && <p role="alert" className="text-sm text-bad-500">{errorText(problem)}</p>}
+      </div>
+      <Buttons confirm={t('common.save')} busy={busy} onClose={onClose} />
+    </Frame>
+  )
+}
+
+/** The symbols (own ones, Lucide by search) and the colours: where a space or folder is made, and where it changes. */
+function LookPicker({ icon, color, onIcon, onColor }: { icon: string | null; color: string | null; onIcon: (icon: string | null) => void; onColor: (color: string | null) => void }) {
+  const { t } = useTranslation()
+  const { choices } = useStore()
   const [query, setQuery] = useState('')
   const [all, setAll] = useState(false)
   const lucide = useLucide()
@@ -323,20 +363,18 @@ function LookDialog({ path, onClose, onSave }: { path: string; onClose: () => vo
     if (query.trim()) return searchLucide(lucide, query)
     return all ? Object.keys(lucide).map((name) => 'l:' + name) : []
   }, [lucide, query, all])
-  const { busy, problem, submit } = useSubmit(() => onSave(icon, color))
   const choice = (selected: boolean) =>
     'grid h-9 w-9 place-items-center rounded-lg border ' + (selected ? 'border-accent-500 bg-accent-500/15' : 'border-ink-700 hover:bg-ink-850')
   return (
-    <Frame title={t('looks.title', { name: rest.length ? rest[rest.length - 1] : space })} onClose={onClose} onSubmit={() => void submit()} testId="look-dialog">
-      <div className="min-h-0 space-y-4 overflow-y-auto p-4">
+    <>
         <fieldset>
           <legend className="mb-2 text-xs text-mist-500">{t('looks.symbol')}</legend>
           <div className="flex flex-wrap gap-1.5">
-            <button type="button" aria-pressed={icon === null} onClick={() => setIcon(null)} className={choice(icon === null) + ' w-auto px-2.5 text-xs text-mist-400'}>
+            <button type="button" aria-pressed={icon === null} onClick={() => onIcon(null)} className={choice(icon === null) + ' w-auto px-2.5 text-xs text-mist-400'}>
               {t('looks.noSymbol')}
             </button>
             {choices.icons.map((name) => (
-              <button key={name} type="button" aria-pressed={icon === name} aria-label={t(`looks.icons.${name}`)} title={t(`looks.icons.${name}`)} onClick={() => setIcon(name)} className={choice(icon === name)}>
+              <button key={name} type="button" aria-pressed={icon === name} aria-label={t(`looks.icons.${name}`)} title={t(`looks.icons.${name}`)} onClick={() => onIcon(name)} className={choice(icon === name)}>
                 <span style={{ color: color ?? undefined }}>
                   <Symbol name={name as SymbolName} className="h-4.5 w-4.5" />
                 </span>
@@ -370,7 +408,7 @@ function LookDialog({ path, onClose, onSave }: { path: string; onClose: () => vo
           {found.length > 0 && (
             <div className="nn-scroll mt-2 flex max-h-56 flex-wrap gap-1.5 overflow-y-auto" data-testid="look-found">
               {found.map((name) => (
-                <button key={name} type="button" aria-pressed={icon === name} aria-label={name.slice(2).replace(/-/g, ' ')} title={name.slice(2)} onClick={() => setIcon(name)} className={choice(icon === name)}>
+                <button key={name} type="button" aria-pressed={icon === name} aria-label={name.slice(2).replace(/-/g, ' ')} title={name.slice(2)} onClick={() => onIcon(name)} className={choice(icon === name)}>
                   <span style={{ color: color ?? undefined }}>
                     <LookIcon name={name} className="h-4.5 w-4.5" />
                   </span>
@@ -383,21 +421,17 @@ function LookDialog({ path, onClose, onSave }: { path: string; onClose: () => vo
         <fieldset>
           <legend className="mb-2 text-xs text-mist-500">{t('looks.color')}</legend>
           <div className="flex flex-wrap gap-1.5">
-            <button type="button" aria-pressed={color === null} onClick={() => setColor(null)} className={choice(color === null) + ' w-auto px-2.5 text-xs text-mist-400'}>
+            <button type="button" aria-pressed={color === null} onClick={() => onColor(null)} className={choice(color === null) + ' w-auto px-2.5 text-xs text-mist-400'}>
               {t('looks.automatic')}
             </button>
             {choices.colors.map((value, index) => (
-              <button key={value} type="button" aria-pressed={color === value} aria-label={t(`looks.colors.${index}`)} title={t(`looks.colors.${index}`)} onClick={() => setColor(value)} className={choice(color === value)}>
+              <button key={value} type="button" aria-pressed={color === value} aria-label={t(`looks.colors.${index}`)} title={t(`looks.colors.${index}`)} onClick={() => onColor(value)} className={choice(color === value)}>
                 <span className="h-4 w-4 rounded-full" style={{ background: value }} />
               </button>
             ))}
           </div>
         </fieldset>
-        <p className="text-xs text-mist-500">{t('looks.hint')}</p>
-        {problem && <p role="alert" className="text-sm text-bad-500">{errorText(problem)}</p>}
-      </div>
-      <Buttons confirm={t('common.save')} busy={busy} onClose={onClose} />
-    </Frame>
+    </>
   )
 }
 

@@ -1110,6 +1110,7 @@
     "automatic": "Automatisch",
     "hint": "Alle im Bereich sehen es so, in der Seitenleiste und auf der Karte. Die Farbe eines Ordners gilt auch für die Ordner darin.",
     "saved": "Symbol und Farbe gespeichert.",
+    "notSaved": "Symbol und Farbe ließen sich nicht speichern, über das Kontextmenü noch einmal versuchen.",
     "icons": {
       "folder": "Ordner",
       "book": "Buch",
