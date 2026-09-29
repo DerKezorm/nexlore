@@ -1,5 +1,5 @@
-# Tests on both systems the project is worked on, Linux and Windows (end to end on Linux only), and a trial build of
-# the image.
+# Tests and a trial build of the image, on Linux like the image itself. Windows, where the project is written, runs
+# the full set locally with every block; a Windows runner here found only races against its slow clock.
 # Nothing is published from here: an image goes out only from release.yml, when a tag is pushed.
 name: CI
 
@@ -16,15 +16,8 @@ concurrency:
 
 jobs:
   tests:
-    name: Tests (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash
+    name: Tests
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -63,21 +56,18 @@ jobs:
       - name: Editor in a real browser, then end to end, headless
         working-directory: frontend
         run: |
-          # The system libraries Chromium needs are not guaranteed on the Ubuntu image; Windows needs none.
-          if [ "$RUNNER_OS" = "Linux" ]; then npx playwright install --with-deps chromium; else npx playwright install chromium; fi
+          # The system libraries Chromium needs are not guaranteed on the Ubuntu image.
+          npx playwright install --with-deps chromium
           # Round trips and the long test against data loss (Milkdown does not run in jsdom).
           npm run test:browser
-          # End to end on Linux only: the image runs on Linux, and the Windows runner is so slow that five runs in
-          # a row each found another test losing a race against its clock. On Windows the full end-to-end run stays
-          # part of every block on the machine the project is worked on.
-          if [ "$RUNNER_OS" = "Linux" ]; then npx playwright test; fi
+          npx playwright test
 
       # A red end-to-end run leaves its picture and page snapshot, so it can be read instead of guessed at.
       - name: Keep what a failed end-to-end test saw
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-results-${{ matrix.os }}
+          name: e2e-results
           path: frontend/test-results/
           retention-days: 7
 
