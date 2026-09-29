@@ -18,7 +18,7 @@ SIZE_MIN, SIZE_MAX = 14, 20
 #: Where nexlore opens (Obsidian's Homepage plugin): the map, today's daily note, the note opened last, one note.
 STARTS = ("graph", "daily", "last", "note")
 #: The tabs of the column beside a note, and the sidebar folded to a strip of symbols or open.
-PANEL_TABS = ("outline", "links", "graph", "versions", "plugins")
+PANEL_TABS = ("outline", "links", "comments", "graph", "versions", "plugins")
 SIDEBARS = ("open", "rail")
 
 DEFAULTS: dict[str, Any] = {

@@ -13,7 +13,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { ApiError, draftsApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi, themesApi, proposalsApi, type NoteNews, type Proposal } from '../api/client'
+import { ApiError, draftsApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi, themesApi, proposalsApi, type NoteNews, type Proposal, commentsApi, type Thread } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ConflictCompare } from '../components/ConflictCompare'
 import { DraftCompare } from '../components/DraftCompare'
@@ -21,6 +21,9 @@ import type { EditorHandle, EditorMode } from '../components/NoteEditor'
 import { Sidebar } from '../components/Sidebar'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { NotePanel, type PanelPart } from '../components/NotePanel'
+import { Comments } from '../components/Comments'
+import { CommentLayer } from '../components/CommentLayer'
+import { revealThread, type Anchor } from '../lib/comments'
 import { Unlinked } from '../components/Unlinked'
 import { NoteStart } from '../components/NoteStart'
 import { Outline } from '../components/Outline'
@@ -144,6 +147,26 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
 
   const [note, setNote] = useState<NoteData | null>(null)
   const [links, setLinks] = useState<Links | null>(null)
+  // Comments in the margin: the note's threads, a new one asked for from words in the text, and which are found.
+  const [threads, setThreads] = useState<Thread[] | null>(null)
+  const [commentDraft, setCommentDraft] = useState<Anchor | null>(null)
+  const [commentsFound, setCommentsFound] = useState<Set<number> | undefined>(undefined)
+  useEffect(() => {
+    setThreads(null)
+    setCommentDraft(null)
+  }, [path])
+  const notePath = note?.path
+  useEffect(() => {
+    if (!notePath) return
+    let alive = true
+    commentsApi.list(notePath).then(
+      (found) => alive && setThreads(found.threads),
+      () => alive && setThreads([]),
+    )
+    return () => {
+      alive = false
+    }
+  }, [notePath])
   // Where wiki links lead, asked from the server; the note's saved links give the first answers.
   const linkIdx = useMemo(() => new LinkIndex(path), [path])
   useEffect(() => () => linkIdx.close(), [linkIdx])
@@ -767,6 +790,11 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     )
   }
 
+  const loadThreads = (target: string) =>
+    void commentsApi.list(target).then(
+      (found) => current.current === target && setThreads(found.threads),
+      () => current.current === target && setThreads([]),
+    )
   const backNotes = backlinkNotes(links?.backlinks ?? [])
   const panelParts: PanelPart[] = [
     { id: 'outline', label: t('outline.title'), content: () => <Outline content={note.content} scroller={scroller} onReveal={reveal} /> },
@@ -819,6 +847,23 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
             })}
           </Section>
         </>
+      ),
+    },
+    {
+      id: 'comments',
+      label: t('comments.title'),
+      count: threads ? threads.filter((thread) => !thread.resolved).length : null,
+      content: () => (
+        <Comments
+          path={note.path}
+          threads={threads}
+          draft={commentDraft}
+          onDraftDone={() => setCommentDraft(null)}
+          found={editing ? undefined : commentsFound}
+          onReveal={(thread) => void (editing || revealThread(article.current, thread))}
+          onChanged={() => loadThreads(note.path)}
+          manage={role === 'manage'}
+        />
       ),
     },
     { id: 'graph', label: t('panel.graph'), content: () => (!leaving && note.path === path ? <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} /> : null) },
@@ -1119,6 +1164,16 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 <PluginBlocks plugins={plugins} article={article} html={html} note={note} onOpen={open} onWritten={pluginWrote} />
                 <NoteEmbeds article={article} html={html} onOpen={open} />
                 <BaseBlocks article={article} html={html} note={note.path} />
+                <CommentLayer
+                  article={article}
+                  html={html}
+                  threads={threads}
+                  onAsk={(anchor) => {
+                    setCommentDraft(anchor)
+                    showPanel('comments')
+                  }}
+                  onFound={setCommentsFound}
+                />
                 </>
               )}
             </div>

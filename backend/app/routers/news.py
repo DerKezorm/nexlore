@@ -17,7 +17,7 @@ from ..db import SessionLocal
 from ..deps import Account, readable_spaces
 from ..models import Account as AccountRow
 from ..models import File, NoteSeen, Version
-from ..services import index
+from ..services import comments, index
 
 router = APIRouter(prefix="/api", tags=["news"])
 
@@ -33,9 +33,20 @@ class NewNote(BaseModel):
     author: str
 
 
+class Mention(BaseModel):
+    thread: int
+    path: str
+    title: str
+    author: str
+    at: datetime
+    excerpt: str
+
+
 class News(BaseModel):
     count: int
     notes: list[NewNote]
+    #: Open threads where somebody named the account with ``@name`` since it last opened the note.
+    mentions: list[Mention] = []
 
 
 def _since(db: Session, account: Any) -> datetime:
@@ -98,7 +109,10 @@ def news(account: Account, limit: Annotated[int, Query(ge=1, le=100)] = 30) -> N
             NewNote(path=row.path, title=row.title, changed_at=row.changed, author=_author(db, account, row.id, since))
             for row in rows
         ]
-    return News(count=count, notes=notes)
+        seen_rows = db.execute(select(NoteSeen.file_id, NoteSeen.seen_at).where(NoteSeen.account_id == account.id))
+        found = comments.mentions_of(db, account, readable_spaces(account), dict(seen_rows.all()), since)
+        mentions = [Mention(**item) for item in found]
+    return News(count=count, notes=notes, mentions=mentions)
 
 
 @router.post("/news/seen", status_code=204, summary="Mark everything new as seen")

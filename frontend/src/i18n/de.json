@@ -260,7 +260,8 @@
     "compareTitle": "Was sich in „{{title}}“ geändert hat",
     "before": "Als du sie zuletzt gesehen hast",
     "now": "Jetzt",
-    "newDot": "Neu seit deinem letzten Besuch"
+    "newDot": "Neu seit deinem letzten Besuch",
+    "mention": "{{name}} nennt dich in {{title}}"
   },
   "proposals": {
     "button": "Vorschlagen",
@@ -1617,6 +1618,27 @@
     "clearTitle": "Log leeren?",
     "clearText": "Alle Zeilen gehen, auch die älteren Dateien.",
     "cleared": "Das Log ist leer."
+  },
+  "comments": {
+    "title": "Kommentare",
+    "none": "Noch keine Kommentare. Markiere Wörter im Lesetext und wähle „Kommentieren“.",
+    "here": "Kommentieren",
+    "reveal": "Zur Stelle im Text",
+    "gone": "Die Wörter stehen nicht mehr im Text.",
+    "edited": "bearbeitet",
+    "edit": "Ändern",
+    "remove": "Löschen",
+    "save": "Speichern",
+    "send": "Senden",
+    "reply": "Antworten",
+    "resolve": "Erledigt",
+    "reopen": "Wieder öffnen",
+    "resolvedBy": "erledigt von {{name}}",
+    "closed_one": "{{count}} erledigter Faden",
+    "closed_other": "{{count}} erledigte Fäden",
+    "newLabel": "Neuer Kommentar",
+    "replyLabel": "Antwort",
+    "editLabel": "Kommentar ändern"
   },
   "ai": {
     "title": "KI in Notizen",

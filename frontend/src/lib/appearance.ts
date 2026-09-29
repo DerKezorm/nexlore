@@ -15,7 +15,7 @@ export type Width = 'narrow' | 'normal' | 'wide' | 'full'
 export type Start = 'graph' | 'daily' | 'last' | 'note'
 
 /** The tabs of the column beside a note. */
-export type PanelTab = 'outline' | 'links' | 'graph' | 'versions' | 'plugins'
+export type PanelTab = 'outline' | 'links' | 'comments' | 'graph' | 'versions' | 'plugins'
 
 export type Appearance = {
   mode: Mode

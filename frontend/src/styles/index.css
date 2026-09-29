@@ -328,3 +328,11 @@
     @apply block;
   }
 }
+
+/* Comments in the margin: the words of open threads while reading, the one just asked for stronger. */
+::highlight(nx-comment) {
+  background-color: color-mix(in srgb, var(--color-warn-500) 22%, transparent);
+}
+::highlight(nx-comment-current) {
+  background-color: color-mix(in srgb, var(--color-warn-500) 55%, transparent);
+}

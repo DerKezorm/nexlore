@@ -3,11 +3,11 @@
  * notes change and after a note was opened (it is seen then). One list for the sidebar's section and its dots.
  */
 import { useSyncExternalStore } from 'react'
-import { newsApi, type NewNote } from '../api/client'
+import { newsApi, type NewNote, type NewsMention } from '../api/client'
 
-type State = { count: number; notes: NewNote[]; paths: Set<string> }
+type State = { count: number; notes: NewNote[]; paths: Set<string>; mentions: NewsMention[] }
 
-let state: State = { count: 0, notes: [], paths: new Set() }
+let state: State = { count: 0, notes: [], paths: new Set(), mentions: [] }
 const listeners = new Set<() => void>()
 let asking: Promise<void> | null = null
 
@@ -20,7 +20,8 @@ export function refreshNews(): Promise<void> {
   asking ??= newsApi
     .list()
     .then(
-      (found) => publish({ count: found.count, notes: found.notes, paths: new Set(found.notes.map((note) => note.path)) }),
+      (found) =>
+        publish({ count: found.count, notes: found.notes, paths: new Set(found.notes.map((note) => note.path)), mentions: found.mentions ?? [] }),
       () => undefined,
     )
     .finally(() => {
@@ -31,13 +32,15 @@ export function refreshNews(): Promise<void> {
 
 /** A note was opened: it is seen, out of the list at once. */
 export function seenNote(path: string): void {
-  if (!state.paths.has(path)) return
+  const mentions = state.mentions.filter((mention) => mention.path !== path)
+  if (!state.paths.has(path) && mentions.length === state.mentions.length) return
   const notes = state.notes.filter((note) => note.path !== path)
-  publish({ count: Math.max(0, state.count - 1), notes, paths: new Set(notes.map((note) => note.path)) })
+  const count = state.paths.has(path) ? Math.max(0, state.count - 1) : state.count
+  publish({ count, notes, paths: new Set(notes.map((note) => note.path)), mentions })
 }
 
 export async function seenAll(): Promise<void> {
-  publish({ count: 0, notes: [], paths: new Set() })
+  publish({ count: 0, notes: [], paths: new Set(), mentions: [] })
   await newsApi.seenAll()
   await refreshNews()
 }

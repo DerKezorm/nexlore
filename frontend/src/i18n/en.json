@@ -260,7 +260,8 @@
     "compareTitle": "What changed in “{{title}}”",
     "before": "When you last saw it",
     "now": "Now",
-    "newDot": "New since your last visit"
+    "newDot": "New since your last visit",
+    "mention": "{{name}} names you in {{title}}"
   },
   "proposals": {
     "button": "Propose",
@@ -1617,6 +1618,27 @@
     "clearTitle": "Clear the log?",
     "clearText": "Every line goes, the older files too.",
     "cleared": "The log is empty."
+  },
+  "comments": {
+    "title": "Comments",
+    "none": "No comments yet. Choose words in the reading view and pick \"Comment\".",
+    "here": "Comment",
+    "reveal": "To the place in the text",
+    "gone": "The words are no longer in the text.",
+    "edited": "edited",
+    "edit": "Edit",
+    "remove": "Delete",
+    "save": "Save",
+    "send": "Send",
+    "reply": "Reply",
+    "resolve": "Resolve",
+    "reopen": "Reopen",
+    "resolvedBy": "resolved by {{name}}",
+    "closed_one": "{{count}} resolved thread",
+    "closed_other": "{{count}} resolved threads",
+    "newLabel": "New comment",
+    "replyLabel": "Reply",
+    "editLabel": "Edit comment"
   },
   "ai": {
     "title": "AI in notes",

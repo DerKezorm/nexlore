@@ -297,6 +297,30 @@ export function spaceZipUrl(space: string): string {
   return `/api/spaces/${encodeURIComponent(space)}/zip`
 }
 
+export type ThreadComment = { id: number; author: string; body: string; created_at: string; edited_at: string | null; mine: boolean }
+export type Thread = {
+  id: number
+  quote: string
+  before: string
+  after: string
+  resolved: boolean
+  resolved_by: string
+  may_resolve: boolean
+  comments: ThreadComment[]
+}
+
+/** Comments in the margin of a note: in the database, never in the file. */
+export const commentsApi = {
+  list: (path: string) => api<{ threads: Thread[] }>('/api/comments', { query: { path } }),
+  start: (path: string, anchor: { quote: string; before: string; after: string }, body: string) =>
+    api<{ id: number }>('/api/comments', { method: 'POST', body: { path, ...anchor, body } }),
+  reply: (path: string, thread: number, body: string) => api<{ id: number }>(`/api/comments/${thread}/replies`, { method: 'POST', body: { path, body } }),
+  edit: (path: string, id: number, body: string) => api<{ id: number }>(`/api/comments/${id}`, { method: 'PUT', body: { path, body } }),
+  remove: (path: string, id: number) => api<void>(`/api/comments/${id}`, { method: 'DELETE', query: { path } }),
+  resolve: (path: string, thread: number, done: boolean) => api<void>(`/api/comments/${thread}/resolve`, { method: 'POST', body: { path, done } }),
+  people: (path: string, q: string) => api<string[]>('/api/comments/people', { query: { path, q } }),
+}
+
 export const captureApi = {
   /** Words on top of the space's inbox note; `stamp` is this browser's clock, `language` names a new inbox. */
   put: (space: string, text: string, stamp: string, language: string) =>
@@ -544,13 +568,15 @@ export const favoritesApi = {
 // --- New since the last visit and proposals (routers/news.py, routers/proposals.py) --------------------------------
 
 export type NewNote = { path: string; title: string; changed_at: string; author: string }
+/** An open thread where somebody named the account with `@name` since it last opened the note. */
+export type NewsMention = { thread: number; path: string; title: string; author: string; at: string; excerpt: string }
 export type Proposal = {
   id: number; path: string; title: string; by: string; message: string; status: 'open' | 'taken' | 'declined'
   created_at: string; decided_at: string | null; decided_by: string | null; content: string | null
 }
 
 export const newsApi = {
-  list: () => api<{ count: number; notes: NewNote[] }>('/api/news'),
+  list: () => api<{ count: number; notes: NewNote[]; mentions: NewsMention[] }>('/api/news'),
   seenAll: () => api<void>('/api/news/seen', { method: 'POST' }),
 }
 

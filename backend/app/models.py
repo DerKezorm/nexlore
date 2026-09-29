@@ -564,6 +564,32 @@ class CssSnippet(Base):
     changed_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
 
 
+class Comment(Base):
+    """A comment in the margin of a note (``services/comments.py``): the first of a thread holds the words it is on."""
+
+    __tablename__ = "comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), index=True)
+    space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"), index=True)
+    #: The first comment of the thread; None for that first one itself.
+    thread_id: Mapped[int | None] = mapped_column(
+        ForeignKey("comments.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    #: None once the account is gone; its name stays with the words.
+    account_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
+    author: Mapped[str] = mapped_column(String(64), default="")
+    body: Mapped[str] = mapped_column(Text, default="")
+    #: The words of the note the thread is on, and a little of what stood before and after them (first comment only).
+    quote: Mapped[str] = mapped_column(Text, default="")
+    before: Mapped[str] = mapped_column(String(200), default="")
+    after: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    edited_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    resolved_by: Mapped[str] = mapped_column(String(64), default="")
+
+
 class NoteSeen(Base):
     """When an account last opened a note: what others changed after it is "new since your last visit"."""
 

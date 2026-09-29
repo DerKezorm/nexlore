@@ -37,7 +37,7 @@ def test_the_defaults_come_with_me_and_a_change_keeps_the_rest(client: TestClien
         {"start_note": "Work/Plan.txt"},
         {"start_note": 7},
         {"panel": "no"},
-        {"panel_tab": "comments"},
+        {"panel_tab": "chat"},
         {"sidebar": "hidden"},
     ],
 )

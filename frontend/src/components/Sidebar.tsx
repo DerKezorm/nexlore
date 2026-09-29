@@ -739,18 +739,26 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           </button>
         </div>
       )}
-      {news.count > 0 && (
+      {(news.count > 0 || news.mentions.length > 0) && (
         <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-news">
           <div className="flex items-center gap-2 px-2">
             {/* One line from the start: the dots in the tree say where; opened, the list (remembered in this browser). */}
             <button type="button" onClick={() => showNews(!newsOpen)} aria-expanded={newsOpen} className="flex flex-1 items-center gap-1 text-left text-[11px] font-semibold tracking-wider text-accent-400 uppercase">
               <Symbol name={newsOpen ? 'chevronDown' : 'chevronRight'} className="h-3 w-3" />
-              {t('news.section', { count: news.count })}
+              {t('news.section', { count: news.count + news.mentions.length })}
             </button>
             <button type="button" onClick={() => void seenAll()} className="text-[11px] text-mist-500 hover:text-mist-200">{t('news.allSeen')}</button>
           </div>
           {newsOpen && (
           <ul className="nn-scroll mt-1 max-h-44 overflow-y-auto">
+            {news.mentions.slice(0, 6).map((item) => (
+              <li key={'m' + item.thread}>
+                <button type="button" onClick={() => onNote(item.path)} title={item.excerpt} data-mention={item.thread} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] text-mist-300 hover:bg-ink-850">
+                  <span aria-hidden="true" className="shrink-0 text-accent-400">@</span>
+                  <span className="min-w-0 flex-1 truncate">{t('news.mention', { name: item.author, title: item.title })}</span>
+                </button>
+              </li>
+            ))}
             {news.notes.slice(0, 12).map((item) => (
               <li key={item.path}>
                 <button type="button" onClick={() => onNote(item.path)} title={item.author ? t('news.by', { name: item.author }) : t('news.outside')} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] text-mist-300 hover:bg-ink-850">
