@@ -160,3 +160,39 @@ test('the grip beside a block says what it does, selects the block on a click an
   expect(onDisk('Zoo/Grip.md')).toBe(before.replace('Second paragraph.\n\n', '').replace('# Grip\n\n', '# Grip\n\nSecond paragraph.\n\n'))
   expect(box.height).toBeGreaterThan(0)
 })
+
+test('the line numbers of the file stand beside the text, follow typing, and are there in the Markdown view too', async ({ page }) => {
+  await page.goto('/')
+  await page.evaluate(() => localStorage.removeItem('nexlore.lineNumbers'))
+  await edit(page, 'Zoo/Lines.md')
+  const bar = page.getByTestId('editor-toolbar')
+  const numbers = page.getByTestId('line-numbers').locator('.nx-line')
+  await expect(numbers).toHaveCount(0)
+  await bar.getByRole('button', { name: 'Line numbers of the file' }).click()
+  await expect(bar.getByRole('button', { name: 'Line numbers of the file' })).toHaveAttribute('aria-pressed', 'true')
+  // The front matter takes lines 1 to 3; a paragraph over two lines has the first; list items and table rows their own.
+  await expect(numbers).toHaveText(['4', '6', '9', '10', '11', '13', '15', '17'])
+  // Beside its block, on its first line.
+  const last = (await page.locator('.ProseMirror p', { hasText: 'Last.' }).boundingBox())!
+  const seventeen = (await numbers.last().boundingBox())!
+  expect(Math.abs(seventeen.y + seventeen.height / 2 - (last.y + 12))).toBeLessThan(8)
+  expect(seventeen.x + seventeen.width).toBeLessThan(last.x)
+
+  // Typed: the new paragraph is line 19 of what is saved.
+  await page.locator('.ProseMirror p', { hasText: 'Last.' }).click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Added.')
+  await expect(numbers).toHaveText(['4', '6', '9', '10', '11', '13', '15', '17', '19'])
+  await saved(page)
+  expect(onDisk('Zoo/Lines.md').split('\n')[18]).toBe('Added.')
+
+  // Remembered in this browser, and in the Markdown view one per line.
+  await edit(page, 'Zoo/Lines.md')
+  await expect(page.getByTestId('editor-toolbar').getByRole('button', { name: 'Line numbers of the file' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(numbers).toHaveText(['4', '6', '9', '10', '11', '13', '15', '17', '19'])
+  await page.getByTestId('editor-toolbar').getByRole('button', { name: 'Markdown source' }).click()
+  const column = page.getByTestId('source-lines')
+  await expect(column).toContainText('19')
+  expect((await column.innerText()).trim().split('\n')).toHaveLength(onDisk('Zoo/Lines.md').split('\n').length)
+})

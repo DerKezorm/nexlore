@@ -88,6 +88,7 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Zoo/Ai whole.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',
   'Zoo/Ai insert.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',
   'Zoo/Ai off.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',
+  'Zoo/Lines.md': '---\ntags: [a]\n---\n# Lines\n\nFirst paragraph\ngoes on here.\n\n- one\n  - one inner\n- two\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\nLast.\n',
   'Zoo/Grip left.md': '# Grip left\n\nLeft first paragraph.\n\nLeft second.\n\nLeft third.\n',
   'Zoo/Grip.md':'# Grip\n\nFirst *paragraph*  \nwith a hard break.\n\nSecond paragraph.\n\n- [ ] Third, a task.\n',
   'Zoo/Toolbar phone.md': '# Toolbar phone\n\nTyped on a phone.\n',

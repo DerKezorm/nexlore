@@ -158,3 +158,34 @@ test('the sign-in page opens without a single console error', async ({ browser }
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   expect(problems).toEqual([])
 })
+
+test('the own account comes in tabs, and a profile picture goes up, shows in the account menu and goes again', async ({ page }) => {
+  // One red pixel (a PNG): the server draws a square of it anew.
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==', 'base64')
+  await page.goto('/account')
+  const tabs = page.getByRole('tablist', { name: 'My account' })
+  await expect(tabs.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('button', { name: 'Change password' })).toHaveCount(0)
+  await tabs.getByRole('tab', { name: 'Security' }).click()
+  await expect(page).toHaveURL(/\/account\?tab=security$/)
+  await expect(page.getByTestId('second-factor')).toBeVisible()
+  await tabs.getByRole('tab', { name: 'Profile' }).click()
+
+  const menu = page.getByRole('banner').getByRole('button', { name: `Account of ${OPERATOR.name}` })
+  await expect(menu.getByTestId('avatar-letter')).toHaveText(OPERATOR.name.slice(0, 1).toUpperCase())
+  await page.getByLabel('Upload a picture').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: png })
+  await expect(page.getByText('Picture saved.')).toBeVisible()
+  const shown = menu.getByTestId('avatar')
+  await expect(shown).toBeVisible()
+  await expect.poll(() => shown.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth)).toBe(256)
+  // Not a picture: said so, the old one stays.
+  await page.getByLabel('Upload a picture').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: Buffer.from('<svg/>') })
+  await expect(page.getByText('That is not a picture nexlore takes')).toBeVisible()
+  await expect(shown).toBeVisible()
+  await page.getByRole('button', { name: 'Remove' }).click()
+  await expect(page.getByText('Picture removed.')).toBeVisible()
+  await expect(menu.getByTestId('avatar-letter')).toBeVisible()
+  // The old anchors lead to their tab.
+  await page.goto('/account#mcp')
+  await expect(tabs.getByRole('tab', { name: 'AI' })).toHaveAttribute('aria-selected', 'true')
+})

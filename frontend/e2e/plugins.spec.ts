@@ -48,7 +48,7 @@ test('the operator lets plugins out in the settings, the account switches them o
   await query.getByRole('button', { name: 'Switch it on for me' }).click()
   await expect(query.getByText('On for you')).toBeVisible()
 
-  await page.goto('/account')
+  await page.goto('/account?tab=plugins')
   const mine = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Plugins for me' }) })
   await expect(mine.getByRole('checkbox', { name: 'Queries' })).toBeChecked()
   await expect(mine.getByTestId('plugin-howto-query')).toContainText('code block ```query')

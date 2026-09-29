@@ -57,10 +57,13 @@ type Props = {
   ai?: () => MenuItem[]
   onSource: () => void
   onHide: () => void
+  /** The file's line numbers beside the text, and the switch for them. */
+  lines: boolean
+  onLines: () => void
   openMenu: (x: number, y: number, items: MenuItem[]) => void
 }
 
-export function EditorToolbar({ editor, ai, onSource, onHide, openMenu }: Props) {
+export function EditorToolbar({ editor, ai, onSource, onHide, lines, onLines, openMenu }: Props) {
   const { t } = useTranslation()
   const [status, setStatus] = useState<EditorStatus>(NONE)
   const phone = usePhone()
@@ -178,6 +181,7 @@ export function EditorToolbar({ editor, ai, onSource, onHide, openMenu }: Props)
       : []),
   ]
   const end = [
+    button('lines', t('toolbar.lineNumbers'), 'lineNumbers', onLines, { active: lines }),
     button('source', t('note.sourceMode'), null, onSource, { text: 'MD' }),
     button('hide', t('toolbar.hide'), 'eyeOff', onHide),
   ]

@@ -9,7 +9,7 @@
  * When the editor goes away (another note, back to reading), it hands its last text to `onLeave` first: layout
  * effects are cleaned up before the page's own effects, so the page's last save has the words typed just before.
  */
-import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { TextSelection } from '@milkdown/kit/prose/state'
 import { useTranslation } from 'react-i18next'
 
@@ -24,7 +24,7 @@ import { fileKind, isFileTarget, isPasted, relativeTarget } from '../lib/files'
 import type { LinkIndex } from '../lib/links'
 import { aiMenu, type AiAsk } from '../lib/aiMenu'
 import { useContextMenu, type MenuItem } from '../lib/menu'
-import { rememberToolbar, toolbarHidden } from '../lib/toolbar'
+import { linesShown, rememberLines, rememberToolbar, toolbarHidden } from '../lib/toolbar'
 import { baseName } from '../lib/vault'
 import { useAuth } from '../state/auth'
 import { AiDialog } from './AiDialog'
@@ -72,6 +72,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   // The same editor for the toolbar, which draws again when it comes.
   const [ready, setReady] = useState<Engine | null>(null)
   const [toolbarOff, setToolbarOff] = useState(toolbarHidden)
+  const [lines, setLines] = useState(linesShown)
   // AI in the editor: only when the operator allows it and the account switched its own service on.
   const { me } = useAuth()
   const aiReady = !!me?.ai_ready && !readOnly
@@ -318,11 +319,16 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     menu.open(event.clientX, event.clientY, items)
   }
 
+  // The file's line numbers: the body starts on the line after the front matter (its lines end with a line break).
+  useEffect(() => {
+    ready?.lineNumbers(lines ? head.split('\n').length : null)
+  }, [ready, lines, head])
+
   if (problem) return <p className="text-sm text-bad-500">{t('note.editorFailed')}</p>
 
   const toolbar = mode === 'visual' && !readOnly
   return (
-    <div className={'nx-note-editor' + (toolbar && !toolbarOff ? ' pb-14 sm:pb-0' : '')}>
+    <div className={'nx-note-editor' + (toolbar && !toolbarOff ? ' pb-14 sm:pb-0' : '')} data-lines={lines ? 'on' : undefined}>
       {toolbar &&
         (toolbarOff ? (
           <ShowToolbar
@@ -341,6 +347,11 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
               rememberToolbar(true)
               setToolbarOff(true)
             }}
+            lines={lines}
+            onLines={() => {
+              rememberLines(!lines)
+              setLines(!lines)
+            }}
             openMenu={menu.open}
           />
         ))}
@@ -357,6 +368,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         />
       )}
       {mode === 'source' ? (
+        <SourceLines lines={lines} text={source}>
         <textarea
           value={source}
           readOnly={readOnly}
@@ -367,8 +379,13 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
             setSource(event.target.value)
             latest.current.onChange()
           }}
-          className="nx-source min-h-[60vh] w-full resize-y rounded-xl border border-ink-700 bg-ink-900 p-4 font-mono text-[13px] leading-6 text-mist-200 outline-none focus:border-accent-500"
+          wrap={lines ? 'off' : undefined}
+          className={
+            'nx-source min-h-[60vh] w-full resize-y rounded-xl border border-ink-700 bg-ink-900 p-4 font-mono text-[13px] leading-6 text-mist-200 outline-none focus:border-accent-500' +
+            (lines ? ' pl-14' : '')
+          }
         />
+        </SourceLines>
       ) : (
         <div ref={host} className="nx-editor-host" onContextMenu={openMenu} />
       )}
@@ -379,6 +396,28 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     </div>
   )
 })
+
+/** The file's line numbers beside the Markdown view: a column that scrolls with the text, which then does not wrap. */
+function SourceLines({ lines, text, children }: { lines: boolean; text: string; children: ReactNode }) {
+  const column = useRef<HTMLDivElement>(null)
+  if (!lines) return <>{children}</>
+  const numbers = Array.from({ length: text.split('\n').length }, (_, index) => index + 1).join('\n')
+  return (
+    <div
+      className="relative"
+      onScrollCapture={(event) => {
+        if (column.current) column.current.style.transform = `translateY(${-(event.target as HTMLElement).scrollTop}px)`
+      }}
+    >
+      {children}
+      <div aria-hidden="true" className="pointer-events-none absolute top-px bottom-px left-px w-11 overflow-hidden rounded-l-xl" data-testid="source-lines">
+        <div ref={column} className="pt-4 pr-2 text-right font-mono text-[11px] leading-6 whitespace-pre text-mist-600">
+          {numbers}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function editorLabels(t: (key: string) => string): EditorLabels {
   const s = (key: string) => t(`editor.slash.${key}`)

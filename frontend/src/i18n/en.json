@@ -232,6 +232,8 @@
   },
   "errors": {
     "byCode": {
+      "avatar_not_a_picture": "That is not a picture nexlore takes (JPEG, PNG, WebP, GIF, HEIC or AVIF).",
+      "avatar_too_large": "The picture is too large.",
       "not_found": "Not found.",
       "invalid_input": "The input is not valid.",
       "sign_in_required": "Sign in first.",
@@ -537,6 +539,8 @@
     }
   },
   "account": {
+    "tabs": { "profile": "Profile", "security": "Security", "ai": "AI", "plugins": "Plugins" },
+    "profile": {"name": "Name", "role": "Role", "email": "Email", "upload": "Upload a picture", "change": "Another picture", "remove": "Remove", "saved": "Picture saved.", "removed": "Picture removed.", "hint": "A photo from your phone or camera. It is cut to a square, and nothing of the file but the picture is kept: no place, no device."},
     "menu": "Account of {{name}}",
     "role": {
       "operator": "Operator",
@@ -1167,6 +1171,7 @@
     "indent": "Indent",
     "outdent": "Outdent",
     "hide": "Hide the toolbar",
+    "lineNumbers": "Line numbers of the file",
     "show": "Show the toolbar",
     "rowBefore": "Row above",
     "rowAfter": "Row below",

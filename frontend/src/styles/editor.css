@@ -242,3 +242,35 @@
   width: 100%;
   max-width: 28rem;
 }
+
+/* The file's line numbers (lineNumbers.ts): room between the grip and the text, the numbers in it. */
+.nx-note-editor[data-lines='on'] .milkdown .ProseMirror {
+  padding-left: 3rem;
+}
+@media (min-width: 768px) {
+  .nx-note-editor[data-lines='on'] .milkdown .ProseMirror {
+    padding-left: 7rem;
+  }
+}
+.nx-note-editor .milkdown {
+  position: relative;
+}
+.nx-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.nx-line {
+  position: absolute;
+  width: 2rem;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-mist-600);
+  font-variant-numeric: tabular-nums;
+}
+/* The grip stands left of the numbers, not on them. */
+.nx-note-editor[data-lines='on'] .milkdown .milkdown-block-handle {
+  margin-left: -2.75rem;
+}

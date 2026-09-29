@@ -31,7 +31,7 @@ test('a key made on the account page proposes a draft that the note takes over',
   })
   expect(opened.ok()).toBe(true)
 
-  await page.goto('/account')
+  await page.goto('/account?tab=ai')
   await page.getByRole('button', { name: 'New key' }).click()
   await page.getByLabel('Name').fill('Agent')
   await page.getByRole('radio', { name: /Drafts/ }).check()
@@ -96,7 +96,7 @@ test('a key made for one space sees no other', async ({ page, playwright, baseUR
     headers: { 'X-Nexlore-Client': 'tab-e2e-mcp0' },
   })
   expect(opened.ok()).toBe(true)
-  await page.goto('/account')
+  await page.goto('/account?tab=ai')
   await page.getByRole('button', { name: 'New key' }).click()
   await page.getByLabel('Name').fill('Zoo only')
   await page.getByRole('radio', { name: 'Only these' }).check()
@@ -132,7 +132,7 @@ test('the operator switches MCP off again, and both pages say where it goes on',
   const closed = await page.request.put('/api/settings', { data: { mcp_allowed: false }, headers: { 'X-Nexlore-Client': 'tab-e2e-mcp0' } })
   expect(closed.ok()).toBe(true)
   // The account page says why there are no keys, and shows the operator the way to the switch.
-  await page.goto('/account')
+  await page.goto('/account?tab=ai')
   await expect(page.getByTestId('mcp-off')).toContainText('has not switched on AI from outside')
   await expect(page.getByRole('button', { name: 'New key' })).toHaveCount(0)
   await page.getByTestId('mcp-off').getByRole('link', { name: /Switch it on under Settings/ }).click()

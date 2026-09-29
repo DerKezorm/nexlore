@@ -21,6 +21,7 @@ from .errors import detail
 from .middleware import GuardMiddleware, RequestContextMiddleware, unhandled_error
 from .routers import about, attachments, auth, drafts, everyday, graph, health, imports, members, oidc, shares
 from .routers import ai as ai_router
+from .routers import avatars as avatars_router
 from .routers import backups as backups_router
 from .routers import favorites as favorites_router
 from .routers import locales as locales_router
@@ -38,7 +39,7 @@ logger = logging.getLogger("nexlore")
 ROUTERS = [
     health, about, locales_router, logs_router, auth, totp_router, oidc, members, settings_router, vault_router,
     attachments, imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router, looks_router,
-    ai_router, favorites_router,
+    ai_router, favorites_router, avatars_router,
 ]
 
 

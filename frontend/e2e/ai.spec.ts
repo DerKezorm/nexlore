@@ -48,7 +48,7 @@ const saved = (page: Page) => expect(page.getByRole('status').filter({ hasText: 
 
 test('the account connects its own service, and the switch goes on only with a complete access', async ({ page }) => {
   const problems = collectProblems(page)
-  await page.goto('/account')
+  await page.goto('/account?tab=ai')
   await expect(page.getByTestId('ai-off')).toContainText('has not switched on AI in notes')
   await page.getByTestId('ai-off').getByRole('link', { name: /Switch it on under Settings/ }).click()
   const card = page.locator('#ai')
@@ -156,7 +156,7 @@ test('a summary goes in after the block with the caret, and a written text into 
 })
 
 test('the account sees what went out, word for word, and clears it; switched off, the editor offers no AI', async ({ page }) => {
-  await page.goto('/account')
+  await page.goto('/account?tab=ai')
   const access = page.locator('section#ai')
   await access.getByText('What went out').click()
   const events = access.getByTestId('ai-events')

@@ -232,6 +232,8 @@
   },
   "errors": {
     "byCode": {
+      "avatar_not_a_picture": "Das ist kein Bild, das nexlore annimmt (JPEG, PNG, WebP, GIF, HEIC oder AVIF).",
+      "avatar_too_large": "Das Bild ist zu groß.",
       "not_found": "Nicht gefunden.",
       "invalid_input": "Die Eingabe ist nicht gültig.",
       "sign_in_required": "Bitte erst anmelden.",
@@ -537,6 +539,8 @@
     }
   },
   "account": {
+    "tabs": { "profile": "Profil", "security": "Sicherheit", "ai": "KI", "plugins": "Plugins" },
+    "profile": {"name": "Name", "role": "Rolle", "email": "E-Mail", "upload": "Bild hochladen", "change": "Anderes Bild", "remove": "Entfernen", "saved": "Bild gespeichert.", "removed": "Bild entfernt.", "hint": "Ein Foto vom Handy oder von der Kamera. Es wird quadratisch zugeschnitten, und von der Datei bleibt nur das Bild: kein Ort, kein Gerät."},
     "menu": "Konto von {{name}}",
     "role": {
       "operator": "Betreiber",
@@ -1167,6 +1171,7 @@
     "indent": "Einrücken",
     "outdent": "Ausrücken",
     "hide": "Werkzeugleiste ausblenden",
+    "lineNumbers": "Zeilennummern der Datei",
     "show": "Werkzeugleiste zeigen",
     "rowBefore": "Zeile darüber",
     "rowAfter": "Zeile darunter",

@@ -400,6 +400,10 @@ class Account(Base):
     ai_model: Mapped[str] = mapped_column(String(200), default="")
     ai_key_enc: Mapped[str] = mapped_column(Text, default="")
     ai_active: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: The profile picture (``services/avatars.py``): a square WebP drawn anew, loaded only when asked for; and when it
+    #: was set, which makes its address new.
+    avatar: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True, deferred=True)
+    avatar_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     #: Not stored. Set on the account an MCP key acts as when the key may see only some spaces (``services/mcp.py``):
     #: ``rights`` then answers for every other space as if it did not exist.
     key_spaces: ClassVar[frozenset[int] | None] = None

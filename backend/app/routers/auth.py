@@ -120,6 +120,7 @@ def account_view(account: AccountRow) -> dict[str, Any]:
         "two_factor_recovery_left": len(totp.load_recovery(account.totp_recovery)) if account.totp_secret_enc else 0,
         "created_at": account.created_at.isoformat(),
         "last_seen_at": account.last_seen_at.isoformat() if account.last_seen_at else None,
+        "avatar": account.avatar_at.isoformat() if account.avatar_at else None,
     }
 
 

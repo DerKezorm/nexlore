@@ -72,7 +72,7 @@ test('an account sets up its second factor and signs in with it', async ({ page,
   await signIn(own, 'factor')
   await expect(own).toHaveURL(/\/$/)
 
-  await own.goto('/account')
+  await own.goto('/account?tab=security')
   const section = own.getByTestId('second-factor')
   await expect(section).toContainText('Off.')
   await section.getByRole('button', { name: 'Set up' }).click()
@@ -98,7 +98,7 @@ test('an account sets up its second factor and signs in with it', async ({ page,
   await own.getByLabel('Code from the app').fill(codes[0])
   await own.getByRole('button', { name: 'Sign in' }).click()
   await expect(own).toHaveURL(/\/$/)
-  await own.goto('/account')
+  await own.goto('/account?tab=security')
   await expect(own.getByTestId('second-factor')).toContainText('On. 7 recovery codes left.')
   expect(problems).toEqual([])
   await own.context().close()

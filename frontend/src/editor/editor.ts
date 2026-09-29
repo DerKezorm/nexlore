@@ -50,9 +50,10 @@ import { liftListItem, sinkListItem } from '@milkdown/kit/prose/schema-list'
 import { deleteColumn, deleteRow, deleteTable } from '@milkdown/kit/prose/tables'
 import type { EditorView } from '@milkdown/kit/prose/view'
 import { $prose, callCommand } from '@milkdown/kit/utils'
-import type { Root } from 'mdast'
+import type { Root, RootContent } from 'mdast'
 
 import { Plan, type Block, type Tools } from './blocks'
+import { lineNumbers, type LineControl } from './lineNumbers'
 import { livePreview, refreshLive, type LinkHelpers } from './live'
 import { imageSource, obsidian, replaced, writerOptions } from './obsidian'
 import { forcedRaw, holdRaw, keepsLetters, releaseRaw } from './syntax'
@@ -163,6 +164,8 @@ export type NoteEditor = {
   readonly tools: Tools
   /** What to save: the editor's Markdown with every unchanged block as it was in the original. */
   text: () => string
+  /** The file's line numbers beside the text, the body starting on line `first`; null hides them. */
+  lineNumbers: (first: number | null) => void
   /** The editor's own Markdown for the current document, without the block layer. */
   markdown: () => string
   /** A new original (the file changed elsewhere, nothing typed here): shown without a change of its own. */
@@ -218,6 +221,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
   const icon = (text: string) => `<span class="nx-slash-icon">${text}</span>`
   // A new original from the server is no change of the person typing.
   let quiet = false
+  const lines: LineControl = { set: () => {} }
   const listeners = new Set<() => void>()
 
   const crepe = new Crepe({
@@ -347,6 +351,36 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
       ),
     )
     .use($prose(() => livePreview(options.links)))
+    .use(
+      $prose(() =>
+        lineNumbers(
+          {
+            text: () => saved(),
+            blocks: (markdown) => tools.blocks(markdown),
+            serialize: (markdown) => tools.serialize(markdown),
+            write: (node) => {
+              let out = written.get(node)
+              if (out === undefined) {
+                out = serialize(view.state.schema.topNodeType.create(null, [node]))
+                written.set(node, out)
+              }
+              return out
+            },
+            parts: (markdown) => {
+              const found: number[] = []
+              const walk = (node: RootContent | Root) => {
+                if ((node.type === 'listItem' || node.type === 'tableRow') && node.position?.start.offset !== undefined)
+                  found.push(node.position.start.offset)
+                if ('children' in node) for (const child of node.children) walk(child as RootContent)
+              }
+              walk(remark.parse(markdown) as Root)
+              return found
+            },
+          },
+          lines,
+        ),
+      ),
+    )
     .use($prose(() => linkSuggest({ search: options.search, label: () => labels.suggestions })))
     .use(options.plugins ?? [])
   await crepe.editor.remove([remarkInlineLinkPlugin, remarkPreserveEmptyLinePlugin, ...replaced].flat())
@@ -394,6 +428,13 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
 
   let original = ''
   let plan: Plan | null = null
+  /** What one top-level node writes, kept per node (unchanged nodes stay the same object). */
+  const written = new WeakMap<ProseNode, string>()
+  const saved = (): string => {
+    const edited = serialize(view.state.doc)
+    plan ??= new Plan(original, tools)
+    return plan.apply(edited, tools)
+  }
   let forcedKeys: string[] = []
 
   /**
@@ -642,11 +683,8 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
       return () => void listeners.delete(listener)
     },
     markdown: () => serialize(view.state.doc),
-    text: () => {
-      const edited = serialize(view.state.doc)
-      plan ??= new Plan(original, tools)
-      return plan.apply(edited, tools)
-    },
+    text: saved,
+    lineNumbers: (first) => lines.set(first),
     replace: (next: string) => load(next, true),
     refresh: () => {
       refreshLive(view)

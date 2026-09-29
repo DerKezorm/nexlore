@@ -8,6 +8,7 @@ import { languageOptions, type LanguageOption } from '../i18n'
 import { noteUrl } from '../lib/vault'
 import { useAuth } from '../state/auth'
 import { useInstall } from '../lib/install'
+import { Avatar } from './Avatar'
 import { DraftCompare } from './DraftCompare'
 import { Symbol } from './Symbol'
 import { ThemeSwitcher } from './ThemeSwitcher'
@@ -53,7 +54,6 @@ export function AccountMenu() {
   }, [open])
 
   if (!me) return null
-  const initial = me.name.slice(0, 1).toUpperCase()
 
   return (
     <div ref={box} className="relative shrink-0">
@@ -63,9 +63,9 @@ export function AccountMenu() {
         aria-expanded={open}
         aria-haspopup="true"
         aria-label={t('account.menu', { name: me.name })}
-        className="relative flex h-8 w-8 items-center justify-center rounded-full border border-ink-700 bg-accent-500/15 text-sm font-semibold text-accent-400 hover:border-accent-500"
+        className="relative flex h-8 w-8 items-center justify-center rounded-full border border-ink-700 hover:border-accent-500"
       >
-        {initial}
+        <Avatar account={me} className="h-full w-full text-sm" />
         {drafts.length > 0 && (
           <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-accent-500 px-1 text-[10px] font-bold text-on-accent" data-testid="drafts-count">
             {drafts.length}

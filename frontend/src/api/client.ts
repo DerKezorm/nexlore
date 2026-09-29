@@ -324,6 +324,8 @@ export type Account = {
   two_factor_recovery_left: number
   created_at: string
   last_seen_at: string | null
+  /** When the profile picture was set (it makes its address new), or null without one. */
+  avatar: string | null
 }
 /** `second_factor_setup_required`: the operator requires a second factor this account has not set up yet. */
 export type Me = Account & {
@@ -358,6 +360,21 @@ export const authApi = {
   setLanguage: (language: string) => api<Account>('/api/me/language', { method: 'PUT', body: { language } }),
   linkStart: (password: string) => api<{ url: string }>('/api/oidc/link/start', { method: 'POST', body: { password } }),
   unlink: () => api<void>('/api/oidc/link', { method: 'DELETE' }),
+  /** The picture itself as the body; the server draws a small square of it anew. */
+  setAvatar: async (file: Blob): Promise<Account> => {
+    const response = await fetch('/api/auth/avatar', {
+      method: 'PUT',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/octet-stream', 'X-Nexlore-Client': tabId() },
+      body: file,
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+      const found = data?.detail
+      throw new ApiError(response.status, typeof found?.code === 'string' ? found.code : response.status === 413 ? 'too_large' : 'internal_error', found ?? {})
+    }
+    return data as Account
+  },
+  removeAvatar: () => api<Account>('/api/auth/avatar', { method: 'DELETE' }),
 
   members: (space: string) => api<Members>(`/api/spaces/${encodeURIComponent(space)}/members`),
   setMember: (space: string, name: string, role: Role) =>
