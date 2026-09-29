@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
-import { ApiError, everydayApi } from '../api/client'
+import { ApiError, everydayApi, recentApi } from '../api/client'
 import { errorText } from '../lib/errors'
 import { dailySpace, today as isoToday } from '../lib/everyday'
 import { isNotePath } from '../lib/files'
@@ -13,6 +13,7 @@ import { PALETTE_EVENT, useCommands, type Command } from '../lib/commands'
 import { storedTheme } from '../lib/theme'
 import { useAuth } from '../state/auth'
 import { refreshNews } from '../lib/news'
+import { startTaken, startWish } from '../lib/start'
 import { CommandPalette } from './CommandPalette'
 import { LinkPreview } from './LinkPreview'
 import { VaultActions } from './VaultActions'
@@ -148,7 +149,24 @@ export function AppShell() {
   const newNoteTarget = newNoteFolder()
   newNoteAt.current = newNoteTarget
 
-  const { setAppearance } = useAuth()
+  const { me, setAppearance } = useAuth()
+  // The start page of the account, once per tab and only from the first page (lib/start.ts).
+  const firstPage = startWish(location.pathname, location.search)
+  useEffect(() => {
+    if (!firstPage || !me || status !== 'ready') return
+    startTaken()
+    // Went elsewhere meanwhile: that wins.
+    if (window.location.pathname !== '/' || window.location.search) return
+    const look = me.appearance
+    if (look?.start === 'daily') void openToday()
+    else if (look?.start === 'note' && look.start_note) navigate(noteUrl(look.start_note), { replace: true })
+    else if (look?.start === 'last') {
+      recentApi.list(1).then(
+        ([last]) => last && window.location.pathname === '/' && navigate(noteUrl(last.path), { replace: true }),
+        () => {},
+      )
+    }
+  }, [firstPage, me, status, openToday, navigate])
   const { generation } = useStore()
   useEffect(() => {
     void refreshNews()

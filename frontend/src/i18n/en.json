@@ -326,7 +326,9 @@
     "retry": "Try again",
     "menuFor": "Menu for {{name}}",
     "newSpace": "New space",
-    "favorites": "Favorites"
+    "favorites": "Favorites",
+    "nothingHere": "No notes here yet.",
+    "firstNote": "New note"
   },
   "graph": {
     "canvas": "Graph",
@@ -1184,7 +1186,12 @@
       "1": "low priority",
       "0": "lowest priority"
     },
-    "inProgress": "in progress"
+    "inProgress": "in progress",
+    "noneFit": "No task fits these filters.",
+    "clearFilters": "Clear the filters",
+    "noneYet": "No tasks yet. Any line like this in a note is one:",
+    "example": "Call the plumber",
+    "noneYetMore": "The date is optional; ticking it off here writes the line in the note."
   },
   "newNote": {
     "title": "New note in “{{folder}}”",
@@ -1582,5 +1589,16 @@
   "tabs": {
     "label": "Open notes",
     "close": "Close “{{name}}”"
+  },
+  "start": {
+    "title": "Start page",
+    "text": "Where nexlore opens for you, on every device. The map stays one click away.",
+    "graph": "The map",
+    "daily": "Today's daily note",
+    "last": "The note opened last",
+    "note": "One note",
+    "find": "Find the note …",
+    "found": "Notes found",
+    "other": "Choose another note"
   }
 }

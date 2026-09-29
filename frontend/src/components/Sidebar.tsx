@@ -47,6 +47,7 @@ type Row =
   | { kind: 'loading'; path: string; depth: number }
   | { kind: 'more'; path: string; depth: number }
   | { kind: 'failed'; path: string; depth: number }
+  | { kind: 'empty'; path: string; depth: number }
 
 /** Notes, and views over notes (Obsidian's .base files), are what the tree lists. */
 const inTree = (file: { is_note: boolean; path: string }) => file.is_note || /\.base$/i.test(file.path)
@@ -262,6 +263,8 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       for (const folder of listing.folders) walk(folder.path, folder.name, depth + 1, folder.notes, folderColor(folder.path, true), false)
       for (const note of listing.notes) out.push({ kind: 'note', path: note.path, title: note.title || note.name.replace(/\.md$/i, ''), depth: depth + 1 })
       if (listing.loaded < listing.total) out.push({ kind: 'more', path, depth: depth + 1 })
+      // Opened and nothing in it: say so, and offer the first note.
+      if (!listing.folders.length && !listing.notes.length && listing.loaded >= listing.total) out.push({ kind: 'empty', path, depth: depth + 1 })
     }
     spaces.forEach((space, index) => walk(space.name, space.name, 0, space.notes, spaceColor(index), true))
     return { out, wanted }
@@ -494,6 +497,18 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
   const renderRow = (row: Row) => {
     if (row.kind === 'loading' || row.kind === 'more') {
       return <div className="py-1 text-xs text-mist-600" style={{ paddingLeft: row.depth * 12 + 10 }}>{t('common.loading')}</div>
+    }
+    if (row.kind === 'empty') {
+      return (
+        <div className="flex h-full items-center gap-2 text-xs text-mist-600" style={{ paddingLeft: row.depth * 12 + 10 }} data-testid="sidebar-empty">
+          <span className="truncate">{t('sidebar.nothingHere')}</span>
+          {writable(row.path) && (
+            <button type="button" onClick={() => askNewNote(row.path)} className="shrink-0 rounded px-1.5 py-0.5 text-accent-400 hover:bg-ink-850">
+              {t('sidebar.firstNote')}
+            </button>
+          )}
+        </div>
+      )
     }
     if (row.kind === 'failed') {
       return (

@@ -72,6 +72,9 @@ def _checked(changes: dict[str, Any]) -> dict[str, Any]:
             if not isinstance(value, bool):
                 raise AppearanceError(key)
             out[key] = value
+        elif key == "start_note" and value == "":
+            # No note chosen (any more).
+            out[key] = value
         elif key == "start_note":
             if not isinstance(value, str) or len(value) > paths.MAX_PATH_CHARS or not value.lower().endswith(".md"):
                 raise AppearanceError(key)

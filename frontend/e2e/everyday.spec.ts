@@ -252,3 +252,24 @@ test('templates can be found: made from the new note dialog, saved from the menu
   await expect(page.getByRole('status')).toContainText('Saved as a template in “Zone / Templates”')
   expect(onDisk('Zone/Templates/Across.md')).toBe(onDisk('Zone/Across.md'))
 })
+
+test('an empty task list tells why: filters that leave nothing can be cleared, and a first task is shown how to write', async ({ page, browser, baseURL }) => {
+  await page.goto('/tasks')
+  await page.getByPlaceholder('Search tasks').fill('qqqqzzzz')
+  const empty = page.getByTestId('tasks-empty')
+  await expect(empty).toContainText('No task fits these filters.')
+  await empty.getByRole('button', { name: 'Clear the filters' }).click()
+  await expect(page.getByPlaceholder('Search tasks')).toHaveValue('')
+  await expect(empty).toHaveCount(0)
+  // A new account without a space has no task anywhere.
+  const invite = await page.request.post('/api/invites', { data: { days: 1 }, headers: { 'X-Nexlore-Client': 'tab-e2e-tasks' } })
+  const token = new URL((await invite.json()).link).pathname.split('/').pop()!
+  const context = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] } })
+  const fresh = await context.newPage()
+  const joined = await fresh.request.post(`/api/invite/${token}`, { data: { name: 'tasksless', password: 'e2e tasksless password' }, headers: { 'X-Nexlore-Client': 'tab-e2e-tasks' } })
+  expect(joined.ok()).toBe(true)
+  await fresh.goto('/tasks')
+  await expect(fresh.getByTestId('tasks-empty')).toContainText('No tasks yet.')
+  await expect(fresh.getByTestId('tasks-empty').locator('code')).toContainText(/- \[ \] Call the plumber 📅 \d{4}-\d{2}-\d{2}/)
+  await context.close()
+})

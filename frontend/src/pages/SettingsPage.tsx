@@ -24,6 +24,7 @@ import {
 import { AdminPluginsCard } from '../plugins/PluginSettings'
 import { useServerSettings } from '../components/settings/useServerSettings'
 import { AppearanceCard } from '../components/settings/AppearanceCard'
+import { StartCard } from '../components/settings/StartCard'
 import { SnippetsCard } from '../components/settings/SnippetsCard'
 import { ThemesCard } from '../components/settings/ThemesCard'
 import { SpacesCard } from '../components/settings/SpacesCard'
@@ -65,6 +66,7 @@ export function SettingsPage() {
         {top === 'server' && <TabRow under tabs={parts} active={part} onChange={(value) => go('server', value)} label={t('settings.tabs.server')} />}
         <div className="space-y-6 pt-1">
           {top === 'general' && <LanguageCard />}
+          {top === 'general' && <StartCard />}
           {top === 'looks' && (
             <>
               <AppearanceCard />

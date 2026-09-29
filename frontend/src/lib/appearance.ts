@@ -11,6 +11,9 @@ export type FontText = 'inter' | 'literata' | 'source-serif' | 'atkinson' | 'ple
 export type FontCode = 'jetbrains' | 'system'
 export type Width = 'narrow' | 'normal' | 'wide' | 'full'
 
+/** Where nexlore opens (Settings → General). */
+export type Start = 'graph' | 'daily' | 'last' | 'note'
+
 export type Appearance = {
   mode: Mode
   theme: string
@@ -20,10 +23,13 @@ export type Appearance = {
   font_code: FontCode
   size: number
   width: Width
+  start: Start
+  start_note: string
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
   mode: 'dark', theme: 'nexlore', space_themes: true, font_ui: 'inter', font_text: 'inter', font_code: 'jetbrains', size: 16, width: 'normal',
+  start: 'graph', start_note: '',
 }
 
 type Font = { label: string; family: string; load?: () => Promise<unknown> }

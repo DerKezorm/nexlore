@@ -29,6 +29,13 @@ function storedGroup(): 'due' | 'note' {
   }
 }
 
+/** A date some days from today, as tasks write it (the example on an empty list). */
+function inDays(days: number): string {
+  const day = new Date()
+  day.setDate(day.getDate() + days)
+  return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
+}
+
 export function TasksPage() {
   const { t } = useTranslation()
   const { spaces } = useStore()
@@ -215,7 +222,34 @@ export function TasksPage() {
       )}
       <div className="min-h-0 flex-1 overflow-y-auto px-1 py-3 sm:px-3">
         {problem && <p className="px-3 text-sm text-bad-500">{errorText(problem)}</p>}
-        {!problem && !loading && items.length === 0 && <p className="px-3 text-sm text-mist-500">{t('tasks.empty')}</p>}
+        {!problem && !loading && items.length === 0 && (
+          // Three kinds of nothing: filters that leave nothing, no task anywhere yet, or none of this kind.
+          space || query.tag || query.q ? (
+            <p className="px-3 text-sm text-mist-500" data-testid="tasks-empty">
+              {t('tasks.noneFit')}{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setSpace('')
+                  setTag('')
+                  setWords('')
+                  setQuery({ tag: '', q: '' })
+                }}
+                className="text-accent-400 hover:underline"
+              >
+                {t('tasks.clearFilters')}
+              </button>
+            </p>
+          ) : counts && counts.open === 0 && counts.done === 0 ? (
+            <div className="grid max-w-xl gap-2 px-3 text-sm text-mist-500" data-testid="tasks-empty">
+              <p>{t('tasks.noneYet')}</p>
+              <code className="justify-self-start rounded-lg bg-ink-850 px-3 py-1.5 text-mist-300">- [ ] {t('tasks.example')} 📅 {inDays(3)}</code>
+              <p>{t('tasks.noneYetMore')}</p>
+            </div>
+          ) : (
+            <p className="px-3 text-sm text-mist-500" data-testid="tasks-empty">{t('tasks.empty')}</p>
+          )
+        )}
         {blocks.map((block) => (
           <section key={block.key} className="mb-4">
             {block.label && group === 'note' && chip !== 'done' ? (

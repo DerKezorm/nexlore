@@ -54,4 +54,7 @@ def test_the_start_page_is_one_of_four_and_a_note_there_needs_a_path() -> None:
     assert appearance.change(None, {"start": "note", "start_note": "Work/Ideas/Plan.md"}) == {
         "start": "note", "start_note": "Work/Ideas/Plan.md"}
     assert appearance.of({"start": "daily"})["start"] == "daily"
+    # Empty clears the note chosen.
+    assert appearance.change({"start": "note", "start_note": "Work/Plan.md"}, {"start": "graph", "start_note": ""}) == {
+        "start": "graph", "start_note": ""}
     assert appearance.of({"start": "gone", "start_note": "Work/../x.md"}) == appearance.DEFAULTS

@@ -326,7 +326,9 @@
     "retry": "Erneut versuchen",
     "menuFor": "Menü für {{name}}",
     "newSpace": "Neuer Bereich",
-    "favorites": "Favoriten"
+    "favorites": "Favoriten",
+    "nothingHere": "Hier liegen noch keine Notizen.",
+    "firstNote": "Neue Notiz"
   },
   "graph": {
     "canvas": "Graph",
@@ -1184,7 +1186,12 @@
       "1": "niedrige Priorität",
       "0": "niedrigste Priorität"
     },
-    "inProgress": "in Arbeit"
+    "inProgress": "in Arbeit",
+    "noneFit": "Keine Aufgabe passt zu diesen Filtern.",
+    "clearFilters": "Filter leeren",
+    "noneYet": "Noch keine Aufgaben. Jede Zeile wie diese in einer Notiz ist eine:",
+    "example": "Klempner anrufen",
+    "noneYetMore": "Das Datum ist freiwillig; abgehakt wird hier, geschrieben in der Notiz."
   },
   "newNote": {
     "title": "Neue Notiz in „{{folder}}“",
@@ -1582,5 +1589,16 @@
   "tabs": {
     "label": "Offene Notizen",
     "close": "„{{name}}“ schließen"
+  },
+  "start": {
+    "title": "Startseite",
+    "text": "Wo nexlore für dich aufgeht, auf jedem Gerät. Die Karte bleibt einen Klick entfernt.",
+    "graph": "Die Karte",
+    "daily": "Die Tagesnotiz von heute",
+    "last": "Die zuletzt geöffnete Notiz",
+    "note": "Eine Notiz",
+    "find": "Notiz suchen …",
+    "found": "Gefundene Notizen",
+    "other": "Andere Notiz wählen"
   }
 }
