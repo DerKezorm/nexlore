@@ -116,3 +116,8 @@ def test_headings_including_inside_quotes() -> None:
 def test_an_unclosed_backtick_does_not_swallow_the_next_paragraph() -> None:
     parsed = mdparse.parse("a ` stray\n\nnext [[Link]] `closed`")
     assert [link.target for link in parsed.links] == ["Link"]
+
+
+def test_a_footnote_definition_is_no_link() -> None:
+    parsed = mdparse.parse("Said[^1] and [^note].\n\n[^1]: Nobody said it.\n[^note]: [[Real link]] inside.\n[ref]: Real.md\n")
+    assert sorted(link.target for link in parsed.links) == ["Real link", "Real.md"]

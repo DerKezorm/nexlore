@@ -4,7 +4,8 @@
  * One level deep, like the links a reader can follow: an embed inside an embed stays a link. The server answers for
  * each embedded note with the reader's own rights, so nothing is shown that the link itself would not open.
  */
-import { useEffect, useLayoutEffect, useState, type MouseEvent, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
+import { useEnrich } from '../lib/enrich'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -39,6 +40,8 @@ function EmbeddedNote({ path, section, onOpen }: { path: string; section: string
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [state, setState] = useState<State>('loading')
+  const body = useRef<HTMLSpanElement>(null)
+  useEnrich(body, typeof state === 'string' ? state : state.html)
 
   useEffect(() => {
     // An answer for a note no longer shown (the page moved on) is dropped.
@@ -89,7 +92,7 @@ function EmbeddedNote({ path, section, onOpen }: { path: string; section: string
       {state === 'loading' && <span className="nn-embedded-note">{t('note.embedLoading')}</span>}
       {state === 'missing' && <span className="nn-embedded-note">{t('note.embedMissing')}</span>}
       {state === 'no-section' && <span className="nn-embedded-note">{t('note.embedNoSection', { section })}</span>}
-      {typeof state !== 'string' && <span className="nn-embedded-body" onClick={follow} dangerouslySetInnerHTML={{ __html: state.html }} />}
+      {typeof state !== 'string' && <span ref={body} className="nn-embedded-body" onClick={follow} dangerouslySetInnerHTML={{ __html: state.html }} />}
     </span>
   )
 }

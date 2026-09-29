@@ -166,6 +166,7 @@
     "changed": "geändert {{when}}",
     "editorPlaceholder": "Einfach losschreiben. [[ verlinkt eine andere Notiz, / fügt einen Block ein.",
     "linkedTimes": "{{count}}-mal verlinkt",
+    "footnoteBack": "Zurück zum Text",
     "missingLink": "Noch keine Notiz",
     "embedLoading": "Notiz wird geladen …",
     "embedMissing": "Diese Notiz gibt es nicht (mehr).",

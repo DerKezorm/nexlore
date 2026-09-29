@@ -39,7 +39,8 @@ _MD_LINK = re.compile(
     r"\(\s*(<[^<>\r\n]*>|(?:[^\s()<>]|\([^\s()]*\))+)"  # destination
     r"(?:\s+(?:\"[^\"]*\"|'[^']*'|\([^()]*\)))?\s*\)"  # title
 )
-_REFERENCE = re.compile(r"^ {0,3}\[([^\]\r\n]+)\]:[ \t]*(<[^<>\r\n]*>|\S+)", re.MULTILINE)
+#: ``[label]: target``; ``[^1]: text`` is a footnote (Obsidian), not a link to a note called "text".
+_REFERENCE = re.compile(r"^ {0,3}\[(?!\^)([^\]\r\n]+)\]:[ \t]*(<[^<>\r\n]*>|\S+)", re.MULTILINE)
 _TAG = re.compile(r"(?:(?<=\s)|^)#([\w/-]+)", re.MULTILINE)
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 _CALLOUT = re.compile(r"^[ \t]*(?:>[ \t]*)+\[!([\w-]+)\]", re.MULTILINE)

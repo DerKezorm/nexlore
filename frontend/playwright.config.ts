@@ -103,6 +103,11 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   // The palette and the quick switcher (palette.spec.ts), in a space of its own after all others (nothing moves).
   'Zyx/Palette.md': `---\naliases: [Command deck]\n---\n# Palette\n\n## First part\n\n${'A line to scroll past.\n\n'.repeat(40)}## Far down\n\nThe end.\n`,
   'Zyx/Tagged.md': '---\ntags: [pal]\n---\n# Tagged\n\nOne #pal/one here, and #palette stays.\n',
+  'Zyx/Rich.md': [
+    '# Rich', '', 'Euler: $e^{i\\pi}+1=0$ and a note[^1].', '', '$$', '\\sum_{k=1}^{n} k', '$$', '',
+    '```mermaid', 'graph TD', '  Start --> Stop', '```', '', '```js', 'const answer = 42 // the answer', '```', '',
+    '[^1]: Said by nobody.', '',
+  ].join('\n'),
   'Switch/From.md': '# From\n\nStart.\n',
   'Switch/To.md': '# To\n\nOther note.\n',
   // The editor (editor.spec.ts): Obsidian's way of writing, kept byte for byte where nothing was changed.

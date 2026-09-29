@@ -2,7 +2,8 @@
  * A public reading page (`/s/<token>/<note>`): no account, no app around it, only what was shared. A folder shows its
  * notes on the side. Links to notes of the share stay links, everything else is text: the server says which is which.
  */
-import { useEffect, useMemo, useState, type MouseEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useEnrich } from '../lib/enrich'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 
@@ -62,6 +63,9 @@ export function PublicPage() {
     const { resolve, targets } = publicTargets(token, page)
     return renderMarkdown(page.content, resolve, null, targets)
   }, [page, token])
+
+  const article = useRef<HTMLElement>(null)
+  useEnrich(article, html)
 
   // Links within the share stay in the page instead of loading it again.
   const follow = (event: MouseEvent<HTMLElement>) => {
@@ -160,7 +164,7 @@ export function PublicPage() {
             )}
             {page && !page.title &&<p className="text-sm text-mist-500">{t('public.noPage')}</p>}
             {page?.title && (
-              <article className="nn-prose max-w-3xl" onClick={follow} dangerouslySetInnerHTML={{ __html: html }} />
+              <article ref={article} className="nn-prose max-w-3xl" onClick={follow} dangerouslySetInnerHTML={{ __html: html }} />
             )}
             {state?.folder && state.notes?.length === 0 && <p className="text-sm text-mist-500">{t('public.empty')}</p>}
           </main>

@@ -1,6 +1,8 @@
 /**
  * Markdown to HTML for the reading view, with Obsidian's own writing: [[wiki links]] and embeds, callouts,
- * `%%comments%%` and `==highlights==`. Each is a marked extension, so none of it applies inside code.
+ * `%%comments%%` and `==highlights==`, formulas (`$…$`, `$$…$$`), footnotes (`[^1]`, `^[inline]`) and Mermaid
+ * diagrams. Each is a marked extension, so none of it applies inside code. Formulas, diagrams and the colours of
+ * code are only marked here; `lib/enrich.ts` draws them after the page shows (their libraries load only then).
  */
 import { Marked, type Token, type TokenizerAndRendererExtension, type Tokens } from 'marked'
 
@@ -253,13 +255,133 @@ function obsidian(resolve: (target: string) => string | null, targets: Targets):
   ]
 }
 
+/** Each rendering numbers its footnotes; the id keeps two notes on one page (an embed, two panes) apart. */
+let renders = 0
+
+/** The footnotes of one rendering: definitions found while reading, numbers given as the references are drawn. */
+class Footnotes {
+  readonly id = `fn${++renders}`
+  /** The text of each definition, by its folded name, in the order they stand. */
+  readonly defs = new Map<string, { name: string; text: string }>()
+  /** The notes in the order of their first reference: a named one, or an inline one with its text drawn already. */
+  readonly shown: { key: string | null; html: string | null; refs: number }[] = []
+
+  reference(name: string): { number: number; ref: string } | null {
+    const key = name.toLocaleLowerCase()
+    if (!this.defs.has(key)) return null
+    let at = this.shown.findIndex((note) => note.key === key)
+    if (at < 0) at = this.shown.push({ key, html: null, refs: 0 }) - 1
+    const note = this.shown[at]
+    note.refs += 1
+    return { number: at + 1, ref: `${this.id}-ref-${at + 1}${note.refs > 1 ? '-' + note.refs : ''}` }
+  }
+
+  inline(html: string): { number: number; ref: string } {
+    const number = this.shown.push({ key: null, html, refs: 1 })
+    return { number, ref: `${this.id}-ref-${number}` }
+  }
+
+  /** The list at the end: referenced ones by number, then definitions nothing refers to. */
+  section(parse: (text: string) => string): string {
+    const listed = new Set(this.shown.map((note) => note.key))
+    const rest = [...this.defs.keys()].filter((key) => !listed.has(key)).map((key) => ({ key, html: null, refs: 0 }))
+    const all = [...this.shown, ...rest]
+    if (all.length === 0) return ''
+    const items = all.map((note, index) => {
+      const number = index + 1
+      const html = note.html ?? parse(this.defs.get(note.key!)!.text)
+      const back = note.refs
+        ? ` <a class="nn-fn-back" href="#${this.id}-ref-${number}" aria-label="${escape(i18n.t('note.footnoteBack'))}">↩</a>`
+        : ''
+      return `<li id="${this.id}-${number}">${html}${back}</li>`
+    })
+    return `<section class="nn-footnotes" role="doc-endnotes"><ol>${items.join('')}</ol></section>`
+  }
+}
+
+/** Formulas and footnotes: marked extensions like Obsidian's own writing above. */
+function extras(notes: Footnotes): TokenizerAndRendererExtension[] {
+  return [
+    {
+      // $$ … $$ as a block of its own, over as many lines as it takes.
+      name: 'mathBlock',
+      level: 'block',
+      start: (src) => /^ {0,3}\$\$/m.exec(src)?.index,
+      tokenizer(src) {
+        const found = /^ {0,3}\$\$([\s\S]+?)\$\$[ \t]*(?:\n+|$)/.exec(src)
+        if (found) return { type: 'mathBlock', raw: found[0], text: found[1].trim() }
+      },
+      renderer: (token) => `<div class="nn-math" data-display="true">${escape(token.text)}</div>`,
+    },
+    {
+      // $…$ in the text as Obsidian reads it: no blank right inside the dollars, no digit right after the closing one
+      // ("costs 5$ and 10$" stays text). $$…$$ within a line is a formula shown on a line of its own.
+      name: 'mathInline',
+      level: 'inline',
+      start: (src) => src.match(/\$/)?.index,
+      tokenizer(src) {
+        const display = /^\$\$([^\n]+?)\$\$/.exec(src)
+        if (display) return { type: 'mathInline', raw: display[0], text: display[1].trim(), display: true }
+        const found = /^\$(?![\s$])((?:\\\$|[^$\n])*?[^\s\\])\$(?!\d)/.exec(src) ?? /^\$([^\s$\\])\$(?!\d)/.exec(src)
+        if (found) return { type: 'mathInline', raw: found[0], text: found[1], display: false }
+      },
+      renderer: (token) => `<span class="nn-math"${token.display ? ' data-display="true"' : ''}>${escape(token.text)}</span>`,
+    },
+    {
+      // [^name]: text, continued by indented lines. Read before marked takes it for a link definition.
+      name: 'footnoteDef',
+      level: 'block',
+      start: (src) => /^\[\^[^\]\s]+\]:/m.exec(src)?.index,
+      tokenizer(src) {
+        const found = /^\[\^([^\]\s]+)\]:[ \t]?([^\n]*(?:\n(?: {2,}|\t)[^\n]*)*)(?:\n+|$)/.exec(src)
+        if (!found) return
+        const key = found[1].toLocaleLowerCase()
+        if (!notes.defs.has(key)) notes.defs.set(key, { name: found[1], text: found[2].replace(/\n(?: {2,}|\t)/g, ' ').trim() })
+        return { type: 'footnoteDef', raw: found[0] }
+      },
+      renderer: () => '',
+    },
+    {
+      name: 'footnoteRef',
+      level: 'inline',
+      start: (src) => src.match(/\[\^/)?.index,
+      tokenizer(src) {
+        const found = /^\[\^([^\]\s]+)\]/.exec(src)
+        if (found) return { type: 'footnoteRef', raw: found[0], name: found[1] }
+      },
+      renderer(token) {
+        const given = notes.reference(token.name)
+        if (!given) return escape(token.raw)
+        return `<sup class="nn-fn-ref" id="${given.ref}"><a href="#${notes.id}-${given.number}">${given.number}</a></sup>`
+      },
+    },
+    {
+      // ^[text right here]: numbered with the others, its text in the list at the end.
+      name: 'footnoteInline',
+      level: 'inline',
+      start: (src) => src.match(/\^\[/)?.index,
+      tokenizer(src) {
+        const found = /^\^\[([^\]\n]+)\]/.exec(src)
+        if (found) return { type: 'footnoteInline', raw: found[0], tokens: this.lexer.inlineTokens(found[1]) }
+      },
+      renderer(token) {
+        const given = notes.inline(this.parser.parseInline(token.tokens ?? []))
+        return `<sup class="nn-fn-ref" id="${given.ref}"><a href="#${notes.id}-${given.number}">${given.number}</a></sup>`
+      },
+    },
+  ]
+}
+
 function markdownFor(resolve: (target: string) => string | null, targets: Targets) {
+  const notes = new Footnotes()
   const marked = new Marked({
     async: false,
     gfm: true,
     // Raw HTML in a note is shown as text, not executed: notes can come from other people and from an AI.
     renderer: {
       html: ({ text }: Tokens.HTML | Tokens.Tag) => escape(text),
+      // A Mermaid diagram is drawn after the page shows (lib/enrich.ts); until then, and if it cannot be, its text.
+      code: ({ text, lang }: Tokens.Code) => (lang?.trim().split(/\s/)[0].toLowerCase() === 'mermaid' ? `<div class="nn-mermaid">${escape(text)}</div>` : false),
     },
     walkTokens(token: Token) {
       if (token.type !== 'link' && token.type !== 'image') return
@@ -279,8 +401,8 @@ function markdownFor(resolve: (target: string) => string | null, targets: Target
       else if (targets.noteHref) token.href = targets.noteHref(target)
     },
   })
-  marked.use({ extensions: obsidian(resolve, targets) })
-  return marked
+  marked.use({ extensions: [...obsidian(resolve, targets), ...extras(notes)] })
+  return { marked, notes }
 }
 
 /** The front matter at the top of a note: shown as properties, not as text. */
@@ -319,7 +441,8 @@ export function renderMarkdown(
   notePath: string | null = null,
   targets: Targets = appTargets(notePath),
 ): string {
-  const html = markdownFor(resolve, targets).parse(withoutFrontMatter(body)) as string
+  const { marked, notes } = markdownFor(resolve, targets)
+  const html = (marked.parse(withoutFrontMatter(body)) as string) + notes.section((text) => marked.parseInline(text) as string)
   return html.replace(/<a href="#nn-plain"[^>]*>([\s\S]*?)<\/a>/g, '$1')
 }
 

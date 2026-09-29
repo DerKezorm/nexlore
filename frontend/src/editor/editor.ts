@@ -55,6 +55,7 @@ import type { Root, RootContent } from 'mdast'
 import { Plan, type Block, type Tools } from './blocks'
 import { lineNumbers, type LineControl } from './lineNumbers'
 import { livePreview, refreshLive, type LinkHelpers } from './live'
+import { blockPreviews } from './previews'
 import { imageSource, obsidian, replaced, writerOptions } from './obsidian'
 import { forcedRaw, holdRaw, keepsLetters, releaseRaw } from './syntax'
 import { detectStyle } from './style'
@@ -351,6 +352,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
       ),
     )
     .use($prose(() => livePreview(options.links)))
+    .use($prose(() => blockPreviews()))
     .use(
       $prose(() =>
         lineNumbers(

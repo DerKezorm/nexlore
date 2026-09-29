@@ -22,6 +22,7 @@ import { Sidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { NoteStart } from '../components/NoteStart'
 import { Outline } from '../components/Outline'
+import { useEnrich } from '../lib/enrich'
 import { TabBar } from '../components/TabBar'
 import { openInTab } from '../lib/tabs'
 import { copiesOf, originalOf } from '../lib/compare'
@@ -459,6 +460,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   }, [links])
   const html = useMemo(() => (note ? renderMarkdown(note.content, resolve, note.path) : ''), [note, resolve])
   const outgoing = useMemo(() => distinctOutgoing(links?.outgoing ?? []), [links])
+  useEnrich(article, html)
   const copies = useMemo(() => copiesOf(path, siblings), [path, siblings])
   const view = note ? viewFor(plugins, note) : null
   const reveal = (heading: string, index: number) => {

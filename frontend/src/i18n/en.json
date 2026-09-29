@@ -166,6 +166,7 @@
     "changed": "changed {{when}}",
     "editorPlaceholder": "Start writing. [[ links another note, / inserts a block.",
     "linkedTimes": "linked {{count}} times",
+    "footnoteBack": "Back to the text",
     "missingLink": "No note yet",
     "embedLoading": "Loading the note …",
     "embedMissing": "This note is not there (any more).",

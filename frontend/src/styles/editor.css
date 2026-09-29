@@ -274,3 +274,20 @@
 .nx-note-editor[data-lines='on'] .milkdown .milkdown-block-handle {
   margin-left: -2.75rem;
 }
+
+/* What a Mermaid or formula block draws, below its code (editor/previews.ts). */
+.nn-math-preview {
+  overflow-x: auto;
+  padding: 0.25rem 0 0.75rem;
+  text-align: center;
+}
+.nn-mermaid-preview {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+  padding: 0.5rem 0;
+}
+.nn-mermaid-preview svg {
+  max-width: 100%;
+  height: auto;
+}

@@ -171,6 +171,80 @@
     background: color-mix(in srgb, var(--color-warn-500) 30%, transparent);
   }
 
+  /* Formulas and diagrams: text until drawn (lib/enrich.ts); a wide one scrolls on its own. */
+  .nn-prose .nn-math[data-display='true'] {
+    @apply my-4 block overflow-x-auto text-center;
+  }
+  .nn-prose .nn-math:not([data-drawn]),
+  .nn-prose .nn-mermaid:not([data-drawn]),
+  .nn-prose .nn-mermaid-failed {
+    @apply font-mono text-[13px] whitespace-pre-wrap text-mist-400;
+  }
+  .nn-prose .nn-mermaid {
+    @apply my-4 flex justify-center overflow-x-auto;
+  }
+  .nn-prose .nn-mermaid svg {
+    @apply h-auto max-w-full;
+  }
+  .nn-prose .nn-mermaid-failed {
+    @apply block rounded-xl border border-bad-500/40 p-4;
+  }
+
+  /* Footnotes: the number in the text, the list at the end. */
+  .nn-prose .nn-fn-ref a {
+    @apply px-0.5 text-[0.75em] no-underline;
+  }
+  .nn-prose .nn-footnotes {
+    @apply mt-10 border-t border-ink-700 pt-4 text-sm text-mist-400;
+  }
+  .nn-prose .nn-footnotes li {
+    @apply scroll-mt-20;
+  }
+  .nn-prose .nn-fn-back {
+    @apply no-underline;
+  }
+
+  /* The colours of code, by the classes @lezer/highlight gives. */
+  .nn-prose .tok-keyword,
+  .nn-prose .tok-operatorKeyword,
+  .nn-prose .tok-modifier {
+    color: var(--color-ai-500);
+  }
+  .nn-prose .tok-string,
+  .nn-prose .tok-string2,
+  .nn-prose .tok-regexp {
+    color: var(--color-ok-500);
+  }
+  .nn-prose .tok-number,
+  .nn-prose .tok-bool,
+  .nn-prose .tok-atom {
+    color: var(--color-warn-500);
+  }
+  .nn-prose .tok-comment {
+    @apply text-mist-500 italic;
+  }
+  .nn-prose .tok-typeName,
+  .nn-prose .tok-className,
+  .nn-prose .tok-namespace {
+    color: var(--color-accent-400);
+  }
+  .nn-prose .tok-propertyName,
+  .nn-prose .tok-attributeName,
+  .nn-prose .tok-labelName {
+    color: var(--color-mist-300);
+  }
+  .nn-prose .tok-definition,
+  .nn-prose .tok-function {
+    color: var(--color-accent-300);
+  }
+  .nn-prose .tok-meta,
+  .nn-prose .tok-punctuation {
+    @apply text-mist-500;
+  }
+  .nn-prose .tok-invalid {
+    color: var(--color-bad-500);
+  }
+
   /* Callouts: Obsidian's kinds share a few colours, as in the editor. */
   .nn-prose .nn-callout {
     --nn-callout: var(--color-accent-500);
