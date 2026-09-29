@@ -42,11 +42,22 @@ test('the map lists every space, and the chosen cloud stays after a reload', asy
   expect(problems).toEqual([])
 })
 
+/** The tree draws only what is in view: other tests add spaces, so a note may first have to be scrolled to, as by hand. */
+async function treeNote(page: Page, name: string) {
+  const tree = page.getByTestId('sidebar-tree')
+  const button = tree.getByRole('button', { name, exact: true })
+  await expect(tree.getByRole('listitem').first()).toBeVisible()
+  for (let step = 0; step < 40 && !(await button.isVisible()); step++) {
+    await tree.evaluate((element) => element.scrollBy(0, element.clientHeight / 2))
+    await page.waitForTimeout(50)
+  }
+  return button
+}
+
 test('a note chosen in the sidebar gets its card on the map, and the card opens it', async ({ page }) => {
   const problems = collectProblems(page)
   await page.goto('/')
-  const tree = page.getByTestId('sidebar-tree')
-  await tree.getByRole('button', { name: 'Plan', exact: true }).click()
+  await (await treeNote(page, 'Plan')).click()
   const card = page.getByTestId('graph-card')
   await expect(card.getByRole('heading', { name: 'Plan' })).toBeVisible()
   await expect(card.getByText('1 backlink')).toBeVisible()
@@ -63,7 +74,7 @@ test('a note chosen before the map has come is shown once it has', async ({ page
     await route.continue()
   })
   await page.goto('/')
-  await page.getByTestId('sidebar-tree').getByRole('button', { name: 'Plan', exact: true }).click()
+  await (await treeNote(page, 'Plan')).click()
   await expect(page.getByTestId('graph-card').getByRole('heading', { name: 'Plan' })).toBeVisible({ timeout: 15_000 })
 })
 
