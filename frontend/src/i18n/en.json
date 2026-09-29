@@ -1533,6 +1533,35 @@
     "replaced_one": "Replaced {{count}} match.",
     "replaced_other": "Replaced {{count}} matches."
   },
+  "unlinked": {
+    "title": "Unlinked mentions",
+    "none": "No other note names this one without a link.",
+    "loadFailed": "The mentions could not be loaded.",
+    "link": "Link",
+    "linkHint": "Turns it into [[{{link}}]]",
+    "readOnly": "You may only read in this space.",
+    "locked": "Someone is editing that note right now.",
+    "failed": "That did not work.",
+    "more": "There are more places; the first 200 are shown."
+  },
+  "cleanup": {
+    "tab": "Clean up",
+    "tabFiles": "Overview",
+    "intro": "What lies about loose in a space: notes without any link, and links with nothing behind them.",
+    "space": "Space",
+    "lonely": "Notes without a connection",
+    "lonelyText": "No link leads to them and none away. \"Mentions\" shows where other notes name them.",
+    "lonelyNone": "Every note hangs on at least one link.",
+    "broken": "Links to nothing",
+    "brokenText": "These links name a note or file that is not there. \"Create\" makes the note where a click on the link would.",
+    "brokenNone": "Every link leads somewhere.",
+    "open": "Open",
+    "openSource": "Go to it",
+    "mentions": "Mentions",
+    "make": "Create",
+    "standsIn": "in {{title}}, line {{line}}",
+    "first": "The first {{count}} are shown."
+  },
   "ai": {
     "title": "AI in notes",
     "text": "Your own AI service corrects, rewrites, translates, summarizes and writes in the editor. You pay for its key yourself; a result is always shown next to the text first and changes nothing until you take it over.",

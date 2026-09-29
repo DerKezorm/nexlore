@@ -86,6 +86,11 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   // Find and replace (find.spec.ts).
   'Zoo/Find.md': '# Find\n\nThe cat sat.\n\nA *Cat* and a cat.\n\nUntouched   spacing  here.\n\n```\ncat in code\n```\n',
   'Zoo/Find keys.md': '# Find keys\n\nOne fox, two fox, three fox.\n',
+  // Mentions without a link and cleaning up (cleanup.spec.ts), a space of their own so the lists stay short.
+  'Moor/Pond heron.md': '# Pond heron\n\nA wading bird.\n',
+  'Moor/Walk.md': '# Walk\n\nWe saw a pond heron by the water.\n',
+  'Moor/Lost.md': '# Lost\n\nSee [[Bog myrtle]] and [[Moor/Deep/Sundew]].\n',
+  'Moor/Deep/Linked.md': '# Linked\n\nTo the [[Walk]].\n',
   // AI in notes against the stand-in service (ai.spec.ts).
   'Zoo/Ai.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',
   'Zoo/Ai whole.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',

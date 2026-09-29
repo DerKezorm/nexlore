@@ -253,6 +253,37 @@ export const looksApi = {
   put: (path: string, icon: string | null, color: string | null) => api<void>('/api/looks', { method: 'PUT', body: { path, icon, color } }),
 }
 
+/** A place another note names this one without a link (`/api/mentions`). */
+export type Mention = {
+  path: string
+  title: string
+  line: number
+  column: number
+  words: string
+  before: string
+  after: string
+  /** The wiki link that reaches the note from there. */
+  link: string
+  writable: boolean
+}
+
+export type Cleanup = {
+  lonely: { path: string; title: string }[]
+  lonely_total: number
+  broken: { path: string; title: string; line: number; target: string; kind: string }[]
+  broken_total: number
+}
+
+export const mentionsApi = {
+  of: (path: string) => api<{ places: Mention[]; more: boolean }>('/api/mentions', { query: { path } }),
+  link: (target: string, place: Mention) =>
+    api<{ link: string }>('/api/mentions/link', {
+      method: 'POST',
+      body: { source: place.path, target, line: place.line, column: place.column, words: place.words },
+    }),
+  cleanup: (space: string) => api<Cleanup>('/api/cleanup', { query: { space } }),
+}
+
 export const vaultApi = {
   spaces: () => api<Space[]>('/api/spaces'),
   /** What lies directly in a space or folder. */

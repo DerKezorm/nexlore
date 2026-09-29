@@ -97,6 +97,9 @@ class Parsed:
     comments: list[tuple[int, int]] = field(default_factory=list)
     #: Lines with a checkbox outside code and comments: (line number from 1, the line as written, without its end).
     task_lines: list[tuple[int, str]] = field(default_factory=list)
+    #: The text with the front matter, code, comments, formulas and links blanked (spaces, line breaks kept): where
+    #: a note's name stands as a plain word. Offsets and lines are those of the file.
+    prose: str = ""
 
 
 def _mask(text: str, spans: list[tuple[int, int]]) -> str:
@@ -321,6 +324,7 @@ def parse(text: str) -> Parsed:
         link_spans.append((match.start(), match.end()))
     masked = _mask(masked, link_spans)
     parsed.links.sort(key=lambda link: link.start)
+    parsed.prose = masked
 
     seen: set[str] = set()
     for raw_tag in [*_front_list(front.get("tags")), *_front_list(front.get("tag"))]:

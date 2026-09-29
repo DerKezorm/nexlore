@@ -21,6 +21,7 @@ import type { EditorHandle, EditorMode } from '../components/NoteEditor'
 import { Sidebar } from '../components/Sidebar'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { NotePanel, type PanelPart } from '../components/NotePanel'
+import { Unlinked } from '../components/Unlinked'
 import { NoteStart } from '../components/NoteStart'
 import { Outline } from '../components/Outline'
 import { CompareDialog } from '../components/CompareDialog'
@@ -791,6 +792,14 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
               </button>
             ))}
           </Section>
+          <Unlinked
+            path={note.path}
+            onOpen={open}
+            onLinked={() => {
+              const at = note.path
+              vaultApi.links(at).then((found) => current.current === at && setLinks(found), () => {})
+            }}
+          />
           <Section symbol="link" title={t('note.outgoing')} count={outgoing.length}>
             {outgoing.map(({ link: item, count }, index) => {
               const times = count > 1 && <span className="ml-auto shrink-0 text-xs text-mist-600 tabular-nums" aria-label={t('note.linkedTimes', { count })}>×{count}</span>

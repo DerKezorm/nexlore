@@ -7,6 +7,7 @@ import { AuthFrame } from './components/AuthFrame'
 import { SecondFactor } from './components/SecondFactor'
 import { AccountPage } from './pages/AccountPage'
 import { CalendarPage } from './pages/CalendarPage'
+import { CleanupPage } from './pages/CleanupPage'
 import { FilePage } from './pages/FilePage'
 import { FilesPage } from './pages/FilesPage'
 import { GraphPage } from './pages/GraphPage'
@@ -75,6 +76,7 @@ export default function App() {
         <Route path="tasks" element={<TasksPage />} />
         <Route path="search" element={<SearchPage />} />
         <Route path="files" element={<FilesPage />} />
+        <Route path="files/cleanup" element={<CleanupPage />} />
         <Route path="file/*" element={<FilePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="account" element={<AccountPage />} />

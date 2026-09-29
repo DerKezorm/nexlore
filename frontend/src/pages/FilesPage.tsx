@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 
 import { ApiError, vaultApi, type Attachment, type Finding, type IndexState, type Report, type TrashEntry, type Usage } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -23,7 +23,8 @@ export function FilesPage() {
       <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">{t('files.title')}</h1>
-          <p className="mt-1 text-sm text-mist-500">{t('files.intro')}</p>
+          <FilesTabs />
+          <p className="mt-3 text-sm text-mist-500">{t('files.intro')}</p>
         </div>
         {/* The index spans every space: the operator's. */}
         {me?.role === 'operator' && <IndexCard />}
@@ -32,6 +33,23 @@ export function FilesPage() {
         <ImportCard />
       </div>
     </main>
+  )
+}
+
+/** The two tabs under Files: the overview (index, attachments, trash, import) and cleaning up a space. */
+export function FilesTabs() {
+  const { t } = useTranslation()
+  const tab = ({ isActive }: { isActive: boolean }) =>
+    'rounded-full px-3 py-1 text-sm ' + (isActive ? 'bg-accent-500 font-semibold text-on-accent' : 'text-mist-400 hover:bg-ink-850 hover:text-mist-100')
+  return (
+    <nav aria-label={t('files.title')} className="mt-3 flex gap-1">
+      <NavLink to="/files" end className={tab}>
+        {t('cleanup.tabFiles')}
+      </NavLink>
+      <NavLink to="/files/cleanup" className={tab}>
+        {t('cleanup.tab')}
+      </NavLink>
+    </nav>
   )
 }
 

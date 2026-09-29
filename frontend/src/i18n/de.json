@@ -1533,6 +1533,35 @@
     "replaced_one": "{{count}} Stelle ersetzt.",
     "replaced_other": "{{count}} Stellen ersetzt."
   },
+  "unlinked": {
+    "title": "Nicht verlinkt",
+    "none": "Keine andere Notiz nennt diese, ohne sie zu verlinken.",
+    "loadFailed": "Die Erwähnungen konnten nicht geladen werden.",
+    "link": "Verlinken",
+    "linkHint": "Macht daraus [[{{link}}]]",
+    "readOnly": "In diesem Bereich darfst du nur lesen.",
+    "locked": "Die Notiz wird gerade bearbeitet.",
+    "failed": "Das hat nicht geklappt.",
+    "more": "Es gibt noch mehr Stellen; die ersten 200 stehen hier."
+  },
+  "cleanup": {
+    "tab": "Aufräumen",
+    "tabFiles": "Übersicht",
+    "intro": "Was im Bereich lose herumliegt: Notizen ohne jeden Link und Links, hinter denen nichts steht.",
+    "space": "Bereich",
+    "lonely": "Notizen ohne Verbindung",
+    "lonelyText": "Kein Link führt zu ihnen, keiner von ihnen weg. Unter „Erwähnungen“ steht, wo andere Notizen sie beim Namen nennen.",
+    "lonelyNone": "Jede Notiz hängt an mindestens einem Link.",
+    "broken": "Links ins Leere",
+    "brokenText": "Diese Links nennen eine Notiz oder Datei, die es nicht gibt. „Anlegen“ macht die Notiz dort, wo auch ein Klick auf den Link sie anlegen würde.",
+    "brokenNone": "Jeder Link führt irgendwohin.",
+    "open": "Öffnen",
+    "openSource": "Zur Stelle",
+    "mentions": "Erwähnungen",
+    "make": "Anlegen",
+    "standsIn": "in {{title}}, Zeile {{line}}",
+    "first": "Die ersten {{count}} stehen hier."
+  },
   "ai": {
     "title": "KI in Notizen",
     "text": "Dein eigener KI-Dienst korrigiert, formuliert um, übersetzt, fasst zusammen und schreibt im Editor. Den Schlüssel bezahlst du selbst; ein Ergebnis steht immer erst neben dem Text und ändert nichts, bis du es übernimmst.",
