@@ -243,6 +243,14 @@ test('favorites: the star on a note and the menu of a folder put them on top of 
   await expect(star).toHaveAttribute('aria-pressed', 'true')
   const favorites = page.getByTestId('sidebar-favorites')
   await expect(favorites.getByRole('button', { name: 'Menu' })).toBeVisible()
+  // The tree draws only the rows near what it shows: after a full run of other tests the folder lay beyond them.
+  // The switcher's "/" brings it into view, as a person would.
+  await page.keyboard.press('ControlOrMeta+k')
+  await expect(page.getByRole('dialog', { name: 'Search' }).locator('input')).toBeFocused()
+  await page.keyboard.type('/Tidy')
+  await expect(page.getByRole('dialog', { name: 'Search' }).getByRole('button').first()).toHaveText(/Tidy/)
+  await page.keyboard.press('Enter')
+  await expect(row(page, 'Tidy')).toBeFocused()
   await row(page, 'Tidy').click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Add to favorites' }).click()
   await expect(favorites.getByRole('button')).toHaveText(['Menu', 'Tidy'])
