@@ -510,7 +510,8 @@
       "extensions": "AI and plugins",
       "files": "Files",
       "backups": "Backups",
-      "languages": "Languages"
+      "languages": "Languages",
+      "log": "Log"
     }
   },
   "errors": {
@@ -1398,7 +1399,8 @@
     "asTemplate": "Save as template …",
     "favorite": "Add to favorites",
     "unfavorite": "Remove from favorites",
-    "openRight": "Open to the right"
+    "openRight": "Open to the right",
+    "zip": "Download as ZIP"
   },
   "editorMenu": {
     "openLink": "Open the note",
@@ -1574,6 +1576,47 @@
     "keep": "Keep",
     "done": "Done",
     "keys": "Ctrl+Enter keeps it"
+  },
+  "feed": {
+    "title": "Calendar subscription",
+    "text": "Your open tasks with a date as an address your calendar subscribes to (internet calendar, ICS). It asks for it again about every hour.",
+    "closed": "The operator has not switched calendar subscriptions on.",
+    "closedOperator": "Switch them on under Settings → Server → Extensions.",
+    "none": "No address yet.",
+    "active": "An address is active. It is shown only once; a new one replaces it.",
+    "make": "Make an address",
+    "renew": "New address",
+    "stop": "Stop",
+    "stopped": "The subscription is stopped.",
+    "copy": "Copy",
+    "shownOnce": "Visible only now. Whoever has this address sees your tasks with a date.",
+    "adminTitle": "Calendar subscriptions",
+    "adminText": "Every account can make an address for its calendar, with its open tasks that have a date. The tasks leave the house that way.",
+    "allow": "Allow calendar subscriptions",
+    "allowHint": "Switched off, every address answers as if it did not exist."
+  },
+  "log": {
+    "title": "Log",
+    "text": "The newest lines of the server's log. Passwords, keys and note texts are never in it.",
+    "level": "Level",
+    "all": "All",
+    "search": "Contains",
+    "refresh": "Reload",
+    "empty": "No lines.",
+    "detail": "Detail",
+    "detailFixed": "Detail (fixed by the environment)",
+    "modes": {
+      "quiet": "Quiet",
+      "normal": "Normal",
+      "detailed": "Detailed (1 hour)",
+      "trace": "Everything (1 hour)"
+    },
+    "until": "Back to normal at {{time}}.",
+    "download": "Download",
+    "clear": "Clear",
+    "clearTitle": "Clear the log?",
+    "clearText": "Every line goes, the older files too.",
+    "cleared": "The log is empty."
   },
   "ai": {
     "title": "AI in notes",

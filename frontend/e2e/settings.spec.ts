@@ -19,7 +19,7 @@ test('the settings are in tabs, and the address says which', async ({ page }) =>
   await tabs.getByRole('tab', { name: 'Server' }).click()
   await expect(page).toHaveURL(/\/settings\?tab=server$/)
   const parts = page.getByRole('tablist', { name: 'Server' })
-  await expect(parts.getByRole('tab')).toHaveText(['Accounts', 'Sign-in', 'Public pages', 'AI and plugins', 'Files', 'Backups', 'Languages'])
+  await expect(parts.getByRole('tab')).toHaveText(['Accounts', 'Sign-in', 'Public pages', 'AI and plugins', 'Files', 'Backups', 'Languages', 'Log'])
   await expect(page.locator('#accounts')).toBeVisible()
 
   await parts.getByRole('tab', { name: 'Backups' }).click()

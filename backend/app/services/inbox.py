@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
+
+from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from . import index, mdparse, paths, vault
@@ -96,26 +99,50 @@ def capture(space: str, text: str, stamp: str, *, actor: Actor, language: str | 
     with index.guard, SessionLocal() as db:
         path = _find(db, space, language)
         if path is not None:
-            note = vault.live(db, path)
-            if note is None:
-                raise InboxError("not_found", "The inbox went away.", 404)
-            if _valid_lock(db, note.id) is not None:
-                raise InboxError("note_locked", "Someone is editing the inbox; try again in a moment.")
-            full = paths.vault_root().joinpath(*path.split("/"))
-            try:
-                data = full.read_bytes()
-                content = data.decode("utf-8-sig")
-            except (OSError, UnicodeDecodeError) as exc:
-                raise InboxError("not_found", "The inbox cannot be read.", 404) from exc
-            new_data = put_in(content, item).encode("utf-8")
-            if data.startswith(b"\xef\xbb\xbf"):
-                new_data = b"\xef\xbb\xbf" + new_data
-            stat = atomic_write(full, new_data)
-            index.record(db, path, new_data, stat, source=index.APP, author=actor.name, session=actor.client, file=note)
-            db.commit()
+            _rewrite(db, path, lambda content: put_in(content, item), actor=actor, source=index.APP)
             logger.info("Captured into the inbox")
             return path
     name = name_for(language)
     made = vault.create_note(space, name, f"# {name}\n\n{item}".encode(), actor=actor)
     logger.info("Captured into a new inbox")
     return made.path
+
+
+def _rewrite(db: Session, path: str, change: Callable[[str], str], *, actor: Actor, source: str) -> None:
+    """The note at ``path`` changed by ``change``, unless someone edits it; its BOM kept."""
+    note = vault.live(db, path)
+    if note is None:
+        raise InboxError("not_found", "The note went away.", 404)
+    if _valid_lock(db, note.id) is not None:
+        raise InboxError("note_locked", "Someone is editing the note; try again in a moment.")
+    full = paths.vault_root().joinpath(*path.split("/"))
+    try:
+        data = full.read_bytes()
+        content = data.decode("utf-8-sig")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise InboxError("not_found", "The note cannot be read.", 404) from exc
+    new_data = change(content).encode("utf-8")
+    if data.startswith(b"\xef\xbb\xbf"):
+        new_data = b"\xef\xbb\xbf" + new_data
+    stat = atomic_write(full, new_data)
+    index.record(db, path, new_data, stat, source=source, author=actor.name, session=actor.client, file=note)
+    db.commit()
+
+
+def at_end(content: str, words: str) -> str:
+    """The note with the words added at its end, after a blank line, in the note's own line endings."""
+    newline = "\r\n" if "\r\n" in content else "\n"
+    words = words.strip().replace("\r\n", "\n").replace("\n", newline)
+    if not content.strip():
+        return words + newline
+    body = content.rstrip("\r\n") + newline
+    return body + newline + words + newline
+
+
+def append(path: str, text: str, *, actor: Actor, source: str) -> str:
+    """Words at the end of a note (the daily note, from AI over MCP); never while someone edits it."""
+    if not text.strip():
+        raise InboxError("empty", "Nothing to add.", 422)
+    with index.guard, SessionLocal() as db:
+        _rewrite(db, path, lambda content: at_end(content, text), actor=actor, source=source)
+    return path

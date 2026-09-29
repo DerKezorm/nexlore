@@ -93,6 +93,8 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Moor/Deep/Linked.md': '# Linked\n\nTo the [[Walk]].\n',
   // Quick capture (capture.spec.ts): a space with no inbox yet.
   'Heath/Heather.md': '# Heather\n',
+  // The calendar subscription (outward.spec.ts): a task with a date a few days ahead.
+  'Heath/Dates.md': `- [ ] Cut the heather 📅 ${day(3)}\n`,
   // AI in notes against the stand-in service (ai.spec.ts).
   'Zoo/Ai.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',
   'Zoo/Ai whole.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',

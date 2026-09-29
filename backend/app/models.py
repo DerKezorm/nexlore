@@ -413,6 +413,8 @@ class Account(Base):
     #: Changes by others after this are "new" for a note the account never opened (``routers/news.py``); set when
     #: first asked and when everything is marked as read.
     news_since: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: SHA-256 of the key in the address of the account's calendar subscription (``services/feed.py``); None: none.
+    calendar_feed_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     #: Not stored. Set on the account an MCP key acts as when the key may see only some spaces (``services/mcp.py``):
     #: ``rights`` then answers for every other space as if it did not exist.
     key_spaces: ClassVar[frozenset[int] | None] = None

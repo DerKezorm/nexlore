@@ -28,18 +28,20 @@ import { StartCard } from '../components/settings/StartCard'
 import { SnippetsCard } from '../components/settings/SnippetsCard'
 import { ThemesCard } from '../components/settings/ThemesCard'
 import { SpacesCard } from '../components/settings/SpacesCard'
+import { CalendarFeedSwitch } from '../components/settings/CalendarFeed'
+import { LogCard } from '../components/settings/LogCard'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { TabRow, type Tab } from '../components/TabRow'
 import { downloadTemplate, languageOptions, type LanguageOption } from '../i18n'
 import { useAuth } from '../state/auth'
 
 type Top = 'general' | 'looks' | 'spaces' | 'server'
-type Part = 'accounts' | 'signin' | 'shares' | 'extensions' | 'files' | 'backups' | 'languages'
+type Part = 'accounts' | 'signin' | 'shares' | 'extensions' | 'files' | 'backups' | 'languages' | 'log'
 const TOPS: Top[] = ['general', 'looks', 'spaces', 'server']
-const PARTS: Part[] = ['accounts', 'signin', 'shares', 'extensions', 'files', 'backups', 'languages']
+const PARTS: Part[] = ['accounts', 'signin', 'shares', 'extensions', 'files', 'backups', 'languages', 'log']
 const TOP_SYMBOL: Record<Top, SymbolName> = { general: 'globe', looks: 'eye', spaces: 'space', server: 'shield' }
 const PART_SYMBOL: Record<Part, SymbolName> = {
-  accounts: 'users', signin: 'key', shares: 'globe', extensions: 'plug', files: 'files', backups: 'history', languages: 'globe',
+  accounts: 'users', signin: 'key', shares: 'globe', extensions: 'plug', files: 'files', backups: 'history', languages: 'globe', log: 'info',
 }
 
 export function SettingsPage() {
@@ -104,12 +106,15 @@ function ServerPart({ part }: { part: Part }) {
         settings && (
           <>
             <McpCard settings={settings} onChange={setSettings} />
+            <CalendarFeedSwitch settings={settings} onChange={setSettings} />
             <AiCard settings={settings} onChange={setSettings} />
             <CssCard settings={settings} onChange={setSettings} />
             <AdminPluginsCard settings={settings} onChange={setSettings} />
           </>
         )
       )
+    case 'log':
+      return <LogCard />
     case 'files':
       return (
         <>

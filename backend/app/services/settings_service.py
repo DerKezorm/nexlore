@@ -45,6 +45,9 @@ DEFAULTS: dict[str, Any] = {
     #: AI from outside (M7): off until the operator opens it, and the highest level a key may have.
     "mcp_allowed": False,
     "mcp_max_level": "read",
+    #: The calendar subscription of each account: the tasks go to wherever the address is given, so closed until
+    #: the operator opens it.
+    "calendar_feed_allowed": False,
     #: Plugin files of one's own, not from the catalog (M7): off until the operator opens it.
     "plugin_upload_allowed": False,
     #: AI in notes, with each account's own service: note text leaves the house, so closed until the operator opens it.

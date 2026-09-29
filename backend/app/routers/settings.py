@@ -59,6 +59,7 @@ class SettingsIn(BaseModel):
     smtp_from: str | None = Field(default=None, max_length=255)
     mcp_allowed: bool | None = None
     mcp_max_level: Literal["read", "draft", "write"] | None = None
+    calendar_feed_allowed: bool | None = None
     plugin_upload_allowed: bool | None = None
     ai_allowed: bool | None = None
     custom_css_allowed: bool | None = None
@@ -85,6 +86,7 @@ def _view(db: DbSession) -> SettingsOut:
         smtp_from=values["smtp_from"],
         mcp_allowed=bool(values["mcp_allowed"]),
         mcp_max_level=str(values["mcp_max_level"]),
+        calendar_feed_allowed=bool(values["calendar_feed_allowed"]),
         plugin_upload_allowed=bool(values["plugin_upload_allowed"]),
         ai_allowed=bool(values["ai_allowed"]),
         custom_css_allowed=bool(values["custom_css_allowed"]),

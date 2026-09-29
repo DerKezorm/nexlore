@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { recentApi, vaultApi, type Favorite, type FolderEntry, type FileEntry, type NoteRef } from '../api/client'
+import { recentApi, spaceZipUrl, vaultApi, type Favorite, type FolderEntry, type FileEntry, type NoteRef } from '../api/client'
 import { folderColor, spaceColor } from '../graph/palette'
 import { fileRoute } from '../lib/markdown'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
@@ -504,6 +504,14 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     navigate(left ? `${left}?right=${encodeURIComponent(path)}` : `/note/${path.split('/').map(encodeURIComponent).join('/')}`)
   }
 
+  /** A file from the server, saved by the browser (the session goes along). */
+  const download = (url: string) => {
+    const link = document.createElement('a')
+    link.href = url
+    link.download = ''
+    link.click()
+  }
+
   /** Into the favorites, or out of them. */
   const favoriteItem = (path: string): MenuItem => {
     const on = favorites.some((favorite) => favorite.path === path)
@@ -534,6 +542,8 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     }
     items.push({ label: t('menu.showInGraph'), symbol: 'graph', onSelect: () => (onFolder ? onFolder(row.path) : navigate('/?folder=' + encodeURIComponent(row.path))) })
     items.push(favoriteItem(row.path))
+    // Everything of a space in one file, for whoever may read it.
+    if (row.space) items.push({ label: t('menu.zip'), symbol: 'download', onSelect: () => download(spaceZipUrl(row.path)) })
     if (manage) items.push({ label: t('menu.spaceSettings'), symbol: 'users', onSelect: () => navigate('/settings?tab=spaces') })
     if (write && !row.space) {
       items.push('separator')

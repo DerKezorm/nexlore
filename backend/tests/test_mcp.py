@@ -17,7 +17,7 @@ from app.config import get_settings
 from app.db import SessionLocal
 from app.main import app
 from app.models import Draft, File, Version
-from app.services import index, mcp, settings_service, textblocks
+from app.services import inbox, index, mcp, settings_service, textblocks
 
 from .conftest import make_account, sign_in
 
@@ -181,9 +181,10 @@ def test_initialize_and_the_tools_of_each_level(world: World) -> None:
     levels = {}
     for level in ("read", "draft", "write"):
         levels[level] = {tool["name"] for tool in rpc(world.key(level), "tools/list").json()["result"]["tools"]}
-    assert levels["read"] == {"list_spaces", "search", "find_notes", "read_note", "list_folder", "note_links", "list_tasks"}
+    assert levels["read"] == {"list_spaces", "search", "search_notes", "find_notes", "read_note", "list_folder", "note_links",
+                              "list_tasks"}
     assert levels["draft"] == levels["read"] | {"propose_change", "propose_note"}
-    assert levels["write"] == levels["draft"] | {"write_note", "edit_note", "create_note"}
+    assert levels["write"] == levels["draft"] | {"write_note", "edit_note", "create_note", "complete_task", "append_to_daily"}
 
 
 def test_a_foreign_space_answers_like_a_missing_one(world: World) -> None:
@@ -461,3 +462,61 @@ def test_a_direct_write_says_it_came_over_mcp(world: World) -> None:
         file_id = db.scalar(select(File.id).where(File.path == "Garden/Plan.md"))
         newest = db.scalars(select(Version).where(Version.file_id == file_id).order_by(Version.id.desc())).first()
     assert (newest.source, newest.author) == (index.MCP, "anna")
+
+
+
+# --- Searching with operators, ticking a task off, the daily note (K7) --------------------------------------------
+
+
+def test_searching_with_operators_gives_the_lines_and_keeps_to_readable_spaces(world: World) -> None:
+    token = world.key()
+    found = value(call(token, "search_notes", query="path:Garden second"))
+    assert [note["path"] for note in found["notes"]] == ["Garden/Plan.md"]
+    assert found["notes"][0]["lines"] == [{"line": 4, "text": "«Second» line."}]
+    # bob's space holds the word; anna's key finds nothing there.
+    assert value(call(token, "search_notes", query="zucchini")) == {"notes": [], "more": False}
+    assert value(call(token, "search_notes", query="-second first"))["notes"] == []
+
+
+def test_a_task_is_ticked_off_by_its_line_with_the_right_to_write(world: World) -> None:
+    (world.vault / "Garden" / "Todo.md").write_bytes(b"# Todo\n\n- [ ] Water the beds\n- [ ] Buy seeds\n")
+    index.scan()
+    reading = world.key()
+    tasks = value(call(reading, "list_tasks", query="Water"))
+    assert tasks[0]["raw"] == "- [ ] Water the beds"
+    # A read key does not know the tool.
+    assert "complete_task" in failure(call(reading, "complete_task", path="Garden/Todo.md", line=3, raw=tasks[0]["raw"]))
+    token = world.key("write")
+    done = value(call(token, "complete_task", path="Garden/Todo.md", line=tasks[0]["line"], raw=tasks[0]["raw"]))
+    assert done["raw"].startswith("- [x] Water the beds")
+    text = (world.vault / "Garden" / "Todo.md").read_bytes().decode()
+    assert text.startswith("# Todo\n\n- [x] Water the beds") and text.endswith("- [ ] Buy seeds\n")
+    # Open again.
+    value(call(token, "complete_task", path="Garden/Todo.md", line=3, raw=done["raw"], done=False))
+    assert (world.vault / "Garden" / "Todo.md").read_bytes().decode().startswith("# Todo\n\n- [ ] Water the beds")
+    # Not in bob's space.
+    assert "Not found" in failure(call(token, "complete_task", path="Secret/Diary.md", line=1, raw="x"))
+
+
+def test_text_goes_at_the_end_of_the_daily_note_made_when_missing(world: World) -> None:
+    token = world.key("write")
+    first = value(call(token, "append_to_daily", space="Garden", text="Bought seeds", date="2026-09-29"))
+    assert first["created"] is True
+    path = first["path"]
+    assert path.startswith("Garden/") and "2026-09-29" in path
+    again = value(call(token, "append_to_daily", space="Garden", text="Watered\nall of them", date="2026-09-29"))
+    assert again == {"path": path, "created": False}
+    assert (world.vault / path).read_bytes().decode().endswith("Bought seeds\n\nWatered\nall of them\n")
+    # Somebody editing it: nothing written.
+    assert world.anna.post("/api/locks", json={"path": path}).status_code == 200
+    assert "editing" in failure(call(token, "append_to_daily", space="Garden", text="later", date="2026-09-29"))
+    assert "later" not in (world.vault / path).read_bytes().decode()
+    assert "Not found" in failure(call(token, "append_to_daily", space="Secret", text="x"))
+    assert "'text'" in failure(call(token, "append_to_daily", space="Garden", text="   ", date="2026-09-29"))
+
+
+def test_text_at_the_end_keeps_the_line_endings_of_the_note() -> None:
+    assert inbox.at_end("", "One") == "One\n"
+    assert inbox.at_end("# Day\n", "One") == "# Day\n\nOne\n"
+    assert inbox.at_end("# Day", "One") == "# Day\n\nOne\n"
+    assert inbox.at_end("# Day\r\n\r\n", "One\ntwo") == "# Day\r\n\r\nOne\r\ntwo\r\n"

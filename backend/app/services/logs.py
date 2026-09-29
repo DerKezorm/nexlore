@@ -101,6 +101,14 @@ def _one_line(text: str) -> str:
     return text.replace("\r", "\\r").replace("\n", "\\n")
 
 
+#: The key of a calendar subscription travels in its address (a calendar app sends no header): never in the log.
+_FEED_KEY = re.compile(r"(nxc_)[A-Za-z0-9_-]+")
+
+
+def redact(text: str) -> str:
+    return _FEED_KEY.sub(r"\1…", text)
+
+
 class _ContextFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         data = _context.get() or {}
@@ -112,7 +120,7 @@ class _ContextFilter(logging.Filter):
         # Formatted once and then fixed, so the second handler sees the finished text. Tracebacks are added by the
         # formatter afterwards and keep their lines; ``read`` joins them to their record.
         if not getattr(record, "_one_line", False):
-            record.msg = _one_line(record.getMessage())
+            record.msg = redact(_one_line(record.getMessage()))
             record.args = ()
             record._one_line = True  # type: ignore[attr-defined]
         return True

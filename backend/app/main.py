@@ -26,6 +26,7 @@ from .routers import backups as backups_router
 from .routers import bases as bases_router
 from .routers import cleanup as cleanup_router
 from .routers import favorites as favorites_router
+from .routers import feed as feed_router
 from .routers import inbox as inbox_router
 from .routers import locales as locales_router
 from .routers import logs as logs_router
@@ -48,7 +49,7 @@ ROUTERS = [
     health, about, locales_router, logs_router, auth, totp_router, oidc, members, settings_router, vault_router,
     attachments, imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router, looks_router,
     ai_router, favorites_router, avatars_router, recent_router, themes_router, search_router, news_router,
-    proposals_router, bases_router, cleanup_router, inbox_router,
+    proposals_router, bases_router, cleanup_router, inbox_router, feed_router,
 ]
 
 

@@ -510,7 +510,8 @@
       "extensions": "KI und Plugins",
       "files": "Dateien",
       "backups": "Sicherung",
-      "languages": "Sprachen"
+      "languages": "Sprachen",
+      "log": "Log"
     }
   },
   "errors": {
@@ -1398,7 +1399,8 @@
     "asTemplate": "Als Vorlage speichern …",
     "favorite": "Zu den Favoriten",
     "unfavorite": "Aus den Favoriten entfernen",
-    "openRight": "Rechts daneben öffnen"
+    "openRight": "Rechts daneben öffnen",
+    "zip": "Als ZIP herunterladen"
   },
   "editorMenu": {
     "openLink": "Notiz öffnen",
@@ -1574,6 +1576,47 @@
     "keep": "Festhalten",
     "done": "Fertig",
     "keys": "Strg+Enter hält fest"
+  },
+  "feed": {
+    "title": "Kalender-Abo",
+    "text": "Deine offenen Aufgaben mit Termin als Adresse, die dein Kalender abonniert (Internet-Kalender, ICS). Er fragt sie etwa stündlich neu ab.",
+    "closed": "Der Betreiber hat Kalender-Abos nicht eingeschaltet.",
+    "closedOperator": "Einschalten unter Einstellungen → Server → Erweiterungen.",
+    "none": "Noch keine Adresse.",
+    "active": "Eine Adresse ist aktiv. Sie wird nur einmal gezeigt; eine neue ersetzt sie.",
+    "make": "Adresse erzeugen",
+    "renew": "Neue Adresse",
+    "stop": "Abschalten",
+    "stopped": "Das Abo ist abgeschaltet.",
+    "copy": "Kopieren",
+    "shownOnce": "Nur jetzt sichtbar. Wer diese Adresse hat, sieht deine Aufgaben mit Termin.",
+    "adminTitle": "Kalender-Abos",
+    "adminText": "Jedes Konto kann sich eine Adresse für seinen Kalender erzeugen, mit seinen offenen Aufgaben mit Termin. Die Aufgaben verlassen damit das Haus.",
+    "allow": "Kalender-Abos erlauben",
+    "allowHint": "Ausgeschaltet antworten alle Adressen, als gäbe es sie nicht."
+  },
+  "log": {
+    "title": "Log",
+    "text": "Die neuesten Zeilen des Server-Logs. Kennwörter, Schlüssel und Notiztexte stehen nie darin.",
+    "level": "Stufe",
+    "all": "Alle",
+    "search": "Enthält",
+    "refresh": "Neu laden",
+    "empty": "Keine Zeilen.",
+    "detail": "Ausführlichkeit",
+    "detailFixed": "Ausführlichkeit (fest per Umgebung)",
+    "modes": {
+      "quiet": "Ruhig",
+      "normal": "Normal",
+      "detailed": "Ausführlich (1 Stunde)",
+      "trace": "Alles (1 Stunde)"
+    },
+    "until": "Zurück auf Normal um {{time}}.",
+    "download": "Herunterladen",
+    "clear": "Leeren",
+    "clearTitle": "Log leeren?",
+    "clearText": "Alle Zeilen gehen, auch die älteren Dateien.",
+    "cleared": "Das Log ist leer."
   },
   "ai": {
     "title": "KI in Notizen",

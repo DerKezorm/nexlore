@@ -12,6 +12,7 @@ import { Field, Problem } from '../components/AuthFrame'
 import { AiAccess } from '../components/AiAccess'
 import { Avatar } from '../components/Avatar'
 import { McpKeys } from '../components/McpKeys'
+import { CalendarFeed } from '../components/settings/CalendarFeed'
 import { SecondFactor } from '../components/SecondFactor'
 import { MyPluginsCard } from '../plugins/PluginSettings'
 import { Symbol, type SymbolName } from '../components/Symbol'
@@ -242,6 +243,7 @@ export function AccountPage() {
           <>
             <AiAccess />
             <McpKeys />
+            <CalendarFeed />
           </>
         )}
         {part === 'plugins' && <MyPluginsCard />}

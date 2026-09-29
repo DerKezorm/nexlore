@@ -31,10 +31,11 @@ from ..db import SessionLocal
 from ..deps import Account, DbSession, need
 from ..errors import error
 from ..models import WRITE, File, McpKey, Space, Version
-from ..services import index, logs, mcp, paths, rights, textblocks, vault
+from ..services import everyday, inbox, index, logs, mcp, paths, rights, textblocks, vault
 from ..services.mcp import Caller, McpError
 from ..services.vault import Actor, VaultError
 from . import everyday as everyday_routes
+from . import search as search_routes
 from . import vault as vault_routes
 
 logger = logging.getLogger("nexlore.mcp")
@@ -64,6 +65,12 @@ TOOLS: list[dict[str, Any]] = [
      "inputSchema": {"type": "object", "required": ["query"], "properties": {
          "query": {"type": "string"}, "space": {"type": "string"},
          "limit": {"type": "integer", "minimum": 1, "maximum": 50}}}},
+    {"name": "search_notes", "level": "read",
+     "description": "Search like the search page of nexlore, with operators: words, \"a phrase\", -left_out, "
+                    "tag:#x, path:Folder, file:name, task:words, task-todo:, task-done:, line:(a b), section:(a b), "
+                    "[property:value]. Gives each note with the lines that fit.",
+     "inputSchema": {"type": "object", "required": ["query"], "properties": {
+         "query": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 50}}}},
     {"name": "find_notes", "level": "read", "description": "Notes whose title or file name contains the words.",
      "inputSchema": {"type": "object", "required": ["title"], "properties": {
          "title": {"type": "string"}, "space": {"type": "string"},
@@ -96,6 +103,19 @@ TOOLS: list[dict[str, Any]] = [
          "path": _PATH, "base_hash": _BASE,
          "edits": {"type": "array", "maxItems": 100, "items": {"type": "object", "required": ["old", "new"],
                    "properties": {"old": {"type": "string"}, "new": {"type": "string"}}}}}}},
+    {"name": "complete_task", "level": "write",
+     "description": "Tick a task off (or open it again with done=false). Give path, line and raw as list_tasks gave "
+                    "them; when the note changed since, the task is found by its text, and nothing is written when it "
+                    "is not there exactly once.",
+     "inputSchema": {"type": "object", "required": ["path", "line", "raw"], "properties": {
+         "path": _PATH, "line": {"type": "integer", "minimum": 1}, "raw": {"type": "string"},
+         "done": {"type": "boolean"}}}},
+    {"name": "append_to_daily", "level": "write",
+     "description": "Add text at the end of the daily note of a space (today's, or of 'date' as YYYY-MM-DD), made "
+                    "from the space's template when it is not there yet.",
+     "inputSchema": {"type": "object", "required": ["space", "text"], "properties": {
+         "space": {"type": "string"}, "text": {"type": "string"},
+         "date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"}}}},
     {"name": "create_note", "level": "write", "description": "Make a new note in a space or folder.",
      "inputSchema": {"type": "object", "required": ["folder", "title", "content"], "properties": {
          "folder": _PATH, "title": {"type": "string"}, "content": {"type": "string"}}}},
@@ -195,8 +215,39 @@ def _call(caller: Caller, client: str, name: str, args: dict[str, Any]) -> Any:
             _text(args, "space", required=False, limit=255) or None, _text(args, "tag", required=False, limit=255)
             or None, _text(args, "query", required=False, limit=200) or None, 0, 100,
         )
-        return [{"path": t["path"], "line": t["line"], "text": t["text"], "status": t["status"], "due": t["due"]}
-                for t in found["items"]]
+        return [{"path": t["path"], "line": t["line"], "raw": t["raw"], "text": t["text"], "status": t["status"],
+                 "due": t["due"]} for t in found["items"]]
+    if name == "search_notes":
+        page = search_routes.search_notes(account, _text(args, "query", limit=500), _limit(args), 0)
+        marks = str.maketrans({vault_routes.HIT_START: "«", vault_routes.HIT_END: "»"})
+        notes = [{"path": n.path, "title": n.title,
+                  "lines": [{"line": ln.line, "text": ln.text.translate(marks)} for ln in n.lines]} for n in page.notes]
+        return {"notes": notes, "more": page.more}
+    if name == "complete_task":
+        rel = need(account, _text(args, "path"), WRITE)
+        line = args.get("line")
+        done = args.get("done", True)
+        if not isinstance(line, int) or line < 1 or not isinstance(done, bool):
+            raise ToolError("'line' must be a whole number from 1, 'done' true or false.")
+        today = datetime.now().astimezone().date().isoformat()
+        try:
+            changed = everyday.toggle(rel, line, _text(args, "raw", limit=100_000), done=done, today=today, actor=who)
+        except VaultError as exc:
+            raise ToolError("Not found." if exc.status == 404 else exc.text) from exc
+        return {"path": changed["path"], "line": changed["line"], "raw": changed["raw"],
+                "conflict": changed.get("conflict")}
+    if name == "append_to_daily":
+        space = need(account, _text(args, "space", limit=255), WRITE)
+        if "/" in space:
+            raise ToolError("Not found.")
+        day = _text(args, "date", required=False, limit=10) or datetime.now().astimezone().date().isoformat()
+        words = _text(args, "text", limit=MAX_TEXT)
+        try:
+            daily = everyday.open_daily(space, day, actor=who, may_write=True, language=account.language or "en")
+            path = inbox.append(daily.path, words, actor=who, source=index.MCP)
+        except (VaultError, inbox.InboxError) as exc:
+            raise ToolError("Not found." if getattr(exc, "status", 0) == 404 else str(exc)) from exc
+        return {"path": path, "created": daily.created}
     if name in ("propose_change", "write_note", "edit_note"):
         path = _text(args, "path")
         base_hash = _text(args, "base_hash", limit=64)
