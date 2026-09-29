@@ -1,4 +1,4 @@
-# Sicherung und Obsidian
+# Sicherung und Umzug
 
 Zurück zu [[00 Willkommen|Willkommen]].
 

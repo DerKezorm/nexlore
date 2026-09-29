@@ -2,7 +2,7 @@
 
 Zurück zu [[00 Willkommen|Willkommen]].
 
-Eine Aufgabe ist eine Zeile mit Kästchen, geschrieben wie beim Obsidian-Plugin „Tasks“. Diese hier sind echt: Sie stehen auch unter **Aufgaben** und im **Kalender**.
+Eine Aufgabe ist eine Zeile mit Kästchen, dazu nach Wunsch Fälligkeit, Priorität und Wiederholung. Diese hier sind echt: Sie stehen auch unter **Aufgaben** und im **Kalender**.
 
 - [ ] Die Anleitung bis zum Ende lesen 📅 ⟦+0⟧
 - [ ] Einen eigenen Bereich anlegen 📅 ⟦+1⟧

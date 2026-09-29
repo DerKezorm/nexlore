@@ -14,7 +14,7 @@ tag: anleitung
 view: table
 ```
 
-- **Kanban:** Eine Notiz im Format des Obsidian-Kanban-Plugins wird zum Brett. Probier es mit dem [[Projektbrett]].
+- **Kanban:** Eine Notiz mit Spalten als Überschriften und Karten als Aufgaben wird zum Brett. Probier es mit dem [[Projektbrett]].
 - **Wiederentdecken:** eine zufällige ältere Notiz und was heute vor einem Jahr geschrieben wurde.
 
 Solange ein Plugin aus ist, siehst du hier nur den Codeblock als Text. Das ist gewollt: Nichts läuft, was du nicht eingeschaltet hast.

@@ -14,7 +14,7 @@ tag: guide
 view: table
 ```
 
-- **Kanban:** a note in the format of the Obsidian Kanban plugin becomes a board. Try it with the [[Project board]].
+- **Kanban:** a note with columns as headings and cards as tasks becomes a board. Try it with the [[Project board]].
 - **Rediscover:** a random older note, and what was written a year ago today.
 
 While a plugin is off, you see only the code block as text here. That is on purpose: nothing runs that you did not switch on.

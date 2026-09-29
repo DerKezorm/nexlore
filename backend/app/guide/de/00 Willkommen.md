@@ -21,7 +21,7 @@ Dieser Bereich ist Anleitung und Beispiel zugleich. Jede Notiz hier benutzt, was
 9. [[09 Teilen und Rechte]]
 10. [[10 Plugins]]
 11. [[11 KI]]
-12. [[12 Sicherung und Obsidian]]
+12. [[12 Sicherung und Umzug]]
 13. [[13 Tastenkürzel]]
 
 ## Das Wichtigste in drei Sätzen
