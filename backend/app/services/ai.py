@@ -410,6 +410,11 @@ def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "",
     try:
         with httpx.Client(timeout=TEXT_SECONDS, follow_redirects=True, transport=transport) as client:
             answer = client.post(target_url, headers=_headers(key_of(row)), json=body)
+            # Newer models choose it themselves and turn down a request that sets it ("`temperature` is deprecated
+            # for this model"): once more without, which older models and other services still take.
+            if answer.status_code == 400 and "temperature" in _said(answer).lower():
+                del body["temperature"]
+                answer = client.post(target_url, headers=_headers(key_of(row)), json=body)
     except httpx.ReadTimeout as exc:
         # Only a read timeout: the connection stood and the service wrote too slowly. Not connecting is "unreachable".
         keep(failed="ai_timeout")

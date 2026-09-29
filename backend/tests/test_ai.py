@@ -200,6 +200,28 @@ def test_the_answer_comes_back_without_a_fence_and_from_a_list_of_parts(anna: Te
     assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).json()["detail"]["code"] == "ai_empty"
 
 
+def test_a_model_that_sets_its_own_temperature_is_asked_once_more_without(anna: TestClient, service: Service) -> None:
+    # As a real service answered for one of its newer models on 29.09.2026, word for word.
+    refused = {"type": "error", "error": {"type": "invalid_request_error", "message": "`temperature` is deprecated for this model."}}
+
+    def picky(request: httpx.Request) -> httpx.Response:
+        if "temperature" in json.loads(request.content):
+            return httpx.Response(400, json=refused)
+        return service.echo(request)
+
+    service.answer = picky
+    count = len(service.requests)
+    assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).json()["text"] == NOTE.upper()
+    first, second = (json.loads(request.content) for request in service.requests[count:])
+    assert "temperature" in first and "temperature" not in second
+    assert {k: v for k, v in first.items() if k != "temperature"} == second
+    # Any other 400 is not sent again.
+    service.answer = lambda request: httpx.Response(400, json={"error": {"message": "max_tokens: too many"}})
+    count = len(service.requests)
+    assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).json()["detail"]["code"] == "ai_service_failed"
+    assert len(service.requests) == count + 1
+
+
 def test_what_went_out_is_kept_word_for_word_encrypted_per_account_and_goes_on_request(
     anna: TestClient, service: Service
 ) -> None:
