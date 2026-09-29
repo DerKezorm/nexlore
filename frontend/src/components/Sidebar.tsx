@@ -48,6 +48,9 @@ type Row =
   | { kind: 'more'; path: string; depth: number }
   | { kind: 'failed'; path: string; depth: number }
 
+/** Notes, and views over notes (Obsidian's .base files), are what the tree lists. */
+const inTree = (file: { is_note: boolean; path: string }) => file.is_note || /\.base$/i.test(file.path)
+
 export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: Props) {
   const { t } = useTranslation()
   const news = useNews()
@@ -132,7 +135,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
         setListings((current) =>
           new Map(current).set(path, {
             folders: listing.folders,
-            notes: listing.files.filter((file) => file.is_note),
+            notes: listing.files.filter(inTree),
             loaded: listing.files.length,
             total: listing.total_files,
             more: false,
@@ -164,7 +167,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           setListings((current) =>
             new Map(current).set(path, {
               folders: fresh.folders,
-              notes: fresh.files.filter((file) => file.is_note),
+              notes: fresh.files.filter(inTree),
               loaded: fresh.files.length,
               total: fresh.total_files,
               more: false,
@@ -195,7 +198,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
             if (!now || typeof now === 'string') return latest
             return new Map(latest).set(path, {
               ...now,
-              notes: [...now.notes, ...page.files.filter((file) => file.is_note)],
+              notes: [...now.notes, ...page.files.filter(inTree)],
               loaded: now.loaded + page.files.length,
               total: page.total_files,
               more: false,
@@ -369,6 +372,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     if (write) {
       items.push({ label: t('menu.newNote'), symbol: 'plus', onSelect: () => askNewNote(row.path) })
       items.push({ label: t('menu.newFolder'), symbol: 'folderPlus', onSelect: () => askVaultAction({ kind: 'new-folder', parent: row.path }) })
+      items.push({ label: t('bases.new'), symbol: 'table', onSelect: () => askVaultAction({ kind: 'new-base', folder: row.path }) })
       items.push('separator')
     }
     if (write) items.push({ label: t('menu.look'), symbol: 'star', onSelect: () => askVaultAction({ kind: 'look', path: row.path }) })
@@ -442,7 +446,9 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
         <button
           type="button"
           // With Ctrl or Cmd, or the middle button: in a tab of its own.
-          onClick={(event) => (event.ctrlKey || event.metaKey ? openInTab(row.path, navigate) : onNote(row.path))}
+          onClick={(event) =>
+            /\.base$/i.test(row.path) ? navigate(fileRoute(row.path)) : event.ctrlKey || event.metaKey ? openInTab(row.path, navigate) : onNote(row.path)
+          }
           onAuxClick={(event) => {
             if (event.button !== 1) return
             event.preventDefault()
@@ -457,8 +463,8 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           data-new={news.paths.has(row.path) || undefined}
           title={news.paths.has(row.path) ? t('news.newDot') : undefined}
         >
-          <Symbol name="note" className="h-3.5 w-3.5 shrink-0 opacity-60" />
-          <span className="truncate">{row.title}</span>
+          <Symbol name={/\.base$/i.test(row.path) ? 'table' : 'note'} className="h-3.5 w-3.5 shrink-0 opacity-60" />
+          <span className="truncate">{/\.base$/i.test(row.path) ? row.title.replace(/\.base$/i, '') : row.title}</span>
           {news.paths.has(row.path) && <span aria-hidden="true" className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-accent-400" />}
         </button>
       )

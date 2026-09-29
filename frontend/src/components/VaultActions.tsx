@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { ApiError, everydayApi, looksApi, tagsApi, vaultApi } from '../api/client'
+import { ApiError, basesApi, everydayApi, looksApi, tagsApi, vaultApi } from '../api/client'
 import { errorText } from '../lib/errors'
 import { ensureFolder } from '../lib/folders'
 import { fileRoute } from '../lib/markdown'
@@ -149,6 +149,21 @@ export function VaultActions() {
             await reload()
             reveal(made.name)
             done(t('actions.spaceMade', { name: made.name }) + (looked ? '' : ' ' + t('looks.notSaved')))
+          }}
+        />
+      )}
+      {action.kind === 'new-base' && (
+        <NameDialog
+          title={t('bases.newTitle', { folder: action.folder.split('/').join(' / ') })}
+          hint={t('bases.newHint')}
+          confirm={t('actions.create')}
+          initial=""
+          onClose={close}
+          onSubmit={async (name) => {
+            const made = await basesApi.create(action.folder, name)
+            await reload()
+            done(null)
+            navigate(fileRoute(made.path))
           }}
         />
       )}

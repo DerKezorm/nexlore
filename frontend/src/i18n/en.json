@@ -287,6 +287,20 @@
     "mineDeclined": "Turned down by {{name}}",
     "mineOpen": "Waiting"
   },
+  "bases": {
+    "new": "New view …",
+    "newTitle": "New view in “{{folder}}”",
+    "newHint": "A table of the notes in this folder to start with, saved as a .base file as Obsidian writes it.",
+    "views": "Views",
+    "count_one": "{{count}} note",
+    "count_other": "{{count}} notes",
+    "editYaml": "Edit the YAML",
+    "yaml": "YAML of the view",
+    "yamlHint": "As in Obsidian: filters, formulas, views (table, cards, list, board) with order, sort, groupBy and limit.",
+    "empty": "No note fits this view.",
+    "none": "Without a value",
+    "cell": "Value of {{key}}"
+  },
   "noteStart": {
     "recentOpened": "Opened last",
     "title": "Your notes",

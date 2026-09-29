@@ -23,6 +23,7 @@ import { Symbol } from '../components/Symbol'
 import { NoteStart } from '../components/NoteStart'
 import { Outline } from '../components/Outline'
 import { CompareDialog } from '../components/CompareDialog'
+import { BaseBlocks } from '../components/BaseBlocks'
 import { ProposeDialog } from '../components/ProposeDialog'
 import { seenNote } from '../lib/news'
 import { useEnrich } from '../lib/enrich'
@@ -970,6 +971,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 />
                 <PluginBlocks plugins={plugins} article={article} html={html} note={note} onOpen={open} onWritten={pluginWrote} />
                 <NoteEmbeds article={article} html={html} onOpen={open} />
+                <BaseBlocks article={article} html={html} note={note.path} />
                 </>
               )}
               {(!wide || split) && (

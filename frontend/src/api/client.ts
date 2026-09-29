@@ -502,6 +502,33 @@ export const proposalsApi = {
   withdraw: (id: number) => api<void>(`/api/proposals/${id}`, { method: 'DELETE' }),
 }
 
+// --- Views over notes, as Obsidian's Bases (routers/bases.py) -----------------------------------------------------
+
+export type BaseRow = { path: string; title: string; cells: Record<string, unknown> }
+export type BaseAnswer = {
+  views: { name: string; type: string }[]
+  view: number
+  kind: 'table' | 'cards' | 'list' | 'board'
+  name: string
+  columns: { key: string; label: string }[]
+  group: string | null
+  image: string | null
+  groups: { value: string | null; rows: BaseRow[] }[]
+  total: number
+  problems: string[]
+  /** For a .base file: its text and state, to edit it. */
+  text?: string
+  hash?: string
+}
+
+export const basesApi = {
+  view: (path: string, view = 0) => api<BaseAnswer>('/api/bases/view', { query: { path, view } }),
+  block: (source: string, text: string, view = 0) => api<BaseAnswer>('/api/bases/block', { method: 'POST', body: { source, text, view } }),
+  cell: (path: string, key: string, value: unknown) => api<{ path: string; conflict: string | null }>('/api/bases/cell', { method: 'PUT', body: { path, key, value } }),
+  create: (folder: string, name: string) => api<{ path: string }>('/api/bases', { method: 'POST', body: { folder, name } }),
+  save: (path: string, text: string, baseHash: string) => api<{ path: string; hash: string }>('/api/bases/file', { method: 'PUT', body: { path, text, base_hash: baseHash } }),
+}
+
 // --- The search page (routers/search.py) -------------------------------------------------------------------------
 
 export type SearchPage = { notes: { path: string; title: string; lines: { line: number; text: string }[] }[]; more: boolean; ms: number }

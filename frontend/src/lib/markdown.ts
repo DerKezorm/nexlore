@@ -381,7 +381,13 @@ function markdownFor(resolve: (target: string) => string | null, targets: Target
     renderer: {
       html: ({ text }: Tokens.HTML | Tokens.Tag) => escape(text),
       // A Mermaid diagram is drawn after the page shows (lib/enrich.ts); until then, and if it cannot be, its text.
-      code: ({ text, lang }: Tokens.Code) => (lang?.trim().split(/\s/)[0].toLowerCase() === 'mermaid' ? `<div class="nn-mermaid">${escape(text)}</div>` : false),
+      code: ({ text, lang }: Tokens.Code) => {
+        const language = lang?.trim().split(/\s/)[0].toLowerCase()
+        if (language === 'mermaid') return `<div class="nn-mermaid">${escape(text)}</div>`
+        // A view over notes (Obsidian's Bases) inside the app; elsewhere its YAML as code.
+        if (language === 'base' && targets.embedNote) return `<div class="nn-base" data-base="${escape(text)}"></div>`
+        return false
+      },
     },
     walkTokens(token: Token) {
       if (token.type !== 'link' && token.type !== 'image') return

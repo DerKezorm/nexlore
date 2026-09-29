@@ -287,6 +287,20 @@
     "mineDeclined": "Abgelehnt von {{name}}",
     "mineOpen": "Wartet"
   },
+  "bases": {
+    "new": "Neue Ansicht …",
+    "newTitle": "Neue Ansicht in „{{folder}}“",
+    "newHint": "Zum Anfang eine Tabelle der Notizen in diesem Ordner, gespeichert als .base-Datei, wie Obsidian sie schreibt.",
+    "views": "Ansichten",
+    "count_one": "{{count}} Notiz",
+    "count_other": "{{count}} Notizen",
+    "editYaml": "YAML bearbeiten",
+    "yaml": "YAML der Ansicht",
+    "yamlHint": "Wie in Obsidian: filters, formulas, views (table, cards, list, board) mit order, sort, groupBy und limit.",
+    "empty": "Keine Notiz passt zu dieser Ansicht.",
+    "none": "Ohne Wert",
+    "cell": "Wert von {{key}}"
+  },
   "noteStart": {
     "recentOpened": "Zuletzt geöffnet",
     "title": "Deine Notizen",

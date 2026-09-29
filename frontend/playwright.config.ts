@@ -109,6 +109,13 @@ const E2E_NOTES: Record<string, string | Buffer> = {
     '[^1]: Said by nobody.', '',
   ].join('\n'),
   'Zyx/Wide.md': '---\ncssclasses: [wide, my-look]\n---\n# Wide\n\nAs wide as the window.\n',
+  // Views over notes, as Obsidian's Bases (bases.spec.ts).
+  'Zyx/Kitchen/Bread.md': '---\ntags: [recipe]\nminutes: 720\nstatus: tried\n---\n# Bread\n',
+  'Zyx/Kitchen/Soup.md': '---\ntags: [recipe]\nminutes: 45\nstatus: tried\n---\n# Soup\n',
+  'Zyx/Kitchen/Shakshuka.md': '---\ntags: [recipe]\nminutes: 25\nstatus: planned\n---\n# Shakshuka\n',
+  'Zyx/Kitchen/Overview.md': '# Overview\n\n```base\nfilters: \'file.hasTag("recipe") && minutes < 60\'\nviews:\n  - type: list\n    order: [file.name, minutes]\n```\n',
+  'Zyx/Kitchen/Recipes.base':
+    'filters:\n  and:\n    - file.inFolder("Kitchen")\n    - file.hasTag("recipe")\nformulas:\n  hours: "minutes / 60"\nviews:\n  - type: table\n    name: All\n    order: [file.name, minutes, status, formula.hours]\n    sort:\n      - property: minutes\n        direction: ASC\n  - type: board\n    name: Board\n    groupBy:\n      property: status\n    order: [file.name, status]\n',
   'Switch/From.md': '# From\n\nStart.\n',
   'Switch/To.md': '# To\n\nOther note.\n',
   // The editor (editor.spec.ts): Obsidian's way of writing, kept byte for byte where nothing was changed.

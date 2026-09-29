@@ -10,6 +10,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ApiError, fileUrl, vaultApi, type Links } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Sidebar } from '../components/Sidebar'
+import { BaseView } from '../components/BaseView'
 import { Symbol } from '../components/Symbol'
 import { errorText } from '../lib/errors'
 import { fileKind } from '../lib/files'
@@ -52,7 +53,7 @@ export function FilePage() {
 
   return (
     <>
-      <Sidebar activeNote={null} onNote={(next) => navigate(noteUrl(next))} />
+      <Sidebar activeNote={path} onNote={(next) => navigate(noteUrl(next))} />
       <main className="nn-scroll flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl space-y-5 px-6 py-8">
           <div className="flex flex-wrap items-start gap-3">
@@ -84,12 +85,18 @@ export function FilePage() {
               {problem === 'not_found' ? t('file.notFound') : errorText(problem)}
             </p>
           ) : (
+            path.toLowerCase().endsWith('.base') ? (
+              <section className="rounded-2xl border border-ink-700 bg-ink-900 p-4">
+                <BaseView source={{ kind: 'file', path }} />
+              </section>
+            ) : (
             <section className="flex justify-center rounded-2xl border border-ink-700 bg-ink-900 p-4">
               {kind === 'image' && <img src={fileUrl(path)} alt={name} className="max-h-[70vh] max-w-full rounded-lg" />}
               {kind === 'video' && <video src={fileUrl(path)} controls preload="metadata" className="max-h-[70vh] max-w-full rounded-lg" />}
               {kind === 'audio' && <audio src={fileUrl(path)} controls preload="metadata" className="w-full max-w-md" />}
               {(kind === 'pdf' || kind === 'other') && <p className="py-8 text-sm text-mist-500">{t('file.noPreview')}</p>}
             </section>
+            )
           )}
 
           <section className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
