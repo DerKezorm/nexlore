@@ -72,12 +72,13 @@ test('a click on a day in the calendar makes its daily note from the template of
     headers: { 'X-Nexlore-Client': 'tab-e2e-days' },
   })
   expect(set.ok()).toBe(true)
+  // Two days ahead can be next month (28 September gives 1 October): the calendar goes to that month.
   const date = day(2)
-  await page.goto('/calendar?space=Year')
+  await page.goto(`/calendar?space=Year&month=${date.slice(0, 7)}`)
   await page.locator(`[data-date="${date}"]`).click()
   await page.waitForURL(new RegExp(`/note/Year/Daily/${date}\\.md`))
   expect(onDisk(`Year/Daily/${date}.md`)).toBe(`# Day ${date}\n\n- [ ] plan the day\n`)
-  await page.goto('/calendar?space=Year')
+  await page.goto(`/calendar?space=Year&month=${date.slice(0, 7)}`)
   await expect(page.locator(`[data-date="${date}"]`)).toContainText('Daily note')
   // The same day again opens that note, it does not make a second one.
   await page.locator(`[data-date="${date}"]`).click()
@@ -207,6 +208,8 @@ test('the service worker keeps the app, never anything from /api, and signing ou
 test('a new note can go to another place, and the templates follow the space', async ({ page }) => {
   await page.goto('/note/Year/Chores.md')
   await expect(page.locator('article')).toContainText('Water the ferns')
+  // Alt+N needs the spaces loaded (the note shows before them; the header button is enabled once they are there).
+  await expect(page.getByRole('banner').getByRole('button', { name: 'New note' })).toBeEnabled()
   await page.keyboard.press('Alt+n')
   const dialog = page.getByTestId('new-note-dialog')
   await expect(dialog.getByTestId('new-note-where')).toHaveText('Year')
@@ -227,6 +230,8 @@ test('templates can be found: made from the new note dialog, saved from the menu
   // A space without templates: the dialog offers to make one, and says what the placeholders do.
   await page.goto('/note/Zone/Across.md')
   await expect(page.locator('article')).toContainText('Across')
+  // Alt+N needs the spaces loaded (the note shows before them; the header button is enabled once they are there).
+  await expect(page.getByRole('banner').getByRole('button', { name: 'New note' })).toBeEnabled()
   await page.keyboard.press('Alt+n')
   const dialog = page.getByTestId('new-note-dialog')
   await expect(dialog).toContainText('{{title}}')

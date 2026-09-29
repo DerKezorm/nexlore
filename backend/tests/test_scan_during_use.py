@@ -8,6 +8,7 @@ import sqlite3
 import threading
 import time
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -159,6 +160,14 @@ def test_signing_in_and_saving_answer_quickly_while_a_big_scan_runs(
     monkeypatch.setattr(index, "RELINK_PART", 100, raising=False)
     put(vault, "Work/Diary.md", "day one\n")
     index.scan()
+    # A fast machine (the CI's Linux) read the 3,000 notes before three rounds were measured: each part waits a little.
+    add = index.bulk_add
+
+    def slower(*args: Any, **kwargs: Any) -> Any:
+        time.sleep(0.03)
+        return add(*args, **kwargs)
+
+    monkeypatch.setattr(index, "bulk_add", slower)
     many_notes(vault, 3000, space="Archive")
     note = client.get("/api/note", params={"path": "Work/Diary.md"}).json()
     scanning = threading.Thread(target=index.scan)
