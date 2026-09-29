@@ -64,9 +64,13 @@ test('the toolbar is there from the start, formats the selection, lights it, and
   await expect(address).toBeVisible()
   await address.fill('https://example.com/')
   await address.press('Enter')
+  // The box gives the focus back to the text; a selection made before that is lost when the text takes it again.
+  await expect(address).toBeHidden()
+  await expect(page.locator('.ProseMirror')).toBeFocused()
 
   // The second item goes under the first.
   await select(page, 'two')
+  await expect(bar.getByRole('button', { name: 'Indent' })).toBeEnabled()
   await bar.getByRole('button', { name: 'Indent' }).click()
   await saved(page)
   expect(onDisk('Zoo/Toolbar.md')).toMatch(/^# Toolbar\n\nMake this \*\*word\*\* bold\.\n\nPut a \[link\]\(https:\/\/example\.com\/\) here\.\n\n- one\n\s+- two\n$/)
