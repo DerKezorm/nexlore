@@ -116,7 +116,7 @@
       "wide": "Wide",
       "full": "Full width"
     },
-    "wideHint": "A single note goes wide with cssclasses: wide among its properties, as in Obsidian.",
+    "wideHint": "A single note goes wide with cssclasses: wide among its properties.",
     "sampleTitle": "Bread dough",
     "sampleText": "Flour, water, salt. Leave it overnight, then into the oven at 250 degrees. A bowl of water in the oven makes the crust better; lines of about seventy characters read most calmly."
   },
@@ -177,7 +177,7 @@
   },
   "snippets": {
     "title": "Own CSS",
-    "text": "Snippets as in Obsidian, each switched on or off. Only for your account, never on public pages or for others.",
+    "text": "Snippets, each switched on or off. Only for your account, never on public pages or for others.",
     "new": "New snippet",
     "newName": "My snippet",
     "name": "Name of the snippet",
@@ -202,7 +202,7 @@
     "only": "Only",
     "tasks": "Notes with open tasks",
     "help": "How to search",
-    "helpTitle": "Operators, as in Obsidian",
+    "helpTitle": "Operators",
     "remove": "Take “{{piece}}” out",
     "count_one": "{{count}}{{more}} note · {{ms}} ms",
     "count_other": "{{count}}{{more}} notes · {{ms}} ms",
@@ -292,13 +292,13 @@
   "bases": {
     "new": "New view …",
     "newTitle": "New view in “{{folder}}”",
-    "newHint": "A table of the notes in this folder to start with, saved as a .base file as Obsidian writes it.",
+    "newHint": "A table of the notes in this folder to start with, saved as a .base file.",
     "views": "Views",
     "count_one": "{{count}} note",
     "count_other": "{{count}} notes",
     "editYaml": "Edit the YAML",
     "yaml": "YAML of the view",
-    "yamlHint": "As in Obsidian: filters, formulas, views (table, cards, list, board) with order, sort, groupBy and limit.",
+    "yamlHint": "The parts: filters, formulas, views (table, cards, list, board) with order, sort, groupBy and limit.",
     "empty": "No note fits this view.",
     "none": "Without a value",
     "cell": "Value of {{key}}"
@@ -328,7 +328,11 @@
     "newSpace": "New space",
     "favorites": "Favorites",
     "nothingHere": "No notes here yet.",
-    "firstNote": "New note"
+    "firstNote": "New note",
+    "recent": "Recent",
+    "fold": "Fold the sidebar (Alt+B)",
+    "unfold": "Unfold the sidebar (Alt+B)",
+    "toggle": "Fold or unfold the sidebar"
   },
   "graph": {
     "canvas": "Graph",
@@ -463,7 +467,12 @@
     "favoriteAdd": "Add to favorites",
     "favoriteRemove": "Remove from favorites",
     "closeRight": "Close this side",
-    "mirror": "Open on the left already; edit it there."
+    "mirror": "Open on the left already; edit it there.",
+    "path": "Where the note is",
+    "trash": "Move to the trash …",
+    "renameTitle": "Rename “{{name}}”",
+    "linksFromThere_one": "links here {{count}} time",
+    "linksFromThere_other": "links here {{count}} times"
   },
   "settings": {
     "title": "Settings",
@@ -699,7 +708,7 @@
       "groupText": "Text",
       "groupList": "Lists",
       "groupAdvanced": "More",
-      "groupObsidian": "Obsidian",
+      "groupObsidian": "Links and callouts",
       "callout": "Callout",
       "wikiLink": "Link to a note",
       "embed": "Embed a note",
@@ -1218,7 +1227,7 @@
     "theme": "Theme of the notes",
     "button": "Options",
     "title": "Options of “{{space}}”",
-    "text": "For everybody who writes in this space. A daily note is always named YYYY-MM-DD.md, as in Obsidian.",
+    "text": "For everybody who writes in this space. A daily note is always named YYYY-MM-DD.md.",
     "dailyFolder": "Folder for daily notes",
     "dailyTemplate": "Template for daily notes",
     "templateFolder": "Folder for templates",
@@ -1306,7 +1315,7 @@
       "vault_read": "list notes you may read"
     },
     "where": {
-      "panel": "Shows in the right column beside every note (on a phone below the text).",
+      "panel": "Shows beside every note in the tab “Plugins”.",
       "block": "Write a code block ```{{lang}} into a note: when the note is read, the plugin shows its result in its place.",
       "view": "A note with the property “{{key}}” shows this view instead of its text when read; a switch leads back to the text."
     },
@@ -1314,7 +1323,10 @@
     "examples": {
       "query": "```query\ntag: project\nfolder: Projects\nsort: modified\nview: table\n```",
       "kanban": "---\nkanban-plugin: basic\n---\n\n## To do\n\n- [ ] A first card\n\n## Done\n"
-    }
+    },
+    "none": "The operator has not let out a plugin yet. Once they do, you switch it on for yourself here.",
+    "noneOperator": "No plugin is installed and let out yet. Four checked ones wait in the catalog: contents, query, kanban and rediscover.",
+    "toCatalog": "To the catalog under Server → AI and plugins"
   },
   "twofactor": {
     "title": "Second factor",
@@ -1380,7 +1392,7 @@
     "openNewTab": "Open in a new tab",
     "copyLink": "Copy wiki link",
     "copied": "Copied: {{text}}",
-    "trash": "Move to the trash",
+    "trash": "Move to the trash …",
     "spaceSettings": "Members and settings",
     "look": "Symbol and colour …",
     "asTemplate": "Save as template …",
@@ -1600,5 +1612,13 @@
     "find": "Find the note …",
     "found": "Notes found",
     "other": "Choose another note"
+  },
+  "panel": {
+    "label": "About this note",
+    "toggle": "Column beside the note",
+    "toggleKeys": "Outline, links, graph, versions (Alt+R)",
+    "links": "Links",
+    "graph": "Graph",
+    "plugins": "Plugins"
   }
 }

@@ -96,8 +96,11 @@ test('a reader reads and cannot change anything', async ({ page, browser }) => {
   await reader.goto('/note/Library/Catalogue.md')
   await expect(reader.getByText('Old maps and a sea chart.')).toBeVisible()
   await expect(reader.getByRole('button', { name: 'Edit', exact: true })).toBeDisabled()
-  await expect(reader.getByRole('button', { name: 'Rename', exact: true })).toHaveCount(0)
-  await expect(reader.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0)
+  // "More" holds nothing that changes the note for a reader: no rename, no move, no trash.
+  await reader.locator('summary[aria-label="More"]').click()
+  const menu = reader.getByTestId('note-menu')
+  await expect(menu.getByRole('button', { name: 'Copy wiki link' })).toBeVisible()
+  await expect(menu.getByRole('button', { name: /Rename|Move|trash/ })).toHaveCount(0)
   // The server refuses as well, whatever the page shows.
   const refused = await reader.request.put('/api/note', {
     data: { path: 'Library/Catalogue.md', content: 'mine', base_hash: '0'.repeat(64) },
@@ -117,15 +120,17 @@ test('a public page shows the shared folder and nothing beyond it', async ({ pag
   // Closed until the operator opens it. The note first: before it is there, no button is always true.
   await page.goto('/note/Garden/Beds/Roses.md')
   await expect(page.getByText('Prune in March.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Rename', exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Share', exact: true })).toHaveCount(0)
+  await page.locator('summary[aria-label="More"]').click()
+  await expect(page.getByTestId('note-menu').getByRole('button', { name: 'Rename' })).toBeVisible()
+  await expect(page.getByTestId('note-menu').getByRole('button', { name: 'Share' })).toHaveCount(0)
   await page.goto('/settings?tab=server&sub=shares')
   await page.locator('#shares').getByLabel('Allow public pages').check()
   await expect(page.locator('#shares').getByLabel('Allow public pages')).toBeChecked()
   await page.reload()
 
   await page.goto('/note/Garden/Beds/Roses.md')
-  await page.getByRole('button', { name: 'Share', exact: true }).click()
+  await page.locator('summary[aria-label="More"]').click()
+  await page.getByTestId('note-menu').getByRole('button', { name: 'Share' }).click()
   const dialog = page.getByRole('dialog', { name: 'Public page' })
   await dialog.getByLabel('The folder Garden/Beds').check()
   await dialog.getByRole('button', { name: 'Create public link' }).click()

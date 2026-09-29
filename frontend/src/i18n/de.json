@@ -116,7 +116,7 @@
       "wide": "Breit",
       "full": "Volle Breite"
     },
-    "wideHint": "Eine einzelne Notiz wird breit mit cssclasses: wide in ihren Eigenschaften, wie in Obsidian.",
+    "wideHint": "Eine einzelne Notiz wird breit mit cssclasses: wide in ihren Eigenschaften.",
     "sampleTitle": "Brotteig",
     "sampleText": "Mehl, Wasser, Salz. Über Nacht gehen lassen, dann in den Ofen auf 250 Grad. Eine Schale Wasser im Ofen macht die Kruste besser; Zeilen um siebzig Zeichen lesen sich am ruhigsten."
   },
@@ -177,7 +177,7 @@
   },
   "snippets": {
     "title": "Eigenes CSS",
-    "text": "Schnipsel wie in Obsidian, jeder einzeln an oder aus. Nur für dein Konto, nie auf öffentlichen Seiten oder bei anderen.",
+    "text": "Schnipsel, jeder einzeln an oder aus. Nur für dein Konto, nie auf öffentlichen Seiten oder bei anderen.",
     "new": "Neuer Schnipsel",
     "newName": "Mein Schnipsel",
     "name": "Name des Schnipsels",
@@ -202,7 +202,7 @@
     "only": "Nur",
     "tasks": "Notizen mit offenen Aufgaben",
     "help": "So wird gesucht",
-    "helpTitle": "Operatoren, wie in Obsidian",
+    "helpTitle": "Operatoren",
     "remove": "„{{piece}}“ herausnehmen",
     "count_one": "{{count}}{{more}} Notiz · {{ms}} ms",
     "count_other": "{{count}}{{more}} Notizen · {{ms}} ms",
@@ -292,13 +292,13 @@
   "bases": {
     "new": "Neue Ansicht …",
     "newTitle": "Neue Ansicht in „{{folder}}“",
-    "newHint": "Zum Anfang eine Tabelle der Notizen in diesem Ordner, gespeichert als .base-Datei, wie Obsidian sie schreibt.",
+    "newHint": "Zum Anfang eine Tabelle der Notizen in diesem Ordner, gespeichert als .base-Datei.",
     "views": "Ansichten",
     "count_one": "{{count}} Notiz",
     "count_other": "{{count}} Notizen",
     "editYaml": "YAML bearbeiten",
     "yaml": "YAML der Ansicht",
-    "yamlHint": "Wie in Obsidian: filters, formulas, views (table, cards, list, board) mit order, sort, groupBy und limit.",
+    "yamlHint": "Aufbau: filters, formulas, views (table, cards, list, board) mit order, sort, groupBy und limit.",
     "empty": "Keine Notiz passt zu dieser Ansicht.",
     "none": "Ohne Wert",
     "cell": "Wert von {{key}}"
@@ -328,7 +328,11 @@
     "newSpace": "Neuer Bereich",
     "favorites": "Favoriten",
     "nothingHere": "Hier liegen noch keine Notizen.",
-    "firstNote": "Neue Notiz"
+    "firstNote": "Neue Notiz",
+    "recent": "Zuletzt",
+    "fold": "Seitenleiste einklappen (Alt+B)",
+    "unfold": "Seitenleiste ausklappen (Alt+B)",
+    "toggle": "Seitenleiste ein- oder ausklappen"
   },
   "graph": {
     "canvas": "Graph",
@@ -463,7 +467,12 @@
     "favoriteAdd": "Zu den Favoriten",
     "favoriteRemove": "Aus den Favoriten entfernen",
     "closeRight": "Diese Seite schließen",
-    "mirror": "Links schon geöffnet; dort bearbeiten."
+    "mirror": "Links schon geöffnet; dort bearbeiten.",
+    "path": "Ort der Notiz",
+    "trash": "In den Papierkorb …",
+    "renameTitle": "„{{name}}“ umbenennen",
+    "linksFromThere_one": "verlinkt {{count}}-mal hierher",
+    "linksFromThere_other": "verlinkt {{count}}-mal hierher"
   },
   "settings": {
     "title": "Einstellungen",
@@ -699,7 +708,7 @@
       "groupText": "Text",
       "groupList": "Listen",
       "groupAdvanced": "Mehr",
-      "groupObsidian": "Obsidian",
+      "groupObsidian": "Links und Kästen",
       "callout": "Hinweiskasten",
       "wikiLink": "Link auf eine Notiz",
       "embed": "Notiz einbetten",
@@ -1218,7 +1227,7 @@
     "theme": "Theme der Notizen",
     "button": "Optionen",
     "title": "Optionen von „{{space}}“",
-    "text": "Gilt für alle, die in diesem Bereich schreiben. Eine Tagesnotiz heißt immer JJJJ-MM-TT.md, wie in Obsidian.",
+    "text": "Gilt für alle, die in diesem Bereich schreiben. Eine Tagesnotiz heißt immer JJJJ-MM-TT.md.",
     "dailyFolder": "Ordner für Tagesnotizen",
     "dailyTemplate": "Vorlage für Tagesnotizen",
     "templateFolder": "Ordner für Vorlagen",
@@ -1306,7 +1315,7 @@
       "vault_read": "Notizen auflisten, die du lesen darfst"
     },
     "where": {
-      "panel": "Erscheint in der rechten Spalte neben jeder Notiz (auf dem Handy unter dem Text).",
+      "panel": "Erscheint neben jeder Notiz im Reiter „Plugins“.",
       "block": "Schreib einen Codeblock ```{{lang}} in eine Notiz: Beim Lesen zeigt das Plugin an seiner Stelle das Ergebnis.",
       "view": "Eine Notiz mit der Eigenschaft „{{key}}“ zeigt beim Lesen diese Ansicht statt des Texts; ein Umschalter führt zum Text."
     },
@@ -1314,7 +1323,10 @@
     "examples": {
       "query": "```query\ntag: projekt\nfolder: Projekte\nsort: modified\nview: table\n```",
       "kanban": "---\nkanban-plugin: basic\n---\n\n## Zu tun\n\n- [ ] Eine erste Karte\n\n## Erledigt\n"
-    }
+    },
+    "none": "Der Betreiber hat noch kein Plugin freigegeben. Sobald er eins freigibt, schaltest du es hier für dich ein.",
+    "noneOperator": "Noch ist kein Plugin installiert und freigegeben. Vier geprüfte liegen im Katalog bereit: Inhaltsverzeichnis, Abfrage, Kanban und Wiederentdecken.",
+    "toCatalog": "Zum Katalog unter Server → KI und Plugins"
   },
   "twofactor": {
     "title": "Zweiter Faktor",
@@ -1380,7 +1392,7 @@
     "openNewTab": "In neuem Tab öffnen",
     "copyLink": "Wiki-Link kopieren",
     "copied": "Kopiert: {{text}}",
-    "trash": "In den Papierkorb",
+    "trash": "In den Papierkorb …",
     "spaceSettings": "Mitglieder und Einstellungen",
     "look": "Symbol und Farbe …",
     "asTemplate": "Als Vorlage speichern …",
@@ -1600,5 +1612,13 @@
     "find": "Notiz suchen …",
     "found": "Gefundene Notizen",
     "other": "Andere Notiz wählen"
+  },
+  "panel": {
+    "label": "Zur Notiz",
+    "toggle": "Spalte neben der Notiz",
+    "toggleKeys": "Gliederung, Links, Graph, Versionen (Alt+R)",
+    "links": "Links",
+    "graph": "Graph",
+    "plugins": "Plugins"
   }
 }

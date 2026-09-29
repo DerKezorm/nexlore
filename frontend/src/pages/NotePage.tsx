@@ -11,7 +11,7 @@
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { ApiError, draftsApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi, themesApi, proposalsApi, type NoteNews, type Proposal } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
@@ -19,7 +19,8 @@ import { ConflictCompare } from '../components/ConflictCompare'
 import { DraftCompare } from '../components/DraftCompare'
 import type { EditorHandle, EditorMode } from '../components/NoteEditor'
 import { Sidebar } from '../components/Sidebar'
-import { Symbol } from '../components/Symbol'
+import { Symbol, type SymbolName } from '../components/Symbol'
+import { NotePanel, type PanelPart } from '../components/NotePanel'
 import { NoteStart } from '../components/NoteStart'
 import { Outline } from '../components/Outline'
 import { CompareDialog } from '../components/CompareDialog'
@@ -27,7 +28,8 @@ import { BaseBlocks } from '../components/BaseBlocks'
 import { ProposeDialog } from '../components/ProposeDialog'
 import { seenNote } from '../lib/news'
 import { useEnrich } from '../lib/enrich'
-import { noteClasses } from '../lib/appearance'
+import { noteClasses, type PanelTab } from '../lib/appearance'
+import { backlinkNotes } from '../lib/backlinks'
 import { ensureSpaceTheme } from '../lib/themes'
 import { TabBar } from '../components/TabBar'
 import { openInTab } from '../lib/tabs'
@@ -38,9 +40,9 @@ import { distinctOutgoing, LinkIndex, linkedSpace, linkName } from '../lib/links
 import { fileRoute, formatDate, renderMarkdown } from '../lib/markdown'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { versionSource } from '../lib/versions'
-import { copyText, LEAVING_EVENT, within, type Leaving } from '../lib/vaultActions'
+import { askVaultAction, copyText, LEAVING_EVENT, within, type Leaving } from '../lib/vaultActions'
 import { useCommands, type Command } from '../lib/commands'
-import { HEADING_EVENT, setShownNote } from '../lib/shell'
+import { askFolder, HEADING_EVENT, PANEL_EVENT, RECENT_EVENT, setShownNote } from '../lib/shell'
 import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
 import { LocalGraph } from '../components/LocalGraph'
@@ -58,19 +60,21 @@ const SAVE_PAUSE = 1200
 const HEARTBEAT = 30_000
 const POLL = 5_000
 
-/** Whether the window is at least as wide as Tailwind's `xl`. */
-function useWide(): boolean {
-  const query = '(min-width: 1280px)'
-  const [wide, setWide] = useState(() => window.matchMedia?.(query).matches ?? true)
+/** Whether the window matches a media query, following it as it changes. */
+function useMedia(query: string, fallback: boolean): boolean {
+  const [matches, setMatches] = useState(() => window.matchMedia?.(query).matches ?? fallback)
   useEffect(() => {
     const list = window.matchMedia?.(query)
     if (!list) return
-    const update = () => setWide(list.matches)
+    const update = () => setMatches(list.matches)
+    update()
     list.addEventListener('change', update)
     return () => list.removeEventListener('change', update)
-  }, [])
-  return wide
+  }, [query])
+  return matches
 }
+
+type MenuEntry = 'separator' | { label: string; symbol: SymbolName; run: () => void; danger?: boolean; disabled?: boolean; keys?: string }
 
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'failed' | 'refreshed'
 
@@ -115,11 +119,27 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const split = right !== null
   const { t } = useTranslation()
   const { reload, spaces, generation, favorites, setFavorite } = useStore()
-  const { me } = useAuth()
+  const { me, setAppearance } = useAuth()
   const navigate = useNavigate()
   const [sharing, setSharing] = useState(false)
-  // The right column (and the local graph in it) from 1280 pixels on; below, the local graph goes under the text.
-  const wide = useWide()
+  // The column beside the note from 1280 pixels on (shown or hidden with the account); below, a sheet on request,
+  // on a phone from below. Two notes side by side need the room: then a sheet as well.
+  const wide = useMedia('(min-width: 1280px)', true)
+  const phone = useMedia('(max-width: 767.98px)', false)
+  const inline = wide && !split
+  const [sheetOpen, setSheetOpen] = useState(false)
+  useEffect(() => setSheetOpen(false), [path])
+  const panelTab = me?.appearance?.panel_tab ?? 'links'
+  const panelShown = inline ? me?.appearance?.panel !== false : sheetOpen
+  const togglePanel = useCallback(() => {
+    if (inline) void setAppearance({ panel: !panelShown }).catch(() => {})
+    else setSheetOpen((open) => !open)
+  }, [inline, panelShown, setAppearance])
+  useEffect(() => {
+    if (side !== 'left') return
+    window.addEventListener(PANEL_EVENT, togglePanel)
+    return () => window.removeEventListener(PANEL_EVENT, togglePanel)
+  }, [side, togglePanel])
 
   const [note, setNote] = useState<NoteData | null>(null)
   const [links, setLinks] = useState<Links | null>(null)
@@ -252,6 +272,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
           (answer) => {
             if (current.current === target) setChanged(answer.news)
             seenNote(target)
+            window.dispatchEvent(new CustomEvent(RECENT_EVENT))
           },
           () => {},
         )
@@ -632,12 +653,29 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       list.unshift({ id: 'note.edit', label: t('palette.startEditing'), group, symbol: 'pencil', run: () => void startEditing() })
     }
     if (mayWrite && !editing) {
-      list.push({ id: 'note.rename', label: t('note.rename'), group, symbol: 'move', run: () => setRenaming(baseName(note.path)) })
-      if (!locked) list.push({ id: 'note.delete', label: t('note.delete'), group, symbol: 'trash', run: () => void askToDelete() })
+      list.push({ id: 'note.rename', label: t('note.rename'), group, symbol: 'pencil', keys: 'F2', run: () => setRenaming(baseName(note.path)) })
+      list.push({ id: 'note.move', label: t('menu.move'), group, symbol: 'move', run: () => askVaultAction({ kind: 'move', path: note.path, folder: false }) })
+      if (!locked) list.push({ id: 'note.delete', label: t('note.trash'), group, symbol: 'trash', run: () => void askToDelete() })
     }
     if (role === 'manage' && me?.shares_allowed && !editing) list.push({ id: 'note.share', label: t('share.button'), group, symbol: 'globe', run: () => setSharing(true) })
+    list.push({ id: 'note.panel', label: t('panel.toggle'), group, symbol: 'panel', keys: 'Alt+R', run: togglePanel })
     return list
   })
+  // F2 renames the note in front, as in a file manager: its name above the text turns into a field.
+  useEffect(() => {
+    if (!note || side !== 'left' || mirror || editing) return
+    const role = spaces.find((space) => space.name === note.path.split('/')[0])?.role ?? 'read'
+    const locked = !!(lockHolder ?? (note.lock && !note.lock.mine ? note.lock.holder : null))
+    if (role === 'read' || locked) return
+    const key = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (event.key !== 'F2' || event.ctrlKey || event.altKey || event.metaKey || target?.closest('input, textarea, [contenteditable="true"]')) return
+      event.preventDefault()
+      setRenaming(baseName(note.path))
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [note, side, mirror, editing, spaces, lockHolder])
   const uploaded = (done: Uploaded[]) => {
     const removed = new Set(done.flatMap((item) => item.removed))
     const parts = [t('note.uploaded', { count: done.length })]
@@ -702,41 +740,132 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   // The own right in the note's space: reading only hides every change; managing may share.
   const role = spaces.find((space) => space.name === note.path.split('/')[0])?.role ?? 'read'
   const mayWrite = role !== 'read'
+  const mayRename = mayWrite && !editing && !mirror && !lockedBy
+
+  const showPanel = (tab: PanelTab) => {
+    void setAppearance(inline && !panelShown ? { panel: true, panel_tab: tab } : { panel_tab: tab }).catch(() => {})
+    if (!inline) setSheetOpen(true)
+  }
+  const closePanel = () => (inline ? void setAppearance({ panel: false }).catch(() => {}) : setSheetOpen(false))
+
+  // "More": what a note needs now and then; the trash last, apart.
+  const menuItems: MenuEntry[] = [
+    { label: t('note.inGraph'), symbol: 'graph', run: showInGraph },
+    { label: t('menu.copyLink'), symbol: 'link', run: () => void copyText(`[[${baseName(note.path)}]]`) },
+    ...(role === 'manage' && me?.shares_allowed && !editing ? [{ label: t('share.button'), symbol: 'globe' as const, run: () => setSharing(true) }] : []),
+    { label: t('note.versions'), symbol: 'history', run: () => showPanel('versions') },
+    ...(editing ? [{ label: mode === 'visual' ? t('note.sourceMode') : t('note.visualMode'), symbol: 'code' as const, run: () => setMode(mode === 'visual' ? 'source' : 'visual') }] : []),
+  ]
+  if (mayWrite && !editing && !mirror) {
+    menuItems.push(
+      'separator',
+      { label: t('note.rename'), symbol: 'pencil', keys: 'F2', disabled: !mayRename, run: () => setRenaming(baseName(note.path)) },
+      { label: t('menu.move'), symbol: 'move', disabled: !!lockedBy, run: () => askVaultAction({ kind: 'move', path: note.path, folder: false }) },
+      'separator',
+      { label: t('note.trash'), symbol: 'trash', danger: true, disabled: !!lockedBy, run: () => void askToDelete() },
+    )
+  }
+
+  const backNotes = backlinkNotes(links?.backlinks ?? [])
+  const panelParts: PanelPart[] = [
+    { id: 'outline', label: t('outline.title'), content: () => <Outline content={note.content} scroller={scroller} onReveal={reveal} /> },
+    {
+      id: 'links',
+      label: t('panel.links'),
+      count: backNotes.length,
+      content: () => (
+        <>
+          <Section symbol="backlink" title={t('note.backlinks')} count={backNotes.length}>
+            {backNotes.length === 0 && <p className="px-2 text-sm text-mist-600">{t('note.noBacklinks')}</p>}
+            {backNotes.map((item) => (
+              <button key={item.path} type="button" data-note={item.path} onClick={() => open(item.path)} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-ink-850">
+                <span className="flex items-baseline gap-2">
+                  <span className="min-w-0 flex-1 text-sm font-medium text-mist-200">{item.title}</span>
+                  {item.count > 1 && (
+                    <span className="shrink-0 text-xs text-mist-600 tabular-nums" title={t('note.linksFromThere', { count: item.count })}>
+                      ×{item.count}
+                    </span>
+                  )}
+                </span>
+                <span className="mt-0.5 line-clamp-2 block text-xs text-mist-500">{item.context ?? folderOf(item.path)}</span>
+              </button>
+            ))}
+          </Section>
+          <Section symbol="link" title={t('note.outgoing')} count={outgoing.length}>
+            {outgoing.map(({ link: item, count }, index) => {
+              const times = count > 1 && <span className="ml-auto shrink-0 text-xs text-mist-600 tabular-nums" aria-label={t('note.linkedTimes', { count })}>×{count}</span>
+              return item.path ? (
+                <button key={index} type="button" data-note={isNotePath(item.path!) ? item.path! : undefined} onClick={() => (isNotePath(item.path!) ? open(item.path!) : openFile(item.path!))} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-sm text-mist-300 hover:bg-ink-850">
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: folderColor(item.path) }} />
+                  <span className="truncate">{item.title}</span>
+                  {times}
+                </button>
+              ) : (
+                <div key={index} className="flex items-center gap-2 px-2 py-1 text-sm text-mist-600" title={t('note.missingLink')}>
+                  <span className="h-2 w-2 shrink-0 rounded-full border border-dashed border-mist-600" />
+                  <span className="truncate">{linkName(item.target)}</span>
+                  {times}
+                </div>
+              )
+            })}
+          </Section>
+        </>
+      ),
+    },
+    { id: 'graph', label: t('panel.graph'), content: () => (!leaving && note.path === path ? <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} /> : null) },
+    {
+      id: 'versions',
+      label: t('note.versions'),
+      content: () => <Versions path={note.path} disabled={editing || !!lockedBy || !mayWrite} onRestored={() => void Promise.all([load(note.path), reload()])} />,
+    },
+    ...(plugins.some((plugin) => plugin.place.panel)
+      ? [{ id: 'plugins' as const, label: t('panel.plugins'), content: () => <PluginPanels plugins={plugins} note={note} onOpen={open} onWritten={pluginWrote} onReveal={reveal} /> }]
+      : []),
+  ]
 
   return (
     <>
       <main className={paneClass} data-pane={side} data-space-theme={spaceTheme || undefined}>
         <div className="flex min-w-0 flex-1 flex-col">
           {side === 'left' && <TabBar path={note.path} />}
-          {/* Toolbar */}
-          <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-ink-700/80 px-6 py-2.5">
+          {/* Toolbar: where the note lies, reading or editing, the star, everything rarer under "More", the column. */}
+          <div className="flex shrink-0 items-center gap-1.5 border-b border-ink-700/80 px-3 py-2 sm:gap-2 sm:px-6" data-testid="note-toolbar">
             {side === 'right' && (
               <button type="button" onClick={closeRight} aria-label={t('note.closeRight')} title={t('note.closeRight')} className="rounded-full p-1 text-mist-500 hover:bg-ink-850 hover:text-mist-100">
                 <Symbol name="close" className="h-4 w-4" />
               </button>
             )}
-            <div className="min-w-0 flex-1 truncate text-sm text-mist-500">
+            <nav aria-label={t('note.path')} className="flex min-w-0 flex-1 items-center text-sm text-mist-500" data-testid="note-crumbs">
               {chain.map((c, i) => (
-                <span key={c.id}>
-                  {i > 0 && <span className="px-1.5 text-mist-600">›</span>}
-                  <span className={i === 0 ? 'font-medium text-mist-300' : ''}>{c.name}</span>
+                <span key={c.id} className={'flex items-center ' + (i === 0 ? 'shrink-0' : 'min-w-0')}>
+                  {i > 0 && <span aria-hidden="true" className="px-1 text-mist-600">›</span>}
+                  <button
+                    type="button"
+                    onClick={() => askFolder(c.id)}
+                    title={c.id}
+                    className={'truncate rounded-md px-1.5 py-0.5 hover:bg-ink-850 hover:text-mist-100 ' + (i === 0 ? 'font-medium text-mist-300' : '')}
+                  >
+                    {c.name}
+                  </button>
                 </span>
               ))}
-            </div>
+            </nav>
             {editing && <SaveBadge state={saveState} />}
-            <div className="flex items-center rounded-full border border-ink-700 bg-ink-850 p-0.5 text-sm" role="group" aria-label={t('note.view')}>
+            <div className="flex shrink-0 items-center rounded-full border border-ink-700 bg-ink-850 p-0.5 text-sm" role="group" aria-label={t('note.view')}>
               <button
                 type="button"
                 onClick={() => editing && void stopEditing()}
                 aria-pressed={!editing}
-                className={'inline-flex items-center gap-1.5 rounded-full px-3 py-1 ' + (!editing ? 'bg-accent-500 font-semibold text-on-accent' : 'text-mist-400 hover:text-mist-100')}
+                aria-label={t('note.read')}
+                className={'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 sm:px-3 ' + (!editing ? 'bg-accent-500 font-semibold text-on-accent' : 'text-mist-400 hover:text-mist-100')}
               >
-                <Symbol name="eye" className="h-3.5 w-3.5" /> {t('note.read')}
+                <Symbol name="eye" className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{t('note.read')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => !editing && void startEditing()}
                 aria-pressed={editing}
+                aria-label={t('note.edit')}
                 disabled={!!lockedBy || note.readonly || !mayWrite || mirror}
                 title={
                   mirror
@@ -749,19 +878,16 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                         ? t('note.readonlyTitle')
                         : undefined
                 }
-                className={'inline-flex items-center gap-1.5 rounded-full px-3 py-1 disabled:cursor-not-allowed disabled:opacity-40 ' + (editing ? 'bg-accent-500 font-semibold text-on-accent' : 'text-mist-400 hover:text-mist-100')}
+                className={'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 disabled:cursor-not-allowed disabled:opacity-40 sm:px-3 ' + (editing ? 'bg-accent-500 font-semibold text-on-accent' : 'text-mist-400 hover:text-mist-100')}
               >
-                <Symbol name="pencil" className="h-3.5 w-3.5" /> {t('note.edit')}
+                <Symbol name="pencil" className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{t('note.edit')}</span>
               </button>
             </div>
             {!mayWrite && !mirror && !editing && (
-              <button type="button" onClick={() => setProposing(true)} className="inline-flex items-center gap-1.5 rounded-full border border-accent-500/50 px-3 py-1 text-sm text-accent-300 hover:bg-accent-500/10">
-                <Symbol name="pencil" className="h-3.5 w-3.5" /> {t('proposals.button')}
+              <button type="button" onClick={() => setProposing(true)} aria-label={t('proposals.button')} className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-accent-500/50 px-2.5 py-1 text-sm text-accent-300 hover:bg-accent-500/10 sm:px-3">
+                <Symbol name="pencil" className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{t('proposals.button')}</span>
               </button>
             )}
-            <Link to={`/?focus=${encodeURIComponent(note.path)}`} className="inline-flex items-center gap-1.5 rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850">
-              <Symbol name="graph" className="h-3.5 w-3.5" /> {t('note.inGraph')}
-            </Link>
             {(() => {
               const favorite = favorites.some((item) => item.path === note.path)
               return (
@@ -771,49 +897,49 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                   onClick={() => void setFavorite(note.path, !favorite)}
                   title={favorite ? t('note.favoriteRemove') : t('note.favoriteAdd')}
                   aria-label={t('note.favorite')}
-                  className={'rounded-full border px-2 py-1 text-sm ' + (favorite ? 'border-warn-500/50 bg-warn-500/10 text-warn-500' : 'border-ink-700 text-mist-400 hover:bg-ink-850 hover:text-mist-100')}
+                  className={'shrink-0 rounded-full p-1.5 ' + (favorite ? 'bg-warn-500/10 text-warn-500' : 'text-mist-400 hover:bg-ink-850 hover:text-mist-100')}
                 >
                   <Symbol name="star" className="h-4 w-4" />
                 </button>
               )
             })()}
-            {editing ? (
-              <details ref={menu} className="relative">
-                <summary className="cursor-pointer list-none rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850" aria-label={t('note.menu')}>
-                  ⋯
-                </summary>
-                <div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border border-ink-700 bg-ink-900 p-1 shadow-xl">
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      setMode(mode === 'visual' ? 'source' : 'visual')
-                      ;(event.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open')
-                    }}
-                    className="block w-full rounded-lg px-3 py-1.5 text-left text-sm text-mist-300 hover:bg-ink-850"
-                  >
-                    {mode === 'visual' ? t('note.sourceMode') : t('note.visualMode')}
-                  </button>
-                </div>
-              </details>
-            ) : (
-              <>
-                {role === 'manage' && me?.shares_allowed && (
-                  <button type="button" onClick={() => setSharing(true)} className="inline-flex items-center gap-1.5 rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850">
-                    <Symbol name="globe" className="h-3.5 w-3.5" /> {t('share.button')}
-                  </button>
-                )}
-                {mayWrite && (
-                  <>
-                    <button type="button" onClick={() => setRenaming(baseName(note.path))} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850">
-                      {t('note.rename')}
+            <details ref={menu} className="relative shrink-0">
+              <summary className="cursor-pointer list-none rounded-full p-1.5 text-mist-400 hover:bg-ink-850 hover:text-mist-100 [&::-webkit-details-marker]:hidden" aria-label={t('note.menu')} title={t('note.menu')}>
+                <Symbol name="more" className="h-4 w-4" />
+              </summary>
+              <div className="absolute right-0 z-40 mt-1 w-60 rounded-xl border border-ink-700 bg-ink-900 p-1 shadow-xl" data-testid="note-menu">
+                {menuItems.map((item, index) =>
+                  item === 'separator' ? (
+                    <div key={index} className="mx-2 my-1 h-px bg-ink-700" />
+                  ) : (
+                    <button
+                      key={item.label}
+                      type="button"
+                      disabled={item.disabled}
+                      onClick={(event) => {
+                        ;(event.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open')
+                        item.run()
+                      }}
+                      className={'flex w-full items-center gap-2.5 rounded-lg px-3 py-1.5 text-left text-sm hover:bg-ink-850 disabled:opacity-40 ' + (item.danger ? 'text-bad-500' : 'text-mist-300')}
+                    >
+                      <Symbol name={item.symbol} className="h-4 w-4 shrink-0" />
+                      <span className="flex-1">{item.label}</span>
+                      {item.keys && <kbd className="font-mono text-[11px] text-mist-600">{item.keys}</kbd>}
                     </button>
-                    <button type="button" onClick={() => void askToDelete()} disabled={!!lockedBy} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-bad-500 hover:bg-ink-850 disabled:opacity-40">
-                      {t('note.delete')}
-                    </button>
-                  </>
+                  ),
                 )}
-              </>
-            )}
+              </div>
+            </details>
+            <button
+              type="button"
+              onClick={togglePanel}
+              aria-pressed={panelShown}
+              aria-label={t('panel.toggle')}
+              title={t('panel.toggleKeys')}
+              className={'shrink-0 rounded-full p-1.5 ' + (panelShown ? 'bg-accent-500/10 text-accent-300' : 'text-mist-400 hover:bg-ink-850 hover:text-mist-100')}
+            >
+              <Symbol name="panel" className="h-4 w-4" />
+            </button>
             {sharing && <ShareDialog path={note.path} folder={note.path.slice(0, note.path.lastIndexOf('/'))} onClose={() => setSharing(false)} />}
           </div>
 
@@ -852,29 +978,6 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 </Banner>
               ),
             )}
-          {renaming !== null && (
-            <form
-              className="mx-6 mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-ink-700 bg-ink-850 px-4 py-2.5 text-sm"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void rename(renaming)
-              }}
-            >
-              <label htmlFor="rename" className="text-mist-400">{t('note.renameLabel')}</label>
-              <input
-                id="rename"
-                autoFocus
-                value={renaming}
-                onChange={(event) => setRenaming(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Escape') setRenaming(null)
-                }}
-                className="h-8 min-w-0 flex-1 rounded-lg border border-ink-700 bg-ink-900 px-2 outline-none focus:border-accent-500" />
-              <button type="submit" className="rounded-full bg-accent-500 px-3 py-1 font-semibold text-on-accent">{t('note.renameDo')}</button>
-              <button type="button" onClick={() => setRenaming(null)} className="rounded-full px-3 py-1 text-mist-400 hover:text-mist-100">{t('common.cancel')}</button>
-              <p className="w-full text-xs text-mist-500">{t('note.renameHint')}</p>
-            </form>
-          )}
           {lockedBy && <Banner tone="warn" symbol="lock">{t('note.lockedBanner', { name: lockedBy })}</Banner>}
           {drafts.length > 0 && (
             <Banner
@@ -917,10 +1020,45 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
           <div ref={scroller} className="nn-scroll min-h-0 flex-1 overflow-y-auto">
             {/* Room on the left for the editor's grip beside each block (reading keeps the same place, so nothing jumps). */}
             <div className={'mx-auto px-6 py-6 md:pl-16 ' + cssClasses.join(' ')} style={{ maxWidth: cssClasses.includes('wide') ? 'none' : 'calc(var(--nn-width) + 5.5rem)' }} data-testid="note-body">
+              {/* The name of the file, large above the text as in Obsidian: a click (or F2) renames it. */}
+              <div className="mb-1 -ml-1.5" data-testid="note-title">
+                {renaming !== null ? (
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      void rename(renaming)
+                    }}
+                  >
+                    <input
+                      autoFocus
+                      aria-label={t('note.renameLabel')}
+                      value={renaming}
+                      onChange={(event) => setRenaming(event.target.value)}
+                      onFocus={(event) => event.currentTarget.select()}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') setRenaming(null)
+                      }}
+                      onBlur={() => renaming.trim() && renaming.trim() !== baseName(note.path) ? void rename(renaming) : setRenaming(null)}
+                      className="w-full rounded-lg border border-accent-500 bg-ink-900 px-1.5 text-[1.9rem] leading-tight font-bold text-mist-100 outline-none"
+                    />
+                    <p className="mt-1 px-1.5 text-xs text-mist-500">{t('note.renameHint')}</p>
+                  </form>
+                ) : mayRename ? (
+                  <button
+                    type="button"
+                    onClick={() => setRenaming(baseName(note.path))}
+                    aria-label={t('note.renameTitle', { name: baseName(note.path) })}
+                    title={t('note.renameTitle', { name: baseName(note.path) })}
+                    className="w-full cursor-text rounded-lg border border-transparent px-1.5 text-left text-[1.9rem] leading-tight font-bold break-words text-mist-100 hover:bg-ink-850"
+                  >
+                    {baseName(note.path)}
+                  </button>
+                ) : (
+                  <p className="px-1.5 text-[1.9rem] leading-tight font-bold break-words text-mist-100">{baseName(note.path)}</p>
+                )}
+              </div>
               <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-mist-500">
                 <span>{t('note.changed', { when: formatDate(note.modified) })}</span>
-                <span>·</span>
-                <span className="font-mono text-[11px]">{note.path}</span>
                 {note.tags.map((tag) => (
                   <span key={tag} className="rounded-full bg-accent-500/10 px-2 py-0.5 text-accent-400">#{tag}</span>
                 ))}
@@ -974,59 +1112,19 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 <BaseBlocks article={article} html={html} note={note.path} />
                 </>
               )}
-              {(!wide || split) && (
-                <div className="mt-10 space-y-6">
-                  <PluginPanels plugins={plugins} note={note} onOpen={open} onWritten={pluginWrote} onReveal={reveal} />
-                  {!leaving && note.path === path && <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />}
-                </div>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Right column */}
-        {/* Two notes side by side: they need the room, the right column gives it. */}
-        <aside className={'nn-scroll hidden w-80 shrink-0 overflow-y-auto border-l border-ink-700/80 px-4 py-4 ' + (split ? '' : 'xl:block')}>
-          {wide && !split && (
-            <div className="mb-5">
-              {!leaving && note.path === path && <LocalGraph path={note.path} generation={generation} onOpen={open} onShowInGraph={showInGraph} />}
-            </div>
-          )}
-          {note && (
-            <div className="mb-5">
-              <PluginPanels plugins={plugins} note={note} onOpen={open} onWritten={pluginWrote} onReveal={reveal} />
-            </div>
-          )}
-          <Outline content={note.content} scroller={scroller} onReveal={reveal} />
-          <Section symbol="backlink" title={t('note.backlinks')} count={links?.backlinks.length ?? 0}>
-            {links?.backlinks.length === 0 && <p className="px-2 text-sm text-mist-600">{t('note.noBacklinks')}</p>}
-            {links?.backlinks.map((item) => (
-              <button key={item.path + item.line} type="button" data-note={item.path} onClick={() => open(item.path)} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-ink-850">
-                <span className="block text-sm font-medium text-mist-200">{item.title}</span>
-                <span className="block truncate text-xs text-mist-500">{folderOf(item.path)}</span>
-              </button>
-            ))}
-          </Section>
-          <Section symbol="link" title={t('note.outgoing')} count={outgoing.length}>
-            {outgoing.map(({ link: item, count }, index) => {
-              const times = count > 1 && <span className="ml-auto shrink-0 text-xs text-mist-600 tabular-nums" aria-label={t('note.linkedTimes', { count })}>×{count}</span>
-              return item.path ? (
-                <button key={index} type="button" data-note={isNotePath(item.path!) ? item.path! : undefined} onClick={() => (isNotePath(item.path!) ? open(item.path!) : openFile(item.path!))} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-sm text-mist-300 hover:bg-ink-850">
-                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: folderColor(item.path) }} />
-                  <span className="truncate">{item.title}</span>
-                  {times}
-                </button>
-              ) : (
-                <div key={index} className="flex items-center gap-2 px-2 py-1 text-sm text-mist-600" title={t('note.missingLink')}>
-                  <span className="h-2 w-2 shrink-0 rounded-full border border-dashed border-mist-600" />
-                  <span className="truncate">{linkName(item.target)}</span>
-                  {times}
-                </div>
-              )
-            })}
-          </Section>
-          <Versions path={note.path} disabled={editing || !!lockedBy || !mayWrite} onRestored={() => void Promise.all([load(note.path), reload()])} />
-        </aside>
+        {panelShown && (
+          <NotePanel
+            parts={panelParts}
+            tab={panelTab}
+            onTab={(tab) => void setAppearance({ panel_tab: tab }).catch(() => {})}
+            place={inline ? 'column' : phone ? 'bottom' : 'sheet'}
+            onClose={closePanel}
+          />
+        )}
       </main>
 
       {comparing2?.kind === 'news' && (
@@ -1184,18 +1282,19 @@ function Versions({ path, disabled, onRestored }: { path: string; disabled: bool
   const [shown, setShown] = useState<{ id: number; content: string } | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
 
-  useEffect(() => {
-    setList(null)
-    setShown(null)
-  }, [path])
-
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setList(await vaultApi.versions(path))
     } catch (error) {
       setProblem(error instanceof ApiError ? error.code : 'internal_error')
     }
-  }
+  }, [path])
+  // Read when the tab shows them, and again for another note.
+  useEffect(() => {
+    setList(null)
+    setShown(null)
+    void load()
+  }, [load])
 
   const restore = async (id: number) => {
     try {
@@ -1209,11 +1308,9 @@ function Versions({ path, disabled, onRestored }: { path: string; disabled: bool
   }
 
   return (
-    <Section symbol="history" title={t('note.versions')} count={list?.length ?? null}>
+    <section data-testid="versions" aria-label={t('note.versions')}>
       {list === null ? (
-        <button type="button" onClick={() => void load()} className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-accent-400 hover:bg-ink-850">
-          {t('note.showVersions')}
-        </button>
+        !problem && <p className="px-2 text-sm text-mist-600">{t('common.loading')}</p>
       ) : (
         <ul className="space-y-0.5">
           {list.map((version, index) => (
@@ -1244,11 +1341,11 @@ function Versions({ path, disabled, onRestored }: { path: string; disabled: bool
         </ul>
       )}
       {problem && <p className="px-2 text-xs text-bad-500">{errorText(problem)}</p>}
-    </Section>
+    </section>
   )
 }
 
-function Section({ symbol, title, count, children }: { symbol: 'backlink' | 'link' | 'history'; title: string; count: number | null; children: ReactNode }) {
+function Section({ symbol, title, count, children }: { symbol: 'backlink' | 'link'; title: string; count: number | null; children: ReactNode }) {
   return (
     <section className="mb-6">
       <h3 className="mb-2 flex items-center gap-2 px-2 text-[11px] font-semibold tracking-wider text-mist-500 uppercase">

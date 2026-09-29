@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.routers import vault as vault_routes
 from app.services import index
 
 TAB = {"X-Nexlore-Client": "tab-aaaaaaaa"}
@@ -138,6 +139,22 @@ def test_create_links_and_backlinks(client: TestClient, filled: Path) -> None:
     ]
     back = client.get("/api/links", params={"path": "Work/Ideas/Idea.md"}).json()["backlinks"]
     assert [item["path"] for item in back] == ["Work/Plan.md"]
+
+
+def test_a_backlink_brings_the_line_it_stands_in_as_text(client: TestClient, filled: Path, monkeypatch) -> None:
+    put(filled, "Work/Notes.md", "---\ntags: [a]\n---\n# Notes\n\nSee **[[Idea|the idea]]** first.\n- [ ] then [[Idea]] again\n")
+    put(filled, "Work/Late.md", "Only [[Idea]] here.\n")
+    index.scan()
+    back = client.get("/api/links", params={"path": "Work/Ideas/Idea.md"}).json()["backlinks"]
+    by = {(item["path"], item["line"]): item["context"] for item in back}
+    assert by[("Work/Notes.md", 6)] == "See the idea first."
+    assert by[("Work/Notes.md", 7)] == "then Idea again"
+    assert by[("Work/Late.md", 1)] == "Only Idea here."
+    # Only the first notes are read: the others keep title and line, without the text.
+    monkeypatch.setattr(vault_routes, "CONTEXT_NOTES", 1)
+    back = client.get("/api/links", params={"path": "Work/Ideas/Idea.md"}).json()["backlinks"]
+    assert [(item["path"], item["context"] is not None) for item in back][0] == ("Work/Late.md", True)
+    assert all(item["context"] is None for item in back if item["path"] != "Work/Late.md")
 
 
 def test_search_finds_words_by_prefix_and_is_safe(client: TestClient, filled: Path) -> None:

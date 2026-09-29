@@ -36,6 +36,9 @@ def test_the_defaults_come_with_me_and_a_change_keeps_the_rest(client: TestClien
         {"start_note": "/Work/Plan.md"},
         {"start_note": "Work/Plan.txt"},
         {"start_note": 7},
+        {"panel": "no"},
+        {"panel_tab": "comments"},
+        {"sidebar": "hidden"},
     ],
 )
 def test_only_values_on_the_lists_are_taken(client: TestClient, account: object, bad: dict) -> None:
@@ -58,3 +61,12 @@ def test_the_start_page_is_one_of_four_and_a_note_there_needs_a_path() -> None:
     assert appearance.change({"start": "note", "start_note": "Work/Plan.md"}, {"start": "graph", "start_note": ""}) == {
         "start": "graph", "start_note": ""}
     assert appearance.of({"start": "gone", "start_note": "Work/../x.md"}) == appearance.DEFAULTS
+
+
+def test_the_column_beside_a_note_and_the_sidebar_are_kept_with_the_account(client: TestClient, account: object) -> None:
+    assert {key: appearance.DEFAULTS[key] for key in ("panel", "panel_tab", "sidebar")} == {
+        "panel": True, "panel_tab": "links", "sidebar": "open"}
+    changed = client.put("/api/me/appearance", json={"panel": False, "panel_tab": "versions", "sidebar": "rail"})
+    assert changed.status_code == 200, changed.text
+    got = client.get("/api/auth/me").json()["appearance"]
+    assert (got["panel"], got["panel_tab"], got["sidebar"]) == (False, "versions", "rail")

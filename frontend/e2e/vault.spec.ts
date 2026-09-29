@@ -129,18 +129,24 @@ test('going straight from one note being edited to another keeps each text where
 
 test('renaming a note carries the links to it along', async ({ page }) => {
   await page.goto('/note/Work/Rename me.md')
-  await page.getByRole('button', { name: 'Rename', exact: true }).first().click()
+  // The name above the text: a click turns it into a field, Enter renames.
+  await page.getByTestId('note-title').getByRole('button', { name: 'Rename “Rename me”' }).click()
   await page.getByLabel('New name').fill('Renamed note')
-  await page.getByRole('button', { name: 'Rename', exact: true }).last().click()
+  await page.getByLabel('New name').press('Enter')
   await expect(page).toHaveURL(/\/note\/Work\/Renamed%20note\.md$/)
   // How many notes had their links updated, said on the renamed note.
   await expect(page.getByText('Links in 1 note now use the new name.')).toBeVisible()
   expect(onDisk('Work/Points at rename.md')).toBe('See [[Renamed note]] and [it](Renamed%20note.md).\n')
 })
 
-test('Escape closes the rename bar and leaves the name as it was', async ({ page }) => {
+test('Escape closes the name field and leaves the name as it was; F2 and the menu open it too', async ({ page }) => {
   await page.goto('/note/Zoo/Embedded.md')
-  await page.getByRole('button', { name: 'Rename', exact: true }).first().click()
+  await expect(page.locator('article')).toBeVisible()
+  await page.keyboard.press('F2')
+  await expect(page.getByLabel('New name')).toHaveValue('Embedded')
+  await page.getByLabel('New name').press('Escape')
+  await page.locator('summary[aria-label="More"]').click()
+  await page.getByTestId('note-menu').getByRole('button', { name: 'Rename' }).click()
   const field = page.getByLabel('New name')
   await field.fill('Something else')
   await field.press('Escape')
@@ -151,8 +157,8 @@ test('Escape closes the rename bar and leaves the name as it was', async ({ page
 
 test('a deleted note waits in the trash and comes back', async ({ page }) => {
   await page.goto('/note/Work/Delete me.md')
-  // exact: the sidebar also has a button "Delete me" once the vault has loaded, and that may be before or after.
-  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await page.locator('summary[aria-label="More"]').click()
+  await page.getByTestId('note-menu').getByRole('button', { name: /Move to the trash/ }).click()
   // nexlore's own question, not the browser's; cancelling keeps the note.
   const question = page.getByRole('dialog', { name: /Move .Delete me. to the trash/ })
   await expect(question).toContainText('30 days')
@@ -164,7 +170,8 @@ test('a deleted note waits in the trash and comes back', async ({ page }) => {
   page.on('response', (response) => {
     if (response.status() === 404 && response.url().includes('/api/')) gone.push(response.url())
   })
-  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  await page.locator('summary[aria-label="More"]').click()
+  await page.getByTestId('note-menu').getByRole('button', { name: /Move to the trash/ }).click()
   await question.getByRole('button', { name: 'Move to the trash' }).click()
   await expect(page).toHaveURL(/\/$/)
   await page.waitForLoadState('networkidle')

@@ -12,10 +12,16 @@ function collectProblems(page: Page): string[] {
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 
+// The tab beside the note is kept with the account, and the tests share one: back to the links after each.
+test.afterEach(async ({ page }) => {
+  await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links' }, headers: { 'X-Nexlore-Client': 'tab-e2e-panel' } })
+})
+
 test('the outline lists the headings and scrolls to one, lighting the heading in view', async ({ page }) => {
   const problems = collectProblems(page)
   await page.setViewportSize({ width: 1440, height: 800 })
   await page.goto('/note/Zyx/Palette.md')
+  await page.getByTestId('note-panel').getByRole('tab', { name: 'Outline' }).click()
   const outline = page.getByTestId('outline')
   await expect(outline.getByRole('button')).toHaveText(['Palette', 'First part', 'Far down'])
   await expect(outline.getByRole('button', { name: 'Palette' })).toHaveAttribute('aria-current', 'location')

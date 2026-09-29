@@ -109,6 +109,8 @@ const E2E_NOTES: Record<string, string | Buffer> = {
     '[^1]: Said by nobody.', '',
   ].join('\n'),
   'Zyx/Wide.md': '---\ncssclasses: [wide, my-look]\n---\n# Wide\n\nAs wide as the window.\n',
+  'Zyx/Twice.md': '# Twice\n\nFirst [[Target twice]] here.\n\nAnd **[[Target twice|again]]** later.\n',
+  'Zyx/Target twice.md': '# Target twice\n\nLinked from one note two times.\n',
   // Views over notes, as Obsidian's Bases (bases.spec.ts).
   'Zyx/Kitchen/Bread.md': '---\ntags: [recipe]\nminutes: 720\nstatus: tried\n---\n# Bread\n',
   'Zyx/Kitchen/Soup.md': '---\ntags: [recipe]\nminutes: 45\nstatus: tried\n---\n# Soup\n',

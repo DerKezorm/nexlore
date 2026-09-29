@@ -72,12 +72,17 @@ test('a space colours its notes, and a reader who does not want that sees their 
   // The header keeps the reader's own.
   await expect.poll(() => accent(page)).toBe('#2dd4bf')
   await page.goto('/settings?tab=looks')
+  // Saved before leaving: the page goes on at once, the answer may still be under way (seen twice in a full run).
+  const off = page.waitForResponse((response) => response.url().includes('/api/me/appearance') && response.request().postData()?.includes('"space_themes":false') === true)
   await page.getByTestId('appearance').getByLabel(/Take the themes of spaces/).uncheck()
+  await off
   await page.goto('/note/Zyx/Palette.md')
   await expect(page.locator('main[data-pane="left"]')).not.toHaveAttribute('data-space-theme', /.+/)
   // Back as it was.
   await page.goto('/settings?tab=looks')
+  const on = page.waitForResponse((response) => response.url().includes('/api/me/appearance') && response.request().postData()?.includes('"space_themes":true') === true)
   await page.getByTestId('appearance').getByLabel(/Take the themes of spaces/).check()
+  await on
   await page.goto('/settings?tab=spaces')
   await page.locator('#spaces li').filter({ hasText: 'Zyx' }).getByRole('button', { name: 'Options' }).click()
   await page.getByRole('dialog', { name: /Options of “Zyx”/ }).getByLabel('Theme of the notes').selectOption('')

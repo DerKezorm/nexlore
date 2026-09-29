@@ -8,7 +8,7 @@ import { dailySpace, today as isoToday } from '../lib/everyday'
 import { isNotePath } from '../lib/files'
 import { fileRoute } from '../lib/markdown'
 import { NEW_NOTE_EVENT } from '../lib/newNote'
-import { askNoteList, narrow, SEARCH_EVENT } from '../lib/shell'
+import { askNoteList, askPanelToggle, askSidebarToggle, hasSidebar, narrow, SEARCH_EVENT } from '../lib/shell'
 import { PALETTE_EVENT, useCommands, type Command } from '../lib/commands'
 import { storedTheme } from '../lib/theme'
 import { useAuth } from '../state/auth'
@@ -124,6 +124,13 @@ export function AppShell() {
       } else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN' && !typing(e.target)) {
         e.preventDefault()
         if (newNoteAt.current) setCreating(newNoteAt.current)
+      } else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyB' && !typing(e.target)) {
+        // Not Ctrl+B: that makes text bold in the editor.
+        e.preventDefault()
+        askSidebarToggle()
+      } else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyR' && !typing(e.target)) {
+        e.preventDefault()
+        askPanelToggle()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -198,6 +205,7 @@ export function AppShell() {
       },
     ]
     if (narrow()) list.push({ id: 'app.noteList', label: t('noteStart.list'), group, symbol: 'sidebar', run: askNoteList })
+    if (hasSidebar()) list.push({ id: 'app.sidebar', label: t('sidebar.toggle'), group, symbol: 'sidebar', keys: 'Alt+B', run: askSidebarToggle })
     return list
   })
 

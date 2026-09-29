@@ -23,6 +23,11 @@ function collectProblems(page: Page): string[] {
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 
+// The tab beside the note is kept with the account, and the tests share one: back to the links after each.
+test.afterEach(async ({ page }) => {
+  await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links' }, headers: { 'X-Nexlore-Client': 'tab-e2e-panel' } })
+})
+
 test('a key made on the account page proposes a draft that the note takes over', async ({ page, playwright, baseURL }) => {
   const problems = collectProblems(page)
   const opened = await page.request.put('/api/settings', {
@@ -84,7 +89,7 @@ test('a key made on the account page proposes a draft that the note takes over',
   // Only the changed line is new; the rest keeps its Windows line endings.
   expect(onDisk('Zoo/Draft me.md')).toBe('# Draft me\r\n\r\nKept line.\r\nNew line.\r\n')
   await page.setViewportSize({ width: 1400, height: 900 })
-  await page.getByRole('button', { name: 'Show the history' }).click()
+  await page.getByRole('tab', { name: 'Versions' }).click()
   await expect(page.getByText('AI (MCP)').first()).toBeVisible()
   expect(problems).toEqual([])
 })

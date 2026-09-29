@@ -25,6 +25,11 @@ function collectProblems(page: Page): string[] {
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 
+// The tab beside the note is kept with the account, and the tests share one: back to the links after each.
+test.afterEach(async ({ page }) => {
+  await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links' }, headers: { 'X-Nexlore-Client': 'tab-e2e-panel' } })
+})
+
 test('a link into another space leads there, and the note there knows it', async ({ page }) => {
   const problems = collectProblems(page)
   await page.goto('/note/Zone/Across.md')
@@ -57,15 +62,16 @@ test('a missing link into another space makes the note there', async ({ page }) 
 
 test('renaming a note rewrites the link in another space and names who did it', async ({ page }) => {
   await page.goto('/note/Zoo/Across rename.md')
-  await page.getByRole('button', { name: 'Rename', exact: true }).first().click()
+  await page.locator('summary[aria-label="More"]').click()
+  await page.getByTestId('note-menu').getByRole('button', { name: 'Rename' }).click()
   await page.getByLabel('New name').fill('Across renamed')
-  await page.getByRole('button', { name: 'Rename', exact: true }).last().click()
+  await page.getByLabel('New name').press('Enter')
   await expect(page).toHaveURL(/\/note\/Zoo\/Across%20renamed\.md$/)
   await expect(page.getByText('Links in 1 note now use the new name.')).toBeVisible()
   expect(onDisk('Zone/Across.md')).toContain('[[Zoo/Across renamed]]')
   await page.setViewportSize({ width: 1400, height: 900 })
   await page.goto('/note/Zone/Across.md')
-  await page.getByRole('button', { name: 'Show the history' }).click()
+  await page.getByRole('tab', { name: 'Versions' }).click()
   await expect(page.getByText('rename by tester')).toBeVisible()
 })
 

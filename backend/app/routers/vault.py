@@ -486,6 +486,29 @@ class Backlink(BaseModel):
     title: str
     line: int
     kind: str
+    #: The line the link stands in, as text without Markdown; only for the first ``CONTEXT_NOTES`` notes.
+    context: str | None = None
+
+
+#: Backlinks from this many notes get the line they stand in (each file is read once); the rest only title and line.
+CONTEXT_NOTES = 100
+CONTEXT_CHARS = 200
+
+
+def _contexts(backlinks: list[Backlink]) -> None:
+    """Fills in the line each backlink stands in, reading each source note once, for the first notes only."""
+    lines: dict[str, list[str] | None] = {}
+    for item in backlinks:
+        if item.path not in lines:
+            if len(lines) >= CONTEXT_NOTES:
+                break
+            try:
+                lines[item.path] = paths.resolve(item.path).read_text(encoding="utf-8", errors="replace").splitlines()
+            except (OSError, paths.PathError):
+                lines[item.path] = None
+        text = lines[item.path]
+        if text is not None and 1 <= item.line <= len(text):
+            item.context = snippets.plain(text[item.line - 1])[:CONTEXT_CHARS] or None
 
 
 class LinksOut(BaseModel):
@@ -537,6 +560,7 @@ def links(path: PathQuery, account: Account) -> LinksOut:
                 .order_by(File.path, Link.line)
             )
         ]
+    _contexts(backlinks)
     return LinksOut(outgoing=outgoing, backlinks=backlinks)
 
 

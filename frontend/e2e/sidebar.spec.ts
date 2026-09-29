@@ -118,6 +118,8 @@ test('a folder that could not be read says so and is read again on request', asy
 test('a click on a folder name opens it on the map as well, and the menu flies there', async ({ page }) => {
   await page.goto('/')
   const tree = page.getByTestId('sidebar-tree')
+  // The lists above the tree (news, the notes opened last) come from the server and push it down when they do.
+  await page.waitForLoadState('networkidle')
   // A folder below a space: closed at first. Its name is the button without a label of its own.
   const name = tree.locator('button[aria-expanded="false"]:not([aria-label])').first()
   await expect(name).toBeVisible()

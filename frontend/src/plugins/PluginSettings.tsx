@@ -16,6 +16,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Symbol } from '../components/Symbol'
 import { Button, Card, Feedback, Toggle } from '../components/settings/ui'
 import { useAction } from '../components/settings/useAction'
+import { useAuth } from '../state/auth'
 import { pluginsApi, pluginsChanged, pluginText, type PluginInfo } from './registry'
 
 type Installed = PluginInfo & { approved: boolean; installed_at: string; installed_by: string | null; users: number }
@@ -236,10 +237,27 @@ export function MyPluginsCard() {
   const { t, i18n } = useTranslation()
   const [list, setList] = useState<PluginInfo[] | null>(null)
   const { problem, run } = useAction()
+  const { me } = useAuth()
   useEffect(() => {
     void pluginsApi.mine().then(setList, () => setList([]))
   }, [])
-  if (!list?.length) return null
+  if (list === null) return null
+  // Nothing let out yet: say why the page is empty, and the operator where to change that.
+  if (list.length === 0) {
+    return (
+      <section id="plugins" className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="my-plugins" data-testid="plugins-none">
+        <h2 id="my-plugins" className="mb-1 flex items-center gap-2 font-semibold">
+          <Symbol name="plug" className="h-4 w-4 text-accent-400" /> {t('plugins.mine')}
+        </h2>
+        <p className="text-sm text-mist-500">{me?.role === 'operator' ? t('plugins.noneOperator') : t('plugins.none')}</p>
+        {me?.role === 'operator' && (
+          <Link to="/settings?tab=server&sub=extensions" className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent-500/50 px-3 py-1 text-sm text-accent-300 hover:bg-accent-500/10">
+            {t('plugins.toCatalog')}
+          </Link>
+        )}
+      </section>
+    )
+  }
   return (
     <section id="plugins" className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="my-plugins">
       <h2 id="my-plugins" className="mb-1 flex items-center gap-2 font-semibold">

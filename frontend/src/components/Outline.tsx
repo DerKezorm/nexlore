@@ -9,6 +9,7 @@ import { headingsOf } from '../lib/outline'
 
 const TOP = 96
 
+/** In the tab beside the note the tab names it: no heading of its own, and a note without headings says so. */
 export function Outline({ content, scroller, onReveal }: { content: string; scroller: RefObject<HTMLElement | null>; onReveal: (text: string, index: number) => void }) {
   const { t } = useTranslation()
   const headings = useMemo(() => headingsOf(content), [content])
@@ -29,6 +30,8 @@ export function Outline({ content, scroller, onReveal }: { content: string; scro
       shown.forEach((element, index) => {
         if (element.getBoundingClientRect().top <= line) at = index
       })
+      // At the very top the first heading is the one in view, even when the name of the note above pushes it down.
+      if (at < 0 && root.scrollTop <= 0 && shown.length > 0) at = 0
       setActive(at >= 0 ? Math.min(at, headings.length - 1) : -1)
     }
     const onScroll = () => {
@@ -42,11 +45,10 @@ export function Outline({ content, scroller, onReveal }: { content: string; scro
     }
   }, [scroller, headings])
 
-  if (headings.length === 0) return null
+  if (headings.length === 0) return <p className="px-2 text-sm text-mist-600" data-testid="outline">{t('outline.empty')}</p>
   const lowest = Math.min(...headings.map((heading) => heading.level))
   return (
-    <section className="mb-6" data-testid="outline">
-      <h3 className="mb-2 flex items-center gap-2 px-2 text-[11px] font-semibold tracking-wider text-mist-500 uppercase">{t('outline.title')}</h3>
+    <section data-testid="outline" aria-label={t('outline.title')}>
       <ul>
         {headings.map((heading, index) => (
           <li key={index}>

@@ -26,6 +26,11 @@ function collectProblems(page: Page): string[] {
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 
+// The tab beside the note is kept with the account, and the tests share one: back to the links after each.
+test.afterEach(async ({ page }) => {
+  await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links' }, headers: { 'X-Nexlore-Client': 'tab-e2e-panel' } })
+})
+
 test('the operator lets plugins out in the settings, the account switches them on', async ({ page }) => {
   const problems = collectProblems(page)
   await page.goto('/settings?tab=server&sub=extensions')
@@ -39,7 +44,7 @@ test('the operator lets plugins out in the settings, the account switches them o
     await expect(card.getByRole('link', { name: 'Go there' })).toHaveAttribute('href', '/account#plugins')
   }
   // Where each shows up, and an example where one helps.
-  await expect(page.getByTestId('plugin-howto-toc')).toContainText('right column beside every note')
+  await expect(page.getByTestId('plugin-howto-toc')).toContainText('beside every note in the tab “Plugins”')
   await expect(page.getByTestId('plugin-howto-query')).toContainText('code block ```query')
   await expect(page.getByTestId('plugin-howto-query').locator('pre')).toContainText('tag: project')
   await expect(page.getByTestId('plugin-howto-kanban')).toContainText('property “kanban-plugin”')
@@ -61,7 +66,14 @@ test('the operator lets plugins out in the settings, the account switches them o
   expect(problems).toEqual([])
 })
 
+/** Plugins with a panel sit in the tab "Plugins" beside the note. */
+const PANELS = new Set(['toc', 'rediscover'])
+
 async function frameOf(page: Page, id: string): Promise<FrameLocator> {
+  if (PANELS.has(id)) {
+    const tab = page.getByTestId('note-panel').getByRole('tab', { name: 'Plugins' })
+    if ((await tab.getAttribute('aria-selected')) !== 'true') await tab.click()
+  }
   await expect(page.locator(`iframe[data-plugin="${id}"]`).first()).toBeVisible()
   return page.frameLocator(`iframe[data-plugin="${id}"]`).first()
 }

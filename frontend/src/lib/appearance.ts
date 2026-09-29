@@ -14,6 +14,9 @@ export type Width = 'narrow' | 'normal' | 'wide' | 'full'
 /** Where nexlore opens (Settings → General). */
 export type Start = 'graph' | 'daily' | 'last' | 'note'
 
+/** The tabs of the column beside a note. */
+export type PanelTab = 'outline' | 'links' | 'graph' | 'versions' | 'plugins'
+
 export type Appearance = {
   mode: Mode
   theme: string
@@ -25,11 +28,15 @@ export type Appearance = {
   width: Width
   start: Start
   start_note: string
+  /** The column beside a note shown on a wide screen, its tab, and the sidebar open or folded to symbols. */
+  panel: boolean
+  panel_tab: PanelTab
+  sidebar: 'open' | 'rail'
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
   mode: 'dark', theme: 'nexlore', space_themes: true, font_ui: 'inter', font_text: 'inter', font_code: 'jetbrains', size: 16, width: 'normal',
-  start: 'graph', start_note: '',
+  start: 'graph', start_note: '', panel: true, panel_tab: 'links', sidebar: 'open',
 }
 
 type Font = { label: string; family: string; load?: () => Promise<unknown> }

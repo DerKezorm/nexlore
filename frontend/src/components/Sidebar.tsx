@@ -12,16 +12,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { vaultApi, type Favorite, type FolderEntry, type FileEntry } from '../api/client'
+import { recentApi, vaultApi, type Favorite, type FolderEntry, type FileEntry, type NoteRef } from '../api/client'
 import { folderColor, spaceColor } from '../graph/palette'
 import { fileRoute } from '../lib/markdown'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
-import { askFolder, FOLDER_EVENT, narrow, NOTE_LIST_EVENT, sidebarHere, takeFolderWish, takeNoteListWish } from '../lib/shell'
+import { askFolder, FOLDER_EVENT, narrow, NOTE_LIST_EVENT, RECENT_EVENT, SIDEBAR_EVENT, sidebarHere, takeFolderWish, takeNoteListWish } from '../lib/shell'
 import { seenAll, useNews } from '../lib/news'
 import { openInTab } from '../lib/tabs'
 import { baseName } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } from '../lib/vaultActions'
+import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
 import { lookOf } from '../lib/looks'
 import { LookIcon } from './LookIcon'
@@ -29,6 +30,8 @@ import { TagTree } from './TagTree'
 import { Symbol, type SymbolName } from './Symbol'
 
 const ROW = 28
+/** Notes opened last, at the top of the sidebar. */
+const RECENT = 5
 /** Files of a folder asked for at a time; more when the list is scrolled to its end. */
 const PAGE = 500
 
@@ -87,6 +90,65 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
   }, [sheet])
+  // Folded to a strip of symbols (with the account, on every device); Alt+B, the palette or the button in its head.
+  const { me, setAppearance } = useAuth()
+  // Kept per account: on a shared computer another account never sees these titles, not even for a moment.
+  const recentKey = `nexlore.recent.${me?.id ?? 'none'}`
+  const rail = me?.appearance?.sidebar === 'rail'
+  const setRail = useCallback((next: boolean) => void setAppearance({ sidebar: next ? 'rail' : 'open' }).catch(() => {}), [setAppearance])
+  useEffect(() => {
+    const toggle = () => {
+      if (narrow()) setSheet((open) => !open)
+      else setRail(!rail)
+    }
+    window.addEventListener(SIDEBAR_EVENT, toggle)
+    return () => window.removeEventListener(SIDEBAR_EVENT, toggle)
+  }, [rail, setRail])
+  const [recentOpen, setRecentOpen] = useState(() => {
+    try {
+      return localStorage.getItem('nexlore.recentOpen') !== 'closed'
+    } catch {
+      return true
+    }
+  })
+  const showRecent = (open: boolean) => {
+    setRecentOpen(open)
+    try {
+      if (open) localStorage.removeItem('nexlore.recentOpen')
+      else localStorage.setItem('nexlore.recentOpen', 'closed')
+    } catch {
+      // Not remembered: open again next time.
+    }
+  }
+  // The last list known in this browser stands at once: coming in late, it pushed the tree down under a click.
+  const [recent, setRecent] = useState<NoteRef[]>(() => {
+    try {
+      const kept = JSON.parse(localStorage.getItem(recentKey) ?? '[]')
+      return Array.isArray(kept) ? kept.filter((item) => typeof item?.path === 'string' && typeof item?.title === 'string').slice(0, RECENT) : []
+    } catch {
+      return []
+    }
+  })
+  // Read again once the note page has told the server a note was opened: the one just opened comes first.
+  useEffect(() => {
+    let live = true
+    const keep = (list: NoteRef[]) => {
+      if (!live) return
+      setRecent(list)
+      try {
+        localStorage.setItem(recentKey, JSON.stringify(list))
+      } catch {
+        // Not kept: the next page waits for the server once more.
+      }
+    }
+    const read = () => void recentApi.list(RECENT).then(keep, () => {})
+    read()
+    window.addEventListener(RECENT_EVENT, read)
+    return () => {
+      live = false
+      window.removeEventListener(RECENT_EVENT, read)
+    }
+  }, [recentKey])
   const [view, setView] = useState<'spaces' | 'tags'>(() => {
     try {
       return localStorage.getItem('nexlore.sidebarView') === 'tags' ? 'tags' : 'spaces'
@@ -345,6 +407,13 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
   // A folder asked for (quick switcher after "/", a folder among the favorites): opened as above, then scrolled to
   // and focused once its row is there; on a phone in the sheet.
   useEffect(() => sidebarHere(), [])
+  // The folder wish is taken in an effect set up once: it reads the fold through these.
+  const railRef = useRef(rail)
+  const setRailRef = useRef(setRail)
+  useEffect(() => {
+    railRef.current = rail
+    setRailRef.current = setRail
+  }, [rail, setRail])
   // Kept for a moment, not only until first seen: folders above it may still be read and push it down.
   const [target, setTarget] = useState<{ path: string } | null>(null)
   useEffect(() => {
@@ -354,6 +423,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       reveal(path)
       setView('spaces')
       if (narrow()) setSheet(true)
+      else if (railRef.current) setRailRef.current(false)
       setTarget({ path })
     }
     take()
@@ -571,7 +641,8 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
             <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: row.color }} />
           )}
           <span className="truncate">{row.name}</span>
-          <span className="ml-auto shrink-0 text-[11px] text-mist-600 tabular-nums">{row.count}</span>
+          {/* Only under the pointer or the keys: a quiet list, the number when asked for. */}
+          <span className="ml-auto shrink-0 text-[11px] text-mist-600 tabular-nums opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" data-testid="folder-count">{row.count}</span>
         </button>
         {writable(row.path) && (
           <button
@@ -585,6 +656,39 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           </button>
         )}
       </div>
+    )
+  }
+
+  // Folded: a strip of symbols; each opens the sidebar again, where it leads.
+  if (rail && !sheet) {
+    const unfold = (then?: () => void) => {
+      setRail(false)
+      then?.()
+    }
+    const strip: { label: string; symbol: SymbolName; run?: () => void }[] = [
+      { label: t('sidebar.spaces'), symbol: 'folder', run: () => chooseView('spaces') },
+      { label: t('tags.title'), symbol: 'tag', run: () => chooseView('tags') },
+      { label: t('sidebar.recent'), symbol: 'clock', run: () => showRecent(true) },
+      ...(favorites.length > 0 ? [{ label: t('sidebar.favorites'), symbol: 'star' as const }] : []),
+    ]
+    return (
+      <nav aria-label={t('sidebar.label')} data-testid="sidebar-rail" className="hidden w-12 shrink-0 flex-col items-center gap-1 border-r border-ink-700/80 bg-ink-950/60 py-2.5 md:flex">
+        <button type="button" onClick={() => unfold()} title={t('sidebar.unfold')} aria-label={t('sidebar.unfold')} className="rounded-lg p-2 text-mist-400 hover:bg-ink-850 hover:text-mist-100">
+          <Symbol name="sidebar" className="h-4 w-4" />
+        </button>
+        <span aria-hidden="true" className="my-1 h-px w-6 bg-ink-700" />
+        {strip.map((item) => (
+          <button key={item.symbol} type="button" onClick={() => unfold(item.run)} title={item.label} aria-label={item.label} className="rounded-lg p-2 text-mist-500 hover:bg-ink-850 hover:text-mist-100">
+            <Symbol name={item.symbol} className="h-4 w-4" />
+          </button>
+        ))}
+        {news.count > 0 && (
+          <button type="button" onClick={() => unfold(() => showNews(true))} title={t('news.section', { count: news.count })} aria-label={t('news.section', { count: news.count })} className="relative rounded-lg p-2 text-accent-400 hover:bg-ink-850">
+            <Symbol name="sparkle" className="h-4 w-4" />
+            <span aria-hidden="true" className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-accent-400" />
+          </button>
+        )}
+      </nav>
     )
   }
 
@@ -634,6 +738,31 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           )}
         </div>
       )}
+      {recent.length > 0 && (
+        <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-recent">
+          <button type="button" onClick={() => showRecent(!recentOpen)} aria-expanded={recentOpen} className="mb-1 flex w-full items-center gap-1 px-2 text-left text-[11px] font-semibold tracking-wider text-mist-600 uppercase hover:text-mist-300">
+            <Symbol name={recentOpen ? 'chevronDown' : 'chevronRight'} className="h-3 w-3" />
+            {t('sidebar.recent')}
+          </button>
+          {recentOpen && (
+            <ul>
+              {recent.map((item) => (
+                <li key={item.path}>
+                  <button
+                    type="button"
+                    onClick={() => onNote(item.path)}
+                    title={item.path}
+                    className={'flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] hover:bg-ink-850 ' + (item.path === activeNote ? 'bg-accent-500/10 text-accent-300' : 'text-mist-300')}
+                  >
+                    <Symbol name="clock" className="h-3.5 w-3.5 shrink-0 text-mist-600" />
+                    <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {favorites.length > 0 && (
         <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-favorites">
           <span className="mb-1 block px-2 text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('sidebar.favorites')}</span>
@@ -680,17 +809,24 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
               </button>
             ))}
           </div>
-          {view === 'spaces' && (
-            <button
-              type="button"
-              onClick={() => askVaultAction({ kind: 'new-space' })}
-              className="rounded-md p-1 text-mist-500 hover:bg-ink-850 hover:text-mist-100"
-              title={t('sidebar.newSpace')}
-              aria-label={t('sidebar.newSpace')}
-            >
-              <Symbol name="plus" className="h-4 w-4" />
-            </button>
-          )}
+          <span className="flex items-center gap-0.5">
+            {view === 'spaces' && (
+              <button
+                type="button"
+                onClick={() => askVaultAction({ kind: 'new-space' })}
+                className="rounded-md p-1 text-mist-500 hover:bg-ink-850 hover:text-mist-100"
+                title={t('sidebar.newSpace')}
+                aria-label={t('sidebar.newSpace')}
+              >
+                <Symbol name="plus" className="h-4 w-4" />
+              </button>
+            )}
+            {!sheet && (
+              <button type="button" onClick={() => setRail(true)} className="rounded-md p-1 text-mist-500 hover:bg-ink-850 hover:text-mist-100" title={t('sidebar.fold')} aria-label={t('sidebar.fold')}>
+                <Symbol name="sidebar" className="h-4 w-4" />
+              </button>
+            )}
+          </span>
         </div>
       </div>
       {view === 'tags' && <TagTree activeNote={activeNote} onNote={onNote} />}
@@ -699,6 +835,10 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
         <ul className="relative" style={{ height: rows.out.length * ROW }}>
           {rows.out.slice(first, last).map((row, i) => (
             <li key={row.kind + ':' + row.path} data-path={row.path} className="absolute right-0 left-0" style={{ top: (first + i) * ROW, height: ROW }}>
+              {/* A line under each open folder's arrow, down along what it holds. */}
+              {Array.from({ length: row.depth }, (_, level) => (
+                <span key={level} aria-hidden="true" data-testid="tree-guide" className="pointer-events-none absolute inset-y-0 w-px bg-ink-700/70" style={{ left: level * 12 + 15 }} />
+              ))}
               {renderRow(row)}
             </li>
           ))}

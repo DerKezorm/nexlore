@@ -17,6 +17,9 @@ WIDTHS = ("narrow", "normal", "wide", "full")
 SIZE_MIN, SIZE_MAX = 14, 20
 #: Where nexlore opens (Obsidian's Homepage plugin): the map, today's daily note, the note opened last, one note.
 STARTS = ("graph", "daily", "last", "note")
+#: The tabs of the column beside a note, and the sidebar folded to a strip of symbols or open.
+PANEL_TABS = ("outline", "links", "graph", "versions", "plugins")
+SIDEBARS = ("open", "rail")
 
 DEFAULTS: dict[str, Any] = {
     "mode": "dark",
@@ -32,6 +35,10 @@ DEFAULTS: dict[str, Any] = {
     "start": "graph",
     #: With ``start: note``: its path. Whether it may be read is asked when it is opened, like any note.
     "start_note": "",
+    #: The column beside a note on a wide screen: shown, and which tab; below 1280 pixels it comes as a sheet on request.
+    "panel": True,
+    "panel_tab": "links",
+    "sidebar": "open",
 }
 
 
@@ -56,7 +63,7 @@ def of(stored: Any) -> dict[str, Any]:
 def _checked(changes: dict[str, Any]) -> dict[str, Any]:
     allowed = {
         "mode": MODES, "font_ui": FONTS_UI, "font_text": FONTS_TEXT, "font_code": FONTS_CODE, "width": WIDTHS,
-        "start": STARTS,
+        "start": STARTS, "panel_tab": PANEL_TABS, "sidebar": SIDEBARS,
     }
     out: dict[str, Any] = {}
     for key, value in changes.items():
@@ -68,7 +75,7 @@ def _checked(changes: dict[str, Any]) -> dict[str, Any]:
             if isinstance(value, bool) or not isinstance(value, int) or not SIZE_MIN <= value <= SIZE_MAX:
                 raise AppearanceError(key)
             out[key] = value
-        elif key == "space_themes":
+        elif key in ("space_themes", "panel"):
             if not isinstance(value, bool):
                 raise AppearanceError(key)
             out[key] = value

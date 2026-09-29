@@ -69,8 +69,9 @@ export function SettingsPage() {
           {top === 'general' && <StartCard />}
           {top === 'looks' && (
             <>
-              <AppearanceCard />
+              {/* The themes first: the fonts and sizes below them fill a screen, and the themes were lost under them. */}
               <ThemesCard />
+              <AppearanceCard />
               <SnippetsCard />
             </>
           )}

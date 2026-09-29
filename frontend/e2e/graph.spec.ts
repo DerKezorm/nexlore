@@ -25,6 +25,11 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
+// The tab beside the note is kept with the account, and the tests share one: back to the links after each.
+test.afterEach(async ({ page }) => {
+  await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links' }, headers: { 'X-Nexlore-Client': 'tab-e2e-panel' } })
+})
+
 test('the map lists every space, and the chosen cloud stays after a reload', async ({ page }) => {
   const problems = collectProblems(page)
   await page.goto('/')
@@ -88,6 +93,7 @@ test('the note page shows the neighbourhood, one to three links deep, and leads 
   const problems = collectProblems(page)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/note/Work/Plan.md')
+  await page.getByTestId('note-panel').getByRole('tab', { name: 'Graph' }).click()
   const local = page.getByTestId('local-graph')
   await expect(local.getByRole('img', { name: 'Neighbourhood of the note' })).toBeVisible()
   const depths = local.getByRole('radiogroup', { name: 'How many links away' })
@@ -98,8 +104,9 @@ test('the note page shows the neighbourhood, one to three links deep, and leads 
   // Plan links to Garden, and Garden back: two notes, one link between them.
   expect(answer.nodes.map((node: [number, string]) => node[1]).sort()).toEqual(['Work/Ideas/Garden.md', 'Work/Plan.md'])
   await expect(depths.getByRole('radio', { name: 'Depth 2' })).toHaveAttribute('aria-checked', 'true')
-  // Kept per browser.
+  // Kept per browser, and the tab with the account.
   await page.reload()
+  await expect(page.getByTestId('note-panel').getByRole('tab', { name: 'Graph' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByTestId('local-graph').getByRole('radio', { name: 'Depth 2' })).toHaveAttribute('aria-checked', 'true')
   await page.getByTestId('local-graph').getByRole('button', { name: 'Show in the big graph' }).click()
   await expect(page.getByTestId('graph-card').getByRole('heading', { name: 'Plan' })).toBeVisible()
@@ -109,6 +116,7 @@ test('the note page shows the neighbourhood, one to three links deep, and leads 
 test('a note without links says so in its local graph', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/note/Work/Scratch.md')
+  await page.getByTestId('note-panel').getByRole('tab', { name: 'Graph' }).click()
   await expect(page.getByTestId('local-graph').getByText('No links yet.')).toBeVisible()
 })
 
@@ -125,8 +133,15 @@ test('on a phone the clouds sit in a sheet, and nothing is wider than the screen
   await expect(page.getByRole('button', { name: 'Topics' })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360)
   await page.goto('/note/Work/Plan.md')
+  // Beside the note is a sheet from below on a phone, opened from the header of the note.
+  await expect(page.getByTestId('note-panel')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Column beside the note' }).click()
+  await expect(page.getByTestId('note-panel')).toHaveAttribute('data-place', 'bottom')
+  await page.getByTestId('note-panel').getByRole('tab', { name: 'Graph' }).click()
   await expect(page.getByTestId('local-graph')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360)
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('note-panel')).toHaveCount(0)
 })
 
 test('two fingers zoom the map on a phone, one finger moves it', async ({ page }) => {

@@ -81,3 +81,18 @@ export const HEADING_EVENT = 'nexlore:heading'
 export function askHeading(text: string, index: number): void {
   window.dispatchEvent(new CustomEvent<{ text: string; index: number }>(HEADING_EVENT, { detail: { text, index } }))
 }
+
+export const SIDEBAR_EVENT = 'nexlore:toggle-sidebar'
+/** A note was told to the server as opened: the list of notes opened last is read again. */
+export const RECENT_EVENT = 'nexlore:recent'
+export const PANEL_EVENT = 'nexlore:toggle-panel'
+
+/** Folds the sidebar to its strip of symbols or opens it (on a phone: the sheet); Alt+B and the command palette. */
+export function askSidebarToggle(): void {
+  window.dispatchEvent(new CustomEvent(SIDEBAR_EVENT))
+}
+
+/** Shows or hides the column beside the note (below 1280 pixels: the sheet); Alt+R and the command palette. */
+export function askPanelToggle(): void {
+  window.dispatchEvent(new CustomEvent(PANEL_EVENT))
+}
