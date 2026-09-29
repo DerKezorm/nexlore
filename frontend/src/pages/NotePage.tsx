@@ -13,7 +13,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { ApiError, draftsApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi, themesApi } from '../api/client'
+import { ApiError, draftsApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi, themesApi, proposalsApi, type NoteNews, type Proposal } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ConflictCompare } from '../components/ConflictCompare'
 import { DraftCompare } from '../components/DraftCompare'
@@ -22,6 +22,9 @@ import { Sidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { NoteStart } from '../components/NoteStart'
 import { Outline } from '../components/Outline'
+import { CompareDialog } from '../components/CompareDialog'
+import { ProposeDialog } from '../components/ProposeDialog'
+import { seenNote } from '../lib/news'
 import { useEnrich } from '../lib/enrich'
 import { noteClasses } from '../lib/appearance'
 import { ensureSpaceTheme } from '../lib/themes'
@@ -227,8 +230,14 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     return draft.current
   }
 
-  // "Opened last": told once per note, after it loaded (a note that is not there is no note one opened).
+  // "Opened last": told once per note, after it loaded (a note that is not there is no note one opened). The answer
+  // says what others changed since the last visit; proposals of readers wait on the note.
   const told = useRef<string | null>(null)
+  const [changed, setChanged] = useState<NoteNews | null>(null)
+  const [proposals, setProposals] = useState<Proposal[]>([])
+  const [comparing2, setComparing2] = useState<{ kind: 'news'; left: string } | { kind: 'proposal'; proposal: Proposal } | null>(null)
+  const [proposing, setProposing] = useState(false)
+  const [proposalProblem, setProposalProblem] = useState<string | null>(null)
   const load = useCallback(async (target: string) => {
     try {
       const [data, found] = await Promise.all([vaultApi.note(target), vaultApi.links(target)])
@@ -238,7 +247,17 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       setProblem(null)
       if (side === 'left' && !mirror && told.current !== target) {
         told.current = target
-        recentApi.opened(target).catch(() => {})
+        recentApi.opened(target).then(
+          (answer) => {
+            if (current.current === target) setChanged(answer.news)
+            seenNote(target)
+          },
+          () => {},
+        )
+        proposalsApi.forNote(target).then(
+          (found) => current.current === target && setProposals(found),
+          () => {},
+        )
       }
     } catch (error) {
       if (current.current !== target) return
@@ -734,6 +753,11 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 <Symbol name="pencil" className="h-3.5 w-3.5" /> {t('note.edit')}
               </button>
             </div>
+            {!mayWrite && !mirror && !editing && (
+              <button type="button" onClick={() => setProposing(true)} className="inline-flex items-center gap-1.5 rounded-full border border-accent-500/50 px-3 py-1 text-sm text-accent-300 hover:bg-accent-500/10">
+                <Symbol name="pencil" className="h-3.5 w-3.5" /> {t('proposals.button')}
+              </button>
+            )}
             <Link to={`/?focus=${encodeURIComponent(note.path)}`} className="inline-flex items-center gap-1.5 rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-850">
               <Symbol name="graph" className="h-3.5 w-3.5" /> {t('note.inGraph')}
             </Link>
@@ -793,6 +817,40 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
           </div>
 
           {/* Banners */}
+          {changed && side === 'left' && (
+            <Banner
+              tone="info"
+              symbol="info"
+              action={
+                <span className="flex gap-2">
+                  {changed.since_version !== null && (
+                    <button
+                      type="button"
+                      onClick={() => void vaultApi.version(changed.since_version!).then((old) => setComparing2({ kind: 'news', left: old.content }), () => setProblem('internal_error'))}
+                      className="rounded-full border border-accent-500/40 px-3 py-0.5 hover:bg-accent-500/10"
+                    >
+                      {t('news.difference')}
+                    </button>
+                  )}
+                  <CloseButton onClick={() => setChanged(null)} />
+                </span>
+              }
+            >
+              {changed.author ? t('news.bannerBy', { name: changed.author, when: formatDate(changed.changed_at) }) : t('news.bannerOutside', { when: formatDate(changed.changed_at) })}
+            </Banner>
+          )}
+          {side === 'left' &&
+            proposals.slice(0, 3).map((proposal) =>
+              proposal.by === me?.name ? (
+                <Banner key={proposal.id} tone="info" symbol="info" action={<button type="button" className="rounded-full border border-accent-500/40 px-3 py-0.5 hover:bg-accent-500/10" onClick={() => void proposalsApi.withdraw(proposal.id).then(() => setProposals((list) => list.filter((item) => item.id !== proposal.id)))}>{t('proposals.withdraw')}</button>}>
+                  {t('proposals.waitingOwn')}
+                </Banner>
+              ) : (
+                <Banner key={proposal.id} tone="info" symbol="info" action={<button type="button" className="rounded-full border border-accent-500/40 px-3 py-0.5 hover:bg-accent-500/10" onClick={() => setComparing2({ kind: 'proposal', proposal })}>{t('proposals.compare')}</button>}>
+                  {proposal.message ? t('proposals.bannerWith', { name: proposal.by, message: proposal.message }) : t('proposals.banner', { name: proposal.by })}
+                </Banner>
+              ),
+            )}
           {renaming !== null && (
             <form
               className="mx-6 mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-ink-700 bg-ink-850 px-4 py-2.5 text-sm"
@@ -969,6 +1027,81 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
         </aside>
       </main>
 
+      {comparing2?.kind === 'news' && (
+        <CompareDialog
+          title={t('news.compareTitle', { title: note.title })}
+          left={{ label: t('news.before'), text: comparing2.left }}
+          right={{ label: t('news.now'), text: note.content }}
+          onClose={() => setComparing2(null)}
+        />
+      )}
+      {comparing2?.kind === 'proposal' && (
+        <CompareDialog
+          title={t('proposals.compareTitle', { name: comparing2.proposal.by })}
+          note={comparing2.proposal.message || undefined}
+          left={{ label: t('drafts.now'), text: note.content }}
+          right={{ label: t('proposals.proposed'), text: comparing2.proposal.content ?? '' }}
+          problem={proposalProblem}
+          onClose={() => {
+            setComparing2(null)
+            setProposalProblem(null)
+          }}
+          actions={
+            mayWrite && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = comparing2.proposal.id
+                    void proposalsApi.decline(id).then(
+                      () => {
+                        setProposals((list) => list.filter((item) => item.id !== id))
+                        setComparing2(null)
+                      },
+                      (error) => setProposalProblem(errorText(error instanceof ApiError ? error.code : 'internal_error')),
+                    )
+                  }}
+                  className="rounded-full border border-ink-700 px-3 py-1 text-sm text-bad-500 hover:bg-ink-850"
+                >
+                  {t('proposals.decline')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = comparing2.proposal.id
+                    void proposalsApi.take(id).then(
+                      (taken) => {
+                        setProposals((list) => list.filter((item) => item.id !== id))
+                        setComparing2(null)
+                        setInfo(taken.conflict ? t('proposals.takenConflict') : t('proposals.taken'))
+                        void load(note.path)
+                      },
+                      (error) => setProposalProblem(errorText(error instanceof ApiError ? error.code : 'internal_error')),
+                    )
+                  }}
+                  className="rounded-full bg-accent-500 px-3 py-1 text-sm font-semibold text-on-accent"
+                >
+                  {t('proposals.take')}
+                </button>
+              </>
+            )
+          }
+        />
+      )}
+      {proposing && (
+        <ProposeDialog
+          path={note.path}
+          title={note.title}
+          content={note.content}
+          baseHash={note.hash}
+          onClose={() => setProposing(false)}
+          onSent={() => {
+            setProposing(false)
+            setInfo(t('proposals.sent'))
+            void proposalsApi.forNote(note.path).then(setProposals, () => {})
+          }}
+        />
+      )}
       <ConfirmDialog
         open={deleting}
         title={t('note.deleteTitle', { title: note.title })}

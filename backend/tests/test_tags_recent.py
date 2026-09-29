@@ -135,7 +135,7 @@ def test_the_notes_opened_last_come_newest_first_once_each_and_only_readable_one
 ) -> None:
     anna, bob = people["anna"], people["bob"]
     for path in ["Garden/Beds.md", "Kitchen/Jam.md", "Garden/Beds.md", "Garden/Seeds.md"]:
-        assert bob.post("/api/recent", json={"path": path}).status_code == 204
+        assert bob.post("/api/recent", json={"path": path}).status_code == 200
     assert [row["path"] for row in bob.get("/api/recent").json()] == ["Garden/Seeds.md", "Garden/Beds.md", "Kitchen/Jam.md"]
     # Per account.
     assert anna.get("/api/recent").json() == []
@@ -151,7 +151,7 @@ def test_only_the_last_thirty_are_kept(people: dict[str, TestClient]) -> None:
     anna = people["anna"]
     for number in range(35):
         note(anna, "Garden", f"N{number:02}", "x")
-        assert anna.post("/api/recent", json={"path": f"Garden/N{number:02}.md"}).status_code == 204
+        assert anna.post("/api/recent", json={"path": f"Garden/N{number:02}.md"}).status_code == 200
     shown = [row["path"] for row in anna.get("/api/recent", params={"limit": 30}).json()]
     assert shown[0] == "Garden/N34.md" and shown[-1] == "Garden/N05.md" and len(shown) == 30
     with SessionLocal() as db:

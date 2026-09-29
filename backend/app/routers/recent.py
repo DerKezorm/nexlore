@@ -4,7 +4,7 @@ on the server, so they are the same on every device; listed only where the accou
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
@@ -15,6 +15,7 @@ from ..deps import Account, need, readable_spaces
 from ..errors import error
 from ..models import File, RecentNote
 from ..services import paths
+from . import news
 
 router = APIRouter(prefix="/api", tags=["recent"])
 
@@ -31,8 +32,8 @@ class RecentOut(BaseModel):
     title: str
 
 
-@router.post("/recent", status_code=204, summary="The note was opened now")
-def opened(body: RecentIn, account: Account) -> None:
+@router.post("/recent", summary="The note was opened now; answers what others changed since the last time")
+def opened(body: RecentIn, account: Account) -> dict[str, Any]:
     clean = need(account, body.path, "read")
     with SessionLocal() as db:
         file = db.scalar(select(File).where(File.path == clean, File.deleted_at.is_(None), File.is_note.is_(True)))
@@ -52,7 +53,9 @@ def opened(body: RecentIn, account: Account) -> None:
             .limit(KEEP)
         )
         db.execute(delete(RecentNote).where(RecentNote.account_id == account.id, RecentNote.id.not_in(keep)))
+        changed = news.opened(db, account, file)
         db.commit()
+    return {"news": changed}
 
 
 @router.get("/recent", response_model=list[RecentOut], summary="The notes opened last that are there and may be read")

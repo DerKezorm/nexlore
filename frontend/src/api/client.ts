@@ -479,6 +479,29 @@ export const favoritesApi = {
   set: (path: string, on: boolean) => api<void>('/api/favorites', { method: 'PUT', body: { path, on } }),
 }
 
+// --- New since the last visit and proposals (routers/news.py, routers/proposals.py) --------------------------------
+
+export type NewNote = { path: string; title: string; changed_at: string; author: string }
+export type Proposal = {
+  id: number; path: string; title: string; by: string; message: string; status: 'open' | 'taken' | 'declined'
+  created_at: string; decided_at: string | null; decided_by: string | null; content: string | null
+}
+
+export const newsApi = {
+  list: () => api<{ count: number; notes: NewNote[] }>('/api/news'),
+  seenAll: () => api<void>('/api/news/seen', { method: 'POST' }),
+}
+
+export const proposalsApi = {
+  propose: (path: string, content: string, baseHash: string, message: string) =>
+    api<Proposal>('/api/proposals', { method: 'POST', body: { path, content, base_hash: baseHash, message } }),
+  forNote: (path: string) => api<Proposal[]>('/api/proposals/note', { query: { path } }),
+  overview: () => api<{ waiting: Proposal[]; mine: Proposal[] }>('/api/proposals'),
+  take: (id: number) => api<{ path: string; conflict: string | null }>(`/api/proposals/${id}/take`, { method: 'POST' }),
+  decline: (id: number) => api<void>(`/api/proposals/${id}/decline`, { method: 'POST' }),
+  withdraw: (id: number) => api<void>(`/api/proposals/${id}`, { method: 'DELETE' }),
+}
+
 // --- The search page (routers/search.py) -------------------------------------------------------------------------
 
 export type SearchPage = { notes: { path: string; title: string; lines: { line: number; text: string }[] }[]; more: boolean; ms: number }
@@ -521,8 +544,11 @@ export const tagsApi = {
   rename: (old: string, name: string) => api<TagRenamed>('/api/tags/rename', { method: 'POST', body: { old, new: name } }),
 }
 
+export type NoteNews = { author: string; changed_at: string; since_version: number | null }
+
 export const recentApi = {
-  opened: (path: string) => api<void>('/api/recent', { method: 'POST', body: { path } }),
+  /** The note was opened: what others changed since the last time (null: nothing), and it counts as seen now. */
+  opened: (path: string) => api<{ news: NoteNews | null }>('/api/recent', { method: 'POST', body: { path } }),
   list: (limit = 10) => api<NoteRef[]>('/api/recent', { query: { limit } }),
 }
 

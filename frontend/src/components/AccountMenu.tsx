@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 
-import { draftsApi, type DraftInfo } from '../api/client'
+import { draftsApi, proposalsApi, type DraftInfo, type Proposal } from '../api/client'
 import { languageOptions, type LanguageOption } from '../i18n'
 import { askPalette } from '../lib/commands'
 import { noteUrl } from '../lib/vault'
@@ -24,13 +24,17 @@ export function AccountMenu() {
   const box = useRef<HTMLDivElement>(null)
   const [drafts, setDrafts] = useState<DraftInfo[]>([])
   const [draftShown, setDraftShown] = useState<number | null>(null)
+  const [proposals, setProposals] = useState<{ waiting: Proposal[]; mine: Proposal[] }>({ waiting: [], mine: [] })
 
   // Open drafts, for the number on the circle: asked now, when the menu opens, and every minute.
   const signedIn = !!me
   useEffect(() => {
     if (!signedIn) return
     let live = true
-    const ask = () => draftsApi.list().then((found) => live && setDrafts(found), () => undefined)
+    const ask = () => {
+      void draftsApi.list().then((found) => live && setDrafts(found), () => undefined)
+      void proposalsApi.overview().then((found) => live && setProposals(found), () => undefined)
+    }
     void ask()
     const timer = window.setInterval(ask, 60_000)
     return () => {
@@ -67,9 +71,9 @@ export function AccountMenu() {
         className="relative flex h-8 w-8 items-center justify-center rounded-full border border-ink-700 hover:border-accent-500"
       >
         <Avatar account={me} className="h-full w-full text-sm" />
-        {drafts.length > 0 && (
+        {drafts.length + proposals.waiting.length > 0 && (
           <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-accent-500 px-1 text-[10px] font-bold text-on-accent" data-testid="drafts-count">
-            {drafts.length}
+            {drafts.length + proposals.waiting.length}
           </span>
         )}
       </button>
@@ -101,6 +105,39 @@ export function AccountMenu() {
                   <span className="min-w-0">
                     <span className="block truncate text-mist-100">{draft.new ? t('drafts.newNote', { title: draft.title }) : draft.title}</span>
                     <span className="block truncate text-xs text-mist-500">{draft.key_name}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          {(proposals.waiting.length > 0 || proposals.mine.length > 0) && (
+            <div className="border-b border-ink-800 py-1" data-testid="menu-proposals">
+              <div className="px-3 pt-1 pb-0.5 text-xs text-mist-500">
+                {t('proposals.menu')}
+                {proposals.waiting.length > 0 && <> · {t('proposals.menuWaiting', { count: proposals.waiting.length })}</>}
+              </div>
+              {[...proposals.waiting, ...proposals.mine.slice(0, 5)].slice(0, 8).map((proposal) => (
+                <button
+                  key={proposal.id}
+                  type="button"
+                  onClick={() => {
+                    setOpen(false)
+                    navigate(noteUrl(proposal.path))
+                  }}
+                  className="flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left hover:bg-ink-850"
+                >
+                  <Symbol name="pencil" className="mt-0.5 h-4 w-4 shrink-0 text-accent-400" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-mist-100">{proposal.title}</span>
+                    <span className="block truncate text-xs text-mist-500">
+                      {proposal.by !== me.name
+                        ? proposal.by
+                        : proposal.status === 'taken'
+                          ? t('proposals.mineTaken', { name: proposal.decided_by })
+                          : proposal.status === 'declined'
+                            ? t('proposals.mineDeclined', { name: proposal.decided_by })
+                            : t('proposals.mineOpen')}
+                    </span>
                   </span>
                 </button>
               ))}

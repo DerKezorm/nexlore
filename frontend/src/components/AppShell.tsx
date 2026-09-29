@@ -12,6 +12,7 @@ import { askNoteList, narrow, SEARCH_EVENT } from '../lib/shell'
 import { PALETTE_EVENT, useCommands, type Command } from '../lib/commands'
 import { storedTheme } from '../lib/theme'
 import { useAuth } from '../state/auth'
+import { refreshNews } from '../lib/news'
 import { CommandPalette } from './CommandPalette'
 import { LinkPreview } from './LinkPreview'
 import { VaultActions } from './VaultActions'
@@ -148,6 +149,12 @@ export function AppShell() {
   newNoteAt.current = newNoteTarget
 
   const { setAppearance } = useAuth()
+  const { generation } = useStore()
+  useEffect(() => {
+    void refreshNews()
+    const every = window.setInterval(() => void refreshNews(), 60_000)
+    return () => window.clearInterval(every)
+  }, [generation])
   // The palette's commands that hold everywhere: the places, and what the header does.
   useCommands((): Command[] => {
     const group = t('palette.app')

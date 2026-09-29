@@ -313,7 +313,11 @@ class Version(Base):
     """A saved state of a note. Content is zlib-compressed; the newest version is the note as nexlore last saw it."""
 
     __tablename__ = "versions"
-    __table_args__ = (Index("versions_file_time", "file_id", "created_at"),)
+    __table_args__ = (
+        Index("versions_file_time", "file_id", "created_at"),
+        # "New since your last visit" looks for the changes after a moment (routers/news.py).
+        Index("versions_updated", "updated_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     file_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"))
@@ -406,6 +410,9 @@ class Account(Base):
     avatar_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     #: How nexlore looks for the account (``services/appearance.py``): only what it chose; defaults fill the rest.
     appearance: Mapped[Any] = mapped_column(JSON, nullable=True)
+    #: Changes by others after this are "new" for a note the account never opened (``routers/news.py``); set when
+    #: first asked and when everything is marked as read.
+    news_since: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     #: Not stored. Set on the account an MCP key acts as when the key may see only some spaces (``services/mcp.py``):
     #: ``rights`` then answers for every other space as if it did not exist.
     key_spaces: ClassVar[frozenset[int] | None] = None
@@ -553,6 +560,40 @@ class CssSnippet(Base):
     css: Mapped[str] = mapped_column(Text, default="")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     changed_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class NoteSeen(Base):
+    """When an account last opened a note: what others changed after it is "new since your last visit"."""
+
+    __tablename__ = "notes_seen"
+    __table_args__ = (Index("notes_seen_account_file", "account_id", "file_id", unique=True),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), index=True)
+    seen_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class Proposal(Base):
+    """A change somebody who may only read a space proposes for a note (a reader's draft): the writers of the space
+    take it over or turn it down; the proposer sees what became of it."""
+
+    __tablename__ = "proposals"
+    __table_args__ = (Index("proposals_file_status", "file_id", "status"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"), index=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"))
+    #: The state of the note the proposal was written against: taking it over saves against it.
+    base_hash: Mapped[str] = mapped_column(String(64), default="")
+    content: Mapped[bytes] = mapped_column(LargeBinary)
+    message: Mapped[str] = mapped_column(String(500), default="")
+    #: ``open``, ``taken`` or ``declined``.
+    status: Mapped[str] = mapped_column(String(12), default="open")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    decided_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    decided_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
 class RecentNote(Base):

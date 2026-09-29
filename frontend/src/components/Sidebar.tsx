@@ -18,6 +18,7 @@ import { fileRoute } from '../lib/markdown'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
 import { narrow, NOTE_LIST_EVENT, takeNoteListWish } from '../lib/shell'
+import { seenAll, useNews } from '../lib/news'
 import { openInTab } from '../lib/tabs'
 import { baseName } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } from '../lib/vaultActions'
@@ -49,6 +50,7 @@ type Row =
 
 export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: Props) {
   const { t } = useTranslation()
+  const news = useNews()
   // On a phone the sidebar is a sheet from the left: the header's "Notes" or the empty note page ask for it.
   const [sheet, setSheet] = useState(() => takeNoteListWish() && narrow())
   useEffect(() => {
@@ -452,9 +454,12 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
             (activeNote === row.path ? 'bg-accent-500/15 text-accent-400' : 'text-mist-400 hover:bg-ink-850 hover:text-mist-100')
           }
           style={{ paddingLeft: row.depth * 12 + 10 }}
+          data-new={news.paths.has(row.path) || undefined}
+          title={news.paths.has(row.path) ? t('news.newDot') : undefined}
         >
           <Symbol name="note" className="h-3.5 w-3.5 shrink-0 opacity-60" />
           <span className="truncate">{row.title}</span>
+          {news.paths.has(row.path) && <span aria-hidden="true" className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-accent-400" />}
         </button>
       )
     }
@@ -518,6 +523,24 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           <button type="button" onClick={() => setSheet(false)} aria-label={t('common.close')} className="rounded-full p-1.5 text-mist-400 hover:bg-ink-850 hover:text-mist-100">
             <Symbol name="close" className="h-4 w-4" />
           </button>
+        </div>
+      )}
+      {news.count > 0 && (
+        <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-news">
+          <div className="mb-1 flex items-center gap-2 px-2">
+            <span className="flex-1 text-[11px] font-semibold tracking-wider text-accent-400 uppercase">{t('news.section', { count: news.count })}</span>
+            <button type="button" onClick={() => void seenAll()} className="text-[11px] text-mist-500 hover:text-mist-200">{t('news.allSeen')}</button>
+          </div>
+          <ul className="nn-scroll max-h-44 overflow-y-auto">
+            {news.notes.slice(0, 12).map((item) => (
+              <li key={item.path}>
+                <button type="button" onClick={() => onNote(item.path)} title={item.author ? t('news.by', { name: item.author }) : t('news.outside')} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] text-mist-300 hover:bg-ink-850">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-400" />
+                  <span className="min-w-0 flex-1 truncate">{item.title}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       {favorites.length > 0 && (
