@@ -107,6 +107,37 @@ test('on a phone the toolbar is one row above the keyboard, swiped sideways', as
   expect(onDisk('Zoo/Toolbar phone.md')).toBe('# Toolbar phone\n\nTyped on a *phone.*\n')
 })
 
+test('the grip answers the mouse in its own column left of the text, and a block dropped there lands', async ({ page }) => {
+  await edit(page, 'Zoo/Grip left.md')
+  const before = onDisk('Zoo/Grip left.md')
+  const first = page.locator('.ProseMirror p', { hasText: 'Left first' })
+  const second = page.locator('.ProseMirror p', { hasText: 'Left second.' })
+  const top = (await first.boundingBox())!
+  const low = (await second.boundingBox())!
+  // Where the grip stands, never over the text: it shows up there.
+  const column = top.x - 30
+  await page.mouse.move(column, top.y + top.height / 2)
+  await page.mouse.move(column, low.y + low.height / 2, { steps: 5 })
+  const grip = page.getByRole('button', { name: 'Drag to move, click to select' })
+  await expect(grip).toBeVisible()
+  // Beside the second paragraph, where the mouse is, not still beside the first.
+  await expect
+    .poll(async () => {
+      const box = (await grip.boundingBox())!
+      return box.y + box.height / 2 > low.y && box.y + box.height / 2 < low.y + low.height
+    })
+    .toBe(true)
+  // Taken there and dropped there, above the first paragraph, without going over the text.
+  const handle = (await grip.boundingBox())!
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(column, top.y + 2, { steps: 8 })
+  await page.mouse.up()
+  await expect(page.locator('.ProseMirror > p').first()).toHaveText('Left second.')
+  await saved(page)
+  expect(onDisk('Zoo/Grip left.md')).toBe(before.replace('Left second.\n\n', '').replace('# Grip left\n\n', '# Grip left\n\nLeft second.\n\n'))
+})
+
 test('the grip beside a block says what it does, selects the block on a click and moves it when dragged', async ({ page }) => {
   await edit(page, 'Zoo/Grip.md')
   const before = onDisk('Zoo/Grip.md')

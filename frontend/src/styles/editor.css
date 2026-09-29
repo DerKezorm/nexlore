@@ -38,6 +38,15 @@
   outline: none;
 }
 
+/* The grip's column (the page's md:pl-16) belongs to the editor: Crepe follows the mouse and takes a drop only over
+   the editor itself, so the grip neither showed up nor let go there. The text stays where it was. */
+@media (min-width: 768px) {
+  .nx-note-editor .milkdown .ProseMirror {
+    margin-left: -4rem;
+    padding-left: 4rem;
+  }
+}
+
 /* Headings like the reading view. */
 .nx-note-editor .milkdown .ProseMirror h1 {
   font-size: 1.6rem;
