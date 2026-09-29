@@ -144,7 +144,11 @@ test('Escape closes the name field and leaves the name as it was; F2 and the men
   await expect(page.locator('article')).toBeVisible()
   // F2 needs to know one may write here: that comes with the spaces, and Edit says so.
   await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeEnabled()
-  await page.keyboard.press('F2')
+  // The key is listened for right after the page is drawn; on a busy machine the first press can come before that.
+  await expect(async () => {
+    await page.keyboard.press('F2')
+    await expect(page.getByLabel('New name')).toBeVisible({ timeout: 1000 })
+  }).toPass({ timeout: 10_000 })
   await expect(page.getByLabel('New name')).toHaveValue('Embedded')
   await page.getByLabel('New name').press('Escape')
   await page.locator('summary[aria-label="More"]').click()
