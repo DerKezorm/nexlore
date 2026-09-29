@@ -53,7 +53,7 @@ def paths_of(client: TestClient) -> list[str]:
 def test_new_is_what_others_changed_after_the_last_visit(people: dict[str, TestClient], vault: Path) -> None:
     anna, bob, carl = people["anna"], people["bob"], people["carl"]
     # Asked the first time: from now on; what was there before is not new.
-    assert paths_of(bob) == []
+    assert paths_of(bob) == [] and paths_of(anna) == []
     save(anna, "Garden/Beds.md", "# Beds\n\nTomatoes and beans.\n")
     news = bob.get("/api/news").json()
     assert news["count"] == 1
