@@ -114,6 +114,7 @@
     "lockedBanner": "{{name}} is editing this note right now. You can read it; editing works once they are done.",
     "changed": "changed {{when}}",
     "editorPlaceholder": "Start writing. [[ links another note, / inserts a block.",
+    "linkedTimes": "linked {{count}} times",
     "missingLink": "No note yet",
     "embedLoading": "Loading the note …",
     "embedMissing": "This note is not there (any more).",

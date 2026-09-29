@@ -114,6 +114,7 @@
     "lockedBanner": "{{name}} bearbeitet diese Notiz gerade. Du kannst lesen; bearbeiten geht, sobald sie fertig ist.",
     "changed": "geändert {{when}}",
     "editorPlaceholder": "Einfach losschreiben. [[ verlinkt eine andere Notiz, / fügt einen Block ein.",
+    "linkedTimes": "{{count}}-mal verlinkt",
     "missingLink": "Noch keine Notiz",
     "embedLoading": "Notiz wird geladen …",
     "embedMissing": "Diese Notiz gibt es nicht (mehr).",

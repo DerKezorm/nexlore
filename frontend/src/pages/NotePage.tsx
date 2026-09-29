@@ -25,7 +25,7 @@ import { openInTab } from '../lib/tabs'
 import { copiesOf, originalOf } from '../lib/compare'
 import { errorText } from '../lib/errors'
 import { isFileTarget, isNotePath } from '../lib/files'
-import { LinkIndex, linkedSpace, linkName } from '../lib/links'
+import { distinctOutgoing, LinkIndex, linkedSpace, linkName } from '../lib/links'
 import { fileRoute, formatDate, renderMarkdown } from '../lib/markdown'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { versionSource } from '../lib/versions'
@@ -448,6 +448,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     return (target: string) => map.get(target.toLowerCase()) ?? null
   }, [links])
   const html = useMemo(() => (note ? renderMarkdown(note.content, resolve, note.path) : ''), [note, resolve])
+  const outgoing = useMemo(() => distinctOutgoing(links?.outgoing ?? []), [links])
   const copies = useMemo(() => copiesOf(path, siblings), [path, siblings])
   const view = note ? viewFor(plugins, note) : null
   const reveal = (heading: string, index: number) => {
@@ -880,20 +881,23 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
               </button>
             ))}
           </Section>
-          <Section symbol="link" title={t('note.outgoing')} count={links?.outgoing.length ?? 0}>
-            {links?.outgoing.map((item, index) =>
-              item.path ? (
+          <Section symbol="link" title={t('note.outgoing')} count={outgoing.length}>
+            {outgoing.map(({ link: item, count }, index) => {
+              const times = count > 1 && <span className="ml-auto shrink-0 text-xs text-mist-600 tabular-nums" aria-label={t('note.linkedTimes', { count })}>×{count}</span>
+              return item.path ? (
                 <button key={index} type="button" onClick={() => (isNotePath(item.path!) ? open(item.path!) : openFile(item.path!))} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-sm text-mist-300 hover:bg-ink-850">
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: folderColor(item.path) }} />
                   <span className="truncate">{item.title}</span>
+                  {times}
                 </button>
               ) : (
                 <div key={index} className="flex items-center gap-2 px-2 py-1 text-sm text-mist-600" title={t('note.missingLink')}>
                   <span className="h-2 w-2 shrink-0 rounded-full border border-dashed border-mist-600" />
-                  <span className="truncate">{item.target}</span>
+                  <span className="truncate">{linkName(item.target)}</span>
+                  {times}
                 </div>
-              ),
-            )}
+              )
+            })}
           </Section>
           <Versions path={note.path} disabled={editing || !!lockedBy || !mayWrite} onRestored={() => void Promise.all([load(note.path), reload()])} />
         </aside>

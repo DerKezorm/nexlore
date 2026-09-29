@@ -26,7 +26,7 @@ from ..db import SessionLocal
 from ..deps import Account, OperatorAccount, need, readable_spaces
 from ..errors import error
 from ..models import FTS_TABLE, MANAGE, OPERATOR, READ, WRITE, File, Link, Membership, Space, Tag
-from ..services import everyday, index, paths, rights, spaceopts, vault
+from ..services import everyday, index, paths, rights, snippets, spaceopts, vault
 from ..services.vault import Actor, VaultError
 
 router = APIRouter(prefix="/api", tags=["vault"])
@@ -600,7 +600,7 @@ def search(
         values["space"] = space
     with SessionLocal() as db:
         rows = db.execute(text(sql), values).all()
-    return [Hit(path=path, title=title, snippet=snippet or "") for path, title, snippet in rows]
+    return [Hit(path=path, title=title, snippet=snippets.plain(snippet or "")) for path, title, snippet in rows]
 
 
 class Found(BaseModel):

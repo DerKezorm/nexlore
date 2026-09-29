@@ -20,6 +20,22 @@ export function linkName(target: string): string {
 const fold = (text: string) => text.normalize('NFC').toLocaleLowerCase()
 
 /**
+ * The links of a note for the list beside it: each place once, in the order of the first link, with how often the
+ * note links there. A found link counts by where it leads (`[[Plan]]` and `[[Plan#Goals]]` are one place), a missing
+ * one by the name it asks for.
+ */
+export function distinctOutgoing(outgoing: Outgoing[]): { link: Outgoing; count: number }[] {
+  const seen = new Map<string, { link: Outgoing; count: number }>()
+  for (const link of outgoing) {
+    const key = link.path ? 'p:' + link.path : 'm:' + fold(linkName(link.target))
+    const entry = seen.get(key)
+    if (entry) entry.count += 1
+    else seen.set(key, { link, count: 1 })
+  }
+  return [...seen.values()]
+}
+
+/**
  * The space a wiki link names in front (`[[Homelab/Why ZFS]]`), when it is another space the account can see, with
  * the rest of the path. Null for a link inside the own space, and for a space the account does not know: it only
  * knows the spaces it may read, so a link into any other looks like a link to a folder that is not there.

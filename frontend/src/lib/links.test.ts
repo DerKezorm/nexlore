@@ -1,4 +1,4 @@
-import { LinkIndex, linkedSpace, linkName, type Asker } from './links'
+import { distinctOutgoing, LinkIndex, linkedSpace, linkName, type Asker } from './links'
 
 /** A server that knows a few notes of the space `Work`, as `index.resolve` would answer from `Work/Ideas/Note.md`. */
 function fakeServer(): Asker & { asked: string[][] } {
@@ -151,5 +151,25 @@ describe('a link that names another space in front', () => {
     expect(linkedSpace('Plan', spaces, 'Work')).toBeNull()
     expect(linkedSpace('Homelab/', spaces, 'Work')).toBeNull()
     expect(linkedSpace('Secret/Plan', spaces, 'Work')).toBeNull()
+  })
+})
+
+describe('distinctOutgoing', () => {
+  const link = (target: string, path: string | null, line = 1) => ({ kind: 'wiki', target, subpath: '', line, path, title: path })
+  it('lists each place once, in the order of the first link, with how often the note links there', () => {
+    const list = distinctOutgoing([
+      link('Welcome', 'Guide/Welcome.md', 1),
+      link('Map', 'Guide/Map.md', 2),
+      link('Welcome#Start', 'Guide/Welcome.md', 3),
+      link('Welcome|home', 'Guide/Welcome.md', 4),
+    ])
+    expect(list.map(({ link, count }) => [link.path, count, link.line])).toEqual([
+      ['Guide/Welcome.md', 3, 1],
+      ['Guide/Map.md', 1, 2],
+    ])
+  })
+  it('counts a missing link by the name it asks for, whatever heading, alias or case it carries', () => {
+    const list = distinctOutgoing([link('Someday', null), link('someday#Later', null), link('Someday|one day', null), link('Other', null)])
+    expect(list.map(({ link, count }) => [link.target, count])).toEqual([['Someday', 3], ['Other', 1]])
   })
 })
