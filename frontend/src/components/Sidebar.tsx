@@ -507,7 +507,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
         {spaces.length === 0 && <p className="px-2 text-sm text-mist-500">{scan.running ? t('scan.plain') : t('sidebar.empty')}</p>}
         <ul className="relative" style={{ height: rows.out.length * ROW }}>
           {rows.out.slice(first, last).map((row, i) => (
-            <li key={row.kind + ':' + row.path} className="absolute right-0 left-0" style={{ top: (first + i) * ROW, height: ROW }}>
+            <li key={row.kind + ':' + row.path} data-path={row.path} className="absolute right-0 left-0" style={{ top: (first + i) * ROW, height: ROW }}>
               {renderRow(row)}
             </li>
           ))}

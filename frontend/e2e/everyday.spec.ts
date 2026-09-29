@@ -241,7 +241,8 @@ test('templates can be found: made from the new note dialog, saved from the menu
   expect(onDisk('Zone/Templates/New template.md')).toContain('{{title}}')
   // The templates folder has its own symbol.
   const tree = page.getByTestId('sidebar-tree')
-  await expect(tree.locator('li', { has: page.getByRole('button', { name: /^Templates \d+$/ }) }).locator('[data-look="template"]')).toBeVisible()
+  // Zone's, not another space's that happens to be open too.
+  await expect(tree.locator('li[data-path="Zone/Templates"] [data-look="template"]')).toBeVisible()
 
   // A note of its own saved as a template, from the menu.
   await page.goto('/note/Zone/Across.md')
