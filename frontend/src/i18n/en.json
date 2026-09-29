@@ -19,6 +19,13 @@
     "tasks": "Tasks"
   },
   "search": {
+    "create": "Make the note “{{title}}”",
+    "createIn": "New in {{folder}}",
+    "heading": "Heading {{level}} of this note",
+    "alias": "as “{{alias}}” · {{folder}}",
+    "noHeadings": "No heading fits.",
+    "headingsNeedNote": "Open a note first: # lists its headings.",
+    "hint": "↵ open · Shift ↵ make a note of this name · # headings of this note · Ctrl P commands",
     "button": "Search",
     "shortcut": "Ctrl K",
     "placeholder": "Search notes …",
@@ -41,6 +48,20 @@
     "cancel": "Cancel",
     "save": "Save",
     "saved": "Saved."
+  },
+  "palette": {
+    "title": "Commands",
+    "menu": "Commands",
+    "placeholder": "Type a command …",
+    "nothing": "No command fits.",
+    "app": "App",
+    "note": "Note",
+    "editor": "Editor",
+    "goTo": "Go to {{place}}",
+    "dark": "Switch to dark mode",
+    "light": "Switch to light mode",
+    "startEditing": "Edit the note",
+    "stopEditing": "Stop editing"
   },
   "noteStart": {
     "title": "Your notes",

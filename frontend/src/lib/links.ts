@@ -202,7 +202,10 @@ export class LinkIndex {
             // A note of another space shows (and is linked) with that space's name in front.
             const own = hit.path.startsWith(space + '/')
             const shown = (own ? hit.path.slice(space.length + 1) : hit.path).replace(/\.md$/i, '')
-            return { label: hit.title || shown.split('/').pop()!, detail: shown, insert: hit.link ?? shown }
+            const title = hit.title || shown.split('/').pop()!
+            // Found by an alias: shown under it and linked with it as the text, as Obsidian does.
+            if (hit.alias) return { label: hit.alias, detail: `${title} · ${shown}`, insert: `${hit.link ?? shown}|${hit.alias}` }
+            return { label: title, detail: shown, insert: hit.link ?? shown }
           })
           this.found.set(key, items)
           for (const hit of hits) {

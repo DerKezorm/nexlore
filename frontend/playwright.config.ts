@@ -100,6 +100,8 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Zoo/Tidy/Box/Inside.md': '# Inside\n',
   'Zoo/Tidy/Old/Gone.md': '# Gone\n',
   'Zoo/Embedded.md':'# Embedded\n\n## Part one\n\nNot in the embed.\n\n## Part two\n\nIn the embed, with a link to [[Across target]].\n\n![[Reading]]\n',
+  // The palette and the quick switcher (palette.spec.ts), in a space of its own after all others (nothing moves).
+  'Zyx/Palette.md': `---\naliases: [Command deck]\n---\n# Palette\n\n## First part\n\n${'A line to scroll past.\n\n'.repeat(40)}## Far down\n\nThe end.\n`,
   'Switch/From.md': '# From\n\nStart.\n',
   'Switch/To.md': '# To\n\nOther note.\n',
   // The editor (editor.spec.ts): Obsidian's way of writing, kept byte for byte where nothing was changed.

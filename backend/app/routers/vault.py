@@ -26,7 +26,7 @@ from ..db import SessionLocal
 from ..deps import Account, OperatorAccount, need, readable_spaces
 from ..errors import error
 from ..models import FTS_TABLE, MANAGE, OPERATOR, READ, WRITE, File, Link, Membership, Space, Tag
-from ..services import everyday, index, paths, rights, snippets, spaceopts, vault
+from ..services import everyday, index, mdparse, paths, rights, snippets, spaceopts, vault
 from ..services.vault import Actor, VaultError
 
 router = APIRouter(prefix="/api", tags=["vault"])
@@ -609,6 +609,16 @@ class Found(BaseModel):
     #: With ``source``: the shortest text a wiki link in that note needs to reach this one (the name, or the path
     #: in the space where the name alone leads elsewhere).
     link: str | None = None
+    #: The alias from the note's ``aliases`` that matched, when the title and the name did not.
+    alias: str | None = None
+
+
+#: A note whose ``aliases`` (or older ``alias``) holds a name that contains the words, folded like names. A list
+#: gives a row per name, one text a single row.
+_ALIAS_MATCH = (
+    "EXISTS (SELECT 1 FROM json_each(files.front, '$.aliases') WHERE nx_fold(value) LIKE :alias ESCAPE '\\' "
+    "UNION ALL SELECT 1 FROM json_each(files.front, '$.alias') WHERE nx_fold(value) LIKE :alias ESCAPE '\\')"
+)
 
 
 def _like(value: str) -> str:
@@ -630,8 +640,9 @@ def find_notes(
     readable = readable_spaces(account)
     words = q.strip()
     clean = need(account, source, READ) if source else None
+    aliases: dict[int, str] = {}
     with SessionLocal() as db:
-        query = select(File.id, File.path, File.title, File.name_key, File.space_id).where(
+        query = select(File.id, File.path, File.title, File.name_key, File.space_id, File.front).where(
             File.is_note.is_(True), File.deleted_at.is_(None), File.space_id.in_(readable)
         )
         if space:
@@ -648,16 +659,34 @@ def find_notes(
             folded = paths.fold(words)
             found = db.execute(
                 query.where(
-                    File.name_key.like(_like(folded), escape="\\") | File.title.like(_like(words), escape="\\")
+                    File.name_key.like(_like(folded), escape="\\")
+                    | File.title.like(_like(words), escape="\\")
+                    # Obsidian's other names of a note, one by one: the JSON is stored with \u escapes.
+                    | text(_ALIAS_MATCH).bindparams(alias=_like(folded))
                 ).limit(2000)
             ).all()
 
-            def rank(row: Any) -> tuple[int, int, int, str]:
-                starts = row.name_key.startswith(folded) or paths.fold(row.title).startswith(folded)
-                elsewhere = home is not None and paths.space_of(row.path) != home
-                return (1 if elsewhere else 0, 0 if starts else 1, len(row.title), paths.fold(row.title))
+            def hit(row: Any) -> tuple[bool, str | None] | None:
+                """Whether it starts with what was typed, and the alias that matched; None: no real match."""
+                title = paths.fold(row.title)
+                if folded in row.name_key or folded in title:
+                    return row.name_key.startswith(folded) or title.startswith(folded), None
+                for alias in mdparse.aliases_of(row.front):
+                    if folded in paths.fold(alias):
+                        return paths.fold(alias).startswith(folded), alias
+                return None
 
-            rows = sorted(found, key=rank)[:limit]
+            matches = [(row, found_hit) for row in found if (found_hit := hit(row)) is not None]
+
+            def rank(item: tuple[Any, tuple[bool, str | None]]) -> tuple[int, int, int, int, str]:
+                row, (starts, alias) = item
+                elsewhere = home is not None and paths.space_of(row.path) != home
+                order = (1 if elsewhere else 0, 0 if starts else 1, 1 if alias else 0)
+                return (*order, len(row.title), paths.fold(row.title))
+
+            ranked = sorted(matches, key=rank)[:limit]
+            rows = [row for row, _ in ranked]
+            aliases = {row.id: alias for row, (_, alias) in ranked if alias}
         links: dict[int, str] = {}
         if clean is not None and rows:
             names = index.Names(db, rows[0].space_id, preload=False)
@@ -669,7 +698,7 @@ def find_notes(
                     # Into another space: its name in front, the note's name alone where that leads there.
                     name, inside = f"{space_name}/{name}", f"{space_name}/{inside}"
                 links[row.id] = name if index.resolve("wiki", name, clean, names) == row.id else inside
-    return [Found(path=row.path, title=row.title, link=links.get(row.id)) for row in rows]
+    return [Found(path=row.path, title=row.title, link=links.get(row.id), alias=aliases.get(row.id)) for row in rows]
 
 
 # --- Locks ----------------------------------------------------------------------------------------------------------

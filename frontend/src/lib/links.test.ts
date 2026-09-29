@@ -20,6 +20,7 @@ function fakeServer(): Asker & { asked: string[][] } {
             { path: 'Work/Ideas/Garden.md', title: 'Garden', link: 'Garden' },
             { path: 'Work/Other/Garden.md', title: 'Garden', link: 'Other/Garden' },
             { path: 'Homelab/Garden shed.md', title: 'Garden shed', link: 'Homelab/Garden shed' },
+            { path: 'Work/Plants.md', title: 'Plants', link: 'Plants', alias: 'Gardening' },
           ]
         : [],
   }
@@ -99,6 +100,8 @@ describe('wiki links in the editor, answered by the server', () => {
       { label: 'Garden', detail: 'Other/Garden', insert: 'Other/Garden' },
       // A note of another space: shown and linked with that space's name in front.
       { label: 'Garden shed', detail: 'Homelab/Garden shed', insert: 'Homelab/Garden shed' },
+      // Found by an alias: shown under it, linked with it as the text.
+      { label: 'Gardening', detail: 'Plants · Plants', insert: 'Plants|Gardening' },
     ])
     // What a suggestion inserts is known to lead there.
     expect(index.resolve('Other/Garden')).toBe('Work/Other/Garden.md')

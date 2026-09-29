@@ -9,6 +9,9 @@ import { isNotePath } from '../lib/files'
 import { fileRoute } from '../lib/markdown'
 import { NEW_NOTE_EVENT } from '../lib/newNote'
 import { askNoteList, narrow, SEARCH_EVENT } from '../lib/shell'
+import { PALETTE_EVENT, useCommands, type Command } from '../lib/commands'
+import { applyTheme, storedTheme } from '../lib/theme'
+import { CommandPalette } from './CommandPalette'
 import { VaultActions } from './VaultActions'
 import { folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
@@ -59,12 +62,18 @@ function typing(target: EventTarget | null): boolean {
 export function AppShell() {
   const { t } = useTranslation()
   const [searching, setSearching] = useState(false)
+  const [commanding, setCommanding] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
   useEffect(() => {
     const ask = () => setSearching(true)
+    const palette = () => setCommanding(true)
     window.addEventListener(SEARCH_EVENT, ask)
-    return () => window.removeEventListener(SEARCH_EVENT, ask)
+    window.addEventListener(PALETTE_EVENT, palette)
+    return () => {
+      window.removeEventListener(SEARCH_EVENT, ask)
+      window.removeEventListener(PALETTE_EVENT, palette)
+    }
   }, [])
 
   const { status, error, spaces, reload } = useStore()
@@ -92,9 +101,14 @@ export function AppShell() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setSearching(true)
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'p') {
+        // Instead of printing, as in Obsidian.
+        e.preventDefault()
+        setSearching(false)
+        setCommanding(true)
       } else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyT' && !typing(e.target)) {
         e.preventDefault()
         void openToday()
@@ -125,6 +139,33 @@ export function AppShell() {
   }
   const newNoteTarget = newNoteFolder()
   newNoteAt.current = newNoteTarget
+
+  // The palette's commands that hold everywhere: the places, and what the header does.
+  useCommands((): Command[] => {
+    const group = t('palette.app')
+    const go = (id: string, label: string, to: string, symbol: Command['symbol']) => ({ id, label, group, symbol, run: () => navigate(to) })
+    const list: Command[] = [
+      { id: 'app.search', label: t('search.button'), group, symbol: 'search', keys: t('search.shortcut'), run: () => setSearching(true) },
+      ...(home ? [{ id: 'app.today', label: t('today.title'), group, symbol: 'today' as const, keys: 'Alt+T', run: () => void openToday() }] : []),
+      ...(newNoteAt.current ? [{ id: 'app.newNote', label: t('sidebar.newNote'), group, symbol: 'plus' as const, keys: 'Alt+N', run: () => setCreating(newNoteAt.current) }] : []),
+      go('go.graph', t('palette.goTo', { place: t('nav.graph') }), '/', 'graph'),
+      go('go.notes', t('palette.goTo', { place: t('nav.notes') }), '/note', 'note'),
+      go('go.calendar', t('palette.goTo', { place: t('nav.calendar') }), '/calendar', 'calendar'),
+      go('go.tasks', t('palette.goTo', { place: t('nav.tasks') }), '/tasks', 'tasks'),
+      go('go.files', t('palette.goTo', { place: t('nav.files') }), '/files', 'files'),
+      go('go.settings', t('palette.goTo', { place: t('nav.settings') }), '/settings', 'settings'),
+      go('go.account', t('palette.goTo', { place: t('account.page') }), '/account', 'users'),
+      {
+        id: 'app.theme',
+        label: storedTheme() === 'light' ? t('palette.dark') : t('palette.light'),
+        group,
+        symbol: 'eye',
+        run: () => applyTheme(storedTheme() === 'light' ? 'dark' : 'light'),
+      },
+    ]
+    if (narrow()) list.push({ id: 'app.noteList', label: t('noteStart.list'), group, symbol: 'sidebar', run: askNoteList })
+    return list
+  })
 
   const pick = (id: string) => {
     // A PDF found by its text has a page of its own; it is not in the graph.
@@ -218,7 +259,8 @@ export function AppShell() {
       <div className="flex min-h-0 flex-1">
         <Outlet />
       </div>
-      {searching && <SearchDialog onClose={() => setSearching(false)} onPick={pick} />}
+      {searching && <SearchDialog onClose={() => setSearching(false)} onPick={pick} createIn={newNoteTarget} />}
+      {commanding && <CommandPalette onClose={() => setCommanding(false)} />}
       <VaultActions />
       {creating && (
         <NewNoteDialog

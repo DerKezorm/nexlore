@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 
 import { draftsApi, type DraftInfo } from '../api/client'
 import { languageOptions, type LanguageOption } from '../i18n'
+import { askPalette } from '../lib/commands'
 import { noteUrl } from '../lib/vault'
 import { useAuth } from '../state/auth'
 import { useInstall } from '../lib/install'
@@ -128,6 +129,10 @@ export function AccountMenu() {
           >
             <Symbol name="users" /> {t('account.page')}
           </Link>
+          <button type="button" onClick={() => { setOpen(false); askPalette() }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-mist-300 hover:bg-ink-850 hover:text-mist-100">
+            <Symbol name="command" /> {t('palette.menu')}
+            <kbd className="ml-auto hidden rounded border border-ink-700 px-1.5 text-[11px] text-mist-500 sm:inline">Ctrl P</kbd>
+          </button>
           {/* On a phone the header keeps the four daily places; these two live here. */}
           <Link to="/files" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-mist-300 hover:bg-ink-850 hover:text-mist-100 sm:hidden">
             <Symbol name="files" /> {t('nav.files')}

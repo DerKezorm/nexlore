@@ -26,6 +26,7 @@ import { aiMenu, type AiAsk } from '../lib/aiMenu'
 import { useContextMenu, type MenuItem } from '../lib/menu'
 import { linesShown, rememberLines, rememberToolbar, toolbarHidden } from '../lib/toolbar'
 import { baseName } from '../lib/vault'
+import { useCommands, type Command } from '../lib/commands'
 import { useAuth } from '../state/auth'
 import { AiDialog } from './AiDialog'
 import { EditorToolbar, ShowToolbar } from './EditorToolbar'
@@ -318,6 +319,47 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     ]
     menu.open(event.clientX, event.clientY, items)
   }
+
+  // The palette's formats and blocks, while the visual editor is open for writing.
+  useCommands((): Command[] => {
+    // Offered from the first moment; a command asks for the editor only when it runs (it loads a little later).
+    if (readOnly || mode !== 'visual') return []
+    const group = t('palette.editor')
+    const s = (key: string) => t(`editor.slash.${key}`)
+    const run = (command: EditorCommand) => () => {
+      const now = engine.current
+      if (!now) return
+      now.view.focus()
+      now.run(command)
+    }
+    const entry = (command: EditorCommand, label: string, symbol?: Command['symbol'], keys?: string): Command => ({ id: 'editor.' + command, label, group, symbol, keys, run: run(command) })
+    return [
+      entry('bold', t('editorMenu.bold'), 'bold', t('editorMenu.keyBold')),
+      entry('italic', t('editorMenu.italic'), 'italic', t('editorMenu.keyItalic')),
+      entry('strike', t('editorMenu.strike'), 'strike'),
+      entry('highlight', t('editorMenu.highlight'), 'highlight'),
+      entry('code', t('editorMenu.code'), 'code'),
+      entry('clear', t('toolbar.clear'), 'clearFormat'),
+      entry('text', s('text')),
+      entry('h1', s('h1'), 'heading'),
+      entry('h2', s('h2'), 'heading'),
+      entry('h3', s('h3'), 'heading'),
+      entry('quote', s('quote'), 'quote'),
+      entry('bulletList', s('bulletList'), 'listBullet'),
+      entry('orderedList', s('orderedList'), 'listOrdered'),
+      entry('taskList', s('taskList'), 'listTask'),
+      entry('codeBlock', s('code'), 'codeBlock'),
+      entry('wikiLink', s('wikiLink'), 'link'),
+      entry('embed', s('embed'), 'embed'),
+      entry('callout', s('callout'), 'info'),
+      entry('table', s('table'), 'table'),
+      entry('math', s('math'), 'sigma'),
+      entry('divider', s('divider')),
+      entry('attachment', s('attachment'), 'clip'),
+      entry('undo', t('toolbar.undo'), 'undo'),
+      entry('redo', t('toolbar.redo'), 'redo'),
+    ]
+  })
 
   // The file's line numbers: the body starts on the line after the front matter (its lines end with a line break).
   useEffect(() => {

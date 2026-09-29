@@ -31,3 +31,22 @@ export function takeNoteListWish(): boolean {
 export function narrow(): boolean {
   return typeof window !== 'undefined' && window.innerWidth < SHEET_BELOW
 }
+
+/** The note in front (the left pane): the quick switcher offers its headings after `#`. */
+export type ShownNote = { path: string; read: () => string }
+let shown: ShownNote | null = null
+
+export function setShownNote(note: ShownNote | null): void {
+  shown = note
+}
+
+export function shownNote(): ShownNote | null {
+  return shown
+}
+
+export const HEADING_EVENT = 'nexlore:heading'
+
+/** Scrolls the note in front to a heading (its text, and which of the headings it is if the text is not found). */
+export function askHeading(text: string, index: number): void {
+  window.dispatchEvent(new CustomEvent<{ text: string; index: number }>(HEADING_EVENT, { detail: { text, index } }))
+}

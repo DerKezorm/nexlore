@@ -30,7 +30,9 @@ import { distinctOutgoing, LinkIndex, linkedSpace, linkName } from '../lib/links
 import { fileRoute, formatDate, renderMarkdown } from '../lib/markdown'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { versionSource } from '../lib/versions'
-import { LEAVING_EVENT, within, type Leaving } from '../lib/vaultActions'
+import { copyText, LEAVING_EVENT, within, type Leaving } from '../lib/vaultActions'
+import { useCommands, type Command } from '../lib/commands'
+import { HEADING_EVENT, setShownNote } from '../lib/shell'
 import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
 import { LocalGraph } from '../components/LocalGraph'
@@ -452,11 +454,29 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const copies = useMemo(() => copiesOf(path, siblings), [path, siblings])
   const view = note ? viewFor(plugins, note) : null
   const reveal = (heading: string, index: number) => {
-    const found = [...(article.current?.querySelectorAll('h1, h2, h3, h4, h5, h6') ?? [])]
+    // Reading: the article; writing: the editor of this pane.
+    const root = article.current ?? document.querySelector(`[data-pane="${side}"] .ProseMirror`)
+    const found = [...(root?.querySelectorAll('h1, h2, h3, h4, h5, h6') ?? [])]
     const target = found.find((element) => element.textContent?.trim() === heading.trim()) ?? found[index]
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
   const pluginWrote = () => void load(path)
+  // The note in front, for the quick switcher's headings after "#" (with what is typed in the editor).
+  const revealNow = useRef(reveal)
+  revealNow.current = reveal
+  useEffect(() => {
+    if (side !== 'left' || !note) return
+    setShownNote({ path: note.path, read: () => (editingNow.current && editor.current ? editor.current.text() : note.content) })
+    const jump = (event: Event) => {
+      const { text, index } = (event as CustomEvent<{ text: string; index: number }>).detail
+      revealNow.current(text, index)
+    }
+    window.addEventListener(HEADING_EVENT, jump)
+    return () => {
+      setShownNote(null)
+      window.removeEventListener(HEADING_EVENT, jump)
+    }
+  }, [side, note])
   const originalPath = originalOf(path)
 
   const openFile = (file: string, newTab = false) => {
@@ -555,6 +575,32 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     setComparing({ note: notePath, copy: copyPath })
   }
 
+  // The palette's commands for the note in front (the left one; the right one is only beside it).
+  useCommands((): Command[] => {
+    if (!note || side !== 'left' || mirror) return []
+    const group = t('palette.note')
+    const role = spaces.find((space) => space.name === note.path.split('/')[0])?.role ?? 'read'
+    const mayWrite = role !== 'read'
+    const locked = !!(lockHolder ?? (note.lock && !note.lock.mine ? note.lock.holder : null))
+    const favorite = favorites.some((item) => item.path === note.path)
+    const list: Command[] = [
+      { id: 'note.inGraph', label: t('note.inGraph'), group, symbol: 'graph', run: () => navigate(`/?focus=${encodeURIComponent(note.path)}`) },
+      { id: 'note.favorite', label: favorite ? t('note.favoriteRemove') : t('note.favoriteAdd'), group, symbol: 'star', run: () => void setFavorite(note.path, !favorite) },
+      { id: 'note.copyLink', label: t('menu.copyLink'), group, symbol: 'link', run: () => void copyText(`[[${baseName(note.path).replace(/\.md$/i, '')}]]`) },
+    ]
+    if (editing) {
+      list.unshift({ id: 'note.read', label: t('palette.stopEditing'), group, symbol: 'eye', run: () => void stopEditing() })
+      list.push({ id: 'note.mode', label: mode === 'visual' ? t('note.sourceMode') : t('note.visualMode'), group, symbol: 'code', run: () => setMode(mode === 'visual' ? 'source' : 'visual') })
+    } else if (mayWrite && !locked && !note.readonly) {
+      list.unshift({ id: 'note.edit', label: t('palette.startEditing'), group, symbol: 'pencil', run: () => void startEditing() })
+    }
+    if (mayWrite && !editing) {
+      list.push({ id: 'note.rename', label: t('note.rename'), group, symbol: 'move', run: () => setRenaming(baseName(note.path)) })
+      if (!locked) list.push({ id: 'note.delete', label: t('note.delete'), group, symbol: 'trash', run: () => void askToDelete() })
+    }
+    if (role === 'manage' && me?.shares_allowed && !editing) list.push({ id: 'note.share', label: t('share.button'), group, symbol: 'globe', run: () => setSharing(true) })
+    return list
+  })
   const uploaded = (done: Uploaded[]) => {
     const removed = new Set(done.flatMap((item) => item.removed))
     const parts = [t('note.uploaded', { count: done.length })]

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { applyTheme, storedTheme, type Theme } from '../lib/theme'
+import { applyTheme, storedTheme, THEME_EVENT, type Theme } from '../lib/theme'
 
 function MoonIcon() {
   return (
@@ -24,6 +24,12 @@ function SunIcon() {
 export function ThemeSwitcher() {
   const { t } = useTranslation()
   const [theme, setTheme] = useState<Theme>(storedTheme())
+  // Switched elsewhere too (the command palette): follow.
+  useEffect(() => {
+    const follow = () => setTheme(storedTheme())
+    window.addEventListener(THEME_EVENT, follow)
+    return () => window.removeEventListener(THEME_EVENT, follow)
+  }, [])
 
   function select(next: Theme) {
     applyTheme(next)

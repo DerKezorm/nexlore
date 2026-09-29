@@ -538,12 +538,31 @@ def test_notes_are_found_by_title_and_name_starting_ones_first(client: TestClien
         "Garden/100% sure_thing.md"
     ]
     assert client.get("/api/notes/find", params={"q": "e_t"}).json() == [
-        {"path": "Garden/100% sure_thing.md", "title": "100% sure_thing", "link": None}
+        {"path": "Garden/100% sure_thing.md", "title": "100% sure_thing", "link": None, "alias": None}
     ]
     assert client.get("/api/notes/find", params={"q": "_"}).json()[0]["path"] == "Garden/100% sure_thing.md"
     assert len(client.get("/api/notes/find", params={"q": "%"}).json()) == 1
     assert len(client.get("/api/notes/find").json()) == 7
     assert client.get("/api/notes/find", params={"q": "basil", "space": "Nowhere"}).json() == []
+
+
+def test_notes_are_found_by_their_aliases_after_title_and_name(client: TestClient, garden: Path) -> None:
+    put(garden, "Garden/Herbs.md", "---\naliases: [Kräuter, Würzpflanzen]\n---\nherbs")
+    put(garden, "Garden/Old.md", "---\nalias: Greens\n---\nold style")
+    put(garden, "Garden/Odd.md", "---\naliases: 4711\n---\na number")
+    put(garden, "Garden/Nested.md", "---\naliases: [[Kräuter]]\n---\nnot a name")
+    put(garden, "Garden/Kräutergarten.md", "the title itself")
+    index.scan()
+
+    def find(q: str) -> list[tuple[str, str | None]]:
+        return [(hit["path"], hit["alias"]) for hit in client.get("/api/notes/find", params={"q": q}).json()]
+
+    # The title beats an alias that fits as well; case and umlauts fold like names.
+    assert find("KRÄUTER") == [("Garden/Kräutergarten.md", None), ("Garden/Herbs.md", "Kräuter")]
+    assert find("würz") == [("Garden/Herbs.md", "Würzpflanzen")]
+    assert find("pflanz") == [("Garden/Herbs.md", "Würzpflanzen")]
+    assert find("greens") == [("Garden/Old.md", "Greens")]
+    assert find("4711") == [("Garden/Odd.md", "4711")]
 
 
 def test_many_links_are_resolved_at_once(client: TestClient, garden: Path) -> None:

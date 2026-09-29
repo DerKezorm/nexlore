@@ -179,6 +179,20 @@ def _count(features: dict[str, int], key: str, amount: int = 1) -> None:
         features[key] = features.get(key, 0) + amount
 
 
+def aliases_of(front: Any) -> list[str]:
+    """A note's other names from its front matter: Obsidian's ``aliases`` (a list, or one text), older vaults'
+    ``alias``. Numbers count as text; anything else (a map, a list in a list) is not a name."""
+    if not isinstance(front, dict):
+        return []
+    names: list[str] = []
+    for key in ("aliases", "alias"):
+        value = front.get(key)
+        for item in value if isinstance(value, list) else [value]:
+            if isinstance(item, str | int | float) and not isinstance(item, bool) and str(item).strip():
+                names.append(str(item).strip())
+    return names[:50]
+
+
 def _split_wiki(inner: str, inner_start: int) -> tuple[str, str, int, int]:
     """``Folder/Note#Part|shown`` into target and subpath, with the target's offsets in the file."""
     path_part = inner.split("|", 1)[0].removesuffix("\\")  # [[Note\|shown]] inside a table

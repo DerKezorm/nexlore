@@ -7,6 +7,7 @@ Renaming or dropping never happens automatically.
 from __future__ import annotations
 
 import logging
+import unicodedata
 from collections.abc import Iterator
 from enum import Enum
 from typing import Any
@@ -46,6 +47,12 @@ def _pragmas(dbapi_connection: Any, _record: Any) -> None:
     cursor.execute(f"PRAGMA busy_timeout={BUSY_SECONDS * 1000}")
     cursor.execute("PRAGMA synchronous=NORMAL")
     cursor.close()
+    # SQLite's own lower() and LIKE fold only ASCII: "Ä" never met "ä". This folds like ``paths.fold``.
+    dbapi_connection.create_function("nx_fold", 1, _fold, deterministic=True)
+
+
+def _fold(value: Any) -> str | None:
+    return None if value is None else unicodedata.normalize("NFC", str(value)).casefold()
 
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)

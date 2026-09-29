@@ -19,6 +19,13 @@
     "tasks": "Aufgaben"
   },
   "search": {
+    "create": "Notiz „{{title}}“ anlegen",
+    "createIn": "Neu in {{folder}}",
+    "heading": "Überschrift {{level}} dieser Notiz",
+    "alias": "als „{{alias}}“ · {{folder}}",
+    "noHeadings": "Keine Überschrift passt.",
+    "headingsNeedNote": "Erst eine Notiz öffnen: # zeigt ihre Überschriften.",
+    "hint": "↵ öffnen · Shift ↵ Notiz mit diesem Namen anlegen · # Überschriften dieser Notiz · Strg P Befehle",
     "button": "Suchen",
     "shortcut": "Strg K",
     "placeholder": "Notiz suchen …",
@@ -41,6 +48,20 @@
     "cancel": "Abbrechen",
     "save": "Speichern",
     "saved": "Gespeichert."
+  },
+  "palette": {
+    "title": "Befehle",
+    "menu": "Befehle",
+    "placeholder": "Befehl eingeben …",
+    "nothing": "Kein Befehl passt.",
+    "app": "App",
+    "note": "Notiz",
+    "editor": "Editor",
+    "goTo": "Gehe zu {{place}}",
+    "dark": "Dunkel schalten",
+    "light": "Hell schalten",
+    "startEditing": "Notiz bearbeiten",
+    "stopEditing": "Bearbeiten beenden"
   },
   "noteStart": {
     "title": "Deine Notizen",
