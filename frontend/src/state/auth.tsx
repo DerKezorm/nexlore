@@ -5,6 +5,7 @@
  * The account's language wins over the browser's once somebody is signed in: it travels with the account from one
  * device to the next.
  */
+import { applyAppearance, DEFAULT_APPEARANCE, type Appearance } from '../lib/appearance'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -21,6 +22,8 @@ type Auth = {
   signOut: () => Promise<void>
   /** The own language, remembered with the account; empty follows the browser. */
   setLanguage: (code: string) => Promise<void>
+  /** How nexlore looks for the account; only the values given change. */
+  setAppearance: (changes: Partial<Appearance>) => Promise<void>
 }
 
 const AuthContext = createContext<Auth | null>(null)
@@ -39,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null
       }
       const account = await authApi.me()
+      applyAppearance(account.appearance ?? DEFAULT_APPEARANCE)
       setMe(account)
       setStatus('signedIn')
       if (account.language && account.language !== i18n.language) await changeLanguage(account.language)
@@ -77,7 +81,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setMe((current) => (current ? { ...current, language: account.language } : current))
   }, [])
 
-  const value = useMemo<Auth>(() => ({ status, me, refresh, signOut, setLanguage }), [status, me, refresh, signOut, setLanguage])
+  const setAppearance = useCallback(async (changes: Partial<Appearance>) => {
+    // Shown at once; the server's answer (with what it took) follows.
+    setMe((current) => {
+      if (!current) return current
+      const next = { ...(current.appearance ?? DEFAULT_APPEARANCE), ...changes }
+      applyAppearance(next)
+      return { ...current, appearance: next }
+    })
+    const saved = await authApi.setAppearance(changes)
+    applyAppearance(saved)
+    setMe((current) => (current ? { ...current, appearance: saved } : current))
+  }, [])
+
+  const value = useMemo<Auth>(() => ({ status, me, refresh, signOut, setLanguage, setAppearance }), [status, me, refresh, signOut, setLanguage, setAppearance])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 

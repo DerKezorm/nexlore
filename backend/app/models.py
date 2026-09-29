@@ -404,6 +404,8 @@ class Account(Base):
     #: was set, which makes its address new.
     avatar: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True, deferred=True)
     avatar_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: How nexlore looks for the account (``services/appearance.py``): only what it chose; defaults fill the rest.
+    appearance: Mapped[Any] = mapped_column(JSON, nullable=True)
     #: Not stored. Set on the account an MCP key acts as when the key may see only some spaces (``services/mcp.py``):
     #: ``rights`` then answers for every other space as if it did not exist.
     key_spaces: ClassVar[frozenset[int] | None] = None

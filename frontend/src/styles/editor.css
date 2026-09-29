@@ -23,9 +23,9 @@
   --crepe-color-selected: color-mix(in srgb, var(--color-accent-500) 22%, transparent);
   --crepe-color-inline-area: var(--color-ink-800);
 
-  --crepe-base-font-size: 15px;
-  --crepe-font-title: var(--font-sans);
-  --crepe-font-default: var(--font-sans);
+  --crepe-base-font-size: var(--nn-text-size);
+  --crepe-font-title: var(--font-text);
+  --crepe-font-default: var(--font-text);
   --crepe-font-code: var(--font-mono);
 
   --crepe-shadow-1: 0 1px 3px rgb(0 0 0 / 0.35);

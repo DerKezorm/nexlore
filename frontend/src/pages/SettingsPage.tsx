@@ -22,17 +22,18 @@ import {
 } from '../components/settings/AdminCards'
 import { AdminPluginsCard } from '../plugins/PluginSettings'
 import { useServerSettings } from '../components/settings/useServerSettings'
+import { AppearanceCard } from '../components/settings/AppearanceCard'
 import { SpacesCard } from '../components/settings/SpacesCard'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { TabRow, type Tab } from '../components/TabRow'
 import { downloadTemplate, languageOptions, type LanguageOption } from '../i18n'
 import { useAuth } from '../state/auth'
 
-type Top = 'general' | 'spaces' | 'server'
+type Top = 'general' | 'looks' | 'spaces' | 'server'
 type Part = 'accounts' | 'signin' | 'shares' | 'extensions' | 'files' | 'backups' | 'languages'
-const TOPS: Top[] = ['general', 'spaces', 'server']
+const TOPS: Top[] = ['general', 'looks', 'spaces', 'server']
 const PARTS: Part[] = ['accounts', 'signin', 'shares', 'extensions', 'files', 'backups', 'languages']
-const TOP_SYMBOL: Record<Top, SymbolName> = { general: 'globe', spaces: 'space', server: 'shield' }
+const TOP_SYMBOL: Record<Top, SymbolName> = { general: 'globe', looks: 'eye', spaces: 'space', server: 'shield' }
 const PART_SYMBOL: Record<Part, SymbolName> = {
   accounts: 'users', signin: 'key', shares: 'globe', extensions: 'plug', files: 'files', backups: 'history', languages: 'globe',
 }
@@ -61,6 +62,7 @@ export function SettingsPage() {
         {top === 'server' && <TabRow under tabs={parts} active={part} onChange={(value) => go('server', value)} label={t('settings.tabs.server')} />}
         <div className="space-y-6 pt-1">
           {top === 'general' && <LanguageCard />}
+          {top === 'looks' && <AppearanceCard />}
           {top === 'spaces' && <SpacesCard />}
           {top === 'server' && <ServerPart part={part} />}
         </div>

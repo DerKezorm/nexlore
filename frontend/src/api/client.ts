@@ -5,6 +5,8 @@
  * Errors come back as `ApiError` with the server's code; the page builds its sentence from `errors.byCode`.
  */
 
+import type { Appearance } from '../lib/appearance'
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -334,6 +336,7 @@ export type Me = Account & {
   second_factor_setup_required: boolean
   /** The editor offers AI: the operator allows it and the account switched its own service on. */
   ai_ready?: boolean
+  appearance?: Appearance
 }
 export type AdminAccount = Account & { spaces: number; locked: boolean }
 export type SetupState = { needs_setup: boolean; signed_in: boolean; version: string; min_password: number }
@@ -358,6 +361,7 @@ export const authApi = {
   me: () => api<Me>('/api/auth/me'),
   changePassword: (current: string, next: string) => api<void>('/api/auth/password', { method: 'PUT', body: { current, new: next } }),
   setLanguage: (language: string) => api<Account>('/api/me/language', { method: 'PUT', body: { language } }),
+  setAppearance: (changes: Partial<Appearance>) => api<Appearance>('/api/me/appearance', { method: 'PUT', body: changes }),
   linkStart: (password: string) => api<{ url: string }>('/api/oidc/link/start', { method: 'POST', body: { password } }),
   unlink: () => api<void>('/api/oidc/link', { method: 'DELETE' }),
   /** The picture itself as the body; the server draws a small square of it anew. */

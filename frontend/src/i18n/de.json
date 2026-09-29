@@ -89,6 +89,33 @@
     "label": "Vorschau der Notiz",
     "failed": "Die Notiz konnte nicht geladen werden."
   },
+  "looks2": {
+    "title": "Aussehen",
+    "text": "Für dein Konto, auf jedem Gerät. Jede Änderung wirkt sofort.",
+    "mode": "Hell oder dunkel",
+    "modes": {
+      "light": "Hell",
+      "dark": "Dunkel",
+      "system": "Wie das System"
+    },
+    "font": {
+      "ui": "Oberfläche",
+      "text": "Text der Notizen",
+      "code": "Code",
+      "system": "Die des Systems"
+    },
+    "size": "Textgröße",
+    "width": "Breite des Textes",
+    "widths": {
+      "narrow": "Schmal",
+      "normal": "Normal",
+      "wide": "Breit",
+      "full": "Volle Breite"
+    },
+    "wideHint": "Eine einzelne Notiz wird breit mit cssclasses: wide in ihren Eigenschaften, wie in Obsidian.",
+    "sampleTitle": "Brotteig",
+    "sampleText": "Mehl, Wasser, Salz. Über Nacht gehen lassen, dann in den Ofen auf 250 Grad. Eine Schale Wasser im Ofen macht die Kruste besser; Zeilen um siebzig Zeichen lesen sich am ruhigsten."
+  },
   "noteStart": {
     "recentOpened": "Zuletzt geöffnet",
     "title": "Deine Notizen",
@@ -273,6 +300,7 @@
     },
     "tabs": {
       "general": "Allgemein",
+      "looks": "Aussehen",
       "spaces": "Bereiche",
       "server": "Server"
     },

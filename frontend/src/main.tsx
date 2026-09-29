@@ -6,6 +6,8 @@ import App from './App'
 import { startI18n } from './i18n'
 import { registerServiceWorker } from './lib/offline'
 import { AuthProvider } from './state/auth'
+import '@fontsource-variable/inter'
+import '@fontsource-variable/jetbrains-mono'
 import './styles/index.css'
 
 registerServiceWorker()

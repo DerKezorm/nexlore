@@ -3,6 +3,7 @@ import type { ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { applyTheme, storedTheme, THEME_EVENT, type Theme } from '../lib/theme'
+import { useAuth } from '../state/auth'
 
 function MoonIcon() {
   return (
@@ -31,9 +32,12 @@ export function ThemeSwitcher() {
     return () => window.removeEventListener(THEME_EVENT, follow)
   }, [])
 
+  const { me, setAppearance } = useAuth()
   function select(next: Theme) {
     applyTheme(next)
     setTheme(next)
+    // With the account: the same on every device (signed out, on the sign-in page, it stays in this browser).
+    if (me) void setAppearance({ mode: next }).catch(() => {})
   }
 
   const modes: { value: Theme; label: string; icon: () => ReactElement }[] = [

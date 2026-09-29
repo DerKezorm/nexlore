@@ -89,6 +89,33 @@
     "label": "Preview of the note",
     "failed": "The note could not be loaded."
   },
+  "looks2": {
+    "title": "Look",
+    "text": "For your account, on every device. Each change shows at once.",
+    "mode": "Light or dark",
+    "modes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "As the system"
+    },
+    "font": {
+      "ui": "Interface",
+      "text": "Text of notes",
+      "code": "Code",
+      "system": "The system’s"
+    },
+    "size": "Text size",
+    "width": "Width of the text",
+    "widths": {
+      "narrow": "Narrow",
+      "normal": "Normal",
+      "wide": "Wide",
+      "full": "Full width"
+    },
+    "wideHint": "A single note goes wide with cssclasses: wide among its properties, as in Obsidian.",
+    "sampleTitle": "Bread dough",
+    "sampleText": "Flour, water, salt. Leave it overnight, then into the oven at 250 degrees. A bowl of water in the oven makes the crust better; lines of about seventy characters read most calmly."
+  },
   "noteStart": {
     "recentOpened": "Opened last",
     "title": "Your notes",
@@ -273,6 +300,7 @@
     },
     "tabs": {
       "general": "General",
+      "looks": "Look",
       "spaces": "Spaces",
       "server": "Server"
     },

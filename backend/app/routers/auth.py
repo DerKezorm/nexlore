@@ -36,7 +36,7 @@ from ..security import (
     session_account,
     start_session,
 )
-from ..services import accounts, ai, guide, locales, mailer, settings_service, totp
+from ..services import accounts, ai, appearance, guide, locales, mailer, settings_service, totp
 from ..services.accounts import AccountError
 
 logger = logging.getLogger("nexlore.auth")
@@ -231,6 +231,7 @@ def me(account: Account, db: DbSession) -> dict[str, Any]:
         "second_factor_setup_required": totp.setup_required(db, account),
         # The editor offers AI only when the operator allows it and the account switched its own service on.
         "ai_ready": ai.ready(db, account),
+        "appearance": appearance.of(account.appearance),
     }
 
 
@@ -260,6 +261,18 @@ def set_language(payload: LanguageIn, account: Account, db: DbSession) -> dict[s
     row.language = check_language(payload.language)
     db.commit()
     return account_view(row)
+
+
+@router.put("/me/appearance", summary="How nexlore looks for the own account; only the values sent change")
+def set_appearance(payload: dict[str, Any], account: Account, db: DbSession) -> dict[str, Any]:
+    row = db.get(AccountRow, account.id)
+    assert row is not None
+    try:
+        row.appearance = appearance.change(row.appearance, payload)
+    except appearance.AppearanceError as exc:
+        raise error("bad_appearance", "This value is not one nexlore offers.", 422, field=exc.field) from exc
+    db.commit()
+    return appearance.of(row.appearance)
 
 
 # --- Accounts (operator) --------------------------------------------------------------------------------------------

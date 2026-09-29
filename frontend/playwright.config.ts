@@ -108,6 +108,7 @@ const E2E_NOTES: Record<string, string | Buffer> = {
     '```mermaid', 'graph TD', '  Start --> Stop', '```', '', '```js', 'const answer = 42 // the answer', '```', '',
     '[^1]: Said by nobody.', '',
   ].join('\n'),
+  'Zyx/Wide.md': '---\ncssclasses: [wide, my-look]\n---\n# Wide\n\nAs wide as the window.\n',
   'Switch/From.md': '# From\n\nStart.\n',
   'Switch/To.md': '# To\n\nOther note.\n',
   // The editor (editor.spec.ts): Obsidian's way of writing, kept byte for byte where nothing was changed.

@@ -10,7 +10,8 @@ import { fileRoute } from '../lib/markdown'
 import { NEW_NOTE_EVENT } from '../lib/newNote'
 import { askNoteList, narrow, SEARCH_EVENT } from '../lib/shell'
 import { PALETTE_EVENT, useCommands, type Command } from '../lib/commands'
-import { applyTheme, storedTheme } from '../lib/theme'
+import { storedTheme } from '../lib/theme'
+import { useAuth } from '../state/auth'
 import { CommandPalette } from './CommandPalette'
 import { LinkPreview } from './LinkPreview'
 import { VaultActions } from './VaultActions'
@@ -141,6 +142,7 @@ export function AppShell() {
   const newNoteTarget = newNoteFolder()
   newNoteAt.current = newNoteTarget
 
+  const { setAppearance } = useAuth()
   // The palette's commands that hold everywhere: the places, and what the header does.
   useCommands((): Command[] => {
     const group = t('palette.app')
@@ -161,7 +163,7 @@ export function AppShell() {
         label: storedTheme() === 'light' ? t('palette.dark') : t('palette.light'),
         group,
         symbol: 'eye',
-        run: () => applyTheme(storedTheme() === 'light' ? 'dark' : 'light'),
+        run: () => void setAppearance({ mode: storedTheme() === 'light' ? 'dark' : 'light' }).catch(() => {}),
       },
     ]
     if (narrow()) list.push({ id: 'app.noteList', label: t('noteStart.list'), group, symbol: 'sidebar', run: askNoteList })

@@ -23,6 +23,7 @@ import { Symbol } from '../components/Symbol'
 import { NoteStart } from '../components/NoteStart'
 import { Outline } from '../components/Outline'
 import { useEnrich } from '../lib/enrich'
+import { noteClasses } from '../lib/appearance'
 import { TabBar } from '../components/TabBar'
 import { openInTab } from '../lib/tabs'
 import { copiesOf, originalOf } from '../lib/compare'
@@ -667,6 +668,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   }
 
   const showInGraph = () => navigate(`/?focus=${encodeURIComponent(note.path)}`)
+  const cssClasses = noteClasses(note.front)
   const chain = note.path.split('/').slice(0, -1).map((name, index, all) => ({ id: all.slice(0, index + 1).join('/'), name }))
   const foreignLock = note.lock && !note.lock.mine ? note.lock.holder : null
   const lockedBy = lockHolder ?? foreignLock
@@ -848,7 +850,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
           {/* Body */}
           <div ref={scroller} className="nn-scroll min-h-0 flex-1 overflow-y-auto">
             {/* Room on the left for the editor's grip beside each block (reading keeps the same place, so nothing jumps). */}
-            <div className="mx-auto max-w-3xl px-6 py-6 md:pl-16">
+            <div className={'mx-auto px-6 py-6 md:pl-16 ' + cssClasses.join(' ')} style={{ maxWidth: cssClasses.includes('wide') ? 'none' : 'calc(var(--nn-width) + 5.5rem)' }} data-testid="note-body">
               <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-mist-500">
                 <span>{t('note.changed', { when: formatDate(note.modified) })}</span>
                 <span>·</span>

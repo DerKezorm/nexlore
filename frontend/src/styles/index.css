@@ -32,8 +32,16 @@
 
   --color-scrim: rgb(6 6 10 / 0.85);
 
-  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: 'JetBrains Mono', 'Cascadia Mono', 'Cascadia Code', Consolas, 'DejaVu Sans Mono', monospace;
+  /* The fonts come with nexlore (@fontsource-variable, main.tsx); the account may choose others (lib/appearance.ts). */
+  --font-sans: 'Inter Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-text: 'Inter Variable', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', 'Cascadia Mono', 'Cascadia Code', Consolas, 'DejaVu Sans Mono', monospace;
+}
+
+/* The text of notes: size and widest line, per account (lib/appearance.ts). */
+:root {
+  --nn-text-size: 16px;
+  --nn-width: 42rem;
 }
 
 /* Light mode: only swap the values behind the same names. */
@@ -97,16 +105,24 @@
 
   /* Rendered Markdown in the reading view. */
   .nn-prose {
-    @apply text-[15px] leading-7 text-mist-200;
+    @apply text-mist-200;
+    font-family: var(--font-text);
+    font-size: var(--nn-text-size);
+    line-height: 1.7;
   }
   .nn-prose h1 {
-    @apply mt-2 mb-4 text-2xl font-bold tracking-tight text-mist-100;
+    @apply mt-2 mb-4 font-bold tracking-tight text-mist-100;
+    font-size: 1.6em;
+    line-height: 1.25;
   }
   .nn-prose h2 {
-    @apply mt-7 mb-2 text-lg font-semibold text-mist-100;
+    @apply mt-8 mb-2 font-semibold text-mist-100;
+    font-size: 1.3em;
+    line-height: 1.3;
   }
   .nn-prose h3 {
-    @apply mt-5 mb-1.5 font-semibold text-mist-100;
+    @apply mt-6 mb-1.5 font-semibold text-mist-100;
+    font-size: 1.12em;
   }
   .nn-prose p {
     @apply my-3;
@@ -121,7 +137,8 @@
     @apply my-1;
   }
   .nn-prose code {
-    @apply rounded bg-ink-800 px-1.5 py-0.5 font-mono text-[13px] text-mist-100;
+    @apply rounded bg-ink-800 px-1.5 py-0.5 font-mono text-mist-100;
+    font-size: 0.86em;
   }
   .nn-prose pre {
     @apply my-4 overflow-x-auto rounded-xl border border-ink-700 bg-ink-900 p-4;
