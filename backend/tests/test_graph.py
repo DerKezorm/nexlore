@@ -565,6 +565,36 @@ def test_notes_are_found_by_their_aliases_after_title_and_name(client: TestClien
     assert find("4711") == [("Garden/Odd.md", "4711")]
 
 
+def test_folders_are_found_by_their_name_starting_ones_and_shallow_ones_first(client: TestClient, garden: Path) -> None:
+    put(garden, "Garden/Old tools/Rake.md", "rake")
+    put(garden, "Garden/Shed/Tools/Hoe.png", "not a note, still a file in a folder")
+    put(garden, "Garden/Shed/Überdachung/Deep/Roof.md", "a folder only through the one below it")
+    put(garden, "Garden/Shed/100%_sure/Note.md", "odd name")
+    put(garden, "Garden/Gone/Last.md", "in the bin soon")
+    index.scan()
+    assert client.delete("/api/files", params={"path": "Garden/Gone/Last.md"}).status_code == 200
+
+    def find(q: str = "", **extra: object) -> list[str]:
+        answer = client.get("/api/folders/find", params={"q": q, **extra})
+        assert answer.status_code == 200, answer.text
+        return [hit["path"] for hit in answer.json()]
+
+    # Starts with it before contains it, then the shallower; a note's name is no folder.
+    assert find("tools") == ["Garden/Tools", "Garden/Shed/Tools", "Garden/Old tools"]
+    assert find("/TOO", limit=1) == ["Garden/Tools"]
+    assert find("überd") == ["Garden/Shed/Überdachung"]
+    assert find("deep") == ["Garden/Shed/Überdachung/Deep"]
+    assert find("rake") == []
+    # A folder whose files are all in the bin is gone from here too.
+    assert find("gone") == []
+    assert find("garden") == ["Garden"]
+    # % and _ are letters, as in the notes' search.
+    assert find("0%_") == ["Garden/Shed/100%_sure"]
+    # Nothing typed: the spaces.
+    assert find() == ["Garden"]
+    assert client.get("/api/folders/find", params={"q": "tools"}).json()[0] == {"path": "Garden/Tools", "name": "Tools"}
+
+
 def test_many_links_are_resolved_at_once(client: TestClient, garden: Path) -> None:
     answer = client.get(
         "/api/resolve/many",

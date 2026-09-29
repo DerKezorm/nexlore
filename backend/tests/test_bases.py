@@ -7,9 +7,12 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
+from app.db import SessionLocal
 from app.main import app
-from app.services import baseexpr, index
+from app.models import Space
+from app.services import baseexpr, bases, index
 from app.services.frontedit import set_property
 
 from .conftest import make_account, sign_in
@@ -92,6 +95,55 @@ def test_a_code_block_looks_at_the_space_of_its_note(client: TestClient, kitchen
     answer = client.post("/api/bases/block", json={"source": "Kitchen/Recipes/Bread.md", "text": text}).json()
     assert answer["kind"] == "list" and sorted(rows(answer)) == ["Bread", "Pie"]
     assert client.post("/api/bases/block", json={"source": "Kitchen/Recipes/Bread.md", "text": "- no"}).status_code == 422
+
+
+def test_a_folder_filter_reads_only_that_folder_and_still_finds_all_of_it(client: TestClient, kitchen: Path) -> None:
+    put(kitchen, "Kitchen/Recipes/Cakes/Plum.md", "---\ntags: [recipe]\n---\nGoes with [[Soup]].\n")
+    put(kitchen, "Kitchen/Recipes old/Stew.md", "not in Recipes, though its folder starts alike\n")
+    put(kitchen, "Kitchen/100%_done/Tart.md", "odd folder name\n")
+    put(kitchen, "Kitchen/1000_done/Flan.md", "what _ and % would match as wildcards\n")
+    index.scan()
+
+    def names(filters: str, extra: str = "") -> list[str]:
+        text = f"filters:\n{filters}\n{extra}views:\n  - type: list\n    order: [file.name]\n"
+        answer = client.post("/api/bases/block", json={"source": "Kitchen/Recipes/Bread.md", "text": text})
+        assert answer.status_code == 200, answer.text
+        return rows(answer.json())
+
+    recipes = ["Bread", "Notes on flour", "Plum", "Shakshuka", "Soup"]
+    # Case as the filter compares it, folders below, no neighbour that merely starts alike.
+    assert names('  and:\n    - file.inFolder("recipes")') == recipes
+    assert names('  and:\n    - file.inFolder("/Recipes/")\n    - \'file.name != "Soup"\'') == [n for n in recipes if n != "Soup"]
+    assert names('  and:\n    - file.inFolder("Recipes/Cakes")') == ["Plum"]
+    # % and _ are letters of the name.
+    assert names('  and:\n    - file.inFolder("100%_done")') == ["Tart"]
+    # Either of two folders: nothing may be left unread.
+    assert names('  or:\n    - file.inFolder("Other")\n    - file.inFolder("Recipes old")') == ["Pie", "Stew"]
+    assert names('  not:\n    - file.inFolder("Recipes")') == ["Flan", "Pie", "Stew", "Tart"]
+    assert names('  and:\n    - file.inFolder("Recipes")\n    - file.hasLink("Soup")') == ["Plum"]
+    # Tags and links still count when only a formula names them.
+    assert names('  and:\n    - file.inFolder("Recipes")\n    - "formula.tagged"', '''formulas:\n  tagged: 'file.hasTag("breakfast")'\n''') == ["Shakshuka"]
+
+
+def test_the_folder_limit_reads_exactly_the_notes_below_the_folder(kitchen: Path) -> None:
+    put(kitchen, "Kitchen/Recipes/Cakes/Plum.md", "cake")
+    put(kitchen, "Kitchen/Recipes old/Stew.md", "a neighbour")
+    put(kitchen, "Kitchen/100%_done/Tart.md", "odd")
+    put(kitchen, "Kitchen/1000_done/Flan.md", "what wildcards would take")
+    put(kitchen, "Kitchen/Übung/Tee.md", "an umlaut, which SQLite's LIKE does not fold")
+    index.scan()
+    with SessionLocal() as db:
+        space = db.scalar(select(Space.id).where(Space.folder == "Kitchen"))
+
+        def read(folder: str) -> list[str]:
+            return sorted(file.path for file, _ in bases._rows(db, space, "Kitchen", {}, folder=folder))
+
+        assert read("recipes") == [
+            "Kitchen/Recipes/Bread.md", "Kitchen/Recipes/Cakes/Plum.md", "Kitchen/Recipes/Notes on flour.md",
+            "Kitchen/Recipes/Shakshuka.md", "Kitchen/Recipes/Soup.md",
+        ]
+        assert read("100%_done") == ["Kitchen/100%_done/Tart.md"]
+        assert read("ÜBUNG") == ["Kitchen/Übung/Tee.md"]
 
 
 def test_a_cell_writes_the_property_and_keeps_the_rest(client: TestClient, kitchen: Path) -> None:

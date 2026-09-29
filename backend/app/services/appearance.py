@@ -1,11 +1,12 @@
-"""How nexlore looks for one account: light or dark, the theme, fonts, text size and width. Stored with the account,
-so it is the same on every device; each value is checked against a fixed list, never taken as CSS."""
+"""How nexlore looks for one account: light or dark, the theme, fonts, text size and width, and the page it starts on.
+Stored with the account, so it is the same on every device; each value is checked against a fixed list, never taken
+as CSS."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from . import themes
+from . import paths, themes
 
 MODES = ("dark", "light", "system")
 #: The fonts nexlore brings along (in the image, never from another server), and the browser's own.
@@ -14,6 +15,8 @@ FONTS_TEXT = ("inter", "literata", "source-serif", "atkinson", "plex", "system")
 FONTS_CODE = ("jetbrains", "system")
 WIDTHS = ("narrow", "normal", "wide", "full")
 SIZE_MIN, SIZE_MAX = 14, 20
+#: Where nexlore opens (Obsidian's Homepage plugin): the map, today's daily note, the note opened last, one note.
+STARTS = ("graph", "daily", "last", "note")
 
 DEFAULTS: dict[str, Any] = {
     "mode": "dark",
@@ -26,6 +29,9 @@ DEFAULTS: dict[str, Any] = {
     "font_code": "jetbrains",
     "size": 16,
     "width": "normal",
+    "start": "graph",
+    #: With ``start: note``: its path. Whether it may be read is asked when it is opened, like any note.
+    "start_note": "",
 }
 
 
@@ -48,7 +54,10 @@ def of(stored: Any) -> dict[str, Any]:
 
 
 def _checked(changes: dict[str, Any]) -> dict[str, Any]:
-    allowed = {"mode": MODES, "font_ui": FONTS_UI, "font_text": FONTS_TEXT, "font_code": FONTS_CODE, "width": WIDTHS}
+    allowed = {
+        "mode": MODES, "font_ui": FONTS_UI, "font_text": FONTS_TEXT, "font_code": FONTS_CODE, "width": WIDTHS,
+        "start": STARTS,
+    }
     out: dict[str, Any] = {}
     for key, value in changes.items():
         if key in allowed:
@@ -62,6 +71,14 @@ def _checked(changes: dict[str, Any]) -> dict[str, Any]:
         elif key == "space_themes":
             if not isinstance(value, bool):
                 raise AppearanceError(key)
+            out[key] = value
+        elif key == "start_note":
+            if not isinstance(value, str) or len(value) > paths.MAX_PATH_CHARS or not value.lower().endswith(".md"):
+                raise AppearanceError(key)
+            try:
+                paths.parse(value)
+            except paths.PathError as exc:
+                raise AppearanceError(key) from exc
             out[key] = value
         elif key == "theme":
             if not isinstance(value, str) or not themes.ref_ok(value):

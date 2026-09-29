@@ -683,6 +683,46 @@ def _like(value: str) -> str:
     return "%" + value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 
 
+class FoundFolder(BaseModel):
+    path: str
+    name: str
+
+
+@router.get("/folders/find", response_model=list[FoundFolder])
+def find_folders(
+    account: Account,
+    q: Annotated[str, Query(max_length=200)] = "",
+    limit: Annotated[int, Query(ge=1, le=50)] = 20,
+) -> list[FoundFolder]:
+    """Folders by name, for the quick switcher after ``/``: those whose name starts with what was typed first, then
+    those that contain it, the shallower first; nothing typed: the spaces. Readable spaces only, and only folders
+    with a file somewhere below them (the index knows files, not empty folders)."""
+    folded = paths.fold(q.strip().strip("/"))
+    readable = readable_spaces(account)
+    with SessionLocal() as db:
+        if not folded:
+            names = db.scalars(select(Space.folder).where(Space.id.in_(readable)).order_by(Space.folder)).all()
+            return [FoundFolder(path=name, name=name) for name in names[:limit]]
+        # Each folder once, straight from SQLite: the path up to its last slash (rtrim drops the name's characters).
+        holders = db.scalars(
+            select(func.rtrim(File.path, func.replace(File.path, "/", "")))
+            .where(File.deleted_at.is_(None), File.space_id.in_(readable))
+            .distinct()
+        ).all()
+    found: dict[str, tuple[int, int, str]] = {}
+    for holder in holders:
+        parts = holder.rstrip("/").split("/")
+        for depth in range(1, len(parts) + 1):
+            folder = "/".join(parts[:depth])
+            if folder in found:
+                continue
+            key = paths.fold(parts[depth - 1])
+            if folded in key:
+                found[folder] = (0 if key.startswith(folded) else 1, depth, paths.fold(folder))
+    best = sorted(found, key=found.__getitem__)[:limit]
+    return [FoundFolder(path=folder, name=folder.rsplit("/", 1)[-1]) for folder in best]
+
+
 @router.get("/notes/find", response_model=list[Found])
 def find_notes(
     account: Account,

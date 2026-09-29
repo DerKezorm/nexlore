@@ -8,6 +8,7 @@ A space of nexlore is a vault of Obsidian: paths in the filters start at the spa
 
 from __future__ import annotations
 
+import json
 import posixpath
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
@@ -138,21 +139,64 @@ def _front(front: Any) -> dict[str, Any]:
     return {str(key): (baseexpr.as_date(value) if isinstance(value, date) else value) for key, value in front.items()}
 
 
+def _folder_limit(node: baseexpr.Node) -> str | None:
+    """A folder every note of the view must lie in: ``file.inFolder("x")`` alone or in an ``and`` chain. Only to read
+    fewer notes; the filter itself still decides."""
+    if node.kind == "and":
+        for item in node.items:
+            found = _folder_limit(item)
+            if found:
+                return found
+        return None
+    if (
+        node.kind == "method"
+        and node.value == "inFolder"
+        and len(node.items) == 2
+        and node.items[0].kind == "name"
+        and node.items[0].value == "file"
+        and node.items[1].kind == "lit"
+        and isinstance(node.items[1].value, str)
+    ):
+        return node.items[1].value.strip("/") or None
+    return None
+
+
+def _like_prefix(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "/%"
+
+
 def _rows(
-    db: Session, space_id: int, space_name: str, formulas: dict[str, baseexpr.Node]
-) -> list[tuple[File, baseexpr.Row]]:
-    files = db.scalars(
-        select(File).where(File.space_id == space_id, File.is_note.is_(True), File.deleted_at.is_(None))
-    ).all()
+    db: Session,
+    space_id: int,
+    space_name: str,
+    formulas: dict[str, baseexpr.Node],
+    *,
+    folder: str | None = None,
+    want_tags: bool = True,
+    want_links: bool = True,
+) -> list[tuple[Any, baseexpr.Row]]:
+    """The notes of the space as the expressions see them. Only the columns needed, only below ``folder`` when a
+    filter demands it, and tags or links only when the view mentions them (a space of 33,000 notes has some 260,000
+    links)."""
+    query = select(File.id, File.path, File.title, File.size, File.mtime_ns, File.front).where(
+        File.space_id == space_id, File.is_note.is_(True), File.deleted_at.is_(None)
+    )
+    if folder:
+        query = query.where(File.path_key.like(_like_prefix(paths.fold(f"{space_name}/{folder}")), escape="\\"))
+    files = db.execute(query).all()
     ids = [file.id for file in files]
     tags: dict[int, list[str]] = {}
     links: dict[int, list[str]] = {}
     for start in range(0, len(ids), 900):
         part = ids[start : start + 900]
-        for file_id, tag in db.execute(select(Tag.file_id, Tag.tag).where(Tag.file_id.in_(part)).order_by(Tag.pos)):
-            tags.setdefault(file_id, []).append(tag)
-        for file_id, target in db.execute(select(Link.source_id, Link.target).where(Link.source_id.in_(part))):
-            links.setdefault(file_id, []).append(target)
+        if want_tags:
+            for file_id, tag in db.execute(
+                select(Tag.file_id, Tag.tag).where(Tag.file_id.in_(part)).order_by(Tag.pos)
+            ):
+                tags.setdefault(file_id, []).append(tag)
+        if want_links:
+            for file_id, target in db.execute(select(Link.source_id, Link.target).where(Link.source_id.in_(part))):
+                links.setdefault(file_id, []).append(target)
     out = []
     for file in files:
         inside = file.path[len(space_name) + 1 :]
@@ -224,7 +268,12 @@ def run(db: Session, config: dict[str, Any], space_id: int, space_name: str, vie
             problems.append(f"{key}: {exc}")
     rows = []
     failed = 0
-    for file, row in _rows(db, space_id, space_name, formulas):
+    # Whatever the view never names need not be read: "tag" and "link" anywhere in it (a superset, never too little).
+    said = json.dumps(config, ensure_ascii=False, default=str).casefold()
+    folder = next((found for found in map(_folder_limit, wanted) if found), None)
+    for file, row in _rows(
+        db, space_id, space_name, formulas, folder=folder, want_tags="tag" in said, want_links="link" in said
+    ):
         try:
             if not all(baseexpr.truthy(baseexpr.evaluate(node, row)) for node in wanted):
                 continue

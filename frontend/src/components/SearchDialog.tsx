@@ -4,7 +4,7 @@
  * hits with two control characters; they are split here and shown as <mark>, never inserted as HTML.
  *
  * As in Obsidian: when no title is what was typed, the last row makes that note (Shift+Enter makes it right away);
- * `#` at the start lists the headings of the note in front.
+ * `#` at the start lists the headings of the note in front, `/` the folders by name (shown open in the sidebar).
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +14,7 @@ import { ApiError, recentApi, vaultApi, type Found, type Hit } from '../api/clie
 import { folderColor } from '../graph/palette'
 import { errorText } from '../lib/errors'
 import { headingsOf } from '../lib/outline'
-import { askHeading, shownNote } from '../lib/shell'
+import { askFolder, askHeading, hasSidebar, shownNote } from '../lib/shell'
 import { folderOf } from '../lib/vault'
 import { Marked } from './Marked'
 import { Symbol } from './Symbol'
@@ -23,6 +23,7 @@ type Result =
   | { kind: 'note'; path: string; title: string; snippet?: string; alias?: string | null }
   | { kind: 'create'; path: string; title: string }
   | { kind: 'heading'; path: string; title: string; level: number; index: number }
+  | { kind: 'folder'; path: string; title: string }
 
 const fold = (text: string) => text.normalize('NFC').toLocaleLowerCase()
 const trail = (folder: string) => folder.replace(/\//g, ' › ')
@@ -40,6 +41,8 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
   const [problem, setProblem] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const headingMode = query.startsWith('#')
+  const folderMode = query.startsWith('/')
+  const [folders, setFolders] = useState<{ path: string; name: string }[]>([])
   const navigate = useNavigate()
   const [hits, setHits] = useState<Hit[]>([])
   const [titles, setTitles] = useState<Found[]>([])
@@ -52,6 +55,18 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
     const q = query.trim()
     let live = true
     if (headingMode) return
+    if (folderMode) {
+      const timer = window.setTimeout(() => {
+        vaultApi
+          .findFolders(q.slice(1).trim())
+          .then((found) => live && setFolders(found))
+          .catch(() => live && setFolders([]))
+      }, 120)
+      return () => {
+        live = false
+        window.clearTimeout(timer)
+      }
+    }
     const timer = window.setTimeout(
       () => {
         const titles = q
@@ -73,7 +88,7 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
       live = false
       window.clearTimeout(timer)
     }
-  }, [query, headingMode])
+  }, [query, headingMode, folderMode])
 
   const results = useMemo<Result[]>(() => {
     if (headingMode) {
@@ -85,6 +100,7 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
         .filter((heading) => !words || fold(heading.title).includes(words))
         .slice(0, 50)
     }
+    if (folderMode) return folders.map((folder) => ({ kind: 'folder' as const, path: folder.path, title: folder.name }))
     const seen = new Set(titles.map((note) => note.path))
     const found: Result[] = [
       ...titles.map((note) => ({ kind: 'note' as const, path: note.path, title: note.title, alias: note.alias })),
@@ -94,7 +110,7 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
     // A note of that title is already there (in any readable space): nothing to make.
     if (typed && createIn && !titles.some((note) => fold(note.title) === fold(typed))) found.push({ kind: 'create', path: createIn, title: typed })
     return found
-  }, [titles, hits, headingMode, query, createIn])
+  }, [titles, hits, headingMode, folderMode, folders, query, createIn])
 
   const create = async (title: string) => {
     if (!createIn || busy) return
@@ -114,6 +130,11 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
     if (result.kind === 'create') return void create(result.title)
     onClose()
     if (result.kind === 'heading') askHeading(result.title, result.index)
+    else if (result.kind === 'folder') {
+      // Where no sidebar is (calendar, settings), the map shows the folder and has one.
+      if (!hasSidebar()) navigate('/?folder=' + encodeURIComponent(result.path))
+      askFolder(result.path)
+    }
     else onPick(result.path)
   }
 
@@ -133,7 +154,7 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
               if (e.key === 'Escape') onClose()
               if (e.key === 'ArrowDown') setIndex((i) => Math.min(results.length - 1, i + 1))
               if (e.key === 'ArrowUp') setIndex((i) => Math.max(0, i - 1))
-              if (e.key === 'Enter' && e.shiftKey && query.trim() && !headingMode) {
+              if (e.key === 'Enter' && e.shiftKey && query.trim() && !headingMode && !folderMode) {
                 e.preventDefault()
                 void create(query.trim())
               } else if (e.key === 'Enter' && results[index]) choose(results[index])
@@ -156,7 +177,7 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
                 {result.kind === 'note' ? (
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: folderColor(result.path) }} />
                 ) : (
-                  <Symbol name={result.kind === 'create' ? 'plus' : 'heading'} className="h-4 w-4 shrink-0 text-accent-400" />
+                  <Symbol name={result.kind === 'create' ? 'plus' : result.kind === 'folder' ? 'folder' : 'heading'} className="h-4 w-4 shrink-0 text-accent-400" />
                 )}
                 <span className="min-w-0 flex-1" style={result.kind === 'heading' ? { paddingLeft: `${(result.level - 1) * 0.75}rem` } : undefined}>
                   <span className="block truncate text-sm font-medium">{result.kind === 'create' ? t('search.create', { title: result.title }) : result.title}</span>
@@ -165,6 +186,8 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
                       t('search.createIn', { folder: trail(result.path) })
                     ) : result.kind === 'heading' ? (
                       t('search.heading', { level: result.level })
+                    ) : result.kind === 'folder' ? (
+                      result.path.includes('/') ? trail(folderOf(result.path)) : t('search.space')
                     ) : result.snippet ? (
                       <Marked text={result.snippet} />
                     ) : result.alias ? (
@@ -180,11 +203,11 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
           ))}
           {results.length === 0 && (
             <li className="px-3 py-6 text-center text-sm text-mist-500">
-              {headingMode ? (shownNote() ? t('search.noHeadings') : t('search.headingsNeedNote')) : t('search.nothing')}
+              {headingMode ? (shownNote() ? t('search.noHeadings') : t('search.headingsNeedNote')) : folderMode ? t('search.noFolders') : t('search.nothing')}
             </li>
           )}
         </ul>
-        {query.trim() && !headingMode && (
+        {query.trim() && !headingMode && !folderMode && (
           <button
             type="button"
             onClick={() => {

@@ -25,11 +25,13 @@
     "alias": "as “{{alias}}” · {{folder}}",
     "noHeadings": "No heading fits.",
     "headingsNeedNote": "Open a note first: # lists its headings.",
-    "hint": "↵ open · Shift ↵ make a note of this name · # headings of this note · Ctrl P commands",
+    "hint": "↵ open · Shift ↵ make a note of this name · # headings of this note · / folders · Ctrl P commands",
     "button": "Search",
     "shortcut": "Ctrl K",
     "placeholder": "Search notes …",
-    "nothing": "Nothing found."
+    "nothing": "Nothing found.",
+    "space": "Space",
+    "noFolders": "No folder of that name."
   },
   "theme": {
     "group": "Appearance",
@@ -809,8 +811,23 @@
     }
   },
   "account": {
-    "tabs": { "profile": "Profile", "security": "Security", "ai": "AI", "plugins": "Plugins" },
-    "profile": {"name": "Name", "role": "Role", "email": "Email", "upload": "Upload a picture", "change": "Another picture", "remove": "Remove", "saved": "Picture saved.", "removed": "Picture removed.", "hint": "A photo from your phone or camera. It is cut to a square, and nothing of the file but the picture is kept: no place, no device."},
+    "tabs": {
+      "profile": "Profile",
+      "security": "Security",
+      "ai": "AI",
+      "plugins": "Plugins"
+    },
+    "profile": {
+      "name": "Name",
+      "role": "Role",
+      "email": "Email",
+      "upload": "Upload a picture",
+      "change": "Another picture",
+      "remove": "Remove",
+      "saved": "Picture saved.",
+      "removed": "Picture removed.",
+      "hint": "A photo from your phone or camera. It is cut to a square, and nothing of the file but the picture is kept: no place, no device."
+    },
     "menu": "Account of {{name}}",
     "role": {
       "operator": "Operator",

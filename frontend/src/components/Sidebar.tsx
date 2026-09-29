@@ -17,7 +17,7 @@ import { folderColor, spaceColor } from '../graph/palette'
 import { fileRoute } from '../lib/markdown'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
-import { narrow, NOTE_LIST_EVENT, takeNoteListWish } from '../lib/shell'
+import { askFolder, FOLDER_EVENT, narrow, NOTE_LIST_EVENT, sidebarHere, takeFolderWish, takeNoteListWish } from '../lib/shell'
 import { seenAll, useNews } from '../lib/news'
 import { openInTab } from '../lib/tabs'
 import { baseName } from '../lib/vault'
@@ -339,6 +339,54 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     return () => window.removeEventListener(REVEAL_EVENT, show)
   }, [])
 
+  // A folder asked for (quick switcher after "/", a folder among the favorites): opened as above, then scrolled to
+  // and focused once its row is there; on a phone in the sheet.
+  useEffect(() => sidebarHere(), [])
+  // Kept for a moment, not only until first seen: folders above it may still be read and push it down.
+  const [target, setTarget] = useState<{ path: string } | null>(null)
+  useEffect(() => {
+    const take = () => {
+      const path = takeFolderWish()
+      if (!path) return
+      reveal(path)
+      setView('spaces')
+      if (narrow()) setSheet(true)
+      setTarget({ path })
+    }
+    take()
+    window.addEventListener(FOLDER_EVENT, take)
+    return () => window.removeEventListener(FOLDER_EVENT, take)
+  }, [])
+  useEffect(() => {
+    if (!target) return
+    const timer = window.setTimeout(() => setTarget(null), 3000)
+    return () => window.clearTimeout(timer)
+  }, [target])
+  useEffect(() => {
+    const element = scroller.current
+    if (!target || !element) return
+    const index = rows.out.findIndex((row) => row.kind === 'folder' && row.path === target.path)
+    if (index < 0) return
+    const top = index * ROW
+    if (top < element.scrollTop || top + ROW > element.scrollTop + element.clientHeight) {
+      element.scrollTop = Math.max(0, top - element.clientHeight / 2)
+    }
+    // The row is drawn only once the list has seen the scroll: a few frames at most.
+    let frames = 0
+    let stopped = false
+    const focus = () => {
+      if (stopped) return
+      const button = element.querySelector<HTMLElement>(`li[data-path="${CSS.escape(target.path)}"] button[aria-expanded]:not([aria-label])`)
+      if (button) {
+        if (document.activeElement !== button) button.focus()
+      } else if (++frames < 20) requestAnimationFrame(focus)
+    }
+    requestAnimationFrame(focus)
+    return () => {
+      stopped = true
+    }
+  }, [target, rows.out])
+
   useEffect(() => {
     const drop = (event: Event) => {
       const gone = (event as CustomEvent<string>).detail
@@ -377,7 +425,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
   /** A favorite opens where it is: a note in the note page, a folder in the tree, a file on its page. */
   const openFavorite = (favorite: Favorite) => {
     if (favorite.kind === 'note') onNote(favorite.path)
-    else if (favorite.kind === 'folder') reveal(favorite.path)
+    else if (favorite.kind === 'folder') askFolder(favorite.path)
     else navigate(fileRoute(favorite.path))
   }
 

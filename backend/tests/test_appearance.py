@@ -31,6 +31,11 @@ def test_the_defaults_come_with_me_and_a_change_keeps_the_rest(client: TestClien
         {"space_themes": "yes"},
         {"theme": ""},
         {"colour": "red"},
+        {"start": "calendar"},
+        {"start_note": "../outside.md"},
+        {"start_note": "/Work/Plan.md"},
+        {"start_note": "Work/Plan.txt"},
+        {"start_note": 7},
     ],
 )
 def test_only_values_on_the_lists_are_taken(client: TestClient, account: object, bad: dict) -> None:
@@ -43,3 +48,10 @@ def test_only_values_on_the_lists_are_taken(client: TestClient, account: object,
 def test_a_stored_value_no_longer_offered_falls_back_to_the_default() -> None:
     assert appearance.of({"font_text": "gone", "size": 17, "junk": 1}) == {**appearance.DEFAULTS, "size": 17}
     assert appearance.of(None) == appearance.DEFAULTS
+
+
+def test_the_start_page_is_one_of_four_and_a_note_there_needs_a_path() -> None:
+    assert appearance.change(None, {"start": "note", "start_note": "Work/Ideas/Plan.md"}) == {
+        "start": "note", "start_note": "Work/Ideas/Plan.md"}
+    assert appearance.of({"start": "daily"})["start"] == "daily"
+    assert appearance.of({"start": "gone", "start_note": "Work/../x.md"}) == appearance.DEFAULTS

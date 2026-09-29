@@ -25,11 +25,13 @@
     "alias": "als „{{alias}}“ · {{folder}}",
     "noHeadings": "Keine Überschrift passt.",
     "headingsNeedNote": "Erst eine Notiz öffnen: # zeigt ihre Überschriften.",
-    "hint": "↵ öffnen · Shift ↵ Notiz mit diesem Namen anlegen · # Überschriften dieser Notiz · Strg P Befehle",
+    "hint": "↵ öffnen · Shift ↵ Notiz mit diesem Namen anlegen · # Überschriften dieser Notiz · / Ordner · Strg P Befehle",
     "button": "Suchen",
     "shortcut": "Strg K",
     "placeholder": "Notiz suchen …",
-    "nothing": "Nichts gefunden."
+    "nothing": "Nichts gefunden.",
+    "space": "Bereich",
+    "noFolders": "Kein Ordner mit diesem Namen."
   },
   "theme": {
     "group": "Darstellung",
@@ -809,8 +811,23 @@
     }
   },
   "account": {
-    "tabs": { "profile": "Profil", "security": "Sicherheit", "ai": "KI", "plugins": "Plugins" },
-    "profile": {"name": "Name", "role": "Rolle", "email": "E-Mail", "upload": "Bild hochladen", "change": "Anderes Bild", "remove": "Entfernen", "saved": "Bild gespeichert.", "removed": "Bild entfernt.", "hint": "Ein Foto vom Handy oder von der Kamera. Es wird quadratisch zugeschnitten, und von der Datei bleibt nur das Bild: kein Ort, kein Gerät."},
+    "tabs": {
+      "profile": "Profil",
+      "security": "Sicherheit",
+      "ai": "KI",
+      "plugins": "Plugins"
+    },
+    "profile": {
+      "name": "Name",
+      "role": "Rolle",
+      "email": "E-Mail",
+      "upload": "Bild hochladen",
+      "change": "Anderes Bild",
+      "remove": "Entfernen",
+      "saved": "Bild gespeichert.",
+      "removed": "Bild entfernt.",
+      "hint": "Ein Foto vom Handy oder von der Kamera. Es wird quadratisch zugeschnitten, und von der Datei bleibt nur das Bild: kein Ort, kein Gerät."
+    },
     "menu": "Konto von {{name}}",
     "role": {
       "operator": "Betreiber",

@@ -32,6 +32,37 @@ export function narrow(): boolean {
   return typeof window !== 'undefined' && window.innerWidth < SHEET_BELOW
 }
 
+export const FOLDER_EVENT = 'nexlore:show-folder'
+
+let pendingFolder: string | null = null
+let sidebars = 0
+
+/** A sidebar on the page counts itself (the returned function uncounts it), so a folder asked for on a page without
+ * one is shown on a page that has one. */
+export function sidebarHere(): () => void {
+  sidebars += 1
+  return () => {
+    sidebars -= 1
+  }
+}
+
+export function hasSidebar(): boolean {
+  return sidebars > 0
+}
+
+/** Shows a folder in the sidebar: it and the folders on its way open, scrolled to and focused (on a phone in the
+ * sheet). A sidebar that mounts only after the next navigation finds the wish waiting. */
+export function askFolder(path: string): void {
+  pendingFolder = path
+  window.dispatchEvent(new CustomEvent(FOLDER_EVENT))
+}
+
+export function takeFolderWish(): string | null {
+  const wish = pendingFolder
+  pendingFolder = null
+  return wish
+}
+
 /** The note in front (the left pane): the quick switcher offers its headings after `#`. */
 export type ShownNote = { path: string; read: () => string }
 let shown: ShownNote | null = null

@@ -263,6 +263,7 @@ export const vaultApi = {
   createSpace: (name: string) => api<Space>('/api/spaces', { method: 'POST', body: { name } }),
   /** Notes by title or name, the best first; nothing typed: the ones changed last. */
   find: (q: string, space?: string, limit = 20) => api<Found[]>('/api/notes/find', { query: { q, space, limit } }),
+  findFolders: (q: string, limit = 20) => api<{ path: string; name: string }[]>('/api/folders/find', { query: { q, limit } }),
   /** The same from a note being edited: its space only, and the link text that reaches each hit from there. */
   findFrom: (q: string, source: string, limit = 8) => api<Found[]>('/api/notes/find', { query: { q, source, limit } }),
   note: (path: string) => api<NoteData>('/api/note', { query: { path } }),

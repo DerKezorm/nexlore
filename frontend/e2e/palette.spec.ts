@@ -85,6 +85,40 @@ test('the quick switcher finds a note by its alias, lists the headings after # a
   expect(problems).toEqual([])
 })
 
+test('a slash in the quick switcher finds folders; the sidebar opens, scrolls to and focuses the one chosen', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const switcher = page.getByRole('dialog', { name: 'Search' })
+  const tree = page.getByTestId('sidebar-tree')
+  const kitchen = tree.getByRole('button', { name: /^Kitchen( \d+)?$/ })
+  // From a page without a sidebar: to the map, where the sidebar shows it (Zyx comes last, far below).
+  await page.goto('/calendar')
+  await page.getByRole('button', { name: 'Search', exact: true }).click()
+  await page.keyboard.type('/kitch')
+  await expect(switcher.getByRole('button')).toHaveText([/Kitchen\s*Zyx/])
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/(\?folder=Zyx%2FKitchen)?$/)
+  await expect(kitchen).toBeFocused()
+  await expect(kitchen).toHaveAttribute('aria-expanded', 'true')
+  await expect(kitchen).toBeInViewport()
+  // On a note, with the tags in front: the sidebar turns to the spaces for it.
+  await page.goto('/note/Zyx/Palette.md')
+  await page.getByRole('tab', { name: 'Tags' }).click()
+  await page.getByRole('button', { name: 'Search', exact: true }).click()
+  await page.keyboard.type('/zyx')
+  await expect(switcher.getByRole('button').first()).toHaveText(/Zyx\s*Space/)
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('tab', { name: 'Spaces' })).toHaveAttribute('aria-selected', 'true')
+  await expect(tree.getByRole('button', { name: /^Zyx( \d+)?$/ })).toBeFocused()
+  // No folder of the name.
+  await page.keyboard.press('ControlOrMeta+k')
+  await page.keyboard.type('/qqqq')
+  await expect(switcher).toContainText('No folder of that name.')
+  await expect(switcher.getByRole('button', { name: /Make the note/ })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  expect(problems).toEqual([])
+})
+
 test('the search page takes operators, shows the lines a note was found in, and its filters write the search', async ({ page }) => {
   const problems = collectProblems(page)
   await page.setViewportSize({ width: 1440, height: 900 })

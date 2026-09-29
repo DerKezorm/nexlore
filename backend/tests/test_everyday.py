@@ -241,6 +241,20 @@ def test_the_daily_note_is_made_once_in_the_daily_folder_from_the_template(world
     assert foreign.status_code == 404
 
 
+def test_folders_of_a_space_one_may_not_read_are_never_found(world: World, vault: Path) -> None:
+    put(vault, "Private/Salary/2026.md", "secret")
+    put(vault, "Shared/Salary talk/Notes.md", "open")
+    index.scan()
+
+    def find(who, q: str) -> list[str]:
+        return [hit["path"] for hit in who.get("/api/folders/find", params={"q": q}).json()]
+
+    assert find(world.anna, "salary") == ["Private/Salary", "Shared/Salary talk"]
+    assert find(world.bob, "salary") == ["Shared/Salary talk"]
+    assert find(world.bob, "private") == []
+    assert [hit["path"] for hit in world.bob.get("/api/folders/find").json()] == ["Shared"]
+
+
 def test_the_options_of_a_space_belong_to_its_managers(world: World) -> None:
     assert world.bob.get("/api/spaces/Shared/options").json() == {
         "daily_folder": "Daily", "daily_template": "", "template_folder": "Templates", "theme": ""}
