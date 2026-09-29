@@ -81,7 +81,8 @@ test('an invitation brings a new account into exactly one space', async ({ page,
   // Nothing of the operator's other spaces, not even in the search.
   await dora.keyboard.press('Control+k')
   await dora.getByPlaceholder('Search notes …').fill('quinceapple')
-  await expect(dora.getByText('Nothing found.')).toBeVisible()
+  // Only the offer to make such a note in the own space, no hit from the others.
+  await expect(dora.getByRole('dialog', { name: 'Search' }).getByRole('button')).toHaveText([/Make the note “quinceapple”/])
   // The link is used up.
   const late = await stranger(browser)
   await late.goto(new URL(link).pathname)

@@ -19,6 +19,8 @@ test('the palette runs the commands of the app, the note and the editor', async 
   const problems = collectProblems(page)
   await page.goto('/note/Zyx/Palette.md')
   await expect(page.locator('article')).toContainText('The end.')
+  // The own right in the space is known once the spaces are loaded; the palette offers what it allows.
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeEnabled()
   const palette = page.getByRole('dialog', { name: 'Commands' })
   await page.keyboard.press('ControlOrMeta+p')
   await expect(palette).toBeVisible()

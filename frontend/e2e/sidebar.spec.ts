@@ -162,7 +162,7 @@ test("the editor's context menu formats, turns a paragraph into a heading, and o
 test('the notes page without a note asks nothing it cannot answer', async ({ page }) => {
   const problems = collectProblems(page)
   await page.goto('/note')
-  await expect(page.getByText('Pick a note on the left, or search with Ctrl K.')).toBeVisible()
+  await expect(page.getByTestId('note-start').getByRole('heading', { name: 'Your notes' })).toBeVisible()
   await page.waitForLoadState('networkidle')
   expect(problems).toEqual([])
 })
