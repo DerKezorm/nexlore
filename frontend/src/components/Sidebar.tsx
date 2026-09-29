@@ -17,7 +17,7 @@ import { folderColor, spaceColor } from '../graph/palette'
 import { fileRoute } from '../lib/markdown'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
-import { askFolder, FOLDER_EVENT, narrow, NOTE_LIST_EVENT, RECENT_EVENT, SIDEBAR_EVENT, sidebarHere, takeFolderWish, takeNoteListWish } from '../lib/shell'
+import { askFolder, FOLDER_EVENT, narrow, NOTE_LIST_EVENT, RECENT_EVENT, SIDEBAR_EVENT, sidebarHere, takeFolderWish, noteListWished, forgetNoteListWish } from '../lib/shell'
 import { seenAll, useNews } from '../lib/news'
 import { openInTab } from '../lib/tabs'
 import { baseName } from '../lib/vault'
@@ -75,10 +75,13 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     }
   }
   // On a phone the sidebar is a sheet from the left: the header's "Notes" or the empty note page ask for it.
-  const [sheet, setSheet] = useState(() => takeNoteListWish() && narrow())
+  const [sheet, setSheet] = useState(() => noteListWished() && narrow())
+  // Closed by any way (or never opened here): the wish is done.
+  useEffect(() => {
+    if (!sheet) forgetNoteListWish()
+  }, [sheet])
   useEffect(() => {
     const ask = () => {
-      takeNoteListWish()
       if (narrow()) setSheet(true)
     }
     window.addEventListener(NOTE_LIST_EVENT, ask)

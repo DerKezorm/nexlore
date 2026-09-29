@@ -428,3 +428,21 @@ test('an open folder without notes says so and offers the first one', async ({ p
   await page.keyboard.press('Escape')
   expect(problems).toEqual([])
 })
+
+test('on a slow phone "Notes" from another page still opens the list', async ({ page }) => {
+  // The notes page draws its sidebar while it loads, drops it and draws it again; the second one must still find
+  // the wish (seen with the CPU twelve times slower: the list often never came; six times is enough here).
+  await page.setViewportSize({ width: 360, height: 740 })
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 })
+  const sidebar = page.getByTestId('sidebar')
+  for (let round = 0; round < 3; round++) {
+    await page.goto('/tasks')
+    await page.locator('header').getByRole('link', { name: 'Notes' }).click()
+    await expect(page).toHaveURL(/\/note$/)
+    await expect(sidebar).toBeVisible({ timeout: 20_000 })
+    await sidebar.getByRole('button', { name: 'Close' }).click()
+    await expect(sidebar).toBeHidden()
+  }
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
+})

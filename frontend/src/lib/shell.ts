@@ -9,7 +9,10 @@ export const NOTE_LIST_EVENT = 'nexlore:note-list'
 /** Below this width the sidebar is a sheet (Tailwind's `md`). */
 export const SHEET_BELOW = 768
 
-let pendingList = false
+/** When the list of notes was asked for last; 0: not now. */
+let pendingList = 0
+/** A wish that old is forgotten: the page it was for has long been drawn. */
+const LIST_WISH_MS = 20_000
 
 export function askSearch(): void {
   window.dispatchEvent(new CustomEvent(SEARCH_EVENT))
@@ -17,15 +20,21 @@ export function askSearch(): void {
 
 /** Opens the list of notes; a page that shows its sidebar only after the next navigation finds the wish waiting. */
 export function askNoteList(): void {
-  pendingList = true
+  pendingList = Date.now()
   window.dispatchEvent(new CustomEvent(NOTE_LIST_EVENT))
 }
 
-/** A sidebar that mounts takes a waiting wish, once. */
-export function takeNoteListWish(): boolean {
-  const wish = pendingList
-  pendingList = false
-  return wish
+/**
+ * Whether the list was asked for a moment ago. Not taken on the first look: a page still loading draws its sidebar,
+ * drops it and draws it again (seen on a slow phone: the list never came), and the second one must find the wish too.
+ * It goes when the list is closed, or after a few seconds.
+ */
+export function noteListWished(): boolean {
+  return pendingList > 0 && Date.now() - pendingList < LIST_WISH_MS
+}
+
+export function forgetNoteListWish(): void {
+  pendingList = 0
 }
 
 export function narrow(): boolean {
