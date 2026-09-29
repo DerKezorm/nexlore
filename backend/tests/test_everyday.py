@@ -255,6 +255,18 @@ def test_folders_of_a_space_one_may_not_read_are_never_found(world: World, vault
     assert [hit["path"] for hit in world.bob.get("/api/folders/find").json()] == ["Shared"]
 
 
+def test_a_space_whose_folder_is_gone_is_not_offered_after_a_slash(world: World, vault: Path) -> None:
+    def offered() -> list[str]:
+        return [hit["path"] for hit in world.anna.get("/api/folders/find").json()]
+
+    listed = [space["name"] for space in world.anna.get("/api/spaces").json()]
+    assert offered() == listed == ["Private", "Shared"]
+    # Taken away on the disk: the list of spaces leaves it out, so must the quick switcher.
+    (vault / "Private").rmdir()
+    assert [space["name"] for space in world.anna.get("/api/spaces").json()] == ["Shared"]
+    assert offered() == ["Shared"]
+
+
 def test_the_options_of_a_space_belong_to_its_managers(world: World) -> None:
     assert world.bob.get("/api/spaces/Shared/options").json() == {
         "daily_folder": "Daily", "daily_template": "", "template_folder": "Templates", "theme": ""}

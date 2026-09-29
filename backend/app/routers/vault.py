@@ -695,13 +695,16 @@ def find_folders(
     limit: Annotated[int, Query(ge=1, le=50)] = 20,
 ) -> list[FoundFolder]:
     """Folders by name, for the quick switcher after ``/``: those whose name starts with what was typed first, then
-    those that contain it, the shallower first; nothing typed: the spaces. Readable spaces only, and only folders
-    with a file somewhere below them (the index knows files, not empty folders)."""
+    those that contain it, the shallower first; nothing typed: the spaces, like ``GET /api/spaces`` without those
+    whose folder is gone from the disk. Readable spaces only, and only folders with a file somewhere below them (the
+    index knows files, not empty folders)."""
     folded = paths.fold(q.strip().strip("/"))
     readable = readable_spaces(account)
     with SessionLocal() as db:
         if not folded:
+            root = paths.vault_root()
             names = db.scalars(select(Space.folder).where(Space.id.in_(readable)).order_by(Space.folder)).all()
+            names = [name for name in names if (root / name).is_dir()]
             return [FoundFolder(path=name, name=name) for name in names[:limit]]
         # Each folder once, straight from SQLite: the path up to its last slash (rtrim drops the name's characters).
         holders = db.scalars(
