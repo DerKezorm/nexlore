@@ -13,15 +13,15 @@ with WebGL and stays smooth with 100,000 notes. Folders, tags or topics found in
 
 ## Screenshots
 
-![A note in the reading view, with a callout, a table, tasks and an embedded part of another note](docs/screenshots/note.png)
+![A note in the reading view, with tabs, favorites, a callout, a table, tasks and an embedded part of another note](docs/screenshots/note.png)
 
-*Reading: callouts, tables, tasks, highlights and a part of another note embedded, the way Obsidian shows them. On
-the right the local graph, the backlinks and every link of the note.*
+*Reading: callouts, tables, tasks, highlights and a part of another note embedded, the way Obsidian shows them. Notes
+in tabs, favorites on top of the sidebar; on the right the local graph, the backlinks and every link of the note.*
 
-![The editor with properties, a table and a numbered list](docs/screenshots/editor.png)
+![The editor with its toolbar, properties, a table and a numbered list](docs/screenshots/editor.png)
 
-*Editing: a visual editor with the front matter as a table of properties, a toolbar on selection and `/` to insert.
-Only the blocks you touch are written back; the rest of the file stays byte for byte as it was.*
+*Editing: a visual editor with a toolbar like a word processor's, the front matter as a table of properties, and `/`
+to insert. Only the blocks you touch are written back; the rest of the file stays byte for byte as it was.*
 
 ![All open tasks, grouped by when they are due](docs/screenshots/tasks.png)
 
@@ -29,21 +29,24 @@ Only the blocks you touch are written back; the rest of the file stays byte for 
 that one line and nothing else. Next to it: a calendar with the daily notes, and a daily note one key away.*
 
 <p>
-  <img src="docs/screenshots/light.png" alt="A note shared between spaces, in the light theme" width="68%">
+  <img src="docs/screenshots/light.png" alt="Two notes side by side, in the light theme" width="68%">
   <img src="docs/screenshots/phone.png" alt="The same app on a phone" width="28%">
 </p>
 
-*Light and dark, and on the phone as an installable web app. Spaces for a team, with links from one space into
-another that only resolve for people who may read both.*
+*Light and dark, two notes side by side, and on the phone as an installable web app. Spaces for a team, with links
+from one space into another that only resolve for people who may read both.*
 
 ## What it does
 
 - **Files are the truth.** Every note is a Markdown file in a folder you choose. Changes from outside (Obsidian,
   VS Code, Syncthing) are picked up by a file watcher plus a full pass every five minutes. When a note changed
   elsewhere while you typed, your text goes into a conflict copy next to it; nothing is ever overwritten silently.
-- **An editor that keeps what it did not change.** A visual editor (Milkdown) with a toolbar on selection, `/` to
-  insert, Markdown shortcuts, properties from the front matter as a table. Only the blocks you touched are written
-  back; every other line stays byte for byte as it was, line endings included.
+- **An editor that keeps what it did not change.** A visual editor (Milkdown) with a fixed toolbar (on a phone one
+  row above the keyboard), `/` to insert, Markdown shortcuts, a grip to drag blocks, a context menu, properties from
+  the front matter as a table. Only the blocks you touched are written back; every other line stays byte for byte as
+  it was, line endings included.
+- **Finding your way**: context menus in the sidebar (new folder, move, rename, symbol and colour for a folder),
+  favorites on top of the sidebar, notes in tabs, and two notes side by side.
 - **Obsidian's way of writing**: wiki links `[[Note]]`, `[[Note#Heading|shown]]`, embeds `![[picture.png|300]]`
   and of notes or their parts (`![[Note#Heading]]`, `![[Note#^block]]`, one level deep), callouts (folding with
   `-` and `+`), highlights, comments `%%…%%`, tags, front matter, tasks in the format of the Tasks plugin. Plugin syntax
@@ -70,12 +73,18 @@ another that only resolve for people who may read both.*
   30 days in the trash.
 - **Backups** of the database and every file on a schedule, with a check that shows what a restore would change,
   and a download (the password is asked again) to keep a copy somewhere else.
+- **AI in notes** (off by default, each account brings its own service: any address that speaks the usual chat
+  interface, in the cloud or at home): correct spelling, rewrite in one of nine tones, translate, summarize, or write
+  from a request with the note as material. The result always stands next to the text first and changes nothing until
+  it is taken over; what went out is listed word for word for 14 days.
 - **AI from outside over MCP** (off by default): keys per account at three levels (read, drafts, write), each key
   optionally limited to some spaces. Drafts wait on the note until you take them over. See [docs/mcp.md](docs/mcp.md).
 - **Plugins**, locked up in the browser: installed from the checked catalog that comes with nexlore (contents and
   reading time, queries, Kanban boards, rediscover old notes), let out by the operator, switched on by each person.
   See [docs/plugins.md](docs/plugins.md).
 - **Import** of an Obsidian vault as a ZIP, with a report of what is special in it.
+- **A guide to start with**: a new installation gets the space "nexlore", a guide in German or English whose notes
+  use what they explain (links, tasks, callouts, a Kanban board, a template), with pictures of the interface.
 - English and German; another language is one JSON file, uploaded by the operator.
 
 ## Start
