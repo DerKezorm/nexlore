@@ -1562,6 +1562,19 @@
     "standsIn": "in {{title}}, line {{line}}",
     "first": "The first {{count}} are shown."
   },
+  "capture": {
+    "title": "Quick capture",
+    "text": "What to keep",
+    "placeholder": "A thought, a link, a task …",
+    "space": "Space",
+    "noSpace": "There is no space you may write in.",
+    "locked": "Someone is editing the inbox. Try again in a moment.",
+    "kept": "Kept in the inbox of {{space}}.",
+    "open": "Open",
+    "keep": "Keep",
+    "done": "Done",
+    "keys": "Ctrl+Enter keeps it"
+  },
   "ai": {
     "title": "AI in notes",
     "text": "Your own AI service corrects, rewrites, translates, summarizes and writes in the editor. You pay for its key yourself; a result is always shown next to the text first and changes nothing until you take it over.",

@@ -1562,6 +1562,19 @@
     "standsIn": "in {{title}}, Zeile {{line}}",
     "first": "Die ersten {{count}} stehen hier."
   },
+  "capture": {
+    "title": "Schnell erfassen",
+    "text": "Was du festhalten willst",
+    "placeholder": "Ein Gedanke, ein Link, eine Aufgabe …",
+    "space": "Bereich",
+    "noSpace": "Du darfst in keinem Bereich schreiben.",
+    "locked": "Der Eingang wird gerade bearbeitet. Gleich noch einmal versuchen.",
+    "kept": "Im Eingang von {{space}} gespeichert.",
+    "open": "Öffnen",
+    "keep": "Festhalten",
+    "done": "Fertig",
+    "keys": "Strg+Enter hält fest"
+  },
   "ai": {
     "title": "KI in Notizen",
     "text": "Dein eigener KI-Dienst korrigiert, formuliert um, übersetzt, fasst zusammen und schreibt im Editor. Den Schlüssel bezahlst du selbst; ein Ergebnis steht immer erst neben dem Text und ändert nichts, bis du es übernimmst.",

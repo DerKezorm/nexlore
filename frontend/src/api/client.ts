@@ -274,6 +274,12 @@ export type Cleanup = {
   broken_total: number
 }
 
+export const captureApi = {
+  /** Words on top of the space's inbox note; `stamp` is this browser's clock, `language` names a new inbox. */
+  put: (space: string, text: string, stamp: string, language: string) =>
+    api<{ path: string }>('/api/inbox', { method: 'POST', body: { space, text, stamp, language } }),
+}
+
 export const mentionsApi = {
   of: (path: string) => api<{ places: Mention[]; more: boolean }>('/api/mentions', { query: { path } }),
   link: (target: string, place: Mention) =>

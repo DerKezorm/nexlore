@@ -91,6 +91,8 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Moor/Walk.md': '# Walk\n\nWe saw a pond heron by the water.\n',
   'Moor/Lost.md': '# Lost\n\nSee [[Bog myrtle]] and [[Moor/Deep/Sundew]].\n',
   'Moor/Deep/Linked.md': '# Linked\n\nTo the [[Walk]].\n',
+  // Quick capture (capture.spec.ts): a space with no inbox yet.
+  'Heath/Heather.md': '# Heather\n',
   // AI in notes against the stand-in service (ai.spec.ts).
   'Zoo/Ai.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',
   'Zoo/Ai whole.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',

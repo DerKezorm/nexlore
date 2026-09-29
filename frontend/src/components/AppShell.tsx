@@ -8,6 +8,7 @@ import { dailySpace, today as isoToday } from '../lib/everyday'
 import { isNotePath } from '../lib/files'
 import { fileRoute } from '../lib/markdown'
 import { NEW_NOTE_EVENT } from '../lib/newNote'
+import { askCapture, CAPTURE_EVENT, takeCapture } from '../lib/capture'
 import { askNoteList, askPanelToggle, askSidebarToggle, hasSidebar, narrow, SEARCH_EVENT } from '../lib/shell'
 import { PALETTE_EVENT, useCommands, type Command } from '../lib/commands'
 import { storedTheme } from '../lib/theme'
@@ -20,6 +21,7 @@ import { VaultActions } from './VaultActions'
 import { folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 import { AccountMenu } from './AccountMenu'
+import { CaptureDialog } from './CaptureDialog'
 import { InstallPrompt } from './InstallPrompt'
 import { Logo } from './Logo'
 import { NewNoteDialog } from './NewNoteDialog'
@@ -121,6 +123,9 @@ export function AppShell() {
       } else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyT' && !typing(e.target)) {
         e.preventDefault()
         void openToday()
+      } else if (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN' && !typing(e.target)) {
+        e.preventDefault()
+        askCapture()
       } else if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN' && !typing(e.target)) {
         e.preventDefault()
         if (newNoteAt.current) setCreating(newNoteAt.current)
@@ -142,6 +147,27 @@ export function AppShell() {
     window.addEventListener(NEW_NOTE_EVENT, ask)
     return () => window.removeEventListener(NEW_NOTE_EVENT, ask)
   }, [])
+
+  // Quick capture: words asked for before this frame listened (the share target) are taken on the way in.
+  const [capturing, setCapturing] = useState<string | null>(null)
+  useEffect(() => {
+    const early = takeCapture()
+    if (early !== null) setCapturing(early)
+    const ask = () => setCapturing(takeCapture() ?? '')
+    window.addEventListener(CAPTURE_EVENT, ask)
+    return () => window.removeEventListener(CAPTURE_EVENT, ask)
+  }, [])
+  // A long press on "+" (a touch screen has no right button) opens quick capture instead of a new note.
+  const press = useRef<{ timer: number; long: boolean }>({ timer: 0, long: false })
+  const pressStart = () => {
+    window.clearTimeout(press.current.timer)
+    press.current.long = false
+    press.current.timer = window.setTimeout(() => {
+      press.current.long = true
+      askCapture()
+    }, 500)
+  }
+  const pressEnd = () => window.clearTimeout(press.current.timer)
 
   // The folder a new note from the header (or Alt+N) goes to: the open note's, else the space last chosen for the
   // daily note. The sidebar has a + of its own beside each folder.
@@ -188,6 +214,7 @@ export function AppShell() {
       { id: 'app.search', label: t('search.button'), group, symbol: 'search', keys: t('search.shortcut'), run: () => setSearching(true) },
       ...(home ? [{ id: 'app.today', label: t('today.title'), group, symbol: 'today' as const, keys: 'Alt+T', run: () => void openToday() }] : []),
       ...(newNoteAt.current ? [{ id: 'app.newNote', label: t('sidebar.newNote'), group, symbol: 'plus' as const, keys: 'Alt+N', run: () => setCreating(newNoteAt.current) }] : []),
+      { id: 'app.capture', label: t('capture.title'), group, symbol: 'plus', keys: 'Alt+Shift+N', run: () => askCapture() },
       { id: 'go.search', label: t('searchPage.open'), group, symbol: 'search', keys: 'Ctrl Shift F', run: () => navigate('/search') },
       go('go.graph', t('palette.goTo', { place: t('nav.graph') }), '/', 'graph'),
       go('go.notes', t('palette.goTo', { place: t('nav.notes') }), '/note', 'note'),
@@ -257,7 +284,20 @@ export function AppShell() {
           </button>
           <button
             type="button"
-            onClick={() => setCreating(newNoteTarget)}
+            onClick={() => {
+              // The end of a long press is no click: quick capture is open already.
+              if (press.current.long) return void (press.current.long = false)
+              setCreating(newNoteTarget)
+            }}
+            onPointerDown={pressStart}
+            onPointerUp={pressEnd}
+            onPointerLeave={pressEnd}
+            onPointerCancel={pressEnd}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              pressEnd()
+              if (!press.current.long) askCapture()
+            }}
             disabled={!newNoteTarget}
             aria-label={t('sidebar.newNote')}
             title={t('sidebar.newNoteShortcut')}
@@ -316,6 +356,7 @@ export function AppShell() {
           }}
         />
       )}
+      {capturing !== null && <CaptureDialog key={capturing} text={capturing} onClose={() => setCapturing(null)} />}
       <InstallPrompt />
     </div>
   )

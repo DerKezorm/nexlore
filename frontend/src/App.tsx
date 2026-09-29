@@ -8,6 +8,7 @@ import { SecondFactor } from './components/SecondFactor'
 import { AccountPage } from './pages/AccountPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { CleanupPage } from './pages/CleanupPage'
+import { CaptureRoute } from './pages/CaptureRoute'
 import { FilePage } from './pages/FilePage'
 import { FilesPage } from './pages/FilesPage'
 import { GraphPage } from './pages/GraphPage'
@@ -77,6 +78,7 @@ export default function App() {
         <Route path="search" element={<SearchPage />} />
         <Route path="files" element={<FilesPage />} />
         <Route path="files/cleanup" element={<CleanupPage />} />
+        <Route path="capture" element={<CaptureRoute />} />
         <Route path="file/*" element={<FilePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="account" element={<AccountPage />} />
