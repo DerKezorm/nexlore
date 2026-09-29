@@ -8,6 +8,7 @@ import { dailySpace, today as isoToday } from '../lib/everyday'
 import { isNotePath } from '../lib/files'
 import { fileRoute } from '../lib/markdown'
 import { NEW_NOTE_EVENT } from '../lib/newNote'
+import { askNoteList, narrow, SEARCH_EVENT } from '../lib/shell'
 import { VaultActions } from './VaultActions'
 import { folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
@@ -26,6 +27,8 @@ type NavItem = {
   symbol: SymbolName
   end: boolean
   right?: boolean
+  /** Below `sm` the item is in the account menu: a phone has room for the four daily places only. */
+  wide?: boolean
 }
 
 const ITEMS: NavItem[] = [
@@ -33,14 +36,15 @@ const ITEMS: NavItem[] = [
   { to: '/note', label: 'nav.notes', symbol: 'note', end: false },
   { to: '/calendar', label: 'nav.calendar', symbol: 'calendar', end: false },
   { to: '/tasks', label: 'nav.tasks', symbol: 'tasks', end: false },
-  { to: '/files', label: 'nav.files', symbol: 'files', end: false },
-  { to: '/settings', label: 'nav.settings', symbol: 'settings', end: false, right: true },
+  { to: '/files', label: 'nav.files', symbol: 'files', end: false, wide: true },
+  { to: '/settings', label: 'nav.settings', symbol: 'settings', end: false, right: true, wide: true },
 ]
 
-function navClass(isActive: boolean, right = false): string {
+function navClass(isActive: boolean, right = false, wide = false): string {
   return (
     (right ? 'ml-auto ' : '') +
-    'inline-flex shrink-0 items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3.5 ' +
+    (wide ? 'hidden sm:inline-flex ' : 'inline-flex ') +
+    'shrink-0 items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3.5 ' +
     (isActive ? 'bg-accent-500/15 text-accent-400' : 'text-mist-500 hover:bg-ink-850 hover:text-mist-100')
   )
 }
@@ -57,6 +61,11 @@ export function AppShell() {
   const [searching, setSearching] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
+  useEffect(() => {
+    const ask = () => setSearching(true)
+    window.addEventListener(SEARCH_EVENT, ask)
+    return () => window.removeEventListener(SEARCH_EVENT, ask)
+  }, [])
 
   const { status, error, spaces, reload } = useStore()
   const [creating, setCreating] = useState<string | null>(null)
@@ -128,12 +137,25 @@ export function AppShell() {
     <div className="flex h-dvh flex-col overflow-hidden">
       <header className="z-20 shrink-0 border-b border-ink-700/80 bg-ink-950/80 backdrop-blur-xl">
         <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-4">
-          <NavLink to="/" className="shrink-0" aria-label={t('app.home')}>
+          <NavLink to="/" className="hidden shrink-0 sm:block" aria-label={t('app.home')}>
             <Logo withWordmark />
           </NavLink>
           <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label={t('app.mainMenu')}>
             {ITEMS.map((item) => (
-              <NavLink key={item.to} to={item.to} end={item.end} aria-label={t(item.label)} title={t(item.label)} className={({ isActive }) => navClass(isActive, item.right)}>
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                aria-label={t(item.label)}
+                title={t(item.label)}
+                className={({ isActive }) => navClass(isActive, item.right, item.wide)}
+                onClick={(event) => {
+                  // On a phone "Notes" is the list of notes: it opens as a sheet, on the note page without leaving it.
+                  if (item.to !== '/note' || !narrow()) return
+                  if (location.pathname === '/note' || location.pathname.startsWith('/note/')) event.preventDefault()
+                  askNoteList()
+                }}
+              >
                 <Symbol name={item.symbol} />
                 <span className="hidden xl:inline">{t(item.label)}</span>
               </NavLink>
@@ -166,7 +188,7 @@ export function AppShell() {
             onClick={() => setSearching(true)}
             aria-label={t('search.button')}
             title={`${t('search.button')} (${t('search.shortcut')})`}
-            className="hidden items-center gap-2 rounded-full border border-ink-700 bg-ink-850 px-2 py-1.5 text-sm text-mist-500 hover:text-mist-100 sm:inline-flex 2xl:pr-2 2xl:pl-3"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-ink-700 bg-ink-850 px-2 py-1.5 text-sm text-mist-500 hover:text-mist-100 2xl:pr-2 2xl:pl-3"
           >
             <Symbol name="search" />
             {/* The words from wide screens on; below, the menu's words need the room. */}

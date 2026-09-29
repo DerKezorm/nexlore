@@ -17,6 +17,7 @@ import { folderColor, spaceColor } from '../graph/palette'
 import { fileRoute } from '../lib/markdown'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
+import { narrow, NOTE_LIST_EVENT, takeNoteListWish } from '../lib/shell'
 import { openInTab } from '../lib/tabs'
 import { baseName } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } from '../lib/vaultActions'
@@ -45,8 +46,31 @@ type Row =
   | { kind: 'more'; path: string; depth: number }
   | { kind: 'failed'; path: string; depth: number }
 
-export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
+export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: Props) {
   const { t } = useTranslation()
+  // On a phone the sidebar is a sheet from the left: the header's "Notes" or the empty note page ask for it.
+  const [sheet, setSheet] = useState(() => takeNoteListWish() && narrow())
+  useEffect(() => {
+    const ask = () => {
+      takeNoteListWish()
+      if (narrow()) setSheet(true)
+    }
+    window.addEventListener(NOTE_LIST_EVENT, ask)
+    return () => window.removeEventListener(NOTE_LIST_EVENT, ask)
+  }, [])
+  useEffect(() => {
+    if (!sheet) return
+    const key = (event: KeyboardEvent) => event.key === 'Escape' && setSheet(false)
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [sheet])
+  const onNote = useCallback(
+    (path: string) => {
+      setSheet(false)
+      choose(path)
+    },
+    [choose],
+  )
   const { spaces, generation, scan, looks, favorites, setFavorite } = useStore()
   const navigate = useNavigate()
   const location = useLocation()
@@ -459,7 +483,27 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
   }
 
   return (
-    <aside className="hidden w-64 shrink-0 flex-col border-r border-ink-700/80 bg-ink-950/60 md:flex">
+    <>
+    {/* The dimmed page behind the sheet closes it; the button in the sheet does the same for keys and readers. */}
+    {sheet && <div aria-hidden="true" onClick={() => setSheet(false)} className="fixed inset-0 z-30 bg-scrim md:hidden" data-testid="sidebar-scrim" />}
+    <aside
+      aria-label={t('sidebar.label')}
+      data-testid="sidebar"
+      data-sheet={sheet || undefined}
+      className={
+        sheet
+          ? 'fixed inset-y-0 left-0 z-40 flex w-[85vw] max-w-80 flex-col border-r border-ink-700/80 bg-ink-950 pt-[env(safe-area-inset-top)] shadow-2xl md:static md:z-auto md:w-64 md:max-w-none md:shrink-0 md:bg-ink-950/60 md:pt-0 md:shadow-none'
+          : 'hidden w-64 shrink-0 flex-col border-r border-ink-700/80 bg-ink-950/60 md:flex'
+      }
+    >
+      {sheet && (
+        <div className="flex items-center justify-between border-b border-ink-700/60 px-4 py-2.5 md:hidden">
+          <span className="text-sm font-semibold text-mist-100">{t('sidebar.label')}</span>
+          <button type="button" onClick={() => setSheet(false)} aria-label={t('common.close')} className="rounded-full p-1.5 text-mist-400 hover:bg-ink-850 hover:text-mist-100">
+            <Symbol name="close" className="h-4 w-4" />
+          </button>
+        </div>
+      )}
       {favorites.length > 0 && (
         <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-favorites">
           <span className="mb-1 block px-2 text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('sidebar.favorites')}</span>
@@ -520,5 +564,6 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
       )}
       {menu.element}
     </aside>
+    </>
   )
 }

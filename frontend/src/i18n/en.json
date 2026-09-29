@@ -42,7 +42,14 @@
     "save": "Save",
     "saved": "Saved."
   },
+  "noteStart": {
+    "title": "Your notes",
+    "list": "All notes",
+    "recent": "Changed last",
+    "none": "No notes yet. Start with a new one."
+  },
   "sidebar": {
+    "label": "Notes and spaces",
     "spaces": "Spaces",
     "newNote": "New note",
     "newNoteShortcut": "New note (Alt+N)",
@@ -122,7 +129,6 @@
     "backlinks": "Backlinks",
     "noBacklinks": "No note links here yet.",
     "outgoing": "Links in this note",
-    "pick": "Pick a note on the left, or search with Ctrl K.",
     "rename": "Rename",
     "renameLabel": "New name",
     "renameDo": "Rename",

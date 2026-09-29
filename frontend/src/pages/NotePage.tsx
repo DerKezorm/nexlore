@@ -20,6 +20,7 @@ import { DraftCompare } from '../components/DraftCompare'
 import type { EditorHandle, EditorMode } from '../components/NoteEditor'
 import { Sidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
+import { NoteStart } from '../components/NoteStart'
 import { TabBar } from '../components/TabBar'
 import { openInTab } from '../lib/tabs'
 import { copiesOf, originalOf } from '../lib/compare'
@@ -74,7 +75,6 @@ export function NotePage() {
   const [params] = useSearchParams()
   const right = path ? params.get('right') : null
   const navigate = useNavigate()
-  const { t } = useTranslation()
   const open = useCallback((next: string) => navigate(noteUrl(next) + (right ? `?right=${encodeURIComponent(right)}` : '')), [navigate, right])
   return (
     <>
@@ -82,7 +82,7 @@ export function NotePage() {
       {path ? (
         <NotePane path={path} side="left" right={right} />
       ) : (
-        <main className="flex flex-1 items-center justify-center px-6 text-center text-mist-500">{t('note.pick')}</main>
+        <NoteStart onNote={open} />
       )}
       {right && <NotePane path={right} side="right" right={right} mirror={right === path} />}
     </>

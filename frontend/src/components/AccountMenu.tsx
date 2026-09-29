@@ -128,6 +128,13 @@ export function AccountMenu() {
           >
             <Symbol name="users" /> {t('account.page')}
           </Link>
+          {/* On a phone the header keeps the four daily places; these two live here. */}
+          <Link to="/files" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-mist-300 hover:bg-ink-850 hover:text-mist-100 sm:hidden">
+            <Symbol name="files" /> {t('nav.files')}
+          </Link>
+          <Link to="/settings" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-mist-300 hover:bg-ink-850 hover:text-mist-100 sm:hidden">
+            <Symbol name="settings" /> {t('nav.settings')}
+          </Link>
           {install.can === 'prompt' && (
             <button
               type="button"

@@ -42,7 +42,14 @@
     "save": "Speichern",
     "saved": "Gespeichert."
   },
+  "noteStart": {
+    "title": "Deine Notizen",
+    "list": "Alle Notizen",
+    "recent": "Zuletzt geändert",
+    "none": "Noch keine Notizen. Fang mit einer neuen an."
+  },
   "sidebar": {
+    "label": "Notizen und Bereiche",
     "spaces": "Bereiche",
     "newNote": "Neue Notiz",
     "newNoteShortcut": "Neue Notiz (Alt+N)",
@@ -122,7 +129,6 @@
     "backlinks": "Rückverweise",
     "noBacklinks": "Noch keine Notiz verweist hierher.",
     "outgoing": "Links in dieser Notiz",
-    "pick": "Wähle links eine Notiz oder suche mit Strg K.",
     "rename": "Umbenennen",
     "renameLabel": "Neuer Name",
     "renameDo": "Umbenennen",
