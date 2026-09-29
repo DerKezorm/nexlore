@@ -35,6 +35,8 @@ PRODUCT_NAMES = {
     "frontend/src/i18n/en.json": re.compile(f"{_C.capitalize()} Code"),
     "frontend/src/i18n/de.json": re.compile(f"{_C.capitalize()} Code"),
     "frontend/src/lib/aiProviders.ts": re.compile(rf"console\.{_A}\.com|api\.{_A}\.com|{_A.capitalize()}"),
+    "backend/app/services/ai.py": re.compile(f"{_A}-version"),
+    "backend/tests/test_ai.py": re.compile(f"{_A}-version"),
 }
 
 
@@ -130,3 +132,5 @@ def test_product_names_pass_only_in_their_files_and_never_hide_an_attribution() 
     assert PATTERN.search(without_products("frontend/src/lib/mcp.ts", "Co-" + f"Authored-By: {name}"))
     assert PATTERN.search(without_products("frontend/src/lib/mcp.ts", "Written by " + _C.capitalize()))
     assert PATTERN.search(without_products("frontend/src/lib/aiProviders.ts", "Generated " + f"with {_A.capitalize()}"))
+    assert not PATTERN.search(without_products("backend/app/services/ai.py", f'headers["{_A}-version"]'))
+    assert PATTERN.search(without_products("backend/app/services/ai.py", f"# {_A.capitalize()} wants it"))

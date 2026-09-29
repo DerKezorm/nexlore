@@ -116,6 +116,7 @@ def test_the_access_keeps_its_key_to_itself_and_is_on_only_when_complete(
     assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).status_code == 200
     sent = service.requests[-1]
     assert sent.headers["authorization"] == f"Bearer {KEY}" and sent.headers["x-api-key"] == KEY
+    assert sent.headers["anthropic-version"] == "2023-06-01"
     assert service.last_body()["model"] == "model-b"
     assert str(sent.url) == "http://ai.example.test/v1/chat/completions"
     # An access that becomes incomplete switches itself off.
@@ -131,6 +132,8 @@ def test_the_model_list_tests_the_access_and_says_where_to_look(anna: TestClient
     anna.post("/api/ai/models", json={"url": "http://other.example.test/api", "key": "typed-key"})
     assert str(service.requests[-1].url) == "http://other.example.test/api/models"
     assert service.requests[-1].headers["authorization"] == "Bearer typed-key"
+    # One service's list answers 400 without its version header.
+    assert service.requests[-1].headers["anthropic-version"] == "2023-06-01"
     for status, code in ((404, "ai_no_list"), (401, "ai_key_refused"), (500, "ai_service_failed")):
         service.answer = lambda request, status=status: httpx.Response(status)
         assert anna.post("/api/ai/models", json={}).json()["detail"]["code"] == code

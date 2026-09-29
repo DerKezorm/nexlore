@@ -103,11 +103,13 @@ def check_address(url: str) -> str:
 
 def _headers(key: str) -> dict[str, str]:
     # Both forms: the usual ``Authorization: Bearer`` and ``x-api-key``, which some services take instead. Sending both
-    # spares a case for each provider, which would be a list of providers in the server.
+    # spares a case for each provider, which would be a list of providers in the server. One service answers 400
+    # without its version header (its model list at least); the others ignore it.
     headers = {"content-type": "application/json"}
     if key:
         headers["authorization"] = f"Bearer {key}"
         headers["x-api-key"] = key
+        headers["anthropic-version"] = "2023-06-01"
     return headers
 
 
