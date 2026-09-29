@@ -31,15 +31,17 @@ function preview(kind: Kind, text: string): HTMLElement {
   box.className = kind === 'mermaid' ? 'nn-mermaid-preview' : 'nn-math-preview'
   box.contentEditable = 'false'
   box.dataset.state = 'loading'
-  void import('../lib/enrich').then(async ({ mermaidSvg, mathHtml }) => {
+  // The loading counts too: after an update the old file names are gone, and the box would wait for ever.
+  void (async () => {
     try {
+      const { mermaidSvg, mathHtml } = await import('../lib/enrich')
       box.innerHTML = kind === 'mermaid' ? await mermaidSvg(text) : await mathHtml(text, true)
       box.dataset.state = 'shown'
     } catch {
       box.replaceChildren()
       box.dataset.state = 'failed'
     }
-  })
+  })()
   return box
 }
 
