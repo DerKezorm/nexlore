@@ -184,6 +184,69 @@
     "problem": "Zeile {{line}}: {{what}} ist hier nicht erlaubt.",
     "rules": "Erlaubt: Regeln, @media und @supports. Abgewiesen: url(), @import, @font-face und alles andere, was etwas nachladen könnte."
   },
+  "searchPage": {
+    "open": "Alle Notizen durchsuchen",
+    "all": "Alle Treffer auf der Suchseite",
+    "label": "Suche mit Operatoren",
+    "placeholder": "Wörter, \"Wortfolgen\", tag:, path:, -ohne …",
+    "filters": "Filter",
+    "spaces": "Bereiche",
+    "changed": "Geändert",
+    "when": {
+      "any": "Jederzeit",
+      "week": "Letzte 7 Tage",
+      "month": "Letzte 30 Tage"
+    },
+    "only": "Nur",
+    "tasks": "Notizen mit offenen Aufgaben",
+    "help": "So wird gesucht",
+    "helpTitle": "Operatoren, wie in Obsidian",
+    "remove": "„{{piece}}“ herausnehmen",
+    "count_one": "{{count}}{{more}} Notiz · {{ms}} ms",
+    "count_other": "{{count}}{{more}} Notizen · {{ms}} ms",
+    "empty": "Gib ein, was du suchst, oder wähle einen Filter.",
+    "nothing": "Keine Notiz passt.",
+    "more": "Mehr zeigen",
+    "line": "Z {{line}}",
+    "ops": {
+      "tag": {
+        "code": "tag:garten",
+        "text": "der Tag und die Tags darunter"
+      },
+      "path": {
+        "code": "path:Rezepte",
+        "text": "Teil des Ordners oder Namens"
+      },
+      "space": {
+        "code": "space:Küche",
+        "text": "ein Bereich"
+      },
+      "file": {
+        "code": "file:plan",
+        "text": "Teil des Dateinamens"
+      },
+      "task": {
+        "code": "task:anrufen",
+        "text": "offene Aufgaben (mit Wort: darin)"
+      },
+      "phrase": {
+        "code": "\"zfs pool\"",
+        "text": "diese Wörter genau so"
+      },
+      "not": {
+        "code": "-test",
+        "text": "ohne dieses Wort"
+      },
+      "property": {
+        "code": "[status:offen]",
+        "text": "eine Eigenschaft und Teil ihres Werts"
+      },
+      "changed": {
+        "code": "changed:7d",
+        "text": "geändert in den letzten 7 Tagen (h, d, w)"
+      }
+    }
+  },
   "noteStart": {
     "recentOpened": "Zuletzt geöffnet",
     "title": "Deine Notizen",

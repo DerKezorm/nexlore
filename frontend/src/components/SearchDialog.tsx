@@ -8,6 +8,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router-dom'
 
 import { ApiError, recentApi, vaultApi, type Found, type Hit } from '../api/client'
 import { folderColor } from '../graph/palette'
@@ -15,10 +16,8 @@ import { errorText } from '../lib/errors'
 import { headingsOf } from '../lib/outline'
 import { askHeading, shownNote } from '../lib/shell'
 import { folderOf } from '../lib/vault'
+import { Marked } from './Marked'
 import { Symbol } from './Symbol'
-
-const HIT_START = '\u0002'
-const HIT_END = '\u0003'
 
 type Result =
   | { kind: 'note'; path: string; title: string; snippet?: string; alias?: string | null }
@@ -27,34 +26,6 @@ type Result =
 
 const fold = (text: string) => text.normalize('NFC').toLocaleLowerCase()
 const trail = (folder: string) => folder.replace(/\//g, ' › ')
-
-function Snippet({ text }: { text: string }) {
-  const parts: { text: string; hit: boolean }[] = []
-  text.split(HIT_START).forEach((piece, position) => {
-    const end = piece.indexOf(HIT_END)
-    // Everything before the first start mark is plain text; after a start mark, up to its end mark is the hit.
-    if (position === 0 || end < 0) {
-      if (piece) parts.push({ text: piece.replaceAll(HIT_END, ''), hit: false })
-      return
-    }
-    parts.push({ text: piece.slice(0, end), hit: true })
-    const rest = piece.slice(end + 1).replaceAll(HIT_END, '')
-    if (rest) parts.push({ text: rest, hit: false })
-  })
-  return (
-    <>
-      {parts.map((part, index) =>
-        part.hit ? (
-          <mark key={index} className="rounded bg-accent-500/25 px-0.5 text-mist-100">
-            {part.text}
-          </mark>
-        ) : (
-          <span key={index}>{part.text}</span>
-        ),
-      )}
-    </>
-  )
-}
 
 type Props = {
   onClose: () => void
@@ -69,6 +40,7 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
   const [problem, setProblem] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const headingMode = query.startsWith('#')
+  const navigate = useNavigate()
   const [hits, setHits] = useState<Hit[]>([])
   const [titles, setTitles] = useState<Found[]>([])
   const [index, setIndex] = useState(0)
@@ -194,7 +166,7 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
                     ) : result.kind === 'heading' ? (
                       t('search.heading', { level: result.level })
                     ) : result.snippet ? (
-                      <Snippet text={result.snippet} />
+                      <Marked text={result.snippet} />
                     ) : result.alias ? (
                       t('search.alias', { alias: result.alias, folder: trail(folderOf(result.path)) })
                     ) : (
@@ -212,6 +184,18 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
             </li>
           )}
         </ul>
+        {query.trim() && !headingMode && (
+          <button
+            type="button"
+            onClick={() => {
+              onClose()
+              navigate(`/search?q=${encodeURIComponent(query.trim())}`)
+            }}
+            className="flex w-full items-center gap-2 border-t border-ink-700 px-4 py-2 text-left text-sm text-accent-400 hover:bg-ink-850"
+          >
+            <Symbol name="search" className="h-4 w-4" /> {t('searchPage.all')}
+          </button>
+        )}
         {problem && (
           <p role="alert" className="border-t border-ink-700 px-4 py-2 text-sm text-bad-500">
             {problem}

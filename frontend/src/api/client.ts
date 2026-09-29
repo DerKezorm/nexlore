@@ -479,6 +479,14 @@ export const favoritesApi = {
   set: (path: string, on: boolean) => api<void>('/api/favorites', { method: 'PUT', body: { path, on } }),
 }
 
+// --- The search page (routers/search.py) -------------------------------------------------------------------------
+
+export type SearchPage = { notes: { path: string; title: string; lines: { line: number; text: string }[] }[]; more: boolean; ms: number }
+
+export const searchApi = {
+  notes: (q: string, offset = 0) => api<SearchPage>('/api/search/notes', { query: { q, offset, limit: 30 } }),
+}
+
 // --- Colour themes and own CSS (routers/themes.py) -----------------------------------------------------------------
 
 export type ThemeRow = { ref: string; id: number; name: string; colours: Colours; shared: boolean; weak: Weak[]; owner?: string }

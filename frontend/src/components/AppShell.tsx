@@ -103,7 +103,12 @@ export function AppShell() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+        // The search page, as Obsidian's "search in all files".
+        e.preventDefault()
+        setSearching(false)
+        navigate('/search')
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setSearching(true)
       } else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'p') {
@@ -121,7 +126,7 @@ export function AppShell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [openToday])
+  }, [openToday, navigate])
 
   useEffect(() => {
     const ask = (event: Event) => setCreating((event as CustomEvent<string>).detail)
@@ -151,6 +156,7 @@ export function AppShell() {
       { id: 'app.search', label: t('search.button'), group, symbol: 'search', keys: t('search.shortcut'), run: () => setSearching(true) },
       ...(home ? [{ id: 'app.today', label: t('today.title'), group, symbol: 'today' as const, keys: 'Alt+T', run: () => void openToday() }] : []),
       ...(newNoteAt.current ? [{ id: 'app.newNote', label: t('sidebar.newNote'), group, symbol: 'plus' as const, keys: 'Alt+N', run: () => setCreating(newNoteAt.current) }] : []),
+      { id: 'go.search', label: t('searchPage.open'), group, symbol: 'search', keys: 'Ctrl Shift F', run: () => navigate('/search') },
       go('go.graph', t('palette.goTo', { place: t('nav.graph') }), '/', 'graph'),
       go('go.notes', t('palette.goTo', { place: t('nav.notes') }), '/note', 'note'),
       go('go.calendar', t('palette.goTo', { place: t('nav.calendar') }), '/calendar', 'calendar'),

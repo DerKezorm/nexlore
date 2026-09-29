@@ -184,6 +184,69 @@
     "problem": "Line {{line}}: {{what}} is not allowed here.",
     "rules": "Allowed: rules, @media and @supports. Refused: url(), @import, @font-face and everything else that could load something."
   },
+  "searchPage": {
+    "open": "Search all notes",
+    "all": "All hits on the search page",
+    "label": "Search with operators",
+    "placeholder": "Words, \"phrases\", tag:, path:, -without …",
+    "filters": "Filters",
+    "spaces": "Spaces",
+    "changed": "Changed",
+    "when": {
+      "any": "Any time",
+      "week": "Last 7 days",
+      "month": "Last 30 days"
+    },
+    "only": "Only",
+    "tasks": "Notes with open tasks",
+    "help": "How to search",
+    "helpTitle": "Operators, as in Obsidian",
+    "remove": "Take “{{piece}}” out",
+    "count_one": "{{count}}{{more}} note · {{ms}} ms",
+    "count_other": "{{count}}{{more}} notes · {{ms}} ms",
+    "empty": "Type what you are looking for, or pick a filter.",
+    "nothing": "No note fits.",
+    "more": "Show more",
+    "line": "L {{line}}",
+    "ops": {
+      "tag": {
+        "code": "tag:garden",
+        "text": "the tag, and the tags below it"
+      },
+      "path": {
+        "code": "path:Recipes",
+        "text": "part of the folder or the name"
+      },
+      "space": {
+        "code": "space:Kitchen",
+        "text": "one space"
+      },
+      "file": {
+        "code": "file:plan",
+        "text": "part of the file name"
+      },
+      "task": {
+        "code": "task:call",
+        "text": "open tasks (with a word: in them)"
+      },
+      "phrase": {
+        "code": "\"zfs pool\"",
+        "text": "these words as they stand"
+      },
+      "not": {
+        "code": "-test",
+        "text": "without this word"
+      },
+      "property": {
+        "code": "[status:open]",
+        "text": "a property, and part of its value"
+      },
+      "changed": {
+        "code": "changed:7d",
+        "text": "changed within 7 days (h, d, w)"
+      }
+    }
+  },
   "noteStart": {
     "recentOpened": "Opened last",
     "title": "Your notes",
