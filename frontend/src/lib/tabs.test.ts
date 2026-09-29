@@ -41,6 +41,19 @@ describe('tabs', () => {
     expect(closeTab('d.md')).toEqual({ front: true, next: null })
   })
 
+  it('the note on the screen is in front, even before the mark has followed it', () => {
+    const go = vi.fn()
+    for (const path of ['a.md', 'b.md', 'c.md']) openInTab(path, go)
+    followTab('a.md')
+    // b.md is shown already (its tab was clicked), the mark still says a.md.
+    expect(closeTab('b.md', 'b.md')).toEqual({ front: true, next: 'c.md' })
+    expect(readTabs()).toEqual({ paths: ['a.md', 'c.md'], active: 1 })
+    // Another one closed: what is shown stays in front.
+    followTab('a.md')
+    expect(closeTab('a.md', 'c.md')).toEqual({ front: false, next: null })
+    expect(readTabs()).toEqual({ paths: ['c.md'], active: 0 })
+  })
+
   it('forgets the tabs of a note or folder that went, but not the one in front, nor a neighbour with a like name', () => {
     const go = vi.fn()
     for (const path of ['S/Beds/x.md', 'S/Bedside.md', 'S/Beds.md', 'S/y.md']) openInTab(path, go)

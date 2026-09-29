@@ -37,7 +37,7 @@ export function TabBar({ path }: { path: string }) {
   const tabs = useNoteTabs(path)
   const [hover, setHover] = useState<string | null>(null)
   const close = (target: string) => {
-    const { front, next } = closeTab(target)
+    const { front, next } = closeTab(target, path)
     if (front) navigate(next ? noteUrl(next) : '/note')
   }
   // One note open is no row of tabs: the space stays for the note (a phone has little of it).

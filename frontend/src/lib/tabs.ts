@@ -69,14 +69,18 @@ export function openInTab(path: string, go: (url: string) => void): void {
 /**
  * Closes a tab. `front` says whether it was the one in front, and then `next` is the note to show now (the one to its
  * right, else to its left), or null when none is left.
+ *
+ * `shown`: the note on the screen. It decides what is in front, not the stored mark: that follows a new address only
+ * after the page has drawn, and a click on × in between closed the tab and left its note standing (Windows CI).
  */
-export function closeTab(path: string): { front: boolean; next: string | null } {
+export function closeTab(path: string, shown?: string): { front: boolean; next: string | null } {
   const tabs = readTabs()
   const at = tabs.paths.indexOf(path)
   if (at < 0) return { front: false, next: null }
   const paths = tabs.paths.filter((_, index) => index !== at)
-  const front = at === tabs.active
-  const active = Math.max(0, front ? Math.min(at, paths.length - 1) : tabs.active - (at < tabs.active ? 1 : 0))
+  const front = shown !== undefined ? path === shown : at === tabs.active
+  const still = shown !== undefined && !front ? paths.indexOf(shown) : -1
+  const active = Math.max(0, front ? Math.min(at, paths.length - 1) : still >= 0 ? still : tabs.active - (at < tabs.active ? 1 : 0))
   writeTabs({ paths, active })
   return { front, next: front ? (paths[active] ?? null) : null }
 }
