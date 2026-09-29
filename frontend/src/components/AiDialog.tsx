@@ -14,7 +14,7 @@ import { ApiError, aiApi, vaultApi } from '../api/client'
 import type { AiScope, NoteEditor } from '../editor/editor'
 import type { AiAsk } from '../lib/aiMenu'
 import { showModalOnce } from '../lib/dialog'
-import { errorText } from '../lib/errors'
+import { errorText, serviceSaid } from '../lib/errors'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { CompareRows } from './CompareRows'
 
@@ -39,6 +39,7 @@ export function AiDialog({ engine, ask, notePath, onClose, onNotice }: Props) {
   const [result, setResult] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const [said, setSaid] = useState('')
   const [title, setTitle] = useState('')
   const alive = useRef(true)
   const tooShort = !writing && words(scope.markdown) < 3
@@ -50,7 +51,10 @@ export function AiDialog({ engine, ask, notePath, onClose, onNotice }: Props) {
       const answer = await aiApi.run(ask.task, scope.markdown, ask.target, instruction)
       if (alive.current) setResult(answer.text)
     } catch (error) {
-      if (alive.current) setProblem(error instanceof ApiError ? error.code : 'internal_error')
+      if (alive.current) {
+        setProblem(error instanceof ApiError ? error.code : 'internal_error')
+        setSaid(serviceSaid(error))
+      }
     } finally {
       if (alive.current) setBusy(false)
     }
@@ -84,6 +88,7 @@ export function AiDialog({ engine, ask, notePath, onClose, onNotice }: Props) {
       navigate(noteUrl(made.path))
     } catch (error) {
       setProblem(error instanceof ApiError ? error.code : 'internal_error')
+      setSaid('')
       setBusy(false)
     }
   }
@@ -142,7 +147,7 @@ export function AiDialog({ engine, ask, notePath, onClose, onNotice }: Props) {
           )}
         </header>
 
-        {problem && <p role="alert" className="border-b border-bad-500/30 bg-bad-500/10 px-5 py-2 text-sm text-bad-500">{errorText(problem)}</p>}
+        {problem && <p role="alert" className="border-b border-bad-500/30 bg-bad-500/10 px-5 py-2 text-sm text-bad-500">{errorText(problem)}{said}</p>}
         {tooShort && <p role="note" className="px-5 py-4 text-sm text-mist-400">{t('ai.tooShort')}</p>}
 
         {writing && result === null && (

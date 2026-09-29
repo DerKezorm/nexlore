@@ -33,6 +33,10 @@ http
       if (request.method === 'POST' && request.url === '/v1/chat/completions') {
         const body = JSON.parse(raw)
         last = body
+        // A request the service turns down, with its own words about why.
+        if (String(body.messages?.[0]?.content ?? '').includes('Turn this down')) {
+          return send(400, { type: 'error', error: { type: 'invalid_request_error', message: 'temperature: not allowed here' } })
+        }
         return send(200, { choices: [{ message: { content: answer(body) } }], usage: { prompt_tokens: 12, completion_tokens: 5 } })
       }
       send(404, { error: 'not found' })

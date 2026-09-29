@@ -56,6 +56,8 @@ MIN_WORDS = 3
 MAX_INSTRUCTION = 2_000
 #: What may come back.
 MAX_OUT_TOKENS = 8_000
+#: How much of a service's error message comes back to the person.
+SAID_CHARS = 300
 MAX_OUT_CHARS = 200_000
 #: Requests per account and minute; a loop in a page must not run up somebody's bill.
 PER_MINUTE = 20
@@ -124,7 +126,22 @@ def _judge(answer: httpx.Response) -> None:
     if answer.status_code == 429:
         raise AiError("ai_service_busy", 502)
     logger.info("The AI service answered %s", answer.status_code)
-    raise AiError("ai_service_failed", 502, answered=answer.status_code)
+    raise AiError("ai_service_failed", 502, answered=answer.status_code, said=_said(answer))
+
+
+def _said(answer: httpx.Response) -> str:
+    """The service's own words about the error (``{"error": {"message": …}}`` nearly everywhere), for the person who
+    sent the request: "400" alone says nothing. Not logged; one line, at most ``SAID_CHARS``."""
+    try:
+        data = answer.json()
+    except ValueError:
+        return ""
+    found = data.get("error") if isinstance(data, dict) else None
+    if isinstance(found, dict):
+        found = found.get("message")
+    if not isinstance(found, str):
+        return ""
+    return " ".join("".join(c if c.isprintable() else " " for c in found).split())[:SAID_CHARS]
 
 
 def list_models(url: str, key: str) -> list[dict[str, str]]:

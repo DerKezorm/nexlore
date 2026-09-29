@@ -137,6 +137,14 @@ def test_the_model_list_tests_the_access_and_says_where_to_look(anna: TestClient
     for status, code in ((404, "ai_no_list"), (401, "ai_key_refused"), (500, "ai_service_failed")):
         service.answer = lambda request, status=status: httpx.Response(status)
         assert anna.post("/api/ai/models", json={}).json()["detail"]["code"] == code
+    # The service's own words come back with its status, on one line and cut short; "400" alone says nothing.
+    words = {"error": {"type": "invalid_request_error", "message": "temperature:\n  not\x00 allowed " + "x" * 400}}
+    service.answer = lambda request: httpx.Response(400, json=words)
+    detail = anna.post("/api/ai/models", json={}).json()["detail"]
+    assert (detail["code"], detail["answered"]) == ("ai_service_failed", 400)
+    assert detail["said"].startswith("temperature: not allowed xxx") and len(detail["said"]) == 300
+    service.answer = lambda request: httpx.Response(400, text="<html>busy</html>")
+    assert anna.post("/api/ai/models", json={}).json()["detail"]["said"] == ""
 
 
 def test_every_task_carries_the_rules_and_only_a_known_tone_or_a_language_name(anna: TestClient, service: Service) -> None:

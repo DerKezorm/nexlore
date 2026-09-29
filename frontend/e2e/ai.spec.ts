@@ -139,6 +139,10 @@ test('a summary goes in after the block with the caret, and a written text into 
 
   await page.getByTestId('editor-toolbar').getByRole('button', { name: 'AI' }).click()
   await page.getByRole('menuitem', { name: 'Write for me …' }).click()
+  // Turned down: the service's own words stand after the sentence, "400" alone says nothing.
+  await dialog.getByLabel('What should be written?').fill('Turn this down')
+  await dialog.getByRole('button', { name: 'Write', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toHaveText('The service answered with an error. (400: temperature: not allowed here)')
   await dialog.getByLabel('What should be written?').fill('An agenda for Thursday')
   await dialog.getByRole('button', { name: 'Write', exact: true }).click()
   // The fence the model put around it is gone.
@@ -156,7 +160,8 @@ test('the account sees what went out, word for word, and clears it; switched off
   const access = page.locator('section#ai')
   await access.getByText('What went out').click()
   const events = access.getByTestId('ai-events')
-  await expect(events.locator('li')).toHaveCount(4)
+  // Four answered, one turned down after it went out: that one is in the list too.
+  await expect(events.locator('li')).toHaveCount(5)
   await events.locator('li').last().locator('summary').click()
   await expect(events.locator('li').last().locator('pre')).toContainText('We meet on Thursday at teh office.')
   await access.getByRole('button', { name: 'Clear the list now' }).click()

@@ -12,7 +12,7 @@ import { Link } from 'react-router-dom'
 
 import { ApiError, aiApi, type AiEvent, type AiModel, type AiState } from '../api/client'
 import { AI_PROVIDERS } from '../lib/aiProviders'
-import { errorText } from '../lib/errors'
+import { errorText, serviceSaid } from '../lib/errors'
 import { formatDate } from '../lib/markdown'
 import { useAuth } from '../state/auth'
 import { Symbol } from './Symbol'
@@ -28,6 +28,7 @@ export function AiAccess() {
   const [events, setEvents] = useState<AiEvent[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const [said, setSaid] = useState('')
   const [done, setDone] = useState<string | null>(null)
 
   const take = (next: AiState) => {
@@ -48,6 +49,7 @@ export function AiAccess() {
       await work()
     } catch (error) {
       setProblem(error instanceof ApiError ? error.code : 'internal_error')
+      setSaid(serviceSaid(error))
     } finally {
       setBusy(false)
     }
@@ -201,7 +203,7 @@ export function AiAccess() {
       </label>
       <p className="mt-3 text-xs text-mist-500">{t('ai.whereItGoes')}</p>
 
-      {problem && <p role="alert" className="mt-3 rounded-lg border border-bad-500/30 bg-bad-500/10 px-3 py-2 text-sm text-bad-500">{errorText(problem)}</p>}
+      {problem && <p role="alert" className="mt-3 rounded-lg border border-bad-500/30 bg-bad-500/10 px-3 py-2 text-sm text-bad-500">{errorText(problem)}{said}</p>}
       {done && <p role="status" className="mt-3 text-sm text-accent-400">{done}</p>}
 
       <details
