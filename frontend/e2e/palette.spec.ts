@@ -112,6 +112,8 @@ test('a slash in the quick switcher finds folders; the sidebar opens, scrolls to
   await expect(tree.getByRole('button', { name: /^Zyx( \d+)?$/ })).toBeFocused()
   // No folder of the name.
   await page.keyboard.press('ControlOrMeta+k')
+  // Typed only once the field has the keys: before, the letters went nowhere (seen in a full run).
+  await expect(switcher.locator('input')).toBeFocused()
   await page.keyboard.type('/qqqq')
   await expect(switcher).toContainText('No folder of that name.')
   await expect(switcher.getByRole('button', { name: /Make the note/ })).toHaveCount(0)

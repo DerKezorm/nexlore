@@ -96,14 +96,24 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
   const recentKey = `nexlore.recent.${me?.id ?? 'none'}`
   const rail = me?.appearance?.sidebar === 'rail'
   const setRail = useCallback((next: boolean) => void setAppearance({ sidebar: next ? 'rail' : 'open' }).catch(() => {}), [setAppearance])
+  // Two quick presses come before the page has drawn the first: each flips what the one before it meant, not what
+  // is on the screen yet (both used to fold).
+  const railMeant = useRef(rail)
+  useEffect(() => {
+    railMeant.current = rail
+  }, [rail])
   useEffect(() => {
     const toggle = () => {
-      if (narrow()) setSheet((open) => !open)
-      else setRail(!rail)
+      if (narrow()) {
+        setSheet((open) => !open)
+        return
+      }
+      railMeant.current = !railMeant.current
+      setRail(railMeant.current)
     }
     window.addEventListener(SIDEBAR_EVENT, toggle)
     return () => window.removeEventListener(SIDEBAR_EVENT, toggle)
-  }, [rail, setRail])
+  }, [setRail])
   const [recentOpen, setRecentOpen] = useState(() => {
     try {
       return localStorage.getItem('nexlore.recentOpen') !== 'closed'
@@ -348,7 +358,9 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       element.removeEventListener('scroll', update)
       observer.disconnect()
     }
-  }, [])
+    // Unfolded from the strip of symbols, the list is a new element: measured anew, or the one taken away reports a
+    // height of nothing and only the few rows drawn ahead show.
+  }, [rail])
 
   // Whether one may write in the space of a path: the menu offers what the server would allow.
   const writable = (path: string | null | undefined) => {

@@ -7,7 +7,7 @@
  */
 import { applyAppearance, DEFAULT_APPEARANCE, type Appearance } from '../lib/appearance'
 import { applyOwnCss, applyThemeColours } from '../lib/themes'
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError, authApi, SIGNED_OUT_EVENT, type Me, themesApi } from '../api/client'
@@ -33,6 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { i18n } = useTranslation()
   const [status, setStatus] = useState<Status>('loading')
   const [me, setMe] = useState<Me | null>(null)
+  const appearanceWrites = useRef<Promise<unknown>>(Promise.resolve())
+  const appearanceTicket = useRef(0)
+  const themePending = useRef(false)
 
   const refresh = useCallback(async () => {
     try {
@@ -92,10 +95,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       applyAppearance(next)
       return { ...current, appearance: next }
     })
-    const saved = await authApi.setAppearance(changes)
+    // One after the other: sent side by side, the one that arrived last won, not the one meant last (Alt+B twice
+    // left the sidebar folded). Only the answer to the latest change is shown; earlier ones would flicker back.
+    const ticket = ++appearanceTicket.current
+    if ('theme' in changes) themePending.current = true
+    const sent = appearanceWrites.current.then(() => authApi.setAppearance(changes))
+    appearanceWrites.current = sent.catch(() => undefined)
+    const saved = await sent
+    if (ticket !== appearanceTicket.current) return
     applyAppearance(saved)
     // Another theme: its colours, from the server (nexlore's own has none).
-    const colours = 'theme' in changes ? (saved.theme === 'nexlore' ? null : (await themesApi.one(saved.theme)).colours) : undefined
+    const themeChanged = themePending.current
+    themePending.current = false
+    const colours = themeChanged ? (saved.theme === 'nexlore' ? null : (await themesApi.one(saved.theme)).colours) : undefined
     if (colours !== undefined) applyThemeColours(colours)
     setMe((current) => (current ? { ...current, appearance: saved, ...(colours !== undefined ? { theme_colours: colours } : {}) } : current))
   }, [])

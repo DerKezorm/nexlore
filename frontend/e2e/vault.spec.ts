@@ -44,7 +44,7 @@ test('a note reads with its links resolved by the server, and a link leads on', 
 
 test('typing saves by itself, and the file on disk has it', async ({ page }) => {
   await page.goto('/note/Work/Scratch.md')
-  await page.getByRole('button', { name: 'Edit' }).click()
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
   const editor = page.locator('.ProseMirror')
   await editor.click()
   await page.keyboard.press('Control+End')
@@ -52,13 +52,13 @@ test('typing saves by itself, and the file on disk has it', async ({ page }) => 
   await page.keyboard.type('A line from the test.')
   await expect(page.getByRole('status')).toHaveText('Saved', { timeout: 10_000 })
   expect(onDisk('Work/Scratch.md')).toContain('A line from the test.')
-  await page.getByRole('button', { name: 'Read' }).click()
+  await page.getByRole('button', { name: 'Read', exact: true }).click()
   await expect(page.locator('article')).toContainText('A line from the test.')
 })
 
 test('a change made elsewhere while typing ends in a conflict copy, nothing is overwritten', async ({ page }) => {
   await page.goto('/note/Work/Conflict.md')
-  await page.getByRole('button', { name: 'Edit' }).click()
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
   // Obsidian (or anybody) writes the file while the editor is open (editing reads the note afresh when it starts).
   await expect(page.locator('.ProseMirror')).toContainText('Before.')
   fs.writeFileSync(path.join(DATA, 'vault', 'Work', 'Conflict.md'), '# Conflict\n\nChanged in Obsidian.\n')
@@ -75,17 +75,17 @@ test('a change made elsewhere while typing ends in a conflict copy, nothing is o
 
 test('while one tab edits a note, another sees who and cannot edit', async ({ page, browser }) => {
   await page.goto('/note/Work/Locked.md')
-  await page.getByRole('button', { name: 'Edit' }).click()
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(page.locator('.ProseMirror')).toBeVisible()
   const other = await browser.newContext({ locale: 'en-US' })
   const second = await other.newPage()
   await second.goto('/note/Work/Locked.md')
   await expect(second.getByRole('alert').filter({ hasText: 'is editing this note right now' })).toBeVisible()
-  await expect(second.getByRole('button', { name: 'Edit' })).toBeDisabled()
+  await expect(second.getByRole('button', { name: 'Edit', exact: true })).toBeDisabled()
   // Done in the first tab: the lock is given back.
-  await page.getByRole('button', { name: 'Read' }).click()
+  await page.getByRole('button', { name: 'Read', exact: true }).click()
   await second.reload()
-  await expect(second.getByRole('button', { name: 'Edit' })).toBeEnabled()
+  await expect(second.getByRole('button', { name: 'Edit', exact: true })).toBeEnabled()
   await other.close()
 })
 
@@ -115,7 +115,7 @@ test('a note with # and % in its name opens', async ({ page }) => {
 
 test('going straight from one note being edited to another keeps each text where it belongs', async ({ page }) => {
   await page.goto('/note/Switch/From.md')
-  await page.getByRole('button', { name: 'Edit' }).click()
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await page.locator('.ProseMirror').click()
   await page.keyboard.press('Control+End')
   await page.keyboard.type(' typed just before leaving')
@@ -142,6 +142,8 @@ test('renaming a note carries the links to it along', async ({ page }) => {
 test('Escape closes the name field and leaves the name as it was; F2 and the menu open it too', async ({ page }) => {
   await page.goto('/note/Zoo/Embedded.md')
   await expect(page.locator('article')).toBeVisible()
+  // F2 needs to know one may write here: that comes with the spaces, and Edit says so.
+  await expect(page.getByRole('button', { name: 'Edit', exact: true })).toBeEnabled()
   await page.keyboard.press('F2')
   await expect(page.getByLabel('New name')).toHaveValue('Embedded')
   await page.getByLabel('New name').press('Escape')

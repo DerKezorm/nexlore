@@ -17,6 +17,8 @@ const look = async (page: Page) => (await (await page.request.get('/api/auth/me'
 
 // Column and sidebar are kept with the account, and the tests share one: back as they were after each.
 test.afterEach(async ({ page }) => {
+  // Saves of the look go one after the other: the last may still wait behind another, and would land after this.
+  await page.waitForLoadState('networkidle').catch(() => {})
   await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links', sidebar: 'open' }, headers: TAB })
 })
 
@@ -105,6 +107,11 @@ test('the sidebar folds to symbols and back, keeps it with the account, and list
   await expect(page.getByTestId('sidebar-rail')).toBeVisible()
   await expect(page.getByTestId('sidebar')).toHaveCount(0)
   await expect.poll(async () => (await look(page)).sidebar).toBe('rail')
+  // Unfolded on the same page, the tree draws as many rows as fit, not only the ten it draws ahead (seen on a test server).
+  await page.getByTestId('sidebar-rail').getByRole('button', { name: 'Unfold the sidebar (Alt+B)' }).click()
+  await expect.poll(() => page.getByTestId('sidebar-tree').locator('li').count()).toBeGreaterThan(14)
+  await page.getByRole('button', { name: 'Fold the sidebar (Alt+B)' }).click()
+  await expect.poll(async () => (await look(page)).sidebar).toBe('rail')
   await page.reload()
   await expect(page.getByTestId('sidebar-rail')).toBeVisible()
   // A symbol opens it where it leads; Alt+B folds and unfolds.
@@ -115,5 +122,25 @@ test('the sidebar folds to symbols and back, keeps it with the account, and list
   await expect(page.getByTestId('sidebar-rail')).toBeVisible()
   await page.keyboard.press('Alt+b')
   await expect(page.getByTestId('sidebar')).toBeVisible()
+  await expect.poll(async () => (await look(page)).sidebar).toBe('open')
+  // Unfolded, the tree draws as many rows as fit, not only the ten it draws ahead.
+  await expect.poll(() => page.getByTestId('sidebar-tree').locator('li').count()).toBeGreaterThan(14)
   expect(problems).toEqual([])
+})
+
+test('folding and unfolding quickly keeps what was meant last, even when the first save is slow', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/note/Zyx/Tagged.md')
+  await expect(page.getByTestId('sidebar')).toBeVisible()
+  // The save that folds takes its time; sent side by side, it used to arrive last and win.
+  await page.route('**/api/me/appearance', async (route) => {
+    if (route.request().postData()?.includes('"rail"')) await new Promise((done) => setTimeout(done, 800))
+    await route.continue()
+  })
+  await page.keyboard.press('Alt+b')
+  await page.keyboard.press('Alt+b')
+  await expect(page.getByTestId('sidebar')).toBeVisible()
+  await page.waitForTimeout(1500)
+  expect((await look(page)).sidebar).toBe('open')
+  await expect(page.getByTestId('sidebar')).toBeVisible()
 })
