@@ -19,10 +19,13 @@ import {
   McpCard,
   SharesCard,
   SignInCard,
+  CssCard,
 } from '../components/settings/AdminCards'
 import { AdminPluginsCard } from '../plugins/PluginSettings'
 import { useServerSettings } from '../components/settings/useServerSettings'
 import { AppearanceCard } from '../components/settings/AppearanceCard'
+import { SnippetsCard } from '../components/settings/SnippetsCard'
+import { ThemesCard } from '../components/settings/ThemesCard'
 import { SpacesCard } from '../components/settings/SpacesCard'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { TabRow, type Tab } from '../components/TabRow'
@@ -62,7 +65,13 @@ export function SettingsPage() {
         {top === 'server' && <TabRow under tabs={parts} active={part} onChange={(value) => go('server', value)} label={t('settings.tabs.server')} />}
         <div className="space-y-6 pt-1">
           {top === 'general' && <LanguageCard />}
-          {top === 'looks' && <AppearanceCard />}
+          {top === 'looks' && (
+            <>
+              <AppearanceCard />
+              <ThemesCard />
+              <SnippetsCard />
+            </>
+          )}
           {top === 'spaces' && <SpacesCard />}
           {top === 'server' && <ServerPart part={part} />}
         </div>
@@ -93,6 +102,7 @@ function ServerPart({ part }: { part: Part }) {
           <>
             <McpCard settings={settings} onChange={setSettings} />
             <AiCard settings={settings} onChange={setSettings} />
+            <CssCard settings={settings} onChange={setSettings} />
             <AdminPluginsCard settings={settings} onChange={setSettings} />
           </>
         )

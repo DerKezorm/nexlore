@@ -102,6 +102,14 @@ export function AppearanceCard() {
       </div>
       <p className="text-xs text-mist-500">{t('looks2.wideHint')}</p>
 
+      <label className="flex items-start gap-3 text-sm text-mist-300">
+        <input type="checkbox" checked={look.space_themes} onChange={(event) => void change({ space_themes: event.target.checked })} className="mt-1 accent-accent-500" />
+        <span>
+          {t('looks2.spaceThemes')}
+          <span className="block text-xs text-mist-500">{t('looks2.spaceThemesHint')}</span>
+        </span>
+      </label>
+
       <div className="rounded-xl border border-ink-700 bg-ink-900 p-4">
         <div className="nn-prose mx-auto" style={{ maxWidth: 'var(--nn-width)' }} data-testid="appearance-sample">
           <h3>{t('looks2.sampleTitle')}</h3>

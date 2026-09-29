@@ -13,7 +13,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { ApiError, draftsApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi } from '../api/client'
+import { ApiError, draftsApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi, themesApi } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ConflictCompare } from '../components/ConflictCompare'
 import { DraftCompare } from '../components/DraftCompare'
@@ -24,6 +24,7 @@ import { NoteStart } from '../components/NoteStart'
 import { Outline } from '../components/Outline'
 import { useEnrich } from '../lib/enrich'
 import { noteClasses } from '../lib/appearance'
+import { ensureSpaceTheme } from '../lib/themes'
 import { TabBar } from '../components/TabBar'
 import { openInTab } from '../lib/tabs'
 import { copiesOf, originalOf } from '../lib/compare'
@@ -462,6 +463,11 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const html = useMemo(() => (note ? renderMarkdown(note.content, resolve, note.path) : ''), [note, resolve])
   const outgoing = useMemo(() => distinctOutgoing(links?.outgoing ?? []), [links])
   useEnrich(article, html)
+  // A space with a theme of its own: its colours under its notes (loaded once for all panes).
+  const noteSpaceTheme = note && me?.appearance?.space_themes !== false ? (spaces.find((space) => space.name === note.path.split('/')[0])?.theme ?? '') : ''
+  useEffect(() => {
+    if (noteSpaceTheme) ensureSpaceTheme(noteSpaceTheme, async (ref) => (await themesApi.one(ref)).colours)
+  }, [noteSpaceTheme])
   const copies = useMemo(() => copiesOf(path, siblings), [path, siblings])
   const view = note ? viewFor(plugins, note) : null
   const reveal = (heading: string, index: number) => {
@@ -669,6 +675,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
 
   const showInGraph = () => navigate(`/?focus=${encodeURIComponent(note.path)}`)
   const cssClasses = noteClasses(note.front)
+  const spaceTheme = me?.appearance?.space_themes !== false ? (spaces.find((space) => space.name === note.path.split('/')[0])?.theme ?? '') : ''
   const chain = note.path.split('/').slice(0, -1).map((name, index, all) => ({ id: all.slice(0, index + 1).join('/'), name }))
   const foreignLock = note.lock && !note.lock.mine ? note.lock.holder : null
   const lockedBy = lockHolder ?? foreignLock
@@ -678,7 +685,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
 
   return (
     <>
-      <main className={paneClass} data-pane={side}>
+      <main className={paneClass} data-pane={side} data-space-theme={spaceTheme || undefined}>
         <div className="flex min-w-0 flex-1 flex-col">
           {side === 'left' && <TabBar path={note.path} />}
           {/* Toolbar */}

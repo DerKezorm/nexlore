@@ -68,6 +68,9 @@ def set_options(space_name: str, values: dict[str, str]) -> dict[str, str]:
         if template and not paths.is_note(template):
             raise VaultError("not_a_note", "a template is a note")
         clean["daily_template"] = template
+    if "theme" in values:
+        # Checked by the route (the manager must be able to read the theme); here only kept.
+        clean["theme"] = values["theme"]
     with SessionLocal() as db:
         space = db.scalar(select(Space).where(Space.folder == space_name))
         if space is None:

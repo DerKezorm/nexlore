@@ -90,6 +90,8 @@
     "failed": "Die Notiz konnte nicht geladen werden."
   },
   "looks2": {
+    "spaceThemesHint": "Ein Bereich darf seine Notizen einfärben. Aus: Du siehst überall dein eigenes Theme.",
+    "spaceThemes": "Themes der Bereiche übernehmen",
     "title": "Aussehen",
     "text": "Für dein Konto, auf jedem Gerät. Jede Änderung wirkt sofort.",
     "mode": "Hell oder dunkel",
@@ -115,6 +117,72 @@
     "wideHint": "Eine einzelne Notiz wird breit mit cssclasses: wide in ihren Eigenschaften, wie in Obsidian.",
     "sampleTitle": "Brotteig",
     "sampleText": "Mehl, Wasser, Salz. Über Nacht gehen lassen, dann in den Ofen auf 250 Grad. Eine Schale Wasser im Ofen macht die Kruste besser; Zeilen um siebzig Zeichen lesen sich am ruhigsten."
+  },
+  "themes": {
+    "title": "Themes",
+    "text": "Die Farben von nexlore für dein Konto. Geteilte Themes kommen von anderen Konten dieses Servers.",
+    "new": "Neues Theme",
+    "import": "Datei einlesen",
+    "newName": "Mein Theme",
+    "name": "Name des Themes",
+    "side": "Dunkle oder helle Seite",
+    "share": "In der Galerie teilen",
+    "standard": "Standard",
+    "copy": "Kopieren und ändern",
+    "shared": "Von anderen geteilt",
+    "mine": "Meine Themes",
+    "noneMine": "Noch keine. Fang mit „Neues Theme“ an oder kopiere eines von oben.",
+    "edit": "Ändern",
+    "export": "Als Datei speichern",
+    "remove": "Entfernen",
+    "sharedNote": "geteilt",
+    "notAFile": "Das ist keine Theme-Datei von nexlore oder nexdeck.",
+    "weak": "„{{token}}“ ({{mode}}) steht mit {{ratio}}:1 auf seinem Grund; lesbar ab 4,5:1.",
+    "derived": "Die Zwischentöne (Hover, der weichere Akzent) werden daraus gemischt. Die Seite zeigt das Theme, während du es bearbeitest.",
+    "groups": {
+      "surfaces": "Flächen",
+      "lines": "Linien",
+      "text": "Schrift",
+      "accent": "Akzent",
+      "status": "Status"
+    },
+    "tokens": {
+      "bg": "Hintergrund",
+      "bg-elev": "Erhöht",
+      "surface": "Fläche",
+      "surface-hover": "Fläche beim Überfahren",
+      "border": "Linie",
+      "border-strong": "Linie, kräftig",
+      "text": "Text",
+      "text-muted": "Text, gedämpft",
+      "text-faint": "Text, blass",
+      "accent": "Akzent",
+      "on-accent": "Auf dem Akzent",
+      "ok": "Gut",
+      "warn": "Achtung",
+      "bad": "Fehler",
+      "ai": "KI"
+    },
+    "builtIn": {
+      "deepsea": "Tiefsee",
+      "forest": "Waldboden",
+      "ember": "Glut",
+      "mist": "Morgennebel",
+      "sandstone": "Sandstein",
+      "graphite": "Graphit",
+      "plum": "Pflaume"
+    }
+  },
+  "snippets": {
+    "title": "Eigenes CSS",
+    "text": "Schnipsel wie in Obsidian, jeder einzeln an oder aus. Nur für dein Konto, nie auf öffentlichen Seiten oder bei anderen.",
+    "new": "Neuer Schnipsel",
+    "newName": "Mein Schnipsel",
+    "name": "Name des Schnipsels",
+    "css": "CSS des Schnipsels",
+    "notAllowed": "Der Betreiber hat eigenes CSS nicht freigegeben (Einstellungen → Server → KI und Plugins).",
+    "problem": "Zeile {{line}}: {{what}} ist hier nicht erlaubt.",
+    "rules": "Erlaubt: Regeln, @media und @supports. Abgewiesen: url(), @import, @font-face und alles andere, was etwas nachladen könnte."
   },
   "noteStart": {
     "recentOpened": "Zuletzt geöffnet",
@@ -714,6 +782,12 @@
     "footer": "Geteilt mit nexlore"
   },
   "admin": {
+    "css": {
+      "title": "Eigenes CSS",
+      "text": "Konten dürfen CSS-Schnipsel für ihre eigenen Seiten anlegen. Jeder Schnipsel wird mit einem CSS-Parser gelesen; nichts, was von woanders lädt, kommt durch.",
+      "allow": "Eigenes CSS erlauben",
+      "allowHint": "Zu, erreicht kein Schnipsel eine Seite (sie bleiben gespeichert)."
+    },
     "title": "Server",
     "text": "Diesen Teil siehst nur du als Betreiber.",
     "accounts": {
@@ -996,8 +1070,12 @@
     "placeholders": "Eine Vorlage ist eine Notiz im Vorlagen-Ordner. Darin werden {{title}}, {{date}}, {{time}} und {{date:DD.MM.YYYY}} beim Anlegen einer Notiz ersetzt."
   },
   "spaceOptions": {
-    "button": "Tagesnotizen",
-    "title": "Tagesnotizen und Vorlagen in „{{space}}“",
+    "themeHint": "Nur die Notizen des Bereichs tragen es; Seitenleiste und Kopfleiste bleiben im Theme des Lesers. Leser können es abschalten.",
+    "otherTheme": "Ein Theme, das du nicht sehen kannst",
+    "noTheme": "Keins (jeder behält seins)",
+    "theme": "Theme der Notizen",
+    "button": "Optionen",
+    "title": "Optionen von „{{space}}“",
     "text": "Gilt für alle, die in diesem Bereich schreiben. Eine Tagesnotiz heißt immer JJJJ-MM-TT.md, wie in Obsidian.",
     "dailyFolder": "Ordner für Tagesnotizen",
     "dailyTemplate": "Vorlage für Tagesnotizen",

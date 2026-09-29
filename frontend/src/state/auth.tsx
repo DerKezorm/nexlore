@@ -6,10 +6,11 @@
  * device to the next.
  */
 import { applyAppearance, DEFAULT_APPEARANCE, type Appearance } from '../lib/appearance'
+import { applyOwnCss, applyThemeColours } from '../lib/themes'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { ApiError, authApi, SIGNED_OUT_EVENT, type Me } from '../api/client'
+import { ApiError, authApi, SIGNED_OUT_EVENT, type Me, themesApi } from '../api/client'
 import { changeLanguage } from '../i18n'
 import { clearCaches } from '../lib/offline'
 
@@ -43,6 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const account = await authApi.me()
       applyAppearance(account.appearance ?? DEFAULT_APPEARANCE)
+      applyThemeColours(account.theme_colours)
+      applyOwnCss(account.own_css)
       setMe(account)
       setStatus('signedIn')
       if (account.language && account.language !== i18n.language) await changeLanguage(account.language)
@@ -91,7 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     const saved = await authApi.setAppearance(changes)
     applyAppearance(saved)
-    setMe((current) => (current ? { ...current, appearance: saved } : current))
+    // Another theme: its colours, from the server (nexlore's own has none).
+    const colours = 'theme' in changes ? (saved.theme === 'nexlore' ? null : (await themesApi.one(saved.theme)).colours) : undefined
+    if (colours !== undefined) applyThemeColours(colours)
+    setMe((current) => (current ? { ...current, appearance: saved, ...(colours !== undefined ? { theme_colours: colours } : {}) } : current))
   }, [])
 
   const value = useMemo<Auth>(() => ({ status, me, refresh, signOut, setLanguage, setAppearance }), [status, me, refresh, signOut, setLanguage, setAppearance])

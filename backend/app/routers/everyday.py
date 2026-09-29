@@ -17,8 +17,9 @@ from ..db import SessionLocal
 from ..deps import Account, need, readable_spaces
 from ..errors import error
 from ..models import MANAGE, READ, WRITE, Space
-from ..services import everyday, paths, rights
+from ..services import everyday, paths, rights, themes
 from ..services.vault import Actor, VaultError
+from .themes import colours_of
 from .vault import actor
 
 router = APIRouter(prefix="/api", tags=["everyday"])
@@ -58,6 +59,8 @@ class OptionsIn(BaseModel):
     daily_folder: str | None = Field(default=None, max_length=paths.MAX_PATH_CHARS)
     daily_template: str | None = Field(default=None, max_length=paths.MAX_PATH_CHARS)
     template_folder: str | None = Field(default=None, max_length=paths.MAX_PATH_CHARS)
+    #: The theme the space's notes are shown in; empty for none.
+    theme: str | None = Field(default=None, max_length=40)
 
 
 @router.get("/spaces/{name}/options", summary="Where the daily notes and templates of a space live")
@@ -76,6 +79,11 @@ def put_options(name: str, body: OptionsIn, account: Account) -> dict[str, str]:
     space = need(account, name, MANAGE)
     if "/" in space:
         raise error("not_found", "Not found.", 404)
+    if body.theme:
+        with SessionLocal() as db:
+            readable = body.theme == themes.DEFAULT or colours_of(db, account, body.theme) is not None
+            if not themes.ref_ok(body.theme) or not readable:
+                raise error("bad_theme", "No such theme.", 422)
     try:
         return everyday.set_options(space, body.model_dump(exclude_none=True))
     except VaultError as exc:

@@ -525,6 +525,27 @@ export function AiCard({ settings, onChange }: { settings: ServerSettings; onCha
   )
 }
 
+// --- Own CSS of the accounts --------------------------------------------------------------------------------------
+
+export function CssCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
+  const { t } = useTranslation()
+  const { refresh } = useAuth()
+  const { problem, run } = useAction()
+  const save = (value: boolean) => {
+    onChange({ ...settings, custom_css_allowed: value })
+    void run(async () => {
+      onChange(await adminApi.saveSettings({ custom_css_allowed: value }))
+      await refresh()
+    }).then((ok) => ok || onChange(settings))
+  }
+  return (
+    <Card id="css" symbol="code" title={t('admin.css.title')} text={t('admin.css.text')}>
+      <Toggle label={t('admin.css.allow')} hint={t('admin.css.allowHint')} checked={settings.custom_css_allowed} onChange={save} />
+      <Feedback problem={problem} />
+    </Card>
+  )
+}
+
 // --- Public pages ---------------------------------------------------------------------------------------------------
 
 export function SharesCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {

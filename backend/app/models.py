@@ -526,6 +526,35 @@ class Favorite(Base):
     path: Mapped[str] = mapped_column(String(1024))
 
 
+class Theme(Base):
+    """A colour theme an account made or took in (``services/themes``): fifteen colours for dark and for light. Shared,
+    the other accounts of the server find it in the gallery and may choose it (never change it)."""
+
+    __tablename__ = "themes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    colours: Mapped[Any] = mapped_column(JSON)
+    shared: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    changed_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class CssSnippet(Base):
+    """Own CSS of an account, as Obsidian's snippets (``services/csscheck``): named, switched on one by one, applied
+    only to the own account's pages. Taken only when the operator allows own CSS."""
+
+    __tablename__ = "css_snippets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    css: Mapped[str] = mapped_column(Text, default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    changed_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
 class RecentNote(Base):
     """A note an account opened, for "opened last" (``routers/recent``). By the file's row, so it follows a note that
     moves and drops out with one in the trash; kept to the last few per account."""

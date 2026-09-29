@@ -38,6 +38,7 @@ from ..security import (
 )
 from ..services import accounts, ai, appearance, guide, locales, mailer, settings_service, totp
 from ..services.accounts import AccountError
+from . import themes as theme_routes
 
 logger = logging.getLogger("nexlore.auth")
 
@@ -232,6 +233,9 @@ def me(account: Account, db: DbSession) -> dict[str, Any]:
         # The editor offers AI only when the operator allows it and the account switched its own service on.
         "ai_ready": ai.ready(db, account),
         "appearance": appearance.of(account.appearance),
+        # The colours of the chosen theme (None: nexlore's own, or one no longer there) and the own CSS in force.
+        "theme_colours": theme_routes.colours_of(db, account, appearance.of(account.appearance)["theme"]),
+        "own_css": theme_routes.own_css(db, account.id),
     }
 
 

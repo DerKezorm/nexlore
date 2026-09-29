@@ -49,6 +49,8 @@ DEFAULTS: dict[str, Any] = {
     "plugin_upload_allowed": False,
     #: AI in notes, with each account's own service: note text leaves the house, so closed until the operator opens it.
     "ai_allowed": False,
+    # Own CSS of the accounts (snippets): closed from the start, CSS can change how every page of the account looks.
+    "custom_css_allowed": False,
     #: Invitation mail: without a host nothing is sent, the link to copy is enough.
     "smtp_host": "",
     "smtp_port": 587,

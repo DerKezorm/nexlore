@@ -14,7 +14,8 @@ from . import paths
 
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 #: English like "Attachments": the folders a new space gets are named the same in every language.
-DEFAULTS: dict[str, str] = {"daily_folder": "Daily", "daily_template": "", "template_folder": "Templates"}
+#: ``theme``: the colours the notes of the space are shown in (a theme reference, ``routers/themes``); empty: none.
+DEFAULTS: dict[str, str] = {"daily_folder": "Daily", "daily_template": "", "template_folder": "Templates", "theme": ""}
 
 
 def options_of(space: Space) -> dict[str, str]:

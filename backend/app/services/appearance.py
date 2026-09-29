@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from . import themes
+
 MODES = ("dark", "light", "system")
 #: The fonts nexlore brings along (in the image, never from another server), and the browser's own.
 FONTS_UI = ("inter", "atkinson", "plex", "system")
@@ -62,7 +64,7 @@ def _checked(changes: dict[str, Any]) -> dict[str, Any]:
                 raise AppearanceError(key)
             out[key] = value
         elif key == "theme":
-            if not isinstance(value, str) or not value or len(value) > 40:
+            if not isinstance(value, str) or not themes.ref_ok(value):
                 raise AppearanceError(key)
             out[key] = value
         else:

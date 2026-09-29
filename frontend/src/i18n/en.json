@@ -90,6 +90,8 @@
     "failed": "The note could not be loaded."
   },
   "looks2": {
+    "spaceThemesHint": "A space may colour its notes. Off, you see your own theme everywhere.",
+    "spaceThemes": "Take the themes of spaces",
     "title": "Look",
     "text": "For your account, on every device. Each change shows at once.",
     "mode": "Light or dark",
@@ -115,6 +117,72 @@
     "wideHint": "A single note goes wide with cssclasses: wide among its properties, as in Obsidian.",
     "sampleTitle": "Bread dough",
     "sampleText": "Flour, water, salt. Leave it overnight, then into the oven at 250 degrees. A bowl of water in the oven makes the crust better; lines of about seventy characters read most calmly."
+  },
+  "themes": {
+    "title": "Themes",
+    "text": "The colours of nexlore for your account. Shared themes come from other accounts of this server.",
+    "new": "New theme",
+    "import": "Take in a file",
+    "newName": "My theme",
+    "name": "Name of the theme",
+    "side": "Dark or light side",
+    "share": "Share in the gallery",
+    "standard": "Standard",
+    "copy": "Copy and change",
+    "shared": "Shared by others",
+    "mine": "My themes",
+    "noneMine": "None yet. Start with \"New theme\" or copy one of the above.",
+    "edit": "Change",
+    "export": "Save as a file",
+    "remove": "Remove",
+    "sharedNote": "shared",
+    "notAFile": "This is no theme file of nexlore or nexdeck.",
+    "weak": "“{{token}}” ({{mode}}) stands at {{ratio}}:1 on its ground; readable from 4.5:1.",
+    "derived": "The shades in between (hover, the softer accent) are mixed from these. The page shows the theme while you edit it.",
+    "groups": {
+      "surfaces": "Surfaces",
+      "lines": "Lines",
+      "text": "Text",
+      "accent": "Accent",
+      "status": "Status"
+    },
+    "tokens": {
+      "bg": "Background",
+      "bg-elev": "Raised",
+      "surface": "Surface",
+      "surface-hover": "Surface, hovered",
+      "border": "Line",
+      "border-strong": "Line, strong",
+      "text": "Text",
+      "text-muted": "Text, muted",
+      "text-faint": "Text, faint",
+      "accent": "Accent",
+      "on-accent": "On the accent",
+      "ok": "Good",
+      "warn": "Attention",
+      "bad": "Error",
+      "ai": "AI"
+    },
+    "builtIn": {
+      "deepsea": "Deep sea",
+      "forest": "Forest floor",
+      "ember": "Ember",
+      "mist": "Morning mist",
+      "sandstone": "Sandstone",
+      "graphite": "Graphite",
+      "plum": "Plum"
+    }
+  },
+  "snippets": {
+    "title": "Own CSS",
+    "text": "Snippets as in Obsidian, each switched on or off. Only for your account, never on public pages or for others.",
+    "new": "New snippet",
+    "newName": "My snippet",
+    "name": "Name of the snippet",
+    "css": "CSS of the snippet",
+    "notAllowed": "The operator has not allowed own CSS (Settings → Server → AI and plugins).",
+    "problem": "Line {{line}}: {{what}} is not allowed here.",
+    "rules": "Allowed: rules, @media and @supports. Refused: url(), @import, @font-face and everything else that could load something."
   },
   "noteStart": {
     "recentOpened": "Opened last",
@@ -714,6 +782,12 @@
     "footer": "Shared with nexlore"
   },
   "admin": {
+    "css": {
+      "title": "Own CSS",
+      "text": "Accounts may add CSS snippets for their own pages. Every snippet is read by a CSS parser; nothing that loads from elsewhere passes.",
+      "allow": "Allow own CSS",
+      "allowHint": "Closed, no snippet reaches any page (they stay stored)."
+    },
     "title": "Server",
     "text": "Only you see this part, as the operator.",
     "accounts": {
@@ -996,8 +1070,12 @@
     "placeholders": "A template is a note in the templates folder. In it, {{title}}, {{date}}, {{time}} and {{date:DD.MM.YYYY}} are filled in when a note is made from it."
   },
   "spaceOptions": {
-    "button": "Daily notes",
-    "title": "Daily notes and templates in “{{space}}”",
+    "themeHint": "Only the notes of the space wear it; the sidebar and the header stay in each reader’s own theme. Readers may switch it off.",
+    "otherTheme": "A theme you cannot see",
+    "noTheme": "None (everybody keeps their own)",
+    "theme": "Theme of the notes",
+    "button": "Options",
+    "title": "Options of “{{space}}”",
     "text": "For everybody who writes in this space. A daily note is always named YYYY-MM-DD.md, as in Obsidian.",
     "dailyFolder": "Folder for daily notes",
     "dailyTemplate": "Template for daily notes",

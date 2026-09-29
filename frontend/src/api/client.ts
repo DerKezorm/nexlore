@@ -6,6 +6,7 @@
  */
 
 import type { Appearance } from '../lib/appearance'
+import type { Colours, Weak } from '../lib/themes'
 
 export class ApiError extends Error {
   constructor(
@@ -115,6 +116,8 @@ export type Space = {
   /** Where the space keeps its templates and its daily notes. */
   template_folder?: string
   daily_folder?: string
+  /** The theme its managers set for the space's notes; empty for none. */
+  theme?: string
 }
 export type Lock = { holder: string; mine: boolean; expires_at: string }
 export type NoteData = {
@@ -337,6 +340,10 @@ export type Me = Account & {
   /** The editor offers AI: the operator allows it and the account switched its own service on. */
   ai_ready?: boolean
   appearance?: Appearance
+  /** The colours of the chosen theme; null: nexlore's own. */
+  theme_colours?: Colours | null
+  /** The own CSS snippets in force (empty unless the operator allows own CSS). */
+  own_css?: string[]
 }
 export type AdminAccount = Account & { spaces: number; locked: boolean }
 export type SetupState = { needs_setup: boolean; signed_in: boolean; version: string; min_password: number }
@@ -430,6 +437,7 @@ export type ServerSettings = {
   mcp_max_level: McpLevel
   plugin_upload_allowed: boolean
   ai_allowed: boolean
+  custom_css_allowed: boolean
 }
 export type ServerSettingsChange = Partial<Omit<ServerSettings, 'smtp_password_set'>> & { smtp_password?: string }
 export type FileSettings = { attachment_folder: string; upload_max_mb: number; quota_mb: number; strip_location: boolean }
@@ -469,6 +477,27 @@ export type Favorite = { path: string; kind: 'note' | 'folder' | 'file'; title: 
 export const favoritesApi = {
   list: () => api<Favorite[]>('/api/favorites'),
   set: (path: string, on: boolean) => api<void>('/api/favorites', { method: 'PUT', body: { path, on } }),
+}
+
+// --- Colour themes and own CSS (routers/themes.py) -----------------------------------------------------------------
+
+export type ThemeRow = { ref: string; id: number; name: string; colours: Colours; shared: boolean; weak: Weak[]; owner?: string }
+export type ThemeList = { built_in: { ref: string; colours: Colours }[]; mine: ThemeRow[]; shared: ThemeRow[] }
+export type Snippet = { id: number; name: string; css: string; enabled: boolean }
+
+export const themesApi = {
+  list: () => api<ThemeList>('/api/themes'),
+  one: (ref: string) => api<{ ref: string; colours: Colours }>(`/api/themes/${encodeURIComponent(ref)}`),
+  create: (name: string, colours: Colours, shared = false) => api<ThemeRow>('/api/themes', { method: 'POST', body: { name, colours, shared } }),
+  change: (id: number, changes: { name?: string; colours?: Colours; shared?: boolean }) => api<ThemeRow>(`/api/themes/${id}`, { method: 'PUT', body: changes }),
+  remove: (id: number) => api<void>(`/api/themes/${id}`, { method: 'DELETE' }),
+}
+
+export const cssApi = {
+  list: () => api<{ allowed: boolean; snippets: Snippet[] }>('/api/css-snippets'),
+  create: (name: string, css: string, enabled = true) => api<Snippet>('/api/css-snippets', { method: 'POST', body: { name, css, enabled } }),
+  change: (id: number, changes: Partial<Omit<Snippet, 'id'>>) => api<Snippet>(`/api/css-snippets/${id}`, { method: 'PUT', body: changes }),
+  remove: (id: number) => api<void>(`/api/css-snippets/${id}`, { method: 'DELETE' }),
 }
 
 // --- Tags and the notes opened last (routers/vault.py, routers/recent.py) --------------------------------------------
@@ -687,7 +716,7 @@ export type TaskQuery = {
 }
 export type Toggled = { path: string; line: number; raw: string; hash: string; conflict: string | null; added: string | null }
 export type CalendarDay = { daily: string[]; open: number; done: number; overdue: number }
-export type SpaceOptions = { daily_folder: string; daily_template: string; template_folder: string }
+export type SpaceOptions = { daily_folder: string; daily_template: string; template_folder: string; theme: string }
 export type Template = { path: string; title: string }
 
 export const everydayApi = {

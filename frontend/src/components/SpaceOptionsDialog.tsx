@@ -5,7 +5,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { everydayApi, type SpaceOptions, type Template } from '../api/client'
+import { everydayApi, themesApi, type SpaceOptions, type Template, type ThemeList } from '../api/client'
+import { forgetSpaceThemes } from '../lib/themes'
+import { useStore } from '../state/store'
 import { showModalOnce } from '../lib/dialog'
 import { Button, Feedback, Input, Select } from './settings/ui'
 import { useAction } from './settings/useAction'
@@ -18,14 +20,17 @@ export function SpaceOptionsDialog({ space, onClose }: { space: string; onClose:
   const dialog = useRef<HTMLDialogElement>(null)
   const [options, setOptions] = useState<SpaceOptions | null>(null)
   const [templates, setTemplates] = useState<Template[]>([])
+  const [themeList, setThemeList] = useState<ThemeList | null>(null)
+  const { reload } = useStore()
   const { busy, problem, done, run } = useAction()
 
   useEffect(() => {
     showModalOnce(dialog.current)
     void run(async () => {
-      const [found, list] = await Promise.all([everydayApi.options(space), everydayApi.templates(space)])
+      const [found, list, looks] = await Promise.all([everydayApi.options(space), everydayApi.templates(space), themesApi.list()])
       setOptions(found)
       setTemplates(list)
+      setThemeList(looks)
     })
   }, [run, space])
 
@@ -52,7 +57,12 @@ export function SpaceOptionsDialog({ space, onClose }: { space: string; onClose:
         onSubmit={(event) => {
           event.preventDefault()
           if (!options) return
-          void run(async () => setOptions(await everydayApi.setOptions(space, options)), t('spaceOptions.saved'))
+          void run(async () => {
+            setOptions(await everydayApi.setOptions(space, options))
+            // The notes of the space show the new colours at once.
+            forgetSpaceThemes()
+            await reload()
+          }, t('spaceOptions.saved'))
         }}
       >
         <div className="flex items-start justify-between gap-3">
@@ -83,6 +93,21 @@ export function SpaceOptionsDialog({ space, onClose }: { space: string; onClose:
               value={options.template_folder}
               onChange={(value) => setOptions({ ...options, template_folder: value })}
             />
+            <Select
+              label={t('spaceOptions.theme')}
+              value={options.theme}
+              options={[
+                { value: '', label: t('spaceOptions.noTheme') },
+                ...(themeList?.built_in ?? []).map((theme) => ({ value: theme.ref, label: t(`themes.builtIn.${theme.ref}`) })),
+                ...(themeList?.mine ?? []).map((theme) => ({ value: theme.ref, label: theme.name })),
+                ...(themeList?.shared ?? []).map((theme) => ({ value: theme.ref, label: `${theme.name} (${theme.owner})` })),
+                ...(options.theme && themeList && ![...themeList.built_in, ...themeList.mine, ...themeList.shared].some((theme) => theme.ref === options.theme)
+                  ? [{ value: options.theme, label: t('spaceOptions.otherTheme') }]
+                  : []),
+              ]}
+              onChange={(value) => setOptions({ ...options, theme: value })}
+            />
+            <p className="text-xs text-mist-500">{t('spaceOptions.themeHint')}</p>
             <p className="text-xs text-mist-500">
               {t('spaceOptions.placeholders')}{' '}
               {PLACEHOLDERS.map((placeholder) => (
