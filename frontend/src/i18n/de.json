@@ -85,6 +85,10 @@
     "title": "Gliederung",
     "empty": "Keine Überschriften."
   },
+  "preview": {
+    "label": "Vorschau der Notiz",
+    "failed": "Die Notiz konnte nicht geladen werden."
+  },
   "noteStart": {
     "recentOpened": "Zuletzt geöffnet",
     "title": "Deine Notizen",

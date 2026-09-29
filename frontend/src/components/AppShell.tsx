@@ -12,6 +12,7 @@ import { askNoteList, narrow, SEARCH_EVENT } from '../lib/shell'
 import { PALETTE_EVENT, useCommands, type Command } from '../lib/commands'
 import { applyTheme, storedTheme } from '../lib/theme'
 import { CommandPalette } from './CommandPalette'
+import { LinkPreview } from './LinkPreview'
 import { VaultActions } from './VaultActions'
 import { folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
@@ -261,6 +262,7 @@ export function AppShell() {
       </div>
       {searching && <SearchDialog onClose={() => setSearching(false)} onPick={pick} createIn={newNoteTarget} />}
       {commanding && <CommandPalette onClose={() => setCommanding(false)} />}
+      <LinkPreview />
       <VaultActions />
       {creating && (
         <NewNoteDialog

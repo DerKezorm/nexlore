@@ -932,7 +932,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
           <Section symbol="backlink" title={t('note.backlinks')} count={links?.backlinks.length ?? 0}>
             {links?.backlinks.length === 0 && <p className="px-2 text-sm text-mist-600">{t('note.noBacklinks')}</p>}
             {links?.backlinks.map((item) => (
-              <button key={item.path + item.line} type="button" onClick={() => open(item.path)} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-ink-850">
+              <button key={item.path + item.line} type="button" data-note={item.path} onClick={() => open(item.path)} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-ink-850">
                 <span className="block text-sm font-medium text-mist-200">{item.title}</span>
                 <span className="block truncate text-xs text-mist-500">{folderOf(item.path)}</span>
               </button>
@@ -942,7 +942,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
             {outgoing.map(({ link: item, count }, index) => {
               const times = count > 1 && <span className="ml-auto shrink-0 text-xs text-mist-600 tabular-nums" aria-label={t('note.linkedTimes', { count })}>×{count}</span>
               return item.path ? (
-                <button key={index} type="button" onClick={() => (isNotePath(item.path!) ? open(item.path!) : openFile(item.path!))} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-sm text-mist-300 hover:bg-ink-850">
+                <button key={index} type="button" data-note={isNotePath(item.path!) ? item.path! : undefined} onClick={() => (isNotePath(item.path!) ? open(item.path!) : openFile(item.path!))} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-sm text-mist-300 hover:bg-ink-850">
                   <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: folderColor(item.path) }} />
                   <span className="truncate">{item.title}</span>
                   {times}

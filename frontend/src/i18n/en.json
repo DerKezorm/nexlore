@@ -85,6 +85,10 @@
     "title": "Outline",
     "empty": "No headings."
   },
+  "preview": {
+    "label": "Preview of the note",
+    "failed": "The note could not be loaded."
+  },
   "noteStart": {
     "recentOpened": "Opened last",
     "title": "Your notes",
