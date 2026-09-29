@@ -24,6 +24,7 @@ import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } 
 import { useStore } from '../state/store'
 import { lookOf } from '../lib/looks'
 import { LookIcon } from './LookIcon'
+import { TagTree } from './TagTree'
 import { Symbol, type SymbolName } from './Symbol'
 
 const ROW = 28
@@ -64,6 +65,21 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
   }, [sheet])
+  const [view, setView] = useState<'spaces' | 'tags'>(() => {
+    try {
+      return localStorage.getItem('nexlore.sidebarView') === 'tags' ? 'tags' : 'spaces'
+    } catch {
+      return 'spaces'
+    }
+  })
+  const chooseView = (next: 'spaces' | 'tags') => {
+    setView(next)
+    try {
+      localStorage.setItem('nexlore.sidebarView', next)
+    } catch {
+      // Not remembered: spaces again next time.
+    }
+  }
   const onNote = useCallback(
     (path: string) => {
       setSheet(false)
@@ -534,20 +550,37 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
         </div>
       )}
       <div className="px-2 pt-3">
-        <div className="mb-2 flex items-center justify-between px-2">
-          <span className="text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('sidebar.spaces')}</span>
-          <button
-            type="button"
-            onClick={() => askVaultAction({ kind: 'new-space' })}
-            className="rounded-md p-1 text-mist-500 hover:bg-ink-850 hover:text-mist-100"
-            title={t('sidebar.newSpace')}
-            aria-label={t('sidebar.newSpace')}
-          >
-            <Symbol name="plus" className="h-4 w-4" />
-          </button>
+        <div className="mb-2 flex items-center justify-between gap-2 px-1">
+          {/* Spaces and folders, or the tags of every readable note; remembered in this browser. */}
+          <div role="tablist" aria-label={t('tags.view')} className="flex items-center gap-0.5">
+            {(['spaces', 'tags'] as const).map((kind) => (
+              <button
+                key={kind}
+                type="button"
+                role="tab"
+                aria-selected={view === kind}
+                onClick={() => chooseView(kind)}
+                className={'rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wider uppercase ' + (view === kind ? 'bg-ink-850 text-mist-200' : 'text-mist-600 hover:text-mist-300')}
+              >
+                {kind === 'spaces' ? t('sidebar.spaces') : t('tags.title')}
+              </button>
+            ))}
+          </div>
+          {view === 'spaces' && (
+            <button
+              type="button"
+              onClick={() => askVaultAction({ kind: 'new-space' })}
+              className="rounded-md p-1 text-mist-500 hover:bg-ink-850 hover:text-mist-100"
+              title={t('sidebar.newSpace')}
+              aria-label={t('sidebar.newSpace')}
+            >
+              <Symbol name="plus" className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
-      <div ref={scroller} className="nn-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3" data-testid="sidebar-tree">
+      {view === 'tags' && <TagTree activeNote={activeNote} onNote={onNote} />}
+      <div ref={scroller} hidden={view !== 'spaces'} className="nn-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3" data-testid="sidebar-tree">
         {spaces.length === 0 && <p className="px-2 text-sm text-mist-500">{scan.running ? t('scan.plain') : t('sidebar.empty')}</p>}
         <ul className="relative" style={{ height: rows.out.length * ROW }}>
           {rows.out.slice(first, last).map((row, i) => (

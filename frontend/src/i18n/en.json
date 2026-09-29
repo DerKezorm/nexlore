@@ -63,7 +63,30 @@
     "startEditing": "Edit the note",
     "stopEditing": "Stop editing"
   },
+  "tags": {
+    "title": "Tags",
+    "spaces": "Spaces",
+    "view": "Show in the sidebar",
+    "empty": "No tags yet. Write #tag in a note or add it under properties.",
+    "failed": "The tags could not be loaded.",
+    "loading": "Loading …",
+    "noNotes": "No note carries it any more.",
+    "rename": "Rename tag …",
+    "renameTitle": "Rename the tag “#{{tag}}”",
+    "renameHint": "Changes it, and the tags below it, in every note of the spaces you may write in. Notes someone is editing stay as they are.",
+    "renamed_one": "Renamed in {{count}} note.",
+    "renamed_other": "Renamed in {{count}} notes.",
+    "renamedLocked_one": "{{count}} note is being edited and kept its tag.",
+    "renamedLocked_other": "{{count}} notes are being edited and kept their tag.",
+    "renamedReadOnly_one": "{{count}} note is in a space you may only read.",
+    "renamedReadOnly_other": "{{count}} notes are in spaces you may only read."
+  },
+  "outline": {
+    "title": "Outline",
+    "empty": "No headings."
+  },
   "noteStart": {
+    "recentOpened": "Opened last",
     "title": "Your notes",
     "list": "All notes",
     "recent": "Changed last",

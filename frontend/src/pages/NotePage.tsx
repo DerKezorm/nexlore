@@ -13,7 +13,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { ApiError, draftsApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo } from '../api/client'
+import { ApiError, draftsApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ConflictCompare } from '../components/ConflictCompare'
 import { DraftCompare } from '../components/DraftCompare'
@@ -21,6 +21,7 @@ import type { EditorHandle, EditorMode } from '../components/NoteEditor'
 import { Sidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { NoteStart } from '../components/NoteStart'
+import { Outline } from '../components/Outline'
 import { TabBar } from '../components/TabBar'
 import { openInTab } from '../lib/tabs'
 import { copiesOf, originalOf } from '../lib/compare'
@@ -162,6 +163,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   // Plugins (M7): panels, code blocks and a view of their own, each in a locked frame.
   const plugins = useEnabledPlugins()
   const article = useRef<HTMLElement>(null)
+  const scroller = useRef<HTMLDivElement>(null)
   const [showText, setShowText] = useState(false)
   // What an upload did, said once (place and device removed, the file was there already).
   const [info, setInfo] = useState<string | null>(null)
@@ -222,6 +224,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     return draft.current
   }
 
+  // "Opened last": told once per note, after it loaded (a note that is not there is no note one opened).
+  const told = useRef<string | null>(null)
   const load = useCallback(async (target: string) => {
     try {
       const [data, found] = await Promise.all([vaultApi.note(target), vaultApi.links(target)])
@@ -229,13 +233,17 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       setNote(data)
       setLinks(found)
       setProblem(null)
+      if (side === 'left' && !mirror && told.current !== target) {
+        told.current = target
+        recentApi.opened(target).catch(() => {})
+      }
     } catch (error) {
       if (current.current !== target) return
       setNote(null)
       setLinks(null)
       setProblem(error instanceof ApiError ? error.code : 'internal_error')
     }
-  }, [])
+  }, [side, mirror])
 
   /** `saved` (or nothing to save), `ended` (a conflict or a lost lock ended editing), `failed` (still editing). */
   const save = useCallback(async (): Promise<'saved' | 'ended' | 'failed'> => {
@@ -836,7 +844,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
           {problem && <Banner tone="bad" symbol="alert">{errorText(problem)}</Banner>}
 
           {/* Body */}
-          <div className="nn-scroll min-h-0 flex-1 overflow-y-auto">
+          <div ref={scroller} className="nn-scroll min-h-0 flex-1 overflow-y-auto">
             {/* Room on the left for the editor's grip beside each block (reading keeps the same place, so nothing jumps). */}
             <div className="mx-auto max-w-3xl px-6 py-6 md:pl-16">
               <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-mist-500">
@@ -918,6 +926,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
               <PluginPanels plugins={plugins} note={note} onOpen={open} onWritten={pluginWrote} onReveal={reveal} />
             </div>
           )}
+          <Outline content={note.content} scroller={scroller} onReveal={reveal} />
           <Section symbol="backlink" title={t('note.backlinks')} count={links?.backlinks.length ?? 0}>
             {links?.backlinks.length === 0 && <p className="px-2 text-sm text-mist-600">{t('note.noBacklinks')}</p>}
             {links?.backlinks.map((item) => (

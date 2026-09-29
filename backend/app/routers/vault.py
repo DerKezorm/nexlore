@@ -26,7 +26,7 @@ from ..db import SessionLocal
 from ..deps import Account, OperatorAccount, need, readable_spaces
 from ..errors import error
 from ..models import FTS_TABLE, MANAGE, OPERATOR, READ, WRITE, File, Link, Membership, Space, Tag
-from ..services import everyday, index, mdparse, paths, rights, snippets, spaceopts, vault
+from ..services import everyday, index, mdparse, paths, rights, snippets, spaceopts, tagrename, vault
 from ..services.vault import Actor, VaultError
 
 router = APIRouter(prefix="/api", tags=["vault"])
@@ -552,6 +552,62 @@ def tags(account: Account, space: Annotated[str | None, Query(max_length=255)] =
         if space:
             query = query.join(Space, Space.id == File.space_id).where(Space.folder == space)
         return [{"tag": tag, "count": count} for tag, count in db.execute(query)]
+
+
+class TagNote(BaseModel):
+    path: str
+    title: str
+
+
+@router.get("/tags/notes", response_model=list[TagNote])
+def tag_notes(
+    account: Account,
+    tag: Annotated[str, Query(min_length=1, max_length=255)],
+    exact: bool = False,
+    limit: Annotated[int, Query(ge=1, le=500)] = 200,
+) -> list[TagNote]:
+    """The notes that carry a tag or one below it (``#project`` also finds ``#project/garden``), readable ones.
+    ``exact``: only the tag itself."""
+    key = paths.fold(tag.lstrip("#"))
+    with SessionLocal() as db:
+        rows = db.execute(
+            select(File.path, File.title)
+            .join(Tag, Tag.file_id == File.id)
+            .where(
+                Tag.tag_key == key if exact else tagrename.with_tag(key),
+                File.deleted_at.is_(None),
+                File.space_id.in_(readable_spaces(account)),
+            )
+            .distinct()
+            .order_by(File.title, File.path)
+            .limit(limit)
+        ).all()
+    return [TagNote(path=path, title=title) for path, title in rows]
+
+
+class TagRenameIn(BaseModel):
+    old: str = Field(min_length=1, max_length=255)
+    new: str = Field(min_length=1, max_length=255)
+
+
+class TagRenameOut(BaseModel):
+    changed: int
+    locked: int
+    read_only: int
+
+
+@router.post("/tags/rename", response_model=TagRenameOut)
+def tag_rename(body: TagRenameIn, account: Account, who: ActorDep) -> TagRenameOut:
+    """Renames a tag, and the tags below it, in every note of the spaces the account may write in."""
+    old, new = body.old.strip().lstrip("#").strip("/"), body.new.strip().lstrip("#").strip("/")
+    if not tagrename.valid(old) or not tagrename.valid(new):
+        raise error("bad_tag", "A tag has letters, digits, _, - and / between its parts, and not only digits.", 422)
+    if old == new:
+        raise error("same_tag", "The new name is the old one.", 422)
+    done = tagrename.rename(
+        old, new, writable=readable_spaces(account, WRITE), readable=readable_spaces(account), author=who.name
+    )
+    return TagRenameOut(changed=done.changed, locked=done.locked, read_only=done.read_only)
 
 
 class Hit(BaseModel):

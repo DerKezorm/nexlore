@@ -524,6 +524,19 @@ class Favorite(Base):
     path: Mapped[str] = mapped_column(String(1024))
 
 
+class RecentNote(Base):
+    """A note an account opened, for "opened last" (``routers/recent``). By the file's row, so it follows a note that
+    moves and drops out with one in the trash; kept to the last few per account."""
+
+    __tablename__ = "recent_notes"
+    __table_args__ = (Index("recent_account_file", "account_id", "file_id", unique=True),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), index=True)
+    opened_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
 class AiEvent(Base):
     """What went out to an account's AI service, word for word, encrypted: the proof of what left the house. Kept
     14 days (``services/ai.py``), cleared at once on request; a failure is in it too, a request refused before

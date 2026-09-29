@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { ApiError, vaultApi, type Found, type Hit } from '../api/client'
+import { ApiError, recentApi, vaultApi, type Found, type Hit } from '../api/client'
 import { folderColor } from '../graph/palette'
 import { errorText } from '../lib/errors'
 import { headingsOf } from '../lib/outline'
@@ -82,10 +82,13 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
     if (headingMode) return
     const timer = window.setTimeout(
       () => {
-        vaultApi
-          .find(q, undefined, 8)
-          .then((found) => live && setTitles(found))
-          .catch(() => live && setTitles([]))
+        const titles = q
+          ? vaultApi.find(q, undefined, 8)
+          : Promise.all([recentApi.list(8).catch(() => []), vaultApi.find('', undefined, 8)]).then(([opened, changed]) => {
+              const seen = new Set(opened.map((note) => note.path))
+              return [...opened, ...changed.filter((note) => !seen.has(note.path))].slice(0, 8)
+            })
+        titles.then((found) => live && setTitles(found)).catch(() => live && setTitles([]))
         if (!q) return setHits([])
         vaultApi
           .search(q)

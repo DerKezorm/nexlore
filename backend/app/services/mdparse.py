@@ -86,6 +86,8 @@ class Parsed:
     body_start: int = 0
     title: str | None = None
     tags: list[str] = field(default_factory=list)
+    #: Where each ``#tag`` stands in the body (without the ``#``), every one, not only the first of a name.
+    tag_spans: list[tuple[int, int]] = field(default_factory=list)
     links: list[LinkRef] = field(default_factory=list)
     headings: list[tuple[int, str]] = field(default_factory=list)
     body: str = ""
@@ -327,7 +329,10 @@ def parse(text: str) -> Parsed:
             parsed.tags.append(tag)
     for match in _TAG.finditer(masked):
         tag = match.group(1).rstrip("/")
-        if not tag or tag.replace("/", "").isdigit() or tag.casefold() in seen:
+        if not tag or tag.replace("/", "").isdigit():
+            continue
+        parsed.tag_spans.append((match.start(1), match.start(1) + len(tag)))
+        if tag.casefold() in seen:
             continue
         seen.add(tag.casefold())
         parsed.tags.append(tag)

@@ -4,7 +4,7 @@
  */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { vaultApi, type Found } from '../api/client'
+import { recentApi, vaultApi, type NoteRef } from '../api/client'
 import { folderColor } from '../graph/palette'
 import { dailySpace } from '../lib/everyday'
 import { askNewNote } from '../lib/newNote'
@@ -18,14 +18,17 @@ const button = 'inline-flex items-center gap-2 rounded-full border border-ink-70
 export function NoteStart({ onNote }: { onNote: (path: string) => void }) {
   const { t } = useTranslation()
   const { spaces, favorites } = useStore()
-  const [recent, setRecent] = useState<Found[] | null>(null)
+  const [recent, setRecent] = useState<{ opened: boolean; notes: NoteRef[] } | null>(null)
   useEffect(() => {
     let live = true
-    // No words: the notes changed last, as the quick switcher shows them.
-    vaultApi.find('', undefined, 8).then(
-      (found) => live && setRecent(found),
-      () => live && setRecent([]),
-    )
+    // The notes opened last; before anything was opened, the ones changed last.
+    recentApi
+      .list(8)
+      .then(async (opened) => (opened.length ? { opened: true, notes: opened } : { opened: false, notes: await vaultApi.find('', undefined, 8) }))
+      .then(
+        (found) => live && setRecent(found),
+        () => live && setRecent({ opened: false, notes: [] }),
+      )
     return () => {
       live = false
     }
@@ -67,11 +70,11 @@ export function NoteStart({ onNote }: { onNote: (path: string) => void }) {
           </section>
         )}
         <section className="flex flex-col gap-1" aria-busy={recent === null}>
-          <h2 className="px-2 text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('noteStart.recent')}</h2>
+          <h2 className="px-2 text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{recent?.opened ? t('noteStart.recentOpened') : t('noteStart.recent')}</h2>
           {recent === null ? (
             <p className="px-2 text-sm text-mist-500">{t('common.loading')}</p>
-          ) : recent.length ? (
-            <ul>{recent.map((found) => row(found.path, found.title))}</ul>
+          ) : recent.notes.length ? (
+            <ul>{recent.notes.map((found) => row(found.path, found.title))}</ul>
           ) : (
             <p className="px-2 text-sm text-mist-500">{t('noteStart.none')}</p>
           )}

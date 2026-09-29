@@ -467,6 +467,24 @@ export const favoritesApi = {
   set: (path: string, on: boolean) => api<void>('/api/favorites', { method: 'PUT', body: { path, on } }),
 }
 
+// --- Tags and the notes opened last (routers/vault.py, routers/recent.py) --------------------------------------------
+
+export type TagCount = { tag: string; count: number }
+export type NoteRef = { path: string; title: string }
+export type TagRenamed = { changed: number; locked: number; read_only: number }
+
+export const tagsApi = {
+  list: () => api<TagCount[]>('/api/tags'),
+  /** The notes with the tag or one below it; `exact`: with this tag itself only. */
+  notes: (tag: string, exact = false) => api<NoteRef[]>('/api/tags/notes', { query: exact ? { tag, exact: 'true' } : { tag } }),
+  rename: (old: string, name: string) => api<TagRenamed>('/api/tags/rename', { method: 'POST', body: { old, new: name } }),
+}
+
+export const recentApi = {
+  opened: (path: string) => api<void>('/api/recent', { method: 'POST', body: { path } }),
+  list: (limit = 10) => api<NoteRef[]>('/api/recent', { query: { limit } }),
+}
+
 // --- AI in notes, with the account's own service (services/ai.py) ----------------------------------------------------
 
 export type AiTask = 'spelling' | 'rewrite' | 'translate' | 'summarize' | 'write'

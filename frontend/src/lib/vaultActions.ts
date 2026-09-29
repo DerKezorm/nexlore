@@ -10,6 +10,7 @@ export type VaultAction =
   | { kind: 'look'; path: string }
   | { kind: 'as-template'; path: string }
   | { kind: 'rename' | 'move' | 'delete'; path: string; folder: boolean }
+  | { kind: 'rename-tag'; tag: string }
 
 export const VAULT_ACTION_EVENT = 'nexlore:vault-action'
 

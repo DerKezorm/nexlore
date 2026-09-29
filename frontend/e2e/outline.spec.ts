@@ -1,0 +1,71 @@
+/** Beside the note its outline; in the sidebar the tags as a tree, renamed everywhere; the notes opened last. */
+import { expect, test, type Page } from '@playwright/test'
+
+function collectProblems(page: Page): string[] {
+  const problems: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') problems.push(message.text())
+  })
+  page.on('pageerror', (error) => problems.push(error.message))
+  return problems
+}
+
+test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
+
+test('the outline lists the headings and scrolls to one, lighting the heading in view', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.setViewportSize({ width: 1440, height: 800 })
+  await page.goto('/note/Zyx/Palette.md')
+  const outline = page.getByTestId('outline')
+  await expect(outline.getByRole('button')).toHaveText(['Palette', 'First part', 'Far down'])
+  await expect(outline.getByRole('button', { name: 'Palette' })).toHaveAttribute('aria-current', 'location')
+  await outline.getByRole('button', { name: 'Far down' }).click()
+  await expect(page.getByRole('heading', { name: 'Far down' })).toBeInViewport()
+  await expect(outline.getByRole('button', { name: 'Far down' })).toHaveAttribute('aria-current', 'location')
+  expect(problems).toEqual([])
+})
+
+test('the tags as a tree: a click shows the notes, and a rename changes the text of the notes', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.goto('/note/Zyx/Palette.md')
+  await page.getByRole('tab', { name: 'Tags' }).click()
+  const tags = page.getByTestId('tag-tree')
+  const pal = tags.getByRole('button', { name: /^# pal \d+$/ })
+  await expect(pal).toBeVisible()
+  await pal.click()
+  // Below "pal": the tag "one", and the note that carries "pal" itself.
+  const underPal = tags.getByRole('listitem').filter({ has: page.getByRole('button', { name: /^# pal \d+$/ }) })
+  await expect(underPal.getByRole('button', { name: /^# one 1$/ })).toBeVisible()
+  await tags.getByRole('button', { name: 'Tagged' }).click()
+  await expect(page).toHaveURL(/\/note\/Zyx\/Tagged\.md$/)
+  // Remembered in this browser.
+  await page.reload()
+  await expect(page.getByRole('tab', { name: 'Tags' })).toHaveAttribute('aria-selected', 'true')
+  await tags.getByRole('button', { name: /^# pal \d+$/ }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Rename tag …' }).click()
+  const dialog = page.getByTestId('name-dialog')
+  await dialog.getByRole('textbox').fill('board')
+  await dialog.getByRole('button', { name: 'Rename' }).click()
+  await expect(page.getByText('Renamed in 1 note.')).toBeVisible()
+  await expect(tags.getByRole('button', { name: /^# board \d+$/ })).toBeVisible()
+  await expect(tags.getByRole('button', { name: /^# pal \d+$/ })).toHaveCount(0)
+  // The note itself: the text says so once it is read again; "#palette" is another tag and stayed.
+  await page.reload()
+  await expect(page.locator('article')).toContainText('One #board/one here, and #palette stays.')
+  await page.getByRole('tab', { name: 'Spaces' }).click()
+  expect(problems).toEqual([])
+})
+
+test('the notes opened last are on the empty note page and in the quick switcher with nothing typed', async ({ page }) => {
+  await page.goto('/note/Zyx/Palette.md')
+  await expect(page.locator('article')).toContainText('The end.')
+  await page.goto('/note/Home/Shopping.md')
+  await expect(page.locator('article')).toContainText('quinceapple')
+  await page.goto('/note')
+  const start = page.getByTestId('note-start')
+  await expect(start.getByRole('heading', { name: 'Opened last' })).toBeVisible()
+  await expect(start.getByRole('button').filter({ hasText: /^(Shopping|Palette)/ }).first()).toContainText('Shopping')
+  await page.keyboard.press('ControlOrMeta+k')
+  const first = page.getByRole('dialog', { name: 'Search' }).getByRole('button').first()
+  await expect(first).toContainText('Shopping')
+})

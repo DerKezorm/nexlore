@@ -63,7 +63,30 @@
     "startEditing": "Notiz bearbeiten",
     "stopEditing": "Bearbeiten beenden"
   },
+  "tags": {
+    "title": "Tags",
+    "spaces": "Bereiche",
+    "view": "In der Seitenleiste zeigen",
+    "empty": "Noch keine Tags. Schreib #tag in eine Notiz oder trag ihn unter Eigenschaften ein.",
+    "failed": "Die Tags konnten nicht geladen werden.",
+    "loading": "Wird geladen …",
+    "noNotes": "Keine Notiz trägt ihn mehr.",
+    "rename": "Tag umbenennen …",
+    "renameTitle": "Tag „#{{tag}}“ umbenennen",
+    "renameHint": "Ändert ihn und die Tags darunter in jeder Notiz der Bereiche, in denen du schreiben darfst. Notizen, die gerade jemand bearbeitet, bleiben, wie sie sind.",
+    "renamed_one": "In {{count}} Notiz umbenannt.",
+    "renamed_other": "In {{count}} Notizen umbenannt.",
+    "renamedLocked_one": "{{count}} Notiz wird gerade bearbeitet und behält ihren Tag.",
+    "renamedLocked_other": "{{count}} Notizen werden gerade bearbeitet und behalten ihren Tag.",
+    "renamedReadOnly_one": "{{count}} Notiz liegt in einem Bereich, den du nur lesen darfst.",
+    "renamedReadOnly_other": "{{count}} Notizen liegen in Bereichen, die du nur lesen darfst."
+  },
+  "outline": {
+    "title": "Gliederung",
+    "empty": "Keine Überschriften."
+  },
   "noteStart": {
+    "recentOpened": "Zuletzt geöffnet",
     "title": "Deine Notizen",
     "list": "Alle Notizen",
     "recent": "Zuletzt geändert",

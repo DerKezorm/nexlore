@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { ApiError, everydayApi, looksApi, vaultApi } from '../api/client'
+import { ApiError, everydayApi, looksApi, tagsApi, vaultApi } from '../api/client'
 import { errorText } from '../lib/errors'
 import { ensureFolder } from '../lib/folders'
 import { fileRoute } from '../lib/markdown'
@@ -85,6 +85,23 @@ export function VaultActions() {
 
   return (
     <>
+      {action.kind === 'rename-tag' && (
+        <NameDialog
+          title={t('tags.renameTitle', { tag: action.tag })}
+          hint={t('tags.renameHint')}
+          confirm={t('actions.renameDo')}
+          initial={action.tag}
+          onClose={close}
+          onSubmit={async (name) => {
+            const renamed = await tagsApi.rename(action.tag, name.replace(/^#/, ''))
+            await reload()
+            const parts = [t('tags.renamed', { count: renamed.changed })]
+            if (renamed.locked) parts.push(t('tags.renamedLocked', { count: renamed.locked }))
+            if (renamed.read_only) parts.push(t('tags.renamedReadOnly', { count: renamed.read_only }))
+            done(parts.join(' '))
+          }}
+        />
+      )}
       {action.kind === 'as-template' && (
         <ConfirmDialog
           open
