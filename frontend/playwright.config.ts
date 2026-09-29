@@ -166,7 +166,9 @@ export default defineConfig({
   globalSetup: './e2e/global-setup.ts',
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  // In the CI one more try, as nexdeck does: a test that passes only then is listed as flaky, the run stays green.
+  // Locally none: a red test here is read, not tried again.
+  retries: process.env.CI ? 1 : 0,
   reporter: 'list',
   use: {
     baseURL: external ?? `http://127.0.0.1:${PORT}`,

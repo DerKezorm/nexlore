@@ -35,7 +35,7 @@ DEFAULTS: dict[str, Any] = {
     "start": "graph",
     #: With ``start: note``: its path. Whether it may be read is asked when it is opened, like any note.
     "start_note": "",
-    #: The column beside a note on a wide screen: shown, and which tab; below 1280 pixels it comes as a sheet on request.
+    #: The column beside a note on a wide screen: shown, and which tab; below 1280 pixels a sheet on request.
     "panel": True,
     "panel_tab": "links",
     "sidebar": "open",

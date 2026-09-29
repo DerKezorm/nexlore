@@ -153,7 +153,7 @@ def test_a_backlink_brings_the_line_it_stands_in_as_text(client: TestClient, fil
     # Only the first notes are read: the others keep title and line, without the text.
     monkeypatch.setattr(vault_routes, "CONTEXT_NOTES", 1)
     back = client.get("/api/links", params={"path": "Work/Ideas/Idea.md"}).json()["backlinks"]
-    assert [(item["path"], item["context"] is not None) for item in back][0] == ("Work/Late.md", True)
+    assert (back[0]["path"], back[0]["context"] is not None) == ("Work/Late.md", True)
     assert all(item["context"] is None for item in back if item["path"] != "Work/Late.md")
 
 
