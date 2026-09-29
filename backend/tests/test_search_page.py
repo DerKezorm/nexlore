@@ -25,7 +25,7 @@ def put(root: Path, rel: str, content: str) -> None:
 @pytest.fixture
 def filled(vault: Path, account: str) -> Path:
     put(vault, "Homelab/Inventar/Geräte.md", "---\ntags: [server]\nstatus: offen\n---\n# Geräte\n\nDer ZFS Pool tank läuft.\nScrub des zfs pool am Sonntag.\n- [ ] Platte tauschen im Pool\n")
-    put(vault, "Homelab/Entscheidungen/Warum ZFS.md", "---\ntags: [server/storage]\nstatus: [fertig, gut]\n---\nEin ZFS Pool prüft alles. #netz\n")
+    put(vault, "Homelab/Entscheidungen/Warum ZFS.md", "---\ntags: [server/storage]\nstatus: [fertig, grün]\n---\nEin ZFS Pool prüft alles. #netz\n")
     put(vault, "Homelab/Test/Probe.md", "zfs pool test only\n")
     put(vault, "Küche/Brot.md", "---\nstatus: offen\n---\nMehl und Wasser. Café au lait.\n- [x] Mehl kaufen\n")
     old = vault / "Küche" / "Alt.md"
@@ -51,7 +51,8 @@ def test_the_operators_narrow_the_search(client: TestClient, filled: Path) -> No
     assert set(find(client, "space:küche")) == {"Küche/Brot.md", "Küche/Alt.md"}
     assert find(client, "file:warum") == ["Homelab/Entscheidungen/Warum ZFS.md"]
     assert set(find(client, "[status:offen]")) == {"Homelab/Inventar/Geräte.md", "Küche/Brot.md"}
-    assert find(client, "[status:gut]") == ["Homelab/Entscheidungen/Warum ZFS.md"]
+    # An item of a list, with an umlaut (the JSON column keeps it escaped; each item is read on its own).
+    assert find(client, "[status:grün]") == ["Homelab/Entscheidungen/Warum ZFS.md"]
     assert set(find(client, "[status]")) == {"Homelab/Inventar/Geräte.md", "Homelab/Entscheidungen/Warum ZFS.md", "Küche/Brot.md"}
     assert find(client, "task:") == ["Homelab/Inventar/Geräte.md"]
     assert "Küche/Alt.md" not in find(client, "changed:7d")
