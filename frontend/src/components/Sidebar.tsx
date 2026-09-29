@@ -54,6 +54,22 @@ const inTree = (file: { is_note: boolean; path: string }) => file.is_note || /\.
 export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: Props) {
   const { t } = useTranslation()
   const news = useNews()
+  const [newsOpen, setNewsOpen] = useState(() => {
+    try {
+      return localStorage.getItem('nexlore.newsOpen') === 'open'
+    } catch {
+      return false
+    }
+  })
+  const showNews = (open: boolean) => {
+    setNewsOpen(open)
+    try {
+      if (open) localStorage.setItem('nexlore.newsOpen', 'open')
+      else localStorage.removeItem('nexlore.newsOpen')
+    } catch {
+      // Not remembered: closed again next time.
+    }
+  }
   // On a phone the sidebar is a sheet from the left: the header's "Notes" or the empty note page ask for it.
   const [sheet, setSheet] = useState(() => takeNoteListWish() && narrow())
   useEffect(() => {
@@ -533,11 +549,16 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       )}
       {news.count > 0 && (
         <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-news">
-          <div className="mb-1 flex items-center gap-2 px-2">
-            <span className="flex-1 text-[11px] font-semibold tracking-wider text-accent-400 uppercase">{t('news.section', { count: news.count })}</span>
+          <div className="flex items-center gap-2 px-2">
+            {/* One line from the start: the dots in the tree say where; opened, the list (remembered in this browser). */}
+            <button type="button" onClick={() => showNews(!newsOpen)} aria-expanded={newsOpen} className="flex flex-1 items-center gap-1 text-left text-[11px] font-semibold tracking-wider text-accent-400 uppercase">
+              <Symbol name={newsOpen ? 'chevronDown' : 'chevronRight'} className="h-3 w-3" />
+              {t('news.section', { count: news.count })}
+            </button>
             <button type="button" onClick={() => void seenAll()} className="text-[11px] text-mist-500 hover:text-mist-200">{t('news.allSeen')}</button>
           </div>
-          <ul className="nn-scroll max-h-44 overflow-y-auto">
+          {newsOpen && (
+          <ul className="nn-scroll mt-1 max-h-44 overflow-y-auto">
             {news.notes.slice(0, 12).map((item) => (
               <li key={item.path}>
                 <button type="button" onClick={() => onNote(item.path)} title={item.author ? t('news.by', { name: item.author }) : t('news.outside')} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] text-mist-300 hover:bg-ink-850">
@@ -547,6 +568,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
               </li>
             ))}
           </ul>
+          )}
         </div>
       )}
       {favorites.length > 0 && (

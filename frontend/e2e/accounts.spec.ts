@@ -82,7 +82,7 @@ test('an invitation brings a new account into exactly one space', async ({ page,
   await dora.keyboard.press('Control+k')
   await dora.getByPlaceholder('Search notes …').fill('quinceapple')
   // Only the offer to make such a note in the own space, no hit from the others.
-  await expect(dora.getByRole('dialog', { name: 'Search' }).getByRole('button')).toHaveText([/Make the note “quinceapple”/])
+  await expect(dora.getByRole('dialog', { name: 'Search' }).getByRole('button')).toHaveText([/Make the note “quinceapple”/, 'All hits on the search page'])
   // The link is used up.
   const late = await stranger(browser)
   await late.goto(new URL(link).pathname)
@@ -203,6 +203,7 @@ test('a reader sees what changed since the last visit, proposes a change, and th
   await reader.goto('/note')
   const news = reader.getByTestId('sidebar-news')
   await expect(news).toContainText('New since your last visit · 1')
+  await news.getByRole('button', { name: /New since your last visit/ }).click()
   await expect(reader.getByTestId('sidebar-tree').locator('button[data-new]')).toHaveText(['Board'])
   await news.getByRole('button', { name: 'Board' }).click()
   await expect(reader.getByRole('note').filter({ hasText: `Changed by ${OPERATOR.name} since your last visit` })).toBeVisible()

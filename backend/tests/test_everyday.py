@@ -243,11 +243,11 @@ def test_the_daily_note_is_made_once_in_the_daily_folder_from_the_template(world
 
 def test_the_options_of_a_space_belong_to_its_managers(world: World) -> None:
     assert world.bob.get("/api/spaces/Shared/options").json() == {
-        "daily_folder": "Daily", "daily_template": "", "template_folder": "Templates"}
+        "daily_folder": "Daily", "daily_template": "", "template_folder": "Templates", "theme": ""}
     assert world.carl.put("/api/spaces/Shared/options", json={"daily_folder": "Journal"}).status_code == 403
     assert world.bob.get("/api/spaces/Private/options").status_code == 404
     changed = world.anna.put("/api/spaces/Shared/options", json={"daily_folder": "/Journal/2026/", "template_folder": ""})
-    assert changed.json() == {"daily_folder": "Journal/2026", "daily_template": "", "template_folder": ""}
+    assert changed.json() == {"daily_folder": "Journal/2026", "daily_template": "", "template_folder": "", "theme": ""}
     # The list of spaces says it too: the sidebar marks the two folders with it.
     shared = next(space for space in world.bob.get("/api/spaces").json() if space["name"] == "Shared")
     assert (shared["daily_folder"], shared["template_folder"]) == ("Journal/2026", "")

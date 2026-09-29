@@ -11,7 +11,7 @@ const TAB = { 'X-Nexlore-Client': 'tab-e2e-sett0' }
 test('the settings are in tabs, and the address says which', async ({ page }) => {
   await page.goto('/settings')
   const tabs = page.getByRole('tablist', { name: 'Settings' })
-  await expect(tabs.getByRole('tab')).toHaveText(['General', 'Spaces', 'Server'])
+  await expect(tabs.getByRole('tab')).toHaveText(['General', 'Look', 'Spaces', 'Server'])
   await expect(tabs.getByRole('tab', { name: 'General' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByLabel('Language of the interface')).toBeVisible()
   await expect(page.locator('#backups')).toHaveCount(0)
@@ -44,7 +44,7 @@ test('an account that is not the operator sees no Server tab, not even by the ad
   const tab = await member.newPage()
   await tab.goto('/settings?tab=server&sub=backups')
   const tabs = tab.getByRole('tablist', { name: 'Settings' })
-  await expect(tabs.getByRole('tab')).toHaveText(['General', 'Spaces'])
+  await expect(tabs.getByRole('tab')).toHaveText(['General', 'Look', 'Spaces'])
   await expect(tabs.getByRole('tab', { name: 'General' })).toHaveAttribute('aria-selected', 'true')
   await expect(tab.locator('#backups')).toHaveCount(0)
   await member.close()
