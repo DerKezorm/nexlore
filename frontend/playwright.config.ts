@@ -83,6 +83,9 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   // The editor's toolbar (toolbar.spec.ts).
   'Zoo/Toolbar.md': '# Toolbar\n\nMake this word bold.\n\nPut a link here.\n\n- one\n- two\n',
   'Zoo/Toolbar hide.md': '# Toolbar hide\n',
+  // Find and replace (find.spec.ts).
+  'Zoo/Find.md': '# Find\n\nThe cat sat.\n\nA *Cat* and a cat.\n\nUntouched   spacing  here.\n\n```\ncat in code\n```\n',
+  'Zoo/Find keys.md': '# Find keys\n\nOne fox, two fox, three fox.\n',
   // AI in notes against the stand-in service (ai.spec.ts).
   'Zoo/Ai.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',
   'Zoo/Ai whole.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',

@@ -9,7 +9,7 @@
  * When the editor goes away (another note, back to reading), it hands its last text to `onLeave` first: layout
  * effects are cleaned up before the page's own effects, so the page's last save has the words typed just before.
  */
-import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
 import { TextSelection } from '@milkdown/kit/prose/state'
 import { useTranslation } from 'react-i18next'
 
@@ -30,6 +30,7 @@ import { useCommands, type Command } from '../lib/commands'
 import { useAuth } from '../state/auth'
 import { AiDialog } from './AiDialog'
 import { EditorToolbar, ShowToolbar } from './EditorToolbar'
+import { FindBar } from './FindBar'
 import { Properties } from './Properties'
 
 export type EditorMode = 'visual' | 'source'
@@ -89,6 +90,9 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   const sourceRef = useRef('')
   const [problem, setProblem] = useState<string | null>(null)
   const menu = useContextMenu()
+  // Find and replace: open or not, the row for replacing, and each ask to focus a field (Ctrl+F, Ctrl+H).
+  const [finding, setFinding] = useState<{ field: 'find' | 'replace'; seed: string | null; ask: number } | null>(null)
+  const [replacing, setReplacing] = useState(false)
 
   const latest = useRef({ onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed })
   latest.current = { onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed }
@@ -234,6 +238,35 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     return () => latest.current.onLeave(current())
   }, [])
 
+  /** Ctrl+F and Ctrl+H: the bar opens, the words chosen in one line of the text in its field. */
+  const askFind = (replace: boolean) => {
+    const now = engine.current
+    if (!now) return
+    const { from, to, empty } = now.view.state.selection
+    const chosen = empty ? '' : now.view.state.doc.textBetween(from, to, '\n')
+    const seed = chosen && !chosen.includes('\n') ? chosen : null
+    if (replace) setReplacing(true)
+    setFinding((was) => ({ field: replace && (seed ?? was) ? 'replace' : 'find', seed, ask: (was?.ask ?? 0) + 1 }))
+  }
+  const findKeys = (event: KeyboardEvent) => {
+    if (event.defaultPrevented || mode !== 'visual' || readOnly || !(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return
+    const key = event.key.toLowerCase()
+    if (key !== 'f' && key !== 'h') return
+    event.preventDefault()
+    askFind(key === 'h')
+  }
+  // Closed with the editor: another mode, another note.
+  useEffect(() => {
+    if (!ready) setFinding(null)
+  }, [ready])
+  // F3 in the text while the bar is open.
+  const stepKeys = (event: KeyboardEvent) => {
+    if (event.defaultPrevented || !finding || event.key !== 'F3' || !engine.current) return
+    event.preventDefault()
+    if (event.shiftKey) engine.current.find.previous()
+    else engine.current.find.next()
+  }
+
   /**
    * The editor's own menu for the right mouse button: clipboard, format, paragraph, insert; on a wiki link its note
    * first. A long press on a touch screen keeps the phone's own menu (selecting text needs it).
@@ -334,6 +367,8 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     }
     const entry = (command: EditorCommand, label: string, symbol?: Command['symbol'], keys?: string): Command => ({ id: 'editor.' + command, label, group, symbol, keys, run: run(command) })
     return [
+      { id: 'editor.find', label: t('find.command'), group, symbol: 'search', keys: t('find.keyFind'), run: () => askFind(false) },
+      { id: 'editor.replace', label: t('find.commandReplace'), group, symbol: 'search', keys: t('find.keyReplace'), run: () => askFind(true) },
       entry('bold', t('editorMenu.bold'), 'bold', t('editorMenu.keyBold')),
       entry('italic', t('editorMenu.italic'), 'italic', t('editorMenu.keyItalic')),
       entry('strike', t('editorMenu.strike'), 'strike'),
@@ -369,20 +404,43 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   if (problem) return <p className="text-sm text-bad-500">{t('note.editorFailed')}</p>
 
   const toolbar = mode === 'visual' && !readOnly
+  const findBar =
+    toolbar && finding && ready ? (
+      <FindBar
+        key={path}
+        editor={ready}
+        focus={finding}
+        replacing={replacing}
+        onReplacing={setReplacing}
+        onClose={() => setFinding(null)}
+      />
+    ) : null
   return (
-    <div className={'nx-note-editor' + (toolbar && !toolbarOff ? ' pb-14 sm:pb-0' : '')} data-lines={lines ? 'on' : undefined}>
+    <div
+      className={'nx-note-editor' + (toolbar && !toolbarOff ? ' pb-14 sm:pb-0' : '')}
+      data-lines={lines ? 'on' : undefined}
+      onKeyDown={(event) => {
+        findKeys(event)
+        stepKeys(event)
+      }}
+    >
       {toolbar &&
         (toolbarOff ? (
-          <ShowToolbar
-            onShow={() => {
-              rememberToolbar(false)
-              setToolbarOff(false)
-              engine.current?.view.focus()
-            }}
-          />
+          <>
+            <ShowToolbar
+              onShow={() => {
+                rememberToolbar(false)
+                setToolbarOff(false)
+                engine.current?.view.focus()
+              }}
+            />
+            {findBar && <div className="sticky top-0 z-20 -mx-1 mb-3 rounded-xl border border-ink-700 bg-ink-900/95 px-1.5 backdrop-blur">{findBar}</div>}
+          </>
         ) : (
           <EditorToolbar
             editor={ready}
+            findBar={findBar}
+            onFind={() => askFind(false)}
             ai={aiReady ? () => aiMenu(t, setAiAsk) : undefined}
             onSource={() => onSource?.()}
             onHide={() => {

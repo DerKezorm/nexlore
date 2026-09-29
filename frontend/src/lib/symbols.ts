@@ -18,6 +18,7 @@ export const SYMBOLS = {
   space: [{ d: 'M12 3.5 20 8v8l-8 4.5L4 16V8l8-4.5Z' }, { d: 'M4 8l8 4.5L20 8M12 12.5v8' }],
   chevronRight: [{ d: 'M9.5 6l6 6-6 6' }],
   chevronDown: [{ d: 'M6 9.5l6 6 6-6' }],
+  chevronUp: [{ d: 'M6 14.5l6-6 6 6' }],
   plus: [{ d: 'M12 5v14M5 12h14' }],
   minus: [{ d: 'M5 12h14' }],
   fit: [{ d: 'M4.5 9.5v-5h5M19.5 9.5v-5h-5M4.5 14.5v5h5M19.5 14.5v5h-5' }],

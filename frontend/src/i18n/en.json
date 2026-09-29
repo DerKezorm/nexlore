@@ -1513,6 +1513,26 @@
     },
     "ai": "AI"
   },
+  "find": {
+    "label": "Find in the note",
+    "command": "Find in the note",
+    "commandReplace": "Find and replace in the note",
+    "keyFind": "Ctrl+F",
+    "keyReplace": "Ctrl+H",
+    "placeholder": "Find",
+    "replacePlaceholder": "Replace with",
+    "count": "{{current}} of {{count}}",
+    "none": "No results",
+    "caseSensitive": "Match case",
+    "previous": "Previous match (Shift+Enter)",
+    "next": "Next match (Enter)",
+    "close": "Close (Escape)",
+    "toggleReplace": "Show replace (Ctrl+H)",
+    "replace": "Replace",
+    "replaceAll": "Replace all",
+    "replaced_one": "Replaced {{count}} match.",
+    "replaced_other": "Replaced {{count}} matches."
+  },
   "ai": {
     "title": "AI in notes",
     "text": "Your own AI service corrects, rewrites, translates, summarizes and writes in the editor. You pay for its key yourself; a result is always shown next to the text first and changes nothing until you take it over.",

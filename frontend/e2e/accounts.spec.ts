@@ -150,7 +150,10 @@ test('a public page shows the shared folder and nothing beyond it', async ({ pag
   await expect(visitor.getByRole('navigation', { name: 'Contents' }).getByRole('link')).toHaveCount(2)
 
   // Withdrawn, the page is gone.
+  // Read again only once the server took it back: before, the reload could come first (seen in the CI).
+  const withdrawn = page.waitForResponse((response) => response.request().method() === 'DELETE' && response.url().includes('/api/shares/'))
   await dialog.getByRole('button', { name: 'Withdraw' }).click()
+  expect((await withdrawn).ok()).toBe(true)
   await visitor.reload()
   await expect(visitor.getByRole('heading', { name: 'This page does not exist' })).toBeVisible()
 })

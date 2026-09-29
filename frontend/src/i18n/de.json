@@ -1513,6 +1513,26 @@
     },
     "ai": "KI"
   },
+  "find": {
+    "label": "Suchen in der Notiz",
+    "command": "In der Notiz suchen",
+    "commandReplace": "In der Notiz suchen und ersetzen",
+    "keyFind": "Strg+F",
+    "keyReplace": "Strg+H",
+    "placeholder": "Suchen",
+    "replacePlaceholder": "Ersetzen durch",
+    "count": "{{current}} von {{count}}",
+    "none": "Keine Treffer",
+    "caseSensitive": "Groß- und Kleinschreibung beachten",
+    "previous": "Voriger Treffer (Umschalt+Enter)",
+    "next": "Nächster Treffer (Enter)",
+    "close": "Schließen (Escape)",
+    "toggleReplace": "Ersetzen zeigen (Strg+H)",
+    "replace": "Ersetzen",
+    "replaceAll": "Alle ersetzen",
+    "replaced_one": "{{count}} Stelle ersetzt.",
+    "replaced_other": "{{count}} Stellen ersetzt."
+  },
   "ai": {
     "title": "KI in Notizen",
     "text": "Dein eigener KI-Dienst korrigiert, formuliert um, übersetzt, fasst zusammen und schreibt im Editor. Den Schlüssel bezahlst du selbst; ein Ergebnis steht immer erst neben dem Text und ändert nichts, bis du es übernimmst.",

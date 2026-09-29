@@ -291,3 +291,15 @@
   max-width: 100%;
   height: auto;
 }
+
+/* Find and replace: every hit, the current one stronger (the highlight of ==text== is yellow, these are not) */
+.nx-find {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--color-accent-500) 22%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent-500) 35%, transparent);
+}
+.nx-find.nx-find-current {
+  background: color-mix(in srgb, var(--color-accent-500) 55%, transparent);
+  box-shadow: 0 0 0 1px var(--color-accent-400);
+  color: var(--color-mist-100);
+}

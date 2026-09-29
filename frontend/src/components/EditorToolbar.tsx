@@ -5,7 +5,7 @@
  * On a phone it is one narrow row above the on-screen keyboard (`visualViewport` says where that is), swiped sideways.
  * Its buttons never take the focus from the text, so the keyboard stays and the command works where the caret was.
  */
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { EditorCommand, EditorStatus, NoteEditor } from '../editor/editor'
@@ -61,9 +61,12 @@ type Props = {
   lines: boolean
   onLines: () => void
   openMenu: (x: number, y: number, items: MenuItem[]) => void
+  /** Find and replace (Ctrl+F), and its bar when it is open: a row under the tools, on a phone at the top. */
+  onFind?: () => void
+  findBar?: ReactNode
 }
 
-export function EditorToolbar({ editor, ai, onSource, onHide, lines, onLines, openMenu }: Props) {
+export function EditorToolbar({ editor, ai, onSource, onHide, lines, onLines, openMenu, onFind, findBar }: Props) {
   const { t } = useTranslation()
   const [status, setStatus] = useState<EditorStatus>(NONE)
   const phone = usePhone()
@@ -181,6 +184,7 @@ export function EditorToolbar({ editor, ai, onSource, onHide, lines, onLines, op
       : []),
   ]
   const end = [
+    ...(onFind ? [button('find', t('find.command') + ' (' + t('find.keyFind') + ')', 'search', onFind)] : []),
     button('lines', t('toolbar.lineNumbers'), 'lineNumbers', onLines, { active: lines }),
     button('source', t('note.sourceMode'), null, onSource, { text: 'MD' }),
     button('hide', t('toolbar.hide'), 'eyeOff', onHide),
@@ -188,6 +192,8 @@ export function EditorToolbar({ editor, ai, onSource, onHide, lines, onLines, op
 
   if (phone)
     return (
+      <>
+      {findBar && <div className="sticky top-0 z-20 -mx-1 mb-3 rounded-xl border border-ink-700 bg-ink-900/95 px-1.5 backdrop-blur">{findBar}</div>}
       <div
         role="toolbar"
         aria-label={t('toolbar.label')}
@@ -200,6 +206,7 @@ export function EditorToolbar({ editor, ai, onSource, onHide, lines, onLines, op
         {gap('g7')}
         {end}
       </div>
+      </>
     )
 
   return (
@@ -212,6 +219,7 @@ export function EditorToolbar({ editor, ai, onSource, onHide, lines, onLines, op
     >
       {tools}
       <span className="ml-auto flex items-center gap-0.5">{end}</span>
+      {findBar && <div className="basis-full border-t border-ink-700">{findBar}</div>}
     </div>
   )
 }
