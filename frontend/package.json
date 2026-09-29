@@ -10,7 +10,8 @@
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
     "e2e": "vite build && playwright test",
-    "test:browser": "vitest run --config vitest.browser.config.ts"
+    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "icons": "node scripts/icons.mjs"
   },
   "dependencies": {
     "@milkdown/crepe": "^7.22.2",
@@ -41,6 +42,7 @@
     "eslint-plugin-react-refresh": "^0.5.4",
     "globals": "^17.11.0",
     "jsdom": "^29.1.1",
+    "lucide-static": "1.48.0",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-to-markdown": "^2.1.2",
     "micromark-util-types": "^2.0.3",

@@ -311,3 +311,28 @@ test('two notes side by side: the right one follows its own links, the left one 
   await expect(right).toHaveCount(0)
   expect(problems).toEqual([])
 })
+
+test('a Lucide symbol is found by a German word and stands in the sidebar', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.goto('/note/Zoo/Tidy/Keep.md')
+  await row(page, 'Tidy').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Symbol and colour …' }).click()
+  const dialog = page.getByTestId('look-dialog')
+  await dialog.getByRole('searchbox', { name: 'Search symbols' }).fill('Auto')
+  await dialog.getByTestId('look-found').getByRole('button', { name: 'car', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  await expect(dialog).toBeHidden({ timeout: 15_000 })
+  const tidy = page.getByTestId('sidebar-tree').locator('li', { has: page.getByRole('button', { name: /^Tidy \d+$/ }) })
+  await expect(tidy.locator('[data-look="l:car"] path').first()).toBeAttached()
+  // Kept after a reload, where the symbols' data is loaded anew.
+  await page.reload()
+  await expect(tidy.locator('[data-look="l:car"] path').first()).toBeAttached()
+  // Back to none.
+  await row(page, 'Tidy').click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Symbol and colour …' }).click()
+  await dialog.getByRole('button', { name: 'None' }).click()
+  await dialog.getByRole('button', { name: 'Save' }).click()
+  await expect(dialog).toBeHidden({ timeout: 15_000 })
+  await expect(tidy.locator('[data-look]')).toHaveCount(0)
+  expect(problems).toEqual([])
+})

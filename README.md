@@ -224,3 +224,6 @@ browser) and `npm run e2e` (builds, starts its own backend, runs headless) in `f
 ## License
 
 AGPL-3.0.
+
+The symbols for spaces and folders include the [Lucide](https://lucide.dev) icons (ISC, partly MIT from Feather);
+their notice is in `frontend/public/licenses/lucide.txt` and ships with the app at `/licenses/lucide.txt`.

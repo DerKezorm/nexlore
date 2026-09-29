@@ -3,6 +3,7 @@
  * placed is left out. A grid of cells keeps the overlap check quick when a few thousand notes are in view.
  */
 
+import { lucidePaths } from '../lib/lucide'
 import { SYMBOLS, type SymbolName } from '../lib/symbols'
 
 export type LabelItem = {
@@ -66,6 +67,12 @@ export function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: numb
   return lines.slice(0, 3)
 }
 
+/** The paths of a symbol, own or Lucide (once its data is loaded; until then no symbol is drawn). */
+function iconPaths(name: string): { d: string; fill?: boolean }[] | undefined {
+  if (name in SYMBOLS) return SYMBOLS[name as SymbolName] as { d: string; fill?: boolean }[]
+  return lucidePaths(name)?.map((d) => ({ d }))
+}
+
 /** Draws the labels that fit and returns how many were drawn. */
 export function drawLabels(ctx: CanvasRenderingContext2D, items: LabelItem[], background: string, width: number, height: number): number {
   const grid = new Map<number, Box[]>()
@@ -92,7 +99,7 @@ export function drawLabels(ctx: CanvasRenderingContext2D, items: LabelItem[], ba
     const h = item.size * (item.sub ? 2.2 : 1.35) + extra
     const top = item.baseline === 'top' ? item.y : item.y - (item.sub ? item.size * 0.95 : item.size * 0.6) - extra / 2
     const half = Math.max(w, subW) / 2 + 2
-    const paths = item.icon ? SYMBOLS[item.icon as SymbolName] : undefined
+    const paths = item.icon ? iconPaths(item.icon) : undefined
     const iconSize = Math.round(item.size * 1.25)
     const box = { x0: item.x - half, y0: top - (paths ? iconSize + 3 : 0), x1: item.x + half, y1: top + h }
     if (box.x1 < 0 || box.x0 > width || box.y1 < 0 || box.y0 > height) continue

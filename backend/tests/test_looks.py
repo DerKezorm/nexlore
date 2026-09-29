@@ -60,6 +60,13 @@ def test_reading_is_not_enough_to_change_them_and_a_stranger_finds_nothing(peopl
 def test_only_known_symbols_and_colours_and_only_folders_that_are_there(people: tuple[TestClient, TestClient, TestClient]) -> None:
     anna, _, _ = people
     assert anna.put("/api/looks", json={"path": "Garden", "icon": "skull"}).status_code == 422
+    # Every Lucide symbol by its name with "l:", and only those.
+    assert anna.put("/api/looks", json={"path": "Garden", "icon": "l:car"}).status_code == 204
+    assert looks_of(anna)["Garden"][""]["icon"] == "l:car"
+    assert anna.put("/api/looks", json={"path": "Garden", "icon": "l:no-such-symbol"}).status_code == 422
+    # The longest name there is.
+    assert anna.put("/api/looks", json={"path": "Garden", "icon": "l:triangles-centerline-dashed-horizontal"}).status_code == 204
+    assert anna.put("/api/looks", json={"path": "Garden", "icon": "l:"}).status_code == 422
     assert anna.put("/api/looks", json={"path": "Garden", "color": "red"}).status_code == 422
     assert anna.put("/api/looks", json={"path": "Garden/Nowhere", "icon": "star"}).status_code == 404
     # A note is no folder: it has no look of its own.

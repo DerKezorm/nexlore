@@ -1148,7 +1148,13 @@
       "8": "Smaragd",
       "9": "Indigo",
       "10": "Grau"
-    }
+    },
+    "search": "{{count}} weitere Symbole durchsuchen, deutsch oder englisch",
+    "searchLabel": "Symbole suchen",
+    "all": "Alle zeigen",
+    "fewer": "Weniger zeigen",
+    "none": "Kein Symbol passt. Versuch ein englisches Wort.",
+    "lucide": "Weitere Symbole von Lucide (lucide.dev, Lizenz ISC)."
   },
   "toolbar": {
     "label": "Formatierung",

@@ -22,6 +22,7 @@ import { baseName } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } from '../lib/vaultActions'
 import { useStore } from '../state/store'
 import { lookOf } from '../lib/looks'
+import { LookIcon } from './LookIcon'
 import { Symbol, type SymbolName } from './Symbol'
 
 const ROW = 28
@@ -38,7 +39,7 @@ type Props = {
 type Listing = { folders: FolderEntry[]; notes: FileEntry[]; loaded: number; total: number; more: boolean }
 
 type Row =
-  | { kind: 'folder'; path: string; name: string; depth: number; count: number; color: string; icon: SymbolName | null; open: boolean; space: boolean }
+  | { kind: 'folder'; path: string; name: string; depth: number; count: number; color: string; icon: string | null; open: boolean; space: boolean }
   | { kind: 'note'; path: string; title: string; depth: number }
   | { kind: 'loading'; path: string; depth: number }
   | { kind: 'more'; path: string; depth: number }
@@ -434,7 +435,7 @@ export function Sidebar({ activeNote, activeFolder, onNote, onFolder }: Props) {
         >
           {row.icon ? (
             <span className="shrink-0" style={{ color: row.color }} data-look={row.icon}>
-              <Symbol name={row.icon} className="h-3.5 w-3.5" />
+              <LookIcon name={row.icon} className="h-3.5 w-3.5" />
             </span>
           ) : (
             <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: row.color }} />

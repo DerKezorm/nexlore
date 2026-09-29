@@ -1148,7 +1148,13 @@
       "8": "Emerald",
       "9": "Indigo",
       "10": "Grey"
-    }
+    },
+    "search": "Search {{count}} more symbols, in English or German",
+    "searchLabel": "Search symbols",
+    "all": "Show all",
+    "fewer": "Show fewer",
+    "none": "No symbol matches. Try an English word.",
+    "lucide": "More symbols from Lucide (lucide.dev, ISC licence)."
   },
   "toolbar": {
     "label": "Formatting",

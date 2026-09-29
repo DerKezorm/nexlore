@@ -27,7 +27,7 @@ def all_looks(account: Account) -> dict[str, Any]:
 
 class LookIn(BaseModel):
     path: str = Field(min_length=1, max_length=paths.MAX_PATH_CHARS)
-    icon: str | None = Field(default=None, max_length=32)
+    icon: str | None = Field(default=None, max_length=80)
     color: str | None = Field(default=None, max_length=16)
 
 

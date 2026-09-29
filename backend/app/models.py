@@ -478,7 +478,7 @@ class Look(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     space_id: Mapped[int] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"))
     folder: Mapped[str] = mapped_column(String(1024), default="")
-    icon: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    icon: Mapped[str | None] = mapped_column(String(80), nullable=True)
     color: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
 

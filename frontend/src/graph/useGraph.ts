@@ -4,6 +4,7 @@
  * behind before its request went out is not asked for. While a big space is still being laid out on the server, its
  * overview is asked for again every two seconds; after that every thirty, to notice changes made elsewhere.
  */
+import { isLucide, useLucide } from '../lib/lucide'
 import type { Looks } from '../api/client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -49,11 +50,13 @@ export function useGraph(spaces: Space[], cloud: Cloud, generation: number, look
   const again = useRef<() => void>(() => undefined)
   const names = spaces.map((space) => space.name).join('\n')
 
-  // Symbols and colours chosen by hand: on the scene as it stands, and on every overview that comes later.
+  // Symbols and colours chosen by hand: on the scene as it stands, and on every overview that comes later. A Lucide
+  // symbol draws once its data is there: loaded when a look has one, and drawn again then.
+  const lucide = useLucide(Object.values(looks).some((folders) => Object.values(folders).some((look) => isLucide(look.icon))))
   useEffect(() => {
     scene.applyLooks(looks)
     setRevision((value) => value + 1)
-  }, [scene, looks])
+  }, [scene, looks, lucide])
 
   useEffect(() => {
     let alive = true

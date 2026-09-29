@@ -7,6 +7,8 @@ one of its own; a symbol only for the folder itself. Moving a folder takes both 
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from sqlalchemy import delete, or_, select
 from sqlalchemy.orm import Session
 
@@ -16,6 +18,11 @@ from ..models import Look, Space
 ICONS = (
     "folder", "book", "server", "cooking", "travel", "tool", "star", "heart", "home", "work", "code", "music",
     "image", "calendar", "idea", "users", "money", "health", "school", "archive", "lock", "globe", "leaf", "template",
+)
+#: Every symbol of Lucide (ISC licence), stored as "l:<name>"; the list comes with the interface's data
+#: (``frontend/scripts/icons.mjs`` writes both). The own symbols above stay what they were.
+LUCIDE = frozenset(
+    "l:" + name for name in (Path(__file__).with_name("lucide_names.txt").read_text(encoding="utf-8").split()) if name
 )
 #: The colours one may choose: the map's palette and a grey.
 COLORS = (
@@ -45,7 +52,7 @@ def of_spaces(db: Session, space_ids: set[int]) -> dict[str, dict[str, dict[str,
 
 def put(db: Session, space_id: int, folder: str, icon: str | None, color: str | None) -> None:
     """Sets both at once; neither means the look goes back to what nexlore works out."""
-    if icon is not None and icon not in ICONS:
+    if icon is not None and icon not in ICONS and icon not in LUCIDE:
         raise LookError("unknown symbol")
     if color is not None and color not in COLORS:
         raise LookError("unknown colour")

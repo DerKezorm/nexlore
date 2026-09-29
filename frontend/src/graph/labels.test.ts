@@ -1,4 +1,5 @@
 /** Which bubble names win where they would overlap. */
+import { loadLucide, lucidePaths } from '../lib/lucide'
 import { SYMBOLS } from '../lib/symbols'
 import { closedLabelPriority, drawLabels } from './labels'
 
@@ -45,6 +46,14 @@ describe('a symbol chosen by hand', () => {
     expect(drawLabels(ctx, [label('server')], '#000', 400, 300)).toBe(1)
     expect(shapes.length).toBeGreaterThan(0)
     expect(shapes.map((shape) => shape.d)).toEqual((SYMBOLS.server as { d: string }[]).map((path) => path.d))
+    expect(new Set(shapes.map((shape) => shape.colour))).toEqual(new Set(['#38bdf8']))
+  })
+
+  it('draws a Lucide symbol once its data is there', async () => {
+    const { ctx, shapes } = recorder()
+    await loadLucide()
+    drawLabels(ctx, [label('l:car')], '#000', 400, 300)
+    expect(shapes.map((shape) => shape.d)).toEqual(lucidePaths('l:car'))
     expect(new Set(shapes.map((shape) => shape.colour))).toEqual(new Set(['#38bdf8']))
   })
 

@@ -5,7 +5,7 @@
  * Before a note or folder moves or goes, the page showing it is told (`announceLeaving`): it saves what is being typed
  * and stops asking after the old path. A page that stood on it moves along to the new one, or back to the notes.
  */
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -19,6 +19,8 @@ import { useStore } from '../state/store'
 import type { SymbolName } from '../lib/symbols'
 import { ConfirmDialog } from './ConfirmDialog'
 import { FolderTree } from './FolderTree'
+import { isLucide, searchLucide, useLucide } from '../lib/lucide'
+import { LookIcon } from './LookIcon'
 import { Symbol } from './Symbol'
 
 /** The note or folder the address stands on, as a vault path (`/note/…`, `/file/…`), or null. */
@@ -313,6 +315,14 @@ function LookDialog({ path, onClose, onSave }: { path: string; onClose: () => vo
   const now = looks[space]?.[rest.join('/')]
   const [icon, setIcon] = useState<string | null>(now?.icon ?? null)
   const [color, setColor] = useState<string | null>(now?.color ?? null)
+  const [query, setQuery] = useState('')
+  const [all, setAll] = useState(false)
+  const lucide = useLucide()
+  const found = useMemo(() => {
+    if (!lucide) return []
+    if (query.trim()) return searchLucide(lucide, query)
+    return all ? Object.keys(lucide).map((name) => 'l:' + name) : []
+  }, [lucide, query, all])
   const { busy, problem, submit } = useSubmit(() => onSave(icon, color))
   const choice = (selected: boolean) =>
     'grid h-9 w-9 place-items-center rounded-lg border ' + (selected ? 'border-accent-500 bg-accent-500/15' : 'border-ink-700 hover:bg-ink-850')
@@ -332,7 +342,43 @@ function LookDialog({ path, onClose, onSave }: { path: string; onClose: () => vo
                 </span>
               </button>
             ))}
+            {/* A Lucide symbol chosen earlier stays in sight among the own ones. */}
+            {icon && isLucide(icon) && !found.includes(icon) && (
+              <button type="button" aria-pressed aria-label={icon.slice(2).replace(/-/g, ' ')} title={icon.slice(2)} className={choice(true)}>
+                <span style={{ color: color ?? undefined }}>
+                  <LookIcon name={icon} className="h-4.5 w-4.5" />
+                </span>
+              </button>
+            )}
           </div>
+          <div className="mt-3 flex items-center gap-2">
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t('looks.search', { count: lucide ? Object.keys(lucide).length : 1800 })}
+              aria-label={t('looks.searchLabel')}
+              className="h-9 min-w-0 flex-1 rounded-lg border border-ink-700 bg-ink-950 px-3 text-sm text-mist-100 outline-none focus:border-accent-500"
+            />
+            {!query.trim() && (
+              <button type="button" onClick={() => setAll((value) => !value)} className="shrink-0 rounded-full border border-ink-700 px-3 py-1 text-xs text-mist-300 hover:bg-ink-850">
+                {all ? t('looks.fewer') : t('looks.all')}
+              </button>
+            )}
+          </div>
+          {query.trim() && lucide && found.length === 0 && <p className="mt-2 text-xs text-mist-500">{t('looks.none')}</p>}
+          {found.length > 0 && (
+            <div className="nn-scroll mt-2 flex max-h-56 flex-wrap gap-1.5 overflow-y-auto" data-testid="look-found">
+              {found.map((name) => (
+                <button key={name} type="button" aria-pressed={icon === name} aria-label={name.slice(2).replace(/-/g, ' ')} title={name.slice(2)} onClick={() => setIcon(name)} className={choice(icon === name)}>
+                  <span style={{ color: color ?? undefined }}>
+                    <LookIcon name={name} className="h-4.5 w-4.5" />
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="mt-2 text-[11px] text-mist-600">{t('looks.lucide')}</p>
         </fieldset>
         <fieldset>
           <legend className="mb-2 text-xs text-mist-500">{t('looks.color')}</legend>
