@@ -70,3 +70,46 @@ def test_the_column_beside_a_note_and_the_sidebar_are_kept_with_the_account(clie
     assert changed.status_code == 200, changed.text
     got = client.get("/api/auth/me").json()["appearance"]
     assert (got["panel"], got["panel_tab"], got["sidebar"]) == (False, "versions", "rail")
+
+
+def _many(count: int) -> dict:
+    combos = [f"{mods}{chr(65 + n)}" for mods in ("Ctrl+Alt+", "Ctrl+Shift+", "Alt+Shift+") for n in range(26)]
+    return {f"go.place{n}": {"combo": combos[n], "label": f"Place {n}"} for n in range(count)}
+
+
+def test_own_keys_are_kept_with_the_account_and_replaced_as_a_whole(client: TestClient, account: object) -> None:
+    keys = {
+        "go.tasks": {"combo": "Ctrl+Alt+J", "label": "Go to Tasks"},
+        "editor.heading1": {"combo": "F8", "label": "Heading 1"},
+        "editor.callout:note": {"combo": "Ctrl+Shift+Meta+Period", "label": "Note callout"},
+    }
+    changed = client.put("/api/me/appearance", json={"keys": keys})
+    assert changed.status_code == 200, changed.text
+    assert client.get("/api/auth/me").json()["appearance"]["keys"] == keys
+    assert client.put("/api/me/appearance", json={"keys": _many(appearance.KEYS_MAX)}).status_code == 200
+    assert client.put("/api/me/appearance", json={"keys": {}}).status_code == 200
+    assert client.get("/api/auth/me").json()["appearance"]["keys"] == {}
+
+
+@pytest.mark.parametrize(
+    "keys",
+    [
+        ["go.tasks"],
+        {"go.tasks": "Ctrl+Alt+J"},
+        {"go.tasks": {"combo": "ctrl+alt+j", "label": "Tasks"}},
+        {"go.tasks": {"combo": "Alt+Ctrl+J", "label": "Tasks"}},
+        {"go.tasks": {"combo": "Ctrl+Alt+Escape", "label": "Tasks"}},
+        {"go.tasks": {"combo": "Ctrl+Alt+J", "label": ""}},
+        {"go.tasks": {"combo": "Ctrl+Alt+J", "label": "x" * 81}},
+        {"go.tasks": {"combo": "Ctrl+Alt+J", "label": "Tasks", "run": "alert(1)"}},
+        {"Go to tasks": {"combo": "Ctrl+Alt+J", "label": "Tasks"}},
+        {"tasks": {"combo": "Ctrl+Alt+J", "label": "Tasks"}},
+        {"go.tasks": {"combo": "Ctrl+Alt+J", "label": "Tasks"}, "go.files": {"combo": "Ctrl+Alt+J", "label": "Files"}},
+        _many(appearance.KEYS_MAX + 1),
+    ],
+)
+def test_own_keys_take_only_known_shapes_and_each_combination_once(client: TestClient, account: object, keys: object) -> None:
+    answer = client.put("/api/me/appearance", json={"keys": keys})
+    assert answer.status_code == 422
+    assert answer.json()["detail"]["code"] == "bad_appearance"
+    assert client.get("/api/auth/me").json()["appearance"]["keys"] == {}

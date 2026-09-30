@@ -3,6 +3,7 @@
  * or as the system, the fonts, the text size and the width of the text. Applied as CSS variables on the page's root;
  * a font's files load the first time it is chosen, from nexlore itself (never another server).
  */
+import type { OwnKeys } from './shortcuts'
 import { applyTheme, type Theme } from './theme'
 
 export type Mode = 'dark' | 'light' | 'system'
@@ -32,11 +33,13 @@ export type Appearance = {
   panel: boolean
   panel_tab: PanelTab
   sidebar: 'open' | 'rail'
+  /** Own keys for commands (`lib/shortcuts.ts`). */
+  keys: OwnKeys
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
   mode: 'dark', theme: 'nexlore', space_themes: true, font_ui: 'inter', font_text: 'inter', font_code: 'jetbrains', size: 16, width: 'normal',
-  start: 'graph', start_note: '', panel: true, panel_tab: 'links', sidebar: 'open',
+  start: 'graph', start_note: '', panel: true, panel_tab: 'links', sidebar: 'open', keys: {},
 }
 
 type Font = { label: string; family: string; load?: () => Promise<unknown> }

@@ -65,6 +65,19 @@
     "startEditing": "Notiz bearbeiten",
     "stopEditing": "Bearbeiten beenden"
   },
+  "shortcuts": {
+    "title": "Tastenkürzel",
+    "text": "Eigene Tasten für Befehle, auf jedem Gerät gleich. Festlegen in der Befehlspalette (Strg+P): das Tastatursymbol neben einem Befehl, dann die Tasten. Sie wirken überall, wo der Befehl angeboten wird.",
+    "none": "Noch keine eigenen Tasten.",
+    "remove": "Tasten für {{name}} entfernen",
+    "set": "Tasten für {{name}} festlegen",
+    "press": "Drücke die Tasten für „{{name}}“. Esc bricht ab, Entf entfernt sie.",
+    "saved": "{{combo}} führt jetzt „{{name}}“ aus.",
+    "removed": "Die Tasten für „{{name}}“ sind entfernt.",
+    "modifier": "Nimm Strg, Alt oder Meta dazu, damit das Tippen frei bleibt.",
+    "browser": "Diese Tasten behält der Browser für sich.",
+    "taken": "Diese Tasten nutzt nexlore schon."
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Bereiche",

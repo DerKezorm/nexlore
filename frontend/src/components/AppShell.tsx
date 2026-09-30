@@ -10,7 +10,8 @@ import { fileRoute } from '../lib/markdown'
 import { NEW_NOTE_EVENT } from '../lib/newNote'
 import { askCapture, CAPTURE_EVENT, takeCapture } from '../lib/capture'
 import { askNoteList, askPanelToggle, askSidebarToggle, hasSidebar, narrow, SEARCH_EVENT } from '../lib/shell'
-import { PALETTE_EVENT, useCommands, type Command } from '../lib/commands'
+import { allCommands, PALETTE_EVENT, useCommands, type Command } from '../lib/commands'
+import { comboOf, commandFor, isRecording } from '../lib/shortcuts'
 import { storedTheme } from '../lib/theme'
 import { useAuth } from '../state/auth'
 import { refreshNews } from '../lib/news'
@@ -183,6 +184,24 @@ export function AppShell() {
   newNoteAt.current = newNoteTarget
 
   const { me, setAppearance } = useAuth()
+  // Own keys (lib/shortcuts.ts), heard before anything else on the page: an own key wins, where its command is on
+  // offer; nothing while the palette listens for new ones.
+  const ownKeys = me?.appearance?.keys
+  useEffect(() => {
+    if (!ownKeys || !Object.keys(ownKeys).length) return
+    const onKey = (e: KeyboardEvent) => {
+      if (isRecording() || e.repeat) return
+      const combo = comboOf(e)
+      const id = combo ? commandFor(ownKeys, combo) : null
+      const command = id ? allCommands().find((one) => one.id === id) : undefined
+      if (!command) return
+      e.preventDefault()
+      e.stopPropagation()
+      command.run()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [ownKeys])
   // The start page of the account, once per tab and only from the first page (lib/start.ts).
   const firstPage = startWish(location.pathname, location.search)
   useEffect(() => {

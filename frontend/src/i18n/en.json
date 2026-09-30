@@ -65,6 +65,19 @@
     "startEditing": "Edit the note",
     "stopEditing": "Stop editing"
   },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "text": "Own keys for commands, the same on every device. Choose them in the command palette (Ctrl+P): the keyboard beside a command, then the keys. They work wherever the command is on offer.",
+    "none": "No own keys yet.",
+    "remove": "Remove the keys for {{name}}",
+    "set": "Set keys for {{name}}",
+    "press": "Press the keys for “{{name}}”. Esc cancels, Delete removes them.",
+    "saved": "{{combo}} now runs “{{name}}”.",
+    "removed": "The keys for “{{name}}” are gone.",
+    "modifier": "Add Ctrl, Alt or Meta, so typing stays free.",
+    "browser": "The browser keeps these keys for itself.",
+    "taken": "nexlore already uses these keys."
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Spaces",

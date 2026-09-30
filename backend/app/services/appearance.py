@@ -4,6 +4,7 @@ as CSS."""
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from . import paths, themes
@@ -20,6 +21,16 @@ STARTS = ("graph", "daily", "last", "note")
 #: The tabs of the column beside a note, and the sidebar folded to a strip of symbols or open.
 PANEL_TABS = ("outline", "links", "comments", "graph", "versions", "plugins")
 SIDEBARS = ("open", "rail")
+#: Own keys for commands (the command palette): at most this many, each a combination written as the browser
+#: names it ("Ctrl+Alt+Shift+Meta+Key") and the command's name to show in the list.
+KEYS_MAX = 60
+LABEL_MAX = 80
+_COMMAND = re.compile(r"^[a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9:_-]+){1,3}$")
+_COMBO = re.compile(
+    r"^(?:Ctrl\+)?(?:Alt\+)?(?:Shift\+)?(?:Meta\+)?"
+    r"(?:[A-Z0-9]|F(?:[1-9]|1[0-2])|Arrow(?:Up|Down|Left|Right)|Enter|Space|Home|End|PageUp|PageDown|Insert"
+    r"|Comma|Period|Slash|Minus|Equal|Semicolon|Quote|BracketLeft|BracketRight|Backslash|Backquote)$"
+)
 
 DEFAULTS: dict[str, Any] = {
     "mode": "dark",
@@ -39,6 +50,8 @@ DEFAULTS: dict[str, Any] = {
     "panel": True,
     "panel_tab": "links",
     "sidebar": "open",
+    #: Own keys: command id -> {"combo", "label"}.
+    "keys": {},
 }
 
 
@@ -90,12 +103,35 @@ def _checked(changes: dict[str, Any]) -> dict[str, Any]:
             except paths.PathError as exc:
                 raise AppearanceError(key) from exc
             out[key] = value
+        elif key == "keys":
+            out[key] = _keys(value)
         elif key == "theme":
             if not isinstance(value, str) or not themes.ref_ok(value):
                 raise AppearanceError(key)
             out[key] = value
         else:
             raise AppearanceError(key)
+    return out
+
+
+def _keys(value: Any) -> dict[str, dict[str, str]]:
+    """Own keys: known shapes only, each combination once."""
+    if not isinstance(value, dict) or len(value) > KEYS_MAX:
+        raise AppearanceError("keys")
+    out: dict[str, dict[str, str]] = {}
+    seen: set[str] = set()
+    for command, own in value.items():
+        if not isinstance(command, str) or len(command) > 64 or not _COMMAND.match(command):
+            raise AppearanceError("keys")
+        if not isinstance(own, dict) or set(own) != {"combo", "label"}:
+            raise AppearanceError("keys")
+        combo, label = own["combo"], own["label"]
+        if not isinstance(combo, str) or not _COMBO.match(combo) or combo in seen:
+            raise AppearanceError("keys")
+        if not isinstance(label, str) or not 0 < len(label) <= LABEL_MAX:
+            raise AppearanceError("keys")
+        seen.add(combo)
+        out[command] = {"combo": combo, "label": label}
     return out
 
 

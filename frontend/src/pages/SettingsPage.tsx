@@ -25,6 +25,7 @@ import { AdminPluginsCard } from '../plugins/PluginSettings'
 import { useServerSettings } from '../components/settings/useServerSettings'
 import { AppearanceCard } from '../components/settings/AppearanceCard'
 import { StartCard } from '../components/settings/StartCard'
+import { KeysCard } from '../components/settings/KeysCard'
 import { SnippetsCard } from '../components/settings/SnippetsCard'
 import { ThemesCard } from '../components/settings/ThemesCard'
 import { SpacesCard } from '../components/settings/SpacesCard'
@@ -69,6 +70,7 @@ export function SettingsPage() {
         <div className="space-y-6 pt-1">
           {top === 'general' && <LanguageCard />}
           {top === 'general' && <StartCard />}
+          {top === 'general' && <KeysCard />}
           {top === 'looks' && (
             <>
               {/* The themes first: the fonts and sizes below them fill a screen, and the themes were lost under them. */}
