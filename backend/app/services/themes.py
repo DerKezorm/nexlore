@@ -23,6 +23,12 @@ GROUNDS = ("bg", "bg-elev", "surface")
 LEAST = 4.5
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 NAME_MAX = 40
+#: A theme's callouts (``callouts`` beside dark and light): at most this many kinds, each Obsidian's way of writing a
+#: kind, with a colour for dark and for light and a symbol of the interface (its name; one it does not know is left out
+#: when drawn).
+CALLOUTS_MAX = 30
+CALLOUT_KIND = re.compile(r"^[a-z0-9-]{1,40}$")
+CALLOUT_ICON = re.compile(r"^[A-Za-z]{1,30}$")
 #: A reference to a theme: nexlore's own, one that comes along, or one stored (``t:<id>``).
 DEFAULT = "nexlore"
 
@@ -135,16 +141,18 @@ def weak_spots(data: dict[str, Any]) -> list[dict[str, Any]]:
     return found
 
 
-def check_colours(incoming: Any) -> dict[str, dict[str, str]]:
+def check_colours(incoming: Any) -> dict[str, Any]:
     """The colours of a theme as they may be stored: ``{"dark": {...}, "light": {...}}``, each side and each colour
-    optional (nexlore's own fills the gaps). Refused in words: anything that is not such a mapping, an unknown name,
-    a colour that is not ``#rrggbb``."""
+    optional (nexlore's own fills the gaps), and ``callouts`` if the theme has any. Refused in words: anything that is
+    not such a mapping, an unknown name, a colour that is not ``#rrggbb``."""
     if not isinstance(incoming, dict):
         raise ThemeError("The colours are a mapping of dark and light to their colours.")
-    stray_side = sorted(set(incoming) - {"dark", "light"})
+    stray_side = sorted(set(incoming) - {"dark", "light", "callouts"})
     if stray_side:
         raise ThemeError(f"{stray_side[0]!r} is neither dark nor light.")
-    out: dict[str, dict[str, str]] = {}
+    out: dict[str, Any] = {}
+    if incoming.get("callouts") is not None:
+        out["callouts"] = check_callouts(incoming["callouts"])
     for mode in ("dark", "light"):
         palette = incoming.get(mode)
         if palette is None:
@@ -160,6 +168,35 @@ def check_colours(incoming: Any) -> dict[str, dict[str, str]]:
                 raise ThemeError(f"The {mode} colour {token!r} has to be written as #rrggbb.")
             side[token] = value.lower()
         out[mode] = side
+    return out
+
+
+def check_callouts(incoming: Any) -> dict[str, dict[str, str]]:
+    """A theme's callouts: ``{"kind": {"dark": "#rrggbb", "light": "#rrggbb", "icon": "name"}}``, each part optional."""
+    if not isinstance(incoming, dict):
+        raise ThemeError("The callouts are a mapping of kinds to their colours and symbol.")
+    if len(incoming) > CALLOUTS_MAX:
+        raise ThemeError(f"A theme has at most {CALLOUTS_MAX} kinds of callouts.")
+    out: dict[str, dict[str, str]] = {}
+    for kind, look in incoming.items():
+        if not isinstance(kind, str) or not CALLOUT_KIND.match(kind):
+            raise ThemeError("A kind of callout is written in small letters, digits and dashes.")
+        if not isinstance(look, dict) or set(look) - {"dark", "light", "icon"}:
+            raise ThemeError(f"The callout {kind!r} has a colour for dark, one for light and a symbol, nothing else.")
+        clean: dict[str, str] = {}
+        for mode in ("dark", "light"):
+            value = look.get(mode)
+            if value is None:
+                continue
+            if not isinstance(value, str) or not HEX.match(value):
+                raise ThemeError(f"The {mode} colour of the callout {kind!r} has to be written as #rrggbb.")
+            clean[mode] = value.lower()
+        icon = look.get("icon")
+        if icon is not None:
+            if not isinstance(icon, str) or not CALLOUT_ICON.match(icon):
+                raise ThemeError(f"The symbol of the callout {kind!r} is named by letters only.")
+            clean["icon"] = icon
+        out[kind] = clean
     return out
 
 

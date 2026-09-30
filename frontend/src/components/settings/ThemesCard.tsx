@@ -10,11 +10,16 @@ import { errorText } from '../../lib/errors'
 import { applyThemeColours, NEXLORE_COLOURS, readThemeFile, themeFile, TOKEN_GROUPS, weakSpots, type Colours, type Palette, type Token } from '../../lib/themes'
 import { useAuth } from '../../state/auth'
 import { Symbol } from '../Symbol'
+import { CalloutsEditor } from './CalloutsEditor'
+import type { Callouts } from '../../lib/callouts'
 
-function full(colours: Colours | null | undefined): Required<Record<'dark' | 'light', Required<Palette>>> {
+type Full = Required<Record<'dark' | 'light', Required<Palette>>> & { callouts?: Callouts }
+
+function full(colours: Colours | null | undefined): Full {
   return {
     dark: { ...NEXLORE_COLOURS.dark, ...(colours?.dark ?? {}) },
     light: { ...NEXLORE_COLOURS.light, ...(colours?.light ?? {}) },
+    ...(colours?.callouts && Object.keys(colours.callouts).length ? { callouts: colours.callouts } : {}),
   }
 }
 
@@ -32,7 +37,7 @@ function Swatch({ colours }: { colours: Colours | null }) {
   )
 }
 
-type Draft = { id: number | null; name: string; colours: Required<Record<'dark' | 'light', Required<Palette>>>; shared: boolean }
+type Draft = { id: number | null; name: string; colours: Full; shared: boolean }
 
 export function ThemesCard() {
   const { t } = useTranslation()
@@ -193,6 +198,7 @@ export function ThemesCard() {
             </ul>
           )}
           <p className="text-xs text-mist-500">{t('themes.derived')}</p>
+          <CalloutsEditor callouts={draft.colours.callouts ?? {}} mode={mode} onChange={(callouts) => setDraft({ ...draft, colours: { ...draft.colours, callouts } })} />
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" onClick={() => download(draft.name, draft.colours)} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-800">{t('themes.export')}</button>
             <button type="button" onClick={() => { setDraft(null); restore() }} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-800">{t('common.cancel')}</button>

@@ -301,6 +301,17 @@
     @apply font-semibold text-mist-100;
     color: color-mix(in srgb, var(--nn-callout) 55%, var(--color-mist-100));
   }
+  /* The kind's symbol before the title (lib/callouts.ts sets which). */
+  .nn-prose .nn-callout-title::before {
+    content: '';
+    display: inline-block;
+    width: 1.05em;
+    height: 1.05em;
+    margin-right: 0.4em;
+    vertical-align: -0.17em;
+    background: var(--nn-callout);
+    mask: var(--nn-callout-icon) center / contain no-repeat;
+  }
   .nn-prose summary.nn-callout-title {
     @apply cursor-pointer;
   }

@@ -6,6 +6,8 @@
  * Own CSS (the account's snippets) goes into style elements of its own, one per snippet.
  */
 
+import { calloutCss, cleanCallouts, type Callouts } from './callouts'
+
 import { THEME_EVENT } from './theme'
 
 export const TOKENS = [
@@ -14,7 +16,8 @@ export const TOKENS = [
 ] as const
 export type Token = (typeof TOKENS)[number]
 export type Palette = Partial<Record<Token, string>>
-export type Colours = { dark?: Palette; light?: Palette }
+/** A theme's colours for dark and light, and its callouts (`lib/callouts.ts`). */
+export type Colours = { dark?: Palette; light?: Palette; callouts?: Callouts }
 
 export const TOKEN_GROUPS: [string, Token[]][] = [
   ['surfaces', ['bg', 'bg-elev', 'surface', 'surface-hover']],
@@ -86,6 +89,8 @@ export function themeCss(colours: Colours | null | undefined, scope = ''): strin
   if (dark.length) parts.push(`:root:not([data-theme='light'])${inner} { ${dark.join(' ')} }`)
   if (light.length) parts.push(`:root[data-theme='light']${inner} { ${light.join(' ')} }`)
   if (scope) parts.push(`${scope} { background: var(--color-ink-950); color: var(--color-mist-100); }`)
+  const callouts = calloutCss(colours.callouts, scope)
+  if (callouts) parts.push(callouts)
   return parts.join('\n')
 }
 
@@ -210,7 +215,8 @@ export function readThemeFile(text: string): { name: string; colours: Colours } 
     }
     if (data.nexlore_theme === 1 && data.colours && typeof data.colours === 'object') {
       const colours = data.colours as Colours
-      return { name: String(data.name ?? '').slice(0, 40), colours: { dark: pick(colours.dark), light: pick(colours.light) } }
+      const callouts = cleanCallouts(colours.callouts)
+      return { name: String(data.name ?? '').slice(0, 40), colours: { dark: pick(colours.dark), light: pick(colours.light), ...(Object.keys(callouts).length ? { callouts } : {}) } }
     }
     if (data.nexdeck_theme === 1) return { name: String(data.name ?? '').slice(0, 40), colours: { dark: pick(data.dark), light: pick(data.light) } }
   } catch {

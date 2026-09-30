@@ -71,6 +71,12 @@ def test_an_own_theme_is_kept_changed_shared_and_seen_by_others_only_when_shared
         {"sepia": {}},
         {"dark": ["#123456"]},
         {"dark": {"bg": "url(https://example.com)"}},
+        {"callouts": ["recipe"]},
+        {"callouts": {"Recipe": {}}},
+        {"callouts": {"recipe": {"dark": "orange"}}},
+        {"callouts": {"recipe": {"glow": "#123456"}}},
+        {"callouts": {"recipe": {"icon": "url(x)"}}},
+        {"callouts": {f"kind-{n}": {} for n in range(31)}},
     ],
 )
 def test_colours_that_are_no_theme_are_refused_in_words(people: dict[str, TestClient], colours: dict) -> None:
@@ -172,3 +178,15 @@ def test_the_css_check_passes_what_only_changes_how_things_look() -> None:
         "input[value^='a'] { outline: 1px solid red }\n"
     )
     assert csscheck.check(css) == []
+
+
+def test_a_theme_keeps_its_callouts_beside_its_colours(people: dict[str, TestClient]) -> None:
+    anna = people["anna"]
+    callouts = {"recipe": {"dark": "#FF8800", "light": "#aa5500", "icon": "cooking"}, "warning": {"icon": "star"}, "todo": {}}
+    made = anna.post("/api/themes", json={"name": "Kitchen", "colours": {"dark": DARK, "callouts": callouts}})
+    assert made.status_code == 201, made.text
+    expected = {"recipe": {"dark": "#ff8800", "light": "#aa5500", "icon": "cooking"}, "warning": {"icon": "star"}, "todo": {}}
+    assert made.json()["colours"] == {"callouts": expected, "dark": DARK}
+    # Thirty kinds are allowed.
+    many = {f"kind-{n}": {} for n in range(30)}
+    assert anna.put(f"/api/themes/{made.json()['id']}", json={"colours": {"callouts": many}}).status_code == 200

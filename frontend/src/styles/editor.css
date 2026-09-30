@@ -158,6 +158,17 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+/* The kind's symbol before its name (lib/callouts.ts sets which). */
+.nx-callout-label::before {
+  content: '';
+  display: inline-block;
+  width: 1.3em;
+  height: 1.3em;
+  margin-right: 0.35em;
+  vertical-align: -0.28em;
+  background: var(--nx-callout);
+  mask: var(--nn-callout-icon) center / contain no-repeat;
+}
 .nx-callout-marker {
   color: var(--nx-callout);
   font-family: var(--font-mono);

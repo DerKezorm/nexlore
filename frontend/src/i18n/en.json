@@ -207,6 +207,17 @@
       "sandstone": "Sandstone",
       "graphite": "Graphite",
       "plum": "Plum"
+    },
+    "callouts": {
+      "title": "Callouts",
+      "text": "Other colours or another symbol for a kind of callout, or kinds of the theme's own ([!recipe] in a note).",
+      "colour": "Colour of {{kind}} ({{mode}})",
+      "symbol": "Symbol of {{kind}}",
+      "asUsual": "as usual",
+      "remove": "Remove {{kind}}",
+      "placeholder": "e.g. recipe",
+      "kind": "Kind of callout",
+      "add": "Add"
     }
   },
   "snippets": {

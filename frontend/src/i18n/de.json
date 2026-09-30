@@ -207,6 +207,17 @@
       "sandstone": "Sandstein",
       "graphite": "Graphit",
       "plum": "Pflaume"
+    },
+    "callouts": {
+      "title": "Callouts",
+      "text": "Andere Farben oder ein anderes Symbol für eine Callout-Art, oder eigene Arten des Themes ([!rezept] in einer Notiz).",
+      "colour": "Farbe von {{kind}} ({{mode}})",
+      "symbol": "Symbol von {{kind}}",
+      "asUsual": "wie üblich",
+      "remove": "{{kind}} entfernen",
+      "placeholder": "z. B. rezept",
+      "kind": "Callout-Art",
+      "add": "Hinzufügen"
     }
   },
   "snippets": {
