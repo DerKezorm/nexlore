@@ -566,11 +566,12 @@ export type AddedLanguage = { code: string; name: string; keys: number }
 
 // --- Favorites (services/favorites.py) -------------------------------------------------------------------------------
 
-export type Favorite = { path: string; kind: 'note' | 'folder' | 'file'; title: string }
+/** A note, folder or file by its path; a heading (`Note.md#Heading`, `note` is the note); a search (`?words`). */
+export type Favorite = { path: string; kind: 'note' | 'folder' | 'file' | 'heading' | 'search'; title: string; note?: string; section: string }
 
 export const favoritesApi = {
   list: () => api<Favorite[]>('/api/favorites'),
-  set: (path: string, on: boolean) => api<void>('/api/favorites', { method: 'PUT', body: { path, on } }),
+  set: (path: string, on: boolean, section?: string) => api<void>('/api/favorites', { method: 'PUT', body: { path, on, section } }),
 }
 
 // --- New since the last visit and proposals (routers/news.py, routers/proposals.py) --------------------------------

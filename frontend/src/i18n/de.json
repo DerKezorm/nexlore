@@ -88,6 +88,17 @@
   "zettel": {
     "command": "Neue Notiz mit Zeitstempel als Name"
   },
+  "favorites": {
+    "group": "Gruppe",
+    "noGroup": "Aus der Gruppe nehmen",
+    "newGroup": "Neue Gruppe …",
+    "groupTitle": "Eine Gruppe für „{{name}}“",
+    "groupLabel": "Name der Gruppe",
+    "keepHeading": "„{{name}}“ zu den Favoriten",
+    "forgetHeading": "„{{name}}“ aus den Favoriten nehmen",
+    "keepSearch": "Diese Suche in den Favoriten merken",
+    "forgetSearch": "Diese Suche aus den Favoriten nehmen"
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Bereiche",

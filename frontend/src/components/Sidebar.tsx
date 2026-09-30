@@ -20,7 +20,7 @@ import { askNewNote } from '../lib/newNote'
 import { askFolder, FOLDER_EVENT, narrow, NOTE_LIST_EVENT, RECENT_EVENT, SIDEBAR_EVENT, sidebarHere, takeFolderWish, noteListWished, forgetNoteListWish } from '../lib/shell'
 import { seenAll, useNews } from '../lib/news'
 import { openInTab } from '../lib/tabs'
-import { baseName } from '../lib/vault'
+import { baseName, noteUrl } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } from '../lib/vaultActions'
 import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
@@ -29,6 +29,9 @@ import { LookIcon } from './LookIcon'
 import { TagTree } from './TagTree'
 import { useThemeVersion } from '../lib/theme'
 import { Symbol, type SymbolName } from './Symbol'
+import { NameDialog } from './NameDialog'
+
+const FAVORITE_SYMBOLS: Record<Favorite['kind'], SymbolName> = { note: 'note', folder: 'folder', file: 'file', heading: 'heading', search: 'search' }
 
 const ROW = 28
 /** Notes opened last, at the top of the sidebar. */
@@ -508,9 +511,41 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     return { label: on ? t('menu.unfavorite') : t('menu.favorite'), symbol: 'star', onSelect: () => void setFavorite(path, !on) }
   }
 
-  /** A favorite opens where it is: a note in the note page, a folder in the tree, a file on its page. */
+  // Favorites without a group first, then each group in the order its first one came.
+  const favoriteGroups = useMemo(() => {
+    const groups = new Map<string, Favorite[]>([['', []]])
+    for (const favorite of favorites) {
+      const members = groups.get(favorite.section) ?? []
+      members.push(favorite)
+      groups.set(favorite.section, members)
+    }
+    return [...groups].filter(([, members]) => members.length > 0)
+  }, [favorites])
+  // A favorite being put into a new group: the dialog asks for the group's name.
+  const [grouping, setGrouping] = useState<Favorite | null>(null)
+  const favoriteMenu = (favorite: Favorite): MenuItem[] => {
+    const sections = favoriteGroups.map(([section]) => section).filter((section) => section && section !== favorite.section)
+    return [
+      { label: t('menu.open'), symbol: 'note', onSelect: () => openFavorite(favorite) },
+      {
+        label: t('favorites.group'),
+        symbol: 'folder',
+        items: [
+          ...sections.map((section) => ({ label: section, onSelect: () => void setFavorite(favorite.path, true, section) })),
+          ...(favorite.section ? [{ label: t('favorites.noGroup'), onSelect: () => void setFavorite(favorite.path, true, '') }] : []),
+          { label: t('favorites.newGroup'), symbol: 'plus', onSelect: () => setGrouping(favorite) },
+        ],
+      },
+      { label: t('menu.unfavorite'), symbol: 'star', onSelect: () => void setFavorite(favorite.path, false) },
+    ]
+  }
+
+  /** A favorite opens where it is: a note in the note page, a folder in the tree, a file on its page, a heading in its
+   * note (scrolled to), a search on the search page. */
   const openFavorite = (favorite: Favorite) => {
     if (favorite.kind === 'note') onNote(favorite.path)
+    else if (favorite.kind === 'heading' && favorite.note) navigate(noteUrl(favorite.note) + '#' + encodeURIComponent(favorite.title))
+    else if (favorite.kind === 'search') navigate('/search?q=' + encodeURIComponent(favorite.title))
     else if (favorite.kind === 'folder') askFolder(favorite.path)
     else navigate(fileRoute(favorite.path))
   }
@@ -788,28 +823,30 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           <FoldHead label={t('sidebar.favorites')} open={favoritesOpen} onToggle={() => showFavorites(!favoritesOpen)} />
           {favoritesOpen && (
           <ul className="nn-scroll max-h-44 overflow-y-auto">
-            {favorites.map((favorite) => (
-              <li key={favorite.path}>
+            {favoriteGroups.map(([section, members]) => [
+              section ? (
+                <li key={'group:' + section} className="px-2 pt-2 pb-0.5 text-[10px] font-semibold tracking-wider text-mist-600 uppercase" data-testid="favorite-group">
+                  {section}
+                </li>
+              ) : null,
+              ...members.map((favorite) => (
+              <li key={favorite.path} data-favorite={favorite.path}>
                 <button
                   type="button"
                   onClick={() => openFavorite(favorite)}
-                  {...menuTriggers((x, y) =>
-                    menu.open(x, y, [
-                      { label: t('menu.open'), symbol: 'note', onSelect: () => openFavorite(favorite) },
-                      { label: t('menu.unfavorite'), symbol: 'star', onSelect: () => void setFavorite(favorite.path, false) },
-                    ]),
-                  )}
-                  title={favorite.path}
+                  {...menuTriggers((x, y) => menu.open(x, y, favoriteMenu(favorite)))}
+                  title={favorite.kind === 'search' ? favorite.title : favorite.path}
                   className={
                     'flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] hover:bg-ink-850 ' +
                     (favorite.path === activeNote ? 'bg-accent-500/10 text-accent-300' : 'text-mist-300')
                   }
                 >
-                  <Symbol name={favorite.kind === 'folder' ? 'folder' : favorite.kind === 'note' ? 'note' : 'file'} className="h-3.5 w-3.5 shrink-0 text-mist-600" />
+                  <Symbol name={FAVORITE_SYMBOLS[favorite.kind]} className="h-3.5 w-3.5 shrink-0 text-mist-600" />
                   <span className="min-w-0 flex-1 truncate">{favorite.title}</span>
                 </button>
               </li>
-            ))}
+              )),
+            ])}
           </ul>
           )}
         </div>
@@ -872,6 +909,19 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
         </p>
       )}
       {menu.element}
+      {grouping && (
+        <NameDialog
+          title={t('favorites.groupTitle', { name: grouping.title })}
+          label={t('favorites.groupLabel')}
+          initial={grouping.section}
+          suggestions={favoriteGroups.map(([section]) => section).filter(Boolean)}
+          onSave={(section) => {
+            void setFavorite(grouping.path, true, section)
+            setGrouping(null)
+          }}
+          onCancel={() => setGrouping(null)}
+        />
+      )}
     </aside>
     </>
   )

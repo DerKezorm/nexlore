@@ -571,6 +571,20 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       window.removeEventListener(HEADING_EVENT, jump)
     }
   }, [side, note])
+  // A heading asked for in the address (a favorite of it, `#Heading`): scrolled to once the note is drawn, once.
+  const wantedHeading = useRef<string | null>(null)
+  useEffect(() => {
+    wantedHeading.current = side === 'left' && location.hash ? decodeURIComponent(location.hash.slice(1)) : null
+  }, [side, location.hash, path])
+  useEffect(() => {
+    const heading = wantedHeading.current
+    if (!heading || !note) return
+    const frame = requestAnimationFrame(() => {
+      revealNow.current(heading, -1)
+      wantedHeading.current = null
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [html, note])
   const originalPath = originalOf(path)
 
   const openFile = (file: string, newTab = false) => {
@@ -809,7 +823,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     )
   const backNotes = backlinkNotes(links?.backlinks ?? [])
   const panelParts: PanelPart[] = [
-    { id: 'outline', label: t('outline.title'), content: () => <Outline content={note.content} scroller={scroller} onReveal={reveal} /> },
+    { id: 'outline', label: t('outline.title'), content: () => <Outline path={note.path} content={note.content} scroller={scroller} onReveal={reveal} /> },
     {
       id: 'links',
       label: t('panel.links'),

@@ -525,7 +525,8 @@ class McpKey(Base):
 
 
 class Favorite(Base):
-    """A note or folder an account wants at hand (``services/favorites``): the vault path, per account."""
+    """Something an account wants at hand (``services/favorites``): a note or folder by its vault path, a heading as
+    ``Note.md#Heading``, a search as ``?words``; per account, in a group of its choosing (empty: none)."""
 
     __tablename__ = "favorites"
     __table_args__ = (Index("favorites_account_path", "account_id", "path", unique=True),)
@@ -533,6 +534,7 @@ class Favorite(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
     path: Mapped[str] = mapped_column(String(1024))
+    section: Mapped[str] = mapped_column(String(80), default="")
 
 
 class Theme(Base):

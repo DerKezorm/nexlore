@@ -6,12 +6,17 @@
 import { useEffect, useMemo, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { headingsOf } from '../lib/outline'
+import { useStore } from '../state/store'
+import { Symbol } from './Symbol'
 
 const TOP = 96
 
 /** In the tab beside the note the tab names it: no heading of its own, and a note without headings says so. */
-export function Outline({ content, scroller, onReveal }: { content: string; scroller: RefObject<HTMLElement | null>; onReveal: (text: string, index: number) => void }) {
+export function Outline({ path, content, scroller, onReveal }: { path: string; content: string; scroller: RefObject<HTMLElement | null>; onReveal: (text: string, index: number) => void }) {
   const { t } = useTranslation()
+  // A heading kept among the favorites (as `Note.md#Heading`, spaces as the server keeps them).
+  const { favorites, setFavorite } = useStore()
+  const favoriteOf = (text: string) => `${path}#${text.split(/\s+/).filter(Boolean).join(' ')}`
   const headings = useMemo(() => headingsOf(content), [content])
   const [active, setActive] = useState(-1)
 
@@ -51,17 +56,33 @@ export function Outline({ content, scroller, onReveal }: { content: string; scro
     <section data-testid="outline" aria-label={t('outline.title')}>
       <ul>
         {headings.map((heading, index) => (
-          <li key={index}>
+          <li key={index} className="group flex items-center">
             <button
               type="button"
               onClick={() => onReveal(heading.text, index)}
               aria-current={index === active ? 'location' : undefined}
-              className={'block w-full truncate rounded-lg py-0.5 pr-2 text-left text-sm hover:bg-ink-850 ' + (index === active ? 'text-accent-300' : 'text-mist-400')}
+              className={'block min-w-0 flex-1 truncate rounded-lg py-0.5 pr-2 text-left text-sm hover:bg-ink-850 ' + (index === active ? 'text-accent-300' : 'text-mist-400')}
               style={{ paddingLeft: `${0.5 + (heading.level - lowest) * 0.8}rem` }}
               title={heading.text}
             >
               {heading.text}
             </button>
+            {(() => {
+              const on = favorites.some((favorite) => favorite.path === favoriteOf(heading.text))
+              return (
+                <button
+                  type="button"
+                  onClick={() => void setFavorite(favoriteOf(heading.text), !on)}
+                  aria-pressed={on}
+                  aria-label={t(on ? 'favorites.forgetHeading' : 'favorites.keepHeading', { name: heading.text })}
+                  title={t(on ? 'favorites.forgetHeading' : 'favorites.keepHeading', { name: heading.text })}
+                  data-testid="outline-favorite"
+                  className={'shrink-0 rounded p-0.5 hover:bg-ink-850 ' + (on ? 'text-warn-400' : 'text-mist-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100')}
+                >
+                  <Symbol name="star" className="h-3 w-3" />
+                </button>
+              )
+            })()}
           </li>
         ))}
       </ul>

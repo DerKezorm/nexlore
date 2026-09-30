@@ -25,7 +25,7 @@ type Store = {
   /** The own favorites, at the top of the sidebar. */
   favorites: Favorite[]
   /** A note or folder a favorite or not any more; the list follows. */
-  setFavorite: (path: string, on: boolean) => Promise<void>
+  setFavorite: (path: string, on: boolean, section?: string) => Promise<void>
   /** Counts up with every load. */
   generation: number
   reload: () => Promise<void>
@@ -111,8 +111,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [reload])
 
-  const setFavorite = useCallback(async (path: string, on: boolean) => {
-    await favoritesApi.set(path, on)
+  const setFavorite = useCallback(async (path: string, on: boolean, section?: string) => {
+    await favoritesApi.set(path, on, section)
     setFavorites(await favoritesApi.list())
   }, [])
 

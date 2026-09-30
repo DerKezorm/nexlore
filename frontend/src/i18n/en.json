@@ -88,6 +88,17 @@
   "zettel": {
     "command": "New note named by the time"
   },
+  "favorites": {
+    "group": "Group",
+    "noGroup": "Out of its group",
+    "newGroup": "New group …",
+    "groupTitle": "A group for “{{name}}”",
+    "groupLabel": "Name of the group",
+    "keepHeading": "Add “{{name}}” to the favorites",
+    "forgetHeading": "Remove “{{name}}” from the favorites",
+    "keepSearch": "Keep this search in the favorites",
+    "forgetSearch": "Remove this search from the favorites"
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Spaces",

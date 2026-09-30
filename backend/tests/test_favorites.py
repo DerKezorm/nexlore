@@ -1,4 +1,4 @@
-"""Favorites: per account, only what may be read, following moves, going with the trash."""
+"""Favorites: per account, only what may be read, following moves, going with the trash; headings, searches and groups."""
 
 from __future__ import annotations
 
@@ -107,3 +107,60 @@ def test_a_trashed_favorite_does_not_count_any_more(
     assert anna.delete("/api/files", params={"path": "Garden/Plan.md"}).status_code == 200
     # Gone with the note: room for the next one.
     assert anna.put("/api/favorites", json={"path": "Garden/Beds"}).status_code == 204
+
+
+def full(client: TestClient) -> list[dict]:
+    answer = client.get("/api/favorites")
+    assert answer.status_code == 200
+    return answer.json()
+
+
+def test_a_heading_and_a_search_are_kept_and_may_sit_in_a_group(people: tuple[TestClient, TestClient]) -> None:
+    anna, bob = people
+    assert anna.put("/api/favorites", json={"path": "Garden/Plan.md#The  plan", "section": "  Work "}).status_code == 204
+    assert anna.put("/api/favorites", json={"path": "?tag:garden  roses", "section": "Work"}).status_code == 204
+    assert anna.put("/api/favorites", json={"path": "Garden/Beds"}).status_code == 204
+    assert full(anna) == [
+        {"path": "Garden/Plan.md#The plan", "kind": "heading", "title": "The plan", "note": "Garden/Plan.md", "section": "Work"},
+        {"path": "?tag:garden roses", "kind": "search", "title": "tag:garden roses", "section": "Work"},
+        {"path": "Garden/Beds", "kind": "folder", "title": "Beds", "section": ""},
+    ]
+    # A group is changed by saying it again; left out, it stays; empty takes it out.
+    assert anna.put("/api/favorites", json={"path": "Garden/Beds", "section": "Later"}).status_code == 204
+    assert anna.put("/api/favorites", json={"path": "?tag:garden roses"}).status_code == 204
+    assert anna.put("/api/favorites", json={"path": "Garden/Plan.md#The plan", "section": ""}).status_code == 204
+    assert [(item["path"], item["section"]) for item in full(anna)] == [
+        ("Garden/Plan.md#The plan", ""), ("?tag:garden roses", "Work"), ("Garden/Beds", "Later")]
+    # Another account sees none of it.
+    assert full(bob) == []
+
+
+def test_a_heading_needs_its_note_and_the_right_to_read_it(people: tuple[TestClient, TestClient], vault: Path) -> None:
+    anna, _ = people
+    assert anna.put("/api/favorites", json={"path": "Garden/Nowhere.md#Top"}).status_code == 404
+    # A folder has no headings, not even one whose name ends like a note's.
+    (vault / "Garden" / "Odd.md").mkdir()
+    assert anna.put("/api/favorites", json={"path": "Garden/Odd.md#Top"}).status_code == 404
+    carl = person("carl")
+    assert carl.put("/api/favorites", json={"path": "Garden/Plan.md#The plan"}).status_code == 404
+    for bad in ("Garden/Plan.md#   ", "Garden/Plan.md#" + "x" * (favorites.MAX_HEADING + 1), "?   ", "?" + "y" * (favorites.MAX_QUERY + 1)):
+        answer = anna.put("/api/favorites", json={"path": bad})
+        assert (answer.status_code, answer.json()["detail"]["code"]) == (422, "bad_favorite"), bad
+    assert anna.put("/api/favorites", json={"path": "Garden/Plan.md", "section": "x" * (favorites.MAX_SECTION + 1)}).status_code == 422
+
+
+def test_a_heading_follows_its_note_and_goes_with_it(people: tuple[TestClient, TestClient]) -> None:
+    anna, bob = people
+    # The note itself renamed: its heading follows.
+    assert anna.put("/api/favorites", json={"path": "Garden/Plan.md#The plan"}).status_code == 204
+    assert anna.post("/api/move", json={"source": "Garden/Plan.md", "destination": "Garden/Plan 2027.md"}).status_code == 200
+    assert [item["path"] for item in full(anna)] == ["Garden/Plan 2027.md#The plan"]
+    assert bob.put("/api/favorites", json={"path": "Garden/Beds/Roses.md#Roses"}).status_code == 204
+    assert anna.post("/api/move", json={"source": "Garden/Beds", "destination": "Garden/Plots"}).status_code == 200
+    assert [item["path"] for item in full(bob)] == ["Garden/Plots/Roses.md#Roses"]
+    # Not readable any more: not listed, as with a note.
+    assert anna.delete("/api/spaces/Garden/members/bob").status_code in (200, 204)
+    assert full(bob) == []
+    assert anna.put("/api/spaces/Garden/members/bob", json={"role": "read"}).status_code == 200
+    assert anna.delete("/api/files", params={"path": "Garden/Plots/Roses.md"}).status_code == 200
+    assert full(bob) == []

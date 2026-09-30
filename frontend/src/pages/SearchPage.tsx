@@ -22,7 +22,7 @@ const CHANGED = [
 
 export function SearchPage() {
   const { t } = useTranslation()
-  const { spaces } = useStore()
+  const { spaces, favorites, setFavorite } = useStore()
   const [params, setParams] = useSearchParams()
   const query = params.get('q') ?? ''
   const [typed, setTyped] = useState(query)
@@ -133,6 +133,23 @@ export function SearchPage() {
               <Symbol name="search" className="h-4 w-4 text-mist-500" />
               <input ref={input} type="search" value={typed} onChange={(event) => setTyped(event.target.value)} aria-label={t('searchPage.label')} placeholder={t('searchPage.placeholder')} className="h-11 flex-1 bg-transparent text-[15px] text-mist-100 outline-none placeholder:text-mist-600" />
             </div>
+            {query && (() => {
+              const kept = '?' + query.split(/\s+/).filter(Boolean).join(' ')
+              const on = favorites.some((favorite) => favorite.path === kept)
+              return (
+                <button
+                  type="button"
+                  onClick={() => void setFavorite(kept, !on)}
+                  aria-pressed={on}
+                  aria-label={t(on ? 'favorites.forgetSearch' : 'favorites.keepSearch')}
+                  title={t(on ? 'favorites.forgetSearch' : 'favorites.keepSearch')}
+                  data-testid="search-favorite"
+                  className={'grid h-11 w-11 place-items-center rounded-xl border border-ink-700 hover:text-mist-100 ' + (on ? 'text-warn-400' : 'text-mist-400')}
+                >
+                  <Symbol name="star" className="h-4 w-4" />
+                </button>
+              )
+            })()}
             <button type="button" onClick={() => setHelp(!help)} aria-expanded={help} aria-label={t('searchPage.help')} title={t('searchPage.help')} className="h-11 w-11 rounded-xl border border-ink-700 text-mist-400 hover:text-mist-100">?</button>
           </form>
           {list.length > 0 && (

@@ -23,11 +23,12 @@ test('the outline lists the headings and scrolls to one, lighting the heading in
   await page.goto('/note/Zyx/Palette.md')
   await page.getByTestId('note-panel').getByRole('tab', { name: 'Outline' }).click()
   const outline = page.getByTestId('outline')
-  await expect(outline.getByRole('button')).toHaveText(['Palette', 'First part', 'Far down'])
-  await expect(outline.getByRole('button', { name: 'Palette' })).toHaveAttribute('aria-current', 'location')
-  await outline.getByRole('button', { name: 'Far down' }).click()
+  // The headings; beside each a star to keep it among the favorites.
+  await expect(outline.locator('li > button:not([data-testid])')).toHaveText(['Palette', 'First part', 'Far down'])
+  await expect(outline.getByRole('button', { name: 'Palette', exact: true })).toHaveAttribute('aria-current', 'location')
+  await outline.getByRole('button', { name: 'Far down', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Far down' })).toBeInViewport()
-  await expect(outline.getByRole('button', { name: 'Far down' })).toHaveAttribute('aria-current', 'location')
+  await expect(outline.getByRole('button', { name: 'Far down', exact: true })).toHaveAttribute('aria-current', 'location')
   expect(problems).toEqual([])
 })
 
