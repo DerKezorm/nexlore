@@ -41,8 +41,8 @@ describe('translation keys used in the code', () => {
       ...Array.from({ length: 11 }, (_, index) => `looks.colors.${index}`),
       // The editor's slash menu, the kinds of a property, the choices in the comparison.
       ...[
-        'text', 'h1', 'h2', 'h3', 'quote', 'divider', 'bulletList', 'orderedList', 'taskList', 'code', 'table', 'math',
-        'groupText', 'groupList', 'groupAdvanced', 'groupObsidian', 'callout', 'wikiLink', 'embed',
+        'text', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'quote', 'divider', 'bulletList', 'orderedList', 'taskList', 'code', 'table', 'math',
+        'groupText', 'groupList', 'groupAdvanced', 'groupObsidian', 'callout', 'wikiLink', 'embed', 'image',
       ].map((key) => `editor.slash.${key}`),
       ...['text', 'list', 'number', 'checkbox', 'date', 'datetime'].map((kind) => `properties.kinds.${kind}`),
       ...['left', 'right', 'both'].map((choice) => `compare.take.${choice}`),

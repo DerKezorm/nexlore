@@ -686,11 +686,11 @@ function editorLabels(t: (key: string) => string): EditorLabels {
       loading: t('common.loading'),
     },
     slash: {
-      text: s('text'), h1: s('h1'), h2: s('h2'), h3: s('h3'), quote: s('quote'), divider: s('divider'),
+      text: s('text'), h1: s('h1'), h2: s('h2'), h3: s('h3'), h4: s('h4'), h5: s('h5'), h6: s('h6'), quote: s('quote'), divider: s('divider'),
       bulletList: s('bulletList'), orderedList: s('orderedList'), taskList: s('taskList'), code: s('code'),
       table: s('table'), math: s('math'), groupText: s('groupText'), groupList: s('groupList'),
       groupAdvanced: s('groupAdvanced'), groupObsidian: s('groupObsidian'), callout: s('callout'),
-      wikiLink: s('wikiLink'), embed: s('embed'), attachment: s('attachment'),
+      wikiLink: s('wikiLink'), embed: s('embed'), attachment: s('attachment'), image: s('image'),
     },
   }
 }

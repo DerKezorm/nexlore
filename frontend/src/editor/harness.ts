@@ -19,10 +19,10 @@ export const LABELS: EditorLabels = {
   dates: { list: 'Dates', hint: 'Enter: link to the daily note, Shift+Enter: the date alone' },
   code: { search: 'Search', copy: 'Copy', noResult: 'None', edit: 'Edit', hide: 'Hide', preview: 'Preview', loading: 'Loading' },
   slash: {
-    text: 'Text', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3', quote: 'Quote', divider: 'Divider',
+    text: 'Text', h1: 'Heading 1', h2: 'Heading 2', h3: 'Heading 3', h4: 'Heading 4', h5: 'Heading 5', h6: 'Heading 6', quote: 'Quote', divider: 'Divider',
     bulletList: 'Bullet list', orderedList: 'Numbered list', taskList: 'Task list', code: 'Code', table: 'Table',
     math: 'Math', groupText: 'Text', groupList: 'Lists', groupAdvanced: 'More', groupObsidian: 'Obsidian',
-    callout: 'Callout', wikiLink: 'Link to note', embed: 'Embed note', attachment: 'Picture or file',
+    callout: 'Callout', wikiLink: 'Link to note', embed: 'Embed note', attachment: 'Picture or file', image: 'Picture',
   },
 }
 

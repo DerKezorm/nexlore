@@ -719,6 +719,9 @@
       "h1": "Überschrift 1",
       "h2": "Überschrift 2",
       "h3": "Überschrift 3",
+      "h4": "Überschrift 4",
+      "h5": "Überschrift 5",
+      "h6": "Überschrift 6",
       "quote": "Zitat",
       "divider": "Trennlinie",
       "bulletList": "Aufzählung",
@@ -734,7 +737,8 @@
       "callout": "Hinweiskasten",
       "wikiLink": "Link auf eine Notiz",
       "embed": "Notiz einbetten",
-      "attachment": "Bild oder Datei"
+      "attachment": "Bild oder Datei",
+      "image": "Bild"
     },
     "link": "Link einfügen oder tippen …",
     "code": {

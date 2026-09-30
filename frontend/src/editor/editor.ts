@@ -11,6 +11,7 @@
  * Files pasted, dropped or picked from the menu are uploaded through `files` (the page's helpers) and linked with an
  * ordinary relative Markdown link; pictures show through the server (`imageSource`).
  */
+import { byUse, noteSlashUse } from './slashUse'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { editorViewCtx, parserCtx, remarkCtx, serializerCtx } from '@milkdown/kit/core'
 import type { Ctx, MilkdownPlugin } from '@milkdown/kit/ctx'
@@ -80,6 +81,9 @@ export type EditorLabels = {
     h1: string
     h2: string
     h3: string
+    h4: string
+    h5: string
+    h6: string
     quote: string
     divider: string
     bulletList: string
@@ -96,6 +100,7 @@ export type EditorLabels = {
     wikiLink: string
     embed: string
     attachment: string
+    image: string
   }
 }
 
@@ -236,12 +241,13 @@ function insertedNodes(schema: Schema, done: (Inserted | null)[]): ProseNode[] {
   return nodes.slice(0, -1)
 }
 
-/** A file picker, for the menu item: the files chosen, or none. */
-function pickFiles(): Promise<File[]> {
+/** A file picker, for the menu items: the files chosen, or none; `accept` narrows what may be chosen. */
+function pickFiles(accept?: string): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
     input.multiple = true
+    if (accept) input.accept = accept
     input.addEventListener('change', () => resolve([...(input.files ?? [])]))
     input.addEventListener('cancel', () => resolve([]))
     input.click()
@@ -283,9 +289,9 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
           h1: { label: labels.slash.h1 },
           h2: { label: labels.slash.h2 },
           h3: { label: labels.slash.h3 },
-          h4: null,
-          h5: null,
-          h6: null,
+          h4: { label: labels.slash.h4 },
+          h5: { label: labels.slash.h5 },
+          h6: { label: labels.slash.h6 },
           quote: { label: labels.slash.quote },
           divider: { label: labels.slash.divider },
         },
@@ -315,6 +321,22 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
             view.dispatch(tr.scrollIntoView())
             view.focus()
           }
+          // Files chosen in a picker land where the typed "/filter" stood.
+          const uploadPicked = (ctx: Ctx, accept?: string) => {
+            replaceBlock(ctx, () => ({ text: '', caret: 0 }))
+            const files = options.files
+            if (!files) return options.onFileRefused?.()
+            void pickFiles(accept).then(async (chosen) => {
+              if (!chosen.length) return
+              const view = ctx.get(editorViewCtx)
+              const nodes = insertedNodes(view.state.schema, await files.upload(chosen))
+              if (!nodes.length) return
+              view.dispatch(view.state.tr.replaceSelectionWith(nodes.length === 1 ? nodes[0] : view.state.schema.nodes.paragraph.create(null, nodes)).scrollIntoView())
+              view.focus()
+            })
+          }
+          // Crepe's own picture block writes the alt text wrong (see obsidian.ts); this one uploads like pasting.
+          builder.getGroup('advanced').addItem('picture', { label: labels.slash.image, icon: icon('🖼'), onRun: (ctx: Ctx) => uploadPicked(ctx, 'image/*') })
           builder
             .addGroup('obsidian', labels.slash.groupObsidian)
             .addItem('wiki-link', { label: labels.slash.wikiLink, icon: icon('[[ ]]'), onRun: (ctx: Ctx) => replaceBlock(ctx, () => ({ text: '[[', caret: 2 })) })
@@ -322,20 +344,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
             .addItem('attachment', {
               label: labels.slash.attachment,
               icon: icon('📎'),
-              onRun: (ctx: Ctx) => {
-                // The typed "/filter" goes first; the files land where it stood.
-                replaceBlock(ctx, () => ({ text: '', caret: 0 }))
-                const files = options.files
-                if (!files) return options.onFileRefused?.()
-                void pickFiles().then(async (chosen) => {
-                  if (!chosen.length) return
-                  const view = ctx.get(editorViewCtx)
-                  const nodes = insertedNodes(view.state.schema, await files.upload(chosen))
-                  if (!nodes.length) return
-                  view.dispatch(view.state.tr.replaceSelectionWith(nodes.length === 1 ? nodes[0] : view.state.schema.nodes.paragraph.create(null, nodes)).scrollIntoView())
-                  view.focus()
-                })
-              },
+              onRun: (ctx: Ctx) => uploadPicked(ctx),
             })
             .addItem('callout', {
               label: labels.slash.callout,
@@ -348,6 +357,17 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
                   return { node: quote, caret: 2 + marker.length }
                 }),
             })
+          // The entries used most come first in their group; each choice is counted.
+          for (const group of builder.build()) {
+            for (const item of group.items) {
+              const run = item.onRun
+              item.onRun = (ctx: Ctx) => {
+                noteSlashUse(item.key)
+                run?.(ctx)
+              }
+            }
+            group.items = byUse(group.items)
+          }
         },
       },
     },
