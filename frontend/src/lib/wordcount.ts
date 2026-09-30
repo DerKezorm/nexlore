@@ -33,9 +33,15 @@ export function count(text: string): Count {
 /** What is left out of a note's own words: notes embedded in it. */
 export const NOT_COUNTED = '.nn-embedded'
 
-/** The words shown in `root`, without what `NOT_COUNTED` finds in it. */
+/** Folded parts (`lib/folds.ts`) are the note's words all the same: shown for the moment they are counted. */
+const MEASURING = 'nn-measuring'
+
+/** The words shown in `root`, without what `NOT_COUNTED` finds in it; folded parts count. */
 export function countIn(root: HTMLElement): Count {
-  const all = count(root.innerText)
+  root.classList.add(MEASURING)
+  const text = root.innerText
+  root.classList.remove(MEASURING)
+  const all = count(text)
   for (const skipped of root.querySelectorAll<HTMLElement>(NOT_COUNTED)) {
     const less = count(skipped.innerText)
     all.words -= less.words

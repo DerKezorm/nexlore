@@ -28,6 +28,8 @@ import { usePresence } from '../lib/presence'
 import { picturesIn, type Picture } from '../lib/pictures'
 import { Comments } from '../components/Comments'
 import { CommentLayer } from '../components/CommentLayer'
+import { FoldLayer } from '../components/FoldLayer'
+import { askFoldAll } from '../lib/folds'
 import { revealThread, type Anchor } from '../lib/comments'
 import { Unlinked } from '../components/Unlinked'
 import { NoteStart } from '../components/NoteStart'
@@ -714,6 +716,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     }
     if (role === 'manage' && me?.shares_allowed && !editing) list.push({ id: 'note.share', label: t('share.button'), group, symbol: 'globe', run: () => setSharing(true) })
     list.push({ id: 'note.panel', label: t('panel.toggle'), group, symbol: 'panel', keys: 'Alt+R', run: togglePanel })
+    list.push({ id: 'note.foldAll', label: t('folds.foldAll'), group, symbol: 'chevronRight', run: () => askFoldAll(note.path, true) })
+    list.push({ id: 'note.unfoldAll', label: t('folds.unfoldAll'), group, symbol: 'chevronDown', run: () => askFoldAll(note.path, false) })
     return list
   })
   // F2 renames the note in front, as in a file manager: its name above the text turns into a field.
@@ -1218,6 +1222,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 <PluginBlocks plugins={plugins} article={article} html={html} note={note} onOpen={open} onWritten={pluginWrote} />
                 <NoteEmbeds article={article} html={html} onOpen={open} />
                 <BaseBlocks article={article} html={html} note={note.path} />
+                <FoldLayer article={article} html={html} path={note.path} />
                 <CommentLayer
                   article={article}
                   html={html}

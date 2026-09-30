@@ -28,7 +28,14 @@ export const LABELS: EditorLabels = {
 
 export async function openEditor(
   original: string,
-  extra: { links?: Partial<LinkHelpers>; titles?: string[]; onChange?: () => void; plugins?: MilkdownPlugin[]; linkTitle?: EditorOptions['linkTitle'] } = {},
+  extra: {
+    links?: Partial<LinkHelpers>
+    titles?: string[]
+    onChange?: () => void
+    plugins?: MilkdownPlugin[]
+    linkTitle?: EditorOptions['linkTitle']
+    folds?: EditorOptions['folds']
+  } = {},
 ): Promise<NoteEditor & { root: HTMLElement; close: () => Promise<void> }> {
   const root = document.createElement('div')
   document.body.appendChild(root)
@@ -45,6 +52,7 @@ export async function openEditor(
     onChange: extra.onChange ?? (() => undefined),
     plugins: extra.plugins,
     linkTitle: extra.linkTitle,
+    folds: extra.folds,
   })
   const text = editor.text
   const markdown = editor.markdown

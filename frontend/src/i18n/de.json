@@ -105,6 +105,12 @@
     "allow": "Seiten nach ihrem Titel fragen",
     "hint": "Nur öffentliche Adressen; das eigene Netz des Servers wird nie gefragt."
   },
+  "folds": {
+    "fold": "„{{name}}“ einklappen",
+    "unfold": "„{{name}}“ ausklappen",
+    "foldAll": "Alle Überschriften und Listen einklappen",
+    "unfoldAll": "Alles ausklappen"
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Bereiche",

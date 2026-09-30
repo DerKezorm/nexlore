@@ -106,6 +106,7 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Heath/Marked.md': '# Marked\n\nTop.\n\n' + Array.from({ length: 60 }, (_, i) => `Line ${i + 1} of the long way down.\n\n`).join('') + '## Far below\n\nThe end.\n',
   'Heath/Callouts.md': '# Callouts\n\n> [!recipe] Soup\n> Water and salt.\n\n> [!warning] Care\n> Hot.\n',
   'Heath/Pasted.md': '# Pasted\n\nStart.\n',
+  'Heath/Folded.md': '# Folded\n\n## One\n\nFirst text.\n\n### Deeper\n\nDeep text.\n\n## Two\n\nSecond text.\n\n- Parent\n  - Child one\n  - Child two\n- Single\n',
   'Heath/Slashed.md': '# Slashed\n\nFirst line.\n',
   'Heath/Counted embed.md': '# Counted embed\n\nTwo words.\n\n![[Heath/Counted]]\n',
   'Heath/Dates.md':`- [ ] Cut the heather 📅 ${day(3)}\n`,

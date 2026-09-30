@@ -105,6 +105,12 @@
     "allow": "Ask pages for their titles",
     "hint": "Only public addresses; the server's own network is never asked."
   },
+  "folds": {
+    "fold": "Fold “{{name}}”",
+    "unfold": "Unfold “{{name}}”",
+    "foldAll": "Fold all headings and lists",
+    "unfoldAll": "Unfold all"
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Spaces",

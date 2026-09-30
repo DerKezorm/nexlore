@@ -119,6 +119,50 @@
   font-size: 0.85em;
 }
 
+/* Folding (editor/folds.ts): the reading view's arrows, and the folded blocks hidden. */
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6,
+.ProseMirror li {
+  position: relative;
+}
+.nx-fold {
+  position: absolute;
+  top: 0.2em;
+  left: -1.35em;
+  display: grid;
+  width: 1.1em;
+  height: 1.1em;
+  place-items: center;
+  border-radius: 0.25rem;
+  color: var(--color-mist-600);
+  opacity: 0;
+  cursor: pointer;
+}
+.nx-fold::before {
+  content: '';
+  width: 0.42em;
+  height: 0.42em;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: translateY(-15%) rotate(45deg);
+}
+.nx-fold[aria-expanded='false']::before {
+  transform: rotate(-45deg);
+}
+/* A list item's arrow sits in its first paragraph (Milkdown wraps the item's parts in elements of its own). */
+.ProseMirror :is(h1, h2, h3, h4, h5, h6):hover > .nx-fold,
+.ProseMirror li p:hover > .nx-fold,
+.nx-fold[aria-expanded='false'] {
+  opacity: 1;
+}
+.nx-folded {
+  display: none !important;
+}
+
 /* Callouts: a coloured quote with a label, the way Obsidian draws them. */
 .nx-callout {
   --nx-callout: var(--color-accent-500);

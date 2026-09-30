@@ -11,6 +11,7 @@
  * Files pasted, dropped or picked from the menu are uploaded through `files` (the page's helpers) and linked with an
  * ordinary relative Markdown link; pictures show through the server (`imageSource`).
  */
+import { foldPlugin, type FoldStore } from './folds'
 import { byUse, noteSlashUse } from './slashUse'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { editorViewCtx, parserCtx, remarkCtx, serializerCtx } from '@milkdown/kit/core'
@@ -127,6 +128,8 @@ export type EditorOptions = {
   /** Uploading and showing files; without it a pasted or dropped file is refused (`onFileRefused`). */
   files?: FileHelpers
   onFileRefused?: () => void
+  /** The note's folds (`editor/folds.ts`); without it nothing folds. */
+  folds?: FoldStore
   /** The title of a pasted web address, for its link's words; null at once when titles are not asked for. */
   linkTitle?: (url: string) => Promise<string | null> | null
   /** For tests: more Milkdown plugins, after nexlore's own. */
@@ -451,6 +454,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     .use($prose(() => blockPreviews()))
     .use($prose(() => findPlugin()))
     .use($prose(() => commentPlugin()))
+    .use($prose(() => (options.folds ? foldPlugin(options.folds) : new Plugin({}))))
     .use(
       $prose(() =>
         lineNumbers(

@@ -18,6 +18,8 @@ import '../styles/editor.css'
 
 import { ApiError, fileUrl, linkTitleApi, uploadFile, vaultApi, type Uploaded } from '../api/client'
 import { createEditor, type EditorCommand, type EditorLabels, type FileHelpers, type NoteEditor as Engine } from '../editor/editor'
+import { allFolds } from '../editor/folds'
+import { FOLD_ALL_EVENT, FOLDS_EVENT, readFolds, setFolds, toggleFold } from '../lib/folds'
 import { splitNote } from '../editor/frontmatter'
 import type { LinkHelpers } from '../editor/live'
 import { fileKind, isFileTarget, isPasted, relativeTarget } from '../lib/files'
@@ -93,6 +95,17 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   const { me } = useAuth()
   // Titles of pasted links, when the operator allows asking the pages (read when a link is pasted).
   const titles = useRef(false)
+  // "Fold all" and "unfold all" from the palette, while writing: this editor names the folds its note has.
+  useEffect(() => {
+    const all = (event: Event) => {
+      const { path: asked, fold } = (event as CustomEvent<{ path: string; fold: boolean }>).detail
+      const view = engine.current?.view
+      if (asked !== path || !view) return
+      setFolds(path, fold ? allFolds(view.state) : [])
+    }
+    window.addEventListener(FOLD_ALL_EVENT, all)
+    return () => window.removeEventListener(FOLD_ALL_EVENT, all)
+  }, [path])
   useEffect(() => {
     titles.current = !!me?.link_titles
   }, [me?.link_titles])
@@ -215,6 +228,17 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       files: readOnly ? undefined : files,
       onFileRefused: () => latest.current.onFileRefused?.(),
       linkTitle: (url) => (titles.current ? linkTitleApi.title(url).then((found) => found.title, () => null) : null),
+      folds: {
+        keys: () => readFolds(path),
+        toggle: (key) => toggleFold(path, key),
+        set: (keys) => setFolds(path, keys),
+        subscribe: (changed) => {
+          const heard = (event: Event) => (event as CustomEvent<string>).detail === path && changed()
+          window.addEventListener(FOLDS_EVENT, heard)
+          return () => window.removeEventListener(FOLDS_EVENT, heard)
+        },
+        label: (folded, name) => t(folded ? 'folds.unfold' : 'folds.fold', { name: name.trim().slice(0, 60) }),
+      },
     })
       .then((editor) => {
         if (!alive) return void editor.destroy()

@@ -301,6 +301,59 @@
     @apply font-semibold text-mist-100;
     color: color-mix(in srgb, var(--nn-callout) 55%, var(--color-mist-100));
   }
+  /* Folding (components/FoldLayer.tsx): an arrow left of a heading or list item, shown on hover or when folded. */
+  .nn-prose .nn-foldable {
+    position: relative;
+  }
+  .nn-prose .nn-fold {
+    position: absolute;
+    top: 0.2em;
+    left: -1.35em;
+    display: grid;
+    width: 1.1em;
+    height: 1.1em;
+    place-items: center;
+    border-radius: 0.25rem;
+    color: var(--color-mist-600);
+    opacity: 0;
+    transition: opacity 0.12s;
+  }
+  .nn-prose li > .nn-fold {
+    left: -2.6em;
+    top: 0.15em;
+  }
+  .nn-prose .nn-fold::before {
+    content: '';
+    width: 0.42em;
+    height: 0.42em;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-15%) rotate(45deg);
+  }
+  .nn-prose .nn-fold[aria-expanded='false']::before {
+    transform: rotate(-45deg);
+  }
+  .nn-prose .nn-foldable:hover > .nn-fold,
+  .nn-prose .nn-fold:focus-visible,
+  .nn-prose .nn-fold[aria-expanded='false'] {
+    opacity: 1;
+  }
+  .nn-prose .nn-fold:hover {
+    color: var(--color-mist-200);
+  }
+  .nn-prose .nn-folded {
+    display: none !important;
+  }
+  /* Counted for the word count (lib/wordcount.ts): shown for that moment, never painted. */
+  .nn-measuring .nn-folded,
+  .nn-measuring .nx-folded {
+    display: revert !important;
+  }
+  .nn-prose .nn-foldable:has(> .nn-fold[aria-expanded='false'])::after {
+    content: ' …';
+    color: var(--color-mist-600);
+  }
+
   /* The kind's symbol before the title (lib/callouts.ts sets which). */
   .nn-prose .nn-callout-title::before {
     content: '';
