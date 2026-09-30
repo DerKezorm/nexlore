@@ -43,12 +43,13 @@ export function WordCount({ body, content }: { body: RefObject<HTMLElement | nul
     }
   }, [body, content])
 
-  if (!total) return null
   const shown = (what: Count) =>
     `${t('wordcount.words', { count: what.words, n: what.words.toLocaleString(i18n.language) })} · ${t('wordcount.chars', { count: what.chars, n: what.chars.toLocaleString(i18n.language) })}`
   return (
-    <div className="hidden shrink-0 justify-end border-t border-ink-800 px-4 py-1 text-[11px] text-mist-500 tabular-nums sm:flex" data-testid="word-count">
-      {chosen && chosen.words + chosen.chars > 0 ? t('wordcount.chosen', { what: shown(chosen) }) : shown(total)}
+    // There from the start, empty until counted: a line that came later would shrink the text above it by its height
+    // and move what was just scrolled to (the outline then lit the heading above).
+    <div className="hidden h-6 shrink-0 items-center justify-end border-t border-ink-800 px-4 text-[11px] leading-none text-mist-500 tabular-nums sm:flex" data-testid="word-count">
+      {!total ? '' : chosen && chosen.words + chosen.chars > 0 ? t('wordcount.chosen', { what: shown(chosen) }) : shown(total)}
     </div>
   )
 }

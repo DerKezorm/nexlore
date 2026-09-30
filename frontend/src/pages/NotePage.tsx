@@ -489,9 +489,14 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       else void sent.finally(unlock)
     }
     const leave = () => flush(true)
+    // Already before the page unloads: under the service worker the unlock sent from `pagehide` never arrived (the
+    // note stayed locked for others for 90 seconds, measured). `pagehide` stays for phones; the second call finds
+    // nothing left to save and only unlocks again.
+    window.addEventListener('beforeunload', leave)
     window.addEventListener('pagehide', leave)
     return () => {
       window.clearInterval(beat)
+      window.removeEventListener('beforeunload', leave)
       window.removeEventListener('pagehide', leave)
       if (timer.current !== null) window.clearTimeout(timer.current)
       flush(false)
@@ -771,10 +776,14 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   if (!note) {
     return (
       <>
-        <main className={paneClass + ' flex-col'}>
-          {side === 'left' && <TabBar path={path} />}
-          <div className="flex flex-1 items-center justify-center px-6 text-center text-mist-500">
-            {problem ? (problem === 'not_found' ? t('note.notFound') : errorText(problem)) : t('common.loading')}
+        {/* The same nesting as below: the row of tabs stays mounted while the next note loads (a menu open on it
+            stayed open, and a tab's state stays). */}
+        <main className={paneClass}>
+          <div className="flex min-w-0 flex-1 flex-col">
+            {side === 'left' && <TabBar path={path} />}
+            <div className="flex flex-1 items-center justify-center px-6 text-center text-mist-500">
+              {problem ? (problem === 'not_found' ? t('note.notFound') : errorText(problem)) : t('common.loading')}
+            </div>
           </div>
         </main>
       </>
