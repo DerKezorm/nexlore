@@ -13,6 +13,7 @@
  */
 import { foldPlugin, type FoldStore } from './folds'
 import { moveBlock, moveBlockKeys } from './moveBlock'
+import { alignColumn, sortByColumn } from './tables'
 import { cleanPastedHtml, keepFirstBlock } from './pasted'
 import { byUse, noteSlashUse } from './slashUse'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
@@ -145,6 +146,7 @@ export type EditorCommand =
   | 'text' | 'h1' | 'h2' | 'h3' | 'quote' | 'bulletList' | 'orderedList' | 'taskList' | 'indent' | 'outdent'
   | 'codeBlock' | 'math' | 'callout' | 'divider' | 'attachment' | 'selectAll' | 'moveUp' | 'moveDown'
   | 'table' | 'rowBefore' | 'rowAfter' | 'colBefore' | 'colAfter' | 'deleteRow' | 'deleteCol' | 'deleteTable'
+  | 'alignNone' | 'alignLeft' | 'alignCenter' | 'alignRight' | 'sortAsc' | 'sortDesc'
 
 /** A piece of the note for the AI, and where it stood (read when the AI is asked: a dialog takes the selection away). */
 export type AiScope = { markdown: string; from: number; to: number; whole: boolean }
@@ -776,6 +778,18 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
         return attach()
       case 'selectAll':
         return view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)))
+      case 'alignNone':
+        return void alignColumn(null)(view.state, view.dispatch)
+      case 'alignLeft':
+        return void alignColumn('left')(view.state, view.dispatch)
+      case 'alignCenter':
+        return void alignColumn('center')(view.state, view.dispatch)
+      case 'alignRight':
+        return void alignColumn('right')(view.state, view.dispatch)
+      case 'sortAsc':
+        return void sortByColumn(1)(view.state, view.dispatch)
+      case 'sortDesc':
+        return void sortByColumn(-1)(view.state, view.dispatch)
       case 'moveUp':
         return void moveBlock(-1)(view.state, view.dispatch)
       case 'moveDown':

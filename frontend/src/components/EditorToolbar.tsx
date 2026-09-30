@@ -165,6 +165,18 @@ export function EditorToolbar({ editor, ai, onSource, onHide, lines, onLines, op
         { label: t('toolbar.colBefore'), onSelect: () => run('colBefore') },
         { label: t('toolbar.colAfter'), onSelect: () => run('colAfter') },
         'separator',
+        {
+          label: t('toolbar.align'),
+          items: [
+            { label: t('toolbar.alignNone'), onSelect: () => run('alignNone') },
+            { label: t('toolbar.alignLeft'), onSelect: () => run('alignLeft') },
+            { label: t('toolbar.alignCenter'), onSelect: () => run('alignCenter') },
+            { label: t('toolbar.alignRight'), onSelect: () => run('alignRight') },
+          ],
+        },
+        { label: t('toolbar.sortAsc'), onSelect: () => run('sortAsc') },
+        { label: t('toolbar.sortDesc'), onSelect: () => run('sortDesc') },
+        'separator',
         { label: t('toolbar.deleteRow'), disabled: status.headerRow, onSelect: () => run('deleteRow') },
         { label: t('toolbar.deleteCol'), onSelect: () => run('deleteCol') },
         { label: t('toolbar.deleteTable'), symbol: 'trash', onSelect: () => run('deleteTable') },

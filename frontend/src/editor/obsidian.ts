@@ -2,6 +2,8 @@
  * The Obsidian layer as Milkdown plugins: the syntax from syntax.ts for parser and writer, two nodes for raw
  * Markdown, and the author's style for everything written anew.
  */
+import { tableCellSchema, tableHeaderSchema } from '@milkdown/kit/preset/gfm'
+import { alignedCells } from './tables'
 import { remarkStringifyOptionsCtx } from '@milkdown/kit/core'
 import type { Ctx } from '@milkdown/kit/ctx'
 import { bulletListSchema, codeBlockSchema, imageSchema, linkSchema, orderedListSchema } from '@milkdown/kit/preset/commonmark'
@@ -91,10 +93,22 @@ const rawInline = $node('nx_raw_inline', () => ({
 }))
 
 /** The writer's options: Obsidian's syntax kept, the author's style for what is new. Before the editor starts. */
+/**
+ * The row under a table's head with three marks at least in each cell (`---`, `:---`, `---:`, `:---:`), as Obsidian
+ * and most files write it; remark's writer, without columns padded, wrote a single `-`.
+ */
+export function widerDelimiters(written: string): string {
+  const lines = written.split('\n')
+  if (lines.length < 2) return written
+  lines[1] = lines[1].replace(/(:?)(-+)(:?)/g, (_, left: string, dashes: string, right: string) => left + '-'.repeat(Math.max(dashes.length, 3 - left.length - right.length)) + right)
+  return lines.join('\n')
+}
+
 export function writerOptions(style: Style) {
   return (ctx: Ctx) => {
     // Tables padded into columns only where the author's tables are (handlers here win over remark-gfm's).
     const tables = gfmTableToMarkdown({ tableCellPadding: true, tablePipeAlign: style.alignTables }).handlers
+    const table = tables!.table!
     ctx.update(remarkStringifyOptionsCtx, (options: Options) => ({
       ...options,
       bullet: style.bullet,
@@ -108,6 +122,7 @@ export function writerOptions(style: Style) {
       handlers: {
         ...options.handlers,
         ...tables,
+        table: (node, parent, state, info) => widerDelimiters(table(node, parent, state, info)),
         text: writeText,
         nxRaw: writeRaw,
         link: formLink(options.handlers?.link ?? defaultHandlers.link, style.bareUrls),
@@ -280,7 +295,8 @@ export const obsidian = [
   fullCodeBlock,
   markedList(bulletListSchema, false),
   markedList(orderedListSchema, true),
+  alignedCells,
 ].flat()
 
 /** The preset's own versions of what `obsidian` replaces. */
-export const replaced = [linkSchema, imageSchema, codeBlockSchema, bulletListSchema, orderedListSchema].flat()
+export const replaced = [linkSchema, imageSchema, codeBlockSchema, bulletListSchema, orderedListSchema, tableCellSchema, tableHeaderSchema].flat()

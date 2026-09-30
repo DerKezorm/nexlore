@@ -1597,7 +1597,15 @@
       "todo": "To do",
       "abstract": "Summary"
     },
-    "ai": "AI"
+    "ai": "AI",
+    "align": "Align the column",
+    "alignNone": "No alignment",
+    "alignLeft": "Left",
+    "alignCenter": "Centre",
+    "alignRight": "Right",
+    "sortAsc": "Sort by this column, A to Z",
+    "sortDesc": "Sort by this column, Z to A",
+    "alignNoneLong": "Table column without alignment"
   },
   "find": {
     "label": "Find in the note",

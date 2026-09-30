@@ -27,7 +27,7 @@ describe('without a change', () => {
 /** What the editor itself must keep, before any block layer: Obsidian's syntax survives its own round trip. */
 const MARKERS: Record<string, string[]> = {
   '04-aufgaben.md': ['- [ ] Server patchen', '- [x] Backup', '📅 2026-09-30', '#haushalt'],
-  '05-tabelle.md': ['| :- | -: | :-: |', '| RAM | 32 | GB |'],
+  '05-tabelle.md': ['| :-- | --: | :-: |', '| RAM | 32 | GB |'],
   '06-code.md': ['```python', '~~~'],
   '07-callouts.md': ['> [!note] Hinweis', '> [!warning]- Eingeklappt'],
   '08-wikilinks.md': ['[[Projekt Alpha]]', '[[Projekt Alpha|Alias]]', '[[Notiz#Überschrift]]', '[[Notiz#^block-id|Blockverweis]]'],

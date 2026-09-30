@@ -1597,7 +1597,15 @@
       "todo": "Zu tun",
       "abstract": "Zusammenfassung"
     },
-    "ai": "KI"
+    "ai": "KI",
+    "align": "Spalte ausrichten",
+    "alignNone": "Keine Ausrichtung",
+    "alignLeft": "Links",
+    "alignCenter": "Mitte",
+    "alignRight": "Rechts",
+    "sortAsc": "Nach dieser Spalte sortieren, A bis Z",
+    "sortDesc": "Nach dieser Spalte sortieren, Z bis A",
+    "alignNoneLong": "Tabellenspalte ohne Ausrichtung"
   },
   "find": {
     "label": "Suchen in der Notiz",
