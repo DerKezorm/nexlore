@@ -1785,7 +1785,13 @@
   },
   "tabs": {
     "label": "Open notes",
-    "close": "Close “{{name}}”"
+    "close": "Close “{{name}}”",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "closeOne": "Close",
+    "closeOthers": "Close the others",
+    "all": "All open notes ({{count}})",
+    "pinned": "Pinned"
   },
   "start": {
     "title": "Start page",

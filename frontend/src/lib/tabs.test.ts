@@ -1,7 +1,7 @@
 /** Tabs for notes: which tab a note goes into, which one comes to the front when one closes, and what is forgotten. */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { closeTab, followTab, forgetTabs, MAX_TABS, openInTab, readTabs } from './tabs'
+import { closeOtherTabs, closeTab, followTab, forgetTabs, MAX_TABS, moveTab, openInTab, pinTab, readPinned, readTabs } from './tabs'
 
 beforeEach(() => {
   const memory = new Map<string, string>()
@@ -79,5 +79,50 @@ describe('tabs', () => {
     expect(readTabs()).toEqual({ paths: ['ok.md'], active: 0 })
     localStorage.setItem('nexlore.tabs', 'not json')
     expect(readTabs()).toEqual({ paths: [], active: 0 })
+  })
+
+  it('keeps a pinned tab: it stands left, and a note opened from it comes in a tab of its own', () => {
+    const go = vi.fn()
+    followTab('A/one.md')
+    openInTab('A/two.md', go)
+    openInTab('A/three.md', go)
+    pinTab('A/three.md', true)
+    expect(readPinned()).toEqual(['A/three.md'])
+    expect(readTabs()).toEqual({ paths: ['A/three.md', 'A/one.md', 'A/two.md'], active: 0 })
+    // Shown in front and pinned: the next note does not replace it.
+    followTab('A/four.md')
+    expect(readTabs()).toEqual({ paths: ['A/three.md', 'A/four.md', 'A/one.md', 'A/two.md'], active: 1 })
+    // Not pinned: replaced as before.
+    followTab('A/five.md')
+    expect(readTabs().paths).toEqual(['A/three.md', 'A/five.md', 'A/one.md', 'A/two.md'])
+    // Let go again: after the pinned ones (none left, so first stays first), still in front if it was.
+    pinTab('A/three.md', false)
+    expect(readPinned()).toEqual([])
+  })
+
+  it('moves a tab within its part of the row, and closing the others keeps the pinned', () => {
+    const go = vi.fn()
+    followTab('A/one.md')
+    for (const name of ['two', 'three', 'four']) openInTab(`A/${name}.md`, go)
+    pinTab('A/four.md', true)
+    expect(readTabs().paths).toEqual(['A/four.md', 'A/one.md', 'A/two.md', 'A/three.md'])
+    moveTab('A/three.md', 1)
+    expect(readTabs().paths).toEqual(['A/four.md', 'A/three.md', 'A/one.md', 'A/two.md'])
+    // A tab that is not pinned cannot go before a pinned one, a pinned one not behind the others.
+    moveTab('A/two.md', 0)
+    expect(readTabs().paths[0]).toBe('A/four.md')
+    moveTab('A/four.md', 3)
+    expect(readTabs().paths[0]).toBe('A/four.md')
+    // The one in front stays in front while the row changes.
+    const front = readTabs().paths[readTabs().active]
+    moveTab('A/one.md', 3)
+    expect(readTabs().paths[readTabs().active]).toBe(front)
+    closeOtherTabs('A/one.md')
+    expect(readTabs()).toEqual({ paths: ['A/four.md', 'A/one.md'], active: 1 })
+    // Closing a pinned tab lets go of it too: opened again, it is an ordinary tab.
+    closeTab('A/four.md', 'A/one.md')
+    expect(readPinned()).toEqual([])
+    openInTab('A/four.md', go)
+    expect(readPinned()).toEqual([])
   })
 })

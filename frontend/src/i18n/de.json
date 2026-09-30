@@ -1785,7 +1785,13 @@
   },
   "tabs": {
     "label": "Offene Notizen",
-    "close": "„{{name}}“ schließen"
+    "close": "„{{name}}“ schließen",
+    "pin": "Anheften",
+    "unpin": "Lösen",
+    "closeOne": "Schließen",
+    "closeOthers": "Andere schließen",
+    "all": "Alle offenen Notizen ({{count}})",
+    "pinned": "Angeheftet"
   },
   "start": {
     "title": "Startseite",
