@@ -106,6 +106,7 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Heath/Marked.md': '# Marked\n\nTop.\n\n' + Array.from({ length: 60 }, (_, i) => `Line ${i + 1} of the long way down.\n\n`).join('') + '## Far below\n\nThe end.\n',
   'Heath/Callouts.md': '# Callouts\n\n> [!recipe] Soup\n> Water and salt.\n\n> [!warning] Care\n> Hot.\n',
   'Heath/Pasted.md': '# Pasted\n\nStart.\n',
+  'Heath/Moving.md': '# Moving\n\nKeep  this   line as it is.\n\n- One\n- Two\n  - Two a\n- Three\n',
   'Heath/Extract.md': '# Extract\n\nKeep this.\n\nMove these words away.\n',
   'Heath/Merge from.md': '---\ntags: [gone]\n---\n# Merge from\n\nFrom words.\n',
   'Heath/Merge into.md': '# Merge into\n\nInto words.\n',

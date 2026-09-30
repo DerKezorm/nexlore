@@ -545,6 +545,8 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     return [
       { id: 'editor.find', label: t('find.command'), group, symbol: 'search', keys: t('find.keyFind'), run: () => askFind(false) },
       { id: 'editor.extract', label: t('extract.menu'), group, symbol: 'note', run: startExtract },
+      entry('moveUp', t('editor.moveUp'), 'chevronUp', 'Alt+↑'),
+      entry('moveDown', t('editor.moveDown'), 'chevronDown', 'Alt+↓'),
       { id: 'editor.replace', label: t('find.commandReplace'), group, symbol: 'search', keys: t('find.keyReplace'), run: () => askFind(true) },
       entry('bold', t('editorMenu.bold'), 'bold', t('editorMenu.keyBold')),
       entry('italic', t('editorMenu.italic'), 'italic', t('editorMenu.keyItalic')),

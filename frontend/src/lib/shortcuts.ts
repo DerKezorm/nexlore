@@ -42,7 +42,7 @@ const BROWSER = new Set([
 export const TAKEN = new Set([
   'Ctrl+K', 'Ctrl+P', 'Ctrl+Shift+F', 'Ctrl+F', 'Ctrl+H', 'F2', 'F3', 'Shift+F3', 'Alt+T', 'Alt+N', 'Alt+Shift+N', 'Alt+B', 'Alt+R',
   'Ctrl+Alt+B', 'Ctrl+B', 'Ctrl+I', 'Ctrl+U', 'Ctrl+E', 'Ctrl+Z', 'Ctrl+Y', 'Ctrl+Shift+Z', 'Ctrl+A', 'Ctrl+C', 'Ctrl+V', 'Ctrl+X',
-  'Ctrl+S', 'Ctrl+Enter', 'Meta+K', 'Meta+P', 'Meta+Z', 'Meta+A', 'Meta+C', 'Meta+V', 'Meta+X', 'Meta+B', 'Meta+I',
+  'Ctrl+S', 'Ctrl+Enter', 'Alt+ArrowUp', 'Alt+ArrowDown', 'Ctrl+Shift+ArrowUp', 'Ctrl+Shift+ArrowDown', 'Meta+K', 'Meta+P', 'Meta+Z', 'Meta+A', 'Meta+C', 'Meta+V', 'Meta+X', 'Meta+B', 'Meta+I',
 ])
 
 export type Refusal = 'modifier' | 'browser' | 'taken'

@@ -808,7 +808,9 @@
     "dates": {
       "list": "Dates",
       "hint": "Enter: link to the daily note, Shift+Enter: the date alone"
-    }
+    },
+    "moveUp": "Move the block up",
+    "moveDown": "Move the block down"
   },
   "properties": {
     "pickDate": "Pick a date",

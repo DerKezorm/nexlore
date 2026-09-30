@@ -808,7 +808,9 @@
     "dates": {
       "list": "Datum",
       "hint": "Enter: Link zur Tagesnotiz, Umschalt+Enter: nur das Datum"
-    }
+    },
+    "moveUp": "Block nach oben",
+    "moveDown": "Block nach unten"
   },
   "properties": {
     "pickDate": "Datum wählen",

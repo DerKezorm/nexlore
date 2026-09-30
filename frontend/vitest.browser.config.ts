@@ -17,6 +17,7 @@ export default defineConfig({
     include: [
       '@milkdown/kit/component/link-tooltip',
       '@milkdown/kit/prose/history',
+      '@milkdown/kit/prose/keymap',
       '@milkdown/kit/prose/schema-list',
       '@milkdown/kit/prose/tables',
       'katex',

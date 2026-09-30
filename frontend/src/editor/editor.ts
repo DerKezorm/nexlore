@@ -12,6 +12,7 @@
  * ordinary relative Markdown link; pictures show through the server (`imageSource`).
  */
 import { foldPlugin, type FoldStore } from './folds'
+import { moveBlock, moveBlockKeys } from './moveBlock'
 import { cleanPastedHtml, keepFirstBlock } from './pasted'
 import { byUse, noteSlashUse } from './slashUse'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
@@ -142,7 +143,7 @@ export type EditorCommand =
   | 'undo' | 'redo'
   | 'bold' | 'italic' | 'strike' | 'code' | 'highlight' | 'clear' | 'wikiLink' | 'link' | 'embed'
   | 'text' | 'h1' | 'h2' | 'h3' | 'quote' | 'bulletList' | 'orderedList' | 'taskList' | 'indent' | 'outdent'
-  | 'codeBlock' | 'math' | 'callout' | 'divider' | 'attachment' | 'selectAll'
+  | 'codeBlock' | 'math' | 'callout' | 'divider' | 'attachment' | 'selectAll' | 'moveUp' | 'moveDown'
   | 'table' | 'rowBefore' | 'rowAfter' | 'colBefore' | 'colAfter' | 'deleteRow' | 'deleteCol' | 'deleteTable'
 
 /** A piece of the note for the AI, and where it stood (read when the AI is asked: a dialog takes the selection away). */
@@ -456,6 +457,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     .use($prose(() => blockPreviews()))
     .use($prose(() => findPlugin()))
     .use($prose(() => commentPlugin()))
+    .use($prose(() => moveBlockKeys()))
     .use($prose(() => (options.folds ? foldPlugin(options.folds) : new Plugin({}))))
     .use(
       $prose(() =>
@@ -774,6 +776,10 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
         return attach()
       case 'selectAll':
         return view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)))
+      case 'moveUp':
+        return void moveBlock(-1)(view.state, view.dispatch)
+      case 'moveDown':
+        return void moveBlock(1)(view.state, view.dispatch)
     }
   }
 
