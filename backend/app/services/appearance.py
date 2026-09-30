@@ -46,10 +46,15 @@ DEFAULTS: dict[str, Any] = {
     "start": "graph",
     #: With ``start: note``: its path. Whether it may be read is asked when it is opened, like any note.
     "start_note": "",
+    #: Where "Today", quick capture and a new note go when no note of a space the account may write in is open
+    #: (review before 1.0.0, P5.19); empty: its first own space. A space it may no longer write in is passed over.
+    "home_space": "",
     #: The column beside a note on a wide screen: shown, and which tab; below 1280 pixels a sheet on request.
     "panel": True,
     "panel_tab": "links",
     "sidebar": "open",
+    #: The first day of the calendar's week (P5.24).
+    "week_start": "monday",
     #: Own keys: command id -> {"combo", "label"}.
     "keys": {},
 }
@@ -76,7 +81,7 @@ def of(stored: Any) -> dict[str, Any]:
 def _checked(changes: dict[str, Any]) -> dict[str, Any]:
     allowed = {
         "mode": MODES, "font_ui": FONTS_UI, "font_text": FONTS_TEXT, "font_code": FONTS_CODE, "width": WIDTHS,
-        "start": STARTS, "panel_tab": PANEL_TABS, "sidebar": SIDEBARS,
+        "start": STARTS, "panel_tab": PANEL_TABS, "sidebar": SIDEBARS, "week_start": ("monday", "sunday"),
     }
     out: dict[str, Any] = {}
     for key, value in changes.items():
@@ -92,6 +97,13 @@ def _checked(changes: dict[str, Any]) -> dict[str, Any]:
             if not isinstance(value, bool):
                 raise AppearanceError(key)
             out[key] = value
+        elif key == "home_space":
+            if not isinstance(value, str):
+                raise AppearanceError(key)
+            try:
+                out[key] = paths.check_name(value) if value else ""
+            except paths.PathError as exc:
+                raise AppearanceError(key) from exc
         elif key == "start_note" and value == "":
             # No note chosen (any more).
             out[key] = value

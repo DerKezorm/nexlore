@@ -3,7 +3,6 @@
  * notes go to. Dates travel as `JJJJ-MM-TT` in the browser's own time: "today" is the reader's today, not the server's.
  */
 import type { Space, TaskItem, TaskWhen } from '../api/client'
-import { ownKey } from './accountStorage'
 
 /** `JJJJ-MM-TT` of a day in local time. */
 export function isoDay(day: Date): string {
@@ -44,9 +43,9 @@ export function lastDay(month: string): string {
 }
 
 /** The weeks of a month, Monday first, each seven days; days of other months are null. */
-export function monthGrid(month: string): (string | null)[][] {
+export function monthGrid(month: string, weekStart: 'monday' | 'sunday' = 'monday'): (string | null)[][] {
   const first = atNoon(month + '-01')
-  const lead = (first.getDay() + 6) % 7
+  const lead = weekStart === 'sunday' ? first.getDay() : (first.getDay() + 6) % 7
   const days: (string | null)[] = Array.from({ length: lead }, () => null)
   const end = Number(lastDay(month).slice(8))
   for (let day = 1; day <= end; day++) days.push(`${month}-${String(day).padStart(2, '0')}`)
@@ -72,25 +71,29 @@ export function whenOf(task: Pick<TaskItem, 'due' | 'scheduled'>, now: string): 
 
 export const PRIORITY_MARK: Record<number, string> = { 5: '🔺', 4: '⏫', 3: '🔼', 1: '🔽', 0: '⏬' }
 
-const DAILY_SPACE_KEY = 'nexlore.daily.space'
-
-/** The space "Today" opens the daily note in: the one chosen last, else the first one the account may write in. */
-export function dailySpace(spaces: Space[]): Space | null {
+/**
+ * Where "Today", quick capture and a new note go: the space of the note open now, when the account may write in it;
+ * else its main space (Settings, General); else its first own space; else the first it may write in (P5.19).
+ */
+export function homeSpace(spaces: Space[], chosen?: string | null, open?: string | null): Space | null {
   const writable = spaces.filter((space) => space.role === 'write' || space.role === 'manage')
-  let chosen: string | null = null
-  try {
-    chosen = localStorage.getItem(ownKey(DAILY_SPACE_KEY))
-  } catch {
-    // Storage blocked: the first one then.
-  }
-  return writable.find((space) => space.name === chosen) ?? writable[0] ?? null
+  return (
+    writable.find((space) => space.name === open) ??
+    writable.find((space) => space.name === chosen) ??
+    writable.find((space) => space.role === 'manage') ??
+    writable[0] ??
+    null
+  )
 }
 
-export function rememberDailySpace(name: string): void {
+/** The space of what the page shows (`/note/Garden/Plan.md` gives Garden), or null. */
+export function openSpaceOf(pathname: string): string | null {
+  const match = /^\/(?:note|file|folder)\/([^/]+)/.exec(pathname)
+  if (!match) return null
   try {
-    localStorage.setItem(ownKey(DAILY_SPACE_KEY), name)
+    return decodeURIComponent(match[1])
   } catch {
-    // Not kept, nothing lost.
+    return null
   }
 }
 
@@ -125,4 +128,9 @@ export function readerNow(now = new Date()): string {
   const sign = offset >= 0 ? '+' : '-'
   const local = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
   return `${local}${sign}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`
+}
+
+/** The time on this device's clock, `14:05`. */
+export function clockTime(now = new Date()): string {
+  return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 }

@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { recentApi, vaultApi, type NoteRef } from '../api/client'
 import { folderColor } from '../graph/palette'
-import { dailySpace } from '../lib/everyday'
+import { homeSpace } from '../lib/everyday'
+import { useAuth } from '../state/auth'
 import { askNewNote } from '../lib/newNote'
 import { askNoteList, askSearch } from '../lib/shell'
 import { folderOf } from '../lib/vault'
@@ -16,6 +17,7 @@ import { Symbol } from './Symbol'
 const button = 'inline-flex items-center gap-2 rounded-full border border-ink-700 bg-ink-850 px-3.5 py-2 text-sm text-mist-200 hover:border-ink-600 hover:text-mist-100'
 
 export function NoteStart({ onNote }: { onNote: (path: string) => void }) {
+  const { me } = useAuth()
   const { t } = useTranslation()
   const { spaces, favorites } = useStore()
   const [recent, setRecent] = useState<{ opened: boolean; notes: NoteRef[] } | null>(null)
@@ -33,7 +35,7 @@ export function NoteStart({ onNote }: { onNote: (path: string) => void }) {
       live = false
     }
   }, [])
-  const home = dailySpace(spaces)
+  const home = homeSpace(spaces, me?.appearance?.home_space)
   const notes = favorites.filter((favorite) => favorite.kind === 'note')
   const row = (path: string, title: string) => (
     <li key={path}>

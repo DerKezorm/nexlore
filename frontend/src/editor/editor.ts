@@ -64,6 +64,7 @@ import { Plan, type Block, type Tools } from './blocks'
 import { findControl, findPlugin, type FindControl } from './find'
 import { commentControl, commentPlugin, type CommentControl } from './commentMarks'
 import { dateSuggest } from './dateSuggest'
+import { taskTicks } from './taskTicks'
 import { lineNumbers, type LineControl } from './lineNumbers'
 import { livePreview, refreshLive, type LinkHelpers } from './live'
 import { blockPreviews } from './previews'
@@ -83,7 +84,7 @@ export type EditorLabels = {
   /** What the two buttons beside a block do (Crepe draws them without a word). */
   handle: { add: string; drag: string }
   /** Dates in words after "@": the list's name and the line that says what Enter and Shift+Enter write. */
-  dates: { list: string; hint: string }
+  dates: { list: string; hint: string; dayName?: (iso: string) => string }
   code: { search: string; copy: string; noResult: string; edit: string; hide: string; preview: string; loading: string }
   slash: {
     text: string
@@ -564,6 +565,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     )
     .use($prose(() => linkSuggest({ search: options.search, label: () => labels.suggestions })))
     .use($prose(() => dateSuggest(() => ({ ...labels.dates, locale: () => document.documentElement.lang || navigator.language }))))
+    .use($prose(() => taskTicks()))
     .use(options.plugins ?? [])
   await crepe.editor.remove([remarkInlineLinkPlugin, remarkPreserveEmptyLinePlugin, ...replaced].flat())
   await crepe.create()

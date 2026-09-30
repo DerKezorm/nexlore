@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ACCOUNT_KEYS, forgetSharedKeys, setStorageOwner } from './accountStorage'
-import { lastSpace, rememberSpace } from './capture'
 import { readFolds, toggleFold } from './folds'
 import { openInTab, pinTab, readPinned, readTabs } from './tabs'
 
@@ -23,20 +22,17 @@ describe('what the browser remembers belongs to the account', () => {
     openInTab('Private/Epsilon.md', go)
     pinTab('Private/Epsilon.md', true)
     toggleFold('Private/Epsilon.md', 'h2:Secret plan#0')
-    rememberSpace('Private')
 
     setStorageOwner(2)
     expect(readTabs().paths).toEqual([])
     expect(readPinned()).toEqual([])
     expect(readFolds('Private/Epsilon.md').size).toBe(0)
-    expect(lastSpace()).toBe('')
     // No stored value anywhere names the other account's note, except under its own keys.
     const shared = [...memory.keys()].filter((key) => !key.endsWith('.1'))
     expect(shared.filter((key) => (localStorage.getItem(key) ?? '').includes('Epsilon'))).toEqual([])
 
     setStorageOwner(1)
     expect(readTabs().paths).toEqual(['Private/Epsilon.md'])
-    expect(lastSpace()).toBe('Private')
   })
 
   it('drops the values from before, when every account of the browser shared them', () => {

@@ -17,7 +17,9 @@ import { useTranslation } from 'react-i18next'
 import '@milkdown/crepe/theme/common/style.css'
 import '../styles/editor.css'
 
-import { ApiError, fileUrl, linkTitleApi, uploadFile, vaultApi, type Uploaded } from '../api/client'
+import { ApiError, everydayApi, fileUrl, linkTitleApi, uploadFile, vaultApi, type Uploaded } from '../api/client'
+import { clockTime, today as isoToday } from '../lib/everyday'
+import { TemplatePicker } from './TemplatePicker'
 import { createEditor, type AiScope, type EditorCommand, type EditorLabels, type FileHelpers, type NoteEditor as Engine } from '../editor/editor'
 import { errorText } from '../lib/errors'
 import { allFolds } from '../editor/folds'
@@ -30,6 +32,8 @@ import { aiMenu, type AiAsk } from '../lib/aiMenu'
 import { useContextMenu, type MenuItem } from '../lib/menu'
 import { linesShown, rememberLines, rememberToolbar, toolbarHidden } from '../lib/toolbar'
 import { baseName, folderOf } from '../lib/vault'
+import { dayName } from '../lib/dayname'
+import { useStore } from '../state/store'
 import { NameDialog } from './NameDialog'
 import { useCommands, type Command } from '../lib/commands'
 import { useAuth } from '../state/auth'
@@ -104,6 +108,9 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   { path, content, links, mode, readOnly = false, onChange, onLeave, onOpenLink, onSource, onNotice, onFileRefused, onUploaded, onUploadFailed, onComment, threads, onShowThread },
   ref,
 ) {
+  const { spaces } = useStore()
+  const dayPattern = useRef<string | undefined>(undefined)
+  dayPattern.current = spaces.find((space) => space.name === path.split('/')[0])?.daily_format
   const { t } = useTranslation()
   const host = useRef<HTMLDivElement>(null)
   const engine = useRef<Engine | null>(null)
@@ -210,6 +217,8 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     let alive = true
     let made: Engine | null = null
     const labels = editorLabels(t)
+    // "@tomorrow" links to the daily note as this note's space names it (P5.22).
+    labels.dates.dayName = (iso) => dayName(dayPattern.current, iso)
     // A file target the server has not been asked about yet: asked once, and the links are drawn again with the answer.
     const lookup = (target: string): string | null | undefined => {
       const key = target.split('#')[0].split('|')[0].trim()
@@ -529,6 +538,28 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   }
 
   // The palette's formats and blocks, while the visual editor is open for writing.
+  const [pickingTemplate, setPickingTemplate] = useState(false)
+  // Plain text at the caret, over what is selected.
+  const insertPlain = (text: string) => {
+    const now = engine.current
+    if (!now) return
+    now.view.focus()
+    now.view.dispatch(now.view.state.tr.insertText(text).scrollIntoView())
+  }
+  const insertTemplate = async (template: string) => {
+    setPickingTemplate(false)
+    const now = engine.current
+    if (!now) return
+    try {
+      const { content: filled } = await everydayApi.preview(template, baseName(path).replace(/\.md$/i, ''))
+      // Its front matter would land in the middle of the note: only the body goes in.
+      now.view.focus()
+      now.insertMarkdown(splitNote(filled).body)
+    } catch (error) {
+      onNotice?.(errorText(error instanceof ApiError ? error.code : 'internal_error'))
+    }
+  }
+
   useCommands((): Command[] => {
     // Offered from the first moment; a command asks for the editor only when it runs (it loads a little later).
     if (readOnly || mode !== 'visual') return []
@@ -544,6 +575,10 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     return [
       { id: 'editor.find', label: t('find.command'), group, symbol: 'search', keys: t('find.keyFind'), run: () => askFind(false) },
       { id: 'editor.extract', label: t('extract.menu'), group, symbol: 'note', run: startExtract },
+      // Obsidian's core helpers: a template into the note already there, and the date or the time (P5.24).
+      { id: 'editor.insertTemplate', label: t('insert.template'), group, symbol: 'template', run: () => setPickingTemplate(true) },
+      { id: 'editor.insertDate', label: t('insert.date'), group, symbol: 'calendar', run: () => insertPlain(isoToday()) },
+      { id: 'editor.insertTime', label: t('insert.time'), group, symbol: 'clock', run: () => insertPlain(clockTime()) },
       entry('moveUp', t('editor.moveUp'), 'chevronUp', 'Alt+↑'),
       // A table's own commands only with the caret in a table: elsewhere they did nothing and said nothing.
       ...(engine.current?.status().table
@@ -693,6 +728,9 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       {onShowThread && <CommentPeek state={peekState} onShowThread={onShowThread} />}
       {aiAsk && ready && (
         <AiDialog engine={ready} ask={aiAsk} notePath={path} onClose={() => setAiAsk(null)} onNotice={(text) => onNotice?.(text)} />
+      )}
+      {pickingTemplate && (
+        <TemplatePicker space={path.split('/')[0]} onPick={(template) => void insertTemplate(template)} onClose={() => setPickingTemplate(false)} />
       )}
       {extracting && (
         <NameDialog

@@ -80,6 +80,7 @@ class SpaceOut(BaseModel):
     #: Where the space keeps its templates and daily notes (the sidebar marks the templates folder).
     template_folder: str = "Templates"
     daily_folder: str = "Daily"
+    daily_format: str = "YYYY-MM-DD"
     #: The theme the managers set for the space's notes (``routers/themes``); empty for none.
     theme: str = ""
 
@@ -113,6 +114,7 @@ def spaces(account: Account) -> list[SpaceOut]:
         result.append(SpaceOut(
             id=space.id, name=space.folder, notes=int(notes), files=files, role=role,
             template_folder=opts["template_folder"], daily_folder=opts["daily_folder"], theme=opts["theme"],
+            daily_format=opts["daily_format"],
         ))
     return result
 

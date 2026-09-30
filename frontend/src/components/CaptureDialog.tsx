@@ -1,16 +1,18 @@
 /**
- * Quick capture: a thought into the inbox of a space, without opening a note. The space chosen last is chosen again
- * (in this browser). Ctrl+Enter keeps it; the box stays open and empty for the next one, Escape closes it.
+ * Quick capture: a thought into the inbox of a space, without opening a note: the space of the open note, else the
+ * account's main space (Settings, General). Ctrl+Enter keeps it; the box stays open and empty for the next one, Escape closes it.
  *
  * Opened from the palette, by a long press (or the right button) on "+", and by sharing to the installed app
  * (`/capture?title=…&text=…&url=…`, the manifest's share target).
  */
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { ApiError, captureApi } from '../api/client'
-import { lastSpace, rememberSpace, stamp } from '../lib/capture'
+import { stamp } from '../lib/capture'
+import { homeSpace, openSpaceOf } from '../lib/everyday'
+import { useAuth } from '../state/auth'
 import { showModalOnce } from '../lib/dialog'
 import { errorText } from '../lib/errors'
 import { noteUrl } from '../lib/vault'
@@ -23,8 +25,12 @@ export function CaptureDialog({ text: given = '', onClose }: { text?: string; on
   const field = useRef<HTMLTextAreaElement>(null)
   const { spaces } = useStore()
   const writable = spaces.filter((item) => item.role === 'write' || item.role === 'manage').map((item) => item.name)
-  const [chosen, setChosen] = useState(lastSpace)
-  const space = writable.includes(chosen) ? chosen : (writable[0] ?? '')
+  const { me } = useAuth()
+  const location = useLocation()
+  // Chosen here for this entry only; until then the open space, else the main space (both may load after opening).
+  const [chosen, setChosen] = useState<string | null>(null)
+  const fallback = homeSpace(spaces, me?.appearance?.home_space, openSpaceOf(location.pathname))?.name ?? ''
+  const space = chosen !== null && writable.includes(chosen) ? chosen : fallback
   const [text, setText] = useState(given)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -41,7 +47,6 @@ export function CaptureDialog({ text: given = '', onClose }: { text?: string; on
     setProblem(null)
     try {
       const answer = await captureApi.put(space, text, stamp(new Date()), i18n.language)
-      rememberSpace(space)
       setKept({ path: answer.path, space })
       setText('')
       field.current?.focus()

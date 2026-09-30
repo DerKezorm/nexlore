@@ -86,7 +86,8 @@
     "chosen": "Selected: {{what}}"
   },
   "zettel": {
-    "command": "New note named by the time"
+    "command": "New note named by the time",
+    "keywords": "zettel zettelkasten unique note timestamp"
   },
   "favorites": {
     "group": "Group",
@@ -709,7 +710,8 @@
       "ai_too_often": "Too many requests in a minute. Wait a moment.",
       "share_password_short": "The password needs at least {{min}} characters.",
       "provider_first": "Set up a sign-in provider first, or nobody but you could sign in.",
-      "bad_view": "The view cannot be read. Check the YAML: indentation, colons and quotes."
+      "bad_view": "The view cannot be read. Check the YAML: indentation, colons and quotes.",
+      "bad_day_format": "This pattern cannot name every day: year, month and day as numbers; names of months or weekdays do not work."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
@@ -925,7 +927,7 @@
     "tabs": {
       "profile": "Profile",
       "security": "Security",
-      "ai": "AI",
+      "ai": "Connections",
       "plugins": "Plugins"
     },
     "profile": {
@@ -1266,7 +1268,11 @@
     "nothing": "Nothing due this month.",
     "into": "New daily notes go to",
     "readOnly": "You may only read in this space: a daily note that is not there cannot be made.",
-    "dayLabel": "{{date}}, open the daily note"
+    "dayLabel": "{{date}}, open the daily note",
+    "pickMonth": "Month",
+    "pickYear": "Year",
+    "weekStart": "Week starts on",
+    "subscribe": "Subscribe to the calendar"
   },
   "tasks": {
     "title": "Tasks",
@@ -1344,7 +1350,12 @@
     "rootHint": "Empty: right in the space; then every note named like a date counts as a daily note.",
     "none": "None",
     "placeholders": "Placeholders in templates:",
-    "saved": "Saved."
+    "saved": "Saved.",
+    "dailyFormat": "Name of daily notes",
+    "dailyFormatHint": "YYYY year, MM month, DD day, / for a subfolder, [text] as it stands. Today: {{example}}",
+    "guess_one": "“{{folder}}” holds one note named like a daily note ({{format}}).",
+    "guess_other": "“{{folder}}” holds {{count}} notes named like daily notes ({{format}}).",
+    "guessTake": "Use them"
   },
   "install": {
     "title": "nexlore as an app on your home screen",
@@ -1694,7 +1705,9 @@
     "open": "Open",
     "keep": "Keep",
     "done": "Done",
-    "keys": "Ctrl+Enter keeps it"
+    "keys": "Ctrl+Enter keeps it",
+    "keywords": "inbox quick note thought",
+    "button": "Quick capture (Alt+Shift+N)"
   },
   "feed": {
     "title": "Calendar subscription",
@@ -1907,5 +1920,21 @@
     "accept": "Accept",
     "decline": "Decline",
     "seen": "Seen"
+  },
+  "homeSpace": {
+    "title": "Main space",
+    "text": "Today, quick capture and a new note go into the space of the open note. With none open, into this one.",
+    "choose": "Space",
+    "first": "First own space ({{space}})"
+  },
+  "insert": {
+    "template": "Insert template …",
+    "date": "Insert today's date",
+    "time": "Insert the time",
+    "noTemplates": "This space has no templates yet."
+  },
+  "day": {
+    "before": "Day before",
+    "after": "Day after"
   }
 }

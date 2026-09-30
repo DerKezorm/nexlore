@@ -72,8 +72,13 @@ export function commandFor(keys: OwnKeys, combo: string): string | null {
 }
 
 /** Shown as on the keyboard: ⌘ on a Mac. */
-export function shownCombo(combo: string, mac = /Mac|iPhone|iPad/.test(navigator.platform)): string {
-  return combo.replace(/\bMeta\b/, mac ? '⌘' : 'Win').replace(/\+/g, ' + ')
+export function shownCombo(combo: string, mac = /Mac|iPhone|iPad/.test(navigator.platform), language = 'en'): string {
+  const german = language.startsWith('de')
+  return combo
+    .replace(/\bMeta\b/, mac ? '⌘' : 'Win')
+    .replace(/\b(?:Ctrl|Control|Strg)\b/g, german ? 'Strg' : 'Ctrl')
+    .replace(/\b(?:Shift|Umschalt)\b/g, german ? 'Umschalt' : 'Shift')
+    .replace(/\s*\+\s*/g, ' + ')
 }
 
 /** While the palette listens for a new combination, the app's own keys stay quiet. */

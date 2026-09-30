@@ -25,7 +25,9 @@ DAYS = {
     "de": ("Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"),
 }
 #: Longest first, so that ``MMMM`` is not read as two ``MM``.
-_TOKENS = re.compile(r"\[[^\]]*\]|YYYY|YY|MMMM|MMM|MM|M|DDDD|DD|Do|D|dddd|ddd|dd|d|HH|H|hh|h|mm|m|ss|s|A|a|WW|W|ww|w|E")
+_TOKENS = re.compile(
+    r"\[[^\]]*\]|YYYY|YY|MMMM|MMM|MM|M|DDDD|DD|Do|D|dddd|ddd|dd|d|HH|H|hh|h|mm|m|ss|s|A|a|WW|W|ww|w|E|GGGG|Q|X|x|ZZ|Z"
+)
 #: How moment counts the weeks of a locale: the first day of the week (0 Sunday) and the January day that always lies
 #: in week 1, as ``7 + dow - doy``. English: Sunday, 1 January. German: Monday, 4 January, which is the ISO rule.
 _WEEKS = {"en": (0, 6), "de": (1, 4)}
@@ -54,6 +56,14 @@ def week_of_year(when: datetime, dow: int, doy: int) -> int:
     return week
 
 
+def _offset(when: datetime, colon: str) -> str:
+    """``+02:00`` (or ``+0200``); a time without a zone counts as the server's."""
+    offset = (when if when.tzinfo else when.astimezone()).utcoffset()
+    minutes = int(offset.total_seconds() // 60) if offset is not None else 0
+    sign = "-" if minutes < 0 else "+"
+    return f"{sign}{abs(minutes) // 60:02d}{colon}{abs(minutes) % 60:02d}"
+
+
 def format_moment(when: datetime, pattern: str, language: str = "en") -> str:
     """``when`` in a moment.js format. Text in ``[brackets]`` is kept as written."""
     months = MONTHS.get(language, MONTHS["en"])
@@ -77,6 +87,10 @@ def format_moment(when: datetime, pattern: str, language: str = "en") -> str:
             "mm": f"{when.minute:02d}", "m": str(when.minute), "ss": f"{when.second:02d}", "s": str(when.second),
             "A": "AM" if when.hour < 12 else "PM", "a": "am" if when.hour < 12 else "pm",
             "ww": f"{week:02d}", "w": str(week), "WW": f"{iso_week:02d}", "W": str(iso_week),
+            # Quarter, the ISO week's year, seconds and milliseconds since 1970, the offset (stood as written, P5.24).
+            "GGGG": f"{when.isocalendar()[0]:04d}", "Q": str((when.month - 1) // 3 + 1),
+            "X": str(int(when.timestamp())), "x": str(int(when.timestamp() * 1000)),
+            "Z": _offset(when, ":"), "ZZ": _offset(when, ""),
         }
         return values[token]
 

@@ -12,7 +12,7 @@ import { Symbol } from '../Symbol'
 import { Card } from './ui'
 
 export function KeysCard() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { me, setAppearance } = useAuth()
   const own = (me?.appearance ?? DEFAULT_APPEARANCE).keys ?? {}
   const rows = Object.entries(own).sort(([, a], [, b]) => a.label.localeCompare(b.label))
@@ -24,7 +24,7 @@ export function KeysCard() {
           {rows.map(([id, key]) => (
             <li key={id} className="flex items-center gap-3 rounded-xl border border-ink-700 bg-ink-850 px-4 py-2 text-sm" data-command={id}>
               <span className="min-w-0 flex-1 truncate">{key.label}</span>
-              <kbd className="shrink-0 rounded border border-ink-700 px-1.5 text-[11px] text-mist-400">{shownCombo(key.combo)}</kbd>
+              <kbd className="shrink-0 rounded border border-ink-700 px-1.5 text-[11px] text-mist-400">{shownCombo(key.combo, undefined, i18n.language)}</kbd>
               <button
                 type="button"
                 onClick={() => void setAppearance({ keys: withKey(own, id, key.label, null) })}

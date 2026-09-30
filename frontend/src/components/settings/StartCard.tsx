@@ -7,7 +7,9 @@ import { useTranslation } from 'react-i18next'
 
 import { vaultApi, type Found } from '../../api/client'
 import { DEFAULT_APPEARANCE, type Start } from '../../lib/appearance'
+import { homeSpace } from '../../lib/everyday'
 import { useAuth } from '../../state/auth'
+import { useStore } from '../../state/store'
 import { Card } from './ui'
 
 const STARTS: Start[] = ['graph', 'daily', 'last', 'note']
@@ -96,6 +98,36 @@ export function StartCard() {
           )}
         </div>
       )}
+    </Card>
+  )
+}
+
+/** Settings → General: where "Today", quick capture and a new note go when no note of a space is open (P5.19). */
+export function HomeSpaceCard() {
+  const { t } = useTranslation()
+  const { me, setAppearance } = useAuth()
+  const { spaces } = useStore()
+  const writable = spaces.filter((space) => space.role === 'write' || space.role === 'manage')
+  const chosen = me?.appearance?.home_space ?? ''
+  const fallback = homeSpace(spaces)?.name ?? ''
+  if (!writable.length) return null
+  return (
+    <Card symbol="folder" title={t('homeSpace.title')} text={t('homeSpace.text')} id="home-space">
+      <label className="flex flex-wrap items-center gap-3 rounded-xl border border-ink-700 bg-ink-850 px-4 py-3 text-sm">
+        <span className="font-medium">{t('homeSpace.choose')}</span>
+        <select
+          value={writable.some((space) => space.name === chosen) ? chosen : ''}
+          onChange={(event) => void setAppearance({ home_space: event.target.value })}
+          className="rounded-lg border border-ink-700 bg-ink-900 px-2.5 py-1.5 text-sm text-mist-100"
+        >
+          <option value="">{t('homeSpace.first', { space: fallback })}</option>
+          {writable.map((space) => (
+            <option key={space.id} value={space.name}>
+              {space.name}
+            </option>
+          ))}
+        </select>
+      </label>
     </Card>
   )
 }

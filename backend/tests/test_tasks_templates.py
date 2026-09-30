@@ -202,3 +202,17 @@ def test_a_recurring_task_with_an_impossible_date_is_only_ticked_off() -> None:
 def test_the_next_occurrence_is_created_today() -> None:
     line = "- [ ] a ➕ 2026-01-01 📅 2026-09-27 🔁 every week"
     assert tasks.next_occurrence(line, "2026-09-27") == "- [ ] a ➕ 2026-09-27 📅 2026-10-04 🔁 every week"
+
+
+def test_quarter_epoch_and_offset_are_written_as_moment_writes_them() -> None:
+    """Review before 1.0.0, P5.24: Q, X, x, Z stood in the note as written."""
+    from datetime import timedelta, timezone
+
+    from app.services.templates import format_moment
+
+    when = datetime(2026, 10, 1, 6, 50, tzinfo=timezone(timedelta(hours=2)))
+    assert format_moment(when, "Q/GGGG") == "4/2026"
+    assert format_moment(when, "X") == str(int(when.timestamp()))
+    assert format_moment(when, "x") == str(int(when.timestamp()) * 1000)
+    assert format_moment(when, "Z ZZ") == "+02:00 +0200"
+    assert format_moment(when.astimezone(timezone(timedelta(hours=-3, minutes=-30))), "Z") == "-03:30"

@@ -23,7 +23,7 @@ import { MIN_PASSWORD } from './SetupPage'
 
 type Part = 'profile' | 'security' | 'ai' | 'plugins'
 const PARTS: Part[] = ['profile', 'security', 'ai', 'plugins']
-const ANCHORS: Record<string, Part> = { '#ai': 'ai', '#mcp': 'ai', '#plugins': 'plugins' }
+const ANCHORS: Record<string, Part> = { '#ai': 'ai', '#mcp': 'ai', '#calendar': 'ai', '#plugins': 'plugins' }
 
 function code(error: unknown): string {
   return error instanceof ApiError ? error.code : 'internal_error'
@@ -52,7 +52,7 @@ export function AccountPage() {
   const tabs: Tab<Part>[] = [
     { value: 'profile', label: t('account.tabs.profile'), symbol: 'users' },
     { value: 'security', label: t('account.tabs.security'), symbol: 'shield' },
-    { value: 'ai', label: t('account.tabs.ai'), symbol: 'sparkle' },
+    { value: 'ai', label: t('account.tabs.ai'), symbol: 'plug' },
     { value: 'plugins', label: t('account.tabs.plugins'), symbol: 'plug' },
   ]
 

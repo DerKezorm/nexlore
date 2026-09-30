@@ -15,7 +15,13 @@ export const dateKey = new PluginKey<Active>('nxDates')
 
 const OPEN = /(?:^|\s)@([^\s@][^@\n]{0,24})$/
 
-export type DateLabels = { list: string; hint: string; locale: () => string }
+export type DateLabels = {
+  list: string
+  hint: string
+  locale: () => string
+  /** The name of a day's daily note in the note's space (`02.10.2026`); left out, the date as it stands. */
+  dayName?: (iso: string) => string
+}
 
 function find(state: EditorState, today: () => Date): Active {
   const { selection } = state
@@ -39,7 +45,8 @@ export function dateSuggest(labels: () => DateLabels, today: () => Date = () => 
 
   const take = (view: EditorView, active: NonNullable<Active>, item: DateWord, plain: boolean) => {
     const day = isoDate(item.date)
-    view.dispatch(view.state.tr.insertText(plain ? day : `[[${day}]]`, active.from, active.to).setMeta(dateKey, 'close'))
+    const name = labels().dayName?.(day) ?? day
+    view.dispatch(view.state.tr.insertText(plain ? day : `[[${name}]]`, active.from, active.to).setMeta(dateKey, 'close'))
     view.focus()
   }
 

@@ -201,7 +201,7 @@ test('the own account comes in tabs, and a profile picture goes up, shows in the
   await expect(menu.getByTestId('avatar-letter')).toBeVisible()
   // The old anchors lead to their tab.
   await page.goto('/account#mcp')
-  await expect(tabs.getByRole('tab', { name: 'AI' })).toHaveAttribute('aria-selected', 'true')
+  await expect(tabs.getByRole('tab', { name: 'Connections' })).toHaveAttribute('aria-selected', 'true')
 })
 
 test('a reader sees what changed since the last visit, proposes a change, and the writer takes it over', async ({ page, browser }) => {

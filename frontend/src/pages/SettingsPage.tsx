@@ -24,7 +24,7 @@ import {
 import { AdminPluginsCard } from '../plugins/PluginSettings'
 import { useServerSettings } from '../components/settings/useServerSettings'
 import { AppearanceCard } from '../components/settings/AppearanceCard'
-import { StartCard } from '../components/settings/StartCard'
+import { HomeSpaceCard, StartCard } from '../components/settings/StartCard'
 import { KeysCard } from '../components/settings/KeysCard'
 import { SnippetsCard } from '../components/settings/SnippetsCard'
 import { ThemesCard } from '../components/settings/ThemesCard'
@@ -71,6 +71,7 @@ export function SettingsPage() {
         <div className="space-y-6 pt-1">
           {top === 'general' && <LanguageCard />}
           {top === 'general' && <StartCard />}
+          {top === 'general' && <HomeSpaceCard />}
           {top === 'general' && <KeysCard />}
           {top === 'looks' && (
             <>

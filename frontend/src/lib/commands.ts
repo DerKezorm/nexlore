@@ -15,6 +15,8 @@ export type Command = {
   symbol?: SymbolName
   /** The keys that do the same, shown as a hint. */
   keys?: string
+  /** More words it is found by ("zettel" for the note named by the minute). */
+  keywords?: string
   run: () => void
 }
 
@@ -90,7 +92,7 @@ export function matchCommands(commands: Command[], query: string, recent: string
   return commands
     .map((command, index) => ({ command, index }))
     .filter(({ command }) => {
-      const hay = fold(command.label + ' ' + command.group)
+      const hay = fold(command.label + ' ' + command.group + ' ' + (command.keywords ?? ''))
       return words.every((word) => hay.includes(word))
     })
     .sort((a, b) => {

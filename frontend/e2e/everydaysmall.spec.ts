@@ -137,3 +137,151 @@ test('a view says in the reader\'s words what it cannot show (P5.14)', async ({ 
     await away(page, 'Errands7')
   }
 })
+
+test('a space names its daily notes its own way: calendar, links and the steps to the next day follow (P5.22, P5.24)', async ({ page }) => {
+  await space(page, 'Errands8', { Links: 'Plan for [[09.05.2031]].\n' })
+  try {
+    expect((await page.request.put('/api/spaces/Errands8/options', { data: { daily_format: 'DD.MM.YYYY' }, headers: TAB })).status()).toBe(200)
+    await page.goto('/calendar?space=Errands8&month=2031-05')
+    await page.locator('[data-date="2031-05-06"]').click()
+    await page.waitForURL(/\/note\/Errands8\/Daily\/06\.05\.2031\.md/)
+    await page.getByTestId('day-steps').getByRole('button', { name: /Day after/ }).click()
+    await page.waitForURL(/\/note\/Errands8\/Daily\/07\.05\.2031\.md/)
+    await page.goto('/calendar?space=Errands8&month=2031-05')
+    await expect(page.locator('[data-date="2031-05-06"]')).toContainText('Daily note')
+    // A link in the space's pattern opens that day's note, and makes none beside the linking one.
+    await page.goto('/note/Errands8/Links.md')
+    await page.locator('.nn-prose a', { hasText: '09.05.2031' }).click()
+    await page.waitForURL(/\/note\/Errands8\/Daily\/09\.05\.2031\.md/)
+    // "@tomorrow" in the editor links to tomorrow's note as the space names it.
+    await page.goto('/note/Errands8/Links.md')
+    await page.getByRole('button', { name: 'Edit', exact: true }).click()
+    await expect(page.locator('.ProseMirror')).toBeFocused({ timeout: 15_000 })
+    await page.keyboard.type(' @tomorrow')
+    await expect(page.getByTestId('date-suggest')).toBeVisible()
+    await page.keyboard.press('Enter')
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const named = `${String(tomorrow.getDate()).padStart(2, '0')}.${String(tomorrow.getMonth() + 1).padStart(2, '0')}.${tomorrow.getFullYear()}`
+    await expect(page.locator('.ProseMirror')).toContainText(named)
+  } finally {
+    await away(page, 'Errands8')
+  }
+})
+
+test('the options of a space offer daily notes it missed (P5.22)', async ({ page }) => {
+  const notes: Record<string, string> = {}
+  for (const day of ['01', '02', '03']) notes[`${day}.09.2026`] = 'x\n'
+  await space(page, 'Errands9', notes)
+  try {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/settings?tab=spaces')
+    await page.locator('#spaces li').filter({ hasText: 'Errands9' }).getByRole('button', { name: 'Options' }).click()
+    const dialog = page.getByRole('dialog', { name: /Options of “Errands9”/ })
+    await expect(dialog.getByTestId('daily-guess')).toContainText('3 notes named like daily notes (DD.MM.YYYY)')
+    await dialog.getByTestId('daily-guess').getByRole('button', { name: 'Use them' }).click()
+    await expect(dialog.getByLabel('Name of daily notes')).toHaveValue('DD.MM.YYYY')
+    await expect(dialog.getByTestId('daily-guess')).toHaveCount(0)
+  } finally {
+    await away(page, 'Errands9')
+  }
+})
+
+test('Today goes to the space of the open note, else to the main space of the account (P5.19)', async ({ page }) => {
+  // Named last: the first own space, where Today goes without either rule, is another one.
+  await space(page, 'Zzzerrands', { Open: 'x\n' })
+  try {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/note/Zzzerrands/Open.md')
+    await page.getByRole('button', { name: /Open today's daily note/ }).click()
+    await page.waitForURL(/\/note\/Zzzerrands\/Daily\//)
+    await page.goto('/settings')
+    await page.locator('#home-space select').selectOption('Zzzerrands')
+    await expect.poll(async () => (await (await page.request.get('/api/auth/me')).json()).appearance.home_space).toBe('Zzzerrands')
+    await page.goto('/tasks')
+    await page.getByRole('button', { name: /Open today's daily note/ }).click()
+    await page.waitForURL(/\/note\/Zzzerrands\/Daily\//)
+  } finally {
+    await page.request.put('/api/me/appearance', { data: { home_space: '' }, headers: TAB })
+    await away(page, 'Zzzerrands')
+  }
+})
+
+test('the palette puts a template, the date or the time into the note being written (P5.24)', async ({ page }) => {
+  await space(page, 'Errands11', { Target: 'Start.\n' })
+  await page.request.post('/api/folders', { data: { parent: 'Errands11', name: 'Templates', existing_ok: true }, headers: TAB })
+  const template = await page.request.post('/api/notes', {
+    data: { folder: 'Errands11/Templates', title: 'Checklist', content: '---\nkind: list\n---\n- [ ] Pack for {{title}}\n' },
+    headers: TAB,
+  })
+  try {
+    expect(template.status()).toBe(201)
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/note/Errands11/Target.md')
+    await page.getByRole('button', { name: 'Edit', exact: true }).click()
+    await expect(page.locator('.ProseMirror')).toBeFocused({ timeout: 15_000 })
+    const palette = page.getByRole('dialog', { name: 'Commands' })
+    await page.keyboard.press('ControlOrMeta+p')
+    await page.keyboard.type('insert today')
+    await expect(palette.getByRole('option')).toHaveText([/Insert today's date/])
+    await page.keyboard.press('Enter')
+    const today = new Date()
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    await expect(page.locator('.ProseMirror')).toContainText(iso)
+    await page.keyboard.press('ControlOrMeta+p')
+    await page.keyboard.type('insert template')
+    await page.keyboard.press('Enter')
+    await page.getByRole('dialog', { name: 'Insert template …' }).getByRole('button', { name: 'Checklist' }).click()
+    await expect(page.locator('.ProseMirror')).toContainText('Pack for Target')
+    // Its front matter stays out of the note.
+    await expect(page.locator('.ProseMirror')).not.toContainText('kind: list')
+  } finally {
+    await away(page, 'Errands11')
+  }
+})
+
+test('the calendar jumps to a month and year, and its week starts on the day chosen (P5.24)', async ({ page }) => {
+  try {
+    await page.goto('/calendar?month=2026-10')
+    await page.getByLabel('Year', { exact: true }).selectOption('2024')
+    await expect(page).toHaveURL(/month=2024-10/)
+    await page.getByLabel('Month', { exact: true }).selectOption('02')
+    await expect(page).toHaveURL(/month=2024-02/)
+    await page.getByLabel('Week starts on').selectOption('sunday')
+    // 1 February 2024 was a Thursday: from Sunday on it is the fifth box after the seven names.
+    const boxes = page.locator('[data-testid="calendar-page"] .grid-cols-7 > *')
+    await expect(boxes.nth(7 + 4)).toHaveAttribute('data-date', '2024-02-01')
+  } finally {
+    await page.request.put('/api/me/appearance', { data: { week_start: 'monday' }, headers: TAB })
+  }
+})
+
+test('quick capture has a button, the zettel command is found by its name, the calendar leads to its subscription (P5.18)', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/calendar')
+  await page.getByRole('link', { name: 'Subscribe to the calendar' }).click()
+  await expect(page.getByRole('tab', { name: 'Connections' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByTestId('calendar-feed')).toBeVisible()
+  await page.getByRole('button', { name: 'Quick capture' }).click()
+  await expect(page.getByRole('dialog', { name: 'Quick capture' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('ControlOrMeta+p')
+  await page.keyboard.type('zettel')
+  await expect(page.getByRole('dialog', { name: 'Commands' }).getByRole('option').first()).toContainText('named by the time')
+})
+
+test('the reading view ticks a task off as the task list does, the next occurrence above it (P5.2)', async ({ page }) => {
+  await space(page, 'Errands12', { List: '---\ntags: [x]\n---\n- [ ] First R2\n- [ ] Sweep R2 🔁 every week 📅 2031-05-06\n' })
+  try {
+    await page.goto('/note/Errands12/List.md')
+    const box = page.locator('.nn-prose li', { hasText: 'Sweep R2' }).locator('input[type="checkbox"]')
+    await expect(box).toBeEnabled()
+    await box.click()
+    await expect
+      .poll(async () => (await (await page.request.get('/api/note?path=' + encodeURIComponent('Errands12/List.md'))).json()).content)
+      .toMatch(/- \[ \] Sweep R2 🔁 every week 📅 2031-05-13\n- \[x\] Sweep R2 🔁 every week 📅 2031-05-06 ✅ \d{4}-\d{2}-\d{2}\n/)
+    await expect(page.locator('.nn-prose li', { hasText: '2031-05-13' })).toBeVisible()
+  } finally {
+    await away(page, 'Errands12')
+  }
+})

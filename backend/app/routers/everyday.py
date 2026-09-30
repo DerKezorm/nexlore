@@ -58,6 +58,8 @@ class OptionsIn(BaseModel):
     daily_folder: str | None = Field(default=None, max_length=paths.MAX_PATH_CHARS)
     daily_template: str | None = Field(default=None, max_length=paths.MAX_PATH_CHARS)
     template_folder: str | None = Field(default=None, max_length=paths.MAX_PATH_CHARS)
+    #: How daily notes are named (``DD.MM.YYYY``); empty for ``YYYY-MM-DD``.
+    daily_format: str | None = Field(default=None, max_length=80)
     #: The theme the space's notes are shown in; empty for none.
     theme: str | None = Field(default=None, max_length=40)
 
@@ -69,6 +71,17 @@ def get_options(name: str, account: Account) -> dict[str, str]:
         raise error("not_found", "Not found.", 404)
     try:
         return everyday.options(space)
+    except VaultError as exc:
+        raise _fail(exc) from exc
+
+
+@router.get("/spaces/{name}/daily-guess", summary="Daily notes the space's settings miss, and where they are")
+def daily_guess(name: str, account: Account) -> dict[str, Any] | None:
+    space = need(account, name, READ)
+    if "/" in space:
+        raise error("not_found", "Not found.", 404)
+    try:
+        return everyday.guess_daily(space)
     except VaultError as exc:
         raise _fail(exc) from exc
 
@@ -177,13 +190,15 @@ class ToggleIn(BaseModel):
     raw: str = Field(max_length=1_000_000)
     done: bool
     today: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    #: The file's hash when the task was listed (``file_hash``); left out, the line alone counts.
+    hash: str | None = Field(default=None, max_length=128)
 
 
 @router.post("/tasks/toggle", summary="Tick a task off, or open it again: only its line changes")
 def task_toggle(body: ToggleIn, account: Account, who: ActorDep) -> dict[str, Any]:
     rel = need(account, body.path, WRITE)
     try:
-        return everyday.toggle(rel, body.line, body.raw, done=body.done, today=body.today, actor=who)
+        return everyday.toggle(rel, body.line, body.raw, done=body.done, today=body.today, actor=who, seen=body.hash)
     except VaultError as exc:
         raise _fail(exc) from exc
 

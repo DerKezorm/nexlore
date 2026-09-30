@@ -86,7 +86,8 @@
     "chosen": "Ausgewählt: {{what}}"
   },
   "zettel": {
-    "command": "Neue Notiz mit Zeitstempel als Name"
+    "command": "Neue Notiz mit Zeitstempel als Name",
+    "keywords": "Zettel Zettelkasten eindeutige Notiz Zeitstempel"
   },
   "favorites": {
     "group": "Gruppe",
@@ -709,7 +710,8 @@
       "ai_too_often": "Zu viele Anfragen in einer Minute. Einen Moment warten.",
       "share_password_short": "Das Passwort braucht mindestens {{min}} Zeichen.",
       "provider_first": "Richte zuerst einen Anmeldeanbieter ein, sonst kommt außer dir niemand mehr herein.",
-      "bad_view": "Die Ansicht lässt sich nicht lesen. Prüfe das YAML: Einrückung, Doppelpunkte und Anführungszeichen."
+      "bad_view": "Die Ansicht lässt sich nicht lesen. Prüfe das YAML: Einrückung, Doppelpunkte und Anführungszeichen.",
+      "bad_day_format": "Dieses Muster kann nicht jeden Tag benennen: Jahr, Monat und Tag als Zahlen, Namen von Monaten oder Wochentagen gehen nicht."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
@@ -925,7 +927,7 @@
     "tabs": {
       "profile": "Profil",
       "security": "Sicherheit",
-      "ai": "KI",
+      "ai": "Verbindungen",
       "plugins": "Plugins"
     },
     "profile": {
@@ -1266,7 +1268,11 @@
     "nothing": "In diesem Monat ist nichts fällig.",
     "into": "Neue Tagesnotizen in",
     "readOnly": "In diesem Bereich darfst du nur lesen: Eine fehlende Tagesnotiz lässt sich nicht anlegen.",
-    "dayLabel": "{{date}}, Tagesnotiz öffnen"
+    "dayLabel": "{{date}}, Tagesnotiz öffnen",
+    "pickMonth": "Monat",
+    "pickYear": "Jahr",
+    "weekStart": "Woche beginnt am",
+    "subscribe": "Kalender abonnieren"
   },
   "tasks": {
     "title": "Aufgaben",
@@ -1344,7 +1350,12 @@
     "rootHint": "Leer: direkt im Bereich; dann gilt jede Notiz, die wie ein Datum heißt, als Tagesnotiz.",
     "none": "Keine",
     "placeholders": "Platzhalter in Vorlagen:",
-    "saved": "Gespeichert."
+    "saved": "Gespeichert.",
+    "dailyFormat": "Name der Tagesnotizen",
+    "dailyFormatHint": "YYYY Jahr, MM Monat, DD Tag, / für Unterordner, [Text] wörtlich. Heute: {{example}}",
+    "guess_one": "In „{{folder}}“ liegt eine Notiz, die wie eine Tagesnotiz heißt ({{format}}).",
+    "guess_other": "In „{{folder}}“ liegen {{count}} Notizen, die wie Tagesnotizen heißen ({{format}}).",
+    "guessTake": "Übernehmen"
   },
   "install": {
     "title": "nexlore als App auf den Startbildschirm",
@@ -1694,7 +1705,9 @@
     "open": "Öffnen",
     "keep": "Festhalten",
     "done": "Fertig",
-    "keys": "Strg+Enter hält fest"
+    "keys": "Strg+Enter hält fest",
+    "keywords": "Eingang Inbox Notiz schnell Gedanke",
+    "button": "Schnell erfassen (Alt+Umschalt+N)"
   },
   "feed": {
     "title": "Kalender-Abo",
@@ -1907,5 +1920,21 @@
     "accept": "Annehmen",
     "decline": "Ablehnen",
     "seen": "Gesehen"
+  },
+  "homeSpace": {
+    "title": "Hauptbereich",
+    "text": "Heute, Schnell erfassen und Neue Notiz gehen in den Bereich der offenen Notiz. Ist keine offen, in diesen Bereich.",
+    "choose": "Bereich",
+    "first": "Erster eigener Bereich ({{space}})"
+  },
+  "insert": {
+    "template": "Vorlage einfügen …",
+    "date": "Heutiges Datum einfügen",
+    "time": "Uhrzeit einfügen",
+    "noTemplates": "In diesem Bereich gibt es noch keine Vorlagen."
+  },
+  "day": {
+    "before": "Vortag",
+    "after": "Folgetag"
   }
 }

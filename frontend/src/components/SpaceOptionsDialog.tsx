@@ -5,7 +5,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { everydayApi, themesApi, type SpaceOptions, type Template, type ThemeList } from '../api/client'
+import { everydayApi, themesApi, type DailyGuess, type SpaceOptions, type Template, type ThemeList } from '../api/client'
+import { dayName } from '../lib/dayname'
+import { today as isoToday } from '../lib/everyday'
 import { forgetSpaceThemes } from '../lib/themes'
 import { useStore } from '../state/store'
 import { showModalOnce } from '../lib/dialog'
@@ -21,14 +23,21 @@ export function SpaceOptionsDialog({ space, onClose }: { space: string; onClose:
   const [options, setOptions] = useState<SpaceOptions | null>(null)
   const [templates, setTemplates] = useState<Template[]>([])
   const [themeList, setThemeList] = useState<ThemeList | null>(null)
+  const [guess, setGuess] = useState<DailyGuess | null>(null)
   const { reload } = useStore()
   const { busy, problem, done, run } = useAction()
 
   useEffect(() => {
     showModalOnce(dialog.current)
     void run(async () => {
-      const [found, list, looks] = await Promise.all([everydayApi.options(space), everydayApi.templates(space), themesApi.list()])
+      const [found, list, looks, missed] = await Promise.all([
+        everydayApi.options(space),
+        everydayApi.templates(space),
+        themesApi.list(),
+        everydayApi.dailyGuess(space).catch(() => null),
+      ])
       setOptions(found)
+      setGuess(missed)
       setTemplates(list)
       setThemeList(looks)
     })
@@ -82,6 +91,22 @@ export function SpaceOptionsDialog({ space, onClose }: { space: string; onClose:
               onChange={(value) => setOptions({ ...options, daily_folder: value })}
               hint={t('spaceOptions.rootHint')}
             />
+            <Input
+              label={t('spaceOptions.dailyFormat')}
+              value={options.daily_format}
+              onChange={(value) => setOptions({ ...options, daily_format: value })}
+              hint={t('spaceOptions.dailyFormatHint', { example: `${dayName(options.daily_format.trim() || undefined, isoToday())}.md` })}
+            />
+            {guess && (guess.daily_folder !== options.daily_folder || guess.daily_format !== options.daily_format) && (
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-accent-500/30 bg-accent-500/10 px-3 py-2 text-sm text-mist-200" data-testid="daily-guess">
+                <span className="min-w-0 flex-1">
+                  {t('spaceOptions.guess', { count: guess.count, folder: guess.daily_folder || space, format: guess.daily_format })}
+                </span>
+                <Button onClick={() => setOptions({ ...options, daily_folder: guess.daily_folder, daily_format: guess.daily_format })}>
+                  {t('spaceOptions.guessTake')}
+                </Button>
+              </div>
+            )}
             <Select
               label={t('spaceOptions.dailyTemplate')}
               value={options.daily_template}

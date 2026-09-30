@@ -13,6 +13,9 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
+import { dailyDayOf, dayOfName } from '../lib/dayname'
+import { addDays, today as isoToday } from '../lib/everyday'
+import { taskLines } from '../lib/taskLines'
 import { ApiError, draftsApi, everydayApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi, themesApi, proposalsApi, type NoteNews, type Proposal, commentsApi, type Thread } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ConflictCompare } from '../components/ConflictCompare'
@@ -97,8 +100,6 @@ type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'failed' | 'refreshed
  * the right"). Each note is a pane of its own with everything a note has; the right one changes only `right` when a
  * link in it is followed. On a narrow screen only the left one shows.
  */
-/** A link to a day (`[[2026-10-02]]`): the daily note of that day. */
-const DAY_LINK = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
 
 export function NotePage() {
   // Already decoded by the router; decoding again breaks names with a "%" in them.
@@ -692,10 +693,13 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       folder = [across.space, ...parts].join('/')
     }
     if (!title) return
-    // `[[2026-10-02]]` (what @tomorrow writes) is that day's daily note: made where the calendar makes it, not here.
-    if (DAY_LINK.test(target.split('#')[0].trim())) {
+    // `[[2026-10-02]]` (what @tomorrow writes, as the space names its days) is that day's daily note: made where
+    // the calendar makes it, not here.
+    const daySpace = across ? across.space : path.split('/')[0]
+    const day = dayOfName(spaces.find((item) => item.name === daySpace)?.daily_format, target.split('#')[0].split('/').pop() ?? '')
+    if (day) {
       try {
-        const made = await everydayApi.daily(across ? across.space : path.split('/')[0], title)
+        const made = await everydayApi.daily(daySpace, day)
         await reload()
         go(made.path, made.created)
       } catch (error) {
@@ -709,6 +713,53 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       go(made.path, true)
     } catch (error) {
       setProblem(error instanceof ApiError ? error.code : 'internal_error')
+    }
+  }
+
+  // A daily note steps to the day before and after (P5.24): opened, or made from the template as the calendar makes it.
+  const noteSpace = spaces.find((item) => item.name === path.split('/')[0])
+  const thisDay = noteSpace ? dailyDayOf(path, noteSpace.daily_folder ?? 'Daily', noteSpace.daily_format) : null
+  const stepDay = async (by: number) => {
+    if (!thisDay || !noteSpace) return
+    try {
+      const made = await everydayApi.daily(noteSpace.name, addDays(thisDay, by))
+      if (made.created) await reload()
+      go(made.path, made.created)
+    } catch (error) {
+      setProblem(error instanceof ApiError ? error.code : 'internal_error')
+    }
+  }
+
+  // The boxes of the reading view know their line (in the order `taskLines` counts them); a writer may tick them.
+  useEffect(() => {
+    const root = article.current
+    if (!root || !note || editing) return
+    const writable = spaces.find((space) => space.name === note.path.split('/')[0])?.role !== 'read'
+    const boxes = [...root.querySelectorAll<HTMLInputElement>('li > input[type="checkbox"], li > p > input[type="checkbox"]')].filter(
+      (box) => !box.closest('.nn-embed-note, .nn-embed-block, .nn-embedded'),
+    )
+    boxes.forEach((box, index) => {
+      box.dataset.task = String(index)
+      box.disabled = !writable
+    })
+  }, [html, note, editing, spaces])
+  const tickInReading = async (box: HTMLInputElement) => {
+    if (!note) return
+    const found = taskLines(note.content)[Number(box.dataset.task)]
+    if (!found) {
+      box.checked = !box.checked
+      return
+    }
+    box.disabled = true
+    try {
+      const result = await everydayApi.toggle({ path: note.path, line: found.line, raw: found.raw, file_hash: note.hash }, box.checked, isoToday())
+      setNotice(result.conflict ? t('tasks.conflict') : result.recurrence_unknown ? t('tasks.recurrenceUnknown') : null)
+      await load(note.path)
+    } catch (error) {
+      box.checked = !box.checked
+      setProblem(error instanceof ApiError ? error.code : 'internal_error')
+    } finally {
+      box.disabled = false
     }
   }
 
@@ -1222,6 +1273,16 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 )}
               </div>
               <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-mist-500">
+                {thisDay && (
+                  <span className="flex items-center gap-1" data-testid="day-steps">
+                    <button type="button" onClick={() => void stepDay(-1)} className="inline-flex items-center gap-0.5 rounded-full border border-ink-700 px-2 py-0.5 text-mist-300 hover:bg-ink-850">
+                      <Symbol name="chevronLeft" className="h-3 w-3" /> {t('day.before')}
+                    </button>
+                    <button type="button" onClick={() => void stepDay(1)} className="inline-flex items-center gap-0.5 rounded-full border border-ink-700 px-2 py-0.5 text-mist-300 hover:bg-ink-850">
+                      {t('day.after')} <Symbol name="chevronRight" className="h-3 w-3" />
+                    </button>
+                  </span>
+                )}
                 <span>{t('note.changed', { when: formatDate(note.modified) })}</span>
                 {/* While reading, tags in the front matter stand in the properties box below, not twice. */}
                 {(editing || !/^tags\s*:/im.test(readingHead) ? note.tags : []).map((tag) => (
@@ -1284,6 +1345,9 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                       const start = elements.indexOf(image as HTMLImageElement)
                       if (start >= 0) return setViewing({ pictures, start })
                     }
+                    // A task's box, for who may write: ticked off as in the task list (it was locked, P5.2).
+                    const box = (e.target as HTMLElement).closest<HTMLInputElement>('input[data-task]')
+                    if (box && !box.disabled) return void tickInReading(box)
                     const target = (e.target as HTMLElement).closest('a[data-note]')
                     if (target) open(target.getAttribute('data-note')!)
                     // A link to a note not written yet makes it, as in the editor (it did nothing here, P1.2).

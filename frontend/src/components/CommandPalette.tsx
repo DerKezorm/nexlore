@@ -12,7 +12,7 @@ import { useAuth } from '../state/auth'
 import { Symbol } from './Symbol'
 
 export function CommandPalette({ onClose }: { onClose: () => void }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { me, setAppearance } = useAuth()
   const own = (me?.appearance ?? DEFAULT_APPEARANCE).keys ?? {}
   const [query, setQuery] = useState('')
@@ -67,7 +67,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     const why = refusal(combo)
     if (why) return setSaid({ text: t(`shortcuts.${why}`), bad: true })
     setRecordingFor(null)
-    setSaid({ text: t('shortcuts.saved', { combo: shownCombo(combo), name: command.label }), bad: false })
+    setSaid({ text: t('shortcuts.saved', { combo: shownCombo(combo, undefined, i18n.language), name: command.label }), bad: false })
     void setAppearance({ keys: withKey(own, command.id, command.label, combo) })
   }
 
@@ -118,7 +118,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
         )}
         <ul ref={list} id="palette-list" role="listbox" className="nn-scroll max-h-[50vh] overflow-y-auto p-2">
           {shown.map((command, i) => {
-            const keys = own[command.id] ? shownCombo(own[command.id].combo) : command.keys
+            // One way of writing keys, the app's own and the account's alike.
+            const keys = own[command.id] ? shownCombo(own[command.id].combo, undefined, i18n.language) : command.keys && shownCombo(command.keys, undefined, i18n.language)
             return (
               <li key={command.id} role="option" aria-selected={i === index} className="group flex items-center gap-1">
                 <button

@@ -55,15 +55,15 @@ test('a long press on + opens quick capture, and the words land on top of the in
   expect(problems).toEqual([])
 })
 
-test('sharing to the app brings the words, and the space chosen last is chosen again', async ({ page }) => {
-  await page.goto('/')
-  // Remembered values carry the account's id (a second account on the browser must not see them).
-  const me = (await (await page.request.get('/api/auth/me')).json()) as { id: number }
-  await page.evaluate((id) => localStorage.setItem(`nexlore.captureSpace.${id}`, 'Moor'), me.id)
+test('sharing to the app brings the words, into the main space of the account', async ({ page }) => {
+  // The main space is the account's (Settings, General), not remembered by the browser (P5.19); set back at the end.
+  const headers = { 'X-Nexlore-Client': 'tab-e2e-capture0' }
+  await page.request.put('/api/me/appearance', { data: { home_space: 'Moor' }, headers })
   await page.goto('/capture?title=Heron&text=Seen+at+the+pond&url=https%3A%2F%2Fexample.com%2Fheron')
   const dialog = page.getByTestId('capture-dialog')
   await expect(dialog).toBeVisible()
   await expect(dialog.getByRole('combobox', { name: 'Space' })).toHaveValue('Moor')
+  await page.request.put('/api/me/appearance', { data: { home_space: '' }, headers })
   await expect(dialog.getByLabel('What to keep')).toHaveValue('Heron\nSeen at the pond\nhttps://example.com/heron')
   // Escape closes without keeping anything.
   await page.keyboard.press('Escape')

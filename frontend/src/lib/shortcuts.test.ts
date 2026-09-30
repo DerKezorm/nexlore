@@ -47,5 +47,9 @@ describe('own keys', () => {
   it('shows Meta as the Mac and Windows call it', () => {
     expect(shownCombo('Ctrl+Meta+J', true)).toBe('Ctrl + ⌘ + J')
     expect(shownCombo('Ctrl+Meta+J', false)).toBe('Ctrl + Win + J')
+    // German keys as German keyboards name them, whichever way they were written (P5.25).
+    expect(shownCombo('Ctrl+Shift+K', false, 'de')).toBe('Strg + Umschalt + K')
+    expect(shownCombo('Strg+F', false, 'en')).toBe('Ctrl + F')
+    expect(shownCombo('Alt+Shift+N', false, 'de')).toBe('Alt + Umschalt + N')
   })
 })

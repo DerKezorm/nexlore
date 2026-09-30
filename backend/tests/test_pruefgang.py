@@ -345,3 +345,45 @@ def test_a_folder_that_is_there_already_is_fine_when_asked_so(client: TestClient
     assert answer.json() == {"path": "Lab/Templates"}
     # A file of that name stays in the way.
     assert client.post("/api/folders", json={"parent": "Lab", "name": "Plain.md", "existing_ok": True}).status_code == 409
+
+
+def test_the_main_space_is_one_more_choice_of_the_account(client: TestClient, account: Account) -> None:
+    """P5.19: "Today" and quick capture went into the first space by name, each remembered in the browser apart."""
+    assert client.get("/api/auth/me").json()["appearance"]["home_space"] == ""
+    assert client.put("/api/me/appearance", json={"home_space": "Garden"}).json()["home_space"] == "Garden"
+    assert client.get("/api/auth/me").json()["appearance"]["home_space"] == "Garden"
+    for wrong in ("Garden/Sub", "..", 5):
+        assert client.put("/api/me/appearance", json={"home_space": wrong}).status_code == 422
+    assert client.put("/api/me/appearance", json={"home_space": ""}).json()["home_space"] == ""
+
+
+def test_the_week_starts_on_the_day_the_account_chose(client: TestClient, account: Account) -> None:
+    """P5.24: the calendar's week always began on Monday."""
+    assert client.get("/api/auth/me").json()["appearance"]["week_start"] == "monday"
+    assert client.put("/api/me/appearance", json={"week_start": "sunday"}).json()["week_start"] == "sunday"
+    assert client.put("/api/me/appearance", json={"week_start": "friday"}).status_code == 422
+
+
+def test_ticking_one_of_two_identical_lines_after_the_file_changed_guesses_nothing(
+    client: TestClient, account: Account, vault: Path
+) -> None:
+    """P5.25: after lines were added above, the other of two identical tasks stood on the line and was ticked."""
+    _garden(vault, {"Twice.md": b"## Home\n- [ ] call\n## Work\n- [ ] call\n"})
+    listed = client.get("/api/tasks", params={"today": "2026-10-01", "space": "Garden", "q": "call"}).json()["items"]
+    work = next(item for item in listed if item["line"] == 4)
+    # Two lines above: the Home task now stands on line 4, where the Work task was listed.
+    (vault / "Garden" / "Twice.md").write_bytes(b"intro\nmore\n## Home\n- [ ] call\n## Work\n- [ ] call\n")
+    index.scan()
+    answer = client.post("/api/tasks/toggle", json={
+        "path": work["path"], "line": 4, "raw": work["raw"], "done": True, "today": "2026-10-01", "hash": work["file_hash"],
+    })
+    assert answer.status_code == 409 and answer.json()["detail"]["code"] == "task_changed"
+    assert b"[x]" not in (vault / "Garden" / "Twice.md").read_bytes()
+    # With the file as it is, the line counts.
+    fresh = client.get("/api/tasks", params={"today": "2026-10-01", "space": "Garden", "q": "call"}).json()["items"]
+    last = next(item for item in fresh if item["line"] == 6)
+    done = client.post("/api/tasks/toggle", json={
+        "path": last["path"], "line": 6, "raw": last["raw"], "done": True, "today": "2026-10-01", "hash": last["file_hash"],
+    })
+    assert done.status_code == 200, done.text
+    assert (vault / "Garden" / "Twice.md").read_bytes().endswith(b"## Work\n- [x] call \xe2\x9c\x85 2026-10-01\n")

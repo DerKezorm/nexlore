@@ -130,15 +130,19 @@ test('a new note is one click away: in the header, beside each folder, and with 
   await expect(dialog).toContainText('New note in “Year”')
 })
 
-test('"Today" opens the daily note of today in the chosen space', async ({ page }) => {
-  // Remembered values carry the account's id (a second account on the browser must not see them).
-  const me = (await (await page.request.get('/api/auth/me')).json()) as { id: number }
-  await page.addInitScript((id) => localStorage.setItem(`nexlore.daily.space.${id}`, 'Year'), me.id)
-  await page.goto('/tasks')
-  await expect(page.getByRole('button', { name: "Open today's daily note (Alt+T)" })).toBeEnabled()
-  await page.keyboard.press('Alt+t')
-  await page.waitForURL(new RegExp(`/note/Year/Daily/${day(0)}\\.md`))
-  expect(fs.existsSync(path.join(DATA, 'vault', 'Year', 'Daily', `${day(0)}.md`))).toBe(true)
+test('"Today" opens the daily note of today in the main space of the account', async ({ page }) => {
+  // The main space is the account's (Settings, General), not remembered by the browser (P5.19); set back at the end.
+  const headers = { 'X-Nexlore-Client': 'tab-e2e-days' }
+  await page.request.put('/api/me/appearance', { data: { home_space: 'Year' }, headers })
+  try {
+    await page.goto('/tasks')
+    await expect(page.getByRole('button', { name: "Open today's daily note (Alt+T)" })).toBeEnabled()
+    await page.keyboard.press('Alt+t')
+    await page.waitForURL(new RegExp(`/note/Year/Daily/${day(0)}\\.md`))
+    expect(fs.existsSync(path.join(DATA, 'vault', 'Year', 'Daily', `${day(0)}.md`))).toBe(true)
+  } finally {
+    await page.request.put('/api/me/appearance', { data: { home_space: '' }, headers })
+  }
 })
 
 test('the header fits at every width of a desktop, the settings included', async ({ page }) => {

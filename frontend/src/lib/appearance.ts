@@ -29,17 +29,21 @@ export type Appearance = {
   width: Width
   start: Start
   start_note: string
+  /** Where Today, quick capture and a new note go outside a space; empty: the first own space. */
+  home_space: string
   /** The column beside a note shown on a wide screen, its tab, and the sidebar open or folded to symbols. */
   panel: boolean
   panel_tab: PanelTab
   sidebar: 'open' | 'rail'
+  /** The first day of the calendar's week. */
+  week_start: 'monday' | 'sunday'
   /** Own keys for commands (`lib/shortcuts.ts`). */
   keys: OwnKeys
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
   mode: 'dark', theme: 'nexlore', space_themes: true, font_ui: 'inter', font_text: 'inter', font_code: 'jetbrains', size: 16, width: 'normal',
-  start: 'graph', start_note: '', panel: true, panel_tab: 'links', sidebar: 'open', keys: {},
+  start: 'graph', start_note: '', home_space: '', panel: true, panel_tab: 'links', sidebar: 'open', week_start: 'monday', keys: {},
 }
 
 type Font = { label: string; family: string; load?: () => Promise<unknown> }

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import type { Space } from '../api/client'
-import { addDays, dailySpace, isoDay, lastDay, monthGrid, rememberDailySpace, shiftMonth, taskParts, taskPlain, whenOf } from './everyday'
+import { addDays, homeSpace, isoDay, lastDay, monthGrid, openSpaceOf, shiftMonth, taskParts, taskPlain, whenOf } from './everyday'
 
 describe('dates for the calendar', () => {
   it('writes a local day as JJJJ-MM-TT and counts days over month and year ends', () => {
@@ -27,6 +27,9 @@ describe('dates for the calendar', () => {
     expect(weeks.every((week) => week.length === 7)).toBe(true)
     // A month that starts on a Monday has no empty place in front.
     expect(monthGrid('2026-06')[0][0]).toBe('2026-06-01')
+    // A week from Sunday: 1 June 2026 is a Monday, the second box.
+    expect(monthGrid('2026-06', 'sunday')[0].slice(0, 2)).toEqual([null, '2026-06-01'])
+    expect(monthGrid('2026-11', 'sunday')[0][0]).toBe('2026-11-01')
   })
 })
 
@@ -46,28 +49,24 @@ describe('the groups of the overview', () => {
   })
 })
 
-describe('the space of the daily note', () => {
+describe('where Today, quick capture and a new note go', () => {
   const spaces: Space[] = [
     { id: 1, name: 'Archive', notes: 0, files: 0, role: 'read' },
     { id: 2, name: 'Home', notes: 0, files: 0, role: 'write' },
     { id: 3, name: 'Work', notes: 0, files: 0, role: 'manage' },
   ]
-  beforeEach(() => {
-    const store = new Map<string, string>()
-    vi.stubGlobal('localStorage', {
-      getItem: (key: string) => store.get(key) ?? null,
-      setItem: (key: string, value: string) => void store.set(key, value),
-      removeItem: (key: string) => void store.delete(key),
-    })
+  it('is the open space, else the main space, else the first own one; never one that may only be read (P5.19)', () => {
+    expect(homeSpace(spaces)?.name).toBe('Work')
+    expect(homeSpace(spaces, 'Home')?.name).toBe('Home')
+    expect(homeSpace(spaces, 'Home', 'Work')?.name).toBe('Work')
+    expect(homeSpace(spaces, 'Archive', 'Archive')?.name).toBe('Work')
+    expect(homeSpace(spaces.slice(0, 1))).toBeNull()
   })
 
-  it('is the one chosen last, and never one that may only be read', () => {
-    expect(dailySpace(spaces)?.name).toBe('Home')
-    rememberDailySpace('Work')
-    expect(dailySpace(spaces)?.name).toBe('Work')
-    rememberDailySpace('Archive')
-    expect(dailySpace(spaces)?.name).toBe('Home')
-    expect(dailySpace(spaces.slice(0, 1))).toBeNull()
+  it('reads the space of what the page shows', () => {
+    expect(openSpaceOf('/note/Mein%20Wissen/Plan.md')).toBe('Mein Wissen')
+    expect(openSpaceOf('/file/Work/a.pdf')).toBe('Work')
+    expect(openSpaceOf('/tasks')).toBeNull()
   })
 })
 

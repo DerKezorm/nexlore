@@ -5,7 +5,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { ApiError, everydayApi, recentApi, vaultApi } from '../api/client'
 import { zettelName } from '../lib/zettel'
 import { errorText } from '../lib/errors'
-import { dailySpace, today as isoToday } from '../lib/everyday'
+import { homeSpace, openSpaceOf, today as isoToday } from '../lib/everyday'
 import { isNotePath } from '../lib/files'
 import { fileRoute } from '../lib/markdown'
 import { NEW_NOTE_EVENT } from '../lib/newNote'
@@ -85,10 +85,11 @@ export function AppShell() {
   }, [])
 
   const { status, error, spaces, reload } = useStore()
+  const { me, setAppearance } = useAuth()
   const [creating, setCreating] = useState<string | null>(null)
   const newNoteAt = useRef<string | null>(null)
   const [todayProblem, setTodayProblem] = useState<string | null>(null)
-  const home = dailySpace(spaces)
+  const home = homeSpace(spaces, me?.appearance?.home_space, openSpaceOf(location.pathname))
 
   const openToday = useCallback(async () => {
     setTodayProblem(null)
@@ -196,7 +197,6 @@ export function AppShell() {
     }
   }
 
-  const { me, setAppearance } = useAuth()
   // Own keys (lib/shortcuts.ts), heard before anything else on the page: an own key wins, where its command is on
   // offer; nothing while the palette listens for new ones.
   const ownKeys = me?.appearance?.keys
@@ -246,8 +246,8 @@ export function AppShell() {
       { id: 'app.search', label: t('search.button'), group, symbol: 'search', keys: t('search.shortcut'), run: () => setSearching(true) },
       ...(home ? [{ id: 'app.today', label: t('today.title'), group, symbol: 'today' as const, keys: 'Alt+T', run: () => void openToday() }] : []),
       ...(newNoteAt.current ? [{ id: 'app.newNote', label: t('sidebar.newNote'), group, symbol: 'plus' as const, keys: 'Alt+N', run: () => setCreating(newNoteAt.current) }] : []),
-      ...(newNoteAt.current ? [{ id: 'app.zettel', label: t('zettel.command'), group, symbol: 'clock' as const, run: () => void makeZettel() }] : []),
-      { id: 'app.capture', label: t('capture.title'), group, symbol: 'plus', keys: 'Alt+Shift+N', run: () => askCapture() },
+      ...(newNoteAt.current ? [{ id: 'app.zettel', label: t('zettel.command'), keywords: t('zettel.keywords'), group, symbol: 'clock' as const, run: () => void makeZettel() }] : []),
+      { id: 'app.capture', label: t('capture.title'), keywords: t('capture.keywords'), group, symbol: 'plus', keys: 'Alt+Shift+N', run: () => askCapture() },
       { id: 'go.search', label: t('searchPage.open'), group, symbol: 'search', keys: 'Ctrl Shift F', run: () => navigate('/search') },
       go('go.graph', t('palette.goTo', { place: t('nav.graph') }), '/', 'graph'),
       go('go.notes', t('palette.goTo', { place: t('nav.notes') }), '/note', 'note'),
@@ -338,6 +338,16 @@ export function AppShell() {
           >
             <Symbol name="plus" />
             <span className="hidden 2xl:inline">{t('sidebar.newNote')}</span>
+          </button>
+          {/* Quick capture in sight, not only behind a right click or a long press on "+" (P5.18). */}
+          <button
+            type="button"
+            onClick={() => askCapture()}
+            aria-label={t('capture.title')}
+            title={t('capture.button')}
+            className="hidden h-8 w-8 shrink-0 place-items-center rounded-full text-mist-400 hover:bg-ink-850 hover:text-mist-100 sm:grid"
+          >
+            <Symbol name="idea" />
           </button>
           <button
             type="button"

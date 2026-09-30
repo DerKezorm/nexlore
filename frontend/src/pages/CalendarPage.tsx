@@ -5,13 +5,14 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { ApiError, everydayApi, type CalendarDay, type TaskItem } from '../api/client'
 import { Symbol } from '../components/Symbol'
 import { TaskRow } from '../components/TaskRow'
 import { errorText } from '../lib/errors'
-import { atNoon, dailySpace, dayOf, lastDay, monthGrid, monthOf, rememberDailySpace, shiftMonth, taskPlain, today as todayIso } from '../lib/everyday'
+import { atNoon, dayOf, homeSpace, lastDay, monthGrid, monthOf, shiftMonth, taskPlain, today as todayIso } from '../lib/everyday'
+import { useAuth } from '../state/auth'
 import { noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 
@@ -21,6 +22,7 @@ export function CalendarPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { spaces } = useStore()
+  const { me, setAppearance } = useAuth()
   const readOnlyIn = useMemo(() => new Set(spaces.filter((item) => item.role === 'read').map((item) => item.name)), [spaces])
   const [params, setParams] = useSearchParams()
   const today = todayIso()
@@ -38,7 +40,7 @@ export function CalendarPage() {
 
   const writable = spaces.filter((item) => item.role === 'write' || item.role === 'manage')
   // Where a new daily note goes: the chosen space, or with all spaces shown the one picked below the calendar.
-  const home = space || target || dailySpace(spaces)?.name || ''
+  const home = space || target || homeSpace(spaces, me?.appearance?.home_space)?.name || ''
 
   const load = useCallback(async () => {
     const mine = ++asked.current
@@ -109,16 +111,27 @@ export function CalendarPage() {
     return [...grouped.entries()].sort(([a], [b]) => a.localeCompare(b))
   }, [tasks])
 
+  const weekStart = me?.appearance?.week_start ?? 'monday'
   const weekdays = useMemo(() => {
-    const monday = atNoon('2026-09-28')
+    // 27 September 2026 is a Sunday, the 28th a Monday.
+    const first = atNoon(weekStart === 'sunday' ? '2026-09-27' : '2026-09-28')
     return Array.from({ length: 7 }, (_, index) => {
-      const day = new Date(monday)
-      day.setDate(monday.getDate() + index)
+      const day = new Date(first)
+      day.setDate(first.getDate() + index)
       return day.toLocaleDateString(i18n.language, { weekday: 'short' })
     })
-  }, [i18n.language])
+  }, [i18n.language, weekStart])
+  // Month and year to jump to: a year back is no longer twelve clicks (P5.24).
+  const monthNames = useMemo(
+    () => Array.from({ length: 12 }, (_, index) => atNoon(`2026-${String(index + 1).padStart(2, '0')}-01`).toLocaleDateString(i18n.language, { month: 'long' })),
+    [i18n.language],
+  )
+  const shownYear = Number(month.slice(0, 4))
+  const years = Array.from({ length: 61 }, (_, index) => Number(today.slice(0, 4)) - 50 + index)
+  if (!years.includes(shownYear)) years.push(shownYear)
 
   const title = atNoon(month + '-01').toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' })
+  const weekdayName = (iso: string) => atNoon(iso).toLocaleDateString(i18n.language, { weekday: 'long' })
   const long = (iso: string) => atNoon(iso).toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' })
 
   return (
@@ -128,9 +141,33 @@ export function CalendarPage() {
           <button type="button" onClick={() => go({ month: shiftMonth(month, -1) })} aria-label={t('calendar.previous')} className="grid h-8 w-8 place-items-center rounded-full text-mist-400 hover:bg-ink-850">
             <Symbol name="chevronLeft" />
           </button>
-          <h1 className="min-w-0 text-lg font-semibold whitespace-nowrap text-mist-100 capitalize" aria-live="polite">
+          <h1 className="sr-only" aria-live="polite">
             {title}
           </h1>
+          <select
+            value={month.slice(5, 7)}
+            onChange={(event) => go({ month: `${month.slice(0, 4)}-${event.target.value}` })}
+            aria-label={t('calendar.pickMonth')}
+            className="h-8 rounded-full border border-transparent bg-transparent px-1 text-lg font-semibold text-mist-100 capitalize hover:border-ink-700"
+          >
+            {monthNames.map((name, index) => (
+              <option key={name} value={String(index + 1).padStart(2, '0')}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={shownYear}
+            onChange={(event) => go({ month: `${event.target.value}-${month.slice(5, 7)}` })}
+            aria-label={t('calendar.pickYear')}
+            className="h-8 rounded-full border border-transparent bg-transparent px-1 text-lg font-semibold text-mist-100 tabular-nums hover:border-ink-700"
+          >
+            {years.sort((a, b) => a - b).map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
           <button type="button" onClick={() => go({ month: shiftMonth(month, 1) })} aria-label={t('calendar.next')} className="grid h-8 w-8 place-items-center rounded-full text-mist-400 hover:bg-ink-850">
             <Symbol name="chevronRight" />
           </button>
@@ -161,7 +198,7 @@ export function CalendarPage() {
               {name}
             </div>
           ))}
-          {monthGrid(month).flat().map((date, index) => {
+          {monthGrid(month, weekStart).flat().map((date, index) => {
             if (!date) return <div key={`empty-${index}`} className="bg-ink-950" />
             const info = days[date]
             const due = tasks.filter((task) => dayOf(task) === date)
@@ -204,16 +241,29 @@ export function CalendarPage() {
             )
           })}
         </div>
-        <p className="mt-2 text-xs text-mist-600">{t('calendar.hint')}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <p className="text-xs text-mist-600">{t('calendar.hint')}</p>
+          <Link to="/account#calendar" className="text-xs text-accent-400 hover:underline">
+            {t('calendar.subscribe')}
+          </Link>
+          <label className="ml-auto flex items-center gap-2 text-xs text-mist-500">
+            {t('calendar.weekStart')}
+            <select
+              value={weekStart}
+              onChange={(event) => void setAppearance({ week_start: event.target.value as 'monday' | 'sunday' })}
+              className="h-7 rounded-full border border-ink-700 bg-ink-850 px-2 text-xs text-mist-300"
+            >
+              <option value="monday">{weekdayName('2026-09-28')}</option>
+              <option value="sunday">{weekdayName('2026-09-27')}</option>
+            </select>
+          </label>
+        </div>
         {!space && writable.length > 1 && (
           <label className="mt-2 flex flex-wrap items-center gap-2 text-xs text-mist-500">
             {t('calendar.into')}
             <select
               value={home}
-              onChange={(event) => {
-                setTarget(event.target.value)
-                rememberDailySpace(event.target.value)
-              }}
+              onChange={(event) => setTarget(event.target.value)}
               className="h-7 rounded-full border border-ink-700 bg-ink-850 px-2 text-xs text-mist-300"
             >
               {writable.map((item) => (

@@ -117,6 +117,8 @@ export type Space = {
   /** Where the space keeps its templates and its daily notes. */
   template_folder?: string
   daily_folder?: string
+  /** How its daily notes are named (`DD.MM.YYYY`, `lib/dayname`). */
+  daily_format?: string
   /** The theme its managers set for the space's notes; empty for none. */
   theme?: string
 }
@@ -886,6 +888,8 @@ export type TaskItem = {
   priority: number
   recurrence: string | null
   tags: string[]
+  /** The file as it was when listed; ticking off checks it. */
+  file_hash?: string
 }
 export type TaskCounts = Record<'open' | 'done' | 'cancelled' | TaskWhen, number>
 export type TaskList = { total: number; counts: TaskCounts; items: TaskItem[] }
@@ -908,13 +912,18 @@ export type Toggled = {
   recurrence_unknown?: boolean
 }
 export type CalendarDay = { daily: string[]; open: number; done: number; overdue: number }
-export type SpaceOptions = { daily_folder: string; daily_template: string; template_folder: string; theme: string }
+export type SpaceOptions = { daily_folder: string; daily_template: string; template_folder: string; theme: string; daily_format: string }
+/** Daily notes a space's settings miss: where they are and how they are named. */
+export type DailyGuess = { daily_folder: string; daily_format: string; count: number }
 export type Template = { path: string; title: string }
 
 export const everydayApi = {
   tasks: (query: TaskQuery) => api<TaskList>('/api/tasks', { query }),
-  toggle: (task: Pick<TaskItem, 'path' | 'line' | 'raw'>, done: boolean, today: string) =>
-    api<Toggled>('/api/tasks/toggle', { method: 'POST', body: { path: task.path, line: task.line, raw: task.raw, done, today } }),
+  toggle: (task: Pick<TaskItem, 'path' | 'line' | 'raw'> & { file_hash?: string }, done: boolean, today: string) =>
+    api<Toggled>('/api/tasks/toggle', {
+      method: 'POST',
+      body: { path: task.path, line: task.line, raw: task.raw, done, today, hash: task.file_hash },
+    }),
   calendar: (month: string, today: string, space?: string) =>
     api<{ month: string; days: Record<string, CalendarDay> }>('/api/calendar', { query: { month, today, space } }),
   /** The daily note of a date in a space: opened, or made from the space's template. */
@@ -923,6 +932,7 @@ export const everydayApi = {
   templates: (space: string) => api<Template[]>('/api/templates', { query: { space } }),
   preview: (path: string, title: string) => api<{ content: string }>('/api/templates/preview', { query: { path, title, now: readerNow() } }),
   options: (space: string) => api<SpaceOptions>(`/api/spaces/${encodeURIComponent(space)}/options`),
+  dailyGuess: (space: string) => api<DailyGuess | null>(`/api/spaces/${encodeURIComponent(space)}/daily-guess`),
   setOptions: (space: string, options: Partial<SpaceOptions>) =>
     api<SpaceOptions>(`/api/spaces/${encodeURIComponent(space)}/options`, { method: 'PUT', body: options }),
 }

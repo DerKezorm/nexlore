@@ -24,8 +24,8 @@ from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import File, Space, Task
-from . import index, paths, tasks, templates, vault
-from .spaceopts import DATE, daily_path, is_daily, options_of
+from . import dayname, index, paths, tasks, templates, vault
+from .spaceopts import DATE, daily_day, daily_path, options_of
 from .vault import Actor, VaultError
 
 MONTH = re.compile(r"^\d{4}-\d{2}$")
@@ -77,6 +77,11 @@ def set_options(space_name: str, values: dict[str, str]) -> dict[str, str]:
     for key in ("daily_folder", "template_folder"):
         if key in values:
             clean[key] = _clean_folder(values[key])
+    if "daily_format" in values:
+        try:
+            clean["daily_format"] = dayname.check(values["daily_format"])
+        except dayname.FormatError as exc:
+            raise VaultError("bad_day_format", str(exc), 422) from exc
     if "daily_template" in values:
         template = _clean_folder(values["daily_template"])
         if template and not paths.is_note(template):
@@ -135,7 +140,7 @@ def open_daily(
             if found is not None:
                 return Daily(path=found.path, created=False)
         folder = posixpath.dirname(rel)
-        on_disk = _on_disk(folder, f"{day}.md")
+        on_disk = _on_disk(folder, posixpath.basename(rel))
         if on_disk is not None:
             # There already, in other letters (2026-09-27.MD) and not read by the index yet: that one is the note.
             return Daily(path=_take_in(on_disk), created=False)
@@ -145,16 +150,18 @@ def open_daily(
         when = datetime.combine(date.fromisoformat(day), moment.time(), tzinfo=moment.tzinfo)
         content = ""
         missing = False
+        # Its name in the space's pattern (``15.11.2026``); ``{{title}}`` is that name, as in Obsidian.
+        title = posixpath.splitext(posixpath.basename(rel))[0]
         if opts["daily_template"]:
             try:
-                content = render(f"{space_name}/{opts['daily_template']}", title=day, when=when, language=language)
+                content = render(f"{space_name}/{opts['daily_template']}", title=title, when=when, language=language)
             except VaultError as exc:
                 # The template went (moved, deleted): the day still gets its note, empty, and the caller says why.
                 if exc.status != 404:
                     raise
                 missing = True
         paths.resolve(folder).mkdir(parents=True, exist_ok=True)
-        file = vault.create_note(folder, day, content.encode("utf-8"), actor=actor)
+        file = vault.create_note(folder, title, content.encode("utf-8"), actor=actor)
     return Daily(path=file.path, created=True, template_missing=missing)
 
 
@@ -309,7 +316,7 @@ def list_tasks(
     with SessionLocal() as db:
         total = db.scalar(select(func.count()).select_from(Task).where(where)) or 0
         rows = db.execute(
-            select(Task, File.path, File.title).join(File, File.id == Task.file_id).where(where)
+            select(Task, File.path, File.title, File.hash).join(File, File.id == Task.file_id).where(where)
             .order_by(*order).offset(offset).limit(limit)
         ).all()
         # The chips: every count for the same spaces, tag and words, whatever the chosen status and time.
@@ -333,8 +340,10 @@ def list_tasks(
             "start": task.start,
             "completed": task.completed, "priority": task.priority, "recurrence": task.recurrence,
             "tags": task.tags.split() if task.tags else [],
+            # The file as it was when listed: ticking off checks it (identical lines, P5.25).
+            "file_hash": file_hash,
         }
-        for task, path, title in rows
+        for task, path, title, file_hash in rows
     ]
     return {"total": total, "counts": counts, "items": items}
 
@@ -350,9 +359,13 @@ def _lines(data: bytes) -> list[tuple[bytes, bytes]]:
     return out
 
 
-def toggle(rel: str, line: int, raw: str, *, done: bool, today: str, actor: Actor) -> dict[str, Any]:
+def toggle(
+    rel: str, line: int, raw: str, *, done: bool, today: str, actor: Actor, seen: str | None = None
+) -> dict[str, Any]:
     """Tick the task on ``line`` off (or open it again). ``raw`` is the line as the caller saw it; when the file
-    changed since, the task is looked for by its text, and when it is not there exactly once, nothing is written."""
+    changed since, the task is looked for by its text, and when it is not there exactly once, nothing is written.
+    ``seen``: the file's hash when the caller listed the task; changed since, a line that is there twice is not
+    guessed at (the other one of the two may stand on that line now)."""
     today = valid_date(today)
     file, data = vault.read(rel)
     with SessionLocal() as db:
@@ -374,6 +387,9 @@ def toggle(rel: str, line: int, raw: str, *, done: bool, today: str, actor: Acto
             return None
 
     index_of = line - 1 if 0 < line <= len(lines) and text_of(lines[line - 1][0]) == raw else None
+    twice = sum(1 for content, _end in lines if text_of(content) == raw) > 1
+    if index_of is not None and seen is not None and seen != index.digest(data) and twice:
+        raise VaultError("task_changed", "the task is no longer where it was", 409)
     if index_of is None:
         matches = [number for number, (content, _end) in enumerate(lines) if text_of(content) == raw]
         if len(matches) != 1:
@@ -426,15 +442,24 @@ def calendar(space_ids: set[int], month: str, *, today: str, space_id: int | Non
         return {"month": month, "days": days}
     with SessionLocal() as db:
         spaces = all_options(db, wanted)
-        for space, name in db.execute(
-            select(File.space_id, File.path).where(
-                File.deleted_at.is_(None), File.is_note.is_(True), File.space_id.in_(wanted),
-                File.name_key.like(f"{month}-__"),
-            )
-        ):
-            _folder, opts = spaces[space]
-            if is_daily(name, opts) and first.isoformat() <= paths.stem(name) <= last.isoformat():
-                day_of(paths.stem(name))["daily"].append(name)
+        # Named as Obsidian names them, a month's daily notes are found by name; in a pattern of their own (P5.22),
+        # among the notes of the daily folder.
+        plain = {key for key, (_folder, opts) in spaces.items() if opts["daily_format"] == dayname.DEFAULT}
+        found = select(File.space_id, File.path).where(File.deleted_at.is_(None), File.is_note.is_(True))
+        queries = []
+        if plain:
+            queries.append(found.where(File.space_id.in_(plain), File.name_key.like(f"{month}-__")))
+        for key, (folder, opts) in spaces.items():
+            if key in plain:
+                continue
+            below = f"{folder}/{opts['daily_folder']}/" if opts["daily_folder"] else f"{folder}/"
+            queries.append(found.where(File.space_id == key, File.path.like(_like(below) + "%", escape="\\")))
+        for query in queries:
+            for space, name in db.execute(query):
+                _folder, opts = spaces[space]
+                day = daily_day(name, opts)
+                if day is not None and first.isoformat() <= day <= last.isoformat():
+                    day_of(day)["daily"].append(name)
         today = valid_date(today)
         moment = func.coalesce(Task.due, Task.scheduled)
         for when, status, count in db.execute(
@@ -452,3 +477,43 @@ def calendar(space_ids: set[int], month: str, *, today: str, space_id: int | Non
     for entry in days.values():
         entry["daily"].sort()
     return {"month": month, "days": days}
+
+
+# --- Daily notes nexlore missed -------------------------------------------------------------------------------------
+
+#: At least this many notes named like days in one folder before they count as daily notes.
+GUESS_MIN = 3
+
+
+def guess_daily(space_name: str) -> dict[str, Any] | None:
+    """Daily notes the space's settings miss (``Journal/02.10.2026.md`` while it looks in ``Daily`` for
+    ``2026-10-02``): the folder and pattern most notes are named in, when that is not what the space is set to."""
+    with SessionLocal() as db:
+        space = db.scalar(select(Space).where(Space.folder == space_name))
+        if space is None:
+            raise VaultError("not_found", "no such space", 404)
+        opts = options_of(space)
+        rows = list(
+            db.scalars(
+                select(File.path)
+                .where(File.space_id == space.id, File.is_note.is_(True), File.deleted_at.is_(None))
+                .limit(50_000)
+            )
+        )
+    if sum(1 for rel in rows if daily_day(rel, opts) is not None) >= GUESS_MIN:
+        return None
+    counts: dict[tuple[str, str], int] = {}
+    for rel in rows:
+        within = rel.split("/", 1)[1] if "/" in rel else rel
+        folder, _, name = within.rpartition("/")
+        stem = paths.stem(name)
+        for pattern in dayname.KNOWN:
+            if dayname.day_of(pattern, stem) is not None:
+                counts[(folder, pattern)] = counts.get((folder, pattern), 0) + 1
+                break
+    if not counts:
+        return None
+    (folder, pattern), count = max(counts.items(), key=lambda item: (item[1], item[0][1] == dayname.DEFAULT))
+    if count < GUESS_MIN or (folder == opts["daily_folder"] and pattern == opts["daily_format"]):
+        return None
+    return {"daily_folder": folder, "daily_format": pattern, "count": count}
