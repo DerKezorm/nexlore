@@ -18,6 +18,7 @@ import yaml
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..db import sort_key
 from ..models import File, Link, Tag
 from . import baseexpr, paths
 
@@ -228,7 +229,7 @@ def _sort_value(value: Any) -> tuple[int, Any]:
         return (0, float(value))
     if isinstance(value, datetime):
         return (0, value.timestamp())
-    return (1, str(value).casefold())
+    return (1, sort_key(str(value)))
 
 
 def run(db: Session, config: dict[str, Any], space_id: int, space_name: str, view_index: int = 0) -> Result:
@@ -288,7 +289,7 @@ def run(db: Session, config: dict[str, Any], space_id: int, space_name: str, vie
     if failed:
         problems.append(f"{failed} notes could not be worked out and are left out.")
     # By name first: without a sort the order is the names', and a sort keeps it among equal values.
-    rows.sort(key=lambda item: (item["title"].casefold(), item["path"]))
+    rows.sort(key=lambda item: (sort_key(item["title"]), item["path"]))
     for spec in reversed([item for item in (view.get("sort") or []) if isinstance(item, dict)]):
         key = _key(spec.get("property") or "file.name")
         if key not in parsed:
@@ -319,7 +320,7 @@ def run(db: Session, config: dict[str, Any], space_id: int, space_name: str, vie
             seen[label]["rows"].append(item)
         direction = group_spec.get("direction") if isinstance(group_spec, dict) else None
         groups.sort(
-            key=lambda entry: (entry["value"] == "", entry["value"].casefold()),
+            key=lambda entry: (entry["value"] == "", sort_key(entry["value"])),
             reverse=str(direction).upper() == "DESC",
         )
     else:

@@ -6,7 +6,6 @@ read (``deps.readable_spaces``), and a space it may not read answers exactly lik
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
@@ -96,6 +95,8 @@ def put_options(name: str, body: OptionsIn, account: Account) -> dict[str, str]:
 class DailyIn(BaseModel):
     space: str = Field(min_length=1, max_length=255)
     date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    #: The reader's moment with its offset, for the template's `{{time}}` (see `everyday.reader_time`).
+    now: str = Field(default="", max_length=40)
 
 
 @router.post("/daily", summary="Open the daily note of a date, made from the space's template when missing")
@@ -105,10 +106,13 @@ def daily(body: DailyIn, account: Account, who: ActorDep) -> dict[str, Any]:
         raise error("not_found", "Not found.", 404)
     may_write = rights.at_least(_role(account, space), WRITE)
     try:
-        made = everyday.open_daily(space, body.date, actor=who, may_write=may_write, language=account.language or "en")
+        made = everyday.open_daily(
+            space, body.date, actor=who, may_write=may_write, language=account.language or "en",
+            now=everyday.reader_time(body.now),
+        )
     except VaultError as exc:
         raise _fail(exc) from exc
-    return {"path": made.path, "created": made.created}
+    return {"path": made.path, "created": made.created, "template_missing": made.template_missing}
 
 
 @router.get("/templates", summary="The templates of a space")
@@ -127,12 +131,13 @@ def template_preview(
     path: Annotated[str, Query(min_length=1, max_length=paths.MAX_PATH_CHARS)],
     account: Account,
     title: Annotated[str, Query(max_length=1024)] = "",
+    now: Annotated[str, Query(max_length=40)] = "",
 ) -> dict[str, str]:
     rel = need(account, path, READ)
     if not paths.is_note(rel):
         raise error("not_a_note", "A template is a note.")
     try:
-        text = everyday.render(rel, title=title, when=datetime.now().astimezone(), language=account.language or "en")
+        text = everyday.render(rel, title=title, when=everyday.reader_time(now), language=account.language or "en")
     except VaultError as exc:
         raise _fail(exc) from exc
     return {"content": text}
@@ -145,7 +150,7 @@ def template_preview(
 def task_list(
     account: Account,
     today: DateQuery,
-    status: Annotated[str, Query(pattern="^(open|done|all)$")] = "open",
+    status: Annotated[str, Query(pattern="^(open|done|cancelled|all)$")] = "open",
     when: Annotated[str | None, Query(pattern="^(overdue|today|week|later|none)$")] = None,
     on: Annotated[str | None, Query(pattern=r"^\d{4}-\d{2}-\d{2}$")] = None,
     start: Annotated[str | None, Query(pattern=r"^\d{4}-\d{2}-\d{2}$")] = None,

@@ -36,6 +36,8 @@ BLOCK_ID = re.compile(r"[ \t]+\^[A-Za-z0-9-]+[ \t]*$")
 TAG = re.compile(r"(?:(?<=\s)|^)#([\w/-]+)")
 #: A done date as the plugin appends it: one space before the emoji.
 _DONE_APPENDED = re.compile(r"[ \t]*✅" + _VS + r"[ \t]*\d{4}-\d{2}-\d{2}")
+#: The date a cancelled task got (`❌ 2026-09-28`): it goes when the task is opened again.
+_CANCELLED_APPENDED = re.compile(r"[ \t]*❌" + _VS + r"[ \t]*\d{4}-\d{2}-\d{2}")
 
 OPEN = "open"
 DONE_STATUS = "done"
@@ -229,4 +231,5 @@ def toggle_line(line: str, done: bool, today: str) -> str:
                 rest = f"✅ {today}" if close != "]" else f" ✅ {today}"
         return f"{head}x{close}{rest}"
     rest = _DONE_APPENDED.sub("", rest, count=1)
+    rest = _CANCELLED_APPENDED.sub("", rest, count=1)
     return f"{head} {close}{rest}"

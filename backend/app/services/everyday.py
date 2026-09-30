@@ -33,6 +33,20 @@ _LINE_END = re.compile(rb"\r\n|\n|\r")
 BOM = b"\xef\xbb\xbf"
 
 
+def reader_time(value: str | None) -> datetime:
+    """The moment as the reader's device has it (ISO with its offset, `2026-10-01T06:50:00+13:00`), for templates and
+    daily notes; the server's own time without it. A server in UTC wrote the wrong hour, and near midnight the wrong
+    day, into the notes of a reader in Berlin (review before 1.0.0, P5.1)."""
+    if value:
+        try:
+            moment = datetime.fromisoformat(value)
+        except ValueError:
+            moment = None
+        if moment is not None and moment.tzinfo is not None:
+            return moment
+    return datetime.now().astimezone()
+
+
 def valid_date(value: str) -> str:
     if not DATE.match(value):
         raise VaultError("invalid_input", "not a date")
@@ -103,9 +117,13 @@ def all_options(db: Session, space_ids: set[int]) -> dict[int, tuple[str, dict[s
 class Daily:
     path: str
     created: bool
+    #: The space's daily template was not there: the note was made empty.
+    template_missing: bool = False
 
 
-def open_daily(space_name: str, day: str, *, actor: Actor, may_write: bool, language: str = "en") -> Daily:
+def open_daily(
+    space_name: str, day: str, *, actor: Actor, may_write: bool, language: str = "en", now: datetime | None = None
+) -> Daily:
     """The daily note of ``day`` in a space; made (from the space's template) when it is not there and the caller
     may write. Two clicks at once make one note."""
     day = valid_date(day)
@@ -123,14 +141,21 @@ def open_daily(space_name: str, day: str, *, actor: Actor, may_write: bool, lang
             return Daily(path=_take_in(on_disk), created=False)
         if not may_write:
             raise VaultError("forbidden", "Your right in this space does not allow this.", 403)
-        now = datetime.now().astimezone()
-        when = datetime.combine(date.fromisoformat(day), now.time())
+        moment = now or datetime.now().astimezone()
+        when = datetime.combine(date.fromisoformat(day), moment.time(), tzinfo=moment.tzinfo)
         content = ""
+        missing = False
         if opts["daily_template"]:
-            content = render(f"{space_name}/{opts['daily_template']}", title=day, when=when, language=language)
+            try:
+                content = render(f"{space_name}/{opts['daily_template']}", title=day, when=when, language=language)
+            except VaultError as exc:
+                # The template went (moved, deleted): the day still gets its note, empty, and the caller says why.
+                if exc.status != 404:
+                    raise
+                missing = True
         paths.resolve(folder).mkdir(parents=True, exist_ok=True)
         file = vault.create_note(folder, day, content.encode("utf-8"), actor=actor)
-    return Daily(path=file.path, created=True)
+    return Daily(path=file.path, created=True, template_missing=missing)
 
 
 def _on_disk(folder: str, name: str) -> str | None:
@@ -208,17 +233,36 @@ def _like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
+def _template_files(space_ids: set[int]) -> Any:
+    """The files in the spaces' template folders: their tasks are patterns, not tasks (review before 1.0.0, P5.8)."""
+    with SessionLocal() as db:
+        folders = [
+            f"{name}/{opts['template_folder']}/" for name, opts in all_options(db, space_ids).values()
+            if opts.get("template_folder")
+        ]
+    if not folders:
+        return None
+    return select(File.id).where(or_(*(File.path.like(f"{_like(folder)}%", escape="\\") for folder in folders)))
+
+
 def task_query(
     space_ids: set[int], *, status: str, when: str | None, today: str, on: str | None, tag: str | None, q: str | None,
     space_id: int | None, between: tuple[str, str] | None = None,
 ) -> Any:
-    conditions: list[Any] = [Task.space_id.in_(space_ids)]
+    # An empty `- [ ]` is no task (a template's placeholder line, a list begun).
+    conditions: list[Any] = [Task.space_id.in_(space_ids), Task.text != ""]
+    patterns = _template_files(space_ids)
+    if patterns is not None:
+        conditions.append(Task.file_id.not_in(patterns))
     if space_id is not None:
         conditions.append(Task.space_id == space_id)
     if status == "open":
         conditions.append(Task.status == OPEN)
     elif status == "done":
-        conditions.append(Task.status != OPEN)
+        conditions.append(Task.status == tasks.DONE_STATUS)
+    elif status == "cancelled":
+        # Cancelled is neither open nor done: a group of its own (review before 1.0.0, P5.20).
+        conditions.append(Task.status == tasks.CANCELLED_STATUS)
     if when:
         conditions.append(_when(today)[when])
     if on:
@@ -228,9 +272,16 @@ def task_query(
         conditions.append(and_(moment >= between[0], moment <= between[1]))
     if tag:
         key = paths.fold(tag.lstrip("#"))
-        conditions.append(Task.tag_keys.like(f"% {_like(key)} %", escape="\\"))
+        # The tag and the tags below it (`#projekt` finds `#projekt/alpha`), as Obsidian's tag search does.
+        conditions.append(
+            or_(
+                Task.tag_keys.like(f"% {_like(key)} %", escape="\\"),
+                Task.tag_keys.like(f"% {_like(key)}/%", escape="\\"),
+            )
+        )
     if q:
-        conditions.append(Task.text.like(f"%{_like(q)}%", escape="\\"))
+        # Folded on both sides, so `über` finds `Über` (SQLite's own LIKE knows only ASCII).
+        conditions.append(func.nx_fold(Task.text).like(f"%{_like(paths.fold(q))}%", escape="\\"))
     return and_(*conditions)
 
 
@@ -245,12 +296,12 @@ def list_tasks(
     if between:
         between = (valid_date(between[0]), valid_date(between[1]))
     if not space_ids:
-        return {"total": 0, "counts": dict.fromkeys(("open", "done", *WHEN), 0), "items": []}
+        return {"total": 0, "counts": dict.fromkeys(("open", "done", "cancelled", *WHEN), 0), "items": []}
     where = task_query(
         space_ids, status=status, when=when, today=today, on=on, tag=tag, q=q, space_id=space_id, between=between
     )
     moment = func.coalesce(Task.due, Task.scheduled)
-    if status == "done":
+    if status in ("done", "cancelled"):
         order = [Task.completed.desc(), File.path, Task.line]
     else:
         # Open ones first, by date, the undated last, on one day the higher priority first.
@@ -267,10 +318,14 @@ def list_tasks(
         )
         conditions = _when(today)
         is_open = Task.status == OPEN
-        sums = [func.sum(case((is_open, 1), else_=0)), func.sum(case((~is_open, 1), else_=0))]
+        sums = [
+            func.sum(case((is_open, 1), else_=0)),
+            func.sum(case((Task.status == tasks.DONE_STATUS, 1), else_=0)),
+            func.sum(case((Task.status == tasks.CANCELLED_STATUS, 1), else_=0)),
+        ]
         sums += [func.sum(case((and_(is_open, conditions[key]), 1), else_=0)) for key in WHEN]
         counted = db.execute(select(*sums).where(base)).one()
-    counts = dict(zip(("open", "done", *WHEN), (int(value or 0) for value in counted), strict=True))
+    counts = dict(zip(("open", "done", "cancelled", *WHEN), (int(value or 0) for value in counted), strict=True))
     items = [
         {
             "id": task.id, "path": path, "title": title or paths.stem(path), "line": task.line, "raw": task.raw,
@@ -305,6 +360,11 @@ def toggle(rel: str, line: int, raw: str, *, done: bool, today: str, actor: Acto
         if lock is not None and lock.holder != actor.client:
             raise VaultError("locked", "somebody else is editing this note", 423, holder=lock.holder_name)
     bom = data.startswith(BOM)
+    try:
+        data[len(BOM) :].decode("utf-8") if bom else data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        # Such a file is only read here; ticking reported success and wrote a conflict copy (review P5.15).
+        raise VaultError("not_utf8", "this note is not UTF-8 and is only read here", 409) from exc
     lines = _lines(data[len(BOM) :] if bom else data)
 
     def text_of(content: bytes) -> str | None:
@@ -338,9 +398,11 @@ def toggle(rel: str, line: int, raw: str, *, done: bool, today: str, actor: Acto
         index_of += 1
     changed = (BOM if bom else b"") + b"".join(part + ending for part, ending in lines)
     saved = vault.save(rel, changed, base_hash=index.digest(data), actor=actor)
+    # A repetition nexlore does not read (`every 3rd tuesday`) ends without a next task: said, not silent (P5.13).
+    unknown = bool(done and was_open and was_open.status == OPEN and was_open.recurrence and following is None)
     return {
         "path": rel, "line": index_of + 1, "raw": new, "hash": index.digest(changed),
-        "conflict": saved.conflict, "added": following,
+        "conflict": saved.conflict, "added": following, "recurrence_unknown": unknown,
     }
 
 

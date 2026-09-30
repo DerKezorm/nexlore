@@ -395,6 +395,8 @@ class CreateIn(BaseModel):
     content: str = Field(default="", max_length=MAX_NOTE_UPLOAD)
     #: A template of the same space to start from (M6); its placeholders are filled, ``content`` is then ignored.
     template: str | None = Field(default=None, max_length=paths.MAX_PATH_CHARS)
+    #: The reader's moment with its offset, for the template's `{{date}}` and `{{time}}` (`everyday.reader_time`).
+    now: str = Field(default="", max_length=40)
 
 
 @router.post("/notes", response_model=NoteOut, status_code=201)
@@ -407,7 +409,8 @@ def create_note(body: CreateIn, account: Account, who: ActorDep) -> NoteOut:
             raise error("not_found", "Not found.", 404)
         try:
             content = everyday.render(
-                template, title=body.title.strip(), when=datetime.now().astimezone(), language=account.language or "en"
+                template, title=body.title.strip(), when=everyday.reader_time(body.now),
+                language=account.language or "en",
             )
         except VaultError as exc:
             raise _fail(exc) from exc

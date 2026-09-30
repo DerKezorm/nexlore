@@ -240,3 +240,95 @@ def index_root() -> Path:
     from app.services import paths
 
     return paths.vault_root()
+
+
+
+# --- R: links, daily notes, tasks --------------------------------------------------------------------------------
+
+TODAY = "2026-09-30"
+
+
+def _tasks(client: TestClient, **query: str) -> dict:
+    answer = client.get("/api/tasks", params={"today": TODAY, "status": "all", **query})
+    assert answer.status_code == 200, answer.text
+    return answer.json()
+
+
+def _garden(vault: Path, files: dict[str, bytes]) -> None:
+    for rel, data in files.items():
+        target = vault / "Garden" / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+    index.scan()
+
+
+def test_tasks_of_templates_and_empty_lines_are_not_tasks(client: TestClient, account: Account, vault: Path) -> None:
+    _garden(vault, {
+        "Templates/Meeting.md": b"- [ ] \n- [ ] Erledigen {{date}}\n",
+        "Plan.md": b"- [ ] echt\n- [ ] \n",
+    })
+    assert [item["text"] for item in _tasks(client)["items"]] == ["echt"]
+
+
+def test_task_words_fold_umlauts_and_a_tag_takes_its_subtags(client: TestClient, account: Account, vault: Path) -> None:
+    _garden(vault, {"Plan.md": "- [ ] Über den Fluss #projekt/alpha\n- [ ] anderes #projektil\n".encode()})
+    assert [item["text"] for item in _tasks(client, q="über")["items"]] == ["Über den Fluss #projekt/alpha"]
+    assert [item["text"] for item in _tasks(client, q="ÜBER")["items"]] == ["Über den Fluss #projekt/alpha"]
+    assert [item["text"] for item in _tasks(client, tag="projekt")["items"]] == ["Über den Fluss #projekt/alpha"]
+
+
+def test_cancelled_tasks_are_a_group_of_their_own_and_lose_their_date_when_opened(
+    client: TestClient, account: Account, vault: Path
+) -> None:
+    _garden(vault, {"Plan.md": "- [-] weg ❌ 2026-09-28\n- [x] fertig ✅ 2026-09-29\n- [ ] offen\n".encode()})
+    counts = _tasks(client)["counts"]
+    assert (counts["open"], counts["done"], counts["cancelled"]) == (1, 1, 1)
+    assert [item["text"] for item in _tasks(client, status="cancelled")["items"]] == ["weg"]
+    assert [item["text"] for item in _tasks(client, status="done")["items"]] == ["fertig"]
+    opened = client.post("/api/tasks/toggle", json={"path": "Garden/Plan.md", "line": 1, "raw": "- [-] weg ❌ 2026-09-28",
+                                                    "done": False, "today": TODAY})
+    assert opened.status_code == 200, opened.text
+    assert (vault / "Garden" / "Plan.md").read_bytes().decode().splitlines()[0] == "- [ ] weg"
+
+
+def test_a_repetition_nexlore_does_not_read_says_so(client: TestClient, account: Account, vault: Path) -> None:
+    line = "- [ ] Müll 🔁 every 3rd tuesday 📅 2026-09-30"
+    _garden(vault, {"Plan.md": (line + "\n").encode()})
+    done = client.post("/api/tasks/toggle", json={"path": "Garden/Plan.md", "line": 1, "raw": line, "done": True, "today": TODAY})
+    assert done.status_code == 200 and done.json()["recurrence_unknown"] is True
+    _garden(vault, {"Weekly.md": "- [ ] Gießen 🔁 every week 📅 2026-09-30\n".encode()})
+    weekly = client.post("/api/tasks/toggle", json={"path": "Garden/Weekly.md", "line": 1,
+                                                    "raw": "- [ ] Gießen 🔁 every week 📅 2026-09-30", "done": True, "today": TODAY})
+    assert weekly.json()["recurrence_unknown"] is False and weekly.json()["added"]
+
+
+def test_a_task_in_a_file_that_is_not_utf8_is_not_ticked(client: TestClient, account: Account, vault: Path) -> None:
+    _garden(vault, {"Latin.md": "- [ ] Käse\n".encode("latin-1")})
+    answer = client.post("/api/tasks/toggle", json={"path": "Garden/Latin.md", "line": 1, "raw": "- [ ] Käse", "done": True, "today": TODAY})
+    assert answer.status_code == 409
+    assert (vault / "Garden" / "Latin.md").read_bytes() == "- [ ] Käse\n".encode("latin-1")
+    assert not [item for item in (vault / "Garden").iterdir() if "conflict" in item.name]
+
+
+def test_a_daily_note_is_made_empty_when_its_template_is_gone(client: TestClient, account: Account, vault: Path) -> None:
+    _garden(vault, {"Plan.md": b"x\n"})
+    assert client.put("/api/spaces/Garden/options", json={"daily_template": "Templates/Gone.md"}).status_code == 200
+    made = client.post("/api/daily", json={"space": "Garden", "date": "2026-11-15"})
+    assert made.status_code == 200, made.text
+    assert made.json()["created"] is True and made.json()["template_missing"] is True
+
+
+def test_templates_take_the_reader_s_time(client: TestClient, account: Account, vault: Path) -> None:
+    _garden(vault, {"Templates/Stamp.md": b"Datum {{date}} Zeit {{time}}\n"})
+    made = client.post("/api/notes", json={"folder": "Garden", "title": "Now", "template": "Garden/Templates/Stamp.md",
+                                           "now": "2026-10-01T06:50:00+13:00"})
+    assert made.status_code == 201, made.text
+    text = (vault / made.json()["path"]).read_text(encoding="utf-8")
+    assert "Datum 2026-10-01" in text and "Zeit 06:50" in text
+
+
+def test_sorting_puts_umlauts_with_their_letter() -> None:
+    from app.db import sort_key
+
+    assert sorted(["Zodiac", "Ärger im Paradies", "Apfel", "Öl", "Ofen"], key=sort_key) == [
+        "Apfel", "Ärger im Paradies", "Ofen", "Öl", "Zodiac"]

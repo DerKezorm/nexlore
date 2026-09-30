@@ -150,7 +150,8 @@ def query(
         if random:
             statement = statement.order_by(func.random())
         elif sort == "title":
-            statement = statement.order_by(File.title)
+            # As a reader sorts: `Ärger` with the A (SQLite put it after Z; review before 1.0.0, P5.11).
+            statement = statement.order_by(func.nx_sort(File.title))
         else:
             statement = statement.order_by(File.mtime_ns.desc())
         rows = db.execute(statement.limit(limit)).all()

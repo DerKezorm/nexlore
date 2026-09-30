@@ -90,17 +90,20 @@ def test_the_overview_filters_and_counts(world: World, vault: Path) -> None:
     put(vault, "Private/A.md", "".join(line + "\n" for line in lines))
     index.scan()
     found = tasks_of(world.anna)
-    assert found["counts"] == {"open": 6, "done": 2, "overdue": 1, "today": 2, "week": 1, "later": 1, "none": 1}
+    # Cancelled is a group of its own since the review before 1.0.0 (P5.20).
+    assert found["counts"] == {"open": 6, "done": 1, "cancelled": 1, "overdue": 1, "today": 2, "week": 1, "later": 1, "none": 1}
     # Open ones by date, the undated last; on the same day the higher priority first.
     assert [item["text"] for item in found["items"]] == [
         "late", "now", "planned", "soon #garden", "later", "someday #garden/beds"]
     assert [item["text"] for item in tasks_of(world.anna, when="today")["items"]] == ["now", "planned"]
     assert [item["text"] for item in tasks_of(world.anna, when="overdue")["items"]] == ["late"]
     assert [item["text"] for item in tasks_of(world.anna, when="none")["items"]] == ["someday #garden/beds"]
-    assert [item["text"] for item in tasks_of(world.anna, status="done")["items"]] == ["finished", "dropped"]
+    assert [item["text"] for item in tasks_of(world.anna, status="done")["items"]] == ["finished"]
+    assert [item["text"] for item in tasks_of(world.anna, status="cancelled")["items"]] == ["dropped"]
     assert [item["text"] for item in tasks_of(world.anna, on="2026-09-27")["items"]] == ["now", "planned"]
-    # A tag finds itself, not its children and not a longer name; case does not count.
-    assert [item["text"] for item in tasks_of(world.anna, tag="#Garden")["items"]] == ["soon #garden"]
+    # A tag finds itself and the tags below it, as Obsidian does (review before 1.0.0, P5.23), not a longer name;
+    # case does not count.
+    assert [item["text"] for item in tasks_of(world.anna, tag="#Garden")["items"]] == ["soon #garden", "someday #garden/beds"]
     assert [item["text"] for item in tasks_of(world.anna, q="late")["items"]] == ["late", "later"]
     assert tasks_of(world.anna, q="100%")["total"] == 0
     assert found["items"][1]["priority"] == 4 and found["items"][0]["due"] == "2026-09-20"
@@ -231,11 +234,11 @@ def test_the_daily_note_is_made_once_in_the_daily_folder_from_the_template(world
     denied = world.bob.post("/api/daily", json={"space": "Shared", "date": "2026-09-07"})
     assert denied.status_code == 403
     made = world.carl.post("/api/daily", json={"space": "Shared", "date": "2026-09-07"})
-    assert made.status_code == 200 and made.json() == {"path": "Shared/Daily/2026-09-07.md", "created": True}
+    assert made.status_code == 200 and made.json() == {"path": "Shared/Daily/2026-09-07.md", "created": True, "template_missing": False}
     text = (vault / "Shared" / "Daily" / "2026-09-07.md").read_text(encoding="utf-8")
     assert text == "# 2026-09-07\n\nMonday\n<% tp.date.now() %>\n- [ ] \n"
     again = world.bob.post("/api/daily", json={"space": "Shared", "date": "2026-09-07"})
-    assert again.json() == {"path": "Shared/Daily/2026-09-07.md", "created": False}
+    assert again.json() == {"path": "Shared/Daily/2026-09-07.md", "created": False, "template_missing": False}
     assert world.anna.post("/api/daily", json={"space": "Private", "date": "2026-02-30"}).status_code == 400
     foreign = world.bob.post("/api/daily", json={"space": "Private", "date": "2026-09-07"})
     assert foreign.status_code == 404
@@ -404,7 +407,7 @@ def test_a_daily_note_on_disk_in_other_letters_is_taken_not_made_again(world: Wo
     # Written by Obsidian or a sync a moment ago, not read by the index yet.
     put(vault, "Shared/Daily/2026-09-07.MD", "from outside\n")
     made = world.carl.post("/api/daily", json={"space": "Shared", "date": "2026-09-07"})
-    assert made.json() == {"path": "Shared/Daily/2026-09-07.MD", "created": False}
+    assert made.json() == {"path": "Shared/Daily/2026-09-07.MD", "created": False, "template_missing": False}
     assert sorted(entry.name for entry in (vault / "Shared" / "Daily").iterdir()) == ["2026-09-07.MD"]
     assert world.carl.get("/api/note", params={"path": "Shared/Daily/2026-09-07.MD"}).json()["content"] == "from outside\n"
 

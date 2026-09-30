@@ -49,10 +49,22 @@ def _pragmas(dbapi_connection: Any, _record: Any) -> None:
     cursor.close()
     # SQLite's own lower() and LIKE fold only ASCII: "Ä" never met "ä". This folds like ``paths.fold``.
     dbapi_connection.create_function("nx_fold", 1, _fold, deterministic=True)
+    dbapi_connection.create_function("nx_sort", 1, _sort, deterministic=True)
 
 
 def _fold(value: Any) -> str | None:
     return None if value is None else unicodedata.normalize("NFC", str(value)).casefold()
+
+
+def sort_key(value: str) -> str:
+    """A text as a reader sorts it: case and accents only break ties (`Ärger` with the A, not after `Zodiac`)."""
+    folded = unicodedata.normalize("NFKD", value.casefold())
+    plain = "".join(char for char in folded if not unicodedata.combining(char)).replace("ß", "ss")
+    return f"{plain}\x00{value.casefold()}"
+
+
+def _sort(value: Any) -> str | None:
+    return None if value is None else sort_key(str(value))
 
 
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
