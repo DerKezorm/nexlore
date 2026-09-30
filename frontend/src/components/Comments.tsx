@@ -3,7 +3,7 @@
  * away. A thread's words lead to their place in the text; a thread whose words are gone says so. Anyone who may read
  * the note comments and answers; `@name` offers the people of the space. Nothing of it goes into the file.
  */
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError, commentsApi, type Thread } from '../api/client'
@@ -55,12 +55,17 @@ function MentionBox({ path, value, onChange, onSubmit, label, autoFocus }: {
     const next = value.slice(0, typed.start) + '@' + name + ' ' + value.slice(caret)
     onChange(next)
     setTyped(null)
-    requestAnimationFrame(() => {
-      const at = typed.start + name.length + 2
-      field.current?.setSelectionRange(at, at)
-      field.current?.focus()
-    })
+    caretAt.current = typed.start + name.length + 2
   }
+  // The caret after the name, set as soon as the new text is drawn: a frame later, a quick next key had already
+  // landed at the end and the caret jumped back before it (seen in the CI: "@tester ure?s").
+  const caretAt = useRef<number | null>(null)
+  useLayoutEffect(() => {
+    if (caretAt.current === null) return
+    field.current?.setSelectionRange(caretAt.current, caretAt.current)
+    field.current?.focus()
+    caretAt.current = null
+  }, [value])
 
   const keys = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (names.length && typed) {

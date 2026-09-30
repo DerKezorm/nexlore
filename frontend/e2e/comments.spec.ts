@@ -13,6 +13,16 @@ test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 
 const TAB = { 'X-Nexlore-Client': 'tab-e2e-comments' }
 
+// A retry in the CI finds the threads of the first try: gone before each test.
+test.beforeEach(async ({ page }) => {
+  for (const note of ['Heath/Comment me.md', 'Heath/Comment gone.md']) {
+    const answer = await page.request.get('/api/comments?path=' + encodeURIComponent(note))
+    if (!answer.ok()) continue
+    for (const thread of (await answer.json()).threads)
+      await page.request.delete(`/api/comments/${thread.id}?path=${encodeURIComponent(note)}`, { headers: TAB })
+  }
+})
+
 // The tab beside the note is kept with the account, and the tests share one: back to the links after each.
 test.afterEach(async ({ page }) => {
   await page.waitForLoadState('networkidle').catch(() => {})
@@ -60,9 +70,17 @@ test('words chosen while reading get a thread beside them, with @names, answers 
   await expect(box).toBeFocused()
   await box.pressSequentially('Is it @te')
   await expect(panel.getByRole('option', { name: '@tester' })).toBeVisible()
-  await box.press('Enter')
-  await expect(box).toHaveValue('Is it @tester ')
-  await box.pressSequentially('sure?')
+  // Enter takes the name, and the next letter comes before the next frame, as on the slow CI machine where the caret
+  // then jumped back behind that letter ("@tester ure?s").
+  await box.evaluate(async (field) => {
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    // React draws the name in a microtask; the letter comes right after, long before the next frame.
+    await Promise.resolve()
+    await Promise.resolve()
+    document.execCommand('insertText', false, 's')
+  })
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+  await box.pressSequentially('ure?')
   await box.press('Control+Enter')
   const thread = panel.locator('[data-thread]')
   await expect(thread).toHaveCount(1)
