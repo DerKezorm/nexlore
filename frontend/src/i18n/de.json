@@ -1644,6 +1644,25 @@
     "replies_one": "{{count}} Antwort",
     "replies_other": "{{count}} Antworten"
   },
+  "viewer": {
+    "title": "Bild",
+    "open": "Bild ansehen",
+    "position": "{{at}} von {{of}}",
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern",
+    "actual": "Echte Größe",
+    "fit": "Einpassen",
+    "mark": "Markieren",
+    "markThis": "{{name}} markieren",
+    "download": "Herunterladen",
+    "downloadMarked_one": "{{count}} markiertes laden",
+    "downloadMarked_other": "{{count}} markierte laden",
+    "fromWeb": "Bild aus dem Web: nur ansehen",
+    "close": "Schließen",
+    "previous": "Voriges Bild",
+    "next": "Nächstes Bild",
+    "all": "Alle Bilder der Notiz"
+  },
   "ai": {
     "title": "KI in Notizen",
     "text": "Dein eigener KI-Dienst korrigiert, formuliert um, übersetzt, fasst zusammen und schreibt im Editor. Den Schlüssel bezahlst du selbst; ein Ergebnis steht immer erst neben dem Text und ändert nichts, bis du es übernimmst.",

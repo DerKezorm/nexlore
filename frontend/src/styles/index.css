@@ -348,3 +348,8 @@
 @media (prefers-reduced-motion: reduce) {
   .nx-thread-lit { animation: none; box-shadow: 0 0 0 2px var(--color-accent-500); }
 }
+
+/* Pictures in the text open over the page with a click. */
+.nn-prose img {
+  cursor: zoom-in;
+}

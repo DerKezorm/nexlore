@@ -1,4 +1,4 @@
-"""The calendar subscription of the own account (``services/feed``), and a space as a ZIP file."""
+"""The calendar subscription of the own account (``services/feed``), and files as a ZIP: a space, or chosen ones."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, Path, Request
 from fastapi.responses import Response, StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from ..db import SessionLocal
@@ -84,17 +85,22 @@ def space_zip(name: Annotated[str, Path(max_length=255)], account: Account) -> S
         ).all()
     if sum(size or 0 for _, size in rows) > ZIP_LIMIT:
         raise error("too_large", "The space is too large to pack in one go; take a backup instead.", 413)
-    # Packed first (on disk once it grows), then sent: a missing file is left out, not a broken archive.
+    stamp = datetime.now().astimezone().strftime("%Y-%m-%d")
+    return _packed([(rel, rel) for rel, _ in rows], f"{space}-{stamp}.zip")
+
+
+def _packed(files: list[tuple[str, str]], filename: str) -> StreamingResponse:
+    """The files (vault path, name in the archive) as one ZIP, packed first (on disk once it grows), then sent: a file
+    gone meanwhile is left out, not a broken archive."""
     buffer = tempfile.SpooledTemporaryFile(max_size=64 * 1024 * 1024)  # noqa: SIM115 (closed by chunks())
     root = paths.vault_root()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
-        for rel, _ in rows:
-            full = root.joinpath(*rel.split("/"))
+        for rel, name in files:
             try:
-                data = full.read_bytes()
+                data = root.joinpath(*rel.split("/")).read_bytes()
             except OSError:
                 continue
-            archive.writestr(rel, data)
+            archive.writestr(name, data)
     buffer.seek(0)
 
     def chunks() -> Iterator[bytes]:
@@ -102,10 +108,47 @@ def space_zip(name: Annotated[str, Path(max_length=255)], account: Account) -> S
             while data := buffer.read(1024 * 1024):
                 yield data
 
-    stamp = datetime.now().astimezone().strftime("%Y-%m-%d")
-    filename = f"{space}-{stamp}.zip"
     return StreamingResponse(
         chunks(),
         media_type="application/zip",
         headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"},
     )
+
+
+FilePath = Annotated[str, Field(min_length=1, max_length=paths.MAX_PATH_CHARS)]
+
+
+class FilesIn(BaseModel):
+    paths: list[FilePath] = Field(min_length=1, max_length=200)
+    #: The archive's name, without ``.zip``.
+    name: str = Field(default="files", max_length=100)
+
+
+@router.post("/files/zip", summary="Chosen files (the pictures of a note, say) as one ZIP file")
+def files_zip(body: FilesIn, account: Account) -> StreamingResponse:
+    """Every file must be one the account may read and the index knows; in the archive each goes by its name alone,
+    a second of the same name numbered (``photo (2).png``)."""
+    chosen: list[tuple[str, str]] = []
+    taken: set[str] = set()
+    total = 0
+    with SessionLocal() as db:
+        for raw in dict.fromkeys(body.paths):
+            clean = need(account, raw, READ)
+            row = db.execute(select(File.path, File.size).where(File.path == clean, File.deleted_at.is_(None))).first()
+            if row is None:
+                raise error("not_found", "No such file.", 404)
+            total += row.size or 0
+            name = row.path.rsplit("/", 1)[-1]
+            stem, dot, ext = name.rpartition(".")
+            if not dot:
+                stem, ext = name, ""
+            count = 1
+            while name.casefold() in taken:
+                count += 1
+                name = f"{stem} ({count}).{ext}" if ext else f"{stem} ({count})"
+            taken.add(name.casefold())
+            chosen.append((row.path, name))
+    if total > ZIP_LIMIT:
+        raise error("too_large", "These files are too large to pack in one go.", 413)
+    safe = "".join(char for char in body.name if char.isalnum() or char in " -_").strip() or "files"
+    return _packed(chosen, f"{safe}.zip")

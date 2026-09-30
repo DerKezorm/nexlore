@@ -21,6 +21,8 @@ import type { EditorHandle, EditorMode } from '../components/NoteEditor'
 import { Sidebar } from '../components/Sidebar'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { NotePanel, type PanelPart } from '../components/NotePanel'
+import { ImageViewer } from '../components/ImageViewer'
+import { picturesIn, type Picture } from '../lib/pictures'
 import { Comments } from '../components/Comments'
 import { CommentLayer } from '../components/CommentLayer'
 import { revealThread, type Anchor } from '../lib/comments'
@@ -126,6 +128,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const { me, setAppearance } = useAuth()
   const navigate = useNavigate()
   const [sharing, setSharing] = useState(false)
+  // A picture of the note over the whole page (the note's pictures, and which one first).
+  const [viewing, setViewing] = useState<{ pictures: Picture[]; start: number } | null>(null)
   // The column beside the note from 1280 pixels on (shown or hidden with the account); below, a sheet on request,
   // on a phone from below. Two notes side by side need the room: then a sheet as well.
   const wide = useMedia('(min-width: 1280px)', true)
@@ -1161,6 +1165,14 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                   ref={article}
                   className="nn-prose"
                   onClick={(e) => {
+                    // A picture opens over the page, at its own size and to zoom into.
+                    const image = (e.target as HTMLElement).closest('img')
+                    if (image && article.current && !e.ctrlKey && !e.metaKey) {
+                      e.preventDefault()
+                      const { pictures, elements } = picturesIn(article.current)
+                      const start = elements.indexOf(image as HTMLImageElement)
+                      if (start >= 0) return setViewing({ pictures, start })
+                    }
                     const target = (e.target as HTMLElement).closest('a[data-note]')
                     if (target) open(target.getAttribute('data-note')!)
                     // A file's page inside the app, not a full page load.
@@ -1206,6 +1218,9 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
         )}
       </main>
 
+      {viewing && (
+        <ImageViewer pictures={viewing.pictures} start={viewing.start} archive={baseName(note.path).replace(/\.md$/i, '')} onClose={() => setViewing(null)} />
+      )}
       {comparing2?.kind === 'news' && (
         <CompareDialog
           title={t('news.compareTitle', { title: note.title })}

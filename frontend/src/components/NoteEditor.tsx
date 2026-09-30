@@ -32,6 +32,8 @@ import { CONTEXT, type Anchor } from '../lib/comments'
 import { usePeek } from '../lib/commentPeek'
 import type { Thread } from '../api/client'
 import { CommentPeek } from './CommentPeek'
+import { ImageViewer } from './ImageViewer'
+import { picturesIn, type Picture } from '../lib/pictures'
 import { Symbol } from './Symbol'
 import { AiDialog } from './AiDialog'
 import { EditorToolbar, ShowToolbar } from './EditorToolbar'
@@ -300,6 +302,24 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     }
   }, [ready, onComment])
 
+  // A picture opened over the page: a double click on it (one click chooses it for editing), or the menu.
+  const [viewing, setViewing] = useState<{ pictures: Picture[]; start: number } | null>(null)
+  /** The picture under a point of the screen, also beneath what the editor lays over it. */
+  const pictureAt = (x: number, y: number): Element | null =>
+    document.elementsFromPoint(x, y).find((element) => element.tagName === 'IMG' && !!host.current?.contains(element)) ?? null
+  /** The note's pictures with the one under a point first, taken before a click changes what the editor shows. */
+  const picturesAt = (x: number, y: number): { pictures: Picture[]; start: number } | null => {
+    const root = host.current
+    const image = pictureAt(x, y)
+    if (!root || !image) return null
+    const { pictures, elements } = picturesIn(root)
+    const start = elements.indexOf(image as HTMLImageElement)
+    return start < 0 ? null : { pictures, start }
+  }
+  // An embedded picture turns into its text when the caret comes to it: the second click of a double click lands on
+  // that text. The picture is taken at the first press, and a double click soon after opens it.
+  const pressed = useRef<{ found: { pictures: Picture[]; start: number }; at: number } | null>(null)
+
   // The open threads marked in the text; on a mark, the thread's preview (a tap on a touch screen as well).
   const peekState = usePeek()
   const { show: showPeek, hideSoon, hide: hidePeek } = peekState
@@ -367,6 +387,8 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     const engineNow = engine.current
     if (!engineNow || readOnly || (event.nativeEvent as PointerEvent).pointerType === 'touch') return
     event.preventDefault()
+    // Before the caret moves: an embedded picture turns into its text then.
+    const picture = picturesAt(event.clientX, event.clientY)
     // A click outside the selection puts the caret where it was: the menu works on what was clicked.
     const { view } = engineNow
     const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
@@ -383,6 +405,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     const canPaste = window.isSecureContext && !!navigator.clipboard?.readText
     const commentable = !!onComment && !!commentAnchor()
     const items: MenuItem[] = [
+      ...(picture ? ([{ label: t('viewer.open'), symbol: 'image', onSelect: () => setViewing(picture) }, 'separator'] satisfies MenuItem[]) : []),
       ...(commentable ? ([{ label: t('comments.here'), symbol: 'pencil', onSelect: comment }, 'separator'] satisfies MenuItem[]) : []),
       ...(target
         ? ([
@@ -581,9 +604,27 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         />
         </SourceLines>
       ) : (
-        <div ref={host} className="nx-editor-host" onContextMenu={openMenu} />
+        <div
+          ref={host}
+          className="nx-editor-host"
+          onContextMenu={openMenu}
+          onMouseDownCapture={(event) => {
+            const found = event.button === 0 ? picturesAt(event.clientX, event.clientY) : null
+            if (found) pressed.current = { found, at: event.timeStamp }
+          }}
+          onDoubleClick={(event) => {
+            const last = pressed.current
+            if (!last || event.timeStamp - last.at > 800) return
+            pressed.current = null
+            event.preventDefault()
+            setViewing(last.found)
+          }}
+        />
       )}
       {menu.element}
+      {viewing && (
+        <ImageViewer pictures={viewing.pictures} start={viewing.start} archive={baseName(path).replace(/\.md$/i, '')} onClose={() => setViewing(null)} />
+      )}
       {onShowThread && <CommentPeek state={peekState} onShowThread={onShowThread} />}
       {commentAt && (
         <button

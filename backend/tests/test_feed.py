@@ -137,3 +137,24 @@ def test_a_space_comes_as_a_zip_for_whoever_may_read_it(people: dict[str, TestCl
         assert archive.read("Garden/Loose.md") == b"- [ ] No date at all\n"
     assert carl.get("/api/spaces/Garden/zip").status_code == 404
     assert bob.get("/api/spaces/Garden%2FDeep/zip").status_code == 404
+
+
+def test_chosen_files_come_as_a_zip_named_apart_and_only_readable_ones(people: dict[str, TestClient], vault: Path) -> None:
+    bob, carl = people["bob"], people["carl"]
+    (vault / "Garden" / "photo.png").write_bytes(b"\x89PNG one")
+    (vault / "Garden" / "Deep").mkdir()
+    (vault / "Garden" / "Deep" / "photo.png").write_bytes(b"\x89PNG two")
+    people["operator"].post("/api/index/scan")
+    chosen = {"paths": ["Garden/photo.png", "Garden/Deep/photo.png", "Garden/photo.png"], "name": "Beds: pictures"}
+    answer = bob.post("/api/files/zip", json=chosen)
+    assert answer.status_code == 200, answer.text
+    assert answer.headers["content-type"] == "application/zip"
+    assert "Beds%20pictures.zip" in answer.headers["content-disposition"]
+    with zipfile.ZipFile(io.BytesIO(answer.content)) as archive:
+        # Each once, the second of a name numbered.
+        assert archive.namelist() == ["photo.png", "photo (2).png"]
+        assert archive.read("photo (2).png") == b"\x89PNG two"
+    # Only what may be read, and only files that are there.
+    assert carl.post("/api/files/zip", json={"paths": ["Garden/photo.png"]}).status_code == 404
+    assert bob.post("/api/files/zip", json={"paths": ["Garden/nothing.png"]}).status_code == 404
+    assert bob.post("/api/files/zip", json={"paths": []}).status_code == 422
