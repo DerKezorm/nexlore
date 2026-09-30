@@ -4,7 +4,7 @@
  * a decoration. The document stays as it is, so saving never sees a fold. A cursor that lands in a folded part (arrow
  * keys, search, a jump) opens that fold.
  */
-import { Plugin, PluginKey, type EditorState } from '@milkdown/kit/prose/state'
+import { Plugin, PluginKey, TextSelection, type EditorState } from '@milkdown/kit/prose/state'
 import type { Node as ProseNode } from '@milkdown/kit/prose/model'
 import { Decoration, DecorationSet, type EditorView } from '@milkdown/kit/prose/view'
 
@@ -106,7 +106,34 @@ export function foldPlugin(store: FoldStore): Plugin<State> {
       init: (_, state) => build(state.doc, store.keys(), store),
       apply: (tr, old, _, state) => (tr.docChanged || tr.getMeta(foldKey) ? build(state.doc, store.keys(), store) : old),
     },
-    props: { decorations: (state) => foldKey.getState(state)?.decorations },
+    props: {
+      decorations: (state) => foldKey.getState(state)?.decorations,
+      // At the end of a folded block's words (review before 1.0.0, P3.14): Enter on a folded list item makes a new
+      // item after it and all it holds, instead of taking the hidden items along; Delete on a folded heading opens
+      // the fold first, instead of joining the hidden paragraph to the heading unseen.
+      handleKeyDown: (view, event) => {
+        if ((event.key !== 'Enter' && event.key !== 'Delete') || event.shiftKey || event.ctrlKey || event.metaKey || event.altKey) return false
+        const { state } = view
+        const { $from, empty } = state.selection
+        if (!empty || $from.depth < 1 || $from.parentOffset !== $from.parent.content.size) return false
+        const after = $from.after()
+        const hidden = foldKey.getState(state)?.hidden.find((part) => part.from === after)
+        if (!hidden) return false
+        if (event.key === 'Delete') {
+          store.toggle(hidden.key)
+          return true
+        }
+        const item = $from.depth >= 2 ? $from.node(-1) : null
+        if (!item || item.type.name !== 'list_item' || $from.index(-1) !== 0) return false
+        const attrs = item.attrs.checked === null || item.attrs.checked === undefined ? item.attrs : { ...item.attrs, checked: false }
+        const fresh = item.type.createAndFill(attrs)
+        if (!fresh) return false
+        const end = $from.after(-1)
+        const tr = state.tr.insert(end, fresh)
+        view.dispatch(tr.setSelection(TextSelection.create(tr.doc, end + 2)).scrollIntoView())
+        return true
+      },
+    },
     view: (view: EditorView) => {
       const off = store.subscribe(() => !view.isDestroyed && view.dispatch(view.state.tr.setMeta(foldKey, true)))
       return {

@@ -83,3 +83,32 @@ it('opens the fold a cursor lands in', async () => {
   expect(folds.asked).toEqual(['h2:Two#0'])
   expect(hidden(root)).not.toContain('Second text.')
 })
+
+function keyAtEndOf(view: Open['view'], words: string, key: string): boolean {
+  let end = -1
+  view.state.doc.descendants((node, pos) => {
+    if (end < 0 && node.isTextblock && node.textContent === words) end = pos + node.nodeSize - 1
+    return end < 0
+  })
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, end)))
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+  return view.someProp('handleKeyDown', (handle) => handle(view, event)) ?? false
+}
+
+it('Enter at the end of a folded item makes a new item after it and all it holds (review P3.14)', async () => {
+  const folds = store()
+  folds.folded.add('l:Parent#0')
+  open = await openEditor(NOTE, { folds })
+  expect(keyAtEndOf(open.view, 'Parent', 'Enter')).toBe(true)
+  open.view.dispatch(open.view.state.tr.insertText('New'))
+  expect(open.text()).toContain('- Parent\n  - Child one\n  - Child two\n- New\n- Single\n')
+})
+
+it('Delete at the end of a folded heading opens the fold instead of joining unseen words (review P3.14)', async () => {
+  const folds = store()
+  folds.folded.add('h2:Two#0')
+  open = await openEditor(NOTE, { folds })
+  expect(keyAtEndOf(open.view, 'Two', 'Delete')).toBe(true)
+  expect(folds.asked).toEqual(['h2:Two#0'])
+  expect(open.text()).toBe(NOTE)
+})
