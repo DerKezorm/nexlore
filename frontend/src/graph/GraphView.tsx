@@ -144,6 +144,8 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
       state.points = points.ids
       state.bubbles = bubbles.ids
       state.flags = ''
+      // What the spaces are drawn in, for a look from outside (the tests).
+      canvasRef.current?.setAttribute('data-colours', scene.spaceColours().join(' '))
     }
     if (state.revision !== revision || state.band !== band || state.focus !== focus || state.hide !== hideDaily || state.flags === '') {
       const lines = scene.lineBuffers(cam.k, focus)

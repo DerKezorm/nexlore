@@ -43,6 +43,8 @@ export type SceneGroup = {
   color: string
   /** The colour nexlore works out; `color` is the one chosen by hand where there is one. */
   auto: string
+  /** The palette slot the server chose (-1 grey); the colour itself follows the theme. */
+  slot: number
   /** A symbol chosen by hand for the space or folder, drawn above its name. */
   icon: string | null
   depth: number
@@ -143,6 +145,19 @@ export class Scene {
     for (const group of this.groups.values()) this.look(group)
   }
 
+  /** The theme changed: the colours nexlore works out again (those chosen by hand stay). */
+  recolour() {
+    for (const group of this.groups.values()) {
+      group.auto = group.kind === 'space' ? spaceColor(this.space(group.space)?.index ?? 0) : slotColor(group.slot)
+      this.look(group)
+    }
+  }
+
+  /** The colours the spaces are drawn in now, in their order. */
+  spaceColours(): string[] {
+    return this.spaces.map((space) => this.groups.get(space.root)?.color ?? '')
+  }
+
   private look(group: SceneGroup) {
     const path = group.key === 'space' ? group.space : group.key.startsWith('f:') ? `${group.space}/${group.key.slice(2)}` : null
     const shown = path ? lookOf(this.looks, path) : null
@@ -191,7 +206,7 @@ export class Scene {
       const parentRow = parent !== null ? byId.get(parent) : undefined
       this.groups.set(id, {
         id, space, parent, kind, name, key, total, daily, own: total, x, y, r, level,
-        color: kind === 'space' ? spaceColor(index) : slotColor(slot), auto: kind === 'space' ? spaceColor(index) : slotColor(slot), icon: null,
+        color: kind === 'space' ? spaceColor(index) : slotColor(slot), auto: kind === 'space' ? spaceColor(index) : slotColor(slot), slot, icon: null,
         depth: depthOf(row), children: [], parentR: parentRow ? parentRow[8] : 0,
       })
       this.look(this.groups.get(id)!)
@@ -382,7 +397,7 @@ export class Scene {
       f32[i * perVertex + 1] = note.y
       f32[i * perVertex + 2] = note.r
       f32[i * perVertex + 3] = home ? home.r : 0
-      const [r, g, b] = rgba(home?.color ?? '#9a9aa8')
+      const [r, g, b] = rgba(home?.color ?? slotColor(-1))
       u8[i * POINT_STRIDE + 16] = r
       u8[i * POINT_STRIDE + 17] = g
       u8[i * POINT_STRIDE + 18] = b

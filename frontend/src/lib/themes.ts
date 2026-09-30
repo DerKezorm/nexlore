@@ -6,6 +6,8 @@
  * Own CSS (the account's snippets) goes into style elements of its own, one per snippet.
  */
 
+import { THEME_EVENT } from './theme'
+
 export const TOKENS = [
   'bg', 'bg-elev', 'surface', 'surface-hover', 'border', 'border-strong',
   'text', 'text-muted', 'text-faint', 'accent', 'on-accent', 'ok', 'warn', 'bad', 'ai',
@@ -100,6 +102,8 @@ function styleElement(id: string): HTMLStyleElement {
 /** The account's theme over the whole page; null: nexlore's own colours. */
 export function applyThemeColours(colours: Colours | null | undefined): void {
   styleElement('nexlore-theme').textContent = themeCss(colours)
+  // The map and the dots of folders work their colours out from the theme.
+  window.dispatchEvent(new Event(THEME_EVENT))
 }
 
 /** The selector for the notes of a space with a theme; the reference was checked by the server (t:12, plum). */

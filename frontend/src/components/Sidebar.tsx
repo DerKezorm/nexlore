@@ -27,6 +27,7 @@ import { useStore } from '../state/store'
 import { lookOf } from '../lib/looks'
 import { LookIcon } from './LookIcon'
 import { TagTree } from './TagTree'
+import { useThemeVersion } from '../lib/theme'
 import { Symbol, type SymbolName } from './Symbol'
 
 const ROW = 28
@@ -303,6 +304,8 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
   )
 
   // Every open folder that is not read yet.
+  // The dots take their colours from the theme: worked out again when it changes.
+  const themed = useThemeVersion()
   const rows = useMemo(() => {
     const out: Row[] = []
     const wanted: string[] = []
@@ -329,8 +332,8 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       if (!listing.folders.length && !listing.notes.length && listing.loaded >= listing.total) out.push({ kind: 'empty', path, depth: depth + 1 })
     }
     spaces.forEach((space, index) => walk(space.name, space.name, 0, space.notes, spaceColor(index), true))
-    return { out, wanted }
-  }, [spaces, listings, isOpen, looks, folderIcon])
+    return { out, wanted, themed }
+  }, [spaces, listings, isOpen, looks, folderIcon, themed])
 
   useEffect(() => {
     for (const path of rows.wanted) load(path)

@@ -5,6 +5,7 @@
  * overview is asked for again every two seconds; after that every thirty, to notice changes made elsewhere.
  */
 import { isLucide, useLucide } from '../lib/lucide'
+import { THEME_EVENT } from '../lib/theme'
 import type { Looks } from '../api/client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
@@ -57,6 +58,16 @@ export function useGraph(spaces: Space[], cloud: Cloud, generation: number, look
     scene.applyLooks(looks)
     setRevision((value) => value + 1)
   }, [scene, looks, lucide])
+
+  // Another theme: the colours nexlore works out follow it, the buffers are built again.
+  useEffect(() => {
+    const recolour = () => {
+      scene.recolour()
+      setRevision((value) => value + 1)
+    }
+    window.addEventListener(THEME_EVENT, recolour)
+    return () => window.removeEventListener(THEME_EVENT, recolour)
+  }, [scene])
 
   useEffect(() => {
     let alive = true
