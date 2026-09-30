@@ -62,8 +62,7 @@ export function Properties({ head, readOnly = false, onChange }: Props) {
     )
   }
 
-  if (!items.length && !open) return null
-
+  // Folded with no property in it the row stays: its arrow is the only way to open it again.
   return (
     <section className="nx-properties mb-5" aria-label={t('properties.title')}>
       <button

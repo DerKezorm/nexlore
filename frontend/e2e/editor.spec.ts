@@ -189,3 +189,16 @@ test('a conflict copy is compared, a part taken over, and the copy goes to the t
   await page.goto('/files')
   await expect(page.getByRole('listitem').filter({ hasText: /Writing\/Compare \(conflict/ })).toBeVisible()
 })
+
+test('the properties of a note without any fold shut and open again', async ({ page }) => {
+  await edit(page, 'Heath/Counted.md')
+  const properties = page.getByRole('region', { name: 'Properties' })
+  const toggle = properties.getByRole('button', { name: /^.?\s*Properties/ })
+  await expect(properties.getByRole('button', { name: /Add a property/ })).toBeVisible()
+  await toggle.click()
+  // Folded, the row stays: its arrow is the way back (it vanished once, with nothing to open it again).
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(properties.getByRole('button', { name: /Add a property/ })).toHaveCount(0)
+  await toggle.click()
+  await expect(properties.getByRole('button', { name: /Add a property/ })).toBeVisible()
+})
