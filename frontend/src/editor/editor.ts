@@ -198,6 +198,29 @@ function withoutLocalImages(slice: Slice): Slice {
   return new ProseSlice(strip(slice.content), slice.openStart, slice.openEnd)
 }
 
+/** An address alone on the clipboard (web or mail), as it would become a link; null for anything else. */
+export function pastedAddress(text: string): string | null {
+  const address = text.trim()
+  if (!address || /\s/.test(address)) return null
+  if (/^https?:\/\/[^/\s]+\.[^\s]*$/i.test(address) || /^https?:\/\/localhost(:\d+)?(\/\S*)?$/i.test(address)) return address
+  if (/^mailto:[^@\s]+@[^@\s]+$/i.test(address)) return address
+  return null
+}
+
+/**
+ * An address pasted onto chosen words makes them a link to it (in one block; across blocks it is pasted as text).
+ * The words stay, the selection with them, so another format can follow.
+ */
+function pasteOntoWords(view: EditorView, event: ClipboardEvent, slice: Slice): boolean {
+  const { from, to, empty, $from, $to } = view.state.selection
+  if (empty || !$from.sameParent($to) || $from.parent.type.spec.code) return false
+  const href = pastedAddress(event.clipboardData?.getData('text/plain') || slice.content.textBetween(0, slice.content.size, ' '))
+  if (!href) return false
+  const link = view.state.schema.marks.link
+  view.dispatch(view.state.tr.removeMark(from, to, link).addMark(from, to, link.create({ href })))
+  return true
+}
+
 /** What an upload puts into the note: the picture itself, or a link with the file's name. */
 function insertedNodes(schema: Schema, done: (Inserted | null)[]): ProseNode[] {
   const nodes: ProseNode[] = []
@@ -353,7 +376,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
                 for (const listener of listeners) listener()
               },
             }),
-            props: { transformPasted: withoutLocalImages },
+            props: { transformPasted: withoutLocalImages, handlePaste: (view, event, slice) => pasteOntoWords(view, event, slice) },
           }),
       ),
     )
