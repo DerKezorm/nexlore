@@ -54,6 +54,13 @@
   white-space: pre;
 }
 
+/* The bar over chosen words: Crepe draws its symbols in the colour of lines (1.6:1 on dark), as if switched off; the
+   colour of text makes them readable, the active one stays in the accent (review before 1.0.0, P3.10). */
+.nx-note-editor .milkdown .milkdown-toolbar .toolbar-item:not(.active) svg {
+  color: var(--color-mist-300);
+  fill: var(--color-mist-300);
+}
+
 /* Headings like the reading view. */
 .nx-note-editor .milkdown .ProseMirror h1 {
   font-size: 1.6rem;

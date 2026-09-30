@@ -121,3 +121,18 @@ describe('amounts of money are not a formula (P3.12)', () => {
     expect(open.text()).toBe('Es kostet 5 $ und 10 $ insgesamt, und $x^2$ ist eine Formel.\n')
   })
 })
+
+describe('several paragraphs made a list (P3.6)', () => {
+  for (const [command, expected] of [
+    ['bulletList', '- Eins\n- Zwei\n- Drei\n'],
+    ['orderedList', '1. Eins\n2. Zwei\n3. Drei\n'],
+    ['taskList', '- [ ] Eins\n- [ ] Zwei\n- [ ] Drei\n'],
+  ] as const) {
+    it(`${command}: one item for each paragraph`, async () => {
+      open = await openEditor('Eins\n\nZwei\n\nDrei\n')
+      open.view.dispatch(open.view.state.tr.setSelection(TextSelection.create(open.view.state.doc, 1, open.view.state.doc.content.size - 1)))
+      open.run(command)
+      expect(open.text()).toBe(expected)
+    })
+  }
+})

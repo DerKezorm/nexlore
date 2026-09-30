@@ -224,9 +224,9 @@ test('while writing, chosen words are commented from the button or the menu, and
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(page.locator('.ProseMirror')).toBeFocused({ timeout: 15_000 })
   const panel = page.getByTestId('note-panel')
-  // The button beside the chosen words.
+  // The button in the bar over the chosen words (below them it covered the next line).
   await chooseInEditor(page, 'purple bells')
-  await page.getByTestId('comment-here').click()
+  await page.locator('.milkdown-toolbar').getByRole('button', { name: 'Comment', exact: true }).dispatchEvent('pointerdown')
   await expect(panel.getByRole('tab', { name: /Comments/ })).toHaveAttribute('aria-selected', 'true')
   const box = panel.getByRole('textbox', { name: 'New comment' })
   await expect(panel.getByTestId('comments')).toContainText('purple bells')

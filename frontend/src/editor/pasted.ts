@@ -63,6 +63,9 @@ function wordLists(doc: Document): void {
       const ordered = ORDERED.test(marker?.textContent ?? '')
       marker?.remove()
       while (stack.length && stack[stack.length - 1].level > level) stack.pop()
+      // A bulleted list right before a numbered one (or the other way round) at the same level: two lists.
+      const kind = ordered ? 'OL' : 'UL'
+      if (stack.length && stack[stack.length - 1].level === level && stack[stack.length - 1].list.tagName !== kind) stack.pop()
       if (!stack.length || stack[stack.length - 1].level < level) {
         const list = doc.createElement(ordered ? 'ol' : 'ul')
         const parent = stack.length ? stack[stack.length - 1].list.lastElementChild ?? stack[stack.length - 1].list : root
@@ -97,6 +100,8 @@ export function cleanPastedHtml(html: string): string {
   if (!fromOutside) return html
   const doc = new DOMParser().parseFromString(html, 'text/html')
   if (/mso-list/i.test(html)) wordLists(doc)
+  // Outlook writes real list items and keeps its own bullet inside them, marked `mso-list:Ignore`: it goes.
+  for (const marker of doc.querySelectorAll('li span[style*="mso-list:ignore" i], li span[style*="mso-list: ignore" i]')) marker.remove()
   if (/<pre/i.test(html)) codeLanguages(doc)
   return doc.body.innerHTML
 }

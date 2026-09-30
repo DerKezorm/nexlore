@@ -55,6 +55,7 @@ import { Fragment, Slice as ProseSlice } from '@milkdown/kit/prose/model'
 import { AllSelection, Plugin, TextSelection } from '@milkdown/kit/prose/state'
 import { liftListItem, sinkListItem } from '@milkdown/kit/prose/schema-list'
 import { deleteColumn, deleteRow, deleteTable } from '@milkdown/kit/prose/tables'
+import { wrapInList } from '@milkdown/kit/prose/schema-list'
 import type { EditorView } from '@milkdown/kit/prose/view'
 import { $prose, callCommand } from '@milkdown/kit/utils'
 import type { Root, RootContent } from 'mdast'
@@ -121,7 +122,13 @@ export type FileHelpers = {
   upload: (files: File[]) => Promise<(Inserted | null)[]>
 }
 
+/** A speech bubble with a pen, drawn like Crepe's own symbols (24 by 24, filled with the text colour). */
+const COMMENT_ICON =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2v10h2v2l2.5-2H20V6zm3 7.5 5.6-5.6 2 2L9 15.5H7z"/></svg>'
+
 export type EditorOptions = {
+  /** "Comment" in the bar over chosen words; without it the bar has no such button. */
+  comment?: { label: string; run: () => void }
   root: HTMLElement
   /** The note's body (without front matter) as it is on disk. */
   original: string
@@ -291,6 +298,31 @@ export function insertFiles(view: EditorView, nodes: ProseNode[]): void {
   view.dispatch(view.state.tr.replaceSelection(new ProseSlice(Fragment.fromArray(nodes), 0, 0)).scrollIntoView())
 }
 
+/**
+ * The chosen paragraphs as a list, one item each (`wrapInList` splits the range; `task`: every new item a task). False
+ * when the selection is not a run of paragraphs outside a list: Milkdown's own command takes over then.
+ */
+function listEach(view: EditorView, listType: 'bullet_list' | 'ordered_list', task = false): boolean {
+  const { state } = view
+  const { $from, $to } = state.selection
+  const range = $from.blockRange($to)
+  if (!range || range.parent.type.name === 'list_item' || range.endIndex - range.startIndex < 2) return false
+  for (let index = range.startIndex; index < range.endIndex; index++) if (range.parent.child(index).type.name !== 'paragraph') return false
+  let done = false
+  wrapInList(state.schema.nodes[listType])(state, (tr) => {
+    if (task) {
+      const from = tr.mapping.map(range.start)
+      const to = tr.mapping.map(range.end, 1)
+      tr.doc.nodesBetween(from, to, (node, pos) => {
+        if (node.type.name === 'list_item') tr.setNodeMarkup(pos, undefined, { ...node.attrs, checked: false })
+      })
+    }
+    view.dispatch(tr.scrollIntoView())
+    done = true
+  })
+  return done
+}
+
 /** A file picker, for the menu items: the files chosen, or none; `accept` narrows what may be chosen. */
 function pickFiles(accept?: string): Promise<File[]> {
   return new Promise((resolve) => {
@@ -322,6 +354,20 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
       [CrepeFeature.AI]: false,
     },
     featureConfigs: {
+      // "Comment" in the bar over chosen words, after Crepe's own buttons. It stood below the words before and covered
+      // the next line (review before 1.0.0, P3.11).
+      [CrepeFeature.Toolbar]: options.comment
+        ? {
+            buildToolbar: (builder) => {
+              builder.addGroup('nx-comment', options.comment!.label).addItem('comment', {
+                icon: COMMENT_ICON,
+                label: options.comment!.label,
+                active: () => false,
+                onRun: () => options.comment!.run(),
+              })
+            },
+          }
+        : undefined,
       [CrepeFeature.Placeholder]: { text: labels.placeholder, mode: 'doc' },
       [CrepeFeature.LinkTooltip]: { inputPlaceholder: labels.link },
       [CrepeFeature.CodeMirror]: {
@@ -779,12 +825,16 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
         return call(wrapInHeadingCommand.key, Number(command[1]))
       case 'quote':
         return call(wrapInBlockquoteCommand.key)
+      // Several paragraphs chosen: one list item each, as Word and Notion do (Milkdown's own made one item of all).
       case 'bulletList':
-        return call(wrapInBulletListCommand.key)
+        return listEach(view, 'bullet_list') || call(wrapInBulletListCommand.key)
       case 'orderedList':
-        return call(wrapInOrderedListCommand.key)
+        return listEach(view, 'ordered_list') || call(wrapInOrderedListCommand.key)
       case 'taskList':
-        return crepe.editor.action((ctx) => callCommand(wrapInBlockTypeCommand.key, { nodeType: listItemSchema.type(ctx), attrs: { checked: false } })(ctx))
+        return (
+          listEach(view, 'bullet_list', true) ||
+          crepe.editor.action((ctx) => callCommand(wrapInBlockTypeCommand.key, { nodeType: listItemSchema.type(ctx), attrs: { checked: false } })(ctx))
+        )
       case 'codeBlock':
         return call(createCodeBlockCommand.key)
       case 'callout': {

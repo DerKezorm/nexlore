@@ -39,7 +39,6 @@ import type { Thread } from '../api/client'
 import { CommentPeek } from './CommentPeek'
 import { ImageViewer } from './ImageViewer'
 import { picturesIn, type Picture } from '../lib/pictures'
-import { Symbol } from './Symbol'
 import { AiDialog } from './AiDialog'
 import { EditorToolbar, ShowToolbar } from './EditorToolbar'
 import { FindBar } from './FindBar'
@@ -172,8 +171,8 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   const [finding, setFinding] = useState<{ field: 'find' | 'replace'; seed: string | null; ask: number } | null>(null)
   const [replacing, setReplacing] = useState(false)
 
-  const latest = useRef({ onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed })
-  latest.current = { onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed }
+  const latest = useRef({ onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed, comment: () => undefined as void })
+  latest.current = { onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed, comment: () => comment() }
   const linksRef = useRef(links)
   linksRef.current = links
   useEffect(() => {
@@ -273,6 +272,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       onChange: () => latest.current.onChange(),
       files: readOnly ? undefined : files,
       onFileRefused: () => latest.current.onFileRefused?.(),
+      comment: onComment && !readOnly ? { label: t('comments.here'), run: () => latest.current.comment() } : undefined,
       linkTitle: (url) => (titles.current ? linkTitleApi.title(url).then((found) => found.title, () => null) : null),
       folds: {
         keys: () => readFolds(path),
@@ -357,29 +357,6 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     const anchor = commentAnchor()
     if (anchor) onComment?.(anchor)
   }
-  // Words chosen while writing: the "Comment" button beside their end, as in the reading view.
-  const [commentAt, setCommentAt] = useState<{ x: number; y: number } | null>(null)
-  useEffect(() => {
-    if (!ready || !onComment) return
-    let frame = 0
-    const update = () => {
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const { selection } = ready.view.state
-        if (selection.empty || !ready.view.hasFocus() || !ready.view.state.doc.textBetween(selection.from, selection.to, ' ').trim()) return setCommentAt(null)
-        const end = ready.view.coordsAtPos(selection.to)
-        setCommentAt({ x: Math.min(end.left, window.innerWidth - 140), y: end.bottom + 6 })
-      })
-    }
-    const stop = ready.subscribe(update)
-    const blur = () => setCommentAt(null)
-    ready.view.dom.addEventListener('blur', blur)
-    return () => {
-      stop()
-      cancelAnimationFrame(frame)
-      ready.view.dom.removeEventListener('blur', blur)
-    }
-  }, [ready, onComment])
 
   // A picture opened over the page: a double click on it (one click chooses it for editing), or the menu.
   const [viewing, setViewing] = useState<{ pictures: Picture[]; start: number } | null>(null)
@@ -714,22 +691,6 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         <ImageViewer pictures={viewing.pictures} start={viewing.start} archive={baseName(path).replace(/\.md$/i, '')} onClose={() => setViewing(null)} />
       )}
       {onShowThread && <CommentPeek state={peekState} onShowThread={onShowThread} />}
-      {commentAt && (
-        <button
-          type="button"
-          data-testid="comment-here"
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => {
-            comment()
-            setCommentAt(null)
-          }}
-          style={{ left: commentAt.x, top: commentAt.y }}
-          className="fixed z-30 inline-flex items-center gap-1.5 rounded-full border border-accent-500/60 bg-ink-900 px-3 py-1 text-xs font-semibold text-accent-300 shadow-lg hover:bg-ink-850"
-        >
-          <Symbol name="pencil" className="h-3.5 w-3.5" />
-          {t('comments.here')}
-        </button>
-      )}
       {aiAsk && ready && (
         <AiDialog engine={ready} ask={aiAsk} notePath={path} onClose={() => setAiAsk(null)} onNotice={(text) => onNotice?.(text)} />
       )}

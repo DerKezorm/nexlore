@@ -72,3 +72,12 @@ it('pastes words copied inside the editor as words, even out of a list item', as
   pasteHtml(view, copied.getData('text/html'), copied.getData('text/plain'))
   expect(open.text()).toBe('Start.copied words\n\n- copied words here\n')
 })
+
+it('keeps a bulleted list right before a numbered one two lists, and drops Outlook own bullet (review P3.13)', async () => {
+  const word =
+    '<p class=MsoListParagraphCxSpFirst style="mso-list:l0 level1 lfo1"><span style="font-family:Symbol">·<span>&nbsp;&nbsp;</span></span>Bullet A<o:p></o:p></p>' +
+    '<p class=MsoListParagraphCxSpLast style="mso-list:l1 level1 lfo2"><span>1.<span>&nbsp;&nbsp;</span></span>Nummer A<o:p></o:p></p>'
+  expect(await pastedAtEnd(word)).toBe('Start.\n\n- Bullet A\n\n1. Nummer A\n')
+  const outlook = '<ul><li class=MsoListParagraph><span style="mso-list:Ignore">•<span>&nbsp;&nbsp;</span></span>Punkt</li></ul>'
+  expect(await pastedAtEnd(outlook)).toBe('Start.\n\n- Punkt\n')
+})
