@@ -52,6 +52,8 @@ def people(client: TestClient, account: object, vault: Path) -> dict[str, TestCl
 
 def open_feeds(operator: TestClient) -> None:
     assert operator.put("/api/settings", json={"calendar_feed_allowed": True}).status_code == 200
+    # The switch says so when read again (its field was once missing from the answer, and it always showed off).
+    assert operator.get("/api/settings").json()["calendar_feed_allowed"] is True
 
 
 def test_the_feed_is_closed_until_the_operator_opens_it(people: dict[str, TestClient]) -> None:

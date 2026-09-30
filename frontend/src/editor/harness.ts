@@ -6,7 +6,7 @@ import type { MilkdownPlugin } from '@milkdown/kit/ctx'
 import { TextSelection } from '@milkdown/kit/prose/state'
 import type { EditorView } from '@milkdown/kit/prose/view'
 
-import { createEditor, type EditorLabels, type NoteEditor } from './editor'
+import { createEditor, type EditorLabels, type EditorOptions, type NoteEditor } from './editor'
 import { splitNote } from './frontmatter'
 import type { LinkHelpers } from './live'
 
@@ -28,7 +28,7 @@ export const LABELS: EditorLabels = {
 
 export async function openEditor(
   original: string,
-  extra: { links?: Partial<LinkHelpers>; titles?: string[]; onChange?: () => void; plugins?: MilkdownPlugin[] } = {},
+  extra: { links?: Partial<LinkHelpers>; titles?: string[]; onChange?: () => void; plugins?: MilkdownPlugin[]; linkTitle?: EditorOptions['linkTitle'] } = {},
 ): Promise<NoteEditor & { root: HTMLElement; close: () => Promise<void> }> {
   const root = document.createElement('div')
   document.body.appendChild(root)
@@ -44,6 +44,7 @@ export async function openEditor(
       titles.filter((title) => title.toLowerCase().includes(query.toLowerCase())).map((title) => ({ label: title, detail: '', insert: title })),
     onChange: extra.onChange ?? (() => undefined),
     plugins: extra.plugins,
+    linkTitle: extra.linkTitle,
   })
   const text = editor.text
   const markdown = editor.markdown

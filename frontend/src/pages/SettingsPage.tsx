@@ -30,6 +30,7 @@ import { SnippetsCard } from '../components/settings/SnippetsCard'
 import { ThemesCard } from '../components/settings/ThemesCard'
 import { SpacesCard } from '../components/settings/SpacesCard'
 import { CalendarFeedSwitch } from '../components/settings/CalendarFeed'
+import { LinkTitleSwitch } from '../components/settings/LinkTitleSwitch'
 import { LogCard } from '../components/settings/LogCard'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { TabRow, type Tab } from '../components/TabRow'
@@ -109,6 +110,7 @@ function ServerPart({ part }: { part: Part }) {
           <>
             <McpCard settings={settings} onChange={setSettings} />
             <CalendarFeedSwitch settings={settings} onChange={setSettings} />
+            <LinkTitleSwitch settings={settings} onChange={setSettings} />
             <AiCard settings={settings} onChange={setSettings} />
             <CssCard settings={settings} onChange={setSettings} />
             <AdminPluginsCard settings={settings} onChange={setSettings} />

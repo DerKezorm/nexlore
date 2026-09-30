@@ -99,6 +99,12 @@
     "keepSearch": "Diese Suche in den Favoriten merken",
     "forgetSearch": "Diese Suche aus den Favoriten nehmen"
   },
+  "linkTitles": {
+    "title": "Titel eingefügter Links",
+    "text": "Eine in eine Notiz eingefügte Webadresse bekommt den Titel der Seite als Linktext. Der Server fragt die Seite danach, die Seite erfährt so, dass jemand auf diesem Server ihre Adresse eingefügt hat.",
+    "allow": "Seiten nach ihrem Titel fragen",
+    "hint": "Nur öffentliche Adressen; das eigene Netz des Servers wird nie gefragt."
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Bereiche",

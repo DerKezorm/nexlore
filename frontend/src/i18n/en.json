@@ -99,6 +99,12 @@
     "keepSearch": "Keep this search in the favorites",
     "forgetSearch": "Remove this search from the favorites"
   },
+  "linkTitles": {
+    "title": "Titles of pasted links",
+    "text": "A web address pasted into a note gets the page's title as its words. The server asks the page for it, and so the page learns that someone at this server pasted its address.",
+    "allow": "Ask pages for their titles",
+    "hint": "Only public addresses; the server's own network is never asked."
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Spaces",

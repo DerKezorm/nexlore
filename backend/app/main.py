@@ -29,6 +29,7 @@ from .routers import comments as comments_router
 from .routers import favorites as favorites_router
 from .routers import feed as feed_router
 from .routers import inbox as inbox_router
+from .routers import linktitle as linktitle_router
 from .routers import locales as locales_router
 from .routers import logs as logs_router
 from .routers import looks as looks_router
@@ -52,7 +53,7 @@ ROUTERS = [
     attachments, imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router, looks_router,
     ai_router, favorites_router, avatars_router, recent_router, themes_router, search_router, news_router,
     proposals_router, bases_router, cleanup_router, inbox_router, feed_router, comments_router,
-    presence_router,
+    presence_router, linktitle_router,
 ]
 
 

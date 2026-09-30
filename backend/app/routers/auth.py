@@ -232,6 +232,8 @@ def me(account: Account, db: DbSession) -> dict[str, Any]:
         "second_factor_setup_required": totp.setup_required(db, account),
         # The editor offers AI only when the operator allows it and the account switched its own service on.
         "ai_ready": ai.ready(db, account),
+        # Pasted links get the page's title when the operator allows asking the pages (services/linktitle).
+        "link_titles": bool(settings_service.get(db, "link_titles_allowed")),
         "appearance": appearance.of(account.appearance),
         # The colours of the chosen theme (None: nexlore's own, or one no longer there) and the own CSS in force.
         "theme_colours": theme_routes.colours_of(db, account, appearance.of(account.appearance)["theme"]),

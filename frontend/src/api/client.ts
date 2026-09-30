@@ -432,6 +432,8 @@ export type Me = Account & {
   second_factor_setup_required: boolean
   /** The editor offers AI: the operator allows it and the account switched its own service on. */
   ai_ready?: boolean
+  /** Pasted links get the page's title (the operator allows asking the pages). */
+  link_titles?: boolean
   appearance?: Appearance
   /** The colours of the chosen theme; null: nexlore's own. */
   theme_colours?: Colours | null
@@ -532,6 +534,7 @@ export type ServerSettings = {
   ai_allowed: boolean
   custom_css_allowed: boolean
   calendar_feed_allowed: boolean
+  link_titles_allowed: boolean
 }
 export type ServerSettingsChange = Partial<Omit<ServerSettings, 'smtp_password_set'>> & { smtp_password?: string }
 export type FileSettings = { attachment_folder: string; upload_max_mb: number; quota_mb: number; strip_location: boolean }
@@ -568,6 +571,10 @@ export type AddedLanguage = { code: string; name: string; keys: number }
 
 /** A note, folder or file by its path; a heading (`Note.md#Heading`, `note` is the note); a search (`?words`). */
 export type Favorite = { path: string; kind: 'note' | 'folder' | 'file' | 'heading' | 'search'; title: string; note?: string; section: string }
+
+export const linkTitleApi = {
+  title: (url: string) => api<{ title: string | null }>('/api/link-title', { query: { url } }),
+}
 
 export const favoritesApi = {
   list: () => api<Favorite[]>('/api/favorites'),

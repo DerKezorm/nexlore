@@ -44,7 +44,7 @@ import {
   toggleStrikethroughCommand,
 } from '@milkdown/kit/preset/gfm'
 import { redo, redoDepth, undo, undoDepth } from '@milkdown/kit/prose/history'
-import type { Node as ProseNode, Schema, Slice } from '@milkdown/kit/prose/model'
+import type { Mark, Node as ProseNode, Schema, Slice } from '@milkdown/kit/prose/model'
 import { Fragment, Slice as ProseSlice } from '@milkdown/kit/prose/model'
 import { AllSelection, Plugin, TextSelection } from '@milkdown/kit/prose/state'
 import { liftListItem, sinkListItem } from '@milkdown/kit/prose/schema-list'
@@ -127,6 +127,8 @@ export type EditorOptions = {
   /** Uploading and showing files; without it a pasted or dropped file is refused (`onFileRefused`). */
   files?: FileHelpers
   onFileRefused?: () => void
+  /** The title of a pasted web address, for its link's words; null at once when titles are not asked for. */
+  linkTitle?: (url: string) => Promise<string | null> | null
   /** For tests: more Milkdown plugins, after nexlore's own. */
   plugins?: MilkdownPlugin[]
 }
@@ -219,13 +221,43 @@ export function pastedAddress(text: string): string | null {
  * An address pasted onto chosen words makes them a link to it (in one block; across blocks it is pasted as text).
  * The words stay, the selection with them, so another format can follow.
  */
-function pasteOntoWords(view: EditorView, event: ClipboardEvent, slice: Slice): boolean {
+function pasteOntoWords(view: EditorView, pasted: string): boolean {
   const { from, to, empty, $from, $to } = view.state.selection
   if (empty || !$from.sameParent($to) || $from.parent.type.spec.code) return false
-  const href = pastedAddress(event.clipboardData?.getData('text/plain') || slice.content.textBetween(0, slice.content.size, ' '))
+  const href = pastedAddress(pasted)
   if (!href) return false
   const link = view.state.schema.marks.link
   view.dispatch(view.state.tr.removeMark(from, to, link).addMark(from, to, link.create({ href })))
+  return true
+}
+
+/**
+ * A web address pasted where nothing is chosen, while titles are asked for: it goes in as a link to itself, and its
+ * words become the page's title once that comes (if the link is still there as it was pasted).
+ */
+function pasteTitled(view: EditorView, pasted: string, linkTitle?: EditorOptions['linkTitle']): boolean {
+  const { empty, $from } = view.state.selection
+  if (!linkTitle || !empty || $from.parent.type.spec.code) return false
+  const href = pastedAddress(pasted)
+  if (!href || !/^https?:/i.test(href)) return false
+  const asked = linkTitle(href)
+  if (!asked) return false
+  const link = view.state.schema.marks.link
+  view.dispatch(view.state.tr.replaceSelectionWith(view.state.schema.text(href, [link.create({ href })]), false).scrollIntoView())
+  void asked.then((title) => {
+    if (!title || view.isDestroyed) return
+    let at = -1
+    let marks: readonly Mark[] = []
+    view.state.doc.descendants((node, pos) => {
+      if (at >= 0) return false
+      if (node.isText && node.text === href && node.marks.some((mark) => mark.type === link && mark.attrs.href === href)) {
+        at = pos
+        marks = node.marks
+      }
+      return true
+    })
+    if (at >= 0) view.dispatch(view.state.tr.replaceWith(at, at + href.length, view.state.schema.text(title, marks)))
+  })
   return true
 }
 
@@ -399,7 +431,19 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
                 for (const listener of listeners) listener()
               },
             }),
-            props: { transformPasted: withoutLocalImages, handlePaste: (view, event, slice) => pasteOntoWords(view, event, slice) },
+            props: {
+              transformPasted: withoutLocalImages,
+              handleDOMEvents: {
+                // On the event itself, before Milkdown's own paste: that one takes an address as Markdown and puts
+                // it in place of the chosen words (a handlePaste here never came to be asked).
+                paste: (view, event) => {
+                  const pasted = event.clipboardData?.getData('text/plain') ?? ''
+                  if (!pasteOntoWords(view, pasted) && !pasteTitled(view, pasted, options.linkTitle)) return false
+                  event.preventDefault()
+                  return true
+                },
+              },
+            },
           }),
       ),
     )

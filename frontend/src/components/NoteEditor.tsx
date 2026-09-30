@@ -16,7 +16,7 @@ import { useTranslation } from 'react-i18next'
 import '@milkdown/crepe/theme/common/style.css'
 import '../styles/editor.css'
 
-import { ApiError, fileUrl, uploadFile, vaultApi, type Uploaded } from '../api/client'
+import { ApiError, fileUrl, linkTitleApi, uploadFile, vaultApi, type Uploaded } from '../api/client'
 import { createEditor, type EditorCommand, type EditorLabels, type FileHelpers, type NoteEditor as Engine } from '../editor/editor'
 import { splitNote } from '../editor/frontmatter'
 import type { LinkHelpers } from '../editor/live'
@@ -91,6 +91,11 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   const [lines, setLines] = useState(linesShown)
   // AI in the editor: only when the operator allows it and the account switched its own service on.
   const { me } = useAuth()
+  // Titles of pasted links, when the operator allows asking the pages (read when a link is pasted).
+  const titles = useRef(false)
+  useEffect(() => {
+    titles.current = !!me?.link_titles
+  }, [me?.link_titles])
   const aiReady = !!me?.ai_ready && !readOnly
   const [aiAsk, setAiAsk] = useState<AiAsk | null>(null)
   // Files that wiki links name, as the server resolves them: vault path, or null when there is none.
@@ -209,6 +214,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       onChange: () => latest.current.onChange(),
       files: readOnly ? undefined : files,
       onFileRefused: () => latest.current.onFileRefused?.(),
+      linkTitle: (url) => (titles.current ? linkTitleApi.title(url).then((found) => found.title, () => null) : null),
     })
       .then((editor) => {
         if (!alive) return void editor.destroy()
