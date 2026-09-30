@@ -69,6 +69,7 @@ import { livePreview, refreshLive, type LinkHelpers } from './live'
 import { blockPreviews } from './previews'
 import { imageSource, obsidian, replaced, writerOptions } from './obsidian'
 import { dollarText } from './dollars'
+import { describeSlashMenu } from './slashAria'
 import { forcedRaw, holdRaw, keepsLetters, releaseRaw } from './syntax'
 import { detectStyle } from './style'
 import { linkSuggest, refreshSuggest, type Suggestion } from './suggest'
@@ -567,6 +568,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
   await crepe.editor.remove([remarkInlineLinkPlugin, remarkPreserveEmptyLinePlugin, ...replaced].flat())
   await crepe.create()
   crepe.setReadonly(!!options.readOnly)
+  const stopSlashAria = describeSlashMenu(options.root, crepe.editor.ctx.get(editorViewCtx).dom, labels.slash.groupText)
   // The "+" and the eight dots beside a block: a tooltip each, and a name for screen readers. Crepe draws them a
   // moment after the editor is there, so they are named when they come.
   const nameHandle = () => {
@@ -895,6 +897,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     },
     destroy: async () => {
       handleWatch.disconnect()
+      stopSlashAria()
       for (const key of forcedKeys) releaseRaw(key)
       await crepe.destroy()
     },

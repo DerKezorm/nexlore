@@ -93,3 +93,23 @@ test('the slash menu lies above the toolbar, every part of it reachable (review 
   expect(covered).toBe(0)
   await page.keyboard.press('Escape')
 })
+
+test('the slash menu is a listbox for screen readers, its chosen entry named (review P3.22)', async ({ page }) => {
+  const made = await page.request.post('/api/notes', { data: { folder: 'Heath', title: 'Slash aria', content: 'First line.\n' }, headers: TAB })
+  expect(made.status()).toBe(201)
+  const path = (await made.json()).path as string
+  await page.goto('/note/' + path.split('/').map(encodeURIComponent).join('/'))
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  const editor = page.locator('.ProseMirror')
+  await editor.getByText('First line.').click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('/')
+  await expect(page.getByRole('listbox', { name: 'Text' })).toBeVisible()
+  await expect(editor).toHaveAttribute('aria-expanded', 'true')
+  const active = await editor.getAttribute('aria-activedescendant')
+  expect(active).toBeTruthy()
+  await expect(page.locator(`#${active}`)).toHaveAttribute('aria-selected', 'true')
+  await page.keyboard.press('Escape')
+  await expect(editor).toHaveAttribute('aria-expanded', 'false')
+})
