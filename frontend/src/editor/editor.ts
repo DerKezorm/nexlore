@@ -12,6 +12,7 @@
  * ordinary relative Markdown link; pictures show through the server (`imageSource`).
  */
 import { foldPlugin, type FoldStore } from './folds'
+import { cleanPastedHtml, keepFirstBlock } from './pasted'
 import { byUse, noteSlashUse } from './slashUse'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { editorViewCtx, parserCtx, remarkCtx, serializerCtx } from '@milkdown/kit/core'
@@ -435,7 +436,8 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
               },
             }),
             props: {
-              transformPasted: withoutLocalImages,
+              transformPastedHTML: cleanPastedHtml,
+              transformPasted: (slice: Slice) => keepFirstBlock(withoutLocalImages(slice)),
               handleDOMEvents: {
                 // On the event itself, before Milkdown's own paste: that one takes an address as Markdown and puts
                 // it in place of the chosen words (a handlePaste here never came to be asked).
