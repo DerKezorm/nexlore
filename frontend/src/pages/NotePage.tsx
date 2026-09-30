@@ -1169,7 +1169,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
               </div>
               <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-mist-500">
                 <span>{t('note.changed', { when: formatDate(note.modified) })}</span>
-                {note.tags.map((tag) => (
+                {/* While reading, tags in the front matter stand in the properties box below, not twice. */}
+                {(editing || !/^tags\s*:/im.test(readingHead) ? note.tags : []).map((tag) => (
                   <span key={tag} className="rounded-full bg-accent-500/10 px-2 py-0.5 text-accent-400">#{tag}</span>
                 ))}
               </div>
