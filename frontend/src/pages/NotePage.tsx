@@ -23,6 +23,7 @@ import { Symbol, type SymbolName } from '../components/Symbol'
 import { NotePanel, type PanelPart } from '../components/NotePanel'
 import { ImageViewer } from '../components/ImageViewer'
 import { Presence } from '../components/Presence'
+import { WordCount } from '../components/WordCount'
 import { usePresence } from '../lib/presence'
 import { picturesIn, type Picture } from '../lib/pictures'
 import { Comments } from '../components/Comments'
@@ -203,6 +204,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   // editor (its text, its lock, its save) can ever run against the new path.
   const [editingPath, setEditingPath] = useState<string | null>(null)
   const editing = editingPath === path
+  // The note's text as shown, for the word count under it.
+  const body = useRef<HTMLDivElement>(null)
   // Who else has the note open (the left note only: the right one is a look aside).
   const present = usePresence(side === 'left' && path && !leaving ? path : null, editing)
   const [mode, setMode] = useState<EditorMode>('visual')
@@ -1084,7 +1087,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
           {/* Body */}
           <div ref={scroller} className="nn-scroll min-h-0 flex-1 overflow-y-auto">
             {/* Room on the left for the editor's grip beside each block (reading keeps the same place, so nothing jumps). */}
-            <div className={'mx-auto px-6 py-6 md:pl-16 ' + cssClasses.join(' ')} style={{ maxWidth: cssClasses.includes('wide') ? 'none' : 'calc(var(--nn-width) + 5.5rem)' }} data-testid="note-body">
+            <div ref={body} className={'mx-auto px-6 py-6 md:pl-16 ' + cssClasses.join(' ')} style={{ maxWidth: cssClasses.includes('wide') ? 'none' : 'calc(var(--nn-width) + 5.5rem)' }} data-testid="note-body">
               {/* The name of the file, large above the text as in Obsidian: a click (or F2) renames it. */}
               <div className="mb-1 -ml-1.5" data-testid="note-title">
                 {renaming !== null ? (
@@ -1210,6 +1213,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
               )}
             </div>
           </div>
+          <WordCount body={body} content={editing ? '.ProseMirror' : 'article.nn-prose'} />
         </div>
 
         {panelShown && (

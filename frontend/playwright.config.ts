@@ -102,6 +102,8 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   // Only presence.spec opens these: another test's tab may still count as there for 70 seconds.
   'Heath/Present here.md': '# Present here\n',
   'Heath/Present there.md': '# Present there\n',
+  'Heath/Counted.md': '# Counted\n\nFive words stand here now.\n',
+  'Heath/Counted embed.md': '# Counted embed\n\nTwo words.\n\n![[Heath/Counted]]\n',
   'Heath/Dates.md':`- [ ] Cut the heather 📅 ${day(3)}\n`,
   // AI in notes against the stand-in service (ai.spec.ts).
   'Zoo/Ai.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',

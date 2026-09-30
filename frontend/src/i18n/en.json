@@ -78,6 +78,13 @@
     "browser": "The browser keeps these keys for itself.",
     "taken": "nexlore already uses these keys."
   },
+  "wordcount": {
+    "words_one": "{{n}} word",
+    "words_other": "{{n}} words",
+    "chars_one": "{{n}} character",
+    "chars_other": "{{n}} characters",
+    "chosen": "Selected: {{what}}"
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Spaces",

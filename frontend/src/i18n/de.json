@@ -78,6 +78,13 @@
     "browser": "Diese Tasten behält der Browser für sich.",
     "taken": "Diese Tasten nutzt nexlore schon."
   },
+  "wordcount": {
+    "words_one": "{{n}} Wort",
+    "words_other": "{{n}} Wörter",
+    "chars_one": "{{n}} Zeichen",
+    "chars_other": "{{n}} Zeichen",
+    "chosen": "Ausgewählt: {{what}}"
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Bereiche",
