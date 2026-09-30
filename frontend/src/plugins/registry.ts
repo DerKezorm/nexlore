@@ -64,3 +64,8 @@ export function viewFor(plugins: PluginInfo[], note: NoteData): PluginInfo | nul
   if (!front) return null
   return plugins.find((plugin) => plugin.place.view && plugin.place.view.frontmatter in front) ?? null
 }
+
+/** A note's path in the vault: ends in .md, no scheme (javascript:, https:), not absolute, at most 1024 characters. */
+export function isNotePath(path: string): boolean {
+  return path.length <= 1024 && /\.md$/i.test(path) && !/^[a-z][a-z0-9+.-]*:/i.test(path) && !path.startsWith('/')
+}

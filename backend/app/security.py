@@ -127,12 +127,14 @@ class Brake:
         self._lock = threading.Lock()
         self._fails: dict[str, tuple[int, float]] = {}
 
-    def wait_seconds(self, key: str) -> int:
+    def wait_seconds(self, key: str, free: int | None = None) -> int:
+        """Seconds to wait; ``free`` wrong tries pass without (``FREE`` when not given)."""
+        free = self.FREE if free is None else free
         with self._lock:
             count, last = self._fails.get(key, (0, 0.0))
-        if count < self.FREE:
+        if count < free:
             return 0
-        wait = min(self.MAX_WAIT, 2 ** (count - self.FREE) * 5)
+        wait = min(self.MAX_WAIT, 2 ** (count - free) * 5)
         remaining = last + wait - time.monotonic()
         return max(0, int(remaining + 0.999))
 

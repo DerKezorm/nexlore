@@ -696,8 +696,12 @@
       "ai_text_empty": "There is no text.",
       "ai_text_too_short": "Too few words to work on.",
       "ai_text_too_long": "Too much text at once: select a part.",
-      "ai_too_often": "Too many requests in a minute. Wait a moment."
-    }
+      "ai_too_often": "Too many requests in a minute. Wait a moment.",
+      "share_password_short": "The password needs at least {{min}} characters.",
+      "provider_first": "Set up a sign-in provider first, or nobody but you could sign in."
+    },
+    "waitMinutes_one": "Too many attempts. Try again in a minute.",
+    "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
   },
   "files": {
     "title": "Files",
@@ -995,7 +999,7 @@
     "ends": "Ends",
     "noEnd": "no end",
     "password": "Password (optional)",
-    "passwordHint": "Readers have to give it once.",
+    "passwordHint": "Readers have to give it once. At least 8 characters.",
     "create": "Create public link",
     "withPassword": "with password",
     "open": "Open",

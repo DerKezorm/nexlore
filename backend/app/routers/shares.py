@@ -31,6 +31,11 @@ logger = logging.getLogger("nexlore.shares")
 
 router = APIRouter(prefix="/api", tags=["shares"])
 
+#: Wrong passwords for one public page from all senders together before anybody waits (per sender: ``Brake.FREE``).
+SHARE_FREE_IN_ALL = 30
+#: A password on a public page: at least this long (the page may be public for months).
+SHARE_MIN_PASSWORD = 8
+
 Token = Annotated[str, PathParam(min_length=20, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")]
 
 
@@ -70,6 +75,9 @@ def create(payload: ShareIn, request: Request, account: Account, db: DbSession) 
     if not shares.allowed(db):
         raise error("shares_off", "Public pages are turned off on this server.", 403)
     clean = need(account, payload.path, MANAGE)
+    if payload.password and len(payload.password.strip()) < SHARE_MIN_PASSWORD:
+        raise error("share_password_short", "The password needs at least 8 characters.", 422,
+                    min=SHARE_MIN_PASSWORD)
     space = rights.space_named(db, paths.space_of(clean))
     if space is None:
         raise error("not_found", "No such file.", 404)
@@ -161,9 +169,10 @@ def unlock(token: Token, payload: UnlockIn, request: Request, response: Response
     if not share.password_hash:
         return
     # Counted per share: per sender and in all, so neither many addresses nor a right password for another share
-    # (which anybody with a space can make) take the brake off this one.
+    # (which anybody with a space can make) take the brake off this one. The count in all starts late: one person
+    # guessing from one address must not lock every reader of the page out.
     keys = (f"share:{share.id}:{client_ip(request)}", f"share:{share.id}")
-    wait = max(brake.wait_seconds(key) for key in keys)
+    wait = max(brake.wait_seconds(keys[0]), brake.wait_seconds(keys[1], free=SHARE_FREE_IN_ALL))
     if wait:
         raise HTTPException(
             status_code=429,

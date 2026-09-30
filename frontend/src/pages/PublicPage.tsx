@@ -87,7 +87,7 @@ export function PublicPage() {
       await shareApi.unlock(token, password)
       await load()
     } catch (error) {
-      setProblem(errorText(error instanceof ApiError ? error.code : 'internal_error'))
+      setProblem(error instanceof ApiError ? errorText(error.code, error.values) : errorText('internal_error'))
     } finally {
       setBusy(false)
     }

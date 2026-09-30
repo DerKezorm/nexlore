@@ -17,7 +17,7 @@ export function useAction() {
       setDone(success)
       return true
     } catch (error) {
-      setProblem(errorText(error instanceof ApiError ? error.code : 'internal_error'))
+      setProblem(error instanceof ApiError ? errorText(error.code, error.values) : errorText('internal_error'))
       return false
     } finally {
       setBusy(false)

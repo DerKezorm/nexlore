@@ -12,7 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { api, type NoteData } from '../api/client'
-import { pluginText, type PluginInfo } from './registry'
+import { isNotePath, pluginText, type PluginInfo } from './registry'
 
 const THEME: Record<string, string> = {
   '--bg': '--color-ink-950',
@@ -116,7 +116,9 @@ export function PluginFrame({ plugin, place, note, source, onOpen, onReveal, onW
           return api('/api/plugins/query', { query })
         }
         case 'note.open':
-          if (typeof args.path !== 'string' || args.path.length > 1024) throw new Error('not_allowed')
+          // Only to a note, and only for a plugin that may read: no plugin sends the app to any address it likes.
+          if (!may('note:read') && !may('vault:read')) throw new Error('not_allowed')
+          if (typeof args.path !== 'string' || !isNotePath(args.path)) throw new Error('not_allowed')
           current.current.onOpen(args.path)
           return null
         case 'note.reveal':

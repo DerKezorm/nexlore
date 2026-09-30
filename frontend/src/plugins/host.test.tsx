@@ -97,4 +97,17 @@ describe('the page answers a plugin only what its manifest allows', () => {
     expect((await ask('note.open', { path: 42 }))?.error).toBe('not_allowed')
     expect((await ask('window.close'))?.error).toBe('not_allowed')
   })
+
+  it('opens only notes, and only for a plugin that may read', async () => {
+    const reader = mount(['note:read'])
+    for (const path of ['javascript:window.x=1.md', 'https://example.com/a.md', '/etc/a.md', 'S/Other', 'x'.repeat(1030) + '.md']) {
+      expect((await reader.ask('note.open', { path }))?.error).toBe('not_allowed')
+    }
+    expect(opened).toEqual([])
+    act(() => root?.unmount())
+    holder?.remove()
+    const blind = mount([])
+    expect((await blind.ask('note.open', { path: 'S/Other.md' }))?.error).toBe('not_allowed')
+    expect(opened).toEqual([])
+  })
 })

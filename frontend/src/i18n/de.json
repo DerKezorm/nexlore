@@ -696,8 +696,12 @@
       "ai_text_empty": "Da ist kein Text.",
       "ai_text_too_short": "Zu wenige Wörter, um daran zu arbeiten.",
       "ai_text_too_long": "Zu viel Text auf einmal: Markiere einen Teil.",
-      "ai_too_often": "Zu viele Anfragen in einer Minute. Einen Moment warten."
-    }
+      "ai_too_often": "Zu viele Anfragen in einer Minute. Einen Moment warten.",
+      "share_password_short": "Das Passwort braucht mindestens {{min}} Zeichen.",
+      "provider_first": "Richte zuerst einen Anmeldeanbieter ein, sonst kommt außer dir niemand mehr herein."
+    },
+    "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
+    "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
   },
   "files": {
     "title": "Dateien",
@@ -995,7 +999,7 @@
     "ends": "Endet",
     "noEnd": "ohne Ende",
     "password": "Passwort (freiwillig)",
-    "passwordHint": "Lesende geben es einmal ein.",
+    "passwordHint": "Lesende geben es einmal ein. Mindestens 8 Zeichen.",
     "create": "Öffentlichen Link erstellen",
     "withPassword": "mit Passwort",
     "open": "Öffnen",

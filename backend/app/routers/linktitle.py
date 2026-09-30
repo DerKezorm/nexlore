@@ -49,4 +49,6 @@ def title(url: Annotated[str, Query(min_length=1, max_length=linktitle.MAX_URL)]
     try:
         return {"title": linktitle.fetch(url)}
     except linktitle.TitleError as exc:
-        raise error(f"link_{exc.code}", "No title for this address.", 422) from exc
+        # An address inside answers like one that does not resolve: else the answer tells which inner names exist.
+        code = "not_found" if exc.code == "not_public" else exc.code
+        raise error(f"link_{code}", "No title for this address.", 422) from exc

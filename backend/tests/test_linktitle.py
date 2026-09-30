@@ -148,5 +148,6 @@ def test_the_route_waits_for_the_operator_and_counts_the_asks(client: TestClient
 
     monkeypatch.setattr(linktitle, "fetch", refuse)
     refused = client.get("/api/link-title", params={"url": "http://10.0.0.1/"})
-    assert (refused.status_code, refused.json()["detail"]["code"]) == (422, "link_not_public")
+    # The same answer as a name that does not resolve: nobody learns which inner names the server knows.
+    assert (refused.status_code, refused.json()["detail"]["code"]) == (422, "link_not_found")
     route.forget()

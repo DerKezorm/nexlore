@@ -6,11 +6,13 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from app.db import SessionLocal
 from app.main import app
 from app.models import Account
-from app.services import index
+from app.services import index, settings_service
 
 from .test_mcp import World, call, failure, world  # noqa: F401  (the fixture is used by name)
+from .test_shares import share, site, token_of  # noqa: F401
 
 # --- O3: hard input answers without a server error ------------------------------------------------------------------
 
@@ -54,3 +56,43 @@ def test_an_empty_title_at_mcp_says_it_is_empty(world: World) -> None:  # noqa: 
     said = failure(call(token, "create_note", folder="Garden", title="   ", content="x"))
     assert "empty" in said and "255" not in said
 
+
+# --- O5: brakes, passwords, bolts ---------------------------------------------------------------------------------
+
+
+def _sender(address: str) -> TestClient:
+    return TestClient(app, base_url="http://testserver", client=(address, 50000),
+                      headers={"X-Nexlore-Client": "tab-stranger"})
+
+
+def test_one_guesser_does_not_lock_the_other_readers_of_a_page_out(site: TestClient) -> None:  # noqa: F811
+    token = token_of(share(site, "Garden/Public", password="rose garden key"))
+    guesser, reader = _sender("198.51.100.7"), _sender("198.51.100.8")
+    codes = [guesser.post(f"/api/public/{token}/unlock", json={"password": "guess"}).status_code for _ in range(8)]
+    assert 429 in codes
+    assert reader.post(f"/api/public/{token}/unlock", json={"password": "rose garden key"}).status_code == 204
+
+
+def test_many_senders_together_still_meet_the_brake(site: TestClient) -> None:  # noqa: F811
+    token = token_of(share(site, "Garden/Public", password="rose garden key"))
+    for n in range(40):
+        _sender(f"198.51.100.{n + 10}").post(f"/api/public/{token}/unlock", json={"password": "guess"})
+    late = _sender("198.51.100.200").post(f"/api/public/{token}/unlock", json={"password": "rose garden key"})
+    assert late.status_code == 429
+
+
+def test_a_public_page_needs_a_real_password(site: TestClient) -> None:  # noqa: F811
+    for weak in ("x", "abc1234", "          "):
+        made = site.post("/api/shares", json={"path": "Garden/Public", "password": weak})
+        assert made.status_code == 422, weak
+        assert made.json()["detail"]["code"] == "share_password_short"
+    assert site.post("/api/shares", json={"path": "Garden/Public", "password": "rose garden"}).status_code == 201
+    assert site.post("/api/shares", json={"path": "Garden/Public"}).status_code == 201
+
+
+def test_password_sign_in_stays_on_until_there_is_a_provider(client: TestClient, account: Account) -> None:
+    refused = client.put("/api/settings", json={"password_login": False})
+    assert (refused.status_code, refused.json()["detail"]["code"]) == (409, "provider_first")
+    with SessionLocal() as db:
+        settings_service.save(db, {"oidc_issuer": "https://id.example.com", "oidc_client_id": "nexlore"})
+    assert client.put("/api/settings", json={"password_login": False}).status_code == 200
