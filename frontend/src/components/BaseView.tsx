@@ -149,7 +149,7 @@ export function BaseView({ source }: { source: BaseSource }) {
       )}
       {answer.problems.length > 0 && (
         <ul className="space-y-0.5 text-xs text-warn-500">
-          {answer.problems.map((item, index) => <li key={index}>{item}</li>)}
+          {answer.problems.map((item, index) => <li key={index}>{t(`bases.problem.${item.code}`, { ...item.values, defaultValue: item.text })}</li>)}
         </ul>
       )}
       {problem && <p role="alert" className="text-sm text-bad-500">{problem}</p>}

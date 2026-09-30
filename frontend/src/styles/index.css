@@ -156,7 +156,7 @@
     @apply cursor-pointer no-underline rounded bg-accent-500/10 px-1 hover:bg-accent-500/20;
   }
   .nn-prose a.nn-wikilink-missing {
-    @apply cursor-default text-mist-500 bg-ink-800;
+    @apply text-mist-500 bg-ink-800;
   }
   .nn-prose table {
     @apply my-4 w-full text-sm;
@@ -169,6 +169,11 @@
   }
   .nn-prose input[type='checkbox'] {
     @apply mr-2 accent-accent-500;
+  }
+  /* A task's box stands in for the bullet, as in the editor (both showed, P5.17). */
+  .nn-prose li:has(> input[type='checkbox']:first-child),
+  .nn-prose li:has(> p:first-child > input[type='checkbox']:first-child) {
+    @apply -ml-5 list-none;
   }
   .nn-prose hr {
     @apply my-6 border-ink-700;

@@ -375,7 +375,14 @@
     "yamlHint": "The parts: filters, formulas, views (table, cards, list, board) with order, sort, groupBy and limit.",
     "empty": "No note fits this view.",
     "none": "Without a value",
-    "cell": "Value of {{key}}"
+    "cell": "Value of {{key}}",
+    "problem": {
+      "expression": "“{{where}}” cannot be read ({{detail}}) and is left out.",
+      "filter_unknown": "A filter nexlore does not understand was left out.",
+      "view_type": "nexlore does not know the view type “{{kind}}” and shows it as a table.",
+      "rows_failed_one": "One note could not be worked out and is left out.",
+      "rows_failed_other": "{{count}} notes could not be worked out and are left out."
+    }
   },
   "noteStart": {
     "recentOpened": "Opened last",
@@ -701,7 +708,8 @@
       "ai_text_too_long": "Too much text at once: select a part.",
       "ai_too_often": "Too many requests in a minute. Wait a moment.",
       "share_password_short": "The password needs at least {{min}} characters.",
-      "provider_first": "Set up a sign-in provider first, or nobody but you could sign in."
+      "provider_first": "Set up a sign-in provider first, or nobody but you could sign in.",
+      "bad_view": "The view cannot be read. Check the YAML: indentation, colons and quotes."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
@@ -1239,7 +1247,8 @@
   "today": {
     "button": "Today",
     "title": "Open today's daily note (Alt+T)",
-    "none": "There is no space you may write in."
+    "none": "There is no space you may write in.",
+    "templateMissing": "The space's daily template is gone; the daily note was made empty. Choose another one in the space's options."
   },
   "calendar": {
     "title": "Calendar",
@@ -1268,7 +1277,8 @@
       "week": "This week",
       "later": "Later",
       "none": "No date",
-      "done": "Done"
+      "done": "Done",
+      "cancelled": "Cancelled"
     },
     "groupBy": "Group by",
     "byDue": "Due date",
@@ -1298,7 +1308,9 @@
     "clearFilters": "Clear the filters",
     "noneYet": "No tasks yet. Any line like this in a note is one:",
     "example": "Call the plumber",
-    "noneYetMore": "The date is optional; ticking it off here writes the line in the note."
+    "noneYetMore": "The date is optional; ticking it off here writes the line in the note.",
+    "recurrenceUnknown": "Ticked off. nexlore cannot read this repetition, so there is no next task. It understands every day, week, month, year, weekday and every week on …",
+    "readOnly": "Read only: you may not tick off tasks in this space."
   },
   "newNote": {
     "title": "New note in “{{folder}}”",

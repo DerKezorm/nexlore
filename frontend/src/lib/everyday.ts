@@ -114,3 +114,15 @@ export function taskParts(text: string): { text: string; link: boolean }[] {
 export function taskPlain(text: string): string {
   return taskParts(text).map((part) => part.text).join('')
 }
+
+/**
+ * Now, as this device has it, with its offset (`2026-10-01T06:50:00+13:00`): templates and daily notes take their
+ * `{{time}}` from it, not from the server's clock (review before 1.0.0, P5.1).
+ */
+export function readerNow(now = new Date()): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  const offset = -now.getTimezoneOffset()
+  const sign = offset >= 0 ? '+' : '-'
+  const local = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
+  return `${local}${sign}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`
+}

@@ -21,6 +21,7 @@ export function CalendarPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { spaces } = useStore()
+  const readOnlyIn = useMemo(() => new Set(spaces.filter((item) => item.role === 'read').map((item) => item.name)), [spaces])
   const [params, setParams] = useSearchParams()
   const today = todayIso()
   const month = MONTH.test(params.get('month') ?? '') ? params.get('month')! : monthOf(today)
@@ -91,7 +92,7 @@ export function CalendarPage() {
     setOpening(date)
     try {
       const made = await everydayApi.daily(home, date)
-      navigate(noteUrl(made.path) + (made.created ? '?edit=1' : ''))
+      navigate(noteUrl(made.path) + (made.created ? '?edit=1' : ''), { state: made.template_missing ? { templateMissing: true } : undefined })
     } catch (error) {
       setNotice(errorText(error instanceof ApiError ? error.code : 'internal_error'))
     } finally {
@@ -243,6 +244,7 @@ export function CalendarPage() {
                   key={`${task.id}:${task.raw}`}
                   task={task}
                   today={today}
+                  readOnly={readOnlyIn.has(task.path.split('/')[0])}
                   onToggled={(_task, result) => {
                     setNotice(result.conflict ? t('tasks.conflict') : result.added ? t('tasks.repeated') : null)
                     void load()

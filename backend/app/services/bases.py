@@ -59,7 +59,8 @@ class Result:
     image: str | None
     groups: list[dict[str, Any]]
     total: int
-    problems: list[str] = field(default_factory=list)
+    #: What the view could not do, each ``{code, values, text}``: the page says it in its language (P5.14).
+    problems: list[dict[str, Any]] = field(default_factory=list)
 
 
 def read(text: str) -> dict[str, Any]:
@@ -76,7 +77,12 @@ def read(text: str) -> dict[str, Any]:
     return data
 
 
-def _filter(spec: Any, problems: list[str]) -> baseexpr.Node | None:
+def _problem(code: str, text: str, **values: Any) -> dict[str, Any]:
+    """One thing the view could not do: a code for the page, the English text for everyone else."""
+    return {"code": code, "values": values, "text": text}
+
+
+def _filter(spec: Any, problems: list[dict[str, Any]]) -> baseexpr.Node | None:
     """Obsidian's filter: an expression, or ``and``/``or``/``not`` over a list of them."""
     if spec is None:
         return None
@@ -84,7 +90,7 @@ def _filter(spec: Any, problems: list[str]) -> baseexpr.Node | None:
         try:
             return baseexpr.parse(spec)
         except baseexpr.ExprError as exc:
-            problems.append(f"{spec}: {exc}")
+            problems.append(_problem("expression", f"{spec}: {exc}", where=str(spec), detail=str(exc)))
             return None
     if isinstance(spec, dict) and len(spec) == 1:
         kind, items = next(iter(spec.items()))
@@ -97,7 +103,7 @@ def _filter(spec: Any, problems: list[str]) -> baseexpr.Node | None:
             return baseexpr.Node("not", items=[_chain("or", parts)]) if parts else None
         if kind in ("and", "or"):
             return _chain(kind, parts) if parts else None
-    problems.append("A filter nexlore does not understand was left out.")
+    problems.append(_problem("filter_unknown", "A filter nexlore does not understand was left out."))
     return None
 
 
@@ -233,7 +239,7 @@ def _sort_value(value: Any) -> tuple[int, Any]:
 
 
 def run(db: Session, config: dict[str, Any], space_id: int, space_name: str, view_index: int = 0) -> Result:
-    problems: list[str] = []
+    problems: list[dict[str, Any]] = []
     views = [view for view in config.get("views") or [] if isinstance(view, dict)] or [
         {"type": "table", "name": "Table"}
     ]
@@ -242,7 +248,7 @@ def run(db: Session, config: dict[str, Any], space_id: int, space_name: str, vie
     kind = str(view.get("type") or "table").lower()
     kind = {"kanban": "board", "gallery": "cards"}.get(kind, kind)
     if kind not in VIEW_TYPES:
-        problems.append(f"The view type {kind!r} is shown as a table.")
+        problems.append(_problem("view_type", f"The view type {kind!r} is shown as a table.", kind=kind))
         kind = "table"
     properties = config.get("properties") if isinstance(config.get("properties"), dict) else {}
     formulas: dict[str, baseexpr.Node] = {}
@@ -250,7 +256,7 @@ def run(db: Session, config: dict[str, Any], space_id: int, space_name: str, vie
         try:
             formulas[str(name)] = baseexpr.parse(str(text))
         except baseexpr.ExprError as exc:
-            problems.append(f"formula.{name}: {exc}")
+            problems.append(_problem("expression", f"formula.{name}: {exc}", where=f"formula.{name}", detail=str(exc)))
     wanted = [
         node for node in (_filter(config.get("filters"), problems), _filter(view.get("filters"), problems)) if node
     ]
@@ -266,7 +272,7 @@ def run(db: Session, config: dict[str, Any], space_id: int, space_name: str, vie
         try:
             parsed[key] = baseexpr.parse(key)
         except baseexpr.ExprError as exc:
-            problems.append(f"{key}: {exc}")
+            problems.append(_problem("expression", f"{key}: {exc}", where=key, detail=str(exc)))
     rows = []
     failed = 0
     # Whatever the view never names need not be read: "tag" and "link" anywhere in it (a superset, never too little).
@@ -287,7 +293,9 @@ def run(db: Session, config: dict[str, Any], space_id: int, space_name: str, vie
             {"path": file.path, "title": file.title or row.name, "cells": cells, "_sort": sort_cells, "_row": row}
         )
     if failed:
-        problems.append(f"{failed} notes could not be worked out and are left out.")
+        problems.append(
+            _problem("rows_failed", f"{failed} notes could not be worked out and are left out.", count=failed)
+        )
     # By name first: without a sort the order is the names', and a sort keeps it among equal values.
     rows.sort(key=lambda item: (sort_key(item["title"]), item["path"]))
     for spec in reversed([item for item in (view.get("sort") or []) if isinstance(item, dict)]):

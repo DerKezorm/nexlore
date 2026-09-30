@@ -90,7 +90,7 @@ test('an invitation brings a new account into exactly one space', async ({ page,
 })
 
 test('a reader reads and cannot change anything', async ({ page, browser }) => {
-  await space(page, 'Library', 'Catalogue', '# Catalogue\n\nOld maps and a sea chart.\n')
+  await space(page, 'Library', 'Catalogue', '# Catalogue\n\nOld maps and a sea chart.\n\n- [ ] Mend the sea chart\n')
   const link = await inviteLink(page, 'Library', 'Read')
   const reader = await accept(browser, link, 'rea')
   await reader.goto('/note/Library/Catalogue.md')
@@ -107,6 +107,11 @@ test('a reader reads and cannot change anything', async ({ page, browser }) => {
     headers: { 'X-Nexlore-Client': 'tab-e2ereader' },
   })
   expect(refused.status()).toBe(403)
+  // A task of the space shows, and its box says before any click that it cannot be ticked (P5.21).
+  await reader.goto('/tasks')
+  const box = reader.getByTestId('task-row').filter({ hasText: 'Mend the sea chart' }).getByRole('button')
+  await expect(box).toBeDisabled()
+  await expect(box).toHaveAccessibleName('Read only: you may not tick off tasks in this space.')
 })
 
 test('a public page shows the shared folder and nothing beyond it', async ({ page, browser }) => {

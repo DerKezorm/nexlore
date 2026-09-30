@@ -16,12 +16,15 @@ export function TaskRow({
   task,
   today,
   showNote = true,
+  readOnly = false,
   onToggled,
   onProblem,
 }: {
   task: TaskItem
   today: string
   showNote?: boolean
+  /** The task's space is only for reading: the box shows its state and cannot be ticked (it gave a 403, P5.21). */
+  readOnly?: boolean
   onToggled: (task: TaskItem, result: Toggled) => void
   onProblem: (code: string) => void
 }) {
@@ -55,13 +58,14 @@ export function TaskRow({
       <button
         type="button"
         onClick={() => void tick()}
-        disabled={busy}
+        disabled={busy || readOnly}
         aria-pressed={done}
-        aria-label={done ? t('tasks.untick') : t('tasks.tick')}
-        title={done ? t('tasks.untick') : t('tasks.tick')}
+        aria-label={readOnly ? t('tasks.readOnly') : done ? t('tasks.untick') : t('tasks.tick')}
+        title={readOnly ? t('tasks.readOnly') : done ? t('tasks.untick') : t('tasks.tick')}
         className={
           'mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md border sm:h-5 sm:w-5 ' +
-          (done ? 'border-accent-500 bg-accent-500 text-on-accent' : 'border-ink-600 hover:border-accent-500')
+          (readOnly ? 'cursor-not-allowed opacity-50 ' : '') +
+          (done ? 'border-accent-500 bg-accent-500 text-on-accent' : 'border-ink-600' + (readOnly ? '' : ' hover:border-accent-500'))
         }
       >
         {done && <Symbol name="check" className="h-3.5 w-3.5" />}

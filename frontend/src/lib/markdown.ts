@@ -156,7 +156,7 @@ function wikiLink(embed: boolean, inner: string, resolve: (target: string) => st
     ? `<a class="nn-wikilink" ${targets.noteAttributes(path)}>${text}</a>`
     : targets.missing
       ? targets.missing(text)
-      : `<a class="nn-wikilink nn-wikilink-missing" title="${escape(i18n.t('note.missingLink'))}">${text}</a>`
+      : `<a class="nn-wikilink nn-wikilink-missing" data-missing="${escape(section ? `${target}#${section}` : target)}" title="${escape(i18n.t('note.missingLink'))}">${text}</a>`
 }
 
 /** The extensions for Obsidian's own writing. A new set for each note, because wiki links need its `resolve`. */

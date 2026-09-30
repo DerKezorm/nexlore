@@ -229,13 +229,15 @@ def folder(
 class FolderIn(BaseModel):
     parent: str = Field(min_length=1, max_length=paths.MAX_PATH_CHARS)
     name: str = Field(min_length=1, max_length=255)
+    #: A folder that is there already is no error: for making the templates folder on the way (it gave a 409, P5.25).
+    existing_ok: bool = False
 
 
 @router.post("/folders", status_code=201)
 def create_folder(body: FolderIn, account: Account) -> dict[str, str]:
     need(account, body.parent, WRITE)
     try:
-        return {"path": vault.create_folder(body.parent, body.name.strip())}
+        return {"path": vault.create_folder(body.parent, body.name.strip(), existing_ok=body.existing_ok)}
     except VaultError as exc:
         raise _fail(exc) from exc
 

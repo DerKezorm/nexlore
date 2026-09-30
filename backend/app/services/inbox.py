@@ -3,8 +3,9 @@ Quick capture: a thought goes into the inbox note of a space, the newest on top 
 opening anything. The inbox is ``Inbox.md`` or ``Eingang.md`` at the top of the space, whichever is there; without
 one it is made, named in the language of the account.
 
-An entry is one list item, ``- 2026-09-29 22:41 the words``, further lines indented under it. It goes in after the
-front matter and a first heading, above the entries before it. Never into the inbox while someone edits it (its lock).
+An entry is one list item, ``- 2026-09-29 22:41 the words``, further lines indented under it. Words that start as a
+task (``[ ] Buy milk``) become one, the time behind them: ``- [ ] Buy milk (22:41)``. It goes in after the front matter
+and a first heading, above the entries before it. Never into the inbox while someone edits it (its lock).
 """
 from __future__ import annotations
 
@@ -27,6 +28,9 @@ DEFAULT = "Inbox"
 STAMP = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
 MAX_CHARS = 20_000
 
+#: Words that start as a task: ``[ ]``, ``[]`` or ``- [ ]``, the box maybe ticked.
+_TASK = re.compile(r"^(?:[-*+][ \t]+)?\[([ xX]?)\][ \t]*(.*)$")
+
 _HEADING = re.compile(r"[ \t]*#[ \t][^\r\n]*(?:\r?\n|$)")
 _BLANK = re.compile(r"(?:[ \t]*\r?\n)*")
 
@@ -45,7 +49,13 @@ def name_for(language: str | None) -> str:
 def entry(text: str, stamp: str) -> str:
     """The words as one list item: the first line after the time, the others indented under it."""
     lines = [line.rstrip() for line in text.strip().replace("\r\n", "\n").replace("\r", "\n").split("\n")]
-    out = f"- {stamp} {lines[0]}"
+    task = _TASK.match(lines[0])
+    if task and task.group(2).strip():
+        # A real task, found by the task list and the calendar (it was words after the time, P5.9).
+        box = "x" if task.group(1) in ("x", "X") else " "
+        out = f"- [{box}] {task.group(2).strip()} ({stamp[-5:]})"
+    else:
+        out = f"- {stamp} {lines[0]}"
     for line in lines[1:]:
         out += "\n  " + line if line else "\n"
     return out + "\n"

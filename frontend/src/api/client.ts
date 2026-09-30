@@ -5,6 +5,7 @@
  * Errors come back as `ApiError` with the server's code; the page builds its sentence from `errors.byCode`.
  */
 
+import { readerNow } from '../lib/everyday'
 import type { Appearance } from '../lib/appearance'
 import type { Colours, Weak } from '../lib/themes'
 
@@ -368,9 +369,10 @@ export const vaultApi = {
     api<Saved>('/api/note', { method: 'PUT', body: { path, content, base_hash: baseHash }, keepalive: keepalive && content.length < 60_000 }),
   /** `template`: a template of the same space to start from; its placeholders are filled by the server. */
   create: (folder: string, title: string, content = '', template?: string) =>
-    api<NoteData>('/api/notes', { method: 'POST', body: { folder, title, content, template } }),
+    api<NoteData>('/api/notes', { method: 'POST', body: { folder, title, content, template, now: readerNow() } }),
   /** `along`: files only this note uses that go into the trash with it (see `own`). */
-  createFolder: (parent: string, name: string) => api<{ path: string }>('/api/folders', { method: 'POST', body: { parent, name } }),
+  createFolder: (parent: string, name: string, existingOk = false) =>
+    api<{ path: string }>('/api/folders', { method: 'POST', body: { parent, name, existing_ok: existingOk } }),
   remove: (path: string, along: string[] = []) => api<{ files: number }>('/api/files', { method: 'DELETE', query: { path, along } }),
   /** The files only this note uses. */
   own: (path: string) => api<{ paths: string[] }>('/api/files/own', { query: { path } }),
@@ -640,7 +642,7 @@ export type BaseAnswer = {
   image: string | null
   groups: { value: string | null; rows: BaseRow[] }[]
   total: number
-  problems: string[]
+  problems: { code: string; values: Record<string, string | number>; text: string }[]
   /** For a .base file: its text and state, to edit it. */
   text?: string
   hash?: string
@@ -885,11 +887,11 @@ export type TaskItem = {
   recurrence: string | null
   tags: string[]
 }
-export type TaskCounts = Record<'open' | 'done' | TaskWhen, number>
+export type TaskCounts = Record<'open' | 'done' | 'cancelled' | TaskWhen, number>
 export type TaskList = { total: number; counts: TaskCounts; items: TaskItem[] }
 export type TaskQuery = {
   today: string
-  status?: 'open' | 'done' | 'all'
+  status?: 'open' | 'done' | 'cancelled' | 'all'
   when?: TaskWhen
   on?: string
   start?: string
@@ -900,7 +902,11 @@ export type TaskQuery = {
   offset?: number
   limit?: number
 }
-export type Toggled = { path: string; line: number; raw: string; hash: string; conflict: string | null; added: string | null }
+export type Toggled = {
+  path: string; line: number; raw: string; hash: string; conflict: string | null; added: string | null
+  /** A repetition the server does not read: ticked off, no next task. */
+  recurrence_unknown?: boolean
+}
 export type CalendarDay = { daily: string[]; open: number; done: number; overdue: number }
 export type SpaceOptions = { daily_folder: string; daily_template: string; template_folder: string; theme: string }
 export type Template = { path: string; title: string }
@@ -912,9 +918,10 @@ export const everydayApi = {
   calendar: (month: string, today: string, space?: string) =>
     api<{ month: string; days: Record<string, CalendarDay> }>('/api/calendar', { query: { month, today, space } }),
   /** The daily note of a date in a space: opened, or made from the space's template. */
-  daily: (space: string, date: string) => api<{ path: string; created: boolean }>('/api/daily', { method: 'POST', body: { space, date } }),
+  daily: (space: string, date: string) =>
+    api<{ path: string; created: boolean; template_missing?: boolean }>('/api/daily', { method: 'POST', body: { space, date, now: readerNow() } }),
   templates: (space: string) => api<Template[]>('/api/templates', { query: { space } }),
-  preview: (path: string, title: string) => api<{ content: string }>('/api/templates/preview', { query: { path, title } }),
+  preview: (path: string, title: string) => api<{ content: string }>('/api/templates/preview', { query: { path, title, now: readerNow() } }),
   options: (space: string) => api<SpaceOptions>(`/api/spaces/${encodeURIComponent(space)}/options`),
   setOptions: (space: string, options: Partial<SpaceOptions>) =>
     api<SpaceOptions>(`/api/spaces/${encodeURIComponent(space)}/options`, { method: 'PUT', body: options }),

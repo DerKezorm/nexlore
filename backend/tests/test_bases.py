@@ -251,3 +251,13 @@ def test_a_formula_that_names_itself_ends() -> None:
 )
 def test_one_property_changes_and_every_other_byte_stays(before: str, key: str, value: object, after: str) -> None:
     assert set_property(before, key, value) == after
+
+
+def test_what_a_view_cannot_do_comes_as_codes_the_page_can_say_in_its_language(client: TestClient, kitchen: Path) -> None:
+    """Review before 1.0.0, P5.14: the hints were English sentences only."""
+    text = "filters: 'rating >'\nviews:\n  - type: galaxy\n    name: Stars\n"
+    answer = client.post("/api/bases/block", json={"source": "Kitchen/Recipes/Bread.md", "text": text}).json()
+    codes = {item["code"]: item for item in answer["problems"]}
+    assert codes["view_type"]["values"] == {"kind": "galaxy"}
+    assert codes["expression"]["values"]["where"] == "rating >"
+    assert all(item["text"] for item in answer["problems"])

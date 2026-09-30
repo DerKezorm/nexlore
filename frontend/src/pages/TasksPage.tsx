@@ -15,8 +15,11 @@ import { today as todayIso, whenOf } from '../lib/everyday'
 import { noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 
-type Chip = 'open' | TaskWhen | 'done'
-const CHIPS: Chip[] = ['open', 'overdue', 'today', 'week', 'later', 'none', 'done']
+/** The most the server gives at a time. */
+const MAX_PAGE = 500
+
+type Chip = 'open' | TaskWhen | 'done' | 'cancelled'
+const CHIPS: Chip[] = ['open', 'overdue', 'today', 'week', 'later', 'none', 'done', 'cancelled']
 const GROUPS: TaskWhen[] = ['overdue', 'today', 'week', 'later', 'none']
 const PAGE = 200
 const GROUP_KEY = 'nexlore.tasks.group'
@@ -39,6 +42,7 @@ function inDays(days: number): string {
 export function TasksPage() {
   const { t } = useTranslation()
   const { spaces } = useStore()
+  const readOnlyIn = useMemo(() => new Set(spaces.filter((item) => item.role === 'read').map((item) => item.name)), [spaces])
   const [chip, setChip] = useState<Chip>('open')
   const [space, setSpace] = useState('')
   const [tag, setTag] = useState('')
@@ -64,8 +68,8 @@ export function TasksPage() {
   const ask = useCallback(
     (offset: number, limit = PAGE): TaskQuery => ({
       today,
-      status: chip === 'done' ? 'done' : 'open',
-      when: chip === 'open' || chip === 'done' ? undefined : chip,
+      status: chip === 'done' || chip === 'cancelled' ? chip : 'open',
+      when: chip === 'open' || chip === 'done' || chip === 'cancelled' ? undefined : chip,
       space: space || undefined,
       tag: query.tag || undefined,
       q: query.q || undefined,
@@ -80,7 +84,14 @@ export function TasksPage() {
       const mine = ++asked.current
       setLoading(true)
       try {
-        const answer = await everydayApi.tasks(ask(0, Math.max(PAGE, keep)))
+        // The server gives 500 at most at a time: a longer list comes in parts (it gave 422 past 500, P5.5).
+        const answer = await everydayApi.tasks(ask(0, Math.min(MAX_PAGE, Math.max(PAGE, keep))))
+        for (let offset = answer.items.length; offset < keep && offset < answer.total; ) {
+          const part = await everydayApi.tasks(ask(offset, Math.min(MAX_PAGE, keep - offset)))
+          if (!part.items.length) break
+          answer.items.push(...part.items)
+          offset += part.items.length
+        }
         if (mine !== asked.current) return
         setItems(answer.items)
         setCounts(answer.counts)
@@ -106,7 +117,9 @@ export function TasksPage() {
   }
 
   const toggled = (_task: TaskItem, result: Toggled) => {
-    setNotice(result.conflict ? t('tasks.conflict') : result.added ? t('tasks.repeated') : null)
+    setNotice(
+      result.conflict ? t('tasks.conflict') : result.added ? t('tasks.repeated') : result.recurrence_unknown ? t('tasks.recurrenceUnknown') : null,
+    )
     // The counts change, and a ticked task leaves "open": the list is loaded again, as long as it was.
     void load(items.length)
   }
@@ -125,8 +138,10 @@ export function TasksPage() {
     }
   }
 
+  // Done and cancelled tasks are one list, not grouped by date or note.
+  const flat = chip === 'done' || chip === 'cancelled'
   const blocks = useMemo(() => {
-    if (chip === 'done') return [{ key: 'done', label: '', items }]
+    if (chip === 'done' || chip === 'cancelled') return [{ key: chip, label: '', items }]
     if (group === 'note') {
       const byNote = new Map<string, TaskItem[]>()
       for (const item of items) byNote.set(item.path, [...(byNote.get(item.path) ?? []), item])
@@ -196,7 +211,7 @@ export function TasksPage() {
             ))}
           </select>
         </label>
-        {chip !== 'done' && (
+        {!flat && (
           <div className="flex rounded-full border border-ink-700 p-0.5 text-xs" role="group" aria-label={t('tasks.groupBy')}>
             {(['due', 'note'] as const).map((value) => (
               <button
@@ -252,7 +267,7 @@ export function TasksPage() {
         )}
         {blocks.map((block) => (
           <section key={block.key} className="mb-4">
-            {block.label && group === 'note' && chip !== 'done' ? (
+            {block.label && group === 'note' && !flat ? (
               <h2 className="flex min-w-0 items-center gap-2 px-3 pb-1 text-sm font-medium text-mist-300">
                 <Symbol name="note" className="h-3.5 w-3.5 shrink-0 text-mist-500" />
                 <Link to={noteUrl(block.label)} className="truncate hover:text-accent-400">
@@ -274,7 +289,8 @@ export function TasksPage() {
                   key={`${task.id}:${task.raw}`}
                   task={task}
                   today={today}
-                  showNote={group !== 'note' || chip === 'done'}
+                  readOnly={readOnlyIn.has(task.path.split('/')[0])}
+                  showNote={group !== 'note' || flat}
                   onToggled={toggled}
                   onProblem={problemWhileTicking}
                 />

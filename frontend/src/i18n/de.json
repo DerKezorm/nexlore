@@ -375,7 +375,14 @@
     "yamlHint": "Aufbau: filters, formulas, views (table, cards, list, board) mit order, sort, groupBy und limit.",
     "empty": "Keine Notiz passt zu dieser Ansicht.",
     "none": "Ohne Wert",
-    "cell": "Wert von {{key}}"
+    "cell": "Wert von {{key}}",
+    "problem": {
+      "expression": "„{{where}}“ lässt sich nicht lesen ({{detail}}) und bleibt weg.",
+      "filter_unknown": "Einen Filter versteht nexlore nicht; er bleibt weg.",
+      "view_type": "Die Ansichtsart „{{kind}}“ kennt nexlore nicht und zeigt sie als Tabelle.",
+      "rows_failed_one": "Eine Notiz ließ sich nicht auswerten und fehlt.",
+      "rows_failed_other": "{{count}} Notizen ließen sich nicht auswerten und fehlen."
+    }
   },
   "noteStart": {
     "recentOpened": "Zuletzt geöffnet",
@@ -701,7 +708,8 @@
       "ai_text_too_long": "Zu viel Text auf einmal: Markiere einen Teil.",
       "ai_too_often": "Zu viele Anfragen in einer Minute. Einen Moment warten.",
       "share_password_short": "Das Passwort braucht mindestens {{min}} Zeichen.",
-      "provider_first": "Richte zuerst einen Anmeldeanbieter ein, sonst kommt außer dir niemand mehr herein."
+      "provider_first": "Richte zuerst einen Anmeldeanbieter ein, sonst kommt außer dir niemand mehr herein.",
+      "bad_view": "Die Ansicht lässt sich nicht lesen. Prüfe das YAML: Einrückung, Doppelpunkte und Anführungszeichen."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
@@ -1239,7 +1247,8 @@
   "today": {
     "button": "Heute",
     "title": "Tagesnotiz von heute öffnen (Alt+T)",
-    "none": "Es gibt keinen Bereich, in dem du schreiben darfst."
+    "none": "Es gibt keinen Bereich, in dem du schreiben darfst.",
+    "templateMissing": "Die Tagesvorlage des Bereichs gibt es nicht mehr; die Tagesnotiz ist leer angelegt. Unter den Optionen des Bereichs lässt sie sich neu wählen."
   },
   "calendar": {
     "title": "Kalender",
@@ -1268,7 +1277,8 @@
       "week": "Diese Woche",
       "later": "Später",
       "none": "Ohne Datum",
-      "done": "Erledigt"
+      "done": "Erledigt",
+      "cancelled": "Abgebrochen"
     },
     "groupBy": "Gruppieren nach",
     "byDue": "Fälligkeit",
@@ -1298,7 +1308,9 @@
     "clearFilters": "Filter leeren",
     "noneYet": "Noch keine Aufgaben. Jede Zeile wie diese in einer Notiz ist eine:",
     "example": "Klempner anrufen",
-    "noneYetMore": "Das Datum ist freiwillig; abgehakt wird hier, geschrieben in der Notiz."
+    "noneYetMore": "Das Datum ist freiwillig; abgehakt wird hier, geschrieben in der Notiz.",
+    "recurrenceUnknown": "Abgehakt. Die Wiederholung kann nexlore nicht lesen, darum gibt es keine nächste Aufgabe. Verstanden werden every day, week, month, year, weekday und every week on …",
+    "readOnly": "Nur lesend: In diesem Bereich darfst du Aufgaben nicht abhaken."
   },
   "newNote": {
     "title": "Neue Notiz in „{{folder}}“",

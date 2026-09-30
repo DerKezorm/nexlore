@@ -29,6 +29,23 @@ def read(vault: Path, rel: str) -> str:
 # --- The text ---------------------------------------------------------------------------------------------------
 
 
+@pytest.mark.parametrize(
+    ("words", "item"),
+    [
+        ("[ ] Buy milk", "- [ ] Buy milk (18:40)\n"),
+        ("- [ ] Buy milk", "- [ ] Buy milk (18:40)\n"),
+        ("[] Buy milk\nthe oat one", "- [ ] Buy milk (18:40)\n  the oat one\n"),
+        ("[x] Paid the rent", "- [x] Paid the rent (18:40)\n"),
+        # An empty box is no task, a box further on neither.
+        ("[ ]", "- 2026-09-30 18:40 [ ]\n"),
+        ("Buy [ ] milk", "- 2026-09-30 18:40 Buy [ ] milk\n"),
+    ],
+)
+def test_words_that_start_as_a_task_become_one_with_the_time_behind(words: str, item: str) -> None:
+    # Review before 1.0.0, P5.9: the box stood after the time and was no task.
+    assert entry(words, "2026-09-30 18:40") == item
+
+
 def test_an_entry_is_one_list_item_with_its_time_and_further_lines_under_it() -> None:
     assert entry("  Buy seeds  ", "2026-09-29 22:41") == "- 2026-09-29 22:41 Buy seeds\n"
     assert entry("Call Bo\r\nabout the fence\n\nand the gate", "2026-09-29 22:41") == (

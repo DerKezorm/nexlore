@@ -328,13 +328,16 @@ def _parse_space(folder: str) -> str:
     return clean
 
 
-def create_folder(parent: str, name: str) -> str:
+def create_folder(parent: str, name: str, *, existing_ok: bool = False) -> str:
+    """A new folder; with ``existing_ok`` one that is there already is fine too (a file of that name is not)."""
     parent = _parse(parent) if "/" in parent else _parse_space(parent)
     name = _check_name(name)
     directory = _full(parent)
     if not directory.is_dir():
         raise VaultError("not_found", "no such folder", 404)
     target = directory / name
+    if existing_ok and target.is_dir() and not target.is_symlink():
+        return f"{parent}/{name}"
     if taken(target):
         raise VaultError("exists", "a file or folder of that name exists", 409)
     target.mkdir()

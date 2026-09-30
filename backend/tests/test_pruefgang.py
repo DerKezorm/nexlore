@@ -332,3 +332,16 @@ def test_sorting_puts_umlauts_with_their_letter() -> None:
 
     assert sorted(["Zodiac", "Ärger im Paradies", "Apfel", "Öl", "Ofen"], key=sort_key) == [
         "Apfel", "Ärger im Paradies", "Ofen", "Öl", "Zodiac"]
+
+
+def test_a_folder_that_is_there_already_is_fine_when_asked_so(client: TestClient, account: Account, vault: Path) -> None:
+    """P5.25: saving a template made the templates folder each time, a 409 in the console when it was there."""
+    (vault / "Lab" / "Templates").mkdir(parents=True)
+    (vault / "Lab" / "Plain.md").write_text("x", encoding="utf-8")
+    index.scan()
+    assert client.post("/api/folders", json={"parent": "Lab", "name": "Templates"}).status_code == 409
+    answer = client.post("/api/folders", json={"parent": "Lab", "name": "Templates", "existing_ok": True})
+    assert answer.status_code == 201
+    assert answer.json() == {"path": "Lab/Templates"}
+    # A file of that name stays in the way.
+    assert client.post("/api/folders", json={"parent": "Lab", "name": "Plain.md", "existing_ok": True}).status_code == 409

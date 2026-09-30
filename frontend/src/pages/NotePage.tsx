@@ -13,7 +13,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { ApiError, draftsApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi, themesApi, proposalsApi, type NoteNews, type Proposal, commentsApi, type Thread } from '../api/client'
+import { ApiError, draftsApi, everydayApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi, themesApi, proposalsApi, type NoteNews, type Proposal, commentsApi, type Thread } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { ConflictCompare } from '../components/ConflictCompare'
 import { DraftCompare } from '../components/DraftCompare'
@@ -97,6 +97,9 @@ type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'failed' | 'refreshed
  * the right"). Each note is a pane of its own with everything a note has; the right one changes only `right` when a
  * link in it is followed. On a narrow screen only the left one shows.
  */
+/** A link to a day (`[[2026-10-02]]`): the daily note of that day. */
+const DAY_LINK = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
+
 export function NotePage() {
   // Already decoded by the router; decoding again breaks names with a "%" in them.
   const path = useParams()['*'] ?? ''
@@ -231,6 +234,9 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const [own, setOwn] = useState<string[]>([])
   const [withOwn, setWithOwn] = useState(true)
   const [notice, setNotice] = useState<string | null>(null)
+  // A daily note made without its template (the space's template is gone): said once, when it opens.
+  const templateMissing = useRef(false)
+  templateMissing.current = (location.state as { templateMissing?: boolean } | null)?.templateMissing === true
   const afterOpen = useRef<string | null>(null)
   // Plugins (M7): panels, code blocks and a view of their own, each in a locked frame.
   const plugins = useEnabledPlugins()
@@ -473,12 +479,14 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     setLockHolder(null)
     setRenaming(null)
     setShowText(false)
-    setNotice(null)
+    setNotice(templateMissing.current ? t('today.templateMissing') : null)
     // A message meant for the note just opened (after a rename: how many notes had their links updated).
     setInfo(afterOpen.current)
     afterOpen.current = null
     setSaveState('idle')
     if (path) void load(path)
+    // Only a new note says it again, not a new language.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [path, load])
 
   // Coming from "new note" (or a click on a link to a note not yet written): straight into the editor.
@@ -684,6 +692,17 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       folder = [across.space, ...parts].join('/')
     }
     if (!title) return
+    // `[[2026-10-02]]` (what @tomorrow writes) is that day's daily note: made where the calendar makes it, not here.
+    if (DAY_LINK.test(target.split('#')[0].trim())) {
+      try {
+        const made = await everydayApi.daily(across ? across.space : path.split('/')[0], title)
+        await reload()
+        go(made.path, made.created)
+      } catch (error) {
+        setProblem(error instanceof ApiError ? error.code : 'internal_error')
+      }
+      return
+    }
     try {
       const made = await vaultApi.create(folder, title)
       await reload()
@@ -1267,6 +1286,9 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                     }
                     const target = (e.target as HTMLElement).closest('a[data-note]')
                     if (target) open(target.getAttribute('data-note')!)
+                    // A link to a note not written yet makes it, as in the editor (it did nothing here, P1.2).
+                    const missing = (e.target as HTMLElement).closest('a[data-missing]')
+                    if (missing) void openLink(missing.getAttribute('data-missing')!, e.ctrlKey || e.metaKey)
                     // A file's page inside the app, not a full page load.
                     const file = (e.target as HTMLElement).closest('a[data-file], a[href^="/file/"]')
                     if (file && !e.ctrlKey && !e.metaKey) {

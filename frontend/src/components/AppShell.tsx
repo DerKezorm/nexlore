@@ -101,7 +101,7 @@ export function AppShell() {
     try {
       const made = await everydayApi.daily(home.name, isoToday())
       if (made.created) void reload()
-      navigate(noteUrl(made.path) + (made.created ? '?edit=1' : ''))
+      navigate(noteUrl(made.path) + (made.created ? '?edit=1' : ''), { state: made.template_missing ? { templateMissing: true } : undefined })
     } catch (problem) {
       setTodayProblem(errorText(problem instanceof ApiError ? problem.code : 'internal_error'))
     }
