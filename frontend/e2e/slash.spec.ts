@@ -68,3 +68,28 @@ test('the slash menu offers headings to six and a picture, and puts the entries 
   await page.keyboard.press('Escape')
   expect(problems).toEqual([])
 })
+
+test('the slash menu lies above the toolbar, every part of it reachable (review P1.7)', async ({ page }) => {
+  // A note of its own: the test above still holds the lock of "Slashed" for a while.
+  const made = await page.request.post('/api/notes', { data: { folder: 'Heath', title: 'Slash cover', content: '# Covered\n\nFirst line.\n' }, headers: TAB })
+  expect(made.status()).toBe(201)
+  const path = (await made.json()).path as string
+  await page.setViewportSize({ width: 1440, height: 700 })
+  await page.goto('/note/' + path.split('/').map(encodeURIComponent).join('/'))
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await page.locator('.ProseMirror').getByText('First line.').click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('/')
+  const menu = page.locator('.milkdown-slash-menu')
+  await expect(menu).toBeVisible()
+  // Whatever of the menu is on the screen is the menu there, not the toolbar over it.
+  const covered = await menu.evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    const points: [number, number][] = []
+    for (let y = Math.max(box.top + 4, 0); y < Math.min(box.bottom, window.innerHeight); y += 12) points.push([box.left + box.width / 2, y])
+    return points.filter(([x, y]) => !element.contains(document.elementFromPoint(x, y))).length
+  })
+  expect(covered).toBe(0)
+  await page.keyboard.press('Escape')
+})

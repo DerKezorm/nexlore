@@ -61,6 +61,17 @@
   fill: var(--color-mist-300);
 }
 
+/* The slash menu (480 px) did not fit below a line in the upper half of the screen, so it opened upwards, past the
+   top of the note, half of it hidden behind the toolbar and the header (review before 1.0.0, P1.7). Its list is lower
+   now, so it fits below the line, and menu and bar lie above the sticky toolbar (z-20). */
+.nx-note-editor .milkdown .milkdown-slash-menu .menu-groups {
+  max-height: min(420px, 38vh);
+}
+.nx-note-editor .milkdown .milkdown-slash-menu,
+.nx-note-editor .milkdown .milkdown-toolbar {
+  z-index: 30;
+}
+
 /* Headings like the reading view. */
 .nx-note-editor .milkdown .ProseMirror h1 {
   font-size: 1.6rem;
