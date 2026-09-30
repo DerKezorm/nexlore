@@ -187,3 +187,44 @@ describe('dates of the properties', () => {
     expect(shownDate('someday', false, 'en')).toBe('someday')
   })
 })
+
+describe('pictures with a path from the top of the space (review P2.3)', () => {
+  it('shows the picture the index found, not a path next to the note', () => {
+    const found = (target: string) => (target === 'Anhänge/bild.png' ? 'Garden/Anhänge/bild.png' : null)
+    const html = renderMarkdown('![Normales Bild](Anhänge/bild.png)', found, 'Garden/Projekte/Plan.md')
+    expect(html).toContain(`src="/api/file?path=${encodeURIComponent('Garden/Anhänge/bild.png')}"`)
+  })
+
+  it('stays next to the note when the index knows nothing better', () => {
+    const html = renderMarkdown('![x](bild.png)', nowhere, 'Garden/Projekte/Plan.md')
+    expect(html).toContain(`src="/api/file?path=${encodeURIComponent('Garden/Projekte/bild.png')}"`)
+  })
+})
+
+describe('reading as Obsidian shows it (review P2.9 to P2.11)', () => {
+  it('keeps a single line break a line break', () => {
+    expect(renderMarkdown('Zeile eins\nZeile zwei', nowhere)).toContain('Zeile eins<br>Zeile zwei')
+  })
+
+  it('hides a block id and leaves an anchor for it', () => {
+    const html = renderMarkdown('Ein Absatz ^wichtig\n\nNoch einer', nowhere)
+    expect(html).not.toMatch(/>[^<]*\^wichtig/)
+    expect(html).toContain('id="^wichtig"')
+  })
+
+  it('names the heading or block a link points at', () => {
+    const plan = (target: string) => (target === 'Plan' ? 'S/Plan.md' : null)
+    expect(renderMarkdown('[[Plan#Netzwerk]] und [[Plan#^wichtig]]', plan)).toContain('>Plan › Netzwerk</a>')
+    expect(renderMarkdown('[[Plan#^wichtig]]', plan)).toContain('>Plan › wichtig</a>')
+    expect(renderMarkdown('[[Plan#Netzwerk|Netz]]', plan)).toContain('>Netz</a>')
+  })
+})
+
+describe('Templater outside a code block (review P2.17)', () => {
+  it('is shown as code, on its own line, and never as markup', () => {
+    const html = renderMarkdown('<% tp.date.now("YYYY") %>\n<%* tR += "<b>x</b>" %>', nowhere)
+    expect(html).toContain('<code class="nn-templater">&lt;% tp.date.now(&quot;YYYY&quot;) %&gt;</code><br>')
+    expect(html).toContain('&lt;b&gt;x&lt;/b&gt;')
+    expect(html).not.toContain('<b>')
+  })
+})

@@ -85,12 +85,13 @@ function toNode(doc: Document, property: Property): unknown {
     case 'number': {
       const text = String(property.value).trim()
       const number = Number(text)
-      return text && Number.isFinite(number) ? number : text
+      return text && Number.isFinite(number) ? number : text || null
     }
     case 'other':
       return parseDocument(String(property.value)).contents
     default:
-      return String(property.value)
+      // Empty: `key:` as Obsidian writes it, not `key: ""`.
+      return String(property.value) === '' ? null : String(property.value)
   }
 }
 
@@ -143,9 +144,11 @@ export function writeProperties(head: string, items: Property[]): string {
       const node = toNode(doc, item)
       // A list keeps its style: `[a, b]` on one line, or one item per line.
       if (isSeq(node) && kept !== undefined) node.flow = /^[^:\n]*:[ \t]*\[/.test(kept)
-      doc.set(item.key, node)
+      // A bare null would be written as `? key`; as a scalar it is `key: null`, turned into `key:` below.
+      doc.set(item.key, node === null ? doc.createNode(null) : node)
       // A changed property keeps the comments that ended its source.
-      out += doc.toString({ lineWidth: 0, flowCollectionPadding: false }) + (kept !== undefined ? tail(kept) : '')
+      const text = doc.toString({ lineWidth: 0, flowCollectionPadding: false })
+      out += (node === null ? text.replace(/: null\n$/, ':\n') : text) + (kept !== undefined ? tail(kept) : '')
     }
     if (kept !== undefined) afterRemoved(order.indexOf(item.key))
   }

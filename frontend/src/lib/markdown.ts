@@ -61,6 +61,15 @@ export type Targets = {
 /** Marks a Markdown link that is shown as its text; the mark never survives into the page. */
 const PLAIN = '#nn-plain'
 
+/** `Anh%C3%A4nge/foto.png` as the index keeps it, `Anhänge/foto.png`; as written when it does not decode. */
+function decoded(href: string): string {
+  try {
+    return decodeURIComponent(href)
+  } catch {
+    return href
+  }
+}
+
 /** `embeds`: whether notes embedded in this one are shown; false inside an embed, so it goes one level deep. */
 export function appTargets(notePath: string | null, embeds = true): Targets {
   const noteAttributes = (path: string) => `data-note="${escape(path)}"`
@@ -138,7 +147,9 @@ function wikiLink(embed: boolean, inner: string, resolve: (target: string) => st
   const path = target ? resolve(target) : null
   // An embed's `|300` is its width, not a caption.
   const width = embed && label && /^\d+(x\d+)?$/.test(label.trim()) ? label.trim().split('x')[0] : ''
-  const text = escape((width || label === undefined ? target : label).trim() || target)
+  // Without a label, a link to a heading or block names it too (`Note › Heading`), as the editor shows it.
+  const shown = section && !embed ? `${target || ''} › ${section.replace(/^\^/, '')}`.trim() : target
+  const text = escape((width || label === undefined ? shown : label).trim() || target)
   if (path && !isNotePath(path)) return embed ? embedded(path, text, width, targets) : fileLink(path, text, targets)
   if (path && embed && targets.embedNote) return targets.embedNote(path, section, text)
   return path
@@ -204,6 +215,28 @@ function obsidian(resolve: (target: string) => string | null, targets: Targets):
           : `<div ${attributes}><div class="nn-callout-title">${title}</div>${body}</div>\n`
       },
       childTokens: ['title', 'tokens'],
+    },
+    {
+      // A Templater command (`<% tp.date.now() %>`) is shown as the code it is; it never runs here.
+      name: 'templater',
+      level: 'inline',
+      start: (src) => src.match(/<%/)?.index,
+      tokenizer(src) {
+        const found = /^<%[\s\S]*?%>/.exec(src)
+        if (found) return { type: 'templater', raw: found[0] }
+      },
+      renderer: (token) => `<code class="nn-templater">${escape(token.raw)}</code>`,
+    },
+    {
+      // ` ^id` at the end of a line marks a block for `[[Note#^id]]`: an anchor there, nothing to read.
+      name: 'blockId',
+      level: 'inline',
+      start: (src) => / \^[A-Za-z0-9-]+(?=\n|$)/.exec(src)?.index,
+      tokenizer(src) {
+        const found = /^ \^([A-Za-z0-9-]+)(?=\n|$)/.exec(src)
+        if (found) return { type: 'blockId', raw: found[0], id: found[1] }
+      },
+      renderer: (token) => `<span class="nn-block-id" id="^${escape(token.id as string)}"></span>`,
     },
     {
       name: 'comment',
@@ -377,6 +410,8 @@ function markdownFor(resolve: (target: string) => string | null, targets: Target
   const marked = new Marked({
     async: false,
     gfm: true,
+    // A single line break stays a line break, as Obsidian shows it with "strict line breaks" off (its default).
+    breaks: true,
     // Raw HTML in a note is shown as text, not executed: notes can come from other people and from an AI.
     renderer: {
       html: ({ text }: Tokens.HTML | Tokens.Tag) => escape(text),
@@ -402,7 +437,8 @@ function markdownFor(resolve: (target: string) => string | null, targets: Target
       }
       const target = targets.relative(token.href)
       if (!target) return
-      if (token.type === 'image') token.href = targets.fileUrl(target)
+      // The picture the index found: next to the note, or else from the space's top, as Obsidian reads the path.
+      if (token.type === 'image') token.href = targets.fileUrl(resolve(token.href) ?? resolve(decoded(token.href)) ?? target)
       else if (!isNotePath(target)) token.href = targets.fileHref(target)
       else if (targets.noteHref) token.href = targets.noteHref(target)
     },

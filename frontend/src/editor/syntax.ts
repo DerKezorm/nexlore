@@ -109,6 +109,15 @@ const PROTECTED = new RegExp(
     // A web address typed as text: remark would write `https\://`, and remark-gfm links it on reading anyway. Only
     // with a blank or the end after it; an escape right after it would be taken into the address.
     String.raw`(?<![\p{L}\p{N}\\])https?://[^\s<>\[\]*_~` + '`' + String.raw`\\]*[^\s<>\[\]*_~.,:;!?()'"` + '`' + String.raw`\\](?=\s|$)`,
+    // The same address with `_` inside its path (`seite_eins`): GFM keeps the underscores in the link.
+    String.raw`(?<![\p{L}\p{N}\\])https?://[^\s<>\[\]*~` + '`' + String.raw`\\]*[^\s<>\[\]*_~.,:;!?()'"` + '`' + String.raw`\\](?=[\s.,:;!?]*(?:\s|$))`,
+    // `www.example.org` and `name@example.com`: remark writes `www\.` and `\@`, which spoils GFM's link.
+    String.raw`(?<![\p{L}\p{N}\\.])www\.[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+(?:/[^\s<>\[\]*_~` + '`' + String.raw`\\]*)?(?<![.,:;!?])`,
+    String.raw`(?<![\p{L}\p{N}\\.+-])[\p{L}\p{N}.+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+(?<![.-])`,
+    // An underscore inside a word (`snake_case`) is never emphasis; remark writes `snake\_case`.
+    String.raw`(?<![\p{L}\p{N}_\\])[\p{L}\p{N}]+(?:_+[\p{L}\p{N}]+)+(?![\p{L}\p{N}_])`,
+    // A Dataview field in brackets (`[key:: value]`), not followed by what would make it a link.
+    String.raw`(?<!\\)\[[\p{L}\p{N}_ -]+::[^\[\]\n]*\](?![(\[:])`,
   ].join('|'),
   'gu',
 )
@@ -192,10 +201,10 @@ function forTable(raw: string): string {
  * a heading.
  */
 function safeText(state: State, value: string, info: Info): string {
-  const trailing = /\s+$/.exec(value)?.[0] ?? ''
-  if (!trailing) return state.safe(value, { ...info, encode: [] })
+  const trailing = /[^\S\u00a0]+$/.exec(value)?.[0] ?? ''
   const body = value.slice(0, value.length - trailing.length)
-  return (body ? state.safe(body, { ...info, after: trailing.charAt(0), encode: [] }) : '') + trailing
+  const safe = body ? state.safe(body, { ...info, after: trailing.charAt(0) || info.after, encode: [] }) : ''
+  return safe.replace(/\u00a0/g, '&nbsp;') + trailing
 }
 
 export function writeText(node: Text, parent: Parents | undefined, state: State, info: Info): string {
@@ -231,12 +240,16 @@ export function formLink(fallback: NonNullable<ToMarkdownOptions['handlers']>['l
   const bareText = (node: Link, info: Pick<Info, 'before' | 'after'>): string | null => {
     const form = (node.data as { nxForm?: LinkForm } | undefined)?.nxForm ?? ''
     const only = node.children.length === 1 && node.children[0].type === 'text' ? node.children[0].value : null
+    // `www.…` and `name@…` as GFM found them: their address has `http://` or `mailto:` in front of the text.
+    const found =
+      form === 'bare' && only !== null &&
+      ((node.url === 'http://' + only && /^www\.[^\s<>]+$/.test(only)) ||
+        (node.url === 'mailto:' + only && /^[^\s<>@]+@[^\s<>@]+$/.test(only)))
     const bare =
       (form === 'bare' || (form === '' && bareByDefault)) &&
       only !== null &&
-      only === node.url &&
+      (found || (only === node.url && /^https?:\/\/[^\s<>]+$/.test(only))) &&
       !node.title &&
-      /^https?:\/\/[^\s<>]+$/.test(only) &&
       !/[.,:;!?)\]*_~'"]$/.test(only) &&
       /^$|[\s*_~(]$/.test(info.before) &&
       /^$|^[\s.,:;!?)*_~]/.test(info.after)

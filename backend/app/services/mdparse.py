@@ -58,7 +58,8 @@ _HEADING = re.compile(r"^ {0,3}(?:>[ \t]?)*(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?
 _YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
 #: Code block languages that belong to plugins; their content is shown as code and never touched.
-PLUGIN_BLOCKS = {"dataview": "dataview", "dataviewjs": "dataviewjs", "tasks": "tasks", "query": "query"}
+#: Code blocks of plugins, by language. A ```tasks block is a query of the Tasks plugin (``tasks`` counts task lines).
+PLUGIN_BLOCKS = {"dataview": "dataview", "dataviewjs": "dataviewjs", "tasks": "tasks_queries", "query": "query"}
 
 
 @dataclass(slots=True)

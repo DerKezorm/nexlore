@@ -17,9 +17,9 @@ from sqlalchemy import select
 from ..db import SessionLocal
 from ..deps import Account, need
 from ..errors import error
-from ..models import READ, File, Space
+from ..models import MANAGE, READ, File, Space
 from ..models import Account as AccountRow
-from ..services import feed, paths, settings_service
+from ..services import feed, paths, rights, settings_service
 
 router = APIRouter(prefix="/api", tags=["feed"])
 
@@ -83,10 +83,31 @@ def space_zip(name: Annotated[str, Path(max_length=255)], account: Account) -> S
         rows = db.execute(
             select(File.path, File.size).where(File.space_id == space_id, File.deleted_at.is_(None)).order_by(File.path)
         ).all()
-    if sum(size or 0 for _, size in rows) > ZIP_LIMIT:
+        manages = rights.at_least(rights.role_in(db, account, space_id), MANAGE)
+    files = [(rel, rel) for rel, _ in rows]
+    size = sum(size or 0 for _, size in rows)
+    if manages:
+        # Obsidian's settings, themes, snippets and plugins, so the way back to Obsidian keeps them. Only for those
+        # who manage the space: a plugin's settings may hold its own keys.
+        for rel, extra in _obsidian_folder(space):
+            files.append((rel, rel))
+            size += extra
+    if size > ZIP_LIMIT:
         raise error("too_large", "The space is too large to pack in one go; take a backup instead.", 413)
     stamp = datetime.now().astimezone().strftime("%Y-%m-%d")
-    return _packed([(rel, rel) for rel, _ in rows], f"{space}-{stamp}.zip")
+    return _packed(files, f"{space}-{stamp}.zip")
+
+
+def _obsidian_folder(space: str) -> list[tuple[str, int]]:
+    """Every file under the space's ``.obsidian/`` (vault path, size); links are not followed."""
+    folder = paths.vault_root() / space / ".obsidian"
+    if not folder.is_dir() or folder.is_symlink():
+        return []
+    found = []
+    for item in sorted(folder.rglob("*")):
+        if item.is_file() and not item.is_symlink() and item.resolve().is_relative_to(folder.resolve()):
+            found.append((f"{space}/{item.relative_to(folder.parent).as_posix()}", item.stat().st_size))
+    return found
 
 
 def _packed(files: list[tuple[str, str]], filename: str) -> StreamingResponse:

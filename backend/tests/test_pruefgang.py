@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import io
+import zipfile
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -11,7 +13,7 @@ from app.main import app
 from app.models import Account
 from app.services import index, settings_service
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 from .test_mcp import World, call, failure, world  # noqa: F401  (the fixture is used by name)
 from .test_shares import share, site, token_of  # noqa: F401
 
@@ -185,3 +187,56 @@ def test_the_operator_who_invites_into_its_own_space_stays_in_it(client: TestCli
     bob.post(f"/api/notices/{invite['id']}/accept")
     members = {row["name"]: row["role"] for row in client.get("/api/spaces/Disk/members").json()["members"]}
     assert members == {"tester": "manage", "bob": "write"}
+
+
+
+# --- P: the file stays Obsidian's --------------------------------------------------------------------------------------
+
+
+def test_checkboxes_are_not_counted_as_queries_of_the_tasks_plugin(client: TestClient, account: Account, vault: Path) -> None:
+    (vault / "Moved").mkdir()
+    (vault / "Moved" / "List.md").write_bytes(b"- [ ] one\n- [x] two\n")
+    (vault / "Moved" / "Query.md").write_bytes(b"```tasks\nnot done\n```\n")
+    index.scan()
+    report = client.get("/api/spaces/Moved/report").json()
+    queries = report["plugins"].get("Tasks plugin queries")
+    assert queries is not None and queries["count"] == 1 and queries["examples"] == ["Moved/Query.md"]
+
+
+def test_what_a_mac_adds_to_a_zip_stays_out(client: TestClient, account: Account, vault: Path) -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("Vault/Note.md", "# Note\n")
+        archive.writestr("Vault/.DS_Store", b"\x00\x01")
+        archive.writestr("Vault/._Note.md", b"\x00\x05")
+        archive.writestr("__MACOSX/Vault/._Note.md", b"\x00\x05")
+    made = client.post("/api/import", data={"name": "FromMac"}, files={"file": ("vault.zip", buffer.getvalue(), "application/zip")})
+    assert made.status_code in (200, 201), made.text
+    on_disk = sorted(item.relative_to(vault / "FromMac").as_posix() for item in (vault / "FromMac").rglob("*"))
+    assert on_disk == ["Note.md"]
+
+
+def test_a_manager_takes_obsidian_s_settings_along_a_reader_does_not(client: TestClient, account: Account) -> None:
+    anna, _ = _person("anna")
+    bob, _ = _person("bob")
+    anna.post("/api/spaces", json={"name": "Garden"})
+    anna.post("/api/notes", json={"folder": "Garden", "title": "Beds"})
+    (index_root() / "Garden" / ".obsidian" / "plugins" / "sync").mkdir(parents=True)
+    (index_root() / "Garden" / ".obsidian" / "app.json").write_bytes(b"{}")
+    (index_root() / "Garden" / ".obsidian" / "plugins" / "sync" / "data.json").write_bytes(b'{"token": "x"}')
+    join(anna, "Garden", "bob", "read")
+
+    def names(person: TestClient) -> list[str]:
+        answer = person.get("/api/spaces/Garden/zip")
+        assert answer.status_code == 200, answer.text
+        with zipfile.ZipFile(io.BytesIO(answer.content)) as archive:
+            return sorted(archive.namelist())
+
+    assert names(anna) == ["Garden/.obsidian/app.json", "Garden/.obsidian/plugins/sync/data.json", "Garden/Beds.md"]
+    assert names(bob) == ["Garden/Beds.md"]
+
+
+def index_root() -> Path:
+    from app.services import paths
+
+    return paths.vault_root()

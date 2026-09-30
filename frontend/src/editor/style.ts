@@ -13,6 +13,8 @@ export type Style = Pick<Options, 'bullet' | 'bulletOther' | 'emphasis' | 'stron
   listIndent: string | null
   /** Tables padded so the pipes line up (Obsidian's Advanced Tables does that), or written compactly. */
   alignTables: boolean
+  /** A hard line break as two blanks at the end of the line (as most files have it) or as a backslash. */
+  breakWithBlanks: boolean
 }
 
 /** Counts outside fenced code, which is not Markdown. */
@@ -76,8 +78,13 @@ export function detectStyle(original: string): Style {
   // A table row with a cell padded by more than one blank.
   const alignTables = /^ {0,3}\|.*\S {2,}\|/m.test(prose)
 
+  // Hard breaks: two blanks or a backslash at a line's end, with text on the next line.
+  const blanks = (prose.match(/\S {2,}\n(?=[^\n])/g) ?? []).length
+  const slashes = (prose.match(/\S\\\n(?=[^\n])/g) ?? []).length
+
   return {
     alignTables,
+    breakWithBlanks: blanks >= slashes,
     bullet,
     bulletOther: bullet === '-' ? '*' : '-',
     emphasis: most(emphasis, '*'),

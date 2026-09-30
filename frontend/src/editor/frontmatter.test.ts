@@ -96,4 +96,17 @@ describe('front matter', () => {
     expect(writeYaml('---\n- a\n---\n', '- a\n- b')).toBe('---\n- a\n- b\n---\n')
     expect(writeYaml('---\n- a\n---\n', '- a')).toBe('---\n- a\n---\n')
   })
+  it('keeps text over several lines as a block, with its line breaks (review P2.1)', () => {
+    const head = '---\nbeschreibung: |\n  Zeile eins\n  Zeile zwei\ntags: [test]\n---\n'
+    const read = readProperties(head)
+    if (!read.ok) throw new Error('not parsed')
+    expect(read.items[0]).toEqual({ key: 'beschreibung', kind: 'text', value: 'Zeile eins\nZeile zwei\n' })
+    const written = writeProperties(head, [{ ...read.items[0], value: 'Zeile eins\nZeile zwei plus\n' }, read.items[1]])
+    expect(written).toBe('---\nbeschreibung: |\n  Zeile eins\n  Zeile zwei plus\ntags: [test]\n---\n')
+  })
+
+  it('writes an empty property as Obsidian does, without quotes (review P1.21)', () => {
+    const written = writeProperties('', [{ key: 'frist', kind: 'text', value: '' }, { key: 'tags', kind: 'list', value: [] }, { key: 'zahl', kind: 'number', value: '' }])
+    expect(written).toBe('---\nfrist:\ntags: []\nzahl:\n---\n')
+  })
 })

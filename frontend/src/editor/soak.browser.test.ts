@@ -38,7 +38,8 @@ describe('the measured cases, each edited in its own block', () => {
     ['a tilde fence stays a tilde fence', 'tilde', 'wellen', ['~~~bash\necho wellen\n~~~']],
     ['indented code stays indented', 'zweite', 'dritte', ['    eingerückter Code\n    dritte Zeile']],
     ['bare and angled web addresses stay as they were', 'Nackt', 'Bloß', ['Bloß https://example.net/pfad und in Klammern <https://example.org>.']],
-    ['table alignment stays', 'Alpha', 'Omega', [/\| :-+ \| -+: \| :-+: \|/, '| Omega | Beta | Gamma |']],
+    // The delimiter row is not touched by a changed cell: it stays as written (the review before 1.0.0).
+    ['table alignment stays', 'Alpha', 'Omega', ['|:------|-------:|:-----:|', '| Omega | Beta | Gamma |']],
     ['reference links and their definitions stay', 'Mit', 'Samt', ['Samt [Referenz][ref] und ![Bildref][bild].', '[ref]: https://example.com/ref "Titel"', '[bild]: Anhänge/ref.png']],
     ['a list indented with tabs keeps its tabs', 'zweiter', 'dritter', ['- Liste\n\t- mit Tab eingerückt\n\t- dritter']],
     ['the rest of a fence line stays', 'wert', 'zahl', ['```js title="beispiel.js"\nconst zahl = 1\n```']],

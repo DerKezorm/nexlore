@@ -132,6 +132,7 @@ export function writerOptions(style: Style) {
         strong: attention('strong', defaultHandlers.strong),
         emphasis: attention('emphasis', defaultHandlers.emphasis),
         root: tidyRoot(options.handlers?.root ?? defaultHandlers.root),
+        break: style.breakWithBlanks ? () => '  \n' : defaultHandlers.break,
       },
     }))
   }

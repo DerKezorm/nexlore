@@ -51,7 +51,7 @@ PLUGIN_FEATURES = {
     "dataviewjs": "DataviewJS blocks",
     "dataview_inline": "Dataview inline queries",
     "dataview_fields": "Dataview fields (key:: value)",
-    "tasks": "Tasks plugin queries",
+    "tasks_queries": "Tasks plugin queries",
     "query": "Search queries",
     "templater": "Templater commands",
     "excalidraw": "Excalidraw drawings",
@@ -200,6 +200,11 @@ def _entry_parts(info: zipfile.ZipInfo) -> list[str] | None:
     return parts
 
 
+def _mac_leftover(parts: list[str]) -> bool:
+    """What the Finder adds when it packs a folder: resource forks and folder settings, not part of the vault."""
+    return parts[0] == "__MACOSX" or parts[-1] == ".DS_Store" or parts[-1].startswith("._")
+
+
 def _is_link(info: zipfile.ZipInfo) -> bool:
     return stat.S_ISLNK(info.external_attr >> 16)
 
@@ -225,7 +230,7 @@ def check_archive(archive: zipfile.ZipFile) -> list[tuple[zipfile.ZipInfo, list[
         parts = _entry_parts(info)
         if parts is None or _is_link(info):
             raise VaultError("archive_unsafe", "the archive holds an entry that would leave its folder", 400)
-        if not parts:
+        if not parts or _mac_leftover(parts):
             continue
         if info.file_size > MAX_FILE_BYTES:
             raise VaultError("archive_too_large", "a file in the archive is too large", 413)

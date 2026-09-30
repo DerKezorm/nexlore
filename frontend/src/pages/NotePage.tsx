@@ -49,7 +49,7 @@ import { copiesOf, originalOf } from '../lib/compare'
 import { errorText } from '../lib/errors'
 import { isFileTarget, isNotePath } from '../lib/files'
 import { distinctOutgoing, LinkIndex, linkedSpace, linkName } from '../lib/links'
-import { fileRoute, formatDate, renderMarkdown } from '../lib/markdown'
+import { fileRoute, formatDate, renderMarkdown, withoutFrontMatter } from '../lib/markdown'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { versionSource } from '../lib/versions'
 import { announceLeaving, askVaultAction, copyText, LEAVING_EVENT, within, type Leaving } from '../lib/vaultActions'
@@ -67,6 +67,8 @@ import { useEnabledPlugins, viewFor } from '../plugins/registry'
 
 // The editor (Milkdown, CodeMirror for code, KaTeX) is most of the weight: loaded when somebody starts editing.
 const NoteEditor = lazy(() => import('../components/NoteEditor').then((module) => ({ default: module.NoteEditor })))
+// The properties table brings the YAML reader: loaded with the first note that has properties.
+const Properties = lazy(() => import('../components/Properties').then((module) => ({ default: module.Properties })))
 
 const SAVE_PAUSE = 1200
 const HEARTBEAT = 30_000
@@ -555,6 +557,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     return (target: string) => map.get(target.toLowerCase()) ?? null
   }, [links])
   const html = useMemo(() => (note ? renderMarkdown(note.content, resolve, note.path) : ''), [note, resolve])
+  // The front matter as written, for the properties while reading.
+  const readingHead = useMemo(() => (note ? note.content.slice(0, note.content.length - withoutFrontMatter(note.content).length) : ''), [note])
   const outgoing = useMemo(() => distinctOutgoing(links?.outgoing ?? []), [links])
   useEnrich(article, html)
   // A space with a theme of its own: its colours under its notes (loaded once for all panes).
@@ -1169,6 +1173,12 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                   <span key={tag} className="rounded-full bg-accent-500/10 px-2 py-0.5 text-accent-400">#{tag}</span>
                 ))}
               </div>
+              {!editing && readingHead && (
+                // The properties while reading, as Obsidian shows them; open or shut the same for every note.
+                <Suspense fallback={null}>
+                  <Properties head={readingHead} readOnly onChange={() => undefined} remember="nexlore.readingProperties" />
+                </Suspense>
+              )}
               {editing ? (
                 <Suspense fallback={<p className="text-sm text-mist-500">{t('common.loading')}</p>}>
                 <NoteEditor

@@ -19,6 +19,11 @@
  *
  * Without a change E1 = E0, every unit is clean, and the result is O itself, line endings and end of file included,
  * however lossy the editor is.
+ *
+ * 4. A changed block that was one block in O and in E0 is merged line by line (`mergeLines`): a line the change did
+ *    not touch is taken from O, so a word changed in a table or a callout leaves the other rows as they were written.
+ *    Only when the merged block reads exactly like the editor's own (its round trip is the same); else E1's block.
+ * 5. What follows the last block (blank lines, or no line break at all) is the file's own and stays.
  */
 
 export type Block = { start: number; end: number }
@@ -65,9 +70,9 @@ export class Plan {
     this.units = splitEmpty(matchUnits(canon, this.e0, this.e0Blocks, maxCells))
   }
 
-  /** The text to write for the editor's output `edited`. */
-  apply(edited: string, tools: Pick<Tools, 'blocks'>): string {
-    return assemble(this, edited, tools.blocks(edited))
+  /** The text to write for the editor's output `edited`. With `serialize`, changed blocks are merged line by line. */
+  apply(edited: string, tools: Pick<Tools, 'blocks'> & Partial<Pick<Tools, 'serialize'>>): string {
+    return assemble(this, edited, tools.blocks(edited), tools.serialize)
   }
 }
 
@@ -283,9 +288,61 @@ function matchBlocks(a: string[], b: string[], maxCells: number): number[] {
   return match
 }
 
-type Segment = { from: 'o'; first: number; last: number } | { from: 'e1'; block: number }
+type Segment = { from: 'o'; first: number; last: number } | { from: 'e1'; block: number; o?: number; e0?: number }
 
-function assemble(plan: Plan, edited: string, e1: Block[]): string {
+/** Above this many line pairs a block is not merged line by line (the table would grow too large). */
+const MAX_LINE_CELLS = 250_000
+
+/** A line as it reads, not as it is written: blanks around pipes, the dashes of a delimiter row, escapes, the marks
+ * of a hard break at its end. */
+function plainLine(line: string): string {
+  return line
+    .replace(/(?:\\| {2,})$/, '')
+    .replace(/\\([!-/:-@[-`{-~])/g, '$1')
+    .replace(/\s*\|\s*/g, '|')
+    .replace(/-+/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Pairs (index in a, index in b) of a longest common subsequence of equal lines. */
+function commonLines(a: string[], b: string[]): [number, number][] {
+  const table = Array.from({ length: a.length + 1 }, () => new Int32Array(b.length + 1))
+  for (let i = a.length - 1; i >= 0; i--)
+    for (let j = b.length - 1; j >= 0; j--)
+      table[i][j] = a[i] === b[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1])
+  const pairs: [number, number][] = []
+  for (let i = 0, j = 0; i < a.length && j < b.length; ) {
+    if (a[i] === b[j]) pairs.push([i++, j++])
+    else if (table[i + 1][j] >= table[i][j + 1]) i++
+    else j++
+  }
+  return pairs
+}
+
+/**
+ * One changed block, line by line: a line the editor writes the same before and after the change comes from the
+ * original where the original has it (as it reads), and a blank line only the editor writes (`>` between a
+ * paragraph and a list in a quote) stays out. Every other line is the editor's.
+ */
+export function mergeLines(original: string, before: string, after: string, eol: string): string {
+  const o = original.split(/\r?\n/)
+  const e0 = before.split('\n')
+  const e1 = after.split('\n')
+  if (o.length * e0.length > MAX_LINE_CELLS || e0.length * e1.length > MAX_LINE_CELLS) return after.replace(/\n/g, eol)
+  const toO = new Map(commonLines(e0.map(plainLine), o.map(plainLine)))
+  const kept = new Map(commonLines(e1, e0))
+  const out: string[] = []
+  e1.forEach((line, l) => {
+    const j = kept.get(l)
+    if (j === undefined) out.push(line)
+    else if (toO.has(j)) out.push(o[toO.get(j)!])
+    else if (!/^[>\s]*$/.test(e0[j])) out.push(line)
+  })
+  return out.join(eol)
+}
+
+function assemble(plan: Plan, edited: string, e1: Block[], serialize?: Tools['serialize']): string {
   const { original, o, units, eol, empty } = plan
   const e1Texts = e1.map((block) => norm(edited.slice(block.start, block.end)))
   const match = matchBlocks(plan.e0Texts, e1Texts, plan.maxCells)
@@ -313,12 +370,25 @@ function assemble(plan: Plan, edited: string, e1: Block[]): string {
       if (j !== undefined) moved.set(l, unitOf.get(j)!)
     }
 
+  // A block changed in place: one O block, one E0 block, and in E1 one new block where it stood, with unchanged
+  // neighbours on both sides. Written merged line by line (see `mergeLines`).
+  const replaced = new Map<number, { o: number; e0: number }>()
+  for (const unit of units) {
+    if (unit.oTo - unit.oFrom !== 1 || unit.e0.length !== 1 || empty[unit.oFrom]) continue
+    const j = unit.e0[0]
+    const before = j === 0 ? -1 : j - 1
+    const list = insertedAfter.get(before)
+    if (match[j] >= 0 || (before >= 0 && match[before] < 0) || (j + 1 < match.length && match[j + 1] < 0)) continue
+    if (list?.length === 1 && !moved.has(list[0])) replaced.set(list[0], { o: unit.oFrom, e0: j })
+  }
+
   const segments: Segment[] = []
   const pushNew = (list: number[] | undefined) =>
     list?.forEach((l) => {
       const unit = moved.get(l)
+      const was = replaced.get(l)
       if (unit && unit.oTo > unit.oFrom) segments.push({ from: 'o', first: unit.oFrom, last: unit.oTo - 1 })
-      else segments.push({ from: 'e1', block: l })
+      else segments.push(was ? { from: 'e1', block: l, ...was } : { from: 'e1', block: l })
     })
   pushNew(insertedAfter.get(-1))
   for (const unit of units) {
@@ -338,6 +408,14 @@ function assemble(plan: Plan, edited: string, e1: Block[]): string {
   }
 
   const lines = (text: string) => text.replace(/\r?\n/g, eol)
+  const written = (segment: Extract<Segment, { from: 'e1' }>): string => {
+    const text = edited.slice(e1[segment.block].start, e1[segment.block].end)
+    if (!serialize || segment.o === undefined || segment.e0 === undefined) return lines(text)
+    const block = plan.e0Blocks[segment.e0]
+    const merged = mergeLines(original.slice(o[segment.o].start, o[segment.o].end), plan.e0.slice(block.start, block.end), text, eol)
+    // The merged block must read exactly like the editor's; if not, the editor's own is safer.
+    return merged !== lines(text) && norm(serialize(merged)) === norm(serialize(text)) ? merged : lines(text)
+  }
   let out = ''
   segments.forEach((segment, k) => {
     const previous = segments[k - 1]
@@ -349,14 +427,13 @@ function assemble(plan: Plan, edited: string, e1: Block[]): string {
     } else if (segment.from === 'e1' && previous.from === 'e1' && segment.block === previous.block + 1) {
       out += lines(edited.slice(e1[previous.block].end, e1[segment.block].start))
     } else out += eol + eol
-    out +=
-      segment.from === 'o'
-        ? original.slice(o[segment.first].start, o[segment.last].end)
-        : lines(edited.slice(e1[segment.block].start, e1[segment.block].end))
+    out += segment.from === 'o' ? original.slice(o[segment.first].start, o[segment.last].end) : written(segment)
   })
   const last = segments.at(-1)
   if (!last) return ''
-  if (last.from === 'o' && last.last === o.length - 1) out += original.slice(o[o.length - 1].end)
-  else out += eol
+  // The file's own ending (blank lines, or none at all), also after a changed or a new last block.
+  const ending = o.length ? original.slice(o[o.length - 1].end) : ''
+  if (last.from === 'o' && last.last === o.length - 1) out += ending
+  else out += o.length && /^\s*$/.test(ending) ? ending : eol
   return out
 }

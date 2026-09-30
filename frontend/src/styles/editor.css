@@ -47,6 +47,13 @@
   }
 }
 
+/* A single line break ends the line, as in Obsidian (its "strict line breaks" is off by default). Milkdown keeps it as
+   a hardbreak node marked inline and shows a blank; the file keeps its plain line break. */
+.milkdown .ProseMirror span[data-type='hardbreak'][data-is-inline='true']::after {
+  content: '\A';
+  white-space: pre;
+}
+
 /* Headings like the reading view. */
 .nx-note-editor .milkdown .ProseMirror h1 {
   font-size: 1.6rem;

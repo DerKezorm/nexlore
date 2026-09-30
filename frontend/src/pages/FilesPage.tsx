@@ -193,6 +193,9 @@ function TrashCard() {
   )
 }
 
+/** A vault taken in (``ImportCard``): the files card below turns to the new space at once. */
+const IMPORTED_EVENT = 'nexlore:imported'
+
 /** The files in a space that are not notes: size, how many notes use each, the space the account has used. */
 function AttachmentsCard() {
   const { t, i18n } = useTranslation()
@@ -206,6 +209,14 @@ function AttachmentsCard() {
 
   useEffect(() => {
     vaultApi.usage().then(setUsage).catch(() => undefined)
+  }, [])
+  useEffect(() => {
+    const imported = (event: Event) => {
+      setSpace((event as CustomEvent<string>).detail)
+      vaultApi.usage().then(setUsage).catch(() => undefined)
+    }
+    window.addEventListener(IMPORTED_EVENT, imported)
+    return () => window.removeEventListener(IMPORTED_EVENT, imported)
   }, [])
   useEffect(() => {
     if (!shown) return
@@ -252,7 +263,7 @@ function AttachmentsCard() {
       <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
         <label className="flex items-center gap-2 text-mist-400">
           {t('files.attachments.space')}
-          <select value={shown} onChange={(event) => setSpace(event.target.value)} className="h-8 rounded-lg border border-ink-700 bg-ink-850 px-2 text-mist-100 outline-none focus:border-accent-500">
+          <select value={shown} aria-label={t('files.attachments.space')} onChange={(event) => setSpace(event.target.value)} className="h-8 rounded-lg border border-ink-700 bg-ink-850 px-2 text-mist-100 outline-none focus:border-accent-500">
             {spaces.map((item) => (
               <option key={item.id} value={item.name}>{item.name}</option>
             ))}
@@ -305,8 +316,10 @@ function ImportCard() {
     setBusy(true)
     setProblem(null)
     try {
-      setReport(await vaultApi.importVault(file, name.trim()))
+      const made = await vaultApi.importVault(file, name.trim())
+      setReport(made)
       await reload()
+      window.dispatchEvent(new CustomEvent(IMPORTED_EVENT, { detail: made.space }))
     } catch (error) {
       setProblem(error instanceof ApiError ? error.code : 'internal_error')
     } finally {

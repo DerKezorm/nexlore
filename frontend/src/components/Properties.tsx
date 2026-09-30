@@ -15,14 +15,35 @@ type Props = {
   head: string
   readOnly?: boolean
   onChange: (head: string) => void
+  /** Where the browser keeps whether the table is open (the reading view: the same for every note). */
+  remember?: string
+}
+
+function remembered(key: string | undefined): boolean {
+  if (!key) return true
+  try {
+    return localStorage.getItem(key) !== 'closed'
+  } catch {
+    return true
+  }
 }
 
 const KINDS: PropertyKind[] = ['text', 'list', 'number', 'checkbox', 'date', 'datetime']
 
-export function Properties({ head, readOnly = false, onChange }: Props) {
+export function Properties({ head, readOnly = false, onChange, remember }: Props) {
   const { t } = useTranslation()
   const parsed = useMemo(() => readProperties(head), [head])
-  const [open, setOpen] = useState(true)
+  const [open, setOpenState] = useState(() => remembered(remember))
+  const setOpen = (next: boolean) => {
+    setOpenState(next)
+    if (!remember) return
+    try {
+      if (next) localStorage.removeItem(remember)
+      else localStorage.setItem(remember, 'closed')
+    } catch {
+      // Not remembered: open or shut as long as the page lasts.
+    }
+  }
   // Rows being edited; a row without a name is not written yet.
   const [draft, setDraft] = useState<Property[] | null>(null)
   const items = draft ?? (parsed.ok ? parsed.items : [])
@@ -240,6 +261,11 @@ function Value({ item, readOnly, onChange }: { item: Property; readOnly: boolean
     case 'other':
       return <textarea value={String(item.value)} readOnly={readOnly} aria-label={item.key} onChange={(event) => onChange(event.target.value)} className={field + ' h-16 font-mono text-xs'} />
     default:
+      // Text over several lines (`beschreibung: |` in YAML): a box that keeps the lines; a one-line field glued them.
+      if (item.kind === 'text' && String(item.value).includes('\n')) {
+        const lines = String(item.value).replace(/\n$/, '').split('\n').length
+        return <textarea value={String(item.value)} readOnly={readOnly} aria-label={item.key} rows={Math.min(8, lines)} onChange={(event) => onChange(event.target.value)} className={field + ' resize-y'} />
+      }
       return <input value={String(item.value)} readOnly={readOnly} aria-label={item.key} inputMode={item.kind === 'number' ? 'decimal' : undefined} onChange={(event) => onChange(event.target.value)} className={field} />
   }
 }

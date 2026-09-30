@@ -189,3 +189,13 @@ test('a deleted note waits in the trash and comes back', async ({ page }) => {
   await expect(entry).toHaveCount(0)
   expect(onDisk('Work/Delete me.md')).toContain('Gone soon.')
 })
+
+test('a vault taken in turns the files card to the new space at once', async ({ page }) => {
+  // A ZIP made beforehand (Python's zipfile): Vault/Note.md and Vault/pic.png.
+  const zip = Buffer.from('UEsDBBQAAAAAAMKxPl35aNe9EgAAABIAAAANAAAAVmF1bHQvTm90ZS5tZCMgTm90ZQoKVGFrZW4gaW4uClBLAwQUAAAAAADCsT5dV0qE/wwAAAAMAAAADQAAAFZhdWx0L3BpYy5wbmeJUE5HDQoaCmZha2VQSwECFAAUAAAAAADCsT5d+WjXvRIAAAASAAAADQAAAAAAAAAAAAAAgAEAAAAAVmF1bHQvTm90ZS5tZFBLAQIUABQAAAAAAMKxPl1XSoT/DAAAAAwAAAANAAAAAAAAAAAAAACAAT0AAABWYXVsdC9waWMucG5nUEsFBgAAAAACAAIAdgAAAHQAAAAAAA==', 'base64')
+  await page.goto('/files')
+  await page.getByLabel('ZIP file').setInputFiles({ name: 'vault.zip', mimeType: 'application/zip', buffer: zip })
+  await page.getByLabel('Name of the new space').fill('Taken in')
+  await page.getByRole('button', { name: 'Import', exact: true }).click()
+  await expect(page.getByLabel('Space', { exact: true })).toHaveValue('Taken in')
+})

@@ -46,3 +46,22 @@ test("the reading view shows callouts, highlights, comments, links in tables and
   await expect(page.locator('article')).toContainText('Reached from another space.')
   expect(problems).toEqual([])
 })
+
+test('the reading view shows the properties in a box that stays shut once shut, for every note', async ({ page }) => {
+  const problems = collectProblems(page)
+  const headers = { 'X-Nexlore-Client': 'tab-e2eprops' }
+  const content = '---\nstatus: offen\nprio: 2\nbeschreibung: |\n  Zeile eins\n  Zeile zwei\n---\n\nText.\n'
+  for (const title of ['Props one', 'Props two']) {
+    const made = await page.request.post('/api/notes', { data: { folder: 'Zoo', title, content }, headers })
+    expect(made.status()).toBe(201)
+  }
+  await page.goto('/note/Zoo/Props%20one.md')
+  const box = page.getByRole('region', { name: 'Properties' })
+  await expect(box.getByLabel('status')).toHaveValue('offen')
+  await expect(box.getByLabel('beschreibung')).toHaveValue('Zeile eins\nZeile zwei\n')
+  await box.getByRole('button', { name: /Properties/ }).click()
+  await expect(box.getByLabel('status')).toHaveCount(0)
+  await page.goto('/note/Zoo/Props%20two.md')
+  await expect(page.getByRole('region', { name: 'Properties' }).getByRole('button', { name: /Properties/ })).toHaveAttribute('aria-expanded', 'false')
+  expect(problems).toEqual([])
+})
