@@ -85,6 +85,9 @@
     "chars_other": "{{n}} characters",
     "chosen": "Selected: {{what}}"
   },
+  "zettel": {
+    "command": "New note named by the time"
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Spaces",

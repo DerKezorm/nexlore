@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 
-import { ApiError, everydayApi, recentApi } from '../api/client'
+import { ApiError, everydayApi, recentApi, vaultApi } from '../api/client'
+import { zettelName } from '../lib/zettel'
 import { errorText } from '../lib/errors'
 import { dailySpace, today as isoToday } from '../lib/everyday'
 import { isNotePath } from '../lib/files'
@@ -182,6 +183,18 @@ export function AppShell() {
   }
   const newNoteTarget = newNoteFolder()
   newNoteAt.current = newNoteTarget
+  // A note named by the minute (lib/zettel.ts), where a new note goes, opened for writing.
+  const makeZettel = async () => {
+    const folder = newNoteAt.current
+    if (!folder) return
+    try {
+      const made = await vaultApi.create(folder, zettelName(new Date()))
+      void reload()
+      navigate(noteUrl(made.path) + '?edit=1')
+    } catch (problem) {
+      setTodayProblem(errorText(problem instanceof ApiError ? problem.code : 'internal_error'))
+    }
+  }
 
   const { me, setAppearance } = useAuth()
   // Own keys (lib/shortcuts.ts), heard before anything else on the page: an own key wins, where its command is on
@@ -233,6 +246,7 @@ export function AppShell() {
       { id: 'app.search', label: t('search.button'), group, symbol: 'search', keys: t('search.shortcut'), run: () => setSearching(true) },
       ...(home ? [{ id: 'app.today', label: t('today.title'), group, symbol: 'today' as const, keys: 'Alt+T', run: () => void openToday() }] : []),
       ...(newNoteAt.current ? [{ id: 'app.newNote', label: t('sidebar.newNote'), group, symbol: 'plus' as const, keys: 'Alt+N', run: () => setCreating(newNoteAt.current) }] : []),
+      ...(newNoteAt.current ? [{ id: 'app.zettel', label: t('zettel.command'), group, symbol: 'clock' as const, run: () => void makeZettel() }] : []),
       { id: 'app.capture', label: t('capture.title'), group, symbol: 'plus', keys: 'Alt+Shift+N', run: () => askCapture() },
       { id: 'go.search', label: t('searchPage.open'), group, symbol: 'search', keys: 'Ctrl Shift F', run: () => navigate('/search') },
       go('go.graph', t('palette.goTo', { place: t('nav.graph') }), '/', 'graph'),

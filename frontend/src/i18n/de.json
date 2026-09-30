@@ -85,6 +85,9 @@
     "chars_other": "{{n}} Zeichen",
     "chosen": "Ausgewählt: {{what}}"
   },
+  "zettel": {
+    "command": "Neue Notiz mit Zeitstempel als Name"
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Bereiche",
