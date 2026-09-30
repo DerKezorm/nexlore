@@ -37,7 +37,7 @@ async function zettel(page: Page): Promise<string> {
   await expect(page.getByRole('banner').getByRole('button', { name: 'New note' })).toBeEnabled()
   await page.keyboard.press('ControlOrMeta+p')
   await page.keyboard.type('named by the time')
-  await expect(page.getByRole('dialog', { name: 'Commands' }).getByRole('button', { name: /named by the time/ })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Commands' }).getByRole('button', { name: /^New note named by the time/ })).toBeVisible()
   await page.keyboard.press('Enter')
   await expect.poll(() => page.url()).not.toBe(before)
   await expect(page).toHaveURL(/\/note\/Heath\/\d{12}(%20\d)?\.md/)
