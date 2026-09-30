@@ -18,7 +18,7 @@ from app.models import File, Version
 from app.services import index
 from app.services.tagrename import rename_in, valid
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 
 def person(name: str) -> TestClient:
@@ -72,8 +72,8 @@ def people(client: TestClient, account: object, vault: Path) -> dict[str, TestCl
     note(anna, "Garden", "Busy", "Typing #project\n")
     note(anna, "Kitchen", "Jam", "Cook #project\n")
     note(carl, "Diary", "Secret", "Mine #project\n")
-    assert anna.put("/api/spaces/Garden/members/bob", json={"role": "write"}).status_code == 200
-    assert anna.put("/api/spaces/Kitchen/members/bob", json={"role": "read"}).status_code == 200
+    join(anna, "Garden", "bob", "write")
+    join(anna, "Kitchen", "bob", "read")
     return {"anna": anna, "bob": bob, "carl": carl}
 
 

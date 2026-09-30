@@ -1,13 +1,18 @@
 """Who is in which space, and the invitations that bring people in.
 
-A manager of a space invites, gives and takes rights there. The operator may reset the rights of any space (a
-manager left, an account was deleted) without reading it: the operator sees names of spaces and of members, never
-what is inside, and cannot give itself a right in a space that has members.
+A manager of a space invites, gives and takes rights there. Naming an account brings it an invitation, never a
+membership it did not agree to, and the answer is the same whether the name exists or not.
+
+The operator may reset the rights of any space (a manager left, an account was deleted): it sees names of spaces and
+of members, never what is inside, and cannot give itself a right in a space that has members. It can give one to
+another account, though, or take the last member out and so make the space its own: that is never hidden, every
+member and the account concerned get a notice (``services/notices``).
 """
 
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Request, Response
@@ -20,7 +25,7 @@ from ..errors import error
 from ..models import MANAGE, OPERATOR, SPACE_ROLES, Invite, Membership, Space
 from ..models import Account as AccountRow
 from ..security import MIN_PASSWORD, SESSION_COOKIE, session_account
-from ..services import accounts, mailer, rights, settings_service
+from ..services import accounts, mailer, notices, rights, settings_service
 from ..services.accounts import AccountError
 from .auth import check_password, fail, sign_in
 
@@ -121,19 +126,31 @@ def members(name: SpaceName, account: Account, db: DbSession) -> dict[str, Any]:
     }
 
 
-@router.put("/spaces/{name}/members/{person}", summary="Give an account a right in the space")
-def set_member(name: SpaceName, person: AccountName, payload: MemberIn, account: Account, db: DbSession) -> dict:
+@router.put("/spaces/{name}/members/{person}", summary="Change a member's right, or invite an account by name")
+def set_member(
+    name: SpaceName, person: AccountName, payload: MemberIn, account: Account, db: DbSession, response: Response
+) -> dict:
     if payload.role not in SPACE_ROLES:
         raise error("invalid_role", "Unknown right.", 422)
     space = _space(db, account, name, operator_may=True)
+    own = rights.role_in(db, account, space.id)
+    # The operator acting where it does not manage: allowed, but every member is told.
+    beyond = account.role == OPERATOR and not rights.at_least(own, MANAGE)
     target = accounts.by_name(db, person)
+    membership = db.get(Membership, (space.id, target.id)) if target is not None else None
+    if membership is None and not beyond and (target is None or target.id != account.id):
+        # A name brings an invitation, answered under "New"; unknown names get the same answer and nothing happens.
+        if target is not None:
+            notices.invite(db, space, target, payload.role, account)
+            db.commit()
+            logger.info("Invited space_id=%s name=%s role=%s by=%s", space.id, target.name, payload.role, account.name)
+        response.status_code = 202
+        return {"name": person, "role": payload.role, "invited": True}
     if target is None:
         raise error("no_such_account", "There is no account of that name.", 404)
-    own = rights.role_in(db, account, space.id)
     if target.id == account.id and not rights.at_least(own, MANAGE):
         # The operator resets rights, it does not take them.
         raise error("forbidden", "You cannot give yourself a right in this space.", 403)
-    membership = db.get(Membership, (space.id, target.id))
     if (
         membership is not None
         and membership.role == MANAGE
@@ -150,6 +167,10 @@ def set_member(name: SpaceName, person: AccountName, payload: MemberIn, account:
         db.add(Membership(space_id=space.id, account_id=target.id, role=payload.role))
     else:
         membership.role = payload.role
+    if beyond:
+        kind = notices.OPERATOR_ADDED if membership is None else notices.OPERATOR_ROLE
+        db.flush()
+        notices.tell(db, space, kind, account, target.name, payload.role, also=(target.id,))
     db.commit()
     logger.info("Right set space_id=%s name=%s role=%s by=%s", space.id, target.name, payload.role, account.name)
     return {"name": target.name, "role": payload.role}
@@ -165,16 +186,54 @@ def remove_member(name: SpaceName, person: AccountName, account: Account, db: Db
             raise error("not_found", "No such space.", 404)
     else:
         space = _space(db, account, name, operator_may=True)
-    if target is None:
-        raise error("no_such_account", "There is no account of that name.", 404)
-    membership = db.get(Membership, (space.id, target.id))
-    if membership is None:
+    membership = db.get(Membership, (space.id, target.id)) if target is not None else None
+    if target is None or membership is None:
+        # Unknown and not a member answer alike: a manager learns nothing about names outside the space.
         raise error("not_a_member", "This account is not in the space.", 404)
     if membership.role == MANAGE and _managers_left(db, space.id, target.id) == 0 and _others(db, space.id, target.id):
         raise error("last_manager", "The space needs another manager first.", 409)
+    own = rights.role_in(db, account, space.id)
+    beyond = not leaving and account.role == OPERATOR and not rights.at_least(own, MANAGE)
     db.delete(membership)
+    if beyond:
+        # Taking the last member out makes the space the operator's: the one taken out is told as well.
+        db.flush()
+        notices.tell(db, space, notices.OPERATOR_REMOVED, account, target.name, also=(target.id,))
     db.commit()
     logger.info("Right taken space_id=%s name=%s by=%s", space.id, target.name, account.name)
+
+
+class NoticeOut(BaseModel):
+    id: int
+    kind: str
+    space: str
+    role: str
+    actor: str
+    subject: str
+    created_at: datetime
+
+
+@router.get("/notices", response_model=list[NoticeOut], summary="Open invitations and what the operator changed")
+def open_notices(account: Account, db: DbSession) -> list[NoticeOut]:
+    return [NoticeOut(**vars(item)) for item in notices.open_for(db, account.id)]
+
+
+@router.post("/notices/{notice_id}/accept", summary="Accept an invitation into a space")
+def accept_notice(notice_id: Annotated[int, PathParam(ge=1)], account: Account, db: DbSession) -> dict[str, str]:
+    try:
+        space = notices.answer(db, account, notice_id, accept=True)
+    except notices.NoticeError as exc:
+        raise error(exc.code, "No such invitation.", exc.status) from exc
+    logger.info("Invitation accepted notice=%s name=%s", notice_id, account.name)
+    return {"space": space or ""}
+
+
+@router.post("/notices/{notice_id}/decline", status_code=204, summary="Decline an invitation, or mark a notice seen")
+def decline_notice(notice_id: Annotated[int, PathParam(ge=1)], account: Account, db: DbSession) -> None:
+    try:
+        notices.answer(db, account, notice_id, accept=False)
+    except notices.NoticeError as exc:
+        raise error(exc.code, "No such notice.", exc.status) from exc
 
 
 @router.get("/admin/spaces", summary="Every space with its members, for the operator (no contents)")

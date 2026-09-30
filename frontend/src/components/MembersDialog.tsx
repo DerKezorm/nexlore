@@ -33,6 +33,7 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
   const { reload } = useStore()
   /** Giving up the last right to manage, asked once more: after it only the operator can manage the space. */
   const [lastManager, setLastManager] = useState<{ role: Role | null } | null>(null)
+  const [invitedName, setInvitedName] = useState<string | null>(null)
 
   const load = useCallback(() => run(async () => setData(await authApi.members(space))), [run, space])
 
@@ -150,9 +151,12 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
           onSubmit={(event) => {
             event.preventDefault()
             if (!person.trim()) return
+            const name = person.trim()
+            setInvitedName(null)
             void run(async () => {
-              await authApi.setMember(space, person.trim(), personRole)
+              const answer = await authApi.setMember(space, name, personRole)
               setPerson('')
+              if (answer.invited) setInvitedName(name)
               await load()
             })
           }}
@@ -160,9 +164,10 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
           <Input label={t('members.addName')} value={person} onChange={setPerson} className="min-w-40 flex-1" />
           <Select label={t('members.role')} value={personRole} options={roleOptions} onChange={setPersonRole} />
           <Button type="submit" busy={busy}>
-            {t('members.add')}
+            {manages ? t('members.inviteName') : t('members.add')}
           </Button>
         </form>
+        {invitedName && <p role="status" className="mt-2 text-xs text-mist-400">{t('members.invitedName', { name: invitedName })}</p>}
 
         {manages && (
           <div className="mt-6 border-t border-ink-700 pt-4">

@@ -23,7 +23,7 @@ from app.main import app
 from app.models import File, Version
 from app.services import index, plugins, settings_service
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 NOTE = "---\nkanban-plugin: basic\n---\n\n## Todo\n\n- [ ] Dig\n- [ ] Plant\n\n## Done\n\n- [x] Buy seeds\r\n"
 
@@ -233,7 +233,7 @@ def test_writing_needs_a_plugin_that_may_write_and_the_right_to_write(world: Wor
     body = {**body, "plugin": "kanban"}
     assert world.bob.put("/api/plugins/note", json=body).status_code == 404  # bob may not read Garden
     carl = person("carl")
-    assert world.anna.put("/api/spaces/Garden/members/carl", json={"role": "read"}).status_code == 200
+    join(world.anna, "Garden", "carl", "read")
     assert carl.put("/api/plugins/kanban/enabled", json={"enabled": True}).status_code == 200
     assert carl.put("/api/plugins/note", json=body).status_code == 403
     assert (world.vault / "Garden" / "Board.md").read_bytes() == NOTE.encode()

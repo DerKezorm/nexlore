@@ -3,11 +3,11 @@
  * notes change and after a note was opened (it is seen then). One list for the sidebar's section and its dots.
  */
 import { useSyncExternalStore } from 'react'
-import { newsApi, type NewNote, type NewsMention } from '../api/client'
+import { newsApi, noticesApi, type NewNote, type NewsMention, type SpaceNotice } from '../api/client'
 
-type State = { count: number; notes: NewNote[]; paths: Set<string>; mentions: NewsMention[] }
+type State = { count: number; notes: NewNote[]; paths: Set<string>; mentions: NewsMention[]; notices: SpaceNotice[] }
 
-let state: State = { count: 0, notes: [], paths: new Set(), mentions: [] }
+let state: State = { count: 0, notes: [], paths: new Set(), mentions: [], notices: [] }
 const listeners = new Set<() => void>()
 let asking: Promise<void> | null = null
 
@@ -17,11 +17,10 @@ function publish(next: State): void {
 }
 
 export function refreshNews(): Promise<void> {
-  asking ??= newsApi
-    .list()
+  asking ??= Promise.all([newsApi.list(), noticesApi.list().catch(() => [])])
     .then(
-      (found) =>
-        publish({ count: found.count, notes: found.notes, paths: new Set(found.notes.map((note) => note.path)), mentions: found.mentions ?? [] }),
+      ([found, notices]) =>
+        publish({ count: found.count, notes: found.notes, paths: new Set(found.notes.map((note) => note.path)), mentions: found.mentions ?? [], notices }),
       () => undefined,
     )
     .finally(() => {
@@ -36,12 +35,24 @@ export function seenNote(path: string): void {
   if (!state.paths.has(path) && mentions.length === state.mentions.length) return
   const notes = state.notes.filter((note) => note.path !== path)
   const count = state.paths.has(path) ? Math.max(0, state.count - 1) : state.count
-  publish({ count, notes, paths: new Set(notes.map((note) => note.path)), mentions })
+  publish({ ...state, count, notes, paths: new Set(notes.map((note) => note.path)), mentions })
+}
+
+/** An invitation answered or a notice seen: off the list at once, then asked again. */
+export async function answerNotice(id: number, accept: boolean): Promise<string | null> {
+  publish({ ...state, notices: state.notices.filter((notice) => notice.id !== id) })
+  try {
+    return accept ? (await noticesApi.accept(id)).space : (await noticesApi.decline(id), null)
+  } finally {
+    await refreshNews()
+  }
 }
 
 export async function seenAll(): Promise<void> {
-  publish({ count: 0, notes: [], paths: new Set(), mentions: [] })
-  await newsApi.seenAll()
+  // Invitations wait for an answer; what the operator did counts as seen now.
+  const told = state.notices.filter((notice) => notice.kind !== 'invite')
+  publish({ count: 0, notes: [], paths: new Set(), mentions: [], notices: state.notices.filter((notice) => notice.kind === 'invite') })
+  await Promise.all([newsApi.seenAll(), ...told.map((notice) => noticesApi.decline(notice.id).catch(() => undefined))])
   await refreshNews()
 }
 

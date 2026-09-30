@@ -17,7 +17,7 @@ from app.db import SessionLocal
 from app.main import app
 from app.models import OPERATOR, Account, Invite, Version, utcnow
 
-from .conftest import PASSWORD, make_account, sign_in
+from .conftest import PASSWORD, join, make_account, sign_in
 
 SECRET = "classified pineapple"
 
@@ -54,8 +54,8 @@ def world(client: TestClient, account: Account, vault: Path) -> World:
     assert made.status_code == 201, made.text
     w.anna.post("/api/notes", json={"folder": "Private", "title": "Other", "content": "links back [[Secret Plan]]"})
     w.anna.post("/api/notes", json={"folder": "Shared", "title": "Common", "content": "for all of us #team"})
-    assert w.anna.put("/api/spaces/Shared/members/bob", json={"role": "read"}).status_code == 200
-    assert w.anna.put("/api/spaces/Shared/members/carl", json={"role": "write"}).status_code == 200
+    join(w.anna, "Shared", "bob", "read")
+    join(w.anna, "Shared", "carl", "write")
     return w
 
 
@@ -174,7 +174,7 @@ def test_the_operator_reads_nothing_of_a_space_with_members(world: World) -> Non
     assert [row["name"] for row in members["members"]] == ["anna"]
     taking = world.operator.put("/api/spaces/Private/members/tester", json={"role": "read"})
     assert taking.status_code == 403
-    assert world.operator.put("/api/spaces/Private/members/bob", json={"role": "manage"}).status_code == 200
+    join(world.operator, "Private", "bob", "manage")
     assert "Private" in names(world.bob)
     assert world.operator.get("/api/note", params={"path": "Private/Secret Plan.md"}).status_code == 404
 
@@ -183,7 +183,7 @@ def test_a_space_without_members_is_the_operators(world: World) -> None:
     assert world.anna.get("/api/note", params={"path": "Ops/Runbook.md"}).status_code == 404
     assert world.operator.get("/api/note", params={"path": "Ops/Runbook.md"}).status_code == 200
     # Handing it on keeps the operator in as manager.
-    assert world.operator.put("/api/spaces/Ops/members/anna", json={"role": "write"}).status_code == 200
+    join(world.operator, "Ops", "anna", "write")
     assert world.anna.get("/api/note", params={"path": "Ops/Runbook.md"}).status_code == 200
     roles = {row["name"]: row["role"] for row in world.operator.get("/api/spaces/Ops/members").json()["members"]}
     assert roles == {"anna": "write", "tester": "manage"}
@@ -193,7 +193,7 @@ def test_the_last_manager_stays_while_others_are_in(world: World) -> None:
     anna = world.anna
     assert anna.delete("/api/spaces/Shared/members/anna").json()["detail"]["code"] == "last_manager"
     assert anna.put("/api/spaces/Shared/members/anna", json={"role": "write"}).status_code == 409
-    assert anna.put("/api/spaces/Shared/members/carl", json={"role": "manage"}).status_code == 200
+    join(anna, "Shared", "carl", "manage")
     assert anna.delete("/api/spaces/Shared/members/anna").status_code == 204
     assert "Shared" not in names(anna)
     # Anybody may leave a space; bob leaves by himself.
@@ -308,7 +308,7 @@ def test_a_new_space_under_an_old_name_has_only_its_maker(world: World) -> None:
 
 def test_creating_a_space_that_is_there_changes_no_rights(world: World) -> None:
     world.anna.post("/api/spaces", json={"name": "Empty"})
-    world.anna.put("/api/spaces/Empty/members/bob", json={"role": "read"})
+    join(world.anna, "Empty", "bob", "read")
     assert world.carl.post("/api/spaces", json={"name": "Empty"}).status_code == 409
     assert "Empty" in names(world.bob)
 

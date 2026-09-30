@@ -18,7 +18,7 @@ from app.models import File, Version
 from app.services import index
 from app.services.mentions import places_in, wiki_for
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 
 def person(name: str) -> TestClient:
@@ -83,8 +83,8 @@ def people(client: TestClient, account: object, vault: Path) -> dict[str, TestCl
     note(anna, "Garden", "Broken", "See [[Nowhere]] and ![[missing.png]].\n")
     note(anna, "Kitchen", "Peel", "Peel goes to the heap.\n")
     note(carl, "Diary", "Secret", "My compost heap.\n")
-    assert anna.put("/api/spaces/Garden/members/bob", json={"role": "write"}).status_code == 200
-    assert anna.put("/api/spaces/Kitchen/members/bob", json={"role": "read"}).status_code == 200
+    join(anna, "Garden", "bob", "write")
+    join(anna, "Kitchen", "bob", "read")
     return {"anna": anna, "bob": bob, "carl": carl}
 
 

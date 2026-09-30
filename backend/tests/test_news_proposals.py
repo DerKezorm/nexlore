@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.services import index
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 
 def person(name: str) -> TestClient:
@@ -42,7 +42,7 @@ def people(client: TestClient, account: object, vault: Path) -> dict[str, TestCl
     (vault / "Garden" / "Beds.md").write_bytes(b"# Beds\n\nTomatoes.\n")
     (vault / "Garden" / "Seeds.md").write_bytes(b"# Seeds\n\nBasil.\n")
     index.scan()
-    assert anna.put("/api/spaces/Garden/members/bob", json={"role": "read"}).status_code == 200
+    join(anna, "Garden", "bob", "read")
     return {"anna": anna, "bob": bob, "carl": carl}
 
 

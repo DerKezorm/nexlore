@@ -991,7 +991,9 @@
     "lastManagerRole": "You are the only one who may manage this space. If you give that up, only the operator can manage it afterwards, and you cannot invite anybody any more.",
     "lastManagerLeave": "You are the only one who may manage this space. If you leave, only the operator can manage it afterwards.",
     "changeAnyway": "Give it up anyway",
-    "leaveAnyway": "Leave anyway"
+    "leaveAnyway": "Leave anyway",
+    "inviteName": "Invite",
+    "invitedName": "If there is an account “{{name}}”, it finds the invitation under “New” and accepts or declines it."
   },
   "share": {
     "button": "Share",
@@ -1063,7 +1065,7 @@
     },
     "spaces": {
       "title": "All spaces",
-      "text": "Names and members only. You read a space only if you are in it or it has no members.",
+      "text": "Names and members only. You read a space only if you are in it or it has no members. You can put another account into a space or take its last member out, which makes it yours; every member and the account concerned are told under “New”.",
       "yours": "no members, so it is yours",
       "members_one": "{{count}} member · managed by {{managers}}",
       "members_other": "{{count}} members · managed by {{managers}}",
@@ -1879,5 +1881,14 @@
     "links": "Links",
     "graph": "Graph",
     "plugins": "Plugins"
+  },
+  "notices": {
+    "invite": "{{actor}} invites you into “{{space}}” ({{role}})",
+    "operator_added": "The operator {{actor}} put {{subject}} into “{{space}}” ({{role}})",
+    "operator_role": "The operator {{actor}} changed the right of {{subject}} in “{{space}}” ({{role}})",
+    "operator_removed": "The operator {{actor}} took {{subject}} out of “{{space}}”",
+    "accept": "Accept",
+    "decline": "Decline",
+    "seen": "Seen"
   }
 }

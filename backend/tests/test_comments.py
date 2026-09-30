@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.services.comments import mentioned
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 NOTE = "# Beds\n\nDig the long bed in spring.\n"
 
@@ -30,8 +30,8 @@ def people(client: TestClient, account: object, vault: Path) -> dict[str, TestCl
     assert anna.post("/api/spaces", json={"name": "Garden"}).status_code == 201
     assert carl.post("/api/spaces", json={"name": "Diary"}).status_code == 201
     assert anna.post("/api/notes", json={"folder": "Garden", "title": "Beds", "content": NOTE}).status_code == 201
-    assert anna.put("/api/spaces/Garden/members/bob", json={"role": "write"}).status_code == 200
-    assert anna.put("/api/spaces/Garden/members/dora", json={"role": "read"}).status_code == 200
+    join(anna, "Garden", "bob", "write")
+    join(anna, "Garden", "dora", "read")
     return {"anna": anna, "bob": bob, "carl": carl, "dora": dora}
 
 

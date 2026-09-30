@@ -20,7 +20,7 @@ from app.main import app
 from app.models import File, GraphNode, Link, Setting, Version
 from app.services import graphstore, index, settings_service
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 START = (
     "# Start\n\nWhy? See [[Homelab/Why ZFS]] and [[Homelab/Nothing]].\n"
@@ -64,9 +64,9 @@ def world(client: TestClient, account: object, vault: Path) -> World:
     note(w.anna, "Learning", "Plain", "no links here")
     note(w.dave, "Diary", "Today", "read [[homelab/Why ZFS]] again\n")
     client.post("/api/index/scan")
-    assert w.anna.put("/api/spaces/Learning/members/bob", json={"role": "read"}).status_code == 200
+    join(w.anna, "Learning", "bob", "read")
     for space in ("Learning", "Homelab"):
-        assert w.anna.put(f"/api/spaces/{space}/members/carl", json={"role": "read"}).status_code == 200
+        join(w.anna, space, "carl", "read")
     return w
 
 

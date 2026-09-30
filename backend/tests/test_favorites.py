@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.services import favorites, index
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 
 def person(name: str) -> TestClient:
@@ -28,7 +28,7 @@ def people(client: TestClient, account: object, vault: Path) -> tuple[TestClient
     (vault / "Garden" / "Beds" / "Roses.md").write_text("# Roses\n", encoding="utf-8")
     (vault / "Garden" / "Plan.md").write_text("# The plan\n", encoding="utf-8")
     index.scan()
-    assert anna.put("/api/spaces/Garden/members/bob", json={"role": "read"}).status_code == 200
+    join(anna, "Garden", "bob", "read")
     return anna, bob
 
 
@@ -62,7 +62,7 @@ def test_nothing_that_is_not_there_or_may_not_be_read(people: tuple[TestClient, 
     assert bob.put("/api/favorites", json={"path": "Garden/Plan.md"}).status_code == 204
     assert anna.delete("/api/spaces/Garden/members/bob").status_code in (200, 204)
     assert listed(bob) == []
-    assert anna.put("/api/spaces/Garden/members/bob", json={"role": "read"}).status_code == 200
+    join(anna, "Garden", "bob", "read")
     assert listed(bob) == [("Garden/Plan.md", "note", "Plan")]
 
 
@@ -161,6 +161,6 @@ def test_a_heading_follows_its_note_and_goes_with_it(people: tuple[TestClient, T
     # Not readable any more: not listed, as with a note.
     assert anna.delete("/api/spaces/Garden/members/bob").status_code in (200, 204)
     assert full(bob) == []
-    assert anna.put("/api/spaces/Garden/members/bob", json={"role": "read"}).status_code == 200
+    join(anna, "Garden", "bob", "read")
     assert anna.delete("/api/files", params={"path": "Garden/Plots/Roses.md"}).status_code == 200
     assert full(bob) == []

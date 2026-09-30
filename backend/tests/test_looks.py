@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 
 def person(name: str) -> TestClient:
@@ -26,7 +26,7 @@ def people(client: TestClient, account: object, vault: Path) -> tuple[TestClient
     assert anna.post("/api/spaces", json={"name": "Garden"}).status_code == 201
     assert anna.post("/api/folders", json={"parent": "Garden", "name": "Beds"}).status_code == 201
     assert anna.post("/api/folders", json={"parent": "Garden/Beds", "name": "Roses"}).status_code == 201
-    assert anna.put("/api/spaces/Garden/members/bob", json={"role": "read"}).status_code == 200
+    join(anna, "Garden", "bob", "read")
     return anna, bob, carl
 
 

@@ -991,7 +991,9 @@
     "lastManagerRole": "Du bist die einzige Person, die diesen Bereich verwalten darf. Gibst du das ab, kann ihn danach nur noch der Betreiber verwalten, und du kannst niemanden mehr einladen.",
     "lastManagerLeave": "Du bist die einzige Person, die diesen Bereich verwalten darf. Gehst du, kann ihn danach nur noch der Betreiber verwalten.",
     "changeAnyway": "Trotzdem abgeben",
-    "leaveAnyway": "Trotzdem gehen"
+    "leaveAnyway": "Trotzdem gehen",
+    "inviteName": "Einladen",
+    "invitedName": "Gibt es ein Konto „{{name}}“, findet es die Einladung unter „Neu“ und nimmt sie an oder lehnt sie ab."
   },
   "share": {
     "button": "Teilen",
@@ -1063,7 +1065,7 @@
     },
     "spaces": {
       "title": "Alle Bereiche",
-      "text": "Nur Namen und Mitglieder. Du liest einen Bereich nur, wenn du drin bist oder er keine Mitglieder hat.",
+      "text": "Nur Namen und Mitglieder. Du liest einen Bereich nur, wenn du drin bist oder er keine Mitglieder hat. Du kannst ein anderes Konto in einen Bereich setzen oder das letzte Mitglied herausnehmen, dann gehört er dir; das erfahren alle Mitglieder und das betroffene Konto unter „Neu“.",
       "yours": "keine Mitglieder, daher deiner",
       "members_one": "{{count}} Mitglied · verwaltet von {{managers}}",
       "members_other": "{{count}} Mitglieder · verwaltet von {{managers}}",
@@ -1879,5 +1881,14 @@
     "links": "Links",
     "graph": "Graph",
     "plugins": "Plugins"
+  },
+  "notices": {
+    "invite": "{{actor}} lädt dich in „{{space}}“ ein ({{role}})",
+    "operator_added": "Der Betreiber {{actor}} hat {{subject}} in „{{space}}“ aufgenommen ({{role}})",
+    "operator_role": "Der Betreiber {{actor}} hat das Recht von {{subject}} in „{{space}}“ geändert ({{role}})",
+    "operator_removed": "Der Betreiber {{actor}} hat {{subject}} aus „{{space}}“ genommen",
+    "accept": "Annehmen",
+    "decline": "Ablehnen",
+    "seen": "Gesehen"
   }
 }

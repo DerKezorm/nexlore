@@ -11,6 +11,7 @@ from app.main import app
 from app.models import Account
 from app.services import index, settings_service
 
+from .conftest import make_account, sign_in
 from .test_mcp import World, call, failure, world  # noqa: F401  (the fixture is used by name)
 from .test_shares import share, site, token_of  # noqa: F401
 
@@ -96,3 +97,91 @@ def test_password_sign_in_stays_on_until_there_is_a_provider(client: TestClient,
     with SessionLocal() as db:
         settings_service.save(db, {"oidc_issuer": "https://id.example.com", "oidc_client_id": "nexlore"})
     assert client.put("/api/settings", json={"password_login": False}).status_code == 200
+
+
+# --- O1: an account joins only when it says yes; what the operator does is seen -------------------------------------
+
+
+def _person(name: str) -> tuple[TestClient, Account]:
+    row = make_account(name)
+    person = TestClient(app, base_url="http://testserver", headers={"X-Nexlore-Client": f"tab-{name:0<8}"})
+    sign_in(person, row)
+    return person, row
+
+
+def _spaces(person: TestClient) -> list[str]:
+    return [space["name"] for space in person.get("/api/spaces").json()]
+
+
+def test_naming_an_account_invites_it_and_it_decides(client: TestClient, account: Account) -> None:
+    anna, _ = _person("anna")
+    bob, _ = _person("bob")
+    assert anna.post("/api/spaces", json={"name": "Garden"}).status_code == 201
+    asked = anna.put("/api/spaces/Garden/members/bob", json={"role": "write"})
+    assert asked.status_code == 202 and asked.json()["invited"] is True
+    assert "Garden" not in _spaces(bob)
+    assert [row["name"] for row in anna.get("/api/spaces/Garden/members").json()["members"]] == ["anna"]
+    [invite] = bob.get("/api/notices").json()
+    assert (invite["kind"], invite["space"], invite["role"], invite["actor"]) == ("invite", "Garden", "write", "anna")
+    assert bob.post(f"/api/notices/{invite['id']}/accept").json() == {"space": "Garden"}
+    assert "Garden" in _spaces(bob)
+    assert bob.get("/api/notices").json() == []
+    # Accepted once: gone.
+    assert bob.post(f"/api/notices/{invite['id']}/accept").status_code == 404
+
+
+def test_a_declined_invitation_leaves_nothing(client: TestClient, account: Account) -> None:
+    anna, _ = _person("anna")
+    bob, _ = _person("bob")
+    anna.post("/api/spaces", json={"name": "Garden"})
+    anna.put("/api/spaces/Garden/members/bob", json={"role": "read"})
+    [invite] = bob.get("/api/notices").json()
+    assert anna.post(f"/api/notices/{invite['id']}/decline").status_code == 404  # not anna's to answer
+    assert bob.post(f"/api/notices/{invite['id']}/decline").status_code == 204
+    assert "Garden" not in _spaces(bob)
+    assert bob.get("/api/notices").json() == []
+
+
+def test_a_manager_learns_nothing_about_names_outside(client: TestClient, account: Account) -> None:
+    anna, _ = _person("anna")
+    _person("bob")
+    anna.post("/api/spaces", json={"name": "Garden"})
+    known = anna.put("/api/spaces/Garden/members/bob", json={"role": "read"})
+    unknown = anna.put("/api/spaces/Garden/members/nobody", json={"role": "read"})
+    operator = anna.put("/api/spaces/Garden/members/tester", json={"role": "read"})
+    assert known.status_code == unknown.status_code == operator.status_code == 202
+    assert {key for key in known.json() if key != "name"} == {key for key in unknown.json() if key != "name"}
+    removed = [anna.delete(f"/api/spaces/Garden/members/{name}") for name in ("bob", "nobody")]
+    assert [(answer.status_code, answer.json()["detail"]["code"]) for answer in removed] == [(404, "not_a_member")] * 2
+
+
+def test_what_the_operator_does_in_a_space_of_others_is_told(client: TestClient, account: Account) -> None:
+    anna, _ = _person("anna")
+    carl, _ = _person("carl")
+    anna.post("/api/spaces", json={"name": "Garden"})
+    # The operator puts carl in: allowed, and both anna and carl are told.
+    assert client.put("/api/spaces/Garden/members/carl", json={"role": "read"}).status_code == 200
+    assert "Garden" in _spaces(carl)
+    told = [(row["kind"], row["subject"], row["actor"]) for row in anna.get("/api/notices").json()]
+    assert told == [("operator_added", "carl", "tester")]
+    assert [row["kind"] for row in carl.get("/api/notices").json()] == ["operator_added"]
+    client.put("/api/spaces/Garden/members/carl", json={"role": "write"})
+    assert anna.get("/api/notices").json()[0]["kind"] == "operator_role"
+    # Taking the members out makes the space the operator's: the ones taken out are told.
+    assert client.delete("/api/spaces/Garden/members/carl").status_code == 204
+    assert client.delete("/api/spaces/Garden/members/anna").status_code == 204
+    assert "operator_removed" in [row["kind"] for row in anna.get("/api/notices").json()]
+    seen = anna.get("/api/notices").json()[0]["id"]
+    assert anna.post(f"/api/notices/{seen}/decline").status_code == 204
+    assert seen not in [row["id"] for row in anna.get("/api/notices").json()]
+
+
+def test_the_operator_who_invites_into_its_own_space_stays_in_it(client: TestClient, account: Account, vault: Path) -> None:
+    (vault / "Disk").mkdir()
+    index.scan()
+    bob, _ = _person("bob")
+    assert client.put("/api/spaces/Disk/members/bob", json={"role": "write"}).status_code == 202
+    [invite] = bob.get("/api/notices").json()
+    bob.post(f"/api/notices/{invite['id']}/accept")
+    members = {row["name"]: row["role"] for row in client.get("/api/spaces/Disk/members").json()["members"]}
+    assert members == {"tester": "manage", "bob": "write"}

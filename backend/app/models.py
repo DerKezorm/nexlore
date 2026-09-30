@@ -464,6 +464,30 @@ class Invite(Base):
     expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
 
 
+class SpaceNotice(Base):
+    """Something about a space an account should know or answer, shown under "New": an invitation by name (accepted or
+    declined there; nobody becomes a member without saying yes), or a change the operator made in a space it does
+    not manage (the operator can do that, but never unseen)."""
+
+    __tablename__ = "space_notices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    space_id: Mapped[int | None] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"), nullable=True)
+    #: The space's name when it happened (kept for the text).
+    space_name: Mapped[str] = mapped_column(String(255), default="")
+    #: ``invite``, or what the operator did: ``operator_added``, ``operator_role``, ``operator_removed``.
+    kind: Mapped[str] = mapped_column(String(24))
+    role: Mapped[str] = mapped_column(String(16), default="")
+    #: Who did it (a name, kept when the account goes), and whom it concerns.
+    actor: Mapped[str] = mapped_column(String(64), default="")
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
+    subject: Mapped[str] = mapped_column(String(64), default="")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    #: Answered (an invitation) or seen (a notice); then it is off the list.
+    done_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
 class Share(Base):
     """A public reading page for a note or a folder: anybody with the link reads it, nothing else."""
 

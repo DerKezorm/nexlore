@@ -485,8 +485,9 @@ export const authApi = {
   removeAvatar: () => api<Account>('/api/auth/avatar', { method: 'DELETE' }),
 
   members: (space: string) => api<Members>(`/api/spaces/${encodeURIComponent(space)}/members`),
+  /** A member's right changes; any other name gets an invitation (``invited``), known or not. */
   setMember: (space: string, name: string, role: Role) =>
-    api<Member>(`/api/spaces/${encodeURIComponent(space)}/members/${encodeURIComponent(name)}`, { method: 'PUT', body: { role } }),
+    api<Member & { invited?: boolean }>(`/api/spaces/${encodeURIComponent(space)}/members/${encodeURIComponent(name)}`, { method: 'PUT', body: { role } }),
   removeMember: (space: string, name: string) =>
     api<void>(`/api/spaces/${encodeURIComponent(space)}/members/${encodeURIComponent(name)}`, { method: 'DELETE' }),
   inviteToSpace: (space: string, role: Role, days: number, email = '', send = false) =>
@@ -591,6 +592,24 @@ export type NewsMention = { thread: number; path: string; title: string; author:
 export type Proposal = {
   id: number; path: string; title: string; by: string; message: string; status: 'open' | 'taken' | 'declined'
   created_at: string; decided_at: string | null; decided_by: string | null; content: string | null
+}
+
+/** An invitation into a space by name, or a change the operator made in a space (routers/members.py). */
+export type SpaceNotice = {
+  id: number
+  kind: 'invite' | 'operator_added' | 'operator_role' | 'operator_removed'
+  space: string
+  role: string
+  actor: string
+  subject: string
+  created_at: string
+}
+
+export const noticesApi = {
+  list: () => api<SpaceNotice[]>('/api/notices'),
+  accept: (id: number) => api<{ space: string }>(`/api/notices/${id}/accept`, { method: 'POST' }),
+  /** Declines an invitation, or marks a notice seen. */
+  decline: (id: number) => api<void>(`/api/notices/${id}/decline`, { method: 'POST' }),
 }
 
 export const newsApi = {

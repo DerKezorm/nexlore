@@ -18,7 +18,7 @@ import { fileRoute } from '../lib/markdown'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
 import { askFolder, FOLDER_EVENT, narrow, NOTE_LIST_EVENT, RECENT_EVENT, SIDEBAR_EVENT, sidebarHere, takeFolderWish, noteListWished, forgetNoteListWish } from '../lib/shell'
-import { seenAll, useNews } from '../lib/news'
+import { answerNotice, seenAll, useNews } from '../lib/news'
 import { openInTab } from '../lib/tabs'
 import { baseName, noteUrl } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } from '../lib/vaultActions'
@@ -175,7 +175,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     },
     [choose],
   )
-  const { spaces, generation, scan, looks, favorites, setFavorite } = useStore()
+  const { spaces, generation, scan, looks, favorites, setFavorite, reload } = useStore()
   const navigate = useNavigate()
   const location = useLocation()
   const menu = useContextMenu()
@@ -732,8 +732,8 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
             <Symbol name={item.symbol} className="h-4 w-4" />
           </button>
         ))}
-        {news.count > 0 && (
-          <button type="button" onClick={() => unfold(() => showNews(true))} title={t('news.section', { count: news.count })} aria-label={t('news.section', { count: news.count })} className="relative rounded-lg p-2 text-accent-400 hover:bg-ink-850">
+        {news.count + news.notices.length > 0 && (
+          <button type="button" onClick={() => unfold(() => showNews(true))} title={t('news.section', { count: news.count + news.notices.length })} aria-label={t('news.section', { count: news.count + news.notices.length })} className="relative rounded-lg p-2 text-accent-400 hover:bg-ink-850">
             <Symbol name="sparkle" className="h-4 w-4" />
             <span aria-hidden="true" className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-accent-400" />
           </button>
@@ -764,18 +764,35 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           </button>
         </div>
       )}
-      {(news.count > 0 || news.mentions.length > 0) && (
+      {(news.count > 0 || news.mentions.length > 0 || news.notices.length > 0) && (
         <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-news">
           <div className="flex items-center gap-2 px-2">
             {/* One line from the start: the dots in the tree say where; opened, the list (remembered in this browser). */}
             <button type="button" onClick={() => showNews(!newsOpen)} aria-expanded={newsOpen} className="flex flex-1 items-center gap-1 text-left text-[11px] font-semibold tracking-wider text-accent-400 uppercase">
               <Symbol name={newsOpen ? 'chevronDown' : 'chevronRight'} className="h-3 w-3" />
-              {t('news.section', { count: news.count + news.mentions.length })}
+              {t('news.section', { count: news.count + news.mentions.length + news.notices.length })}
             </button>
             <button type="button" onClick={() => void seenAll()} className="text-[11px] text-mist-500 hover:text-mist-200">{t('news.allSeen')}</button>
           </div>
           {newsOpen && (
           <ul className="nn-scroll mt-1 max-h-44 overflow-y-auto">
+            {news.notices.map((notice) => (
+              <li key={'n' + notice.id} data-notice={notice.kind} className="rounded-lg px-2 py-1 text-[13px] text-mist-300">
+                <p className="leading-snug">
+                  {t(`notices.${notice.kind}`, { actor: notice.actor, subject: notice.subject, space: notice.space, role: notice.role ? t(`roles.${notice.role}`) : '' })}
+                </p>
+                <div className="mt-1 flex gap-2">
+                  {notice.kind === 'invite' ? (
+                    <>
+                      <button type="button" onClick={() => void answerNotice(notice.id, true).then(() => reload())} className="rounded-md bg-accent-500/15 px-2 py-0.5 text-xs text-accent-300 hover:bg-accent-500/25">{t('notices.accept')}</button>
+                      <button type="button" onClick={() => void answerNotice(notice.id, false)} className="rounded-md px-2 py-0.5 text-xs text-mist-400 hover:bg-ink-850">{t('notices.decline')}</button>
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => void answerNotice(notice.id, false).then(() => reload())} className="rounded-md px-2 py-0.5 text-xs text-mist-400 hover:bg-ink-850">{t('notices.seen')}</button>
+                  )}
+                </div>
+              </li>
+            ))}
             {news.mentions.slice(0, 6).map((item) => (
               <li key={'m' + item.thread}>
                 <button type="button" onClick={() => onNote(item.path)} title={item.excerpt} data-mention={item.thread} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] text-mist-300 hover:bg-ink-850">

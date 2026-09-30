@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.services import csscheck, themes
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 DARK = {"bg": "#101010", "text": "#f0f0f0", "accent": "#ff8800", "on-accent": "#000000"}
 
@@ -28,7 +28,7 @@ def person(name: str) -> TestClient:
 def people(client: TestClient, account: object, vault: Path) -> dict[str, TestClient]:
     anna, bob, carl = person("anna"), person("bob"), person("carl")
     assert anna.post("/api/spaces", json={"name": "Kitchen"}).status_code == 201
-    assert anna.put("/api/spaces/Kitchen/members/bob", json={"role": "read"}).status_code == 200
+    join(anna, "Kitchen", "bob", "read")
     return {"operator": client, "anna": anna, "bob": bob, "carl": carl}
 
 

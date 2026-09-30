@@ -19,7 +19,7 @@ from app.main import app
 from app.models import Draft, File, Version
 from app.services import inbox, index, mcp, settings_service, textblocks
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 NOTE = "# Plan\r\n\r\nFirst line.  \r\nSecond line.\r\n"
 
@@ -271,9 +271,7 @@ def test_a_key_is_made_only_for_spaces_its_account_may_read(world: World) -> Non
 
 
 def test_a_space_the_account_lost_drops_out_of_its_key(world: World) -> None:
-    shared = world.bob.put("/api/spaces/Secret/members/anna",
-                           json={"role": "read"})
-    assert shared.status_code in (200, 201, 204), shared.text
+    join(world.bob, "Secret", "anna", "read")
     anna_ids = space_ids(world.anna)
     made = world.anna.post("/api/mcp/keys", json={"name": "x", "level": "read",
                                                    "spaces": [anna_ids["Secret"], anna_ids["Garden"]]})
@@ -336,11 +334,11 @@ def test_a_draft_of_a_note_changed_since_ends_in_a_conflict_copy(world: World) -
 
 def test_a_draft_needs_the_right_to_write_and_disappears_with_the_right_to_read(world: World) -> None:
     carl = person("carl")
-    assert world.anna.put("/api/spaces/Garden/members/carl", json={"role": "read"}).status_code == 200
+    join(world.anna, "Garden", "carl", "read")
     token = world.key("draft", who=carl)
     base = index.digest(NOTE.encode())
     assert failure(call(token, "propose_change", path="Garden/Plan.md", base_hash=base, content="x")) != ""
-    assert world.anna.put("/api/spaces/Garden/members/carl", json={"role": "write"}).status_code == 200
+    join(world.anna, "Garden", "carl", "write")
     made = value(call(token, "propose_change", path="Garden/Plan.md", base_hash=base, content="x"))
     assert len(carl.get("/api/drafts").json()) == 1
     assert world.anna.delete("/api/spaces/Garden/members/carl").status_code in (200, 204)
@@ -445,11 +443,11 @@ def test_the_block_layer_keeps_what_did_not_change(original: bytes, new: str, ex
 
 def test_taking_a_draft_over_needs_the_right_to_write_now(world: World) -> None:
     carl = person("carl")
-    assert world.anna.put("/api/spaces/Garden/members/carl", json={"role": "write"}).status_code == 200
+    join(world.anna, "Garden", "carl", "write")
     made = value(call(world.key("draft", who=carl), "propose_change", path="Garden/Plan.md",
                       base_hash=index.digest(NOTE.encode()), content="carl's words"))
     # Only reading now: the draft is still his to see and throw away, but not to take over.
-    assert world.anna.put("/api/spaces/Garden/members/carl", json={"role": "read"}).status_code == 200
+    join(world.anna, "Garden", "carl", "read")
     assert carl.get(f"/api/drafts/{made['draft']}").status_code == 200
     assert carl.post(f"/api/drafts/{made['draft']}/accept").status_code == 403
     assert (world.vault / "Garden" / "Plan.md").read_bytes() == NOTE.encode()

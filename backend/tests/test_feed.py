@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.services import feed, logs
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 TODAY = datetime.now().astimezone().date()
 SOON = (TODAY + timedelta(days=3)).isoformat()
@@ -46,7 +46,7 @@ def people(client: TestClient, account: object, vault: Path) -> dict[str, TestCl
     note(anna, "Garden", "Loose", "- [ ] No date at all\n")
     note(anna, "Kitchen", "Jam", f"- [ ] Cook jam 📅 {SOON}\n")
     note(carl, "Diary", "Secret", f"- [ ] Mine 📅 {SOON}\n")
-    assert anna.put("/api/spaces/Garden/members/bob", json={"role": "read"}).status_code == 200
+    join(anna, "Garden", "bob", "read")
     return {"anna": anna, "bob": bob, "carl": carl, "operator": client}
 
 

@@ -15,7 +15,7 @@ from app.main import app
 from app.models import Account, Share, utcnow
 from app.services import settings_service
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 PNG = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
@@ -168,7 +168,7 @@ def test_making_a_page_takes_the_right_to_manage(site: TestClient) -> None:
     site.post("/api/spaces", json={"name": "Team"})
     site.post("/api/notes", json={"folder": "Team", "title": "Plan"})
     writer_row = make_account("writer")
-    site.put("/api/spaces/Team/members/writer", json={"role": "write"})
+    join(site, "Team", "writer", "write")
     writer = TestClient(app, base_url="http://testserver", headers={"X-Nexlore-Client": "tab-writer00"})
     sign_in(writer, writer_row)
     refused = writer.post("/api/shares", json={"path": "Team/Plan.md"})

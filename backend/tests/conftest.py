@@ -102,6 +102,23 @@ def sign_in(client: TestClient, account: Account) -> None:
     client.cookies.set(SESSION_COOKIE, token)
 
 
+def join(manager: TestClient, space: str, name: str, role: str) -> None:
+    """``name`` gets ``role`` in ``space``: a member's right changes at once; anybody else is invited by the manager
+    and says yes, as in the interface (an invitation by name is answered under "New")."""
+    from app.models import SpaceNotice
+    from app.services import notices
+
+    answer = manager.put(f"/api/spaces/{space}/members/{name}", json={"role": role})
+    assert answer.status_code in (200, 202), answer.text
+    if answer.status_code == 202:
+        with SessionLocal() as db:
+            person = db.query(Account).filter_by(name=name).one()
+            notice = db.query(SpaceNotice).filter_by(account_id=person.id, kind="invite", done_at=None).order_by(
+                SpaceNotice.id.desc()).first()
+            assert notice is not None
+            notices.answer(db, person, notice.id, accept=True)
+
+
 def _operator(client: TestClient) -> Account:
     with SessionLocal() as db:
         row = db.query(Account).filter_by(name="tester").one_or_none()

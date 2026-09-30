@@ -15,7 +15,7 @@ from app.models import MEMBER, GraphGroup, GraphNode, GraphState, Setting, Space
 from app.services import graphlayout as gl
 from app.services import graphstore, index, topics
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 
 def put(root: Path, rel: str, content: str) -> None:
@@ -490,7 +490,7 @@ def test_only_managers_ask_for_topics_again(client: TestClient, library: Path) -
     reader = make_account("reader", MEMBER)
     other = TestClient(app, base_url="http://testserver", headers={"X-Nexlore-Client": "tab-reader00"})
     sign_in(other, reader)
-    assert client.put("/api/spaces/Lib/members/reader", json={"role": "read"}).status_code == 200
+    join(client, "Lib", "reader", "read")
     assert other.get("/api/graph/overview", params={"space": "Lib", "cloud": "topics"}).json()["manage"] is False
     assert other.post("/api/graph/topics", params={"space": "Lib"}).status_code == 403
     assert client.get("/api/graph/overview", params={"space": "Lib"}).json()["manage"] is True

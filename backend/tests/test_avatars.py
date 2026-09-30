@@ -13,7 +13,7 @@ from PIL import Image
 from app.main import app
 from app.services import avatars
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 
 def person(name: str) -> TestClient:
@@ -93,7 +93,7 @@ def test_seen_by_the_account_the_operator_and_those_who_share_a_space_nobody_els
     assert bob.get(address).status_code == 404
     assert bob.get(address).json() == bob.get(f"/api/avatars/{me(carl)['id']}").json()
     assert anna.post("/api/spaces", json={"name": "Garden"}).status_code == 201
-    assert anna.put("/api/spaces/Garden/members/bob", json={"role": "read"}).status_code == 200
+    join(anna, "Garden", "bob", "read")
     assert bob.get(address).status_code == 200
     assert carl.get(address).status_code == 404
     # Removed: gone for everyone.

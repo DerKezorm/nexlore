@@ -18,7 +18,7 @@ from app.main import app
 from app.models import Account, File, GraphNode, Setting, Task
 from app.services import everyday, graphstore, index
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 
 TODAY = "2026-09-27"
 
@@ -41,8 +41,8 @@ def world(client: TestClient, account: Account, vault: Path) -> World:
     w = World()
     assert w.anna.post("/api/spaces", json={"name": "Private"}).status_code == 201
     assert w.anna.post("/api/spaces", json={"name": "Shared"}).status_code == 201
-    assert w.anna.put("/api/spaces/Shared/members/bob", json={"role": "read"}).status_code == 200
-    assert w.anna.put("/api/spaces/Shared/members/carl", json={"role": "write"}).status_code == 200
+    join(w.anna, "Shared", "bob", "read")
+    join(w.anna, "Shared", "carl", "write")
     return w
 
 
