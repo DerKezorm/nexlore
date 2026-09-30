@@ -28,6 +28,8 @@ import { linesShown, rememberLines, rememberToolbar, toolbarHidden } from '../li
 import { baseName } from '../lib/vault'
 import { useCommands, type Command } from '../lib/commands'
 import { useAuth } from '../state/auth'
+import { CONTEXT, type Anchor } from '../lib/comments'
+import { Symbol } from './Symbol'
 import { AiDialog } from './AiDialog'
 import { EditorToolbar, ShowToolbar } from './EditorToolbar'
 import { FindBar } from './FindBar'
@@ -62,10 +64,12 @@ type Props = {
   onUploaded?: (done: Uploaded[]) => void
   /** An upload was refused; the server's code says why. */
   onUploadFailed?: (code: string) => void
+  /** Words chosen in the text get a comment (the page opens the column with a new thread). */
+  onComment?: (anchor: Anchor) => void
 }
 
 export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
-  { path, content, links, mode, readOnly = false, onChange, onLeave, onOpenLink, onSource, onNotice, onFileRefused, onUploaded, onUploadFailed },
+  { path, content, links, mode, readOnly = false, onChange, onLeave, onOpenLink, onSource, onNotice, onFileRefused, onUploaded, onUploadFailed, onComment },
   ref,
 ) {
   const { t } = useTranslation()
@@ -238,6 +242,55 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     return () => latest.current.onLeave(current())
   }, [])
 
+  /**
+   * The words chosen in the text as the anchor of a comment: they and a little around them, as plain text, the way
+   * the reading view shows them (where the thread's words are found and lit again).
+   */
+  const commentAnchor = (): Anchor | null => {
+    const now = engine.current
+    if (!now) return null
+    const { doc, selection } = now.view.state
+    const { from, to, empty } = selection
+    if (empty) return null
+    const chosen = doc.textBetween(from, to, '\n')
+    const quote = chosen.trim()
+    if (!quote) return null
+    const lead = chosen.length - chosen.trimStart().length
+    const tail = chosen.length - chosen.trimEnd().length
+    return {
+      quote,
+      before: (doc.textBetween(Math.max(0, from - CONTEXT * 2), from, '\n') + chosen.slice(0, lead)).slice(-CONTEXT),
+      after: (chosen.slice(chosen.length - tail) + doc.textBetween(to, Math.min(doc.content.size, to + CONTEXT * 2), '\n')).slice(0, CONTEXT),
+    }
+  }
+  const comment = () => {
+    const anchor = commentAnchor()
+    if (anchor) onComment?.(anchor)
+  }
+  // Words chosen while writing: the "Comment" button beside their end, as in the reading view.
+  const [commentAt, setCommentAt] = useState<{ x: number; y: number } | null>(null)
+  useEffect(() => {
+    if (!ready || !onComment) return
+    let frame = 0
+    const update = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const { selection } = ready.view.state
+        if (selection.empty || !ready.view.hasFocus() || !ready.view.state.doc.textBetween(selection.from, selection.to, ' ').trim()) return setCommentAt(null)
+        const end = ready.view.coordsAtPos(selection.to)
+        setCommentAt({ x: Math.min(end.left, window.innerWidth - 140), y: end.bottom + 6 })
+      })
+    }
+    const stop = ready.subscribe(update)
+    const blur = () => setCommentAt(null)
+    ready.view.dom.addEventListener('blur', blur)
+    return () => {
+      stop()
+      cancelAnimationFrame(frame)
+      ready.view.dom.removeEventListener('blur', blur)
+    }
+  }, [ready, onComment])
+
   /** Ctrl+F and Ctrl+H: the bar opens, the words chosen in one line of the text in its field. */
   const askFind = (replace: boolean) => {
     const now = engine.current
@@ -289,7 +342,9 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     const target = (event.target as Element).closest('.nx-wiki[data-target]')?.getAttribute('data-target')
     // Reading the clipboard needs a secure page (https); on plain http the keyboard still pastes.
     const canPaste = window.isSecureContext && !!navigator.clipboard?.readText
+    const commentable = !!onComment && !!commentAnchor()
     const items: MenuItem[] = [
+      ...(commentable ? ([{ label: t('comments.here'), symbol: 'pencil', onSelect: comment }, 'separator'] satisfies MenuItem[]) : []),
       ...(target
         ? ([
             { label: t('editorMenu.openLink'), symbol: 'note', onSelect: () => latest.current.onOpenLink(target, false) },
@@ -490,6 +545,22 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         <div ref={host} className="nx-editor-host" onContextMenu={openMenu} />
       )}
       {menu.element}
+      {commentAt && (
+        <button
+          type="button"
+          data-testid="comment-here"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => {
+            comment()
+            setCommentAt(null)
+          }}
+          style={{ left: commentAt.x, top: commentAt.y }}
+          className="fixed z-30 inline-flex items-center gap-1.5 rounded-full border border-accent-500/60 bg-ink-900 px-3 py-1 text-xs font-semibold text-accent-300 shadow-lg hover:bg-ink-850"
+        >
+          <Symbol name="pencil" className="h-3.5 w-3.5" />
+          {t('comments.here')}
+        </button>
+      )}
       {aiAsk && ready && (
         <AiDialog engine={ready} ask={aiAsk} notePath={path} onClose={() => setAiAsk(null)} onNotice={(text) => onNotice?.(text)} />
       )}

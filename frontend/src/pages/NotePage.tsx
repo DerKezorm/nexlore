@@ -1138,6 +1138,10 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                   onFileRefused={() => setNotice(t('note.fileRefused'))}
                   onUploaded={uploaded}
                   onUploadFailed={(code) => setNotice(errorText(code))}
+                  onComment={(anchor) => {
+                    setCommentDraft(anchor)
+                    showPanel('comments')
+                  }}
                 />
                 </Suspense>
               ) : view && !showText ? (

@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import type { Thread } from '../api/client'
 import { anchorOf, highlight, highlights, locate, MARKS, rangeOf, textMap, type Anchor } from '../lib/comments'
 import { formatDate } from '../lib/markdown'
+import { useContextMenu } from '../lib/menu'
 import { Symbol } from './Symbol'
 
 type Props = {
@@ -25,7 +26,25 @@ type Props = {
 }
 
 /** How long the preview waits before it goes, so the mouse can move onto it. */
-const LINGER_MS = 250
+const LINGER_MS = 450
+
+/** The words chosen in the text as a comment's anchor, and the selection let go; null when nothing fits. */
+function chosenAnchor(root: HTMLElement | null): Anchor | null {
+  const selection = document.getSelection()
+  if (!root || !selection?.rangeCount) return null
+  const range = selection.getRangeAt(0)
+  const before = document.createRange()
+  before.setStart(root, 0)
+  before.setEnd(range.startContainer, range.startOffset)
+  const start = before.toString().length
+  const text = textMap(root).text
+  // Blanks at the edges of what was chosen are not part of the words.
+  const chosen = range.toString()
+  const lead = chosen.length - chosen.trimStart().length
+  const words = chosen.trim()
+  selection.removeAllRanges()
+  return words ? anchorOf(text, start + lead, start + lead + words.length) : null
+}
 
 /** The thread whose lit words lie under a point of the screen. */
 function threadAt(marks: { thread: Thread; range: Range }[], x: number, y: number): { thread: Thread; box: DOMRect } | null {
@@ -40,7 +59,15 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
   const [button, setButton] = useState<{ x: number; y: number } | null>(null)
   const [peek, setPeek] = useState<{ thread: Thread; x: number; y: number } | null>(null)
   const marks = useRef<{ thread: Thread; range: Range }[]>([])
+  const { open: openMenu, element: menuElement } = useContextMenu()
   const leave = useRef(0)
+  // The mouse on the preview: nothing over the text closes it then (a move over the text is weighed a frame later,
+  // when the mouse may already be on the preview: it closed before the button could be reached).
+  const onPeek = useRef(false)
+  const closeSoon = () => {
+    window.clearTimeout(leave.current)
+    leave.current = window.setTimeout(() => !onPeek.current && setPeek(null), LINGER_MS)
+  }
 
   // The words of the open threads, lit; which ones were found goes to the column.
   useEffect(() => {
@@ -82,12 +109,9 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
       if (hit) {
         window.clearTimeout(leave.current)
         setPeek((was) =>
-          was?.thread.id === hit.thread.id ? was : { thread: hit.thread, x: Math.min(hit.box.left, window.innerWidth - 300), y: hit.box.bottom + 6 },
+          was?.thread.id === hit.thread.id ? was : { thread: hit.thread, x: Math.min(hit.box.left, window.innerWidth - 300), y: hit.box.bottom + 2 },
         )
-      } else {
-        window.clearTimeout(leave.current)
-        leave.current = window.setTimeout(() => setPeek(null), LINGER_MS)
-      }
+      } else if (!onPeek.current) closeSoon()
     }
     const move = (event: MouseEvent) => {
       cancelAnimationFrame(frame)
@@ -98,10 +122,7 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
       if (document.getSelection()?.isCollapsed === false) return
       show(event.clientX, event.clientY)
     }
-    const away = () => {
-      window.clearTimeout(leave.current)
-      leave.current = window.setTimeout(() => setPeek(null), LINGER_MS)
-    }
+    const away = () => closeSoon()
     root.addEventListener('mousemove', move)
     root.addEventListener('click', tap)
     root.addEventListener('mouseleave', away)
@@ -122,6 +143,32 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
     return () => window.removeEventListener('scroll', gone, true)
   }, [peek])
 
+  // The right button on words chosen in the text: "Comment" first, copying beside it.
+  useEffect(() => {
+    const root = article.current
+    if (!root) return
+    const context = (event: MouseEvent) => {
+      const selection = document.getSelection()
+      if (!selection || selection.isCollapsed || !selection.rangeCount) return
+      const range = selection.getRangeAt(0)
+      if (!root.contains(range.commonAncestorContainer) || !range.toString().trim()) return
+      event.preventDefault()
+      openMenu(event.clientX, event.clientY, [
+        {
+          label: t('comments.here'),
+          symbol: 'pencil',
+          onSelect: () => {
+            const anchor = chosenAnchor(root)
+            if (anchor) onAsk(anchor)
+          },
+        },
+        { label: t('editorMenu.copy'), symbol: 'copy', hint: t('editorMenu.keyCopy'), onSelect: () => void document.execCommand('copy') },
+      ])
+    }
+    root.addEventListener('contextmenu', context)
+    return () => root.removeEventListener('contextmenu', context)
+  }, [article, html, t, openMenu, onAsk])
+
   // Words chosen in the text: the button beside their end.
   useEffect(() => {
     const changed = () => {
@@ -139,21 +186,8 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
   }, [article])
 
   const ask = () => {
-    const root = article.current
-    const selection = document.getSelection()
-    if (!root || !selection?.rangeCount) return
-    const range = selection.getRangeAt(0)
-    const before = document.createRange()
-    before.setStart(root, 0)
-    before.setEnd(range.startContainer, range.startOffset)
-    const start = before.toString().length
-    const text = textMap(root).text
-    // Blanks at the edges of what was chosen are not part of the words.
-    const chosen = range.toString()
-    const lead = chosen.length - chosen.trimStart().length
-    const words = chosen.trim()
-    onAsk(anchorOf(text, start + lead, start + lead + words.length))
-    selection.removeAllRanges()
+    const anchor = chosenAnchor(article.current)
+    if (anchor) onAsk(anchor)
     setButton(null)
   }
 
@@ -161,6 +195,7 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
   const replies = peek ? peek.thread.comments.length - 1 : 0
   return (
     <>
+      {menuElement}
       {button && (
         <button
           type="button"
@@ -181,10 +216,13 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
           data-testid="comment-peek"
           data-thread={peek.thread.id}
           style={{ left: Math.max(8, peek.x), top: peek.y }}
-          onMouseEnter={() => window.clearTimeout(leave.current)}
-          onMouseLeave={() => {
+          onMouseEnter={() => {
+            onPeek.current = true
             window.clearTimeout(leave.current)
-            leave.current = window.setTimeout(() => setPeek(null), LINGER_MS)
+          }}
+          onMouseLeave={() => {
+            onPeek.current = false
+            closeSoon()
           }}
           className="fixed z-30 w-72 max-w-[calc(100vw-16px)] rounded-xl border border-ink-700 bg-ink-900 p-3 text-sm shadow-2xl"
         >
@@ -199,6 +237,7 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
               type="button"
               onClick={() => {
                 onShowThread(peek.thread.id)
+                onPeek.current = false
                 setPeek(null)
               }}
               className="ml-auto inline-flex items-center gap-1 font-semibold text-accent-400 hover:text-accent-300"
