@@ -727,7 +727,11 @@
     },
     "linkText": "Link",
     "handleAdd": "Block darunter einfügen",
-    "handleDrag": "Ziehen zum Verschieben, Klicken zum Markieren"
+    "handleDrag": "Ziehen zum Verschieben, Klicken zum Markieren",
+    "dates": {
+      "list": "Datum",
+      "hint": "Enter: Link zur Tagesnotiz, Umschalt+Enter: nur das Datum"
+    }
   },
   "properties": {
     "pickDate": "Datum wählen",

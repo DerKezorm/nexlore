@@ -727,7 +727,11 @@
     },
     "linkText": "link",
     "handleAdd": "Add a block below",
-    "handleDrag": "Drag to move, click to select"
+    "handleDrag": "Drag to move, click to select",
+    "dates": {
+      "list": "Dates",
+      "hint": "Enter: link to the daily note, Shift+Enter: the date alone"
+    }
   },
   "properties": {
     "pickDate": "Pick a date",

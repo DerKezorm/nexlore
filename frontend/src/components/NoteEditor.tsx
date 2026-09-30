@@ -679,6 +679,7 @@ function editorLabels(t: (key: string) => string): EditorLabels {
     link: t('editor.link'),
     linkText: t('editor.linkText'),
     handle: { add: t('editor.handleAdd'), drag: t('editor.handleDrag') },
+    dates: { list: t('editor.dates.list'), hint: t('editor.dates.hint') },
     code: {
       search: t('editor.code.search'), copy: t('editor.code.copy'), noResult: t('editor.code.noResult'),
       edit: t('editor.code.edit'), hide: t('editor.code.hide'), preview: t('editor.code.preview'),
