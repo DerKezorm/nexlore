@@ -33,6 +33,8 @@ test('Ctrl+F counts and steps through the hits, Ctrl+H replaces one and then all
   const count = bar.getByTestId('find-count')
   // The code block is left out: its text is drawn by CodeMirror.
   await expect(count).toHaveText('1 of 3')
+  // ... but said beside the count (review before 1.0.0, P3.19).
+  await expect(bar.getByTestId('find-in-code')).toHaveText(' · 1 in code')
   await expect(page.locator('.ProseMirror .nx-find')).toHaveCount(3)
   await field.press('Enter')
   await expect(count).toHaveText('2 of 3')

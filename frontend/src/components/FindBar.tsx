@@ -144,8 +144,8 @@ export function FindBar({ editor, focus, replacing, onReplacing, onClose }: Prop
             className={field + ' pr-24'}
             data-testid="find-input"
           />
-          <span aria-live="polite" data-testid="find-count" className="pointer-events-none absolute right-2 text-xs whitespace-nowrap text-mist-500" title={shown.inCode ? t('find.inCode', { count: shown.inCode }) : undefined}>
-            {counter}
+          <span className="pointer-events-none absolute right-2 text-xs whitespace-nowrap text-mist-500" title={shown.inCode ? t('find.inCode', { count: shown.inCode }) : undefined}>
+            <span aria-live="polite" data-testid="find-count">{counter}</span>
             {!!query && shown.inCode > 0 && <span data-testid="find-in-code"> · {t('find.inCodeShort', { count: shown.inCode })}</span>}
           </span>
         </div>
