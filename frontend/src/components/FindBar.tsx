@@ -11,7 +11,7 @@ import type { NoteEditor } from '../editor/editor'
 import type { FindStatus } from '../editor/find'
 import { Symbol } from './Symbol'
 
-const NONE: FindStatus = { query: '', caseSensitive: false, count: 0, current: -1, capped: false }
+const NONE: FindStatus = { query: '', caseSensitive: false, count: 0, current: -1, capped: false, inCode: 0 }
 
 type Props = {
   editor: NoteEditor
@@ -144,8 +144,9 @@ export function FindBar({ editor, focus, replacing, onReplacing, onClose }: Prop
             className={field + ' pr-24'}
             data-testid="find-input"
           />
-          <span aria-live="polite" data-testid="find-count" className="pointer-events-none absolute right-2 text-xs whitespace-nowrap text-mist-500">
+          <span aria-live="polite" data-testid="find-count" className="pointer-events-none absolute right-2 text-xs whitespace-nowrap text-mist-500" title={shown.inCode ? t('find.inCode', { count: shown.inCode }) : undefined}>
             {counter}
+            {!!query && shown.inCode > 0 && <span data-testid="find-in-code"> · {t('find.inCodeShort', { count: shown.inCode })}</span>}
           </span>
         </div>
         <button

@@ -5,7 +5,7 @@ import { undo } from '@milkdown/kit/prose/history'
 import { TextSelection } from '@milkdown/kit/prose/state'
 import { afterEach, expect, it } from 'vitest'
 
-import { findHits, MAX_HITS } from './find'
+import { codeHits, findHits, MAX_HITS } from './find'
 import { openEditor } from './harness'
 
 type Open = Awaited<ReturnType<typeof openEditor>>
@@ -127,4 +127,12 @@ it('stops marking at the limit', async () => {
   const editor = await open('a'.repeat(MAX_HITS + 5) + '\n')
   editor.find.search('a', false)
   expect(editor.find.status()).toMatchObject({ count: MAX_HITS, capped: true })
+})
+
+it('counts the words in code blocks apart, for the bar to say the search leaves them out (review P3.19)', async () => {
+  const editor = await open('Katze im Text.\n\n```js\nconst katze = 1 // Katze\n```\n\n$$\nKatze\n$$\n')
+  expect(words(editor, 'katze')).toEqual(['Katze'])
+  expect(codeHits(editor.view.state.doc, 'katze', false)).toBe(3)
+  expect(codeHits(editor.view.state.doc, 'Katze', true)).toBe(2)
+  expect(codeHits(editor.view.state.doc, '', false)).toBe(0)
 })

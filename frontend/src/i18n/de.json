@@ -1638,7 +1638,9 @@
     "replace": "Ersetzen",
     "replaceAll": "Alle ersetzen",
     "replaced_one": "{{count}} Stelle ersetzt.",
-    "replaced_other": "{{count}} Stellen ersetzt."
+    "replaced_other": "{{count}} Stellen ersetzt.",
+    "inCode": "Dazu {{count}} in Codeblöcken; die Suche lässt Code aus, damit Ersetzen keinen Code ändert.",
+    "inCodeShort": "{{count}} in Code"
   },
   "unlinked": {
     "title": "Nicht verlinkt",

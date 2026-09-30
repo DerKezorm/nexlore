@@ -23,7 +23,7 @@ type FindState = {
 }
 
 /** What the bar sees: how many, and which one is current (0-based, -1 without a hit). */
-export type FindStatus = { query: string; caseSensitive: boolean; count: number; current: number; capped: boolean }
+export type FindStatus = { query: string; caseSensitive: boolean; count: number; current: number; capped: boolean; inCode: number }
 
 export type FindControl = {
   /** A new word to look for (empty clears the marks); the current hit is the first at or after the caret. */
@@ -50,6 +50,19 @@ const EMPTY: FindState = { query: '', caseSensitive: false, hits: [], current: -
 
 function pattern(query: string, caseSensitive: boolean): RegExp {
   return new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), caseSensitive ? 'gu' : 'giu')
+}
+
+/** How often the words stand in code blocks, which the search leaves out (said in the bar, review P3.19). */
+export function codeHits(doc: ProseNode, query: string, caseSensitive: boolean): number {
+  if (!query) return 0
+  const re = pattern(query, caseSensitive)
+  let count = 0
+  doc.descendants((node) => {
+    if (!node.isTextblock) return true
+    if (node.type.spec.code) count += [...node.textContent.matchAll(re)].filter((match) => match[0].length).length
+    return false
+  })
+  return count
 }
 
 /** Every hit in the document's text blocks, code blocks left out. */
@@ -180,7 +193,7 @@ export function findControl(view: EditorView): FindControl {
     },
     status: () => {
       const now = state()
-      return { query: now.query, caseSensitive: now.caseSensitive, count: now.hits.length, current: now.current, capped: now.hits.length >= MAX_HITS }
+      return { query: now.query, caseSensitive: now.caseSensitive, count: now.hits.length, current: now.current, capped: now.hits.length >= MAX_HITS, inCode: codeHits(view.state.doc, now.query, now.caseSensitive) }
     },
     close: (select) => {
       const now = state()
