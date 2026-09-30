@@ -28,6 +28,18 @@ function row(page: Page, name: string) {
   return page.getByTestId('sidebar-tree').getByRole('button', { name: new RegExp(`^${name}( \\d+)?$`) })
 }
 
+/** The tree draws only what is near the view: a row after a long open folder is scrolled to first, as by hand. */
+async function shownRow(page: Page, name: string) {
+  const tree = page.getByTestId('sidebar-tree')
+  const button = row(page, name)
+  await expect(tree.getByRole('listitem').first()).toBeVisible()
+  for (let step = 0; step < 40 && !(await button.isVisible()); step++) {
+    await tree.evaluate((element) => element.scrollBy(0, element.clientHeight / 2))
+    await page.waitForTimeout(50)
+  }
+  return button
+}
+
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 
 test('the context menu makes a folder, moves a note into it, renames the folder and trashes another', async ({ page }) => {
@@ -384,7 +396,8 @@ test('on a phone "Notes" and the empty note page open the list as a sheet, and t
   await expect(sidebar).toBeHidden()
   await start.getByRole('button', { name: 'All notes' }).click()
   await expect(sidebar).toBeVisible()
-  await row(page, 'Shopping').click()
+  // Other tests' notes fill the spaces before it: scrolled to.
+  await (await shownRow(page, 'Shopping')).click()
   await expect(page).toHaveURL(/\/note\/Home\/Shopping\.md$/)
   await expect(sidebar).toBeHidden()
   // On a note "Notes" opens the list without leaving it; Escape closes it.
