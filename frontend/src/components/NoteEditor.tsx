@@ -10,7 +10,8 @@
  * effects are cleaned up before the page's own effects, so the page's last save has the words typed just before.
  */
 import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react'
-import { TextSelection } from '@milkdown/kit/prose/state'
+import { Selection, TextSelection } from '@milkdown/kit/prose/state'
+import type { EditorView } from '@milkdown/kit/prose/view'
 import { useTranslation } from 'react-i18next'
 
 import '@milkdown/crepe/theme/common/style.css'
@@ -80,6 +81,24 @@ type Props = {
   /** The note's comment threads: the open ones are marked in the text, with their preview on the mouse. */
   threads?: Thread[] | null
   onShowThread?: (id: number) => void
+}
+
+/**
+ * Where the caret stands when editing starts: at the end of the note when all of it is in view, else at the end of
+ * the first block in view. At the very start it changed the title with the first key (review before 1.0.0, P3.18).
+ */
+function startCaret(view: EditorView): void {
+  const { doc } = view.state
+  const box = view.dom.getBoundingClientRect()
+  let at = Selection.atEnd(doc)
+  if (box.bottom > window.innerHeight) {
+    const found = view.posAtCoords({ left: box.left + 24, top: Math.max(box.top, 0) + 8 })
+    if (found) {
+      const $pos = doc.resolve(found.pos)
+      at = $pos.depth > 0 ? Selection.near(doc.resolve($pos.end(1)), -1) : Selection.near($pos)
+    }
+  }
+  view.dispatch(view.state.tr.setSelection(at))
 }
 
 export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
@@ -274,7 +293,10 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         setReady(editor)
         // The note was loaded again while the editor was starting.
         if (body.current !== started) editor.replace(body.current)
-        if (!readOnly) editor.view.focus()
+        if (!readOnly) {
+          startCaret(editor.view)
+          editor.view.focus()
+        }
       })
       .catch(() => setProblem('editor_failed'))
     return () => {
@@ -546,9 +568,10 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       { id: 'editor.find', label: t('find.command'), group, symbol: 'search', keys: t('find.keyFind'), run: () => askFind(false) },
       { id: 'editor.extract', label: t('extract.menu'), group, symbol: 'note', run: startExtract },
       entry('moveUp', t('editor.moveUp'), 'chevronUp', 'Alt+↑'),
-      entry('sortAsc', t('toolbar.sortAsc'), 'table'),
-      entry('sortDesc', t('toolbar.sortDesc'), 'table'),
-      entry('alignNone', t('toolbar.alignNoneLong'), 'table'),
+      // A table's own commands only with the caret in a table: elsewhere they did nothing and said nothing.
+      ...(engine.current?.status().table
+        ? [entry('sortAsc', t('toolbar.sortAsc'), 'table'), entry('sortDesc', t('toolbar.sortDesc'), 'table'), entry('alignNone', t('toolbar.alignNoneLong'), 'table')]
+        : []),
       entry('moveDown', t('editor.moveDown'), 'chevronDown', 'Alt+↓'),
       { id: 'editor.replace', label: t('find.commandReplace'), group, symbol: 'search', keys: t('find.keyReplace'), run: () => askFind(true) },
       entry('bold', t('editorMenu.bold'), 'bold', t('editorMenu.keyBold')),

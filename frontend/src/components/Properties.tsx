@@ -46,6 +46,8 @@ export function Properties({ head, readOnly = false, onChange, remember }: Props
   }
   // Rows being edited; a row without a name is not written yet.
   const [draft, setDraft] = useState<Property[] | null>(null)
+  /** The row just added: its name field takes the focus (the typing went into the note before). */
+  const [added, setAdded] = useState<number | null>(null)
   const items = draft ?? (parsed.ok ? parsed.items : [])
   // The head this table wrote last. Another one came from outside (the note was loaded again): the rows follow it,
   // or the next keystroke would write the old properties over the new ones.
@@ -111,6 +113,8 @@ export function Properties({ head, readOnly = false, onChange, remember }: Props
                 aria-invalid={taken || undefined}
                 aria-describedby={taken ? `property-taken-${index}` : undefined}
                 onChange={(event) => update(index, { key: event.target.value })}
+                autoFocus={added === index}
+                onBlur={() => added === index && setAdded(null)}
                 className={'h-7 w-36 shrink-0 truncate rounded-md bg-transparent px-1.5 text-sm outline-none focus:bg-ink-900 focus:text-mist-100 ' + (taken ? 'text-bad-500' : 'text-mist-400')}
               />
               <div className="min-w-0 flex-1">
@@ -149,7 +153,10 @@ export function Properties({ head, readOnly = false, onChange, remember }: Props
           {!readOnly && (
             <button
               type="button"
-              onClick={() => setDraft([...items, { key: '', kind: 'text', value: '' }])}
+              onClick={() => {
+                setDraft([...items, { key: '', kind: 'text', value: '' }])
+                setAdded(items.length)
+              }}
               className="rounded-lg px-2 py-1 text-sm text-mist-500 hover:bg-ink-850 hover:text-accent-400"
             >
               + {t('properties.add')}

@@ -124,7 +124,7 @@
     "search": "Notiz nach Namen suchen",
     "nothing": "Keine Notiz dieses Namens in diesem Bereich.",
     "back": "Andere Notiz",
-    "explain": "„{{name}}“ kommt ans Ende von „{{target}}“ (ohne ihre Eigenschaften). Links auf „{{name}}“ führen danach zu „{{target}}“, und „{{name}}“ geht in den Papierkorb, von wo sie zurückkommen kann.",
+    "explain": "„{{name}}“ kommt ans Ende von „{{target}}“. Seine Eigenschaften bleiben zurück, auch Tags und Aliase darin; Tags im Text kommen mit. Links auf „{{name}}“ führen danach zu „{{target}}“, und „{{name}}“ geht in den Papierkorb, aus dem es zurückkommen kann.",
     "do": "Zusammenführen"
   },
   "tags": {
@@ -487,7 +487,10 @@
       "saving": "Speichert …",
       "saved": "Gespeichert",
       "failed": "Nicht gespeichert",
-      "refreshed": "Von außen aktualisiert"
+      "refreshed": "Von außen aktualisiert",
+      "offline": "Keine Verbindung zum Server. Der Text bleibt hier, nexlore versucht es gleich wieder.",
+      "retry": "Erneut versuchen",
+      "tooLarge": "Die Notiz ist größer, als der Server annimmt (5 MB). Kürze sie, dann wird sie gespeichert."
     },
     "versions": "Versionen",
     "showVersions": "Verlauf zeigen",
@@ -784,7 +787,7 @@
       "bulletList": "Aufzählung",
       "orderedList": "Nummerierte Liste",
       "taskList": "Aufgabenliste",
-      "code": "Code",
+      "code": "Codeblock",
       "table": "Tabelle",
       "math": "Formel",
       "groupText": "Text",

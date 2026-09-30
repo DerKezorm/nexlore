@@ -9,8 +9,35 @@
  * - Pasted at the end of a line with words, the first block of what came from outside ran into that line: a heading,
  *   a list, a code block became plain words. Such a block now stays a block of its own. (Words copied inside the
  *   editor keep their way: the editor's own copy says so, `data-pm-slice`.)
+ * - Code copied from VS Code or another code editor (lines as `div`s in `white-space: pre`, and from VS Code its
+ *   language in `vscode-editor-data`) became paragraphs glued to the line before, its indentation `&#x20;`. Several
+ *   lines of it now become a code block with the language (`pastedCode`).
  */
 import { Slice, type Node as ProseNode } from '@milkdown/kit/prose/model'
+
+/** A code editor's HTML: lines kept by `white-space: pre` in a monospaced font, not a `pre` element. */
+const EDITOR_HTML = /white-space:\s*pre\b/i
+const MONOSPACE = /font-family:[^;"]*(?:Consolas|Menlo|Monaco|Courier|monospace|Fira|JetBrains|Cascadia|Source Code)/i
+
+/** Several lines copied from a code editor: the text and its language, or null for anything else. */
+export function pastedCode(data: DataTransfer | null): { text: string; language: string } | null {
+  if (!data) return null
+  const text = data.getData('text/plain').replace(/\r\n?/g, '\n')
+  if (!text.includes('\n')) return null
+  let language = ''
+  const vscode = data.getData('vscode-editor-data')
+  if (vscode) {
+    try {
+      const mode = (JSON.parse(vscode) as { mode?: unknown }).mode
+      if (typeof mode === 'string' && /^[\w+#.-]{1,30}$/.test(mode) && mode !== 'plaintext') language = mode
+    } catch {
+      // Not what VS Code writes: the language stays open.
+    }
+  }
+  const html = data.getData('text/html')
+  const fromEditor = !!vscode || (EDITOR_HTML.test(html) && MONOSPACE.test(html) && !/<pre[\s>]/i.test(html))
+  return fromEditor ? { text: text.replace(/\n$/, ''), language } : null
+}
 
 const LEVEL = /mso-list:\s*l\d+\s+level(\d+)/i
 /** Word's own bullet or number in front of a list paragraph. */

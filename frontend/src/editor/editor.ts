@@ -13,8 +13,10 @@
  */
 import { foldPlugin, type FoldStore } from './folds'
 import { moveBlock, moveBlockKeys } from './moveBlock'
-import { alignColumn, sortByColumn } from './tables'
-import { cleanPastedHtml, keepFirstBlock } from './pasted'
+import { topLevelDrop } from './drop'
+import { keepShiftTab } from './indent'
+import { alignColumn, sortByColumn, tableTabKeys } from './tables'
+import { cleanPastedHtml, keepFirstBlock, pastedCode } from './pasted'
 import { byUse, noteSlashUse } from './slashUse'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
 import { editorViewCtx, parserCtx, remarkCtx, serializerCtx } from '@milkdown/kit/core'
@@ -65,6 +67,7 @@ import { lineNumbers, type LineControl } from './lineNumbers'
 import { livePreview, refreshLive, type LinkHelpers } from './live'
 import { blockPreviews } from './previews'
 import { imageSource, obsidian, replaced, writerOptions } from './obsidian'
+import { dollarText } from './dollars'
 import { forcedRaw, holdRaw, keepsLetters, releaseRaw } from './syntax'
 import { detectStyle } from './style'
 import { linkSuggest, refreshSuggest, type Suggestion } from './suggest'
@@ -280,6 +283,14 @@ function insertedNodes(schema: Schema, done: (Inserted | null)[]): ProseNode[] {
   return nodes.slice(0, -1)
 }
 
+/**
+ * Uploaded files at the caret, as inline content with their own marks. `replaceSelectionWith` gave a single node the
+ * marks around the caret instead, and so took the link off a file's name: a PDF came in as its bare name.
+ */
+export function insertFiles(view: EditorView, nodes: ProseNode[]): void {
+  view.dispatch(view.state.tr.replaceSelection(new ProseSlice(Fragment.fromArray(nodes), 0, 0)).scrollIntoView())
+}
+
 /** A file picker, for the menu items: the files chosen, or none; `accept` narrows what may be chosen. */
 function pickFiles(accept?: string): Promise<File[]> {
   return new Promise((resolve) => {
@@ -370,7 +381,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
               const view = ctx.get(editorViewCtx)
               const nodes = insertedNodes(view.state.schema, await files.upload(chosen))
               if (!nodes.length) return
-              view.dispatch(view.state.tr.replaceSelectionWith(nodes.length === 1 ? nodes[0] : view.state.schema.nodes.paragraph.create(null, nodes)).scrollIntoView())
+              insertFiles(view, nodes)
               view.focus()
             })
           }
@@ -428,6 +439,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
       if (options.files) ctx.set(imageSource.key, options.files.src)
     })
     .use(obsidian)
+    .use(dollarText)
     .use(
       $prose(
         () =>
@@ -445,6 +457,15 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
                 // On the event itself, before Milkdown's own paste: that one takes an address as Markdown and puts
                 // it in place of the chosen words (a handlePaste here never came to be asked).
                 paste: (view, event) => {
+                  // Several lines from a code editor: a code block with its language, not paragraphs (`pastedCode`).
+                  const code = view.state.selection.$from.parent.type.spec.code ? null : pastedCode(event.clipboardData)
+                  if (code) {
+                    const { schema } = view.state
+                    const block = schema.nodes.code_block.create({ language: code.language }, code.text ? schema.text(code.text) : null)
+                    view.dispatch(view.state.tr.replaceSelectionWith(block).scrollIntoView())
+                    event.preventDefault()
+                    return true
+                  }
                   const pasted = event.clipboardData?.getData('text/plain') ?? ''
                   if (!pasteOntoWords(view, pasted) && !pasteTitled(view, pasted, options.linkTitle)) return false
                   event.preventDefault()
@@ -460,6 +481,9 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     .use($prose(() => findPlugin()))
     .use($prose(() => commentPlugin()))
     .use($prose(() => moveBlockKeys()))
+    .use($prose(() => topLevelDrop()))
+    .use($prose(() => tableTabKeys()))
+    .use($prose(() => keepShiftTab()))
     .use($prose(() => (options.folds ? foldPlugin(options.folds) : new Plugin({}))))
     .use(
       $prose(() =>
@@ -606,7 +630,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
       if (!chosen.length) return
       const nodes = insertedNodes(view.state.schema, await files.upload(chosen))
       if (!nodes.length) return
-      view.dispatch(view.state.tr.replaceSelectionWith(nodes.length === 1 ? nodes[0] : view.state.schema.nodes.paragraph.create(null, nodes)).scrollIntoView())
+      insertFiles(view, nodes)
       view.focus()
     })
   }

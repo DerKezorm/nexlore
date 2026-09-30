@@ -116,6 +116,8 @@ const PROTECTED = new RegExp(
     String.raw`(?<![\p{L}\p{N}\\.+-])[\p{L}\p{N}.+-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+(?<![.-])`,
     // An underscore inside a word (`snake_case`) is never emphasis; remark writes `snake\_case`.
     String.raw`(?<![\p{L}\p{N}_\\])[\p{L}\p{N}]+(?:_+[\p{L}\p{N}]+)+(?![\p{L}\p{N}_])`,
+    // Dollar signs around words with a blank inside (`5 $ und 10 $`): money, not a formula (see `dollars.ts`).
+    String.raw`\$(?:\s[^$\n]*|[^$\n]*\s)\$`,
     // A Dataview field in brackets (`[key:: value]`), not followed by what would make it a link.
     String.raw`(?<!\\)\[[\p{L}\p{N}_ -]+::[^\[\]\n]*\](?![(\[:])`,
   ].join('|'),

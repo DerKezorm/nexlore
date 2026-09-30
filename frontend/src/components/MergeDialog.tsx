@@ -75,6 +75,9 @@ export function MergeDialog({ source, onDone, onClose }: { source: string; onDon
             <p className="mt-3 text-sm text-mist-300" data-testid="merge-explain">{t('merge.explain', { name: title(source), target: title(target) })}</p>
             {problem && <p className="mt-2 text-sm text-bad-400">{problem}</p>}
             <div className="mt-5 flex justify-end gap-2">
+              <button type="button" disabled={busy} onClick={onClose} className="rounded-full px-4 py-1.5 text-sm text-mist-300 hover:bg-ink-850">
+                {t('common.cancel')}
+              </button>
               <button type="button" disabled={busy} onClick={() => setTarget(null)} className="rounded-full px-4 py-1.5 text-sm text-mist-300 hover:bg-ink-850">
                 {t('merge.back')}
               </button>

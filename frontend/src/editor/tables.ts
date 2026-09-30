@@ -7,6 +7,8 @@
  */
 import type { Node as ProseNode } from '@milkdown/kit/prose/model'
 import { TextSelection, type Command, type EditorState } from '@milkdown/kit/prose/state'
+import { keymap } from '@milkdown/kit/prose/keymap'
+import { addRowAfter, goToNextCell, isInTable } from '@milkdown/kit/prose/tables'
 import { tableCellSchema, tableHeaderSchema } from '@milkdown/kit/preset/gfm'
 
 export type Alignment = 'left' | 'center' | 'right' | null
@@ -104,3 +106,19 @@ function withoutDefault<T extends typeof tableCellSchema | typeof tableHeaderSch
 }
 
 export const alignedCells = [withoutDefault(tableCellSchema), withoutDefault(tableHeaderSchema)].flat()
+
+/**
+ * Tab in a table's last cell adds a row and goes into it, as Advanced Tables and most editors do; before, it put four
+ * blanks into the cell (review before 1.0.0, P3.9). Tab anywhere else in a table stays Crepe's: the next cell.
+ */
+export function tableTabKeys() {
+  return keymap({
+    Tab: (state, dispatch, view) => {
+      if (!isInTable(state) || goToNextCell(1)(state)) return false
+      if (!dispatch || !view) return true
+      addRowAfter(state, dispatch)
+      goToNextCell(1)(view.state, view.dispatch)
+      return true
+    },
+  })
+}

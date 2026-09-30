@@ -84,3 +84,13 @@ it('goes on to the next cell with Tab', async () => {
   view.someProp('handleKeyDown', (handle) => handle(view, new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })))
   expect(view.state.selection.$from.parent.textContent).toBe('10')
 })
+
+it('adds a row with Tab in the last cell and goes into it, without blanks in the cell (review P3.9)', async () => {
+  open = await openEditor(TABLE)
+  const { view } = open
+  caretIn(view, '7')
+  view.someProp('handleKeyDown', (handle) => handle(view, new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })))
+  view.dispatch(view.state.tr.insertText('Jam'))
+  expect(open.text()).toContain('| Bread | 7 |\n| Jam |')
+  expect(open.text()).not.toMatch(/7 {2,}/)
+})

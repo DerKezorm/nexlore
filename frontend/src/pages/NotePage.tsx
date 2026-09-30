@@ -217,6 +217,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const present = usePresence(side === 'left' && path && !leaving ? path : null, editing)
   const [mode, setMode] = useState<EditorMode>('visual')
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  /** Why the last save failed (an error code, `offline` without an answer), and how often in a row. */
+  const [saveProblem, setSaveProblem] = useState<{ code: string; count: number } | null>(null)
   const [conflict, setConflict] = useState<string | null>(null)
   const [comparing, setComparing] = useState<{ note: string; copy: string } | null>(null)
   // Drafts an AI proposed for this note over MCP (M7); only the own ones come.
@@ -364,10 +366,15 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       saved.current = text
       base.current = result.hash
       savedEdits.current = mark
+      setSaveProblem(null)
       setSaveState(edits.current === mark ? 'saved' : 'pending')
       return 'saved'
     } catch (error) {
       setSaveState('failed')
+      // A text over the server's limit comes back as an invalid field `content`: said as what it is.
+      const tooLarge = error instanceof ApiError && (error.code === 'too_large' || (error.code === 'invalid_input' && (error.values.fields as string[] | undefined)?.includes('content')))
+      const code = tooLarge ? 'too_large' : error instanceof ApiError ? error.code : 'offline'
+      setSaveProblem((before) => ({ code, count: (before?.count ?? 0) + 1 }))
       if (error instanceof ApiError && error.code === 'locked') {
         setLockHolder(String(error.values.holder ?? ''))
         setEditingPath(null)
@@ -378,6 +385,34 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       saving.current = false
     }
   }, [path, load, reload])
+
+  // Ctrl+S while editing saves at once instead of opening the browser's "save page as" (nexlore saves by itself).
+  useEffect(() => {
+    if (!editing) return
+    const key = (event: globalThis.KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 's') {
+        event.preventDefault()
+        void save()
+      }
+    }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [editing, save])
+
+  // A failed save is tried again by itself: soon when the network was gone (and at once when it is back), slowly when
+  // the right to write was taken (it may come back), not at all for a text too large (it would fail again).
+  useEffect(() => {
+    if (!editing || saveState !== 'failed' || !saveProblem || saveProblem.code === 'too_large') return
+    const base = saveProblem.code === 'forbidden' ? 30_000 : 5_000
+    const wait = Math.min(60_000, base * 2 ** Math.min(saveProblem.count - 1, 4))
+    const again = () => void save()
+    const timer = window.setTimeout(again, wait)
+    window.addEventListener('online', again)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('online', again)
+    }
+  }, [editing, saveState, saveProblem, save])
 
   const startEditing = useCallback(async () => {
     if (!note || note.readonly) return
@@ -960,7 +995,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
               ))}
             </nav>
             {side === 'left' && <Presence people={present} />}
-            {editing && <SaveBadge state={saveState} />}
+            {editing && <SaveBadge state={saveState} problem={saveState === 'failed' ? (saveProblem?.code ?? null) : null} onRetry={() => void save()} />}
             <div className="flex shrink-0 items-center rounded-full border border-ink-700 bg-ink-850 p-0.5 text-sm" role="group" aria-label={t('note.view')}>
               <button
                 type="button"
@@ -1404,13 +1439,21 @@ function CompareButton({ onClick }: { onClick: () => void }) {
   )
 }
 
-function SaveBadge({ state }: { state: SaveState }) {
+function SaveBadge({ state, problem, onRetry }: { state: SaveState; problem: string | null; onRetry: () => void }) {
   const { t } = useTranslation()
   if (state === 'idle') return null
   const tone = state === 'failed' ? 'text-bad-500' : 'text-mist-500'
+  // Why it failed, in words, and a way to try at once; the text stays in the editor meanwhile.
+  const why = problem ? (problem === 'offline' ? t('note.save.offline') : problem === 'too_large' ? t('note.save.tooLarge') : errorText(problem)) : ''
   return (
-    <span className={'text-xs ' + tone} role="status">
+    <span className={'flex items-center gap-2 text-xs ' + tone} role="status" title={why || undefined}>
       {t(`note.save.${state}`)}
+      {why && <span className="hidden max-w-72 truncate sm:inline">{why}</span>}
+      {state === 'failed' && problem !== 'too_large' && (
+        <button type="button" onClick={onRetry} className="rounded-md border border-bad-500/40 px-1.5 py-0.5 hover:bg-bad-500/10">
+          {t('note.save.retry')}
+        </button>
+      )}
     </span>
   )
 }
