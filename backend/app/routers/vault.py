@@ -469,6 +469,23 @@ def move(body: MoveIn, account: Account, who: ActorDep) -> dict[str, Any]:
     return {"path": moved.path, "files": moved.files, "rewritten": rewritten}
 
 
+class MergeIn(BaseModel):
+    source: str = Field(min_length=1, max_length=paths.MAX_PATH_CHARS)
+    target: str = Field(min_length=1, max_length=paths.MAX_PATH_CHARS)
+
+
+@router.post("/notes/merge", summary="Merge a note into another: its text to the end, its links along, it to the trash")
+def merge(body: MergeIn, account: Account, who: ActorDep) -> dict[str, Any]:
+    need(account, body.source, WRITE)
+    need(account, body.target, WRITE)
+    try:
+        merged = vault.merge(body.source, body.target, actor=who)
+    except VaultError as exc:
+        raise _fail(exc) from exc
+    readable = readable_spaces(account)
+    return {"path": merged.path, "rewritten": sum(1 for space_id in merged.rewritten_spaces if space_id in readable)}
+
+
 # --- Links, tags, search, graph -------------------------------------------------------------------------------------
 
 

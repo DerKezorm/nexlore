@@ -29,6 +29,7 @@ import { picturesIn, type Picture } from '../lib/pictures'
 import { Comments } from '../components/Comments'
 import { CommentLayer } from '../components/CommentLayer'
 import { FoldLayer } from '../components/FoldLayer'
+import { MergeDialog } from '../components/MergeDialog'
 import { askFoldAll } from '../lib/folds'
 import { revealThread, type Anchor } from '../lib/comments'
 import { Unlinked } from '../components/Unlinked'
@@ -51,7 +52,7 @@ import { distinctOutgoing, LinkIndex, linkedSpace, linkName } from '../lib/links
 import { fileRoute, formatDate, renderMarkdown } from '../lib/markdown'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { versionSource } from '../lib/versions'
-import { askVaultAction, copyText, LEAVING_EVENT, within, type Leaving } from '../lib/vaultActions'
+import { announceLeaving, askVaultAction, copyText, LEAVING_EVENT, within, type Leaving } from '../lib/vaultActions'
 import { useCommands, type Command } from '../lib/commands'
 import { askFolder, HEADING_EVENT, PANEL_EVENT, RECENT_EVENT, setShownNote } from '../lib/shell'
 import { useAuth } from '../state/auth'
@@ -161,6 +162,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const [commentDraft, setCommentDraft] = useState<Anchor | null>(null)
   const [commentsFound, setCommentsFound] = useState<Set<number> | undefined>(undefined)
   const [threadFocus, setThreadFocus] = useState<{ id: number; ask: number } | null>(null)
+  // Merging this note into another (components/MergeDialog.tsx).
+  const [merging, setMerging] = useState(false)
   useEffect(() => {
     setThreads(null)
     setCommentDraft(null)
@@ -824,6 +827,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       'separator',
       { label: t('note.rename'), symbol: 'pencil', keys: 'F2', disabled: !mayRename, run: () => setRenaming(baseName(note.path)) },
       { label: t('menu.move'), symbol: 'move', disabled: !!lockedBy, run: () => askVaultAction({ kind: 'move', path: note.path, folder: false }) },
+      { label: t('merge.menu'), symbol: 'columns', disabled: !!lockedBy, run: () => setMerging(true) },
       'separator',
       { label: t('note.trash'), symbol: 'trash', danger: true, disabled: !!lockedBy, run: () => void askToDelete() },
     )
@@ -1255,6 +1259,18 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
         )}
       </main>
 
+      {merging && (
+        <MergeDialog
+          source={note.path}
+          onClose={() => setMerging(false)}
+          onDone={(target) => {
+            setMerging(false)
+            announceLeaving(note.path)
+            void reload()
+            navigate(noteUrl(target))
+          }}
+        />
+      )}
       {viewing && (
         <ImageViewer pictures={viewing.pictures} start={viewing.start} archive={baseName(note.path).replace(/\.md$/i, '')} onClose={() => setViewing(null)} />
       )}

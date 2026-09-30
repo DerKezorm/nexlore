@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import os
 import posixpath
+import re
 import shutil
 import threading
 import time
@@ -951,6 +952,79 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
     logger.info("Moved files=%s notes_rewritten=%s", len(files), len(rewritten_spaces))
     return Moved(path=destination, files=len(files), rewritten=len(rewritten_spaces),
                  rewritten_spaces=rewritten_spaces)
+
+
+# --- Merging two notes (Obsidian's note composer) -----------------------------------------------------------------
+
+_FRONT = re.compile(r"\A(?:\ufeff)?---[ \t]*\r?\n.*?^(?:---|\.\.\.)[ \t]*(?:\r?\n|\Z)", re.DOTALL | re.MULTILINE)
+
+
+@dataclass
+class Merged:
+    path: str
+    rewritten: int
+    rewritten_spaces: list[int] = field(default_factory=list)
+
+
+def merge(source: str, target: str, *, actor: Actor) -> Merged:
+    """Merge note ``source`` into note ``target`` of the same space: its text (its front matter left out) goes to
+    the end of the target, links to it lead to the target (written as a rename writes them), and it goes into the
+    trash. Refused while somebody else writes either of them."""
+    source = _parse(source)
+    target = _parse(target)
+    if not paths.is_note(source) or not paths.is_note(target):
+        raise VaultError("not_a_note", "only notes are merged")
+    if paths.fold(source) == paths.fold(target):
+        raise VaultError("path_invalid", "a note cannot be merged into itself")
+    if paths.space_of(source) != paths.space_of(target):
+        raise VaultError("move_across_spaces", "notes merge within their space only")
+    full_source, full_target = _full(source), _full(target)
+    with index.guard, SessionLocal() as db:
+        taken, into = _file(db, source), _file(db, target)
+        _refuse_foreign_lock(db, [taken, into], actor)
+        adding = index.decode(full_source.read_bytes())
+        existing = full_target.read_bytes()
+        text = index.decode(existing)
+        body = _FRONT.sub("", adding, count=1).strip("\r\n")
+        newline = "\r\n" if "\r\n" in text else "\n"
+        joined = text.rstrip("\r\n") + newline * 2 + body.replace("\r\n", "\n").replace("\n", newline) + newline
+        data = joined.encode("utf-8")
+        if existing.startswith(b"\xef\xbb\xbf") and not data.startswith(b"\xef\xbb\xbf"):
+            data = b"\xef\xbb\xbf" + data
+        # Which links led to the note that goes: from now on to the target.
+        plan: dict[int, dict[tuple[str, str], int]] = {}
+        for note_id, kind, written in db.execute(
+            select(Link.source_id, Link.kind, Link.target).where(Link.target_id == taken.id, Link.source_id != taken.id)
+        ):
+            plan.setdefault(note_id, {})[(kind, written)] = into.id
+        stat = atomic_write(full_target, data)
+        index.record(db, target, data, stat, source=index.APP, author=actor.name, session=actor.client, file=into)
+        job = MoveJob(space_id=into.space_id, author=actor.name, keys=sorted({taken.name_key, into.name_key}))
+        db.add(job)
+        db.flush()
+        rows = [
+            {"job_id": job.id, "note_id": note_id, "position": position, "moved": False,
+             "links": [[kind, written, target_id] for (kind, written), target_id in links.items()]}
+            for position, (note_id, links) in enumerate(sorted(plan.items()))
+        ]
+        for chunk in _chunks(rows):
+            db.execute(insert(MoveJobNote), chunk)
+        job_id = job.id
+        claimed = _claim(job_id)
+        assert claimed, "a new move job is never worked on yet"
+        try:
+            db.commit()
+        except BaseException:
+            _release(job_id)
+            raise
+    rewritten_spaces: list[int] = []
+    try:
+        _follow(job_id, rewritten_spaces)
+    except Exception:
+        logger.exception("Rewriting the links of a merge stopped half way job=%s", job_id)
+    delete_path(source, actor=actor)
+    logger.info("Notes merged notes_rewritten=%s", len(rewritten_spaces))
+    return Merged(path=target, rewritten=len(rewritten_spaces), rewritten_spaces=rewritten_spaces)
 
 
 # --- The links of a move, part by part -----------------------------------------------------------------------------

@@ -111,6 +111,22 @@
     "foldAll": "Alle Überschriften und Listen einklappen",
     "unfoldAll": "Alles ausklappen"
   },
+  "extract": {
+    "menu": "In neue Notiz auslagern",
+    "title": "Die gewählten Wörter in eine eigene Notiz",
+    "name": "Name der neuen Notiz",
+    "done": "Jetzt in „{{name}}“, von hier verlinkt.",
+    "chooseFirst": "Erst Wörter auswählen."
+  },
+  "merge": {
+    "menu": "Mit anderer Notiz zusammenführen …",
+    "title": "„{{name}}“ in eine andere Notiz einfügen",
+    "search": "Notiz nach Namen suchen",
+    "nothing": "Keine Notiz dieses Namens in diesem Bereich.",
+    "back": "Andere Notiz",
+    "explain": "„{{name}}“ kommt ans Ende von „{{target}}“ (ohne ihre Eigenschaften). Links auf „{{name}}“ führen danach zu „{{target}}“, und „{{name}}“ geht in den Papierkorb, von wo sie zurückkommen kann.",
+    "do": "Zusammenführen"
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Bereiche",

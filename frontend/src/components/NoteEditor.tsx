@@ -17,7 +17,8 @@ import '@milkdown/crepe/theme/common/style.css'
 import '../styles/editor.css'
 
 import { ApiError, fileUrl, linkTitleApi, uploadFile, vaultApi, type Uploaded } from '../api/client'
-import { createEditor, type EditorCommand, type EditorLabels, type FileHelpers, type NoteEditor as Engine } from '../editor/editor'
+import { createEditor, type AiScope, type EditorCommand, type EditorLabels, type FileHelpers, type NoteEditor as Engine } from '../editor/editor'
+import { errorText } from '../lib/errors'
 import { allFolds } from '../editor/folds'
 import { FOLD_ALL_EVENT, FOLDS_EVENT, readFolds, setFolds, toggleFold } from '../lib/folds'
 import { splitNote } from '../editor/frontmatter'
@@ -27,7 +28,8 @@ import type { LinkIndex } from '../lib/links'
 import { aiMenu, type AiAsk } from '../lib/aiMenu'
 import { useContextMenu, type MenuItem } from '../lib/menu'
 import { linesShown, rememberLines, rememberToolbar, toolbarHidden } from '../lib/toolbar'
-import { baseName } from '../lib/vault'
+import { baseName, folderOf } from '../lib/vault'
+import { NameDialog } from './NameDialog'
 import { useCommands, type Command } from '../lib/commands'
 import { useAuth } from '../state/auth'
 import { CONTEXT, type Anchor } from '../lib/comments'
@@ -95,6 +97,31 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   const { me } = useAuth()
   // Titles of pasted links, when the operator allows asking the pages (read when a link is pasted).
   const titles = useRef(false)
+  // The words chosen into a note of their own beside this one (Obsidian's note composer), a link in their place.
+  const [extracting, setExtracting] = useState<{ scope: AiScope; name: string } | null>(null)
+  const startExtract = () => {
+    const engineNow = engine.current
+    const scope = engineNow?.aiScope()
+    if (!scope || scope.whole) return onNotice?.(t('extract.chooseFirst'))
+    // The first line of what was chosen, without its Markdown, as a name to start from.
+    const first = scope.markdown.split(/\r?\n/).find((line) => line.trim()) ?? ''
+    const name = first.replace(/^\s*(#{1,6}\s+|[-*+]\s+(\[.\]\s+)?|\d+[.)]\s+|>\s*)/, '').replace(/[*_`~=[\]#^|\\/:?<>"]/g, '').trim().slice(0, 60)
+    setExtracting({ scope, name })
+  }
+  const extract = async (name: string) => {
+    const chosen = extracting
+    const engineNow = engine.current
+    if (!chosen || !engineNow) return
+    setExtracting(null)
+    try {
+      const made = await vaultApi.create(folderOf(path), name, chosen.scope.markdown.trim() + '\n')
+      engineNow.replaceMarkdown(`[[${baseName(made.path).replace(/\.md$/i, '')}]]`, chosen.scope)
+      onNotice?.(t('extract.done', { name: baseName(made.path).replace(/\.md$/i, '') }))
+    } catch (error) {
+      onNotice?.(errorText(error instanceof ApiError ? error.code : 'internal_error'))
+    }
+  }
+
   // "Fold all" and "unfold all" from the palette, while writing: this editor names the folds its note has.
   useEffect(() => {
     const all = (event: Event) => {
@@ -434,9 +461,11 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     // Reading the clipboard needs a secure page (https); on plain http the keyboard still pastes.
     const canPaste = window.isSecureContext && !!navigator.clipboard?.readText
     const commentable = !!onComment && !!commentAnchor()
+    const extractable = !readOnly && !engineNow.aiScope().whole
     const items: MenuItem[] = [
       ...(picture ? ([{ label: t('viewer.open'), symbol: 'image', onSelect: () => setViewing(picture) }, 'separator'] satisfies MenuItem[]) : []),
       ...(commentable ? ([{ label: t('comments.here'), symbol: 'pencil', onSelect: comment }, 'separator'] satisfies MenuItem[]) : []),
+      ...(extractable ? ([{ label: t('extract.menu'), symbol: 'note', onSelect: startExtract }, 'separator'] satisfies MenuItem[]) : []),
       ...(target
         ? ([
             { label: t('editorMenu.openLink'), symbol: 'note', onSelect: () => latest.current.onOpenLink(target, false) },
@@ -515,6 +544,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     const entry = (command: EditorCommand, label: string, symbol?: Command['symbol'], keys?: string): Command => ({ id: 'editor.' + command, label, group, symbol, keys, run: run(command) })
     return [
       { id: 'editor.find', label: t('find.command'), group, symbol: 'search', keys: t('find.keyFind'), run: () => askFind(false) },
+      { id: 'editor.extract', label: t('extract.menu'), group, symbol: 'note', run: startExtract },
       { id: 'editor.replace', label: t('find.commandReplace'), group, symbol: 'search', keys: t('find.keyReplace'), run: () => askFind(true) },
       entry('bold', t('editorMenu.bold'), 'bold', t('editorMenu.keyBold')),
       entry('italic', t('editorMenu.italic'), 'italic', t('editorMenu.keyItalic')),
@@ -674,6 +704,16 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       )}
       {aiAsk && ready && (
         <AiDialog engine={ready} ask={aiAsk} notePath={path} onClose={() => setAiAsk(null)} onNotice={(text) => onNotice?.(text)} />
+      )}
+      {extracting && (
+        <NameDialog
+          title={t('extract.title')}
+          label={t('extract.name')}
+          initial={extracting.name}
+          maxLength={120}
+          onSave={(name) => void extract(name)}
+          onCancel={() => setExtracting(null)}
+        />
       )}
     </div>
   )

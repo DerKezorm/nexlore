@@ -111,6 +111,22 @@
     "foldAll": "Fold all headings and lists",
     "unfoldAll": "Unfold all"
   },
+  "extract": {
+    "menu": "Into a new note",
+    "title": "The chosen words into a note of their own",
+    "name": "Name of the new note",
+    "done": "Now in “{{name}}”, linked from here.",
+    "chooseFirst": "Choose the words first."
+  },
+  "merge": {
+    "menu": "Merge with another note …",
+    "title": "Merge “{{name}}” into another note",
+    "search": "Find the note by its name",
+    "nothing": "No note of that name in this space.",
+    "back": "Another note",
+    "explain": "“{{name}}” goes to the end of “{{target}}” (its properties are left out). Links to “{{name}}” lead to “{{target}}” afterwards, and “{{name}}” goes into the trash, from where it can come back.",
+    "do": "Merge"
+  },
   "tags": {
     "title": "Tags",
     "spaces": "Spaces",
