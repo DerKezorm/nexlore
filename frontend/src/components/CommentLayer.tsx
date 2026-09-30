@@ -9,8 +9,9 @@ import { useTranslation } from 'react-i18next'
 
 import type { Thread } from '../api/client'
 import { anchorOf, highlight, highlights, locate, MARKS, rangeOf, textMap, type Anchor } from '../lib/comments'
-import { formatDate } from '../lib/markdown'
+import { usePeek } from '../lib/commentPeek'
 import { useContextMenu } from '../lib/menu'
+import { CommentPeek } from './CommentPeek'
 import { Symbol } from './Symbol'
 
 type Props = {
@@ -25,11 +26,8 @@ type Props = {
   onShowThread: (id: number) => void
 }
 
-/** How long the preview waits before it goes, so the mouse can move onto it. */
-const LINGER_MS = 450
-
-/** The words chosen in the text as a comment's anchor, and the selection let go; null when nothing fits. */
-function chosenAnchor(root: HTMLElement | null): Anchor | null {
+/** The words chosen in the text as a comment's anchor (the selection let go with `release`); null when nothing fits. */
+function chosenAnchor(root: HTMLElement | null, release = true): Anchor | null {
   const selection = document.getSelection()
   if (!root || !selection?.rangeCount) return null
   const range = selection.getRangeAt(0)
@@ -42,7 +40,7 @@ function chosenAnchor(root: HTMLElement | null): Anchor | null {
   const chosen = range.toString()
   const lead = chosen.length - chosen.trimStart().length
   const words = chosen.trim()
-  selection.removeAllRanges()
+  if (release) selection.removeAllRanges()
   return words ? anchorOf(text, start + lead, start + lead + words.length) : null
 }
 
@@ -57,17 +55,12 @@ function threadAt(marks: { thread: Thread; range: Range }[], x: number, y: numbe
 export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThread }: Props) {
   const { t } = useTranslation()
   const [button, setButton] = useState<{ x: number; y: number } | null>(null)
-  const [peek, setPeek] = useState<{ thread: Thread; x: number; y: number } | null>(null)
   const marks = useRef<{ thread: Thread; range: Range }[]>([])
   const { open: openMenu, element: menuElement } = useContextMenu()
-  const leave = useRef(0)
-  // The mouse on the preview: nothing over the text closes it then (a move over the text is weighed a frame later,
-  // when the mouse may already be on the preview: it closed before the button could be reached).
-  const onPeek = useRef(false)
-  const closeSoon = () => {
-    window.clearTimeout(leave.current)
-    leave.current = window.setTimeout(() => !onPeek.current && setPeek(null), LINGER_MS)
-  }
+  // A move over the text is weighed a frame later, when the mouse may already be on the preview: the preview knows
+  // that and stays (it once closed before its button could be reached).
+  const peekState = usePeek()
+  const { show: showPeek, hideSoon, hide: hidePeek } = peekState
 
   // The words of the open threads, lit; which ones were found goes to the column.
   useEffect(() => {
@@ -88,7 +81,7 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
       marks.current.push({ thread, range })
     }
     onFound(found)
-    setPeek(null)
+    hidePeek()
     const store = highlights()
     store?.set(MARKS, highlight(ranges))
     return () => {
@@ -97,7 +90,7 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
     }
     // onFound is the page's setter; the text changes with html.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [article, html, threads])
+  }, [article, html, threads, hidePeek])
 
   // Over lit words: the preview of their thread, below the line they stand in.
   useEffect(() => {
@@ -105,13 +98,11 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
     if (!root) return
     let frame = 0
     const show = (x: number, y: number) => {
+      // Words being chosen: no preview over them (it covered the words a right click was meant for).
+      if (document.getSelection()?.isCollapsed === false) return hidePeek()
       const hit = threadAt(marks.current, x, y)
-      if (hit) {
-        window.clearTimeout(leave.current)
-        setPeek((was) =>
-          was?.thread.id === hit.thread.id ? was : { thread: hit.thread, x: Math.min(hit.box.left, window.innerWidth - 300), y: hit.box.bottom + 2 },
-        )
-      } else if (!onPeek.current) closeSoon()
+      if (hit) showPeek(hit.thread, hit.box)
+      else hideSoon()
     }
     const move = (event: MouseEvent) => {
       cancelAnimationFrame(frame)
@@ -122,26 +113,17 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
       if (document.getSelection()?.isCollapsed === false) return
       show(event.clientX, event.clientY)
     }
-    const away = () => closeSoon()
+    const away = () => hideSoon()
     root.addEventListener('mousemove', move)
     root.addEventListener('click', tap)
     root.addEventListener('mouseleave', away)
     return () => {
       cancelAnimationFrame(frame)
-      window.clearTimeout(leave.current)
       root.removeEventListener('mousemove', move)
       root.removeEventListener('click', tap)
       root.removeEventListener('mouseleave', away)
     }
-  }, [article, html])
-
-  // Scrolling moves the words away from a preview that stays where it was: it goes.
-  useEffect(() => {
-    if (!peek) return
-    const gone = () => setPeek(null)
-    window.addEventListener('scroll', gone, true)
-    return () => window.removeEventListener('scroll', gone, true)
-  }, [peek])
+  }, [article, html, showPeek, hideSoon, hidePeek])
 
   // The right button on words chosen in the text: "Comment" first, copying beside it.
   useEffect(() => {
@@ -153,13 +135,16 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
       const range = selection.getRangeAt(0)
       if (!root.contains(range.commonAncestorContainer) || !range.toString().trim()) return
       event.preventDefault()
+      // Taken now: by the time an item is clicked, the click may have let the selection go.
+      const anchor = chosenAnchor(root, false)
       openMenu(event.clientX, event.clientY, [
         {
           label: t('comments.here'),
           symbol: 'pencil',
+          disabled: !anchor,
           onSelect: () => {
-            const anchor = chosenAnchor(root)
             if (anchor) onAsk(anchor)
+            document.getSelection()?.removeAllRanges()
           },
         },
         { label: t('editorMenu.copy'), symbol: 'copy', hint: t('editorMenu.keyCopy'), onSelect: () => void document.execCommand('copy') },
@@ -178,12 +163,12 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
       const range = selection.getRangeAt(0)
       if (!root.contains(range.commonAncestorContainer) || !range.toString().trim()) return setButton(null)
       const box = range.getBoundingClientRect()
-      setPeek(null)
+      hidePeek()
       setButton({ x: Math.min(box.right, window.innerWidth - 140), y: box.bottom + 6 })
     }
     document.addEventListener('selectionchange', changed)
     return () => document.removeEventListener('selectionchange', changed)
-  }, [article])
+  }, [article, hidePeek])
 
   const ask = () => {
     const anchor = chosenAnchor(article.current)
@@ -191,8 +176,6 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
     setButton(null)
   }
 
-  const first = peek?.thread.comments[0]
-  const replies = peek ? peek.thread.comments.length - 1 : 0
   return (
     <>
       {menuElement}
@@ -209,45 +192,7 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
           {t('comments.here')}
         </button>
       )}
-      {peek && first && (
-        <div
-          role="dialog"
-          aria-label={t('comments.peek')}
-          data-testid="comment-peek"
-          data-thread={peek.thread.id}
-          style={{ left: Math.max(8, peek.x), top: peek.y }}
-          onMouseEnter={() => {
-            onPeek.current = true
-            window.clearTimeout(leave.current)
-          }}
-          onMouseLeave={() => {
-            onPeek.current = false
-            closeSoon()
-          }}
-          className="fixed z-30 w-72 max-w-[calc(100vw-16px)] rounded-xl border border-ink-700 bg-ink-900 p-3 text-sm shadow-2xl"
-        >
-          <div className="flex items-baseline gap-2 text-xs text-mist-500">
-            <span className="font-semibold text-mist-300">{first.author}</span>
-            <span>{formatDate(first.created_at)}</span>
-          </div>
-          <p className="mt-1 line-clamp-4 break-words whitespace-pre-wrap text-mist-200">{first.body}</p>
-          <div className="mt-2 flex items-center gap-2 text-xs">
-            {replies > 0 && <span className="text-mist-500">{t('comments.replies', { count: replies })}</span>}
-            <button
-              type="button"
-              onClick={() => {
-                onShowThread(peek.thread.id)
-                onPeek.current = false
-                setPeek(null)
-              }}
-              className="ml-auto inline-flex items-center gap-1 font-semibold text-accent-400 hover:text-accent-300"
-            >
-              {t('comments.toThread')}
-              <Symbol name="chevronRight" className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
+      <CommentPeek state={peekState} onShowThread={onShowThread} />
     </>
   )
 }

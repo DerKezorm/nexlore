@@ -29,6 +29,9 @@ import { baseName } from '../lib/vault'
 import { useCommands, type Command } from '../lib/commands'
 import { useAuth } from '../state/auth'
 import { CONTEXT, type Anchor } from '../lib/comments'
+import { usePeek } from '../lib/commentPeek'
+import type { Thread } from '../api/client'
+import { CommentPeek } from './CommentPeek'
 import { Symbol } from './Symbol'
 import { AiDialog } from './AiDialog'
 import { EditorToolbar, ShowToolbar } from './EditorToolbar'
@@ -42,6 +45,8 @@ export type EditorHandle = {
   text: () => string
   /** The note changed on disk and nothing was typed here: show the new text. */
   replace: (content: string) => void
+  /** Scroll to a comment thread's words in the text and let them blink; false when they are not there. */
+  revealComment: (id: number) => boolean
 }
 
 type Props = {
@@ -66,10 +71,13 @@ type Props = {
   onUploadFailed?: (code: string) => void
   /** Words chosen in the text get a comment (the page opens the column with a new thread). */
   onComment?: (anchor: Anchor) => void
+  /** The note's comment threads: the open ones are marked in the text, with their preview on the mouse. */
+  threads?: Thread[] | null
+  onShowThread?: (id: number) => void
 }
 
 export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
-  { path, content, links, mode, readOnly = false, onChange, onLeave, onOpenLink, onSource, onNotice, onFileRefused, onUploaded, onUploadFailed, onComment },
+  { path, content, links, mode, readOnly = false, onChange, onLeave, onOpenLink, onSource, onNotice, onFileRefused, onUploaded, onUploadFailed, onComment, threads, onShowThread },
   ref,
 ) {
   const { t } = useTranslation()
@@ -116,6 +124,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
 
   useImperativeHandle(ref, () => ({
     text: current,
+    revealComment: (id: number) => engine.current?.comments.reveal(id) ?? false,
     replace: (next: string) => {
       const split = splitNote(next)
       headRef.current = split.head
@@ -290,6 +299,36 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       ready.view.dom.removeEventListener('blur', blur)
     }
   }, [ready, onComment])
+
+  // The open threads marked in the text; on a mark, the thread's preview (a tap on a touch screen as well).
+  const peekState = usePeek()
+  const { show: showPeek, hideSoon, hide: hidePeek } = peekState
+  const threadsRef = useRef(threads)
+  useEffect(() => {
+    threadsRef.current = threads
+    if (!ready) return
+    ready.comments.set((threads ?? []).filter((thread) => !thread.resolved))
+  }, [ready, threads])
+  useEffect(() => {
+    const root = host.current
+    if (!ready || !root || !onShowThread) return
+    const over = (event: Event) => {
+      // Words being chosen: no preview over them.
+      if (!ready.view.state.selection.empty && ready.view.hasFocus()) return hidePeek()
+      const mark = (event.target as Element).closest?.('[data-comment-thread]')
+      if (!mark) return hideSoon()
+      const thread = threadsRef.current?.find((item) => String(item.id) === mark.getAttribute('data-comment-thread'))
+      if (thread) showPeek(thread, mark.getBoundingClientRect())
+    }
+    root.addEventListener('mouseover', over)
+    root.addEventListener('click', over)
+    root.addEventListener('mouseleave', hideSoon)
+    return () => {
+      root.removeEventListener('mouseover', over)
+      root.removeEventListener('click', over)
+      root.removeEventListener('mouseleave', hideSoon)
+    }
+  }, [ready, onShowThread, showPeek, hideSoon, hidePeek])
 
   /** Ctrl+F and Ctrl+H: the bar opens, the words chosen in one line of the text in its field. */
   const askFind = (replace: boolean) => {
@@ -545,6 +584,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         <div ref={host} className="nx-editor-host" onContextMenu={openMenu} />
       )}
       {menu.element}
+      {onShowThread && <CommentPeek state={peekState} onShowThread={onShowThread} />}
       {commentAt && (
         <button
           type="button"

@@ -303,3 +303,12 @@
   box-shadow: 0 0 0 1px var(--color-accent-400);
   color: var(--color-mist-100);
 }
+
+/* Comments while writing: the words of open threads, the one asked for stronger (as ::highlight(nx-comment) in reading) */
+.nx-comment-mark {
+  background: color-mix(in srgb, var(--color-warn-500) 22%, transparent);
+  border-radius: 2px;
+}
+.nx-comment-mark.nx-comment-mark-current {
+  background: color-mix(in srgb, var(--color-warn-500) 55%, transparent);
+}

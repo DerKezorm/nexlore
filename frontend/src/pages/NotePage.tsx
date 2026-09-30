@@ -861,7 +861,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
           draft={commentDraft}
           onDraftDone={() => setCommentDraft(null)}
           found={editing ? undefined : commentsFound}
-          onReveal={(thread) => void (editing || revealThread(article.current, thread))}
+          onReveal={(thread) => void (editing ? editor.current?.revealComment(thread.id) : revealThread(article.current, thread))}
           onChanged={() => loadThreads(note.path)}
           manage={role === 'manage'}
           focus={threadFocus}
@@ -1140,6 +1140,11 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                   onUploadFailed={(code) => setNotice(errorText(code))}
                   onComment={(anchor) => {
                     setCommentDraft(anchor)
+                    showPanel('comments')
+                  }}
+                  threads={threads}
+                  onShowThread={(id) => {
+                    setThreadFocus({ id, ask: Date.now() })
                     showPanel('comments')
                   }}
                 />

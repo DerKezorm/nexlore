@@ -184,6 +184,12 @@ test('resting on lit words shows their comment and leads to it; a thread picked 
   // Away from the words: the preview goes.
   await page.mouse.move(5, 5)
   await expect(peek).toHaveCount(0)
+  // While words are chosen, lit words show no preview over them.
+  await choose(page, 'stand here')
+  await page.mouse.move(box.x, box.y)
+  await page.waitForTimeout(300)
+  await expect(peek).toHaveCount(0)
+  await page.evaluate(() => window.getSelection()!.removeAllRanges())
   // The first thread picked in the column: its words, and only those, blink in the text.
   await panel.locator(`[data-thread="${made[0]}"]`).getByText('About the first').click()
   await expect(panel.locator(`[data-thread="${made[0]}"]`)).toHaveAttribute('data-lit', 'true')
@@ -239,15 +245,51 @@ test('while writing, chosen words are commented from the button or the menu, and
   await panel.getByRole('textbox', { name: 'New comment' }).fill('From the menu')
   await panel.getByRole('button', { name: 'Send' }).click()
   await expect(panel.locator('[data-thread]')).toHaveCount(2)
+  // While writing, both places are marked; the mouse on one shows its comment, the way to it stays reachable.
+  const marks = page.locator('.ProseMirror [data-comment-thread]')
+  await expect(marks).toHaveCount(2)
+  await marks.filter({ hasText: 'purple bells' }).hover()
+  const peek = page.getByTestId('comment-peek')
+  await expect(peek).toContainText('From the button')
+  const to = (await peek.getByRole('button', { name: 'To the comment' }).boundingBox())!
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 15 })
+  await page.waitForTimeout(900)
+  await expect(peek).toBeVisible()
+  await page.mouse.down()
+  await page.mouse.up()
+  const button = panel.locator('[data-thread]').filter({ hasText: 'From the button' })
+  await expect(button).toHaveAttribute('data-lit', 'true')
+  // A thread picked in the column makes its words blink in the editor too.
+  await panel.locator('[data-thread]').filter({ hasText: 'From the menu' }).getByText('From the menu').click()
+  await expect(page.locator('.ProseMirror .nx-comment-mark-current')).toHaveText('on the moor')
+  // Typing before the words moves the mark along.
+  await page.locator('.ProseMirror').focus()
+  await page.keyboard.press('Control+Home')
+  await page.keyboard.type('X')
+  await expect(marks.filter({ hasText: 'purple bells' })).toHaveText('purple bells')
   // Reading again: both places lit.
   await page.getByRole('button', { name: 'Read', exact: true }).click()
   await expect.poll(() => lit(page, 'nx-comment')).toBe(2)
   // And the reading view's menu offers it as well.
+  // Freshly opened for reading (after the switch the page still glides to where writing left it).
+  await page.reload()
+  await expect.poll(() => lit(page, 'nx-comment')).toBe(2)
   await choose(page, 'Heather')
-  const heading = await page.locator('article').evaluate(() => {
-    const rect = window.getSelection()!.getRangeAt(0).getBoundingClientRect()
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
-  })
+  // Where the chosen word stands once the page has stopped scrolling.
+  const place = () =>
+    page.locator('article').evaluate(() => {
+      const rect = window.getSelection()!.getRangeAt(0).getBoundingClientRect()
+      return { x: Math.round(rect.left + rect.width / 2), y: Math.round(rect.top + rect.height / 2) }
+    })
+  let heading = await place()
+  await expect
+    .poll(async () => {
+      const now = await place()
+      const still = now.x === heading.x && now.y === heading.y
+      heading = now
+      return still
+    }, { intervals: [150] })
+    .toBe(true)
   await page.mouse.click(heading.x, heading.y, { button: 'right' })
   await page.getByRole('menuitem', { name: 'Comment' }).click()
   await expect(panel.getByTestId('comments')).toContainText('Heather')

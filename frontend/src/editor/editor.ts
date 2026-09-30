@@ -54,6 +54,7 @@ import type { Root, RootContent } from 'mdast'
 
 import { Plan, type Block, type Tools } from './blocks'
 import { findControl, findPlugin, type FindControl } from './find'
+import { commentControl, commentPlugin, type CommentControl } from './commentMarks'
 import { lineNumbers, type LineControl } from './lineNumbers'
 import { livePreview, refreshLive, type LinkHelpers } from './live'
 import { blockPreviews } from './previews'
@@ -166,6 +167,8 @@ export type NoteEditor = {
   readonly tools: Tools
   /** Find and replace in the text (the bar above the editor). */
   readonly find: FindControl
+  /** The words of the open comment threads, marked in the text. */
+  readonly comments: CommentControl
   /** What to save: the editor's Markdown with every unchanged block as it was in the original. */
   text: () => string
   /** The file's line numbers beside the text, the body starting on line `first`; null hides them. */
@@ -357,6 +360,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     .use($prose(() => livePreview(options.links)))
     .use($prose(() => blockPreviews()))
     .use($prose(() => findPlugin()))
+    .use($prose(() => commentPlugin()))
     .use(
       $prose(() =>
         lineNumbers(
@@ -680,6 +684,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     view,
     tools,
     find: findControl(view),
+    comments: commentControl(view),
     run,
     status,
     aiScope,
