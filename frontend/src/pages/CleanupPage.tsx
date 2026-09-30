@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { ApiError, mentionsApi, vaultApi, type Cleanup } from '../api/client'
 import { Symbol } from '../components/Symbol'
+import { ownKey } from '../lib/accountStorage'
 import { Unlinked } from '../components/Unlinked'
 import { errorText } from '../lib/errors'
 import { isFileTarget } from '../lib/files'
@@ -21,7 +22,7 @@ const SPACE_KEY = 'nexlore.cleanupSpace'
 
 function rememberedSpace(): string {
   try {
-    return localStorage.getItem(SPACE_KEY) ?? ''
+    return localStorage.getItem(ownKey(SPACE_KEY)) ?? ''
   } catch {
     return ''
   }
@@ -56,7 +57,7 @@ export function CleanupPage() {
     setChosen(name)
     setMentionsOf(null)
     try {
-      localStorage.setItem(SPACE_KEY, name)
+      localStorage.setItem(ownKey(SPACE_KEY), name)
     } catch {
       /* kept for this visit only */
     }

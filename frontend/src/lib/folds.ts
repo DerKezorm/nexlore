@@ -7,6 +7,8 @@
  * list item that starts with "Groceries". A heading renamed forgets its fold.
  */
 
+import { ownKey } from './accountStorage'
+
 const KEY = 'nexlore.folds'
 /** Notes remembered at most; the oldest go first. */
 const MAX_NOTES = 300
@@ -18,7 +20,7 @@ type Stored = Record<string, string[]>
 
 function readAll(): Stored {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? '{}') as unknown
+    const raw = JSON.parse(localStorage.getItem(ownKey(KEY)) ?? '{}') as unknown
     return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Stored) : {}
   } catch {
     return {}
@@ -30,7 +32,7 @@ function writeAll(all: Stored): void {
   // The newest last (re-inserted when written): too many, and the first ones go.
   for (const path of paths.slice(0, Math.max(0, paths.length - MAX_NOTES))) delete all[path]
   try {
-    localStorage.setItem(KEY, JSON.stringify(all))
+    localStorage.setItem(ownKey(KEY), JSON.stringify(all))
   } catch {
     // Not remembered: folded as long as the page lasts.
   }

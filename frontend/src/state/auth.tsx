@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 
 import { ApiError, authApi, SIGNED_OUT_EVENT, type Me, themesApi } from '../api/client'
 import { changeLanguage } from '../i18n'
+import { forgetSharedKeys, setStorageOwner } from '../lib/accountStorage'
 import { clearCaches } from '../lib/offline'
 
 type Status = 'loading' | 'setup' | 'signedOut' | 'signedIn' | 'error'
@@ -41,6 +42,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const setup = await authApi.setupState()
       if (setup.needs_setup || !setup.signed_in) {
+        setStorageOwner(null)
         setMe(null)
         setStatus(setup.needs_setup ? 'setup' : 'signedOut')
         return null
@@ -49,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       applyAppearance(account.appearance ?? DEFAULT_APPEARANCE)
       applyThemeColours(account.theme_colours)
       applyOwnCss(account.own_css)
+      setStorageOwner(account.id)
       setMe(account)
       setStatus('signedIn')
       if (account.language && account.language !== i18n.language) await changeLanguage(account.language)
@@ -61,8 +64,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [i18n])
 
   useEffect(() => {
+    forgetSharedKeys()
     void refresh()
     const gone = () => {
+      setStorageOwner(null)
       setMe(null)
       setStatus('signedOut')
       void clearCaches()
@@ -76,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await authApi.logout()
     } finally {
       await clearCaches()
+      setStorageOwner(null)
       setMe(null)
       setStatus('signedOut')
     }

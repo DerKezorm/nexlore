@@ -57,7 +57,9 @@ test('a long press on + opens quick capture, and the words land on top of the in
 
 test('sharing to the app brings the words, and the space chosen last is chosen again', async ({ page }) => {
   await page.goto('/')
-  await page.evaluate(() => localStorage.setItem('nexlore.captureSpace', 'Moor'))
+  // Remembered values carry the account's id (a second account on the browser must not see them).
+  const me = (await (await page.request.get('/api/auth/me')).json()) as { id: number }
+  await page.evaluate((id) => localStorage.setItem(`nexlore.captureSpace.${id}`, 'Moor'), me.id)
   await page.goto('/capture?title=Heron&text=Seen+at+the+pond&url=https%3A%2F%2Fexample.com%2Fheron')
   const dialog = page.getByTestId('capture-dialog')
   await expect(dialog).toBeVisible()

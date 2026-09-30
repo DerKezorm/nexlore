@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { ownKey } from './accountStorage'
 import { headingKind, itemKind, namer, readFolds, setFolds, toggleFold } from './folds'
 
 beforeEach(() => {
@@ -32,7 +33,7 @@ describe('folds', () => {
     setFolds('A/one.md', [])
     expect(readFolds('A/one.md').size).toBe(0)
     // Nothing left folded: the note is not remembered at all.
-    expect(localStorage.getItem('nexlore.folds')).toBe('{}')
+    expect(localStorage.getItem(ownKey('nexlore.folds'))).toBe('{}')
     expect(heard).toEqual(['A/one.md', 'A/one.md', 'A/one.md', 'A/one.md'])
   })
 

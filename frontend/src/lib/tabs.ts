@@ -1,11 +1,13 @@
 /**
  * Tabs for notes, as in Obsidian: the note page shows a row of the notes open. Opening a note (the sidebar, a link)
  * shows it in the tab in front; "Open in a new tab", a click with Ctrl or Cmd, or the middle button opens another.
- * Remembered in this browser (like the toolbar), because tabs belong to the screen one works at, not to the account.
+ * Remembered in this browser and for the account signed in (`ownKey`): another account on the same browser has its
+ * own tabs and never sees these titles.
  *
  * A pinned tab stays: it stands left of the others, has no cross, and a note opened from it comes in a tab of its own
  * instead of taking its place. Kept apart from the list (`nexlore.tabsPinned`), so the list keeps its old shape.
  */
+import { ownKey } from './accountStorage'
 import { noteUrl } from './vault'
 
 const KEY = 'nexlore.tabs'
@@ -20,7 +22,7 @@ const EMPTY: Tabs = { paths: [], active: 0 }
 
 export function readTabs(): Tabs {
   try {
-    const raw = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Tabs | null
+    const raw = JSON.parse(localStorage.getItem(ownKey(KEY)) ?? 'null') as Tabs | null
     if (!raw || !Array.isArray(raw.paths)) return EMPTY
     const paths = raw.paths.filter((path): path is string => typeof path === 'string' && path.length > 0).slice(0, MAX_TABS)
     const active = Number.isInteger(raw.active) ? Math.min(Math.max(0, raw.active), Math.max(0, paths.length - 1)) : 0
@@ -32,7 +34,7 @@ export function readTabs(): Tabs {
 
 function writeTabs(tabs: Tabs): Tabs {
   try {
-    localStorage.setItem(KEY, JSON.stringify(tabs))
+    localStorage.setItem(ownKey(KEY), JSON.stringify(tabs))
   } catch {
     // Not remembered (private window, blocked storage): the tabs last as long as the page.
   }
@@ -44,7 +46,7 @@ function writeTabs(tabs: Tabs): Tabs {
 export function readPinned(): string[] {
   const open = new Set(readTabs().paths)
   try {
-    const raw = JSON.parse(localStorage.getItem(PINNED_KEY) ?? '[]') as unknown
+    const raw = JSON.parse(localStorage.getItem(ownKey(PINNED_KEY)) ?? '[]') as unknown
     return Array.isArray(raw) ? raw.filter((path): path is string => typeof path === 'string' && open.has(path)) : []
   } catch {
     return []
@@ -53,7 +55,7 @@ export function readPinned(): string[] {
 
 function writePinned(pinned: string[]): void {
   try {
-    localStorage.setItem(PINNED_KEY, JSON.stringify(pinned))
+    localStorage.setItem(ownKey(PINNED_KEY), JSON.stringify(pinned))
   } catch {
     // Not remembered: pinned as long as the page lasts.
   }

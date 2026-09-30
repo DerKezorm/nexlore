@@ -4,6 +4,8 @@
  * opens straight on `/capture`) leaves its words waiting (`takeCapture`).
  */
 export const CAPTURE_EVENT = 'nexlore:capture'
+import { ownKey } from './accountStorage'
+
 const SPACE_KEY = 'nexlore.captureSpace'
 
 let waiting: string | null = null
@@ -38,7 +40,7 @@ export function sharedText(params: URLSearchParams): string {
 
 export function lastSpace(): string {
   try {
-    return localStorage.getItem(SPACE_KEY) ?? ''
+    return localStorage.getItem(ownKey(SPACE_KEY)) ?? ''
   } catch {
     return ''
   }
@@ -46,7 +48,7 @@ export function lastSpace(): string {
 
 export function rememberSpace(space: string): void {
   try {
-    localStorage.setItem(SPACE_KEY, space)
+    localStorage.setItem(ownKey(SPACE_KEY), space)
   } catch {
     /* a private window: chosen again next time */
   }

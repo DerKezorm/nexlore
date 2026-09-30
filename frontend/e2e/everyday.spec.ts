@@ -131,7 +131,9 @@ test('a new note is one click away: in the header, beside each folder, and with 
 })
 
 test('"Today" opens the daily note of today in the chosen space', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('nexlore.daily.space', 'Year'))
+  // Remembered values carry the account's id (a second account on the browser must not see them).
+  const me = (await (await page.request.get('/api/auth/me')).json()) as { id: number }
+  await page.addInitScript((id) => localStorage.setItem(`nexlore.daily.space.${id}`, 'Year'), me.id)
   await page.goto('/tasks')
   await expect(page.getByRole('button', { name: "Open today's daily note (Alt+T)" })).toBeEnabled()
   await page.keyboard.press('Alt+t')

@@ -3,6 +3,7 @@
  * notes go to. Dates travel as `JJJJ-MM-TT` in the browser's own time: "today" is the reader's today, not the server's.
  */
 import type { Space, TaskItem, TaskWhen } from '../api/client'
+import { ownKey } from './accountStorage'
 
 /** `JJJJ-MM-TT` of a day in local time. */
 export function isoDay(day: Date): string {
@@ -78,7 +79,7 @@ export function dailySpace(spaces: Space[]): Space | null {
   const writable = spaces.filter((space) => space.role === 'write' || space.role === 'manage')
   let chosen: string | null = null
   try {
-    chosen = localStorage.getItem(DAILY_SPACE_KEY)
+    chosen = localStorage.getItem(ownKey(DAILY_SPACE_KEY))
   } catch {
     // Storage blocked: the first one then.
   }
@@ -87,7 +88,7 @@ export function dailySpace(spaces: Space[]): Space | null {
 
 export function rememberDailySpace(name: string): void {
   try {
-    localStorage.setItem(DAILY_SPACE_KEY, name)
+    localStorage.setItem(ownKey(DAILY_SPACE_KEY), name)
   } catch {
     // Not kept, nothing lost.
   }

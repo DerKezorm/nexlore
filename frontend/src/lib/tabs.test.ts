@@ -1,6 +1,7 @@
 /** Tabs for notes: which tab a note goes into, which one comes to the front when one closes, and what is forgotten. */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { ownKey } from './accountStorage'
 import { closeOtherTabs, closeTab, followTab, forgetTabs, MAX_TABS, moveTab, openInTab, pinTab, readPinned, readTabs } from './tabs'
 
 beforeEach(() => {
@@ -75,9 +76,9 @@ describe('tabs', () => {
   })
 
   it('reads nothing broken from the storage', () => {
-    localStorage.setItem('nexlore.tabs', '{"paths": [3, "", "ok.md"], "active": 9}')
+    localStorage.setItem(ownKey('nexlore.tabs'), '{"paths": [3, "", "ok.md"], "active": 9}')
     expect(readTabs()).toEqual({ paths: ['ok.md'], active: 0 })
-    localStorage.setItem('nexlore.tabs', 'not json')
+    localStorage.setItem(ownKey('nexlore.tabs'), 'not json')
     expect(readTabs()).toEqual({ paths: [], active: 0 })
   })
 

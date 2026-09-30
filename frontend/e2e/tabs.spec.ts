@@ -17,12 +17,14 @@ const order = (page: Page) => page.getByTestId('note-tabs').locator('[data-tab]'
 
 test('tabs are listed, pinned from their menu and put elsewhere by dragging', async ({ page }) => {
   const problems = collectProblems(page)
-  await page.addInitScript(() => {
+  // Remembered values carry the account's id (a second account on the browser must not see them).
+  const me = (await (await page.request.get('/api/auth/me')).json()) as { id: number }
+  await page.addInitScript((id) => {
     if (!sessionStorage.getItem('tabs-set')) {
-      localStorage.setItem('nexlore.tabs', JSON.stringify({ paths: ['Heath/Heather.md', 'Heath/Counted.md', 'Heath/Slashed.md'], active: 0 }))
+      localStorage.setItem(`nexlore.tabs.${id}`, JSON.stringify({ paths: ['Heath/Heather.md', 'Heath/Counted.md', 'Heath/Slashed.md'], active: 0 }))
       sessionStorage.setItem('tabs-set', '1')
     }
-  })
+  }, me.id)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/note/Heath/Heather.md')
   const row = page.getByTestId('note-tabs')
