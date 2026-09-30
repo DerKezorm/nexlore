@@ -24,7 +24,26 @@ Move the mouse over a paragraph and a **+** and eight dots appear on its left. T
 
 ## Properties
 
-At the very top are the **properties** of this note (in Markdown the front matter between `---`). This note has two: `topic` and `as of`. Click "Add a property" to make one of your own. Tags show as chips, dates with a calendar.
+In the editor, above the text, is the part called **Properties**. They are short, fixed facts *about* the note, apart from its text: what it is about, how far along it is, until when, who looks after it. This note has two of them: `topic` and `as of`.
+
+**What they are good for**
+
+- **Searching:** the search finds notes by their properties, for example `[topic:Editor]` or `[status:open]`.
+- **Views:** a view (table, cards, list, board) shows properties as columns and sorts or groups by them, a board with a column for each `status`, say.
+- **Names with a meaning of their own:**
+  - `tags`: the note's tags, shown as chips.
+  - `aliases`: more names. The quick switcher (Ctrl+K) and `[[` find the note by them too.
+  - `cssclasses`: `wide`, for example, shows the note at full width.
+  - `title`: the title, when it holds characters a file name cannot.
+
+**How to work with them**
+
+- **Add a property** makes a new row: the name on the left, the value on the right.
+- Move over a row and its **kind** shows on the right: text, list, number, checkbox, date or date and time. Lists show their entries as chips, dates open a calendar. The **×** beside it removes the row.
+- They are saved by themselves like the text, and in the file only the row that changed changes.
+- The small arrow before "Properties" folds the part shut and open again.
+- In the file the properties stand at the top between two lines of `---` (front matter), the way Obsidian writes them. **MD** in the toolbar shows them so.
+- The reading view shows the text only; you see the properties while editing. Public pages leave them out.
 
 ## Only what you change changes
 

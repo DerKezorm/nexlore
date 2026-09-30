@@ -24,7 +24,26 @@ Fährst du mit der Maus über einen Absatz, erscheinen links ein **+** und acht 
 
 ## Eigenschaften
 
-Ganz oben stehen die **Eigenschaften** dieser Notiz (in Markdown das Frontmatter zwischen `---`). Diese Notiz hat zwei: `thema` und `stand`. Klick auf „Eigenschaft hinzufügen“, um eine eigene anzulegen. Tags erscheinen als Chips, Daten mit Kalender.
+Im Editor steht über dem Text der Bereich **Eigenschaften**. Das sind kurze, feste Angaben *über* die Notiz, getrennt vom eigentlichen Text: Worum geht es, wie weit ist sie, bis wann, wer kümmert sich. Diese Notiz hat zwei davon: `thema` und `stand`.
+
+**Wozu das gut ist**
+
+- **Suchen:** Die Suche findet Notizen nach ihren Eigenschaften, zum Beispiel `[thema:Editor]` oder `[status:offen]`.
+- **Ansichten:** Eine Ansicht (Tabelle, Karten, Liste, Brett) zeigt Eigenschaften als Spalten und sortiert oder gruppiert danach, etwa ein Brett mit einer Spalte je `status`.
+- **Namen mit fester Bedeutung:**
+  - `tags`: die Tags der Notiz, als Chips gezeigt.
+  - `aliases`: weitere Namen. Der Schnellwechsler (Strg+K) und `[[` finden die Notiz auch unter ihnen.
+  - `cssclasses`: zum Beispiel `wide`, dann steht die Notiz in voller Breite.
+  - `title`: der Titel, wenn er Zeichen enthält, die ein Dateiname nicht kann.
+
+**So gehst du damit um**
+
+- **Eigenschaft hinzufügen** legt eine neue Zeile an: links der Name, rechts der Wert.
+- Fährst du über eine Zeile, erscheint rechts die **Art**: Text, Liste, Zahl, Häkchen, Datum oder Datum mit Uhrzeit. Listen zeigen ihre Einträge als Chips, Daten öffnen einen Kalender. Das **×** daneben entfernt die Zeile.
+- Gespeichert wird wie der Text von selbst, und in der Datei ändert sich nur die geänderte Zeile.
+- Der kleine Pfeil vor „Eigenschaften“ klappt den Bereich zu und wieder auf.
+- In der Datei stehen die Eigenschaften oben zwischen zwei Zeilen mit `---` (Frontmatter), so wie Obsidian sie schreibt. **MD** in der Werkzeugleiste zeigt sie so.
+- Die Leseansicht zeigt nur den Text; die Eigenschaften siehst du beim Bearbeiten. Auf öffentlichen Seiten bleiben sie verborgen.
 
 ## Nur was du änderst, ändert sich
 
