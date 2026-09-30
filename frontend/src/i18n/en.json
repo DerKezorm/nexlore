@@ -987,7 +987,11 @@
       "once": "The link works once. It is shown only now.",
       "until": "until {{when}}",
       "withdraw": "Withdraw"
-    }
+    },
+    "lastManagerRole": "You are the only one who may manage this space. If you give that up, only the operator can manage it afterwards, and you cannot invite anybody any more.",
+    "lastManagerLeave": "You are the only one who may manage this space. If you leave, only the operator can manage it afterwards.",
+    "changeAnyway": "Give it up anyway",
+    "leaveAnyway": "Leave anyway"
   },
   "share": {
     "button": "Share",

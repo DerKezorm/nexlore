@@ -987,7 +987,11 @@
       "once": "Der Link gilt einmal. Er wird nur jetzt gezeigt.",
       "until": "bis {{when}}",
       "withdraw": "Zurückziehen"
-    }
+    },
+    "lastManagerRole": "Du bist die einzige Person, die diesen Bereich verwalten darf. Gibst du das ab, kann ihn danach nur noch der Betreiber verwalten, und du kannst niemanden mehr einladen.",
+    "lastManagerLeave": "Du bist die einzige Person, die diesen Bereich verwalten darf. Gehst du, kann ihn danach nur noch der Betreiber verwalten.",
+    "changeAnyway": "Trotzdem abgeben",
+    "leaveAnyway": "Trotzdem gehen"
   },
   "share": {
     "button": "Teilen",

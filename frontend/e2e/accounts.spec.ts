@@ -240,3 +240,34 @@ test('a reader sees what changed since the last visit, proposes a change, and th
   await reader.getByRole('button', { name: 'Account of nora' }).click()
   await expect(reader.getByTestId('menu-proposals')).toContainText(`Taken over by ${OPERATOR.name}`)
 })
+
+test('the only manager is asked before giving the space up, and the dialog closes instead of failing', async ({ page: operator, browser }) => {
+  await space(operator, 'Harbour', 'Tides', '# Tides\n\nHigh water at noon.\n')
+  const link = await inviteLink(operator, 'Harbour', 'Read')
+  const person = await accept(browser, link, 'lona')
+  const headers = { 'X-Nexlore-Client': 'tab-e2elona0' }
+  expect((await person.request.post('/api/spaces', { data: { name: 'Lonely' }, headers })).status()).toBe(201)
+  await person.goto('/settings?tab=spaces')
+  await person.locator('#spaces li', { hasText: 'Lonely' }).getByRole('button', { name: 'Members' }).click()
+  const dialog = person.getByRole('dialog', { name: 'Members of Lonely' })
+  await dialog.getByLabel('Right of lona').selectOption({ label: 'Read' })
+  await expect(dialog.getByRole('alert')).toContainText('only one who may manage')
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog.getByLabel('Right of lona')).toHaveValue('manage')
+  await dialog.getByLabel('Right of lona').selectOption({ label: 'Read' })
+  await dialog.getByRole('button', { name: 'Give it up anyway' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(person.getByText('Your right in this space does not allow that.')).toHaveCount(0)
+})
+
+test('a member taken out of a space sees the open note go instead of asking in vain', async ({ page, browser }) => {
+  await space(page, 'Dunes', 'Sand', '# Sand\n\nFine grains.\n')
+  const link = await inviteLink(page, 'Dunes', 'Read')
+  const reader = await accept(browser, link, 'dune')
+  await reader.goto('/note/Dunes/Sand.md')
+  await expect(reader.getByText('Fine grains.')).toBeVisible()
+  const headers = { 'X-Nexlore-Client': 'tab-e2edunes' }
+  expect((await page.request.delete('/api/spaces/Dunes/members/dune', { headers })).status()).toBe(204)
+  await expect(reader.getByText('This note does not exist.')).toBeVisible({ timeout: 15_000 })
+  await expect(reader.getByTestId('sidebar-tree').getByText('Dunes', { exact: true })).toHaveCount(0)
+})

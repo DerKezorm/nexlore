@@ -513,8 +513,15 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     if (!note || leaving) return
     const tick = async () => {
       if (document.visibilityState !== 'visible' || saving.current) return
-      const state = await vaultApi.noteState(path).catch(() => null)
-      if (!state || current.current !== path) return
+      const state = await vaultApi.noteState(path).catch((problem: unknown) => (problem instanceof ApiError && problem.status === 404 ? 'gone' : null))
+      if (current.current !== path) return
+      if (state === 'gone') {
+        // The note went away, or the right to read it (taken out of the space): say so, and let the sidebar
+        // forget the space, instead of showing on and asking in vain every few seconds. Unsaved edits stay open.
+        if (!editingNow.current) void Promise.all([reload(), load(path)])
+        return
+      }
+      if (!state) return
       if (!editingNow.current) {
         if (state.hash !== note.hash) void load(path)
         else if ((state.lock?.holder ?? null) !== (note.lock?.holder ?? null)) setNote((known) => known && { ...known, lock: state.lock })
@@ -533,7 +540,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     }
     const every = window.setInterval(() => void tick(), POLL)
     return () => window.clearInterval(every)
-  }, [path, note, load, leaving])
+  }, [path, note, load, leaving, reload])
 
   const onChange = () => {
     edits.current += 1

@@ -9,6 +9,7 @@ import { showModalOnce } from '../lib/dialog'
 import { authApi, type Members, type NewInvite, type Role } from '../api/client'
 import { formatDay } from '../lib/markdown'
 import { useAuth } from '../state/auth'
+import { useStore } from '../state/store'
 import { Button, CopyLink, Feedback, Input, Select } from './settings/ui'
 import { useAction } from './settings/useAction'
 import { Symbol } from './Symbol'
@@ -29,6 +30,9 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
   const [send, setSend] = useState(false)
   const [made, setMade] = useState<NewInvite | null>(null)
   const { busy, problem, run } = useAction()
+  const { reload } = useStore()
+  /** Giving up the last right to manage, asked once more: after it only the operator can manage the space. */
+  const [lastManager, setLastManager] = useState<{ role: Role | null } | null>(null)
 
   const load = useCallback(() => run(async () => setData(await authApi.members(space))), [run, space])
 
@@ -38,6 +42,25 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
   }, [load])
 
   const manages = data?.role === 'manage'
+  const managers = data?.members.filter((member) => member.role === 'manage').length ?? 0
+
+  /** The own right changes (``role``) or the own membership ends (``null``). */
+  const changeOwn = (role: Role | null, asked = false) => {
+    if (!asked && managers === 1 && role !== 'manage') {
+      setLastManager({ role })
+      return
+    }
+    setLastManager(null)
+    void run(async () => {
+      if (role === null) await authApi.removeMember(space, me?.name ?? '')
+      else await authApi.setMember(space, me?.name ?? '', role)
+      // Without the right to manage the list is not readable any more: close instead of showing an error.
+      if (role === null || (role !== 'manage' && me?.role !== 'operator')) {
+        await reload()
+        onClose()
+      } else await load()
+    })
+  }
   const roleOptions = ROLES.map((role) => ({ value: role, label: t(`roles.${role}`) }))
 
   return (
@@ -75,10 +98,14 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
                 id={`role-${member.name}`}
                 value={member.role}
                 disabled={busy}
-                onChange={(event) => void run(async () => {
-                  await authApi.setMember(space, member.name, event.target.value as Role)
-                  await load()
-                })}
+                onChange={(event) => {
+                  const role = event.target.value as Role
+                  if (member.you) return changeOwn(role)
+                  void run(async () => {
+                    await authApi.setMember(space, member.name, role)
+                    await load()
+                  })
+                }}
                 className="rounded-md border border-ink-700 bg-ink-850 px-2 py-1 text-xs"
               >
                 {roleOptions.map((option) => (
@@ -92,11 +119,13 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
                 danger
                 busy={busy}
                 label={member.you ? t('members.leave') : t('members.remove', { name: member.name })}
-                onClick={() => void run(async () => {
-                  await authApi.removeMember(space, member.name)
-                  if (member.you) onClose()
-                  else await load()
-                })}
+                onClick={() => {
+                  if (member.you) return changeOwn(null)
+                  void run(async () => {
+                    await authApi.removeMember(space, member.name)
+                    await load()
+                  })
+                }}
               >
                 {member.you ? t('members.leave') : t('members.removeShort')}
               </Button>
@@ -104,6 +133,17 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
           ))}
           {data && data.members.length === 0 && <li className="px-4 py-3 text-sm text-mist-500">{t('members.none')}</li>}
         </ul>
+        {lastManager && (
+          <div role="alert" className="mt-3 rounded-xl border border-warn-500/30 bg-warn-500/10 px-4 py-3 text-sm">
+            <p>{lastManager.role === null ? t('members.lastManagerLeave') : t('members.lastManagerRole')}</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button small danger busy={busy} onClick={() => changeOwn(lastManager.role, true)}>
+                {lastManager.role === null ? t('members.leaveAnyway') : t('members.changeAnyway')}
+              </Button>
+              <Button small onClick={() => setLastManager(null)}>{t('common.cancel')}</Button>
+            </div>
+          </div>
+        )}
 
         <form
           className="mt-4 flex flex-wrap items-end gap-2"
