@@ -132,7 +132,9 @@ def _text(args: dict[str, Any], name: str, *, required: bool = True, limit: int 
     value = args.get(name)
     if value is None and not required:
         return ""
-    if not isinstance(value, str) or (required and not value.strip() and name != "content") or len(value) > limit:
+    if isinstance(value, str) and required and not value.strip() and name != "content":
+        raise ToolError(f"'{name}' must not be empty.")
+    if not isinstance(value, str) or len(value) > limit:
         raise ToolError(f"'{name}' must be a text of at most {limit} characters.")
     return value
 
@@ -389,7 +391,8 @@ async def endpoint(request: Request) -> Response:
     logs.set_actor(caller.account.name)
     try:
         message = json.loads(await request.body())
-    except (ValueError, UnicodeDecodeError):
+    except (ValueError, UnicodeDecodeError, RecursionError):
+        # RecursionError: JSON nested deeper than Python's stack, sent to break the server.
         return JSONResponse(_error(None, -32700, "Parse error."), status_code=400)
     # One tab identity per request: MCP writes never hold a lock, and never pass for an editor's tab.
     client = f"mcp-{caller.key_id}-{secrets.token_hex(4)}"

@@ -10,9 +10,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from . import __version__
 from .config import get_settings
@@ -141,6 +143,14 @@ async def _validation_error(_request: Request, exc: RequestValidationError) -> J
 async def _too_large_a_number(_request: Request, _exc: OverflowError) -> JSONResponse:
     # A number past what SQLite holds (an id like 99999999999999999999 in the address): not a fault of the server.
     return JSONResponse(status_code=422, content={"detail": detail("invalid_input", "The input is not valid.")})
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _plain_http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    # FastAPI's own 400 for a body that is not JSON carries only a text; give it a code like every other answer.
+    if exc.status_code == 400 and isinstance(exc.detail, str):
+        return JSONResponse(status_code=400, content={"detail": detail("invalid_input", "The input is not valid.")})
+    return await http_exception_handler(request, exc)
 
 
 app.add_exception_handler(Exception, unhandled_error)

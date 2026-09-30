@@ -189,7 +189,7 @@ def task_toggle(body: ToggleIn, account: Account, who: ActorDep) -> dict[str, An
 @router.get("/calendar", summary="Daily notes and task counts for each day of a month")
 def calendar(
     account: Account,
-    month: Annotated[str, Query(pattern=r"^\d{4}-\d{2}$")],
+    month: Annotated[str, Query(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")],
     today: DateQuery,
     space: Annotated[str | None, Query(max_length=255)] = None,
 ) -> dict[str, Any]:

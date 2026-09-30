@@ -287,6 +287,8 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str = i
 
 def create_note(folder: str, title: str, data: bytes, *, actor: Actor, source: str = index.APP) -> File:
     """A new note in ``folder`` (a space or a folder in it). The file name comes from the title, made safe."""
+    # Control characters (NUL above all) would land in the front matter and make the file binary for Git and Obsidian.
+    title = _CONTROL.sub(" ", title)
     folder = _parse(folder) if "/" in folder else _parse_space(folder)
     directory = _full(folder)
     if not directory.is_dir():
@@ -306,6 +308,9 @@ def create_note(folder: str, title: str, data: bytes, *, actor: Actor, source: s
         db.expunge(file)
     logger.info("Note created file_id=%s", file.id)
     return file
+
+
+_CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 
 
 def _front_title(title: str) -> bytes:
