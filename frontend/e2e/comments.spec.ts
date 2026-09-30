@@ -15,7 +15,7 @@ const TAB = { 'X-Nexlore-Client': 'tab-e2e-comments' }
 
 // A retry in the CI finds the threads of the first try: gone before each test.
 test.beforeEach(async ({ page }) => {
-  for (const note of ['Heath/Comment me.md', 'Heath/Comment gone.md']) {
+  for (const note of ['Heath/Comment me.md', 'Heath/Comment gone.md', 'Heath/Comment two.md']) {
     const answer = await page.request.get('/api/comments?path=' + encodeURIComponent(note))
     if (!answer.ok()) continue
     for (const thread of (await answer.json()).threads)
@@ -140,4 +140,49 @@ test('a thread naming the account comes up among what is new, and leads to its n
   await expect(mention).toContainText('dora names you in Comment me')
   await mention.click()
   await expect(page).toHaveURL(/\/note\/Heath\/Comment%20me\.md/)
+})
+
+test('resting on lit words shows their comment and leads to it; a thread picked in the column makes its words blink', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const path = 'Heath/Comment two.md'
+  const made: number[] = []
+  for (const [quote, body] of [['first words', 'About the first'], ['second words', 'About the second']]) {
+    const answer = await page.request.post('/api/comments', { data: { path, quote, before: 'The ', after: ' stand', body }, headers: TAB })
+    made.push((await answer.json()).id)
+  }
+  await page.goto('/note/Heath/Comment two.md')
+  await expect.poll(() => lit(page, 'nx-comment')).toBe(2)
+  // The mouse on the second words: their comment, and the way to it.
+  const box = await page.locator('article').evaluate((root) => {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const at = node.textContent!.indexOf('second words')
+      if (at < 0) continue
+      const range = document.createRange()
+      range.setStart(node, at)
+      range.setEnd(node, at + 12)
+      const rect = range.getBoundingClientRect()
+      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
+    }
+    throw new Error('no second words')
+  })
+  await page.mouse.move(box.x, box.y)
+  const peek = page.getByTestId('comment-peek')
+  await expect(peek).toContainText('About the second')
+  await expect(peek).not.toContainText('About the first')
+  await peek.getByRole('button', { name: 'To the comment' }).click()
+  const panel = page.getByTestId('note-panel')
+  await expect(panel.getByRole('tab', { name: /Comments/ })).toHaveAttribute('aria-selected', 'true')
+  await expect(panel.locator(`[data-thread="${made[1]}"]`)).toHaveAttribute('data-lit', 'true')
+  // Away from the words: the preview goes.
+  await page.mouse.move(5, 5)
+  await expect(peek).toHaveCount(0)
+  // The first thread picked in the column: its words, and only those, blink in the text.
+  await panel.locator(`[data-thread="${made[0]}"]`).getByText('About the first').click()
+  await expect(panel.locator(`[data-thread="${made[0]}"]`)).toHaveAttribute('data-lit', 'true')
+  await expect
+    .poll(() => page.evaluate(() => [...((CSS as unknown as { highlights: Map<string, Set<Range>> }).highlights.get('nx-comment-current') ?? [])].map((range) => range.toString())))
+    .toEqual(['first words'])
+  expect(problems).toEqual([])
 })

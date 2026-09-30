@@ -151,6 +151,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const [threads, setThreads] = useState<Thread[] | null>(null)
   const [commentDraft, setCommentDraft] = useState<Anchor | null>(null)
   const [commentsFound, setCommentsFound] = useState<Set<number> | undefined>(undefined)
+  const [threadFocus, setThreadFocus] = useState<{ id: number; ask: number } | null>(null)
   useEffect(() => {
     setThreads(null)
     setCommentDraft(null)
@@ -863,6 +864,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
           onReveal={(thread) => void (editing || revealThread(article.current, thread))}
           onChanged={() => loadThreads(note.path)}
           manage={role === 'manage'}
+          focus={threadFocus}
         />
       ),
     },
@@ -1173,6 +1175,10 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                     showPanel('comments')
                   }}
                   onFound={setCommentsFound}
+                  onShowThread={(id) => {
+                    setThreadFocus({ id, ask: Date.now() })
+                    showPanel('comments')
+                  }}
                 />
                 </>
               )}

@@ -117,22 +117,9 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     window.addEventListener(SIDEBAR_EVENT, toggle)
     return () => window.removeEventListener(SIDEBAR_EVENT, toggle)
   }, [setRail])
-  const [recentOpen, setRecentOpen] = useState(() => {
-    try {
-      return localStorage.getItem('nexlore.recentOpen') !== 'closed'
-    } catch {
-      return true
-    }
-  })
-  const showRecent = (open: boolean) => {
-    setRecentOpen(open)
-    try {
-      if (open) localStorage.removeItem('nexlore.recentOpen')
-      else localStorage.setItem('nexlore.recentOpen', 'closed')
-    } catch {
-      // Not remembered: open again next time.
-    }
-  }
+  // "Recent" and "Favorites" fold alike, each remembered in this browser.
+  const [recentOpen, showRecent] = useFold('nexlore.recentOpen')
+  const [favoritesOpen, showFavorites] = useFold('nexlore.favoritesOpen')
   // The last list known in this browser stands at once: coming in late, it pushed the tree down under a click.
   const [recent, setRecent] = useState<NoteRef[]>(() => {
     try {
@@ -773,12 +760,9 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       )}
       {recent.length > 0 && (
         <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-recent">
-          <button type="button" onClick={() => showRecent(!recentOpen)} aria-expanded={recentOpen} className="mb-1 flex w-full items-center gap-1 px-2 text-left text-[11px] font-semibold tracking-wider text-mist-600 uppercase hover:text-mist-300">
-            <Symbol name={recentOpen ? 'chevronDown' : 'chevronRight'} className="h-3 w-3" />
-            {t('sidebar.recent')}
-          </button>
+          <FoldHead label={t('sidebar.recent')} open={recentOpen} onToggle={() => showRecent(!recentOpen)} />
           {recentOpen && (
-            <ul>
+            <ul className="nn-scroll max-h-44 overflow-y-auto">
               {recent.map((item) => (
                 <li key={item.path}>
                   <button
@@ -798,7 +782,8 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       )}
       {favorites.length > 0 && (
         <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-favorites">
-          <span className="mb-1 block px-2 text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('sidebar.favorites')}</span>
+          <FoldHead label={t('sidebar.favorites')} open={favoritesOpen} onToggle={() => showFavorites(!favoritesOpen)} />
+          {favoritesOpen && (
           <ul className="nn-scroll max-h-44 overflow-y-auto">
             {favorites.map((favorite) => (
               <li key={favorite.path}>
@@ -817,12 +802,13 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
                     (favorite.path === activeNote ? 'bg-accent-500/10 text-accent-300' : 'text-mist-300')
                   }
                 >
-                  <Symbol name={favorite.kind === 'folder' ? 'folder' : favorite.kind === 'note' ? 'note' : 'file'} className="h-3.5 w-3.5 shrink-0 text-warn-500" />
+                  <Symbol name={favorite.kind === 'folder' ? 'folder' : favorite.kind === 'note' ? 'note' : 'file'} className="h-3.5 w-3.5 shrink-0 text-mist-600" />
                   <span className="min-w-0 flex-1 truncate">{favorite.title}</span>
                 </button>
               </li>
             ))}
           </ul>
+          )}
         </div>
       )}
       <div className="px-2 pt-3">
@@ -885,5 +871,36 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       {menu.element}
     </aside>
     </>
+  )
+}
+
+/** Open or folded, remembered in this browser under `key` (open unless folded once). */
+function useFold(key: string): [boolean, (open: boolean) => void] {
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(key) !== 'closed'
+    } catch {
+      return true
+    }
+  })
+  const show = (next: boolean) => {
+    setOpen(next)
+    try {
+      if (next) localStorage.removeItem(key)
+      else localStorage.setItem(key, 'closed')
+    } catch {
+      // Not remembered: open again next time.
+    }
+  }
+  return [open, show]
+}
+
+/** The head of a section that folds: its name after the arrow. */
+function FoldHead({ label, open, onToggle }: { label: string; open: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" onClick={onToggle} aria-expanded={open} className="mb-1 flex w-full items-center gap-1 px-2 text-left text-[11px] font-semibold tracking-wider text-mist-600 uppercase hover:text-mist-300">
+      <Symbol name={open ? 'chevronDown' : 'chevronRight'} className="h-3 w-3" />
+      {label}
+    </button>
   )
 }

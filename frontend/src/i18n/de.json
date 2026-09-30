@@ -1638,7 +1638,11 @@
     "closed_other": "{{count}} erledigte Fäden",
     "newLabel": "Neuer Kommentar",
     "replyLabel": "Antwort",
-    "editLabel": "Kommentar ändern"
+    "editLabel": "Kommentar ändern",
+    "peek": "Kommentar zu dieser Stelle",
+    "toThread": "Zum Kommentar",
+    "replies_one": "{{count}} Antwort",
+    "replies_other": "{{count}} Antworten"
   },
   "ai": {
     "title": "KI in Notizen",

@@ -1638,7 +1638,11 @@
     "closed_other": "{{count}} resolved threads",
     "newLabel": "New comment",
     "replyLabel": "Reply",
-    "editLabel": "Edit comment"
+    "editLabel": "Edit comment",
+    "peek": "Comment on these words",
+    "toThread": "To the comment",
+    "replies_one": "{{count}} reply",
+    "replies_other": "{{count}} replies"
   },
   "ai": {
     "title": "AI in notes",

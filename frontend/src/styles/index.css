@@ -336,3 +336,15 @@
 ::highlight(nx-comment-current) {
   background-color: color-mix(in srgb, var(--color-warn-500) 55%, transparent);
 }
+
+/* A thread asked for from its words in the text, or picked in the column: it glows up and settles. */
+@keyframes nx-thread-lit {
+  0%, 40% { box-shadow: 0 0 0 2px var(--color-accent-500); }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.nx-thread-lit {
+  animation: nx-thread-lit 1.8s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nx-thread-lit { animation: none; box-shadow: 0 0 0 2px var(--color-accent-500); }
+}

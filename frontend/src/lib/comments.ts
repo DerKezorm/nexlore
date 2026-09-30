@@ -109,7 +109,11 @@ export const highlights = (): Highlights | null => {
 }
 export const highlight = (ranges: Range[]) => new (globalThis as unknown as { Highlight: new (...ranges: Range[]) => unknown }).Highlight(...ranges)
 
-/** Scroll to a thread's words in the text and light them a moment longer. */
+/** On and off while the words blink (milliseconds from the start), then they stay lit a moment. */
+export const PULSE = [0, 350, 500, 850, 1000, 2600]
+let pulsing: number[] = []
+
+/** Scroll to a thread's words in the text and let them blink, so the eye finds them among the other lit ones. */
 export function revealThread(root: HTMLElement | null, thread: Anchor): boolean {
   if (!root) return false
   const map = textMap(root)
@@ -119,7 +123,9 @@ export function revealThread(root: HTMLElement | null, thread: Anchor): boolean 
   const target = range.startContainer.parentElement
   target?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   const store = highlights()
-  store?.set(CURRENT, highlight([range]))
-  window.setTimeout(() => store?.delete(CURRENT), 2000)
+  for (const timer of pulsing) window.clearTimeout(timer)
+  pulsing = PULSE.map((at, index) =>
+    window.setTimeout(() => (index % 2 === 0 ? store?.set(CURRENT, highlight([range])) : store?.delete(CURRENT)), at),
+  )
   return true
 }

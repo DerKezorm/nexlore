@@ -241,7 +241,8 @@ test('favorites: the star on a note and the menu of a folder put them on top of 
   await expect(star).toHaveAttribute('aria-pressed', 'false')
   await star.click()
   await expect(star).toHaveAttribute('aria-pressed', 'true')
-  const favorites = page.getByTestId('sidebar-favorites')
+  // The entries, not the head that folds them.
+  const favorites = page.getByTestId('sidebar-favorites').getByRole('list')
   await expect(favorites.getByRole('button', { name: 'Menu' })).toBeVisible()
   // The tree draws only the rows near what it shows: after a full run of other tests the folder lay beyond them.
   // The switcher's "/" brings it into view, as a person would.
@@ -256,6 +257,15 @@ test('favorites: the star on a note and the menu of a folder put them on top of 
   await expect(favorites.getByRole('button')).toHaveText(['Menu', 'Tidy'])
   // Kept on the server: after a reload, and on any other device.
   await page.reload()
+  await expect(favorites.getByRole('button')).toHaveText(['Menu', 'Tidy'])
+  // Folded like "Recent", and still folded after a reload in this browser.
+  const head = page.getByTestId('sidebar-favorites').getByRole('button', { name: 'Favorites' })
+  await head.click()
+  await expect(head).toHaveAttribute('aria-expanded', 'false')
+  await expect(favorites).toHaveCount(0)
+  await page.reload()
+  await expect(head).toHaveAttribute('aria-expanded', 'false')
+  await head.click()
   await expect(favorites.getByRole('button')).toHaveText(['Menu', 'Tidy'])
   // A favorite folder opens in the tree.
   await favorites.getByRole('button', { name: 'Tidy' }).click()

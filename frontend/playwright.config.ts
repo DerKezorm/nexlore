@@ -96,7 +96,8 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   // The calendar subscription (outward.spec.ts): a task with a date a few days ahead.
   // Comments in the margin (comments.spec.ts).
   'Heath/Comment me.md': '# Comment me\n\nThe heather blooms in August on the hill.\n',
-  'Heath/Comment gone.md': '# Comment gone\n\nThese words are soon changed.\n',
+  'Heath/Comment two.md': '# Comment two\n\nThe first words stand here. Further down the second words stand.\n',
+  'Heath/Comment gone.md':'# Comment gone\n\nThese words are soon changed.\n',
   'Heath/Dates.md':`- [ ] Cut the heather 📅 ${day(3)}\n`,
   // AI in notes against the stand-in service (ai.spec.ts).
   'Zoo/Ai.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',

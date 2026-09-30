@@ -26,6 +26,8 @@ type Props = {
   onChanged: () => void
   /** A manager of the space may take back anyone's comment. */
   manage: boolean
+  /** A thread asked for from its words in the text: scrolled to and lit (a counter, so the same one twice works). */
+  focus?: { id: number; ask: number } | null
 }
 
 /** A text field that offers the names of the space after `@`. */
@@ -143,7 +145,7 @@ function Words({ body }: { body: string }) {
   )
 }
 
-export function Comments({ path, threads, draft, onDraftDone, found, onReveal, onChanged, manage }: Props) {
+export function Comments({ path, threads, draft, onDraftDone, found, onReveal, onChanged, manage, focus }: Props) {
   const { t } = useTranslation()
   const [text, setText] = useState('')
   const [replyTo, setReplyTo] = useState<number | null>(null)
@@ -152,6 +154,30 @@ export function Comments({ path, threads, draft, onDraftDone, found, onReveal, o
   const [problem, setProblem] = useState<string | null>(null)
   const [showClosed, setShowClosed] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [lit, setLit] = useState<{ id: number; ask: number } | null>(null)
+  const list = useRef<HTMLDivElement>(null)
+  const picks = useRef(0)
+
+  // A thread asked for from the text: in sight, and lit a moment.
+  useEffect(() => {
+    if (!focus || !threads) return
+    const wanted = threads.find((thread) => thread.id === focus.id)
+    if (!wanted) return
+    if (wanted.resolved) setShowClosed(true)
+    setLit({ id: focus.id, ask: focus.ask })
+    const frame = requestAnimationFrame(() =>
+      list.current?.querySelector(`[data-thread="${focus.id}"]`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }),
+    )
+    return () => cancelAnimationFrame(frame)
+  }, [focus, threads])
+
+  /** A click on a thread (not on its buttons or fields) goes to its words in the text. */
+  const pick = (thread: Thread, target: EventTarget) => {
+    if ((target as HTMLElement).closest('button, textarea, input, a, [role="listbox"]')) return
+    picks.current += 1
+    setLit({ id: thread.id, ask: -picks.current })
+    onReveal(thread)
+  }
 
   const act = async (action: () => Promise<unknown>, after?: () => void) => {
     if (busy) return
@@ -172,7 +198,13 @@ export function Comments({ path, threads, draft, onDraftDone, found, onReveal, o
   const closed = threads?.filter((thread) => thread.resolved) ?? []
 
   const card = (thread: Thread) => (
-    <li key={thread.id} className="rounded-xl border border-ink-700 bg-ink-900 p-3" data-thread={thread.id}>
+    <li
+      key={lit?.id === thread.id ? `${thread.id}-${lit.ask}` : thread.id}
+      className={'cursor-pointer rounded-xl border border-ink-700 bg-ink-900 p-3 hover:border-ink-600' + (lit?.id === thread.id ? ' nx-thread-lit' : '')}
+      data-thread={thread.id}
+      data-lit={lit?.id === thread.id || undefined}
+      onClick={(event) => pick(thread, event.target)}
+    >
       <button
         type="button"
         onClick={() => onReveal(thread)}
@@ -241,7 +273,7 @@ export function Comments({ path, threads, draft, onDraftDone, found, onReveal, o
   )
 
   return (
-    <div className="space-y-3 px-2" data-testid="comments">
+    <div ref={list} className="space-y-3 px-2" data-testid="comments">
       {draft && (
         <div className="rounded-xl border border-accent-500/50 bg-accent-500/5 p-3">
           <p className="mb-2 truncate border-l-2 border-accent-500/60 pl-2 text-xs text-mist-400 italic">{draft.quote}</p>
