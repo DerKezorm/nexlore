@@ -22,6 +22,8 @@ import { Sidebar } from '../components/Sidebar'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { NotePanel, type PanelPart } from '../components/NotePanel'
 import { ImageViewer } from '../components/ImageViewer'
+import { Presence } from '../components/Presence'
+import { usePresence } from '../lib/presence'
 import { picturesIn, type Picture } from '../lib/pictures'
 import { Comments } from '../components/Comments'
 import { CommentLayer } from '../components/CommentLayer'
@@ -201,6 +203,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   // editor (its text, its lock, its save) can ever run against the new path.
   const [editingPath, setEditingPath] = useState<string | null>(null)
   const editing = editingPath === path
+  // Who else has the note open (the left note only: the right one is a look aside).
+  const present = usePresence(side === 'left' && path && !leaving ? path : null, editing)
   const [mode, setMode] = useState<EditorMode>('visual')
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [conflict, setConflict] = useState<string | null>(null)
@@ -910,6 +914,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 </span>
               ))}
             </nav>
+            {side === 'left' && <Presence people={present} />}
             {editing && <SaveBadge state={saveState} />}
             <div className="flex shrink-0 items-center rounded-full border border-ink-700 bg-ink-850 p-0.5 text-sm" role="group" aria-label={t('note.view')}>
               <button

@@ -1667,6 +1667,10 @@
     "next": "Nächstes Bild",
     "all": "Alle Bilder der Notiz"
   },
+  "presence": {
+    "reading": "{{name}} liest mit",
+    "writing": "{{name}} schreibt gerade"
+  },
   "ai": {
     "title": "KI in Notizen",
     "text": "Dein eigener KI-Dienst korrigiert, formuliert um, übersetzt, fasst zusammen und schreibt im Editor. Den Schlüssel bezahlst du selbst; ein Ergebnis steht immer erst neben dem Text und ändert nichts, bis du es übernimmst.",

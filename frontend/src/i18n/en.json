@@ -1667,6 +1667,10 @@
     "next": "Next picture",
     "all": "All pictures of the note"
   },
+  "presence": {
+    "reading": "{{name}} is reading",
+    "writing": "{{name}} is writing"
+  },
   "ai": {
     "title": "AI in notes",
     "text": "Your own AI service corrects, rewrites, translates, summarizes and writes in the editor. You pay for its key yourself; a result is always shown next to the text first and changes nothing until you take it over.",

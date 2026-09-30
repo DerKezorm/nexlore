@@ -321,6 +321,14 @@ export const commentsApi = {
   people: (path: string, q: string) => api<string[]>('/api/comments/people', { query: { path, q } }),
 }
 
+/** Somebody else with the note open: whose picture, and whether it is the one writing. */
+export type Present = { id: number; name: string; avatar: string | null; writing: boolean }
+
+export const presenceApi = {
+  here: (path: string) => api<{ people: Present[] }>('/api/presence', { method: 'POST', body: { path } }),
+  gone: (path: string) => api<void>('/api/presence', { method: 'DELETE', query: { path }, keepalive: true }),
+}
+
 export const captureApi = {
   /** Words on top of the space's inbox note; `stamp` is this browser's clock, `language` names a new inbox. */
   put: (space: string, text: string, stamp: string, language: string) =>
