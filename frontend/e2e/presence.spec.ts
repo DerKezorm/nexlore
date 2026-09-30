@@ -21,12 +21,12 @@ const OTHERS = [
 ]
 
 /** A reader of Heath, signed in from a request context of its own (never the operator's page). */
-async function reader(page: Page, baseURL: string): Promise<APIRequestContext> {
+async function reader(page: Page, baseURL: string, name: string): Promise<APIRequestContext> {
   const invite = await page.request.post('/api/spaces/Heath/invites', { data: { role: 'read', days: 1 }, headers: TAB })
   expect(invite.ok()).toBe(true)
   const token = new URL((await invite.json()).link).pathname.split('/').pop()!
   const other = await request.newContext({ baseURL, extraHTTPHeaders: TAB })
-  const made = await other.post(`/api/invite/${token}`, { data: { name: 'onlooker', password: 'e2e onlooker password' } })
+  const made = await other.post(`/api/invite/${token}`, { data: { name, password: 'e2e onlooker password' } })
   expect(made.ok()).toBe(true)
   return other
 }
@@ -38,28 +38,30 @@ async function seenBy(other: APIRequestContext, path: string): Promise<string[]>
   return (await answer.json()).people.map((person: { name: string }) => person.name)
 }
 
-test('two people with the same note open see each other, and not after one moved on', async ({ page, baseURL }) => {
+test('two people with the same note open see each other, and not after one moved on', async ({ page, baseURL }, testInfo) => {
   const problems = collectProblems(page)
-  const other = await reader(page, baseURL!)
-  expect(await seenBy(other, 'Heath/Heather.md')).toEqual([])
+  // A name of its own for a second try: the first one's account is still there.
+  const name = `onlooker${testInfo.retry || ''}${testInfo.repeatEachIndex || ''}`
+  const other = await reader(page, baseURL!, name)
+  expect(await seenBy(other, 'Heath/Present here.md')).toEqual([])
   const said = page.waitForRequest((request) => request.url().includes('/api/presence') && request.method() === 'POST')
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/note/Heath/Heather.md')
-  expect((await said).postDataJSON()).toEqual({ path: 'Heath/Heather.md' })
+  await page.goto('/note/Heath/Present here.md')
+  expect((await said).postDataJSON()).toEqual({ path: 'Heath/Present here.md' })
   const here = page.getByTestId('note-toolbar').getByTestId('presence')
-  await expect(here).toHaveAttribute('aria-label', 'onlooker is reading')
-  expect(await seenBy(other, 'Heath/Heather.md')).toEqual(['tester'])
+  await expect(here).toHaveAttribute('aria-label', `${name} is reading`)
+  expect(await seenBy(other, 'Heath/Present here.md')).toEqual(['tester'])
 
   // Moving on inside the app says goodbye to the old note and hello to the new one.
   await page.keyboard.press('ControlOrMeta+k')
-  await page.keyboard.type('Comment me')
-  await page.getByRole('dialog', { name: 'Search' }).getByRole('button', { name: /^Comment me/ }).first().click()
+  await page.keyboard.type('Present there')
+  await page.getByRole('dialog', { name: 'Search' }).getByRole('button', { name: /^Present there/ }).first().click()
   await expect(page.getByTestId('presence')).toHaveCount(0)
-  await expect.poll(() => seenBy(other, 'Heath/Heather.md')).toEqual([])
-  await expect.poll(() => seenBy(other, 'Heath/Comment me.md')).toEqual(['tester'])
+  await expect.poll(() => seenBy(other, 'Heath/Present here.md')).toEqual([])
+  await expect.poll(() => seenBy(other, 'Heath/Present there.md')).toEqual(['tester'])
   // Leaving the page altogether (a reload, a closed tab) says goodbye as well.
   await page.goto('/files')
-  await expect.poll(() => seenBy(other, 'Heath/Comment me.md')).toEqual([])
+  await expect.poll(() => seenBy(other, 'Heath/Present there.md')).toEqual([])
   await other.dispose()
   expect(problems).toEqual([])
 })

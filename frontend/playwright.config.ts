@@ -99,6 +99,9 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Heath/Comment two.md': '# Comment two\n\nThe first words stand here. Further down the second words stand.\n',
   'Heath/Comment edit.md': '# Comment edit\n\nHeather has purple bells on the moor in late summer.\n',
   'Heath/Comment gone.md':'# Comment gone\n\nThese words are soon changed.\n',
+  // Only presence.spec opens these: another test's tab may still count as there for 70 seconds.
+  'Heath/Present here.md': '# Present here\n',
+  'Heath/Present there.md': '# Present there\n',
   'Heath/Dates.md':`- [ ] Cut the heather 📅 ${day(3)}\n`,
   // AI in notes against the stand-in service (ai.spec.ts).
   'Zoo/Ai.md': '# Ai\n\nWe meet on Thursday at teh office.\n\nSecond line stays.\n',
