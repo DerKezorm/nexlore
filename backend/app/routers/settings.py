@@ -38,6 +38,7 @@ class SettingsOut(BaseModel):
     smtp_from: str
     mcp_allowed: bool
     mcp_max_level: str
+    mcp_oauth_allowed: bool
     calendar_feed_allowed: bool
     link_titles_allowed: bool
     plugin_upload_allowed: bool
@@ -61,6 +62,7 @@ class SettingsIn(BaseModel):
     smtp_from: str | None = Field(default=None, max_length=255)
     mcp_allowed: bool | None = None
     mcp_max_level: Literal["read", "draft", "write"] | None = None
+    mcp_oauth_allowed: bool | None = None
     calendar_feed_allowed: bool | None = None
     link_titles_allowed: bool | None = None
     plugin_upload_allowed: bool | None = None
@@ -89,6 +91,7 @@ def _view(db: DbSession) -> SettingsOut:
         smtp_from=values["smtp_from"],
         mcp_allowed=bool(values["mcp_allowed"]),
         mcp_max_level=str(values["mcp_max_level"]),
+        mcp_oauth_allowed=bool(values["mcp_oauth_allowed"]),
         calendar_feed_allowed=bool(values["calendar_feed_allowed"]),
         link_titles_allowed=bool(values["link_titles_allowed"]),
         plugin_upload_allowed=bool(values["plugin_upload_allowed"]),

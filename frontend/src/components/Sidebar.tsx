@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { recentApi, spaceZipUrl, vaultApi, type Favorite, type FolderEntry, type FileEntry, type NoteRef } from '../api/client'
 import { folderColor, spaceColor } from '../graph/palette'
@@ -64,7 +64,7 @@ const inTree = (file: { is_note: boolean; path: string }) => file.is_note || /\.
 const DRAG_TYPE = 'application/x-nexlore-path'
 
 export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: Props) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const nameOf = usePeople()
   const news = useNews()
   const [newsOpen, setNewsOpen] = useState(() => {
@@ -815,8 +815,8 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
             <Symbol name={item.symbol} className="h-4 w-4" />
           </button>
         ))}
-        {news.count + news.notices.length > 0 && (
-          <button type="button" onClick={() => unfold(() => showNews(true))} title={t('news.section', { count: news.count + news.notices.length })} aria-label={t('news.section', { count: news.count + news.notices.length })} className="relative rounded-lg p-2 text-accent-400 hover:bg-ink-850">
+        {news.count + news.notices.length + news.requests.length > 0 && (
+          <button type="button" onClick={() => unfold(() => showNews(true))} title={t('news.section', { count: news.count + news.notices.length + news.requests.length })} aria-label={t('news.section', { count: news.count + news.notices.length + news.requests.length })} className="relative rounded-lg p-2 text-accent-400 hover:bg-ink-850">
             <Symbol name="sparkle" className="h-4 w-4" />
             <span aria-hidden="true" className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-accent-400" />
           </button>
@@ -847,18 +847,26 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           </button>
         </div>
       )}
-      {(news.count > 0 || news.mentions.length > 0 || news.notices.length > 0) && (
+      {(news.count > 0 || news.mentions.length > 0 || news.notices.length > 0 || news.requests.length > 0) && (
         <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-news">
           <div className="flex items-center gap-2 px-2">
             {/* One line from the start: the dots in the tree say where; opened, the list (remembered in this browser). */}
             <button type="button" onClick={() => showNews(!newsOpen)} aria-expanded={newsOpen} className="flex flex-1 items-center gap-1 text-left text-[11px] font-semibold tracking-wider text-accent-400 uppercase">
               <Symbol name={newsOpen ? 'chevronDown' : 'chevronRight'} className="h-3 w-3" />
-              {t('news.section', { count: news.count + news.mentions.length + news.notices.length })}
+              {t('news.section', { count: news.count + news.mentions.length + news.notices.length + news.requests.length })}
             </button>
             <button type="button" onClick={() => void seenAll()} className="text-[11px] text-mist-500 hover:text-mist-200">{t('news.allSeen')}</button>
           </div>
           {newsOpen && (
           <ul className="nn-scroll mt-1 max-h-44 overflow-y-auto">
+            {news.requests.map((request) => (
+              <li key={'r' + request.id} data-request={request.id} className="rounded-lg px-2 py-1 text-[13px] text-mist-300">
+                <Link to="/requests" className="block leading-snug hover:text-mist-100">
+                  {t('requests.news', { key: request.key_name, what: i18n.exists(`mcp.tools.${request.tool}`) ? t(`mcp.tools.${request.tool}`) : request.tool })}
+                  <span className="ml-1 rounded-full bg-warn-500/15 px-1.5 text-[11px] text-warn-500">{t('requests.status.waiting')}</span>
+                </Link>
+              </li>
+            ))}
             {news.notices.map((notice) => (
               <li key={'n' + notice.id} data-notice={notice.kind} className="rounded-lg px-2 py-1 text-[13px] text-mist-300">
                 <p className="leading-snug">

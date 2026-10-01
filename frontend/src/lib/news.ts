@@ -3,11 +3,13 @@
  * notes change and after a note was opened (it is seen then). One list for the sidebar's section and its dots.
  */
 import { useSyncExternalStore } from 'react'
-import { newsApi, noticesApi, type NewNote, type NewsMention, type SpaceNotice } from '../api/client'
+import { mcpApi, newsApi, noticesApi, type McpRequest, type NewNote, type NewsMention, type SpaceNotice } from '../api/client'
+import { REQUESTS_EVENT } from './mcpRequests'
 
-type State = { count: number; notes: NewNote[]; paths: Set<string>; mentions: NewsMention[]; notices: SpaceNotice[] }
+/** ``requests``: what AI programs wait to have approved (block Y); they stay until decided in nexlore. */
+type State = { count: number; notes: NewNote[]; paths: Set<string>; mentions: NewsMention[]; notices: SpaceNotice[]; requests: McpRequest[] }
 
-let state: State = { count: 0, notes: [], paths: new Set(), mentions: [], notices: [] }
+let state: State = { count: 0, notes: [], paths: new Set(), mentions: [], notices: [], requests: [] }
 const listeners = new Set<() => void>()
 let asking: Promise<void> | null = null
 
@@ -17,10 +19,17 @@ function publish(next: State): void {
 }
 
 export function refreshNews(): Promise<void> {
-  asking ??= Promise.all([newsApi.list(), noticesApi.list().catch(() => [])])
+  asking ??= Promise.all([newsApi.list(), noticesApi.list().catch(() => []), mcpApi.requests().catch(() => [])])
     .then(
-      ([found, notices]) =>
-        publish({ count: found.count, notes: found.notes, paths: new Set(found.notes.map((note) => note.path)), mentions: found.mentions ?? [], notices }),
+      ([found, notices, requests]) =>
+        publish({
+          count: found.count,
+          notes: found.notes,
+          paths: new Set(found.notes.map((note) => note.path)),
+          mentions: found.mentions ?? [],
+          notices,
+          requests: requests.filter((request) => request.status === 'waiting'),
+        }),
       () => undefined,
     )
     .finally(() => {
@@ -51,7 +60,7 @@ export async function answerNotice(id: number, accept: boolean): Promise<string 
 export async function seenAll(): Promise<void> {
   // Invitations wait for an answer; what the operator did counts as seen now.
   const told = state.notices.filter((notice) => notice.kind !== 'invite')
-  publish({ count: 0, notes: [], paths: new Set(), mentions: [], notices: state.notices.filter((notice) => notice.kind === 'invite') })
+  publish({ count: 0, notes: [], paths: new Set(), mentions: [], notices: state.notices.filter((notice) => notice.kind === 'invite'), requests: state.requests })
   await Promise.all([newsApi.seenAll(), ...told.map((notice) => noticesApi.decline(notice.id).catch(() => undefined))])
   await refreshNews()
 }
@@ -65,3 +74,6 @@ export function useNews(): State {
     () => state,
   )
 }
+
+// Decided on the approvals page: the list here follows at once.
+if (typeof window !== 'undefined') window.addEventListener(REQUESTS_EVENT, () => void refreshNews())

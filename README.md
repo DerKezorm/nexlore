@@ -77,8 +77,10 @@ from one space into another that only resolve for people who may read both.*
   interface, in the cloud or at home): correct spelling, rewrite in one of nine tones, translate, summarize, or write
   from a request with the note as material. The result always stands next to the text first and changes nothing until
   it is taken over; what went out is listed word for word for 14 days.
-- **AI from outside over MCP** (off by default): keys per account at three levels (read, drafts, write), each key
-  optionally limited to some spaces. Drafts wait on the note until you take them over. See [docs/mcp.md](docs/mcp.md).
+- **AI from outside over MCP** (off by default): everything the interface can do as a tool, with keys or as a
+  connector that signs in (OAuth), at three levels (read, drafts, write), each optionally limited to some spaces.
+  Rights per tool (allow, ask, deny): asked calls wait for your approval in nexlore, drafts wait on the note. See
+  [docs/mcp.md](docs/mcp.md).
 - **Plugins**, locked up in the browser: installed from the checked catalog that comes with nexlore (contents and
   reading time, queries, Kanban boards, rediscover old notes), let out by the operator, switched on by each person.
   See [docs/plugins.md](docs/plugins.md).

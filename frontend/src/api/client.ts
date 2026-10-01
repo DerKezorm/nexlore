@@ -577,6 +577,7 @@ export type ServerSettings = {
   smtp_from: string
   mcp_allowed: boolean
   mcp_max_level: McpLevel
+  mcp_oauth_allowed: boolean
   plugin_upload_allowed: boolean
   ai_allowed: boolean
   custom_css_allowed: boolean
@@ -982,7 +983,37 @@ export const everydayApi = {
 
 export type McpLevel = 'read' | 'draft' | 'write'
 /** `spaces`: the names of the spaces the key may see; null: every space the account may read. */
-export type McpKey = { id: number; name: string; level: McpLevel; prefix: string; created_at: string; last_used_at: string | null; spaces: string[] | null }
+export type McpRight = 'allow' | 'ask' | 'deny'
+export type McpGroup = 'read' | 'draft' | 'change' | 'risky'
+export type McpKey = {
+  id: number
+  name: string
+  level: McpLevel
+  prefix: string
+  created_at: string
+  last_used_at: string | null
+  spaces: string[] | null
+  /** Rights per tool where the key differs from its group's default (block Y). */
+  rights: Record<string, McpRight>
+  /** `key` made here, `oauth` a connector that signed in. */
+  kind: 'key' | 'oauth'
+}
+export type McpTool = { name: string; group: McpGroup; level: McpLevel; description: string }
+export type McpTools = { tools: McpTool[]; defaults: Record<McpGroup, McpRight>; blocked: string[] }
+export type McpRequest = {
+  id: number
+  key_name: string
+  tool: string
+  group: McpGroup
+  description: string
+  arguments: Record<string, unknown>
+  status: 'waiting' | 'done' | 'failed' | 'declined' | 'expired'
+  result: unknown
+  created_at: string
+  expires_at: string
+  decided_at: string | null
+}
+export type ConsentInfo = { client_name: string; redirect_host: string; max_level: McpLevel; spaces: { id: number; name: string }[] }
 export type DraftInfo = { id: number; path: string; title: string; new: boolean; key_name: string; reason: string; created_at: string }
 export type DraftFull = DraftInfo & { content: string; current: string | null; changed: boolean }
 
@@ -991,6 +1022,18 @@ export const mcpApi = {
   make: (name: string, level: McpLevel, spaces: number[] | null = null) =>
     api<{ key: McpKey; token: string }>('/api/mcp/keys', { method: 'POST', body: { name, level, spaces } }),
   revoke: (id: number) => api<void>(`/api/mcp/keys/${id}`, { method: 'DELETE' }),
+  tools: () => api<McpTools>('/api/mcp/tools'),
+  setRights: (id: number, rights: Record<string, McpRight>) => api<McpKey>(`/api/mcp/keys/${id}/rights`, { method: 'PUT', body: { rights } }),
+  setBlocked: (tools: string[]) => api<McpTools>('/api/mcp/blocked', { method: 'PUT', body: { tools } }),
+  requests: () => api<McpRequest[]>('/api/mcp/requests'),
+  approve: (id: number, always: boolean) => api<McpRequest>(`/api/mcp/requests/${id}/approve`, { method: 'POST', body: { always } }),
+  decline: (id: number) => api<McpRequest>(`/api/mcp/requests/${id}/decline`, { method: 'POST' }),
+}
+
+/** A connector signing in for MCP (OAuth, block Y): what it asks for, and the answer. */
+export const oauthApi = {
+  info: (query: Record<string, string>) => api<ConsentInfo>('/api/oauth/authorize', { query }),
+  answer: (body: Record<string, unknown>) => api<{ redirect: string }>('/api/oauth/authorize', { method: 'POST', body }),
 }
 
 export const draftsApi = {

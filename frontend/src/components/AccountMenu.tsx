@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
 
-import { draftsApi, proposalsApi, type DraftInfo, type Proposal } from '../api/client'
+import { draftsApi, mcpApi, proposalsApi, type DraftInfo, type Proposal } from '../api/client'
+import { REQUESTS_EVENT } from '../lib/mcpRequests'
 import { languageOptions, type LanguageOption } from '../i18n'
 import { askPalette } from '../lib/commands'
 import { usePeople } from '../lib/people'
@@ -28,6 +29,8 @@ export function AccountMenu() {
   const [drafts, setDrafts] = useState<DraftInfo[]>([])
   const [draftShown, setDraftShown] = useState<number | null>(null)
   const [proposals, setProposals] = useState<{ waiting: Proposal[]; mine: Proposal[] }>({ waiting: [], mine: [] })
+  // Requests of AI programs waiting for approval (block Y).
+  const [requests, setRequests] = useState(0)
 
   // Open drafts, for the number on the circle: asked now, when the menu opens, and every minute.
   const signedIn = !!me
@@ -37,12 +40,15 @@ export function AccountMenu() {
     const ask = () => {
       void draftsApi.list().then((found) => live && setDrafts(found), () => undefined)
       void proposalsApi.overview().then((found) => live && setProposals(found), () => undefined)
+      void mcpApi.requests().then((found) => live && setRequests(found.filter((request) => request.status === 'waiting').length), () => undefined)
     }
     void ask()
     const timer = window.setInterval(ask, 60_000)
+    window.addEventListener(REQUESTS_EVENT, ask)
     return () => {
       live = false
       window.clearInterval(timer)
+      window.removeEventListener(REQUESTS_EVENT, ask)
     }
   }, [signedIn, open])
 
@@ -79,9 +85,9 @@ export function AccountMenu() {
         className="relative flex h-8 w-8 items-center justify-center rounded-full border border-ink-700 hover:border-accent-500"
       >
         <Avatar account={me} className="h-full w-full text-sm" />
-        {drafts.length + proposals.waiting.length > 0 && (
+        {drafts.length + proposals.waiting.length + requests > 0 && (
           <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-accent-500 px-1 text-[10px] font-bold text-on-accent" data-testid="drafts-count">
-            {drafts.length + proposals.waiting.length}
+            {drafts.length + proposals.waiting.length + requests}
           </span>
         )}
       </button>
@@ -98,6 +104,18 @@ export function AccountMenu() {
             </div>
             <div className="text-xs text-mist-500">{t(`account.role.${me.role}`)}</div>
           </div>
+          {requests > 0 && (
+            <Link
+              to="/requests"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 border-t border-ink-800 px-3 py-2 text-mist-100 hover:bg-ink-850"
+              data-testid="menu-requests"
+            >
+              <Symbol name="key" className="h-4 w-4 text-warn-500" />
+              <span className="flex-1">{t('requests.menu')}</span>
+              <span className="rounded-full bg-warn-500/15 px-2 text-xs text-warn-500">{requests}</span>
+            </Link>
+          )}
           {drafts.length > 0 && (
             <div className="border-y border-ink-800 py-1">
               <div className="px-3 pt-1 pb-0.5 text-xs text-mist-500">{t('drafts.open')}</div>

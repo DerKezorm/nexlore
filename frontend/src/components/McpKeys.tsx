@@ -11,13 +11,14 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-import { ApiError, mcpApi, vaultApi, type McpKey, type McpLevel, type Space } from '../api/client'
+import { ApiError, mcpApi, vaultApi, type McpKey, type McpLevel, type McpTools, type Space } from '../api/client'
 import { errorText } from '../lib/errors'
 import { formatDate } from '../lib/markdown'
 import { mcpCommand, mcpJson } from '../lib/mcp'
 import { copyText } from '../lib/vaultActions'
 import { useAuth } from '../state/auth'
 import { Symbol } from './Symbol'
+import { ToolRights } from './ToolRights'
 
 const LEVELS: McpLevel[] = ['read', 'draft', 'write']
 
@@ -52,8 +53,12 @@ export function McpKeys() {
   const [problem, setProblem] = useState<string | null>(null)
 
   const load = () => mcpApi.keys().then(setState, () => setState(null))
+  // The tools with their groups, for the rights of each key (block Y); the key whose list is open.
+  const [catalog, setCatalog] = useState<McpTools | null>(null)
+  const [rightsOf, setRightsOf] = useState<number | null>(null)
   useEffect(() => {
     void load()
+    void mcpApi.tools().then(setCatalog, () => setCatalog(null))
   }, [])
   useEffect(() => {
     if (!making) return
@@ -138,24 +143,44 @@ export function McpKeys() {
       ) : (
         <ul className="divide-y divide-ink-800">
           {state.keys.map((key) => (
-            <li key={key.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm">
+            <li key={key.id} className="py-2.5 text-sm">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="font-medium text-mist-100">{key.name}</span>
+              {key.kind === 'oauth' && <span className="rounded-full bg-accent-500/15 px-2 py-0.5 text-xs text-accent-400">{t('mcp.connector')}</span>}
               <span className="rounded-full bg-ink-800 px-2 py-0.5 text-xs text-mist-300">{t(`mcp.level.${key.level}`)}</span>
               <span className="text-xs text-mist-400" data-testid="mcp-key-spaces">
                 {key.spaces === null ? t('mcp.spacesAll') : key.spaces.length ? key.spaces.join(', ') : t('mcp.spacesNone')}
               </span>
-              <code className="font-mono text-xs text-mist-500">{key.prefix}…</code>
+              {key.kind !== 'oauth' && <code className="font-mono text-xs text-mist-500">{key.prefix}…</code>}
               <span className="text-xs text-mist-500">
                 {key.last_used_at ? t('mcp.used', { when: formatDate(key.last_used_at) }) : t('mcp.unused')}
               </span>
+              {catalog && (
+                <button
+                  type="button"
+                  aria-expanded={rightsOf === key.id}
+                  onClick={() => setRightsOf((open) => (open === key.id ? null : key.id))}
+                  className="ml-auto rounded-full border border-ink-700 px-2.5 py-0.5 text-xs text-mist-300 hover:bg-ink-850"
+                >
+                  {t('mcp.rights.open')}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => void mcpApi.revoke(key.id).then(load, (error) => setProblem(errorText(error instanceof ApiError ? error.code : 'internal_error')))}
-                className="ml-auto text-xs text-bad-500 hover:underline"
-                aria-label={t('mcp.revokeNamed', { name: key.name })}
+                className={(catalog ? '' : 'ml-auto ') + 'text-xs text-bad-500 hover:underline'}
+                aria-label={t(key.kind === 'oauth' ? 'mcp.disconnectNamed' : 'mcp.revokeNamed', { name: key.name })}
               >
-                {t('mcp.revoke')}
+                {t(key.kind === 'oauth' ? 'mcp.disconnect' : 'mcp.revoke')}
               </button>
+              </div>
+              {catalog && rightsOf === key.id && (
+                <ToolRights
+                  mcpKey={key}
+                  catalog={catalog}
+                  onSaved={(changed) => setState((before) => before && { ...before, keys: before.keys.map((k) => (k.id === changed.id ? changed : k)) })}
+                />
+              )}
             </li>
           ))}
         </ul>
@@ -164,6 +189,8 @@ export function McpKeys() {
         <details className="mt-3 rounded-xl border border-ink-700 px-3 py-2 text-sm">
           <summary className="cursor-pointer text-mist-300">{t('mcp.howTo')}</summary>
           <p className="mt-2 text-xs text-mist-400">{t('mcp.howToText')}</p>
+          <p className="mt-2 text-xs text-mist-400">{t('mcp.connectorHow')}</p>
+          <Recipe label={t('mcp.recipeConnector')} text={address} copied={copied === 'address'} onCopy={() => copy('address', address)} />
           <Recipe label={t('mcp.recipeJson')} text={mcpJson(address, t('mcp.yourKey'))} copied={copied === 'json-later'} onCopy={() => copy('json-later', mcpJson(address, t('mcp.yourKey')))} />
           <Recipe label={t('mcp.recipeCommand')} text={mcpCommand(address, t('mcp.yourKey'))} copied={copied === 'command-later'} onCopy={() => copy('command-later', mcpCommand(address, t('mcp.yourKey')))} />
         </details>

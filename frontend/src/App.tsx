@@ -9,6 +9,8 @@ import { AccountPage } from './pages/AccountPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { CleanupPage } from './pages/CleanupPage'
 import { AboutPage } from './pages/AboutPage'
+import { ConnectPage } from './pages/ConnectPage'
+import { McpRequestsPage } from './pages/McpRequestsPage'
 import { CaptureRoute } from './pages/CaptureRoute'
 import { FilePage } from './pages/FilePage'
 import { FilesPage } from './pages/FilesPage'
@@ -64,6 +66,15 @@ export default function App() {
       <Route path="setup" element={<SetupPage />} />
       <Route path="invite/:token" element={<InvitePage />} />
       <Route path="s/:token/*" element={<PublicPage />} />
+      {/* A connector signing in for MCP (block Y): the account first, then this page, without the app around it. */}
+      <Route
+        path="oauth/authorize"
+        element={
+          <SignedIn>
+            <ConnectPage />
+          </SignedIn>
+        }
+      />
       <Route
         element={
           <SignedIn>
@@ -84,6 +95,7 @@ export default function App() {
         <Route path="settings" element={<SettingsPage />} />
         <Route path="account" element={<AccountPage />} />
         <Route path="about" element={<AboutPage />} />
+        <Route path="requests" element={<McpRequestsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

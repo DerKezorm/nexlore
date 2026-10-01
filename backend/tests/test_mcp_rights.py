@@ -20,7 +20,7 @@ from app.models import McpKey, McpRequest, utcnow
 from app.services import index, mcp
 
 from .conftest import join
-from .test_mcp import NOTE, World, call, failure, person, rpc, value
+from .test_mcp import NOTE, World, call, failure, person, rpc, switch, value
 
 
 @pytest.fixture
@@ -198,6 +198,14 @@ def test_approval_checks_again_what_the_key_may_do_now(world: World) -> None:
     world.operator.put("/api/mcp/blocked", json={"tools": ["create_note"]})
     assert world.anna.post(f"/api/mcp/requests/{second}/approve", json={}).json()["status"] == "failed"
     assert not (world.vault / "Garden" / "Peas.md").exists()
+
+
+def test_nothing_runs_once_mcp_is_switched_off(world: World) -> None:
+    token = world.key("write", ask=True)
+    number = ask_for_a_note(world, token)
+    switch(mcp_allowed=False)
+    assert world.anna.post(f"/api/mcp/requests/{number}/approve", json={}).json()["status"] == "failed"
+    assert not (world.vault / "Garden" / "Seeds.md").exists()
 
 
 def test_a_revoked_key_takes_its_requests_along(world: World) -> None:

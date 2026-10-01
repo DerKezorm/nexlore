@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import {
   adminApi,
   authApi,
+  mcpApi,
   type AdminAccount,
   type AdminSpace,
   type AuthentikResult,
@@ -16,6 +17,7 @@ import {
   type BackupCheck,
   type FileSettings,
   type Invite,
+  type McpTools,
   type NewInvite,
   type OidcConfig,
   type ServerSettings,
@@ -441,6 +443,10 @@ export function McpCard({ settings, onChange }: { settings: ServerSettings; onCh
         onChange={(value) => save({ mcp_max_level: value })}
         className="mt-3"
       />
+      <div className="mt-3">
+        <Toggle label={t('admin.mcp.oauth')} hint={t('admin.mcp.oauthHint')} checked={settings.mcp_oauth_allowed} onChange={(value) => save({ mcp_oauth_allowed: value })} />
+      </div>
+      <BlockedTools />
       {/* Where it goes on: the keys belong to the accounts, not to this card. */}
       <p className="mt-3 text-sm text-mist-400" data-testid="mcp-where-keys">
         {settings.mcp_allowed ? t('admin.mcp.keysWhere') : t('admin.mcp.keysLater')}{' '}
@@ -450,6 +456,50 @@ export function McpCard({ settings, onChange }: { settings: ServerSettings; onCh
       </p>
       <Feedback problem={problem} />
     </Card>
+  )
+}
+
+/** Tools no account may use, whatever its keys say (block Y, design answer Y2). Saved at once. */
+function BlockedTools() {
+  const { t, i18n } = useTranslation()
+  const [catalog, setCatalog] = useState<McpTools | null>(null)
+  const { problem, run } = useAction()
+  useEffect(() => {
+    void mcpApi.tools().then(setCatalog, () => setCatalog(null))
+  }, [])
+  if (!catalog) return null
+  const blocked = new Set(catalog.blocked)
+  const flip = (name: string, on: boolean) => {
+    const next = on ? [...blocked, name] : [...blocked].filter((other) => other !== name)
+    const before = catalog
+    setCatalog({ ...catalog, blocked: next })
+    void run(async () => setCatalog(await mcpApi.setBlocked(next))).then((ok) => ok || setCatalog(before))
+  }
+  const what = (name: string, fallback: string) => (i18n.exists(`mcp.tools.${name}`) ? t(`mcp.tools.${name}`) : fallback)
+  return (
+    <details className="mt-3 rounded-xl border border-ink-700 bg-ink-850 px-4 py-3 text-sm" data-testid="mcp-blocked">
+      <summary className="cursor-pointer font-medium">
+        {t('admin.mcp.blocked')} <span className="ml-1 text-xs text-mist-500">{t('admin.mcp.blockedCount', { count: blocked.size })}</span>
+      </summary>
+      <p className="mt-1 text-xs text-mist-500">{t('admin.mcp.blockedHint')}</p>
+      {(['read', 'draft', 'change', 'risky'] as const).map((group) => (
+        <fieldset key={group} className="mt-3">
+          <legend className="text-xs font-medium tracking-wide text-mist-400 uppercase">{t(`mcp.rights.group.${group}`)}</legend>
+          {catalog.tools
+            .filter((tool) => tool.group === group)
+            .map((tool) => (
+              <label key={tool.name} className="flex items-start gap-2 border-t border-ink-700 py-1.5">
+                <input type="checkbox" checked={blocked.has(tool.name)} onChange={(event) => flip(tool.name, event.target.checked)} aria-label={tool.name} className="mt-0.5" />
+                <span>
+                  <code className="font-mono text-xs text-mist-100">{tool.name}</code>
+                  <span className="block text-xs text-mist-500">{what(tool.name, tool.description)}</span>
+                </span>
+              </label>
+            ))}
+        </fieldset>
+      ))}
+      <Feedback problem={problem} />
+    </details>
   )
 }
 
