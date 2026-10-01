@@ -1,3 +1,3 @@
 """nexlore: notes as Markdown files, edited in the browser, with a graph you can zoom into."""
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"

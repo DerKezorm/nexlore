@@ -92,7 +92,7 @@ from one space into another that only resolve for people who may read both.*
 ```yaml
 services:
   nexlore:
-    build: .
+    image: ghcr.io/derkezorm/nexlore:latest
     container_name: nexlore
     restart: unless-stopped
     ports:
@@ -106,8 +106,11 @@ services:
 ```
 
 ```
-docker compose up -d --build
+docker compose up -d
 ```
+
+Built from source instead: clone this repository, put `build: .` in place of `image:` and run
+`docker compose up -d --build`.
 
 Open `http://<your-host>:8470`. The first account you create there is the operator. `docker-compose.yml` in this
 repository has the same service with every option explained.
