@@ -207,3 +207,19 @@ def test_backup_routes_are_for_the_operator(client: TestClient, vault: Path, mon
     assert client.post(f"/api/backups/{name}/restore").json()["restarting"] is True and restarted
     assert client.post("/api/backups/..%2Fx/check").status_code in (404, 422)
     assert get_settings().data_dir.is_dir()
+
+
+def test_the_rest_of_an_earlier_restore_leaves_the_vault_at_the_next_start(vault: Path) -> None:
+    """Review P7.4: under Windows a read-only file kept the set-aside folder, an empty tree in a shared vault."""
+    import stat
+
+    leftover = vault / ".nexlore-replaced-123" / "Garden"
+    leftover.mkdir(parents=True)
+    locked = leftover / "Plan.md"
+    locked.write_bytes(b"x")
+    locked.chmod(stat.S_IREAD)
+    (vault / ".nexlore-keep").mkdir()
+    assert backups.apply_pending() is False
+    assert not (vault / ".nexlore-replaced-123").exists()
+    # Only what a restore set aside.
+    assert (vault / ".nexlore-keep").is_dir()

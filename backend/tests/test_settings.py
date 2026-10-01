@@ -63,7 +63,7 @@ MAIL = {
 def test_settings_are_the_operators_and_the_password_is_never_shown(client: TestClient, operator: Account) -> None:
     before = client.get("/api/settings").json()
     assert before["shares_allowed"] is False and before["password_login"] is True
-    assert before["backup_schedule"] == "off" and before["smtp_password_set"] is False
+    assert before["backup_schedule"] == "daily" and before["smtp_password_set"] is False
     saved = client.put("/api/settings", json=MAIL).json()
     assert saved["smtp_password_set"] is True and "mail password" not in str(saved)
     with SessionLocal() as db:

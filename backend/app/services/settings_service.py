@@ -14,8 +14,8 @@ from ..models import Setting
 DEFAULTS: dict[str, Any] = {
     "log_mode": "normal",
     "log_mode_until": None,
-    #: off | daily | weekly. Off until the operator decides (M4 brings the switch to the interface).
-    "backup_schedule": "off",
+    #: off | daily | weekly. Daily in the night unless the operator decides otherwise (review before 1.0.0, P1.24).
+    "backup_schedule": "daily",
     "backup_keep": 7,
     #: Where uploaded files go, next to the note they belong to. Only a name, never a path.
     "attachment_folder": "Attachments",

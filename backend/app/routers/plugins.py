@@ -90,11 +90,16 @@ def switch(plugin_id: PluginId, body: EnabledIn, account: Account, db: DbSession
 
 
 @router.get("/api/plugins/{plugin_id}/frame", response_class=HTMLResponse)
-def frame(plugin_id: PluginId, account: Account, db: DbSession) -> HTMLResponse:
+def frame(
+    plugin_id: PluginId,
+    account: Account,
+    db: DbSession,
+    scheme: Annotated[str, Query(pattern="^(dark|light)$")] = "dark",
+) -> HTMLResponse:
     row = plugins.enabled_for(db, plugin_id, account.id)
     if row is None:
         raise error("not_found", "Not found.", 404)
-    html, policy = plugins.frame(row)
+    html, policy = plugins.frame(row, scheme)
     return HTMLResponse(html, headers={
         "Content-Security-Policy": policy,
         "X-Frame-Options": "SAMEORIGIN",

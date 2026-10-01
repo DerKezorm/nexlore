@@ -19,7 +19,7 @@ import { alignColumn, sortByColumn, tableTabKeys } from './tables'
 import { cleanPastedHtml, keepFirstBlock, pastedCode } from './pasted'
 import { byUse, noteSlashUse } from './slashUse'
 import { Crepe, CrepeFeature } from '@milkdown/crepe'
-import { editorViewCtx, parserCtx, remarkCtx, serializerCtx } from '@milkdown/kit/core'
+import { editorViewCtx, editorViewOptionsCtx, parserCtx, remarkCtx, serializerCtx } from '@milkdown/kit/core'
 import type { Ctx, MilkdownPlugin } from '@milkdown/kit/ctx'
 import { linkTooltipAPI } from '@milkdown/kit/component/link-tooltip'
 import { uploadConfig } from '@milkdown/kit/plugin/upload'
@@ -485,6 +485,13 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
         },
       }))
       if (options.files) ctx.set(imageSource.key, options.files.src)
+      // On a phone the toolbar sits at the bottom: the line being written stays above it (P8.6).
+      const bottom = window.matchMedia?.('(max-width: 639px)').matches ? 88 : 5
+      ctx.update(editorViewOptionsCtx, (previous) => ({
+        ...previous,
+        scrollMargin: { top: 5, left: 5, right: 5, bottom },
+        scrollThreshold: { top: 0, left: 0, right: 0, bottom: bottom === 5 ? 0 : 72 },
+      }))
     })
     .use(obsidian)
     .use(dollarText)

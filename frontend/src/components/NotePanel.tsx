@@ -45,7 +45,8 @@ export function NotePanel({ parts, tab, onTab, place, onClose }: Props) {
       {place !== 'column' && <div aria-hidden="true" onClick={onClose} className="fixed inset-0 z-30 bg-scrim" data-testid="panel-scrim" />}
       <aside aria-label={t('panel.label')} className={frame} data-testid="note-panel" data-place={place}>
         {place === 'bottom' && <span aria-hidden="true" className="mx-auto mt-2 h-1 w-10 rounded-full bg-ink-600" />}
-        <div className="flex shrink-0 items-end gap-0.5 border-b border-ink-700/80 px-2 pt-2" role="tablist" aria-label={t('panel.label')}>
+        {/* Wider than the column (six tabs and a plugin): they scroll in themselves, the app stays where it is (P7.3). */}
+        <div className="nn-scroll flex shrink-0 items-end gap-0.5 overflow-x-auto overflow-y-hidden border-b border-ink-700/80 px-2 pt-2" role="tablist" aria-label={t('panel.label')}>
           {parts.map((part) => (
             <button
               key={part.id}
@@ -56,7 +57,7 @@ export function NotePanel({ parts, tab, onTab, place, onClose }: Props) {
               aria-controls={`${base}-body`}
               onClick={() => onTab(part.id)}
               className={
-                '-mb-px inline-flex items-center gap-1.5 border-b-2 px-2 pt-1.5 pb-2 text-[13px] ' +
+                '-mb-px inline-flex shrink-0 items-center gap-1.5 border-b-2 px-2 pt-1.5 pb-2 text-[13px] whitespace-nowrap ' +
                 (part.id === current.id ? 'border-accent-500 font-semibold text-mist-100' : 'border-transparent text-mist-500 hover:text-mist-200')
               }
             >

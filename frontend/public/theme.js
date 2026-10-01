@@ -3,7 +3,10 @@
 try {
   var mode = localStorage.getItem('nexlore.mode')
   var light =
-    mode === 'system' ? window.matchMedia('(prefers-color-scheme: light)').matches : localStorage.getItem('nexlore.theme') === 'light'
+    // Nobody chose yet (the sign-in page of a new browser): as the system is set.
+    mode === 'system' || mode === null
+      ? window.matchMedia('(prefers-color-scheme: light)').matches
+      : localStorage.getItem('nexlore.theme') === 'light'
   if (light) {
     document.documentElement.setAttribute('data-theme', 'light')
     document.querySelector('meta[name="theme-color"]').content = '#f5f5f8'

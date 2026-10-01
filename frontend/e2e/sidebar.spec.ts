@@ -261,7 +261,7 @@ test('favorites: the star on a note and the menu of a folder put them on top of 
   await page.keyboard.press('ControlOrMeta+k')
   await expect(page.getByRole('dialog', { name: 'Search' }).locator('input')).toBeFocused()
   await page.keyboard.type('/Tidy')
-  await expect(page.getByRole('dialog', { name: 'Search' }).getByRole('button').first()).toHaveText(/Tidy/)
+  await expect(page.getByRole('dialog', { name: 'Search' }).getByRole('button', { name: /^(?!Close$)/ }).first()).toHaveText(/Tidy/)
   await page.keyboard.press('Enter')
   await expect(row(page, 'Tidy')).toBeFocused()
   await row(page, 'Tidy').click({ button: 'right' })
@@ -440,7 +440,7 @@ test('an open folder without notes says so and offers the first one', async ({ p
   // The folder has no file yet, so the switcher cannot find it: opened by hand in the tree.
   await page.getByRole('button', { name: 'Search', exact: true }).click()
   await page.keyboard.type('/zoo')
-  await expect(page.getByRole('dialog', { name: 'Search' }).getByRole('button').first()).toHaveText(/Zoo\s*Space/)
+  await expect(page.getByRole('dialog', { name: 'Search' }).getByRole('button', { name: /^(?!Close$)/ }).first()).toHaveText(/Zoo\s*Space/)
   await page.keyboard.press('Enter')
   await expect(row(page, 'Zoo')).toBeFocused()
   await row(page, 'Blank').click()

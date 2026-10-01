@@ -1180,17 +1180,18 @@
       "would": "Eine Wiederherstellung würde {{add}} Dateien hinzufügen, {{change}} ändern und {{remove}} entfernen.",
       "restoreTitle": "Diese Sicherung wiederherstellen?",
       "restoreText": "Der jetzige Stand wird vorher gesichert. Danach startet nexlore neu, und alle melden sich neu an.",
-      "restarting": "nexlore startet mit der Sicherung neu. Gleich neu anmelden."
+      "restarting": "nexlore startet mit der Sicherung neu. Gleich neu anmelden.",
+      "restartingWait": "Die Seite wartet und führt zur Anmeldung, sobald nexlore wieder da ist."
     },
     "languages": {
       "title": "Sprachen",
-      "text": "Eigene Übersetzungen, aus der Vorlage unter Sprache.",
+      "text": "Eigene Übersetzungen, aus der Vorlage unter Sprache. Eine Datei für de oder en ersetzt nur die Texte, die sie enthält; alle anderen bleiben, wie sie ausgeliefert sind.",
       "remove": "Entfernen",
       "none": "Keine eigenen Sprachen.",
       "code": "Kürzel",
       "file": "JSON-Datei",
       "upload": "Hochladen",
-      "added": "Sprache hinzugefügt."
+      "added": "Sprache hinzugefügt. Sie wirkt, sobald eine Seite neu geladen wird."
     },
     "mcp": {
       "title": "KI von außen (MCP)",
@@ -1363,7 +1364,8 @@
     "ios": "In Safari auf „Teilen“ tippen, dann „Zum Home-Bildschirm“.",
     "install": "Installieren",
     "later": "Nicht mehr fragen",
-    "menu": "Als App installieren"
+    "menu": "Als App installieren",
+    "notNow": "Jetzt nicht"
   },
   "mcp": {
     "title": "KI von außen (MCP)",

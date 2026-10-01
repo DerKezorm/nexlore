@@ -460,8 +460,40 @@ def restart_soon(delay: float = 1.5) -> None:
     threading.Thread(target=stop, name="restart-for-restore", daemon=True).start()
 
 
+def _remove_tree(folder: Path) -> None:
+    """A folder and all in it, read-only files too (Windows refuses those to ``rmtree``); a few tries, because a
+    virus scanner or the indexer of the system may still hold a file for a moment. What stays is tried again at the
+    next start."""
+
+    def writable_then_again(function: Any, path: str, _error: BaseException) -> None:
+        try:
+            os.chmod(path, 0o700)
+            function(path)
+        except OSError:
+            pass
+
+    for attempt in range(5):
+        if not folder.exists():
+            return
+        shutil.rmtree(folder, onexc=writable_then_again)
+        if not folder.exists():
+            return
+        time.sleep(0.2 * (attempt + 1))
+    logger.warning("A folder set aside by a restore could not be removed yet: %s", folder.name)
+
+
+def _tidy_set_aside(root: Path) -> None:
+    """The rest of an earlier restore, left in the vault (review P7.4): the vault may be shared with Obsidian."""
+    if not root.is_dir():
+        return
+    for leftover in root.glob(".nexlore-replaced-*"):
+        if leftover.is_dir() and not leftover.is_symlink():
+            _remove_tree(leftover)
+
+
 def apply_pending() -> bool:
     """At the start, before anything opens the database: swap in a staged backup. Returns whether one was."""
+    _tidy_set_aside(paths.vault_root())
     pending = pending_folder()
     if not pending.is_dir():
         return False
@@ -516,7 +548,7 @@ def apply_pending() -> bool:
         shutil.move(str(pending / "trash"), str(trash))
     manifest = json.loads((pending / MANIFEST).read_text(encoding="utf-8"))
     shutil.rmtree(pending, ignore_errors=True)
-    shutil.rmtree(aside, ignore_errors=True)
+    _remove_tree(aside)
     logger.info("Backup restored created=%s files=%s", manifest.get("created"), manifest.get("files"))
     return True
 

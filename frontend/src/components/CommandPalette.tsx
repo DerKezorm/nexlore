@@ -104,7 +104,16 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
             aria-controls="palette-list"
             className="h-12 flex-1 bg-transparent text-[15px] text-mist-100 outline-none placeholder:text-mist-600"
           />
-          <kbd className="rounded border border-ink-700 px-1.5 text-[11px] text-mist-500">Esc</kbd>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('common.close')}
+            title={t('common.close')}
+            className="grid h-8 min-w-8 place-items-center rounded border border-ink-700 px-1.5 text-[11px] text-mist-500 hover:bg-ink-850 hover:text-mist-200"
+          >
+            <span className="hidden sm:inline">Esc</span>
+            <Symbol name="close" className="h-4 w-4 sm:hidden" />
+          </button>
         </div>
         {(recording || said) && (
           <p

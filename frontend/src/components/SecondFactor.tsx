@@ -68,7 +68,7 @@ export function SecondFactor({ me }: { me: Me }) {
   return (
     <div className="space-y-3 text-sm" data-testid="second-factor">
       <p className="text-mist-400">{t('twofactor.lead')}</p>
-      <Problem text={problem} />
+      {!enrolment && <Problem text={problem} />}
 
       {codes ? (
         <div className="space-y-3 rounded-xl border border-accent-500/40 bg-accent-500/10 p-3" data-testid="recovery-codes">
@@ -131,6 +131,7 @@ export function SecondFactor({ me }: { me: Me }) {
           </code>
           <Field label={t('twofactor.code')} value={code} onChange={setCode} autoComplete="one-time-code" autoFocus />
           <Field label={t('auth.password')} value={password} onChange={setPassword} type="password" autoComplete="current-password" hint={t('twofactor.passwordHint')} />
+          <Problem text={problem} />
           <div className="flex justify-end gap-2">
             <button type="button" onClick={close} className="rounded-full px-3 py-1 text-sm text-mist-400">
               {t('common.cancel')}

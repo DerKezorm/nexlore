@@ -213,7 +213,7 @@ def approved(db: Session) -> list[Plugin]:
 
 SDK = (CATALOG_DIR / "sdk.js").read_text(encoding="utf-8")
 BASE_CSS = """
-:root { color-scheme: dark light; }
+:root { color-scheme: SCHEME; }
 html, body { margin: 0; padding: 0; background: transparent; }
 body { font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--fg, #e6e6ec); }
 .muted { color: var(--muted, #9a9aa8); } .small { font-size: 12px; } .warn { color: var(--warn, #e0a030); }
@@ -243,12 +243,14 @@ def _hash_source(text: str) -> str:
     return "'sha256-" + base64.b64encode(hashlib.sha256(text.encode("utf-8")).digest()).decode("ascii") + "'"
 
 
-def frame(row: Plugin) -> tuple[str, str]:
-    """The frame's document and its policy. Scripts run only by their hashes; nothing may be loaded from anywhere."""
+def frame(row: Plugin, scheme: str = "dark") -> tuple[str, str]:
+    """The frame's document and its policy. Scripts run only by their hashes; nothing may be loaded from anywhere.
+    ``scheme``: the page's colour scheme; a frame in the other one gets an opaque ground (review P1.4)."""
+    css = BASE_CSS.replace("SCHEME", "light" if scheme == "light" else "dark")
     html = (
         '<!doctype html><html><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width, initial-scale=1">'
-        f"<style>{BASE_CSS}</style></head><body><div id=\"app\"></div>"
+        f"<style>{css}</style></head><body><div id=\"app\"></div>"
         f"<script>{SDK}</script><script>{row.code}</script></body></html>"
     )
     policy = (

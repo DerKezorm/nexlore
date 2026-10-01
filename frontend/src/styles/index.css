@@ -158,8 +158,13 @@
   .nn-prose a.nn-wikilink-missing {
     @apply text-mist-500 bg-ink-800;
   }
+  .nn-prose {
+    overflow-wrap: anywhere;
+  }
+  /* A table wider than the page scrolls in itself; the page never scrolls sideways (P8.3). */
   .nn-prose table {
-    @apply my-4 w-full text-sm;
+    @apply my-4 block w-full max-w-full overflow-x-auto text-sm;
+    overflow-wrap: normal;
   }
   .nn-prose th {
     @apply border-b border-ink-700 py-1.5 pr-4 text-left font-semibold text-mist-100;

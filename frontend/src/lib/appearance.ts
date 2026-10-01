@@ -103,16 +103,6 @@ export function applyMode(mode: Mode): void {
   }
 }
 
-export function storedMode(): Mode {
-  try {
-    const mode = localStorage.getItem(MODE_KEY)
-    if (mode === 'light' || mode === 'dark' || mode === 'system') return mode
-  } catch {
-    // Fall through.
-  }
-  return 'dark'
-}
-
 /** Everything but the theme's colours (lib/themes.ts) onto the page. */
 export function applyAppearance(look: Appearance): void {
   const root = document.documentElement.style

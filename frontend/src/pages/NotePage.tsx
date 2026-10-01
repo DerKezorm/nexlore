@@ -235,6 +235,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const [own, setOwn] = useState<string[]>([])
   const [withOwn, setWithOwn] = useState(true)
   const [notice, setNotice] = useState<string | null>(null)
+  // When this tab last saved the note: the line under the title says so at once (it kept an older time, P6.20).
+  const [savedAt, setSavedAt] = useState<number | null>(null)
   // A daily note made without its template (the space's template is gone): said once, when it opens.
   const templateMissing = useRef(false)
   templateMissing.current = (location.state as { templateMissing?: boolean } | null)?.templateMissing === true
@@ -373,6 +375,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       saved.current = text
       base.current = result.hash
       savedEdits.current = mark
+      setSavedAt(Date.now())
       setSaveProblem(null)
       setSaveState(edits.current === mark ? 'saved' : 'pending')
       return 'saved'
@@ -480,6 +483,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     setLockHolder(null)
     setRenaming(null)
     setShowText(false)
+    setSavedAt(null)
     setNotice(templateMissing.current ? t('today.templateMissing') : null)
     // A message meant for the note just opened (after a rename: how many notes had their links updated).
     setInfo(afterOpen.current)
@@ -1049,7 +1053,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 <Symbol name="close" className="h-4 w-4" />
               </button>
             )}
-            <nav aria-label={t('note.path')} className="flex min-w-0 flex-1 items-center text-sm text-mist-500" data-testid="note-crumbs">
+            <nav aria-label={t('note.path')} className="flex min-w-24 flex-1 items-center overflow-hidden text-sm text-mist-500" data-testid="note-crumbs">
               {chain.map((c, i) => (
                 <span key={c.id} className={'flex items-center ' + (i === 0 ? 'shrink-0' : 'min-w-0')}>
                   {i > 0 && <span aria-hidden="true" className="px-1 text-mist-600">›</span>}
@@ -1057,7 +1061,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                     type="button"
                     onClick={() => askFolder(c.id)}
                     title={c.id}
-                    className={'truncate rounded-md px-1.5 py-0.5 hover:bg-ink-850 hover:text-mist-100 ' + (i === 0 ? 'font-medium text-mist-300' : '')}
+                    className={'max-w-full min-w-[2.75rem] truncate rounded-md px-1.5 py-0.5 hover:bg-ink-850 hover:text-mist-100 ' + (i === 0 ? 'font-medium text-mist-300' : '')}
                   >
                     {c.name}
                   </button>
@@ -1283,7 +1287,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                     </button>
                   </span>
                 )}
-                <span>{t('note.changed', { when: formatDate(note.modified) })}</span>
+                <span>{t('note.changed', { when: formatDate(savedAt ?? note.modified) })}</span>
                 {/* While reading, tags in the front matter stand in the properties box below, not twice. */}
                 {(editing || !/^tags\s*:/im.test(readingHead) ? note.tags : []).map((tag) => (
                   <span key={tag} className="rounded-full bg-accent-500/10 px-2 py-0.5 text-accent-400">#{tag}</span>
@@ -1532,8 +1536,9 @@ function SaveBadge({ state, problem, onRetry }: { state: SaveState; problem: str
   // Why it failed, in words, and a way to try at once; the text stays in the editor meanwhile.
   const why = problem ? (problem === 'offline' ? t('note.save.offline') : problem === 'too_large' ? t('note.save.tooLarge') : errorText(problem)) : ''
   return (
-    <span className={'flex items-center gap-2 text-xs ' + tone} role="status" title={why || undefined}>
-      {t(`note.save.${state}`)}
+    <span className={'flex items-center gap-2 text-xs ' + tone} role="status" title={why || t(`note.save.${state}`)}>
+      {state !== 'failed' && <span aria-hidden="true" className="h-2 w-2 rounded-full bg-current sm:hidden" />}
+      <span className={state === 'failed' ? '' : 'sr-only sm:not-sr-only'}>{t(`note.save.${state}`)}</span>
       {why && <span className="hidden max-w-72 truncate sm:inline">{why}</span>}
       {state === 'failed' && problem !== 'too_large' && (
         <button type="button" onClick={onRetry} className="rounded-md border border-bad-500/40 px-1.5 py-0.5 hover:bg-bad-500/10">

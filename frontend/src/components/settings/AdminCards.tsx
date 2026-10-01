@@ -721,6 +721,25 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
   const [backups, setBackups] = useState<Backup[]>([])
   const [checked, setChecked] = useState<BackupCheck | null>(null)
   const [restoring, setRestoring] = useState<string | null>(null)
+  // Restoring restarts the server and ends every session: the page waits for it and goes to the sign-in (P7.5).
+  const [restarting, setRestarting] = useState(false)
+  useEffect(() => {
+    if (!restarting) return
+    let away = false
+    const started = Date.now()
+    const timer = window.setInterval(() => {
+      void fetch('/api/setup', { cache: 'no-store' }).then(
+        (answer) => {
+          if (answer.ok && (away || Date.now() - started > 90_000)) window.location.assign('/login')
+          if (!answer.ok) away = true
+        },
+        () => {
+          away = true
+        },
+      )
+    }, 1500)
+    return () => window.clearInterval(timer)
+  }, [restarting])
   // The archive holds everything, so it is handed out only against the password once more.
   const [fetching, setFetching] = useState<{ name: string; password: string } | null>(null)
   const [note, setNote] = useState('')
@@ -797,6 +816,12 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
             <Button small onClick={() => setRestoring(backup.name)}>
               {t('admin.backups.restore')}
             </Button>
+            <Button small danger busy={busy} onClick={() => void run(async () => {
+              await adminApi.deleteBackup(backup.name)
+              await load()
+            })}>
+              {t('admin.backups.delete')}
+            </Button>
             {fetching?.name === backup.name && (
               <form
                 className="flex w-full flex-wrap items-end gap-2 pt-1"
@@ -818,14 +843,13 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
                   {t('admin.backups.download')}
                 </Button>
                 <Button onClick={() => setFetching(null)}>{t('common.cancel')}</Button>
+                {problem && (
+                  <p role="alert" className="w-full text-xs text-bad-500">
+                    {problem}
+                  </p>
+                )}
               </form>
             )}
-            <Button small danger busy={busy} onClick={() => void run(async () => {
-              await adminApi.deleteBackup(backup.name)
-              await load()
-            })}>
-              {t('admin.backups.delete')}
-            </Button>
           </li>
         ))}
         {backups.length === 0 && <li className="px-4 py-3 text-sm text-mist-500">{t('admin.backups.none')}</li>}
@@ -838,7 +862,18 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
           </p>
         </div>
       )}
-      <Feedback problem={problem} done={done} />
+      {/* While a download asks for the password, its message stands by the field, not twice. */}
+      <Feedback problem={fetching ? null : problem} done={done} />
+      {restarting && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-scrim p-4" role="alertdialog" aria-labelledby="restarting-title" data-testid="restarting">
+          <div className="max-w-sm rounded-2xl border border-ink-700 bg-ink-900 p-5 text-sm shadow-2xl">
+            <p id="restarting-title" className="font-semibold text-mist-100">
+              {t('admin.backups.restarting')}
+            </p>
+            <p className="mt-1 text-mist-400">{t('admin.backups.restartingWait')}</p>
+          </div>
+        </div>
+      )}
       <ConfirmDialog
         open={restoring !== null}
         title={t('admin.backups.restoreTitle')}
@@ -849,6 +884,7 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
         onConfirm={() => void run(async () => {
           await adminApi.restoreBackup(restoring!)
           setRestoring(null)
+          setRestarting(true)
         }, t('admin.backups.restarting'))}
       >
         {t('admin.backups.restoreText')}

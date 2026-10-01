@@ -227,7 +227,7 @@ export function EditorToolbar({ editor, ai, onSource, onHide, lines, onLines, op
       aria-label={t('toolbar.label')}
       data-testid="editor-toolbar"
       data-place="top"
-      className="sticky top-0 z-20 -mx-1 mb-3 flex flex-wrap items-center gap-0.5 rounded-xl border border-ink-700 bg-ink-900/95 px-1.5 py-1 backdrop-blur"
+      className="sticky top-0 z-20 -mx-1 mb-3 flex flex-wrap items-center gap-0.5 rounded-xl border border-ink-700 bg-ink-900/95 px-1.5 py-1 backdrop-blur [scrollbar-width:none] [@media(max-height:480px)]:flex-nowrap [@media(max-height:480px)]:overflow-x-auto [@media(max-height:480px)]:py-0.5"
     >
       {tools}
       <span className="ml-auto flex items-center gap-0.5">{end}</span>

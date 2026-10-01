@@ -73,7 +73,7 @@ test('the notes opened last are on the empty note page and in the quick switcher
   await expect(start.getByRole('heading', { name: 'Opened last' })).toBeVisible()
   await expect(start.getByRole('button').filter({ hasText: /^(Shopping|Palette)/ }).first()).toContainText('Shopping')
   await page.keyboard.press('ControlOrMeta+k')
-  const first = page.getByRole('dialog', { name: 'Search' }).getByRole('button').first()
+  const first = page.getByRole('dialog', { name: 'Search' }).getByRole('button', { name: /^(?!Close$)/ }).first()
   await expect(first).toContainText('Shopping')
 })
 

@@ -55,6 +55,8 @@
     Object.keys(theme).forEach(function (name) {
       if (/^--[a-z0-9-]+$/.test(name)) root.setProperty(name, String(theme[name]))
     })
+    // The page's scheme: in the other one the frame would get an opaque ground of its own.
+    if (theme['--scheme'] === 'dark' || theme['--scheme'] === 'light') root.setProperty('color-scheme', theme['--scheme'])
   }
 
   function resize() {

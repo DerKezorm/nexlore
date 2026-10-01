@@ -428,7 +428,12 @@ export function GraphPage() {
         {sheet && (
           <div className="absolute inset-0 z-20 flex items-end bg-scrim/60 sm:hidden" onClick={() => setSheet(false)}>
             <div className="w-full rounded-t-2xl border-t border-ink-700 bg-ink-900 p-4 text-sm" onClick={(event) => event.stopPropagation()} role="dialog" aria-label={t('graph.clouds')}>
-              <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-ink-700" />
+              <div className="mb-2 flex items-start">
+                <div className="mx-auto h-1 w-10 rounded-full bg-ink-700" />
+                <button type="button" onClick={() => setSheet(false)} aria-label={t('common.close')} className="-mt-1 -mr-1 rounded-full p-1.5 text-mist-500 hover:bg-ink-850 hover:text-mist-100">
+                  <Symbol name="close" className="h-4 w-4" />
+                </button>
+              </div>
               <div className="mb-2 text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('graph.clouds')}</div>
               {cloudSwitch}
               {cloudInfo && <div className="mt-3">{cloudInfo}</div>}

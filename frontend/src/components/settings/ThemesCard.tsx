@@ -151,7 +151,7 @@ export function ThemesCard() {
     <section className="space-y-4 rounded-2xl border border-ink-700 bg-ink-850/60 p-5" data-testid="themes">
       <div className="flex flex-wrap items-start gap-3">
         <span className="rounded-lg bg-accent-500/10 p-2 text-accent-400"><Symbol name="star" /></span>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-[1_1_14rem]">
           <h2 className="font-semibold text-mist-100">{t('themes.title')}</h2>
           <p className="text-sm text-mist-400">{t('themes.text')}</p>
         </div>

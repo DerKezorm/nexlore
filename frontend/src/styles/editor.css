@@ -392,3 +392,21 @@
 .nx-comment-mark.nx-comment-mark-current {
   background: color-mix(in srgb, var(--color-warn-500) 55%, transparent);
 }
+
+/* On a phone a table keeps its words whole and scrolls in itself (P3.23). */
+@media (max-width: 639px) {
+  .milkdown .milkdown-table-block .tableWrapper {
+    overflow-x: auto;
+  }
+  .milkdown .milkdown-table-block table {
+    table-layout: auto;
+    width: max-content;
+    min-width: 100%;
+  }
+  .milkdown .milkdown-table-block th,
+  .milkdown .milkdown-table-block td {
+    min-width: 5rem;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+}

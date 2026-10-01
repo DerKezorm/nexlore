@@ -69,3 +69,18 @@ test('the server sends the security headers with the page', async ({ request }) 
   expect(response.headers()['x-frame-options']).toBe('DENY')
   expect(response.headers()['x-request-id']).toMatch(/^[0-9a-f]{6}$/)
 })
+
+test('a file of the operator for English lays its words over the shipped ones (P7.10)', async ({ page }) => {
+  test.skip(!!process.env.E2E_BASE_URL, 'writes a language file')
+  const headers = { 'X-Nexlore-Client': 'tab-e2elanguage', 'Content-Type': 'application/json' }
+  const put = await page.request.put('/api/locales/en', { data: JSON.stringify({ _meta: { name: 'English' }, tasks: { title: 'Chores' } }), headers })
+  expect(put.status()).toBe(200)
+  try {
+    await page.goto('/tasks')
+    await expect(page.getByRole('heading', { name: 'Chores', level: 1 })).toBeVisible()
+    // Everything it leaves out stays as shipped.
+    await expect(page.getByRole('navigation', { name: 'Main menu' })).toBeVisible()
+  } finally {
+    await page.request.delete('/api/locales/en', { headers })
+  }
+})

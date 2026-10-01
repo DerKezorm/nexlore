@@ -1180,17 +1180,18 @@
       "would": "A restore would add {{add}}, change {{change}} and remove {{remove}} files.",
       "restoreTitle": "Restore this backup?",
       "restoreText": "The current state is backed up first. nexlore then restarts, and everybody signs in again.",
-      "restarting": "nexlore restarts with the backup. Sign in again in a moment."
+      "restarting": "nexlore restarts with the backup. Sign in again in a moment.",
+      "restartingWait": "This page waits and goes to the sign-in as soon as nexlore is back."
     },
     "languages": {
       "title": "Languages",
-      "text": "Your own translations, from the template under Language.",
+      "text": "Own translations, from the template under Language. A file for de or en replaces only the texts it holds; all others stay as shipped.",
       "remove": "Remove",
       "none": "No languages of your own.",
       "code": "Code",
       "file": "JSON file",
       "upload": "Upload",
-      "added": "Language added."
+      "added": "Language added. It takes effect as soon as a page is loaded again."
     },
     "mcp": {
       "title": "AI from outside (MCP)",
@@ -1363,7 +1364,8 @@
     "ios": "In Safari, tap “Share”, then “Add to Home Screen”.",
     "install": "Install",
     "later": "Don't ask again",
-    "menu": "Install as an app"
+    "menu": "Install as an app",
+    "notNow": "Not now"
   },
   "mcp": {
     "title": "AI from outside (MCP)",

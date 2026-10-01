@@ -237,3 +237,11 @@ def test_writing_needs_a_plugin_that_may_write_and_the_right_to_write(world: Wor
     assert carl.put("/api/plugins/kanban/enabled", json={"enabled": True}).status_code == 200
     assert carl.put("/api/plugins/note", json=body).status_code == 403
     assert (world.vault / "Garden" / "Board.md").read_bytes() == NOTE.encode()
+
+
+def test_the_frame_takes_the_colour_scheme_of_the_page(world: World) -> None:
+    """Review P1.4: in the scheme of the system, not the page's, the frame got a white or black ground of its own."""
+    world.ready("toc")
+    assert "color-scheme: light;" in world.anna.get("/api/plugins/toc/frame?scheme=light").text
+    assert "color-scheme: dark;" in world.anna.get("/api/plugins/toc/frame").text
+    assert world.anna.get("/api/plugins/toc/frame?scheme=dark%20light").status_code == 422

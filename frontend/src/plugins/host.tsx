@@ -24,9 +24,17 @@ const THEME: Record<string, string> = {
   '--warn': '--color-warn-500',
 }
 
+/** The page's colour scheme; a frame in the other one gets an opaque ground of its own (white or black, P1.4). */
+export function pageScheme(): 'dark' | 'light' {
+  return getComputedStyle(document.documentElement).colorScheme.includes('light') ? 'light' : 'dark'
+}
+
 function theme(): Record<string, string> {
   const style = getComputedStyle(document.documentElement)
-  return Object.fromEntries(Object.entries(THEME).map(([name, token]) => [name, style.getPropertyValue(token).trim()]))
+  return {
+    ...Object.fromEntries(Object.entries(THEME).map(([name, token]) => [name, style.getPropertyValue(token).trim()])),
+    '--scheme': pageScheme(),
+  }
 }
 
 type Request = { nx: 1; id?: number; method?: string; args?: Record<string, unknown> }
@@ -153,7 +161,7 @@ export function PluginFrame({ plugin, place, note, source, onOpen, onReveal, onW
     <iframe
       ref={frame}
       title={title}
-      src={`/api/plugins/${plugin.id}/frame`}
+      src={`/api/plugins/${plugin.id}/frame?scheme=${pageScheme()}`}
       sandbox="allow-scripts"
       referrerPolicy="no-referrer"
       onLoad={init}

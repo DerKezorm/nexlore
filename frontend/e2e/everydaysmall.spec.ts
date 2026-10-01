@@ -139,6 +139,8 @@ test('a view says in the reader\'s words what it cannot show (P5.14)', async ({ 
 })
 
 test('a space names its daily notes its own way: calendar, links and the steps to the next day follow (P5.22, P5.24)', async ({ page }) => {
+  // Calendar, two notes, a link and the editor: more than the usual half minute when the machine is busy.
+  test.setTimeout(90_000)
   await space(page, 'Errands8', { Links: 'Plan for [[09.05.2031]].\n' })
   try {
     expect((await page.request.put('/api/spaces/Errands8/options', { data: { daily_format: 'DD.MM.YYYY' }, headers: TAB })).status()).toBe(200)

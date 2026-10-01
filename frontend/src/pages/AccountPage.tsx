@@ -3,11 +3,11 @@
  * second factor, the link to the provider, signing out everywhere), AI (AI in notes, keys for AI from outside) and
  * Plugins. The tab stands in the address (`?tab=`); the old anchors (`#ai`, `#mcp`, `#plugins`) still lead there.
  */
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useSearchParams } from 'react-router-dom'
 
-import { ApiError, authApi } from '../api/client'
+import { ApiError, authApi, type Methods } from '../api/client'
 import { Field, Problem } from '../components/AuthFrame'
 import { AiAccess } from '../components/AiAccess'
 import { Avatar } from '../components/Avatar'
@@ -32,6 +32,11 @@ function code(error: unknown): string {
 export function AccountPage() {
   const { t } = useTranslation()
   const { me, refresh } = useAuth()
+  // Whether a sign-in provider is set up at all: without one there is nothing to link (P7.14).
+  const [methods, setMethods] = useState<Methods | null>(null)
+  useEffect(() => {
+    void authApi.methods().then(setMethods, () => setMethods(null))
+  }, [])
   const [params, setParams] = useSearchParams()
   const { hash } = useLocation()
   const asked = params.get('tab') as Part | null
@@ -185,6 +190,7 @@ export function AccountPage() {
               <SecondFactor me={me} />
             </Section>
 
+            {(methods?.oidc || me.sign_in === 'oidc' || me.oidc_linked) && (
             <Section symbol="shield" title={t('account.oidc.title')}>
               {me.sign_in === 'oidc' ? (
                 <p className="text-sm text-mist-400">{t('account.oidc.only')}</p>
@@ -224,6 +230,7 @@ export function AccountPage() {
                 </form>
               )}
             </Section>
+            )}
 
             <Section symbol="lock" title={t('account.sessions.title')}>
               <p className="mb-3 text-sm text-mist-400">{t('account.sessions.text')}</p>

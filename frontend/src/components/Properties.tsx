@@ -121,7 +121,7 @@ export function Properties({ head, readOnly = false, onChange, remember }: Props
                 <Value item={item} readOnly={readOnly} onChange={(value) => update(index, { value })} />
               </div>
               {!readOnly && (
-                <div className="flex shrink-0 items-center gap-1 opacity-0 group-focus-within:opacity-100 group-hover:opacity-100">
+                <div className="hidden shrink-0 items-center gap-1 group-focus-within:flex sm:flex sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
                   <select
                     value={item.kind === 'other' ? 'text' : item.kind}
                     aria-label={t('properties.kind')}
