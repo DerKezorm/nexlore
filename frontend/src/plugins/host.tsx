@@ -25,7 +25,7 @@ const THEME: Record<string, string> = {
 }
 
 /** The page's colour scheme; a frame in the other one gets an opaque ground of its own (white or black, P1.4). */
-export function pageScheme(): 'dark' | 'light' {
+function pageScheme(): 'dark' | 'light' {
   return getComputedStyle(document.documentElement).colorScheme.includes('light') ? 'light' : 'dark'
 }
 
