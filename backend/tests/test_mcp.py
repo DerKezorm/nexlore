@@ -49,9 +49,16 @@ class World:
         index.scan()
         switch(mcp_allowed=True, mcp_max_level="write")
 
-    def key(self, level: str = "read", who: TestClient | None = None) -> str:
-        made = (who or self.anna).post("/api/mcp/keys", json={"name": f"agent {level}", "level": level})
+    def key(self, level: str = "read", who: TestClient | None = None, *, ask: bool = False) -> str:
+        """A key; the tools that change things run at once unless ``ask`` keeps the defaults of block Y (asking)."""
+        owner = who or self.anna
+        made = owner.post("/api/mcp/keys", json={"name": f"agent {level}", "level": level})
         assert made.status_code == 201, made.text
+        if not ask:
+            changing = [t["name"] for t in owner.get("/api/mcp/tools").json()["tools"] if t["group"] == "change"]
+            rights = owner.put(f"/api/mcp/keys/{made.json()['key']['id']}/rights",
+                               json={"rights": dict.fromkeys(changing, "allow")})
+            assert rights.status_code == 200, rights.text
         return made.json()["token"]
 
 
@@ -122,7 +129,10 @@ def test_the_walls_before_any_tool(world: World) -> None:
     token = world.key()
     assert rpc(None, "ping").status_code == 401
     assert rpc("nxl_" + "x" * 43, "ping").status_code == 401
-    assert rpc("wrong", "ping").headers.get("www-authenticate") == "Bearer"
+    # The 401 says where a connector signs in (OAuth, block Y).
+    assert rpc("wrong", "ping").headers.get("www-authenticate") == (
+        'Bearer resource_metadata="http://testserver/.well-known/oauth-protected-resource"'
+    )
     # A web page sends an Origin: refused even with a valid key (no page can use a key it got hold of).
     assert rpc(token, "ping", headers={"Origin": "http://testserver"}).status_code == 403
     # The session cookie counts for nothing here.
@@ -181,10 +191,19 @@ def test_initialize_and_the_tools_of_each_level(world: World) -> None:
     levels = {}
     for level in ("read", "draft", "write"):
         levels[level] = {tool["name"] for tool in rpc(world.key(level), "tools/list").json()["result"]["tools"]}
-    assert levels["read"] == {"list_spaces", "search", "search_notes", "find_notes", "read_note", "list_folder", "note_links",
-                              "list_tasks"}
+    reading = {"list_spaces", "search", "search_notes", "find_notes", "read_note", "list_folder", "note_links",
+               "list_tasks", "request_status", "space_options", "list_templates", "list_versions", "read_version",
+               "list_tags", "read_comments", "list_attachments", "unlinked_mentions", "cleanup_report", "list_trash",
+               "list_members", "list_shares"}
+    assert levels["read"] == reading
     assert levels["draft"] == levels["read"] | {"propose_change", "propose_note"}
-    assert levels["write"] == levels["draft"] | {"write_note", "edit_note", "create_note", "complete_task", "append_to_daily"}
+    changing = {"write_note", "edit_note", "create_note", "complete_task", "append_to_daily", "create_space",
+                "set_space_options", "create_folder", "rename_folder", "move_folder", "rename_note", "move_note",
+                "create_from_template", "set_property", "merge_notes", "restore_version", "restore_from_trash",
+                "rename_tag", "add_comment", "reply_comment", "resolve_comment", "capture_to_inbox",
+                "upload_attachment", "link_mention", "set_favorite"}
+    # Deleting, sharing and members are denied by default: a write key does not see them.
+    assert levels["write"] == levels["draft"] | changing
 
 
 def test_a_foreign_space_answers_like_a_missing_one(world: World) -> None:
@@ -220,6 +239,9 @@ def test_a_key_for_some_spaces_sees_no_other_even_where_its_account_may(world: W
     assert made.status_code == 201, made.text
     assert made.json()["key"]["spaces"] == ["Garden"]
     token = made.json()["token"]
+    changing = [t["name"] for t in world.anna.get("/api/mcp/tools").json()["tools"] if t["group"] == "change"]
+    assert world.anna.put(f"/api/mcp/keys/{made.json()['key']['id']}/rights",
+                          json={"rights": dict.fromkeys(changing, "allow")}).status_code == 200
     everything = world.key("write")
 
     assert [space["name"] for space in value(call(token, "list_spaces"))] == ["Garden"]
@@ -292,7 +314,7 @@ def test_reading_tools(world: World) -> None:
     hits = value(call(token, "search", query="second"))
     assert hits[0]["path"] == "Garden/Plan.md" and "«Second»" in hits[0]["snippet"]
     assert value(call(token, "list_folder", path="Garden"))["files"][0]["path"] == "Garden/Plan.md"
-    assert "must be a text" in failure(call(token, "read_note", path=7))
+    assert "must be of type string" in failure(call(token, "read_note", path=7))
 
 
 # --- Drafts ----------------------------------------------------------------------------------------------------------

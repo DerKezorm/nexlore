@@ -105,6 +105,8 @@ CHANGING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 CLIENT_HEADER = b"x-nexlore-client"
 CLIENT_PATTERN = re.compile(rb"^[A-Za-z0-9_-]{8,64}$")
 MCP_PATH = "/api/mcp"
+#: Called by programs signing in for MCP (OAuth), not by a browser tab: no tab, and a form body.
+OAUTH_PATHS = frozenset({"/api/oauth/token", "/api/oauth/register"})
 #: Largest body an ordinary request may carry: a note is at most 5 MB of text, JSON adds a little.
 MAX_BODY = 16 * 1024 * 1024
 #: Where a larger body is expected, with its own limit checked while streaming. An upload's limit is the operator's
@@ -148,7 +150,7 @@ class GuardMiddleware:
         headers = dict(scope.get("headers") or [])
         # MCP (M7) is called by programs, not by a browser tab: it needs a key in ``Authorization`` instead, and a
         # request that carries an ``Origin`` is refused there (``routers/mcp.py``).
-        exempt = scope["path"] == MCP_PATH
+        exempt = scope["path"] == MCP_PATH or scope["path"] in OAUTH_PATHS
         if scope.get("method") in CHANGING and not exempt and not CLIENT_PATTERN.match(headers.get(CLIENT_HEADER, b"")):
             for message in _refuse(400, "client_required", "Changes need the header X-Nexlore-Client."):
                 await send(message)

@@ -560,6 +560,15 @@ class McpKey(Base):
     spaces: Mapped[Any] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     last_used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: What the key may do with each tool (block Y): ``{tool: allow | ask | deny}``, only where it differs from the
+    #: default of the tool's group (``services/mcp.py`` ``DEFAULT_RIGHT``).
+    tool_rights: Mapped[Any] = mapped_column(JSON, nullable=True)
+    #: ``key`` (made in the interface) or ``oauth`` (a connector that signed in, ``services/oauth.py``).
+    kind: Mapped[str] = mapped_column(String(8), default="key")
+    #: For a connector: its client, its refresh token (SHA-256), and when its access token runs out.
+    client_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    refresh_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    expires_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
 
 class Favorite(Base):
@@ -718,6 +727,58 @@ class Draft(Base):
     content: Mapped[bytes] = mapped_column(LargeBinary)
     reason: Mapped[str] = mapped_column(String(500), default="")
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class OAuthClient(Base):
+    """A program that registered itself to sign in for MCP (a connector, RFC 7591). Nothing secret: a public client
+    proves itself with PKCE at every sign-in."""
+
+    __tablename__ = "oauth_clients"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), default="")
+    redirect_uris: Mapped[Any] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    last_used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class OAuthCode(Base):
+    """A sign-in an account agreed to, waiting to be traded for tokens once (a few minutes, PKCE)."""
+
+    __tablename__ = "oauth_codes"
+
+    code_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    client_id: Mapped[str] = mapped_column(ForeignKey("oauth_clients.id", ondelete="CASCADE"))
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"))
+    redirect_uri: Mapped[str] = mapped_column(String(2048))
+    challenge: Mapped[str] = mapped_column(String(128))
+    level: Mapped[str] = mapped_column(String(8))
+    spaces: Mapped[Any] = mapped_column(JSON, nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+
+
+class McpRequest(Base):
+    """A tool call waiting for its account to say yes (block Y, right "ask"). The arguments are kept as the AI sent
+    them and never change: what is approved is exactly what was asked. It runs out after ``mcp.REQUEST_HOURS``."""
+
+    __tablename__ = "mcp_requests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    #: The key that asked; a revoked key takes its waiting requests along.
+    key_id: Mapped[int] = mapped_column(ForeignKey("mcp_keys.id", ondelete="CASCADE"), index=True)
+    key_name: Mapped[str] = mapped_column(String(100), default="")
+    tool: Mapped[str] = mapped_column(String(64))
+    #: The arguments as canonical JSON (sorted keys), and their SHA-256: the approval runs these and nothing else.
+    arguments: Mapped[str] = mapped_column(Text)
+    digest: Mapped[str] = mapped_column(String(64))
+    #: waiting, done, failed, declined, expired.
+    status: Mapped[str] = mapped_column(String(16), default="waiting", index=True)
+    #: What the tool answered, as JSON, once it ran (or why it did not).
+    result: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+    decided_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
 
 class Plugin(Base):

@@ -37,6 +37,7 @@ from .routers import logs as logs_router
 from .routers import looks as looks_router
 from .routers import mcp as mcp_router
 from .routers import news as news_router
+from .routers import oauth as oauth_router
 from .routers import plugins as plugins_router
 from .routers import presence as presence_router
 from .routers import proposals as proposals_router
@@ -55,7 +56,7 @@ ROUTERS = [
     attachments, imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router, looks_router,
     ai_router, favorites_router, avatars_router, recent_router, themes_router, search_router, news_router,
     proposals_router, bases_router, cleanup_router, inbox_router, feed_router, comments_router,
-    presence_router, linktitle_router,
+    presence_router, linktitle_router, oauth_router,
 ]
 
 

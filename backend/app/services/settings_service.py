@@ -45,6 +45,10 @@ DEFAULTS: dict[str, Any] = {
     #: AI from outside (M7): off until the operator opens it, and the highest level a key may have.
     "mcp_allowed": False,
     "mcp_max_level": "read",
+    #: Tools no account may use, whatever its keys say (block Y, design answer Y2); at first what cannot be undone.
+    "mcp_blocked_tools": ["delete_space", "empty_trash"],
+    #: Connectors may sign in for MCP (OAuth, block Y); only while MCP itself is open.
+    "mcp_oauth_allowed": True,
     #: The calendar subscription of each account: the tasks go to wherever the address is given, so closed until
     #: the operator opens it.
     "calendar_feed_allowed": False,
