@@ -713,7 +713,11 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     // `[[2026-10-02]]` (what @tomorrow writes, as the space names its days) is that day's daily note: made where
     // the calendar makes it, not here.
     const daySpace = across ? across.space : path.split('/')[0]
-    const day = dayOfName(spaces.find((item) => item.name === daySpace)?.daily_format, target.split('#')[0].split('/').pop() ?? '')
+    // The space's pattern from the server when the spaces have not come yet: a click right after loading made a
+    // plain note beside this one instead of the daily note (seen on the slower CI machine).
+    let format = spaces.find((item) => item.name === daySpace)?.daily_format
+    if (format === undefined) format = await everydayApi.options(daySpace).then((options) => options.daily_format, () => undefined)
+    const day = dayOfName(format, target.split('#')[0].split('/').pop() ?? '')
     if (day) {
       try {
         const made = await everydayApi.daily(daySpace, day)
