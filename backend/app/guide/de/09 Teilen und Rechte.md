@@ -26,4 +26,15 @@ Oben an der Notiz siehst du, wer sie gerade offen hat. Bearbeitet jemand eine No
 
 Markiere Wörter und wähle **Kommentieren**. Der Faden steht im Reiter **Kommentare** neben der Notiz, nicht in der Datei. Kommentieren darf jeder, der lesen darf. Mit `@name` sprichst du ein Mitglied an; es sieht das unter **Neu seit deinem letzten Besuch**.
 
+## Wie andere dich sehen
+
+Unter **Mein Konto → Profil** gibst du dir einen **Anzeigenamen**, etwa mit Vor- und Nachnamen. Er steht überall, wo du auftauchst. In Mitgliederlisten und bei den `@`-Vorschlägen steht dein Anmeldename klein daneben, denn der kommt nach dem `@` in den Text.
+
+## Benachrichtigungen
+
+Unter **Mein Konto → Benachrichtigungen** wählst du, worüber du hörst: Erwähnungen und Antworten, Einladungen, Freigaben für KI-Programme und einmal am Tag deine fälligen Aufgaben. Sie gehen an einen **Webhook** deiner Wahl, etwa eine Benachrichtigungs-Inbox, und per **Mail**, wenn der Betreiber einen Mailserver eingetragen hat. **Probe senden** zeigt sofort, ob es ankommt.
+
+> [!note] Was in einer Benachrichtigung steht
+> Der Name der Notiz und wer etwas getan hat, nie der Inhalt einer Notiz oder eines Kommentars.
+
 Weiter mit [[10 Plugins]].

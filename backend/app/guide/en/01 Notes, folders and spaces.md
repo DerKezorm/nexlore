@@ -6,7 +6,7 @@ Back to [[00 Welcome|Welcome]].
 
 A **space** is a folder at the very top, like "Private", "Work" or this one, "nexlore". Every space has members of its own: whoever makes it manages it and invites others, to read, to write or to manage.
 
-Make a new space with the **+** beside "SPACES" in the sidebar.
+Make a new space with the **+** beside "SPACES" in the sidebar. Whoever manages it may rename it: right click on the space, then **Rename**. Links that name the space in front, like `[[Work/Plan]]`, follow in every space.
 
 ## Folders and notes
 

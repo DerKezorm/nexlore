@@ -740,7 +740,9 @@
       "oauth_pkce": "Dieses Programm meldet sich nicht sicher an (PKCE mit S256 fehlt).",
       "oauth_response_type": "Dieses Programm fragt nach etwas, das nexlore nicht gibt.",
       "request_closed": "Diese Anfrage ist schon entschieden oder verfallen.",
-      "request_changed": "Diese Anfrage passt nicht zu dem, was gefragt wurde; nichts wurde ausgeführt."
+      "request_changed": "Diese Anfrage passt nicht zu dem, was gefragt wurde; nichts wurde ausgeführt.",
+      "notify_no_way": "Gib erst eine Webhook-Adresse an oder schalte Mail ein.",
+      "webhook_invalid": "Gib eine Adresse wie https://example.com/hook an."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
@@ -957,7 +959,8 @@
       "profile": "Profil",
       "security": "Sicherheit",
       "ai": "Verbindungen",
-      "plugins": "Plugins"
+      "plugins": "Plugins",
+      "notify": "Benachrichtigungen"
     },
     "profile": {
       "displayName": "Anzeigename",
@@ -2157,5 +2160,43 @@
     "allow": "Erlauben",
     "decline": "Ablehnen",
     "failed": "Diese Anmeldung geht nicht weiter"
+  },
+  "notify": {
+    "ways": "Wohin Benachrichtigungen gehen",
+    "waysText": "Ein Webhook deiner Wahl, etwa eine Benachrichtigungs-Inbox wie nexsift, und Mail, wenn der Betreiber einen Mailserver eingetragen hat.",
+    "webhook": "Webhook-Adresse",
+    "webhookSave": "Speichern",
+    "webhookSaved": "Der Webhook ist gespeichert.",
+    "webhookTo": "Webhook an {{host}}",
+    "webhookRemove": "Entfernen",
+    "webhookRemoved": "Der Webhook ist entfernt.",
+    "webhookHint": "nexlore schickt dorthin eine kleine JSON-Nachricht (Titel, Zeile, Link). Die Adresse wird verschlüsselt gespeichert und nicht mehr ganz gezeigt: Sie kann einen Schlüssel enthalten.",
+    "email": "Per Mail",
+    "emailTo": "An {{address}}.",
+    "emailNoAddress": "Dein Konto hat keine Mailadresse.",
+    "emailNoServer": "Der Betreiber hat keinen Mailserver eingetragen.",
+    "test": "Probe senden",
+    "arrived": "verschickt",
+    "way": {
+      "webhook": "Webhook",
+      "email": "Mail"
+    },
+    "occasions": "Worüber du hörst",
+    "occasionsText": "Jedes einzeln. Eine Benachrichtigung nennt die Notiz und wer etwas tat, nie den Inhalt einer Notiz oder eines Kommentars.",
+    "occasion": {
+      "mention": "Erwähnungen und Antworten",
+      "invite": "Einladungen",
+      "approval": "Freigaben für KI-Programme",
+      "tasks": "Aufgaben des Tages",
+      "operator": "Ärger mit dem Server"
+    },
+    "occasionHint": {
+      "mention": "Jemand nennt dich mit @ in einem Kommentar oder antwortet in einem Faden, an dem du teilnimmst.",
+      "invite": "Eine Einladung in einen Bereich wartet auf deine Antwort.",
+      "approval": "Ein KI-Programm wartet auf dein Ja.",
+      "tasks": "Einmal am Tag zur Uhrzeit unten: was heute fällig oder überfällig ist.",
+      "operator": "Für Betreiber: eine Sicherung ist gescheitert, eine neuere Fassung ist da, die Platte läuft voll."
+    },
+    "tasksTime": "Uhrzeit für die Aufgaben des Tages"
   }
 }

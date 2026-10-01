@@ -12,6 +12,7 @@ import { Field, Problem } from '../components/AuthFrame'
 import { AiAccess } from '../components/AiAccess'
 import { Avatar } from '../components/Avatar'
 import { McpKeys } from '../components/McpKeys'
+import { NotifySettings } from '../components/NotifySettings'
 import { CalendarFeed } from '../components/settings/CalendarFeed'
 import { SecondFactor } from '../components/SecondFactor'
 import { MyPluginsCard } from '../plugins/PluginSettings'
@@ -22,8 +23,8 @@ import { rememberName } from '../lib/people'
 import { useAuth } from '../state/auth'
 import { MIN_PASSWORD } from './SetupPage'
 
-type Part = 'profile' | 'security' | 'ai' | 'plugins'
-const PARTS: Part[] = ['profile', 'security', 'ai', 'plugins']
+type Part = 'profile' | 'security' | 'notify' | 'ai' | 'plugins'
+const PARTS: Part[] = ['profile', 'security', 'notify', 'ai', 'plugins']
 const ANCHORS: Record<string, Part> = { '#ai': 'ai', '#mcp': 'ai', '#calendar': 'ai', '#plugins': 'plugins' }
 
 function code(error: unknown): string {
@@ -59,6 +60,7 @@ export function AccountPage() {
   const tabs: Tab<Part>[] = [
     { value: 'profile', label: t('account.tabs.profile'), symbol: 'users' },
     { value: 'security', label: t('account.tabs.security'), symbol: 'shield' },
+    { value: 'notify', label: t('account.tabs.notify'), symbol: 'info' },
     { value: 'ai', label: t('account.tabs.ai'), symbol: 'plug' },
     { value: 'plugins', label: t('account.tabs.plugins'), symbol: 'plug' },
   ]
@@ -286,6 +288,7 @@ export function AccountPage() {
             <CalendarFeed />
           </>
         )}
+        {part === 'notify' && <NotifySettings />}
         {part === 'plugins' && <MyPluginsCard />}
       </div>
     </main>

@@ -38,5 +38,24 @@
       "The settings moved into the account menu, as in Nexview; the header keeps the places you work in.",
       "This window comes once per version with news, for every account."
     ]
+  },
+  "0.3.0": {
+    "lead": "nexlore now tells you when something needs you: by webhook, and by mail when the operator set up a mail server. You choose for each occasion whether you hear about it.",
+    "sections": [
+      {
+        "title": "Notifications",
+        "where": "Account menu, My account, Notifications",
+        "body": "Give a webhook address, a notification inbox for example, and switch mail on if your operator set up a mail server. Then choose what you hear about: somebody names you with @ or answers in your thread, an invitation or an approval for an AI program waits, and once a day at a time of your choosing, what is due today or overdue. Send a test shows at once whether it arrives. A notification names the note and who did something, never what a note or a comment says."
+      },
+      {
+        "title": "Server troubles reach the operator",
+        "where": "Account menu, My account, Notifications, Server troubles",
+        "body": "Operators hear when a scheduled backup failed, when a newer version of nexlore is out and when the disk where nexlore keeps its data runs full. Each of these comes once, not every minute."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "Moving a note to the trash right after opening the dialog takes the files only this note uses along again; before, they could stay behind."
+    ]
   }
 }

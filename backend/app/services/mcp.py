@@ -288,6 +288,10 @@ def add_request(db: Session, caller: Caller, tool: str, arguments: dict[str, obj
     db.commit()
     db.refresh(row)
     logger.info("MCP request made request_id=%s tool=%s key_id=%s", row.id, tool, caller.key_id)
+    from . import notify
+
+    notify.send(caller.account.id, "approval", f"{caller.key_name} waits for your approval", f"Tool: {tool}",
+                "/requests", 4)
     return row
 
 

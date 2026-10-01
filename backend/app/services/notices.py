@@ -59,6 +59,9 @@ def invite(db: Session, space: Space, target: Account, role: str, by: Account) -
     open_.actor = by.name
     open_.actor_id = by.id
     open_.created_at = datetime.now(UTC)
+    from . import notify
+
+    notify.send(target.id, "invite", f"{by.name} invites you into {space.folder}", "Answer under New in nexlore.", "/")
 
 
 def tell(db: Session, space: Space, kind: str, actor: Account, subject: str, role: str = "",

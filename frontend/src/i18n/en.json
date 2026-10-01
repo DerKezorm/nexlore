@@ -740,7 +740,9 @@
       "oauth_pkce": "This program does not sign in safely (PKCE with S256 is missing).",
       "oauth_response_type": "This program asks for something nexlore does not give.",
       "request_closed": "This request was decided already or ran out.",
-      "request_changed": "This request does not match what was asked; nothing ran."
+      "request_changed": "This request does not match what was asked; nothing ran.",
+      "notify_no_way": "Give a webhook address or switch mail on first.",
+      "webhook_invalid": "Give an address like https://example.com/hook."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
@@ -957,7 +959,8 @@
       "profile": "Profile",
       "security": "Security",
       "ai": "Connections",
-      "plugins": "Plugins"
+      "plugins": "Plugins",
+      "notify": "Notifications"
     },
     "profile": {
       "displayName": "Display name",
@@ -2157,5 +2160,43 @@
     "allow": "Allow",
     "decline": "Decline",
     "failed": "This sign-in cannot go on"
+  },
+  "notify": {
+    "ways": "Where notifications go",
+    "waysText": "A webhook of your choosing, for example a notification inbox like nexsift, and mail when the operator set up a mail server.",
+    "webhook": "Webhook address",
+    "webhookSave": "Save",
+    "webhookSaved": "The webhook is saved.",
+    "webhookTo": "Webhook to {{host}}",
+    "webhookRemove": "Remove",
+    "webhookRemoved": "The webhook is removed.",
+    "webhookHint": "nexlore sends a small JSON message (title, line, link) there. The address is kept encrypted and not shown again in full: it may hold a token.",
+    "email": "By mail",
+    "emailTo": "To {{address}}.",
+    "emailNoAddress": "Your account has no mail address.",
+    "emailNoServer": "The operator has not set up a mail server.",
+    "test": "Send a test",
+    "arrived": "sent",
+    "way": {
+      "webhook": "Webhook",
+      "email": "Mail"
+    },
+    "occasions": "What you hear about",
+    "occasionsText": "Each one on its own. A notification names the note and who did something, never what a note or comment says.",
+    "occasion": {
+      "mention": "Names and answers",
+      "invite": "Invitations",
+      "approval": "Approvals for AI programs",
+      "tasks": "Tasks of the day",
+      "operator": "Server troubles"
+    },
+    "occasionHint": {
+      "mention": "Somebody names you with @ in a comment, or answers in a thread you take part in.",
+      "invite": "An invitation into a space waits for your answer.",
+      "approval": "An AI program waits for your yes.",
+      "tasks": "Once a day at the time below: what is due today or overdue.",
+      "operator": "For operators: a backup failed, a newer version is out, the disk runs full."
+    },
+    "tasksTime": "Time for the tasks of the day"
   }
 }

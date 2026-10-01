@@ -387,6 +387,11 @@ class Account(Base):
     #: The version whose "What's new" the account has read or put away (block X3). A new account starts with the
     #: version it was made in: there is nothing new to it.
     whats_new_seen: Mapped[str] = mapped_column(String(32), default="")
+    #: Notifications (block Z2): the occasions chosen (``services/notify.py``), the webhook address encrypted, and
+    #: the day the tasks of the morning went out.
+    notify: Mapped[Any] = mapped_column(JSON, nullable=True)
+    notify_webhook_enc: Mapped[str] = mapped_column(Text, default="")
+    notify_tasks_day: Mapped[str] = mapped_column(String(10), default="")
     role: Mapped[str] = mapped_column(String(16), default=MEMBER)
     sign_in: Mapped[str] = mapped_column(String(16), default=SIGN_IN_PASSWORD)
     #: Argon2id. Empty for accounts that sign in through OIDC only.

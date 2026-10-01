@@ -610,3 +610,7 @@ async def run_forever(stop: asyncio.Event) -> None:
             await asyncio.to_thread(run_job)
         except Exception:
             logger.exception("Backup job failed")
+            from . import notify
+
+            notify.operators("A backup of nexlore failed", "The scheduled backup did not finish; the log says why.",
+                             "/settings?tab=server&sub=backups", 5)

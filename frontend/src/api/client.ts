@@ -1033,6 +1033,29 @@ export const mcpApi = {
   decline: (id: number) => api<McpRequest>(`/api/mcp/requests/${id}/decline`, { method: 'POST' }),
 }
 
+export type NotifyChoices = {
+  email: boolean
+  mention: boolean
+  invite: boolean
+  approval: boolean
+  tasks: boolean
+  tasks_time: string
+  operator: boolean
+}
+export type NotifyView = {
+  choices: NotifyChoices
+  webhook: { set: boolean; host: string }
+  email: { possible: boolean; server: boolean; address: string }
+  operator: boolean
+}
+
+/** The own notifications (block Z2). */
+export const notifyApi = {
+  get: () => api<NotifyView>('/api/me/notify'),
+  save: (change: { choices?: Partial<NotifyChoices>; webhook?: string }) => api<NotifyView>('/api/me/notify', { method: 'PUT', body: change }),
+  test: () => api<Record<string, string>>('/api/me/notify/test', { method: 'POST' }),
+}
+
 /** A connector signing in for MCP (OAuth, block Y): what it asks for, and the answer. */
 export const oauthApi = {
   info: (query: Record<string, string>) => api<ConsentInfo>('/api/oauth/authorize', { query }),

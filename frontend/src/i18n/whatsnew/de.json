@@ -38,5 +38,24 @@
       "Die Einstellungen sind ins Kontomenü gewandert, wie bei Nexview; die Kopfleiste behält die Orte, an denen du arbeitest.",
       "Dieses Fenster kommt einmal je Fassung mit Neuigkeiten, für jedes Konto."
     ]
+  },
+  "0.3.0": {
+    "lead": "nexlore sagt dir jetzt Bescheid, wenn etwas dich braucht: per Webhook und per Mail, wenn der Betreiber einen Mailserver eingetragen hat. Für jeden Anlass bestimmst du selbst, ob du davon hörst.",
+    "sections": [
+      {
+        "title": "Benachrichtigungen",
+        "where": "Kontomenü, Mein Konto, Benachrichtigungen",
+        "body": "Gib eine Webhook-Adresse an, etwa eine Benachrichtigungs-Inbox, und schalte Mail ein, wenn dein Betreiber einen Mailserver eingetragen hat. Dann wählst du, worüber du hörst: Jemand nennt dich mit @ oder antwortet in deinem Faden, eine Einladung oder eine Freigabe für ein KI-Programm wartet, und einmal am Tag zu einer Uhrzeit deiner Wahl, was heute fällig oder überfällig ist. Probe senden zeigt sofort, ob es ankommt. Eine Benachrichtigung nennt die Notiz und wer etwas getan hat, nie den Inhalt einer Notiz oder eines Kommentars."
+      },
+      {
+        "title": "Ärger mit dem Server erreicht den Betreiber",
+        "where": "Kontomenü, Mein Konto, Benachrichtigungen, Ärger mit dem Server",
+        "body": "Betreiber hören, wenn eine geplante Sicherung gescheitert ist, wenn eine neuere Fassung von nexlore erschienen ist und wenn die Platte, auf der nexlore seine Daten hält, voll läuft. Jedes davon kommt einmal, nicht jede Minute."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Wer eine Notiz gleich nach dem Öffnen des Dialogs in den Papierkorb legt, nimmt die Dateien, die nur sie nutzt, wieder mit; vorher konnten sie liegen bleiben."
+    ]
   }
 }

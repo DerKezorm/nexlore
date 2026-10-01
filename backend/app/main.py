@@ -37,6 +37,7 @@ from .routers import logs as logs_router
 from .routers import looks as looks_router
 from .routers import mcp as mcp_router
 from .routers import news as news_router
+from .routers import notify as notify_router
 from .routers import oauth as oauth_router
 from .routers import plugins as plugins_router
 from .routers import presence as presence_router
@@ -47,7 +48,7 @@ from .routers import settings as settings_router
 from .routers import themes as themes_router
 from .routers import totp as totp_router
 from .routers import vault as vault_router
-from .services import backups, graphstore, locales, logs, settings_service, totp, watcher
+from .services import backups, graphstore, locales, logs, notify, settings_service, totp, watcher
 
 logger = logging.getLogger("nexlore")
 
@@ -56,7 +57,7 @@ ROUTERS = [
     attachments, imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router, looks_router,
     ai_router, favorites_router, avatars_router, recent_router, themes_router, search_router, news_router,
     proposals_router, bases_router, cleanup_router, inbox_router, feed_router, comments_router,
-    presence_router, linktitle_router, oauth_router,
+    presence_router, linktitle_router, oauth_router, notify_router,
 ]
 
 
@@ -105,6 +106,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         tasks.append(asyncio.create_task(watcher.scan_forever(stop)))
         tasks.append(asyncio.create_task(watcher.watch(stop)))
         tasks.append(asyncio.create_task(backups.run_forever(stop)))
+        tasks.append(asyncio.create_task(notify.run_forever(stop)))
         tasks.append(asyncio.create_task(_sweep_forever(stop)))
         graphstore.worker.start()
     logger.info("nexlore %s started vault=%s", __version__, settings.vault_dir)

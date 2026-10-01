@@ -15,11 +15,13 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
+from urllib.parse import quote
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ..models import OPERATOR, Account, Comment, File, Membership, utcnow
+from . import rights
 
 MAX_BODY = 5000
 MAX_QUOTE = 500
@@ -101,6 +103,7 @@ def start(db: Session, file: File, who: Who, *, quote: str, before: str, after: 
     )
     db.add(comment)
     db.commit()
+    _tell(db, file, comment, set())
     return comment
 
 
@@ -122,7 +125,31 @@ def reply(db: Session, file_id: int, thread_id: int, who: Who, body: str) -> Com
     )
     db.add(comment)
     db.commit()
+    taking_part = {root.account_id, *db.scalars(select(Comment.account_id).where(Comment.thread_id == root.id))}
+    file = db.get(File, root.file_id)
+    if file is not None:
+        _tell(db, file, comment, {account_id for account_id in taking_part if account_id is not None})
     return comment
+
+
+def _tell(db: Session, file: File, comment: Comment, taking_part: set[int]) -> None:
+    """Notifications (block Z2): who is named with @ and may read the note, and who takes part in the thread; never
+    the author. Only the note's title and who wrote, never the comment's words."""
+    from . import notify
+
+    named = mentioned(comment.body)
+    wanted: set[int] = set(taking_part)
+    if named:
+        for row in db.scalars(select(Account).where(func.lower(Account.name).in_(named))):
+            wanted.add(row.id)
+    wanted.discard(comment.account_id or -1)
+    for account_id in sorted(wanted):
+        reader = db.get(Account, account_id)
+        if reader is None or not rights.at_least(rights.role_in(db, reader, file.space_id), rights.READ):
+            continue
+        how = "names you in a comment on" if reader.name.casefold() in named else "answered in a thread on"
+        notify.send(account_id, "mention", f"{comment.author} {how} {file.title or file.path}", "",
+                    "/note/" + "/".join(quote(part) for part in file.path.split("/")))
 
 
 def _one(db: Session, file_id: int, comment_id: int) -> Comment:

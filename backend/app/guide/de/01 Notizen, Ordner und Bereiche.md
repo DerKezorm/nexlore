@@ -6,7 +6,7 @@ Zurück zu [[00 Willkommen|Willkommen]].
 
 Ein **Bereich** ist ein Ordner ganz oben, zum Beispiel „Privat“, „Arbeit“ oder dieser hier, „nexlore“. Jeder Bereich hat eigene Mitglieder: Wer ihn anlegt, verwaltet ihn und lädt andere ein, zum Lesen, Schreiben oder Verwalten.
 
-Einen neuen Bereich legst du mit dem **+** neben „BEREICHE“ in der Seitenleiste an.
+Einen neuen Bereich legst du mit dem **+** neben „BEREICHE“ in der Seitenleiste an. Umbenennen darf ihn, wer ihn verwaltet: Rechtsklick auf den Bereich, dann **Umbenennen**. Links, die den Bereich vorn nennen, etwa `[[Arbeit/Plan]]`, ziehen dabei in allen Bereichen nach.
 
 ## Ordner und Notizen
 

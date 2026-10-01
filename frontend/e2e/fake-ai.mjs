@@ -6,6 +6,7 @@ const PORT = Number(process.env.FAKE_AI_PORT ?? 8478)
 let last = null
 // The newest release the update check is told about; about.spec.ts sets it with POST /releases/latest.
 let release = 'v9.0.0'
+let hooked = null
 
 function answer(body) {
   const system = body.messages?.[0]?.content ?? ''
@@ -30,6 +31,12 @@ http
       }
       if (request.url === '/health') return send(200, { ok: true })
       if (request.url === '/last') return send(200, last)
+      // A webhook for notifications (notify.spec.ts): what came last, and what the test asks for.
+      if (request.url === '/hook' && request.method === 'POST') {
+        hooked = JSON.parse(raw)
+        return send(200, { ok: true })
+      }
+      if (request.url === '/hook/last') return send(200, hooked)
       // The update check (about.spec.ts) asks here instead of GitHub.
       if (request.url === '/releases/latest' && request.method === 'POST') {
         release = JSON.parse(raw).tag_name
