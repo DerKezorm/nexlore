@@ -31,12 +31,12 @@ export const TOKEN_GROUPS: [string, Token[]][] = [
 export const NEXLORE_COLOURS: Required<Record<'dark' | 'light', Required<Palette>>> = {
   dark: {
     bg: '#0b0b0f', 'bg-elev': '#101016', surface: '#16161d', 'surface-hover': '#1d1d26', border: '#26262f', 'border-strong': '#3a3a46',
-    text: '#f2f2f5', 'text-muted': '#9a9aa8', 'text-faint': '#6f6f80', accent: '#2dd4bf', 'on-accent': '#04201d',
+    text: '#f2f2f5', 'text-muted': '#9a9aa8', 'text-faint': '#858594', accent: '#2dd4bf', 'on-accent': '#04201d',
     ok: '#4ade80', warn: '#fbbf24', bad: '#fb7185', ai: '#c4b5fd',
   },
   light: {
     bg: '#f5f5f8', 'bg-elev': '#ffffff', surface: '#ffffff', 'surface-hover': '#ececf2', border: '#dcdce4', 'border-strong': '#b4b4c2',
-    text: '#14141a', 'text-muted': '#61616f', 'text-faint': '#8a8a97', accent: '#0d9488', 'on-accent': '#ffffff',
+    text: '#14141a', 'text-muted': '#61616f', 'text-faint': '#696976', accent: '#0f766e', 'on-accent': '#ffffff',
     ok: '#16a34a', warn: '#b45309', bad: '#e11d48', ai: '#6d28d9',
   },
 }
@@ -50,7 +50,8 @@ const DIRECT: Record<Token, string[]> = {
   'border-strong': ['--color-ink-600'],
   text: ['--color-mist-100'],
   'text-muted': ['--color-mist-500'],
-  'text-faint': ['--color-mist-600'],
+  // The edge of fields follows the faint text of a theme: 3:1 at least where that reaches 4.5:1 (P8.12).
+  'text-faint': ['--color-mist-600', '--color-edge'],
   accent: ['--color-accent-500'],
   'on-accent': ['--color-on-accent'],
   ok: ['--color-ok-500'],

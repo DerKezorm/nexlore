@@ -13,8 +13,8 @@ from sqlalchemy import and_, column, exists, func, select, table, text
 
 from ..db import SessionLocal
 from ..deps import Account, readable_spaces
-from ..models import FTS_TABLE, File, Space, Tag, Task
-from ..services import index, paths, snippets, tagrename
+from ..models import FTS_TABLE, TRI_TABLE, File, Space, Tag, Task
+from ..services import index, midword, paths, snippets, tagrename
 from ..services.searchquery import Query as SearchQuery
 from ..services.searchquery import fold, parse
 from ..services.tasks import OPEN
@@ -49,6 +49,28 @@ def _like(value: str) -> str:
     return "%" + value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 
 
+def _property(key: str, name: str, value: str | None, *, negated: bool = False) -> Any:
+    """One property of the front matter by its name, and part of its value (in a list: any item). Only the key goes
+    into the text of the statement; names and values are bound."""
+    condition = (
+        f"EXISTS (SELECT 1 FROM json_each(files.front) AS p WHERE nx_fold(p.key) = :{key}k"  # noqa: S608
+        + (
+            f" AND (nx_fold(p.value) LIKE :{key}v ESCAPE '\\' OR EXISTS (SELECT 1 FROM json_each("  # noqa: S608
+            f"CASE WHEN p.type = 'array' THEN p.value ELSE '[]' END) AS q"
+            f" WHERE nx_fold(q.value) LIKE :{key}v ESCAPE '\\'))"
+            if value
+            else ""
+        )
+        + ")"
+    )
+    if negated:
+        condition = "NOT " + condition
+    values = {f"{key}k": paths.fold(name)}
+    if value:
+        values[f"{key}v"] = _like(paths.fold(value))
+    return text(condition).bindparams(**values)
+
+
 def _filters(query: SearchQuery, account: Any) -> list[Any]:
     where: list[Any] = [File.is_note.is_(True), File.deleted_at.is_(None), File.space_id.in_(readable_spaces(account))]
     if query.spaces:
@@ -61,23 +83,19 @@ def _filters(query: SearchQuery, account: Any) -> list[Any]:
     for tag in query.tags:
         where.append(exists().where(Tag.file_id == File.id, tagrename.with_tag(paths.fold(tag))))
     for number, (name, value) in enumerate(query.properties):
-        # One property of the front matter by its name, and part of its value (in a list: any item).
-        # Only numbers go into the text of the statement; names and values are bound.
-        condition = (
-            f"EXISTS (SELECT 1 FROM json_each(files.front) AS p WHERE nx_fold(p.key) = :pk{number}"  # noqa: S608
-            + (
-                f" AND (nx_fold(p.value) LIKE :pv{number} ESCAPE '\\' OR EXISTS (SELECT 1 FROM json_each("  # noqa: S608
-                f"CASE WHEN p.type = 'array' THEN p.value ELSE '[]' END) AS q"
-                f" WHERE nx_fold(q.value) LIKE :pv{number} ESCAPE '\\'))"
-                if value
-                else ""
-            )
-            + ")"
-        )
-        values = {f"pk{number}": paths.fold(name)}
-        if value:
-            values[f"pv{number}"] = _like(paths.fold(value))
-        where.append(text(condition).bindparams(**values))
+        where.append(_property(f"p{number}", name, value))
+    # What a minus leaves out (P4.2): it was dropped without a word, and the results did not fit the search line.
+    if query.not_spaces:
+        unwanted = [paths.fold(name) for name in query.not_spaces]
+        where.append(File.space_id.not_in(select(Space.id).where(func.nx_fold(Space.folder).in_(unwanted))))
+    for part in query.not_paths:
+        where.append(~func.nx_fold(File.path).like(_like(paths.fold(part)), escape="\\"))
+    for part in query.not_files:
+        where.append(~File.name_key.like(_like(paths.fold(part)), escape="\\"))
+    for tag in query.not_tags:
+        where.append(~exists().where(Tag.file_id == File.id, tagrename.with_tag(paths.fold(tag))))
+    for number, (name, value) in enumerate(query.not_properties):
+        where.append(_property(f"n{number}", name, value, negated=True))
     if query.tasks:
         where.append(exists().where(Task.file_id == File.id, Task.status == OPEN))
     if query.changed:
@@ -132,6 +150,40 @@ def _lines(path: str, query: SearchQuery) -> list[Line]:
     return found
 
 
+#: The trigram index, for joining.
+TRI = table(TRI_TABLE, column("rowid"))
+
+
+def _in_the_middle(db: Any, query: SearchQuery, filters: list[Any], fts: str, *, skip: int, count: int) -> list[Any]:
+    """Notes the words are in only in the middle of a word ("otter" in "Zwergotter"), behind those the word index
+    found: newest first, without the ones it found already. The trigrams find candidates, their text decides."""
+    groups = query.middle()
+    tri = midword.match(groups)
+    if count <= 0 or not tri:
+        return []
+    check, values = midword.verify(groups, paths.fold)
+    found = select(FTS.c.rowid).where(text(f"{FTS_TABLE} MATCH :fts_again").bindparams(fts_again=fts))
+    candidates = select(TRI.c.rowid).where(text(f"{TRI_TABLE} MATCH :tri").bindparams(tri=tri))
+    confirmed = text(
+        f"SELECT x.rowid FROM {FTS_TABLE} AS x WHERE x.rowid IN (SELECT rowid FROM {TRI_TABLE} WHERE {TRI_TABLE} "  # noqa: S608
+        f"MATCH :tri_check) AND {check}"
+    ).bindparams(tri_check=tri, **values)
+    statement = (
+        select(File.id, File.path, File.title)
+        .where(and_(*filters))
+        .where(File.id.in_(candidates))
+        .where(File.id.in_(confirmed.columns(column("rowid"))))
+        .where(~File.id.in_(found))
+        .order_by(File.mtime_ns.desc())
+    )
+    without = query.fts_without()
+    if without:
+        statement = statement.where(
+            ~File.id.in_(select(FTS.c.rowid).where(text(f"{FTS_TABLE} MATCH :no_tri").bindparams(no_tri=without)))
+        )
+    return list(db.execute(statement.offset(skip).limit(count)).all())
+
+
 @router.get("/search/notes", response_model=Page, summary="Notes that fit a search with operators, with their lines")
 def search_notes(
     account: Account,
@@ -143,7 +195,8 @@ def search_notes(
     query = parse(q)
     if query.empty:
         return Page(notes=[], more=False, ms=0)
-    statement = select(File.id, File.path, File.title).where(and_(*_filters(query, account)))
+    filters = _filters(query, account)
+    statement = select(File.id, File.path, File.title).where(and_(*filters))
     fts = query.fts()
     if fts:
         statement = (
@@ -151,6 +204,16 @@ def search_notes(
             .where(text(f"{FTS_TABLE} MATCH :fts").bindparams(fts=fts))
             .order_by(text(f"bm25({FTS_TABLE}, 10.0, 1.0)"))
         )
+        with SessionLocal() as db:
+            rows = list(db.execute(statement.offset(offset).limit(limit + 1)).all()) if offset == 0 else []
+            whole = len(rows) if offset == 0 and len(rows) <= limit else None
+            if whole is None:
+                whole = db.scalar(select(func.count()).select_from(statement.order_by(None).subquery())) or 0
+                if offset > 0 and offset < whole:
+                    rows = list(db.execute(statement.offset(offset).limit(limit + 1)).all())
+            rows += _in_the_middle(db, query, filters, fts, skip=max(0, offset - whole), count=limit + 1 - len(rows))
+        notes = [Found(path=row.path, title=row.title, lines=_lines(row.path, query)) for row in rows[:limit]]
+        return Page(notes=notes, more=len(rows) > limit, ms=round((time.monotonic() - started) * 1000))
     else:
         without = query.fts_without()
         if without:

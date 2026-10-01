@@ -14,7 +14,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Path, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
@@ -31,7 +31,10 @@ router = APIRouter(prefix="/api", tags=["proposals"])
 
 MAX_BYTES = 1024 * 1024
 MAX_OPEN = 50
-OPEN, TAKEN, DECLINED = "open", "taken", "declined"
+#: ``copied``: taken over, but into a conflict copy beside the note (it changed, or somebody was editing it).
+OPEN, TAKEN, DECLINED, COPIED = "open", "taken", "declined", "copied"
+#: For the moment between claiming a proposal and writing it: a second click finds it decided.
+TAKING = "taking"
 
 
 class ProposalIn(BaseModel):
@@ -149,17 +152,29 @@ def take(proposal_id: Annotated[int, Path(ge=1)], account: Account, who: ActorDe
     with SessionLocal() as db:
         row, file = _decidable(db, account, proposal_id)
         target, data, base_hash = file.path, row.content, row.base_hash
+        # Claimed at once, in one step: two clicks at the same moment wrote it twice (review P6.15).
+        claimed = db.execute(
+            update(Proposal).where(Proposal.id == proposal_id, Proposal.status == OPEN).values(status=TAKING)
+        ).rowcount
+        db.commit()
+        if not claimed:
+            raise error("decided", "This proposal was answered already.", 409)
     try:
         saved = vault.save(target, data, base_hash=base_hash, actor=who, source="proposal")
     except VaultError as exc:
+        with SessionLocal() as db:
+            db.execute(update(Proposal).where(Proposal.id == proposal_id).values(status=OPEN))
+            db.commit()
         raise error(exc.code, exc.text, exc.status) from exc
     with SessionLocal() as db:
         found = db.get(Proposal, proposal_id)
         if found is not None:
-            found.status, found.decided_at, found.decided_by = TAKEN, datetime.now(UTC), account.name
+            # Into a copy is not into the note: the proposer reads so (review P6.5).
+            found.status = COPIED if saved.conflict else TAKEN
+            found.decided_at, found.decided_by = datetime.now(UTC), account.name
             db.commit()
     logger.info("Proposal taken over proposal_id=%s conflict=%s", proposal_id, saved.conflict is not None)
-    return {"path": target, "conflict": saved.conflict}
+    return {"path": target, "conflict": saved.conflict, "reason": saved.reason}
 
 
 @router.post("/proposals/{proposal_id}/decline", status_code=204, summary="Turn a proposal down")

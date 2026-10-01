@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 
 import { presenceApi, type Present } from '../api/client'
 
-/** How often a page says it is still here; the server forgets it after 70 seconds of silence. */
-const BEAT_MS = 25_000
+/** How often a page says it is still here; the server forgets it after 25 seconds of silence. */
+const BEAT_MS = 8_000
 export function usePresence(path: string | null, editing: boolean): Present[] {
   const [people, setPeople] = useState<Present[]>([])
   useEffect(() => {

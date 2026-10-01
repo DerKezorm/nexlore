@@ -3,7 +3,7 @@
  * away. A thread's words lead to their place in the text; a thread whose words are gone says so. Anyone who may read
  * the note comments and answers; `@name` offers the people of the space. Nothing of it goes into the file.
  */
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError, commentsApi, type Thread } from '../api/client'
@@ -129,11 +129,11 @@ function MentionBox({ path, value, onChange, onSubmit, label, autoFocus }: {
   )
 }
 
-function Words({ body }: { body: string }) {
+function Words({ body, known }: { body: string; known: (name: string) => boolean }) {
   return (
     <p className="mt-0.5 text-sm break-words whitespace-pre-wrap text-mist-200">
       {withMentions(body).map((part, index) =>
-        part.mention ? (
+        part.mention && known(part.text.slice(1)) ? (
           <span key={index} className="rounded bg-accent-500/15 px-0.5 text-accent-300">
             {part.text}
           </span>
@@ -157,6 +157,26 @@ export function Comments({ path, threads, draft, onDraftDone, found, onReveal, o
   const [lit, setLit] = useState<{ id: number; ask: number } | null>(null)
   const list = useRef<HTMLDivElement>(null)
   const picks = useRef(0)
+  // Which @names are somebody here: only those are marked (an @ with no account looked like a mention, P6.18).
+  const [known, setKnown] = useState<Map<string, boolean>>(new Map())
+  const mentioned = useMemo(
+    () => [...new Set((threads ?? []).flatMap((thread) => thread.comments.flatMap((comment) => withMentions(comment.body).filter((part) => part.mention).map((part) => part.text.slice(1).toLowerCase()))))],
+    [threads],
+  )
+  useEffect(() => {
+    let live = true
+    for (const name of mentioned) {
+      if (known.has(name)) continue
+      commentsApi.people(path, name).then(
+        (found) => live && setKnown((map) => new Map(map).set(name, found.some((one) => one.toLowerCase() === name))),
+        () => undefined,
+      )
+    }
+    return () => {
+      live = false
+    }
+  }, [mentioned, path, known])
+  const isKnown = (name: string) => known.get(name.toLowerCase()) === true
 
   // A thread asked for from the text: in sight, and lit a moment.
   useEffect(() => {
@@ -243,7 +263,7 @@ export function Comments({ path, threads, draft, onDraftDone, found, onReveal, o
                 </div>
               </div>
             ) : (
-              <Words body={comment.body} />
+              <Words body={comment.body} known={isKnown} />
             )}
           </li>
         ))}

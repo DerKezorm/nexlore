@@ -12,6 +12,7 @@ import { useGraph } from '../graph/useGraph'
 import { formatDate } from '../lib/markdown'
 import { folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
+import { useAuth } from '../state/auth'
 
 const CLOUD_KEY = 'nexlore.graph.cloud'
 const DAILY_KEY = 'nexlore.graph.daily'
@@ -38,6 +39,7 @@ type Chosen = { id: number; path: string; title: string }
 
 export function GraphPage() {
   const { t } = useTranslation()
+  const { me } = useAuth()
   const { spaces, generation, status, scan, looks } = useStore()
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
@@ -274,6 +276,7 @@ export function GraphPage() {
     <>
       <Sidebar activeNote={chosen?.path ?? null} activeFolder={null} onNote={(path) => void focusPath(path)} onFolder={flyToFolder} />
       <main className="relative min-w-0 flex-1 overflow-hidden">
+        <h1 className="sr-only">{t('graph.heading')}</h1>
         <GraphView
           ref={graph}
           scene={scene}
@@ -410,7 +413,7 @@ export function GraphPage() {
         {status === 'ready' && data.building.length === 0 && Object.keys(overviews).length === spaces.length && total === 0 && (
           <div className="absolute inset-0 flex items-center justify-center p-6">
             <p className="max-w-md rounded-2xl border border-ink-700 bg-ink-900/90 px-5 py-4 text-center text-sm text-mist-400">
-              {scan.running ? t('scan.graphEmpty') : t('graph.empty')}
+              {scan.running ? t('scan.graphEmpty') : me?.role === 'operator' ? t('graph.empty') : t('graph.emptyMember')}
             </p>
           </div>
         )}

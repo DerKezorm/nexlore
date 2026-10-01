@@ -46,7 +46,7 @@ from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import FTS_TABLE, File, Link, Lock, Setting, Space, Tag, Task, Version, utcnow
-from . import mdparse, paths
+from . import mdparse, midword, paths
 from . import tasks as tasks_service
 from .prepare import (
     MAX_NOTE_BYTES,
@@ -187,6 +187,14 @@ class Status:
 
 
 status = Status()
+#: Grows with every file the index takes in or lets go, from wherever the change came: the pages ask for it with the
+#: progress and load the tree again when it moved (review P4.9: a file added outside showed only after a reload).
+revision = 0
+
+
+def _changed() -> None:
+    global revision
+    revision += 1
 
 
 # --- Names and link resolution -------------------------------------------------------------------------------------
@@ -491,6 +499,7 @@ def _clear_note_index(db: Session, file_id: int) -> None:
     db.execute(delete(Link).where(Link.source_id == file_id))
     db.execute(delete(Tag).where(Tag.file_id == file_id))
     db.execute(delete(Task).where(Task.file_id == file_id))
+    midword.forget(db, file_id)
     db.execute(text(f"DELETE FROM {FTS_TABLE} WHERE rowid = :id"), {"id": file_id})  # noqa: S608
 
 
@@ -544,6 +553,7 @@ class _Rows:
                 text(f"INSERT INTO {FTS_TABLE}(rowid, title, body) VALUES (:id, :title, :body)"),  # noqa: S608
                 self.search,
             )
+            midword.add(connection, self.search)
         if self.tasks:
             connection.execute(insert(Task), self.tasks)
 
@@ -569,6 +579,7 @@ def _insert_content(
 def bulk_add(db: Session, items: list[Prepared]) -> list[tuple[int, int, str, str]]:
     """New files, prepared elsewhere, in one go: plain inserts, links left unresolved for the caller.
     Returns (id, space_id, name_key, rel) for each."""
+    _changed()
     if not items:
         return []
     now = utcnow()
@@ -624,6 +635,7 @@ def record(
     ``resolve_links`` False leaves the note's links unresolved; the caller resolves a whole space at the end.
     ``known_new``: the caller knows there is no row yet, which saves the lookup. ``prepared``: the file was read
     and hashed already (a large attachment is never held in memory whole); ``data`` is then not looked at."""
+    _changed()
     if prepared is None and not paths.is_note(rel) and not data:
         # A file that is not a note, handed over without its bytes: read and hash it here, piece by piece.
         prepared = prepare(str(paths.vault_root()), rel)
@@ -666,6 +678,7 @@ def record(
 
 def forget(db: Session, file: File, *, how: str, by: str | None = None, group: str | None = None) -> None:
     """A file is gone: into the trash with it. Its links, tags and search text go, its versions stay."""
+    _changed()
     _clear_note_index(db, file.id)
     db.execute(delete(Lock).where(Lock.file_id == file.id))
     file.deleted_at = utcnow()
@@ -1152,6 +1165,7 @@ def _merge_move(db: Session, old: File, new_rel: str) -> bool:
             old.title = paths.stem(new_rel)
             old.indexed_at = utcnow()
             # A PDF's text stays searchable; its title in the search follows the new name.
+            midword.retitle(db, old.id, old.title)
             db.execute(
                 text(f"UPDATE {FTS_TABLE} SET title = :title WHERE rowid = :id"),  # noqa: S608
                 {"title": old.title, "id": old.id},

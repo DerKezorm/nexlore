@@ -21,6 +21,7 @@ export function AccountMenu() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [options, setOptions] = useState<LanguageOption[]>([])
+  const trigger = useRef<HTMLButtonElement>(null)
   const box = useRef<HTMLDivElement>(null)
   const [drafts, setDrafts] = useState<DraftInfo[]>([])
   const [draftShown, setDraftShown] = useState<number | null>(null)
@@ -49,7 +50,11 @@ export function AccountMenu() {
     const away = (event: MouseEvent) => {
       if (box.current && !box.current.contains(event.target as Node)) setOpen(false)
     }
-    const escape = (event: KeyboardEvent) => event.key === 'Escape' && setOpen(false)
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setOpen(false)
+      trigger.current?.focus()
+    }
     document.addEventListener('mousedown', away)
     document.addEventListener('keydown', escape)
     return () => {
@@ -63,6 +68,7 @@ export function AccountMenu() {
   return (
     <div ref={box} className="relative shrink-0">
       <button
+        ref={trigger}
         type="button"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
@@ -134,6 +140,8 @@ export function AccountMenu() {
                         ? proposal.by
                         : proposal.status === 'taken'
                           ? t('proposals.mineTaken', { name: proposal.decided_by })
+                          : proposal.status === 'copied'
+                            ? t('proposals.mineCopied', { name: proposal.decided_by })
                           : proposal.status === 'declined'
                             ? t('proposals.mineDeclined', { name: proposal.decided_by })
                             : t('proposals.mineOpen')}

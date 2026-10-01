@@ -144,7 +144,8 @@
     "renamedLocked_one": "{{count}} note is being edited and kept its tag.",
     "renamedLocked_other": "{{count}} notes are being edited and kept their tag.",
     "renamedReadOnly_one": "{{count}} note is in a space you may only read.",
-    "renamedReadOnly_other": "{{count}} notes are in spaces you may only read."
+    "renamedReadOnly_other": "{{count}} notes are in spaces you may only read.",
+    "onlyBelow": "No note carries it alone; the notes are under the tags below it."
   },
   "outline": {
     "title": "Outline",
@@ -283,7 +284,7 @@
     "empty": "Type what you are looking for, or pick a filter.",
     "nothing": "No note fits.",
     "more": "Show more",
-    "line": "L {{line}}",
+    "line": "Line {{line}}",
     "ops": {
       "tag": {
         "code": "tag:garden",
@@ -321,7 +322,8 @@
         "code": "changed:7d",
         "text": "changed within 7 days (h, d, w)"
       }
-    }
+    },
+    "heading": "Search"
   },
   "news": {
     "section": "New since your last visit · {{count}}",
@@ -362,7 +364,9 @@
     "menuWaiting_other": "{{count}} wait for your answer",
     "mineTaken": "Taken over by {{name}}",
     "mineDeclined": "Turned down by {{name}}",
-    "mineOpen": "Waiting"
+    "mineOpen": "Waiting",
+    "takenLocked": "The note is being edited right now: the proposal is in a conflict copy beside it.",
+    "mineCopied": "Put beside the note as a copy by {{name}}, not into the note"
   },
   "bases": {
     "new": "New view …",
@@ -459,7 +463,12 @@
     "topicsFrom": "from titles, tags, text and links",
     "topicsAgain": "Work out again",
     "tagsInfo": "Nested tags (#project/alpha) as a bubble inside a bubble. A note with several tags stands under its first.",
-    "building": "The map of {{spaces}} is being worked out …"
+    "building": "The map of {{spaces}} is being worked out …",
+    "heading": "Map",
+    "emptyMember": "No notes yet. Create a space under Settings or write the first note.",
+    "places": "Places on the map",
+    "placeGroup_one": "{{name}}, one note",
+    "placeGroup_other": "{{name}}, {{count}} notes"
   },
   "note": {
     "notFound": "This note does not exist.",
@@ -557,7 +566,10 @@
     "trash": "Move to the trash …",
     "renameTitle": "Rename “{{name}}”",
     "linksFromThere_one": "links here {{count}} time",
-    "linksFromThere_other": "links here {{count}} times"
+    "linksFromThere_other": "links here {{count}} times",
+    "lockedOwnTitle": "You are editing this note in another tab or window",
+    "lockedOwnBanner": "You are editing this note in another tab or window. You can read it here; editing works once you are done there or close that tab.",
+    "versionsWhileEditing": "While you edit, no version can be brought back."
   },
   "settings": {
     "title": "Settings",
@@ -567,7 +579,8 @@
       "choose": "Language of the interface",
       "added": "added by the operator",
       "template": "Download template",
-      "templateHint": "The English texts as a file to translate. Save it as data/locales/<code>.json, for example es.json or pt-BR.json."
+      "templateHint": "The English texts as a file to translate. Save it as data/locales/<code>.json, for example es.json or pt-BR.json.",
+      "textMember": "nexlore comes with English and German; the operator can add more languages."
     },
     "spaces": {
       "title": "Spaces and rights",
@@ -1023,7 +1036,7 @@
     "withPassword": "with password",
     "open": "Open",
     "withdraw": "Withdraw",
-    "leaves": "Only the text goes out: no properties, no %%comments%%. Links to notes that are not shared become plain text."
+    "leaves": "Only the text goes out: no properties and nothing between %% (Obsidian's hidden parts). The comments in the margin stay in nexlore anyway. Links to what is not shared become plain text."
   },
   "public": {
     "gone": "This page does not exist",
@@ -1503,7 +1516,11 @@
     "asTemplateDo": "Save as template",
     "asTemplateText": "A copy goes into the templates folder of the space and shows up under “New note”. The note itself stays as it is.",
     "asTemplateDone": "Saved as a template in “{{folder}}”.",
-    "asTemplateFailed": "The template could not be saved."
+    "asTemplateFailed": "The template could not be saved.",
+    "sharedMove_one": "A public page shows this. It follows to the new place.",
+    "sharedMove_other": "{{count}} public pages show this or something in it. They follow to the new place.",
+    "sharedTrash_one": "A public page shows this. In the trash it cannot be reached until you bring it back.",
+    "sharedTrash_other": "{{count}} public pages show this or something in it. In the trash they cannot be reached until you bring it back."
   },
   "menu": {
     "newNote": "New note",
@@ -1938,5 +1955,21 @@
   "day": {
     "before": "Day before",
     "after": "Day after"
+  },
+  "shell": {
+    "skip": "Skip to the content"
+  },
+  "recur": {
+    "day_one": "every day",
+    "day_other": "every {{count}} days",
+    "week_one": "every week",
+    "week_other": "every {{count}} weeks",
+    "month_one": "every month",
+    "month_other": "every {{count}} months",
+    "year_one": "every year",
+    "year_other": "every {{count}} years",
+    "weekday": "every weekday",
+    "on": "on {{days}}",
+    "whenDone": "when done"
   }
 }

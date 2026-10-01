@@ -240,7 +240,7 @@ def _like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-def _template_files(space_ids: set[int]) -> Any:
+def _template_files(space_ids: set[int]) -> list[int] | None:
     """The files in the spaces' template folders: their tasks are patterns, not tasks (review before 1.0.0, P5.8)."""
     with SessionLocal() as db:
         folders = [
@@ -249,7 +249,16 @@ def _template_files(space_ids: set[int]) -> Any:
         ]
     if not folders:
         return None
-    return select(File.id).where(or_(*(File.path.like(f"{_like(folder)}%", escape="\\") for folder in folders)))
+    # Looked up once, as a short list: as a subquery it was read again for every count, a third of the time with
+    # 300.000 tasks (measured 01.10.2026).
+    with SessionLocal() as db:
+        found = db.scalars(
+            select(File.id).where(
+                File.deleted_at.is_(None),
+                or_(*(File.path.like(f"{_like(folder)}%", escape="\\") for folder in folders)),
+            )
+        ).all()
+    return list(found) or None
 
 
 def task_query(

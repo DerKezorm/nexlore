@@ -20,6 +20,18 @@ const CHANGED = [
   { value: 'changed:30d', key: 'month' },
 ] as const
 
+/** A note at a line of the search: its first marked words, and the start of the line to find the place. */
+function hitUrl(path: string, text: string): string {
+  const start = text.indexOf('\u0002')
+  const end = start < 0 ? -1 : text.indexOf('\u0003', start)
+  const marked = end > start ? text.slice(start + 1, end) : ''
+  const plain = text.replaceAll('\u0002', '').replaceAll('\u0003', '')
+  const query = new URLSearchParams()
+  if (marked) query.set('hit', marked)
+  query.set('near', plain.slice(0, 60))
+  return `${noteUrl(path)}?${query.toString()}`
+}
+
 export function SearchPage() {
   const { t } = useTranslation()
   const { spaces, favorites, setFavorite } = useStore()
@@ -32,7 +44,15 @@ export function SearchPage() {
   const [help, setHelp] = useState(false)
   const input = useRef<HTMLInputElement>(null)
 
-  useEffect(() => setTyped(query), [query])
+  // From the address (a link, back, a filter) into the field, not over what is being typed: a trailing blank stays.
+  useEffect(() => setTyped((now) => (now.trim() === query ? now : query)), [query])
+  // Live, a moment after the last key (it waited for Enter, P4.17); Enter still searches at once.
+  useEffect(() => {
+    const words = typed.trim()
+    if (words === query || (words.length > 0 && words.length < 2)) return
+    const timer = window.setTimeout(() => setParams(words ? { q: words } : {}, { replace: true }), 350)
+    return () => window.clearTimeout(timer)
+  }, [typed, query, setParams])
   useEffect(() => input.current?.focus(), [])
   useEffect(() => {
     tagsApi.list().then((list) => setTags(list.slice(0, 12)), () => setTags([]))
@@ -73,6 +93,7 @@ export function SearchPage() {
 
   return (
     <main className="nn-scroll flex-1 overflow-y-auto" data-testid="search-page">
+      <h1 className="sr-only">{t('searchPage.heading')}</h1>
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 md:grid-cols-[13rem_1fr]">
         <aside className="order-2 space-y-5 text-sm md:order-1" aria-label={t('searchPage.filters')}>
           <fieldset>
@@ -190,9 +211,12 @@ export function SearchPage() {
                   {note.lines.length > 0 && (
                     <ul className="mt-1 space-y-0.5 pl-4">
                       {note.lines.map((line) => (
-                        <li key={line.line} className="flex gap-3 text-sm text-mist-400">
-                          <span className="w-10 shrink-0 text-right font-mono text-[11px] text-mist-600 tabular-nums">{t('searchPage.line', { line: line.line })}</span>
-                          <span className="min-w-0 break-words"><Marked text={line.text} /></span>
+                        <li key={line.line}>
+                          {/* The line opens the note there, its words marked (P4.8). */}
+                          <Link to={hitUrl(note.path, line.text)} className="flex gap-3 rounded-md text-sm text-mist-400 hover:bg-ink-850 hover:text-mist-200">
+                            <span className="w-14 shrink-0 text-right font-mono text-[11px] text-mist-600 tabular-nums">{t('searchPage.line', { line: line.line })}</span>
+                            <span className="min-w-0 break-words"><Marked text={line.text} /></span>
+                          </Link>
                         </li>
                       ))}
                     </ul>

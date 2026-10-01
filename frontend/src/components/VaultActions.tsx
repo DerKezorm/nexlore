@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { ApiError, basesApi, everydayApi, looksApi, tagsApi, vaultApi } from '../api/client'
+import { ApiError, basesApi, everydayApi, looksApi, shareApi, tagsApi, vaultApi } from '../api/client'
 import { errorText } from '../lib/errors'
 import { ensureFolder } from '../lib/folders'
 import { fileRoute } from '../lib/markdown'
@@ -39,20 +39,6 @@ export function VaultActions() {
   const here = useRef<string | null>(null)
   here.current = shownPath(location.pathname)
 
-  useEffect(() => {
-    const ask = (event: Event) => setAction((event as CustomEvent<VaultAction>).detail)
-    window.addEventListener(VAULT_ACTION_EVENT, ask)
-    return () => window.removeEventListener(VAULT_ACTION_EVENT, ask)
-  }, [])
-
-  useEffect(() => {
-    if (!notice) return
-    const timer = window.setTimeout(() => setNotice(null), 5000)
-    return () => window.clearTimeout(timer)
-  }, [notice])
-
-  const close = useCallback(() => setAction(null), [])
-
   /** Moves `path` to `destination`; the page follows if it stood on it or inside it. */
   const moveTo = async (path: string, destination: string) => {
     const affected = here.current !== null && within(here.current, path)
@@ -67,6 +53,35 @@ export function VaultActions() {
     }
     return moved
   }
+
+  // The listener stays for the life of the frame; it reaches the move of the latest render through this.
+  const latestMove = useRef(moveTo)
+  latestMove.current = moveTo
+  useEffect(() => {
+    const ask = (event: Event) => {
+      const asked = (event as CustomEvent<VaultAction>).detail
+      if (asked.kind !== 'move-to') return setAction(asked)
+      const name = asked.path.slice(asked.path.lastIndexOf('/') + 1)
+      void latestMove.current(asked.path, `${asked.target}/${name}`).then(
+        (moved) =>
+          setNotice(
+            t('actions.moved', { folder: asked.target.split('/').join(' / ') }) +
+              (moved.rewritten > 0 ? ' ' + t('note.linksFollowed', { count: moved.rewritten }) : ''),
+          ),
+        (error: unknown) => setNotice(errorText(error instanceof ApiError ? error.code : 'internal_error')),
+      )
+    }
+    window.addEventListener(VAULT_ACTION_EVENT, ask)
+    return () => window.removeEventListener(VAULT_ACTION_EVENT, ask)
+  }, [t])
+
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(null), 5000)
+    return () => window.clearTimeout(timer)
+  }, [notice])
+
+  const close = useCallback(() => setAction(null), [])
 
   const trash = async (path: string, along: string[]) => {
     const affected = here.current !== null && within(here.current, path)
@@ -340,14 +355,32 @@ function NameDialog({ title, hint, confirm, initial, look = false, onClose, onSu
 }
 
 /** The folders of the space; the item itself and what lies in it cannot be the target. */
+/** Public pages show this or something in it: said before moving or trashing (they went without a word, P6.19). */
+function useShared(path: string): number {
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    let live = true
+    shareApi.covers(path).then(
+      (found) => live && setCount(found.count),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [path])
+  return count
+}
+
 function MoveDialog({ path, folder, onClose, onMove }: { path: string; folder: boolean; onClose: () => void; onMove: (target: string) => Promise<void> }) {
   const { t } = useTranslation()
   const [target, setTarget] = useState<string | null>(null)
   const { busy, problem, submit } = useSubmit(() => onMove(target!))
+  const shared = useShared(path)
   return (
     <Frame title={t('actions.moveTitle', { name: baseName(path) })} onClose={onClose} onSubmit={() => target && void submit()} testId="move-dialog">
       <div className="min-h-0 space-y-2 overflow-y-auto p-4">
         <p className="text-xs text-mist-500">{t('actions.moveHint')}</p>
+        {shared > 0 && <p className="rounded-lg border border-warn-500/40 bg-warn-500/10 px-3 py-2 text-xs text-warn-500" data-testid="shared-warning">{t('actions.sharedMove', { count: shared })}</p>}
         <FolderTree
           roots={[path.split('/')[0]]}
           selected={target}
@@ -473,6 +506,7 @@ function TrashDialog({ path, folder, onClose, onTrash }: { path: string; folder:
   const [own, setOwn] = useState<string[]>([])
   const [withOwn, setWithOwn] = useState(true)
   const { busy, problem, submit } = useSubmit(() => onTrash(withOwn ? own : []))
+  const shared = useShared(path)
   useEffect(() => {
     if (folder) return
     let live = true
@@ -495,6 +529,7 @@ function TrashDialog({ path, folder, onClose, onTrash }: { path: string; folder:
       onConfirm={() => void submit()}
     >
       {folder ? t('actions.trashFolderText') : t('note.deleteText')}
+      {shared > 0 && <p className="mt-3 rounded-lg border border-warn-500/40 bg-warn-500/10 px-3 py-2 text-sm text-warn-500" data-testid="shared-warning">{t('actions.sharedTrash', { count: shared })}</p>}
       {!folder && own.length > 0 && (
         <label className="mt-3 flex items-start gap-2 rounded-xl border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-mist-200">
           <input type="checkbox" checked={withOwn} onChange={(event) => setWithOwn(event.target.checked)} className="mt-1 accent-accent-500" />

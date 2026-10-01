@@ -144,7 +144,8 @@
     "renamedLocked_one": "{{count}} Notiz wird gerade bearbeitet und behält ihren Tag.",
     "renamedLocked_other": "{{count}} Notizen werden gerade bearbeitet und behalten ihren Tag.",
     "renamedReadOnly_one": "{{count}} Notiz liegt in einem Bereich, den du nur lesen darfst.",
-    "renamedReadOnly_other": "{{count}} Notizen liegen in Bereichen, die du nur lesen darfst."
+    "renamedReadOnly_other": "{{count}} Notizen liegen in Bereichen, die du nur lesen darfst.",
+    "onlyBelow": "Keine Notiz trägt nur ihn; die Notizen stehen unter den Tags darunter."
   },
   "outline": {
     "title": "Gliederung",
@@ -283,7 +284,7 @@
     "empty": "Gib ein, was du suchst, oder wähle einen Filter.",
     "nothing": "Keine Notiz passt.",
     "more": "Mehr zeigen",
-    "line": "Z {{line}}",
+    "line": "Zeile {{line}}",
     "ops": {
       "tag": {
         "code": "tag:garten",
@@ -321,7 +322,8 @@
         "code": "changed:7d",
         "text": "geändert in den letzten 7 Tagen (h, d, w)"
       }
-    }
+    },
+    "heading": "Suche"
   },
   "news": {
     "section": "Neu seit deinem letzten Besuch · {{count}}",
@@ -362,7 +364,9 @@
     "menuWaiting_other": "{{count}} warten auf deine Antwort",
     "mineTaken": "Übernommen von {{name}}",
     "mineDeclined": "Abgelehnt von {{name}}",
-    "mineOpen": "Wartet"
+    "mineOpen": "Wartet",
+    "takenLocked": "Die Notiz wird gerade bearbeitet: Der Vorschlag liegt als Konfliktkopie daneben.",
+    "mineCopied": "Von {{name}} als Kopie neben die Notiz gelegt, nicht in die Notiz"
   },
   "bases": {
     "new": "Neue Ansicht …",
@@ -459,7 +463,12 @@
     "topicsFrom": "aus Titeln, Tags, Text und Links",
     "topicsAgain": "Neu berechnen",
     "tagsInfo": "Verschachtelte Tags (#projekt/alpha) als Blase in der Blase. Eine Notiz mit mehreren Tags steht unter ihrem ersten.",
-    "building": "Die Karte von {{spaces}} wird berechnet …"
+    "building": "Die Karte von {{spaces}} wird berechnet …",
+    "heading": "Karte",
+    "emptyMember": "Noch keine Notizen. Lege unter Einstellungen einen Bereich an oder schreibe die erste Notiz.",
+    "places": "Orte auf der Karte",
+    "placeGroup_one": "{{name}}, eine Notiz",
+    "placeGroup_other": "{{name}}, {{count}} Notizen"
   },
   "note": {
     "notFound": "Diese Notiz gibt es nicht.",
@@ -557,7 +566,10 @@
     "trash": "In den Papierkorb …",
     "renameTitle": "„{{name}}“ umbenennen",
     "linksFromThere_one": "verlinkt {{count}}-mal hierher",
-    "linksFromThere_other": "verlinkt {{count}}-mal hierher"
+    "linksFromThere_other": "verlinkt {{count}}-mal hierher",
+    "lockedOwnTitle": "Du bearbeitest diese Notiz gerade in einem anderen Tab oder Fenster",
+    "lockedOwnBanner": "Du bearbeitest diese Notiz gerade in einem anderen Tab oder Fenster. Hier kannst du lesen; bearbeiten geht, sobald du dort fertig bist oder den Tab schließt.",
+    "versionsWhileEditing": "Während du bearbeitest, lässt sich keine Fassung zurückholen."
   },
   "settings": {
     "title": "Einstellungen",
@@ -567,7 +579,8 @@
       "choose": "Sprache der Oberfläche",
       "added": "vom Betreiber ergänzt",
       "template": "Vorlage herunterladen",
-      "templateHint": "Die englischen Texte als Datei zum Übersetzen. Als data/locales/<code>.json ablegen, zum Beispiel es.json oder pt-BR.json."
+      "templateHint": "Die englischen Texte als Datei zum Übersetzen. Als data/locales/<code>.json ablegen, zum Beispiel es.json oder pt-BR.json.",
+      "textMember": "Englisch und Deutsch bringt nexlore mit; weitere Sprachen kann der Betreiber ergänzen."
     },
     "spaces": {
       "title": "Bereiche und Rechte",
@@ -1023,7 +1036,7 @@
     "withPassword": "mit Passwort",
     "open": "Öffnen",
     "withdraw": "Zurückziehen",
-    "leaves": "Nur der Text geht hinaus: keine Eigenschaften, keine %%Kommentare%%. Links auf nicht Geteiltes werden normaler Text."
+    "leaves": "Nur der Text geht hinaus: keine Eigenschaften und nichts zwischen %% (die versteckten Stellen in Obsidian). Die Kommentare am Rand bleiben ohnehin in nexlore. Links auf nicht Geteiltes werden normaler Text."
   },
   "public": {
     "gone": "Diese Seite gibt es nicht",
@@ -1503,7 +1516,11 @@
     "asTemplateDo": "Als Vorlage speichern",
     "asTemplateText": "Eine Kopie kommt in den Vorlagen-Ordner des Bereichs und erscheint unter „Neue Notiz“. Die Notiz selbst bleibt, wie sie ist.",
     "asTemplateDone": "Als Vorlage gespeichert in „{{folder}}“.",
-    "asTemplateFailed": "Die Vorlage ließ sich nicht speichern."
+    "asTemplateFailed": "Die Vorlage ließ sich nicht speichern.",
+    "sharedMove_one": "Eine öffentliche Seite zeigt dies. Sie folgt dem neuen Ort.",
+    "sharedMove_other": "{{count}} öffentliche Seiten zeigen dies oder etwas darin. Sie folgen dem neuen Ort.",
+    "sharedTrash_one": "Eine öffentliche Seite zeigt dies. Im Papierkorb ist sie nicht mehr erreichbar, bis du es zurückholst.",
+    "sharedTrash_other": "{{count}} öffentliche Seiten zeigen dies oder etwas darin. Im Papierkorb sind sie nicht mehr erreichbar, bis du es zurückholst."
   },
   "menu": {
     "newNote": "Neue Notiz",
@@ -1938,5 +1955,21 @@
   "day": {
     "before": "Vortag",
     "after": "Folgetag"
+  },
+  "shell": {
+    "skip": "Zum Inhalt springen"
+  },
+  "recur": {
+    "day_one": "jeden Tag",
+    "day_other": "alle {{count}} Tage",
+    "week_one": "jede Woche",
+    "week_other": "alle {{count}} Wochen",
+    "month_one": "jeden Monat",
+    "month_other": "alle {{count}} Monate",
+    "year_one": "jedes Jahr",
+    "year_other": "alle {{count}} Jahre",
+    "weekday": "jeden Werktag",
+    "on": "am {{days}}",
+    "whenDone": "nach dem Erledigen"
   }
 }

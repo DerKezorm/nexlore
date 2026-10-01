@@ -81,7 +81,8 @@ export function TagTree({ activeNote, onNote }: { activeNote: string | null; onN
             {listed === 'loading' ? (
               <p className="py-1 text-xs text-mist-600" style={{ paddingLeft: `${1.9 + depth * 0.9}rem` }}>{t('tags.loading')}</p>
             ) : listed && listed.length === 0 ? (
-              <p className="py-1 text-xs text-mist-600" style={{ paddingLeft: `${1.9 + depth * 0.9}rem` }}>{t('tags.noNotes')}</p>
+              // A tag with tags below it and no note of its own is no orphan (it read so, P4.6): its notes are below.
+              <p className="py-1 text-xs text-mist-600" style={{ paddingLeft: `${1.9 + depth * 0.9}rem` }}>{node.children.length > 0 ? t('tags.onlyBelow') : t('tags.noNotes')}</p>
             ) : (
               <ul>
                 {(listed ?? []).map((note) => (

@@ -287,6 +287,9 @@ def _create(db: DbSession, request: Request, by: AccountRow, space: Space | None
             mailer.send_invite(db, email, link, by=by.name, space=space.folder if space else None)
             sent = True
         except mailer.MailError as exc:
+            # The link was to go by mail only: kept, the invitation would stand without anybody holding its link.
+            db.delete(invite)
+            db.commit()
             raise error(exc.code, str(exc), 502) from exc
     return {**_invite_view(invite, db), "link": link, "sent": sent}
 

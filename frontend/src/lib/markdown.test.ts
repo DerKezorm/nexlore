@@ -105,12 +105,13 @@ describe("Obsidian's own writing in the reading view", () => {
 
   it('shows #tags in the text as tags, the way the server reads them', () => {
     const html = renderMarkdown('#start of a line, a #tag, a #nested/tag/, an #äpfel and **#bold**\n\n#123 a#b C# `#code` [x](https://example.com/#top)', nowhere)
-    expect(html.match(/<span class="nn-tag">[^<]*<\/span>/g)).toEqual([
-      '<span class="nn-tag">#start</span>',
-      '<span class="nn-tag">#tag</span>',
-      '<span class="nn-tag">#nested/tag</span>',
-      '<span class="nn-tag">#äpfel</span>',
-      '<span class="nn-tag">#bold</span>',
+    // Each says its tag, for the page to lead to its notes (P4.7).
+    expect(html.match(/<span class="nn-tag" data-tag="[^"]*">[^<]*<\/span>/g)).toEqual([
+      '<span class="nn-tag" data-tag="start">#start</span>',
+      '<span class="nn-tag" data-tag="tag">#tag</span>',
+      '<span class="nn-tag" data-tag="nested/tag">#nested/tag</span>',
+      '<span class="nn-tag" data-tag="äpfel">#äpfel</span>',
+      '<span class="nn-tag" data-tag="bold">#bold</span>',
     ])
     expect(html).toContain('#123 a#b C#')
     expect(html).toContain('<code>#code</code>')

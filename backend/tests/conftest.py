@@ -33,7 +33,7 @@ from sqlalchemy import delete, text  # noqa: E402
 
 from app.db import SessionLocal, init_db  # noqa: E402
 from app.main import app  # noqa: E402
-from app.models import FTS_TABLE, MEMBER, OPERATOR, Account, Base, Setting  # noqa: E402
+from app.models import FTS_TABLE, MEMBER, OPERATOR, TRI_TABLE, Account, Base, Setting  # noqa: E402
 from app.security import SESSION_COOKIE, brake, hash_password, start_session  # noqa: E402
 from app.services import graphstore, mcp, totp  # noqa: E402
 
@@ -60,6 +60,7 @@ def clean_db(schema: None) -> Iterator[None]:
         for table in reversed(Base.metadata.sorted_tables):
             db.execute(delete(table))
         db.execute(text(f"DELETE FROM {FTS_TABLE}"))  # noqa: S608
+        db.execute(text(f"INSERT INTO {TRI_TABLE}({TRI_TABLE}) VALUES ('delete-all')"))  # noqa: S608
         db.execute(delete(Setting))
         db.commit()
     _empty_vault()

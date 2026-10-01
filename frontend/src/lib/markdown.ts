@@ -271,7 +271,7 @@ function obsidian(resolve: (target: string) => string | null, targets: Targets):
         const tag = found?.[1].replace(/\/+$/, '')
         if (tag && !/^[\d/]+$/.test(tag)) return { type: 'tag', raw: '#' + tag, tag }
       },
-      renderer: (token) => `<span class="nn-tag">#${escape(token.tag as string)}</span>`,
+      renderer: (token) => `<span class="nn-tag" data-tag="${escape(token.tag as string)}">#${escape(token.tag as string)}</span>`,
     },
     {
       name: 'highlight',

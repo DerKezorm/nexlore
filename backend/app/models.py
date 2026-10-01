@@ -527,6 +527,14 @@ FTS_CREATE = (
     f"CREATE VIRTUAL TABLE IF NOT EXISTS {FTS_TABLE} USING fts5("
     "title, body, tokenize = 'unicode61 remove_diacritics 2')"
 )
+#: The same text cut into trigrams, for words found in the middle of a word ("otter" in "Zwergotter"); it answers only
+#: behind the hits of the word index, and only for words of three letters and more (review before 1.0.0, P4.17).
+#: No positions and no copy of the text (it reads it from the word index): see ``services/midword.py``.
+TRI_TABLE = "notes_tri"
+TRI_CREATE = (
+    f"CREATE VIRTUAL TABLE IF NOT EXISTS {TRI_TABLE} USING fts5("
+    f"title, body, tokenize = 'trigram', content = '{FTS_TABLE}', detail = 'none')"
+)
 
 
 class McpKey(Base):

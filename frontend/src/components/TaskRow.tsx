@@ -8,9 +8,20 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 import { ApiError, everydayApi, type TaskItem, type Toggled } from '../api/client'
-import { atNoon, dayOf, PRIORITY_MARK, taskParts } from '../lib/everyday'
+import { atNoon, dayOf, PRIORITY_MARK, recurrenceWords, taskParts } from '../lib/everyday'
 import { noteUrl } from '../lib/vault'
 import { Symbol } from './Symbol'
+
+/** A task as a name for its box: its words without the dates and marks, short. */
+function taskName(task: TaskItem): string {
+  const words = taskParts(task.text)
+    .map((part) => part.text)
+    .join('')
+    .replace(/[\u{1F4C5}\u{1F4C6}\u{1F5D3}\u{23F3}\u{1F6EB}\u{2705}\u{2795}\u{274C}\u{1F501}\u{23EB}\u{1F53C}\u{1F53D}\u{1F53A}\u{23EC}]\u{FE0F}?\s*(\d{4}-\d{2}-\d{2})?/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return words.length > 80 ? words.slice(0, 79) + '…' : words || task.path
+}
 
 export function TaskRow({
   task,
@@ -60,12 +71,12 @@ export function TaskRow({
         onClick={() => void tick()}
         disabled={busy || readOnly}
         aria-pressed={done}
-        aria-label={readOnly ? t('tasks.readOnly') : done ? t('tasks.untick') : t('tasks.tick')}
+        aria-label={readOnly ? t('tasks.readOnly') : `${done ? t('tasks.untick') : t('tasks.tick')}: ${taskName(task)}`}
         title={readOnly ? t('tasks.readOnly') : done ? t('tasks.untick') : t('tasks.tick')}
         className={
-          'mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md border sm:h-5 sm:w-5 ' +
+          'nn-touch-self mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md border sm:h-5 sm:w-5 ' +
           (readOnly ? 'cursor-not-allowed opacity-50 ' : '') +
-          (done ? 'border-accent-500 bg-accent-500 text-on-accent' : 'border-ink-600' + (readOnly ? '' : ' hover:border-accent-500'))
+          (done ? 'border-accent-500 bg-accent-500 text-on-accent' : 'border-edge' + (readOnly ? '' : ' hover:border-accent-500'))
         }
       >
         {done && <Symbol name="check" className="h-3.5 w-3.5" />}
@@ -100,7 +111,7 @@ export function TaskRow({
               {t('tasks.inProgress')}
             </span>
           )}
-          {task.recurrence && <span className="text-mist-500">🔁 {task.recurrence}</span>}
+          {task.recurrence && <span className="text-mist-500" title={task.recurrence}>🔁 {recurrenceWords(task.recurrence, t, i18n.language)}</span>}
           {done && task.completed && <span className="text-mist-600">✅ {nice(task.completed)}</span>}
           {showNote && (
             <Link to={noteUrl(task.path)} className="min-w-0 truncate text-mist-500 hover:text-accent-400" title={task.path}>

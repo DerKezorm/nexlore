@@ -65,6 +65,13 @@ export function PublicPage() {
   }, [page, token])
 
   const article = useRef<HTMLElement>(null)
+  // The boxes of the tasks are named by their words: on a shared page they had no name (P8.18).
+  useEffect(() => {
+    article.current?.querySelectorAll<HTMLInputElement>('li input[type="checkbox"]').forEach((box) => {
+      const words = box.closest('li')?.textContent?.replace(/\s+/g, ' ').trim()
+      if (words) box.setAttribute('aria-label', words.slice(0, 120))
+    })
+  })
   useEnrich(article, html)
 
   // Links within the share stay in the page instead of loading it again.
@@ -98,7 +105,7 @@ export function PublicPage() {
       <header className="flex items-center justify-between border-b border-ink-700/80 px-5 py-3">
         <span className="flex items-center gap-3">
           <Logo />
-          <span className="text-sm text-mist-500">{state?.name}</span>
+          <span className="text-sm text-mist-500">{state?.name?.replace(/\.md$/i, '')}</span>
         </span>
         <ThemeSwitcher />
       </header>

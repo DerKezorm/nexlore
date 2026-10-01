@@ -16,11 +16,11 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi import Path as PathParam
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 
 from ..deps import Account, DbSession, OperatorAccount, client_ip, need
 from ..errors import detail, error
-from ..models import MANAGE, OPERATOR, Share, Space
+from ..models import MANAGE, OPERATOR, WRITE, Share, Space
 from ..models import Account as AccountRow
 from ..security import brake
 from ..services import media, paths, rights, settings_service, shares
@@ -101,6 +101,22 @@ def listing(
     query = select(Share).order_by(Share.created_at)
     query = query.where(Share.path == clean) if "/" in clean else query.join(Space).where(Space.folder == clean)
     return [_view(db, request, share) for share in db.scalars(query)]
+
+
+@router.get("/shares/covers", summary="How many public pages show this note or folder, or something in it")
+def covers(
+    account: Account,
+    db: DbSession,
+    path: Annotated[str, Query(min_length=1, max_length=paths.MAX_PATH_CHARS)],
+) -> dict[str, int]:
+    """For the warning before moving or trashing (review P6.19): only a number, for whoever may write there."""
+    clean = need(account, path, WRITE)
+    count = db.scalar(
+        select(func.count()).select_from(Share).where(
+            or_(Share.path == clean, Share.path.startswith(clean + "/", autoescape=True))
+        )
+    )
+    return {"count": int(count or 0)}
 
 
 @router.delete("/shares/{share_id}", status_code=204, summary="Withdraw a public page")

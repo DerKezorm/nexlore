@@ -10,6 +10,7 @@ import { DEFAULT_APPEARANCE } from '../lib/appearance'
 import { comboOf, refusal, setRecording, shownCombo, withKey } from '../lib/shortcuts'
 import { useAuth } from '../state/auth'
 import { Symbol } from './Symbol'
+import { useDialogFocus } from '../lib/dialogFocus'
 
 export function CommandPalette({ onClose }: { onClose: () => void }) {
   const { t, i18n } = useTranslation()
@@ -19,6 +20,10 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
   const [index, setIndex] = useState(0)
   const input = useRef<HTMLInputElement>(null)
   const list = useRef<HTMLUListElement>(null)
+  const box = useRef<HTMLDivElement>(null)
+  const recordingNow = useRef(false)
+  // Escape closes from anywhere in it, Tab stays in it (P8.5); while it listens for new keys, those keys are its own.
+  const dismiss = useDialogFocus(box, onClose, () => recordingNow.current)
   // Read once when opened: what the page offers at this moment.
   const [commands] = useState(allCommands)
   const [recent] = useState(recentCommands)
@@ -32,6 +37,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
     list.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' })
   }, [index])
   useEffect(() => {
+    recordingNow.current = recording !== null
     setRecording(recording !== null)
     return () => setRecording(false)
   }, [recording])
@@ -73,7 +79,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-scrim/70 px-4 pt-[12vh]" onMouseDown={onClose}>
-      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-2xl" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label={t('palette.title')}>
+      <div ref={box} className="w-full max-w-xl overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-2xl" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('palette.title')}>
         <div className="flex items-center gap-3 border-b border-ink-700 px-4">
           <Symbol name="command" className="h-4 w-4 text-mist-500" />
           <input
@@ -85,7 +91,6 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
             }}
             onKeyDown={(e) => {
               if (recording) return listen(e, recording)
-              if (e.key === 'Escape') onClose()
               if (e.key === 'ArrowDown') {
                 e.preventDefault()
                 setIndex((i) => Math.min(shown.length - 1, i + 1))
@@ -106,7 +111,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
           />
           <button
             type="button"
-            onClick={onClose}
+            onClick={dismiss}
             aria-label={t('common.close')}
             title={t('common.close')}
             className="grid h-8 min-w-8 place-items-center rounded border border-ink-700 px-1.5 text-[11px] text-mist-500 hover:bg-ink-850 hover:text-mist-200"

@@ -122,7 +122,7 @@ export type Space = {
   /** The theme its managers set for the space's notes; empty for none. */
   theme?: string
 }
-export type Lock = { holder: string; mine: boolean; expires_at: string }
+export type Lock = { holder: string; mine: boolean; expires_at: string; own?: boolean }
 export type NoteData = {
   id: number
   path: string
@@ -137,7 +137,7 @@ export type NoteData = {
   tags: string[]
   lock: Lock | null
 }
-export type NoteState = { hash: string; modified: number; lock: Lock | null }
+export type NoteState = { hash: string; modified: number; lock: Lock | null; comments?: string }
 export type Saved = { saved: boolean; hash: string; conflict: string | null }
 export type Outgoing = { kind: string; target: string; subpath: string; line: number; path: string | null; title: string | null }
 export type Backlink = { path: string; title: string; line: number; kind: string; context?: string | null }
@@ -175,6 +175,8 @@ export type IndexProgress = {
   percent?: number | null
   done?: number
   total?: number
+  /** Grows with every change the index takes in, from wherever it came: the tree loads again when it moved. */
+  revision?: number
 }
 
 export type IndexState = {
@@ -594,7 +596,7 @@ export type NewNote = { path: string; title: string; changed_at: string; author:
 /** An open thread where somebody named the account with `@name` since it last opened the note. */
 export type NewsMention = { thread: number; path: string; title: string; author: string; at: string; excerpt: string }
 export type Proposal = {
-  id: number; path: string; title: string; by: string; message: string; status: 'open' | 'taken' | 'declined'
+  id: number; path: string; title: string; by: string; message: string; status: 'open' | 'taken' | 'declined' | 'copied'
   created_at: string; decided_at: string | null; decided_by: string | null; content: string | null
 }
 
@@ -626,7 +628,7 @@ export const proposalsApi = {
     api<Proposal>('/api/proposals', { method: 'POST', body: { path, content, base_hash: baseHash, message } }),
   forNote: (path: string) => api<Proposal[]>('/api/proposals/note', { query: { path } }),
   overview: () => api<{ waiting: Proposal[]; mine: Proposal[] }>('/api/proposals'),
-  take: (id: number) => api<{ path: string; conflict: string | null }>(`/api/proposals/${id}/take`, { method: 'POST' }),
+  take: (id: number) => api<{ path: string; conflict: string | null; reason?: 'changed' | 'locked' | 'not_utf8' | null }>(`/api/proposals/${id}/take`, { method: 'POST' }),
   decline: (id: number) => api<void>(`/api/proposals/${id}/decline`, { method: 'POST' }),
   withdraw: (id: number) => api<void>(`/api/proposals/${id}`, { method: 'DELETE' }),
 }
@@ -811,6 +813,7 @@ export const shareApi = {
   create: (path: string, days: number | null, password: string) =>
     api<ShareInfo>('/api/shares', { method: 'POST', body: { path, days, password } }),
   of: (path: string) => api<ShareInfo[]>('/api/shares', { query: { path } }),
+  covers: (path: string) => api<{ count: number }>('/api/shares/covers', { query: { path } }),
   withdraw: (id: number) => api<void>(`/api/shares/${id}`, { method: 'DELETE' }),
   state: (token: string) => api<PublicState>(`/api/public/${encodeURIComponent(token)}`),
   unlock: (token: string, password: string) => api<void>(`/api/public/${encodeURIComponent(token)}/unlock`, { method: 'POST', body: { password } }),

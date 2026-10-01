@@ -22,11 +22,11 @@ from fastapi import Path as PathParam
 from pydantic import BaseModel, Field
 from sqlalchemy import Integer, cast, func, select, text
 
-from ..db import SessionLocal
+from ..db import SessionLocal, sort_key
 from ..deps import Account, OperatorAccount, need, readable_spaces
 from ..errors import error
-from ..models import FTS_TABLE, MANAGE, OPERATOR, READ, WRITE, File, Link, Membership, Space, Tag
-from ..services import everyday, index, mdparse, paths, rights, snippets, spaceopts, tagrename, vault
+from ..models import FTS_TABLE, MANAGE, OPERATOR, READ, TRI_TABLE, WRITE, Comment, File, Link, Membership, Space, Tag
+from ..services import everyday, index, mdparse, midword, paths, rights, snippets, spaceopts, tagrename, vault
 from ..services.vault import Actor, VaultError
 
 router = APIRouter(prefix="/api", tags=["vault"])
@@ -213,7 +213,7 @@ def folder(
         if paths.is_hidden(entry.name) or entry.is_symlink() or not entry.is_dir(follow_symlinks=False):
             continue
         folders.append(FolderEntry(name=entry.name, path=prefix + entry.name, notes=counts.get(entry.name, 0)))
-    folders.sort(key=lambda item: paths.fold(item.name))
+    folders.sort(key=lambda item: sort_key(item.name))
     ordered = sorted(
         (
             FileEntry(
@@ -222,7 +222,7 @@ def folder(
             )
             for file in files
         ),
-        key=lambda item: paths.fold(item.name),
+        key=lambda item: sort_key(item.name),
     )
     end = None if limit is None else offset + limit
     return FolderOut(path=clean, folders=folders, files=ordered[offset:end], total_files=len(ordered))
@@ -251,6 +251,8 @@ class LockOut(BaseModel):
     holder: str
     mine: bool
     expires_at: datetime
+    #: Held by the same account in another tab or window (it named the account to itself, review P1.19).
+    own: bool = False
 
 
 class NoteOut(BaseModel):
@@ -283,7 +285,10 @@ def _note_out(file: File, data: bytes, who: Actor) -> NoteOut:
         lock = vault.lock_state(db, file.id)
         lock_out = None
         if lock is not None:
-            lock_out = LockOut(holder=lock.holder_name, mine=lock.holder == who.client, expires_at=lock.expires_at)
+            lock_out = LockOut(
+                holder=lock.holder_name, mine=lock.holder == who.client, expires_at=lock.expires_at,
+                own=lock.holder != who.client and lock.holder_name == who.name,
+            )
     return NoteOut(
         id=file.id, path=file.path, title=file.title, content=content, hash=index.digest(data), bom=bom,
         readonly=readonly, size=len(data), modified=file.mtime_ns // 1_000_000, front=file.front, tags=tags,
@@ -337,6 +342,19 @@ class NoteStateOut(BaseModel):
     hash: str
     modified: int
     lock: LockOut | None = None
+    #: How the comments stand (count, newest, last change, resolved): a page loads them again when it moves.
+    comments: str = ""
+
+
+def _comments_mark(db: Any, file_id: int) -> str:
+    """A short mark that changes with every new, edited, resolved or deleted comment of a note."""
+    count, newest, changed, resolved = db.execute(
+        select(
+            func.count(Comment.id), func.max(Comment.id),
+            func.max(func.coalesce(Comment.edited_at, Comment.created_at)), func.count(Comment.resolved_at),
+        ).where(Comment.file_id == file_id)
+    ).one()
+    return f"{count}:{newest or 0}:{changed or ''}:{resolved}"
 
 
 @router.get("/note/state", response_model=NoteStateOut)
@@ -353,8 +371,12 @@ def note_state(path: PathQuery, account: Account, who: ActorDep) -> NoteStateOut
         lock = vault.lock_state(db, file.id)
         lock_out = None
         if lock is not None:
-            lock_out = LockOut(holder=lock.holder_name, mine=lock.holder == who.client, expires_at=lock.expires_at)
-    return NoteStateOut(hash=index.digest(data), modified=file.mtime_ns // 1_000_000, lock=lock_out)
+            lock_out = LockOut(
+                holder=lock.holder_name, mine=lock.holder == who.client, expires_at=lock.expires_at,
+                own=lock.holder != who.client and lock.holder_name == who.name,
+            )
+        comments = _comments_mark(db, file.id)
+    return NoteStateOut(hash=index.digest(data), modified=file.mtime_ns // 1_000_000, lock=lock_out, comments=comments)
 
 
 class SaveIn(BaseModel):
@@ -679,6 +701,23 @@ def fts_query(raw: str) -> str | None:
     return " ".join(f'"{term}"*' for term in terms)
 
 
+def tri_terms(raw: str) -> list[str]:
+    """The words typed, for the search in the middle of words."""
+    terms = [term.replace('"', "").replace("\x00", "") for term in _TERM.findall(raw)][:12]
+    return [term for term in terms if term]
+
+
+def _around(body: str, term: str, width: int = 70) -> str:
+    """A few words around the first place of ``term``, the term marked as the word index marks its hits."""
+    at = body.lower().find(term.lower())
+    if at < 0:
+        return body[: width * 2]
+    start = max(0, at - width)
+    return ("…" if start else "") + body[start:at] + HIT_START + body[at : at + len(term)] + HIT_END + body[
+        at + len(term) : at + len(term) + width
+    ] + "…"
+
+
 @router.get("/search", response_model=list[Hit])
 def search(
     account: Account,
@@ -705,8 +744,29 @@ def search(
     if space:
         values["space"] = space
     with SessionLocal() as db:
-        rows = db.execute(text(sql), values).all()
-    return [Hit(path=path, title=title, snippet=snippets.plain(snippet or "")) for path, title, snippet in rows]
+        rows = list(db.execute(text(sql), values).all())
+        # Fewer than asked for: words found in the middle of a word come behind (review P4.17).
+        groups = [[term] for term in tri_terms(q)]
+        tri = midword.match(groups)
+        if len(rows) < limit and tri:
+            seen = {path for path, _title, _snippet in rows}
+            check, checks = midword.verify(groups, paths.fold, column="x")
+            middle = (
+                f"SELECT f.path, f.title, x.body FROM {FTS_TABLE} AS x JOIN files f ON f.id = x.rowid "  # noqa: S608
+                "JOIN spaces s ON s.id = f.space_id "
+                f"WHERE x.rowid IN (SELECT rowid FROM {TRI_TABLE} WHERE {TRI_TABLE} MATCH :tri) AND {check} "
+                "AND f.deleted_at IS NULL AND f.space_id IN (SELECT value FROM json_each(:spaces)) "
+                + ("AND s.folder = :space " if space else "")
+                + "ORDER BY f.mtime_ns DESC LIMIT :more"
+            )
+            extra = db.execute(text(middle), {**values, **checks, "tri": tri, "more": limit}).all()
+            rows += [
+                (path, title, _around(body or "", groups[0][0])) for path, title, body in extra if path not in seen
+            ][: limit - len(rows)]
+    return [
+        Hit(path=path, title=title, snippet=snippets.without_title(snippets.plain(snippet or ""), title))
+        for path, title, snippet in rows
+    ]
 
 
 class Found(BaseModel):
@@ -984,10 +1044,11 @@ def index_progress(account: Account) -> dict[str, Any]:
     counts, which span every space, only the operator sees, everybody else a share."""
     state = index.status
     if not state.visible:
-        return {"running": False}
+        return {"running": False, "revision": index.revision}
     total = max(state.total, 1)
     answer: dict[str, Any] = {
         "running": True,
+        "revision": index.revision,
         "phase": state.phase,
         "percent": min(99, state.done * 100 // total) if state.total else None,
     }

@@ -12,6 +12,8 @@ export type VaultAction =
   | { kind: 'rename' | 'move' | 'delete'; path: string; folder: boolean }
   | { kind: 'rename-tag'; tag: string }
   | { kind: 'new-base'; folder: string }
+  /** Dragged onto a folder in the sidebar: moved at once, said as the dialog says it. */
+  | { kind: 'move-to'; path: string; target: string }
 
 export const VAULT_ACTION_EVENT = 'nexlore:vault-action'
 

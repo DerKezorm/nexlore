@@ -225,3 +225,14 @@ def test_a_page_follows_the_shared_note_itself(site: TestClient) -> None:
     assert moved.status_code == 200
     assert site.get("/api/shares", params={"path": "Garden/Public/Lilies.md"}).json()[0]["id"] == made["id"]
     assert stranger().get(f"/api/public/{token_of(made)}/page").json()["path"] == "Lilies.md"
+
+
+def test_moving_or_trashing_asks_how_many_public_pages_show_it(site: TestClient) -> None:
+    """Review P6.19: shared notes went into the trash without a word; a writer may know how many pages show them."""
+    share(site, "Garden/Public/Roses.md")
+    covers = lambda path: site.get("/api/shares/covers", params={"path": path})
+    assert covers("Garden/Public/Roses.md").json() == {"count": 1}
+    assert covers("Garden/Public").json() == {"count": 1}
+    assert covers("Garden/Private").json() == {"count": 0}
+    # "Garden/Pub" is no folder above "Garden/Public".
+    assert covers("Garden/Pub").json() == {"count": 0}

@@ -149,7 +149,7 @@ test('the search page takes operators, shows the lines a note was found in, and 
   await expect(page).toHaveURL(/\/search$/)
   await page.getByLabel('Search with operators').fill('tag:sown -nothing')
   await page.keyboard.press('Enter')
-  await expect(page.getByTestId('search-page').getByRole('link', { name: 'Sown' })).toBeVisible()
+  await expect(page.getByTestId('search-page').getByRole('link', { name: 'Sown Zoo' })).toBeVisible()
   await page.getByRole('button', { name: 'How to search' }).click()
   await expect(page.getByTestId('search-help')).toContainText('[status:open]')
   expect(problems).toEqual([])

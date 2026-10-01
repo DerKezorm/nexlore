@@ -136,7 +136,8 @@ function ServerPart({ part }: { part: Part }) {
 
 function LanguageCard() {
   const { t, i18n } = useTranslation()
-  const { setLanguage } = useAuth()
+  const { setLanguage, me } = useAuth()
+  const operator = me?.role === 'operator'
   const [options, setOptions] = useState<LanguageOption[]>([])
 
   useEffect(() => {
@@ -148,7 +149,7 @@ function LanguageCard() {
   }, [])
 
   return (
-    <Card symbol="globe" title={t('settings.language.title')} text={t('settings.language.text')}>
+    <Card symbol="globe" title={t('settings.language.title')} text={operator ? t('settings.language.text') : t('settings.language.textMember')}>
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-ink-700 bg-ink-850 px-4 py-3 text-sm">
         <label htmlFor="language" className="font-medium">
           {t('settings.language.choose')}
@@ -166,6 +167,7 @@ function LanguageCard() {
             </option>
           ))}
         </select>
+        {operator && (
         <button
           type="button"
           onClick={downloadTemplate}
@@ -174,8 +176,9 @@ function LanguageCard() {
         >
           <Symbol name="download" /> {t('settings.language.template')}
         </button>
+        )}
       </div>
-      <p className="mt-2 text-xs text-mist-500">{t('settings.language.templateHint')}</p>
+      {operator && <p className="mt-2 text-xs text-mist-500">{t('settings.language.templateHint')}</p>}
     </Card>
   )
 }

@@ -134,3 +134,31 @@ export function readerNow(now = new Date()): string {
 export function clockTime(now = new Date()): string {
   return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
 }
+
+const WEEKDAY_NAMES = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+const SHORT_DAYS: Record<string, number> = { mon: 0, tue: 1, wed: 2, thu: 3, fri: 4, sat: 5, sun: 6 }
+
+/**
+ * A repetition as the Tasks plugin writes it (`every 2 weeks on Monday`), said in the interface's words; one it
+ * does not know stays as written. The file keeps the plugin's English.
+ */
+export function recurrenceWords(rule: string, t: (key: string, values?: Record<string, unknown>) => string, language: string): string {
+  const clean = rule.trim().toLowerCase().replace(/\s+/g, ' ')
+  const done = clean.endsWith(' when done')
+  const core = done ? clean.slice(0, -' when done'.length) : clean
+  const tail = done ? ' ' + t('recur.whenDone') : ''
+  if (core === 'every weekday') return t('recur.weekday') + tail
+  const match = /^every(?: (\d{1,4}))? (day|week|month|year)s?(?: on (.+))?$/.exec(core)
+  if (!match) return rule
+  const count = Number(match[1] ?? 1)
+  let words = t(`recur.${match[2]}`, { count })
+  if (match[3]) {
+    const days = match[3].split(/\s*(?:,|and)\s*/).map((day) => {
+      const index = WEEKDAY_NAMES.indexOf(day) >= 0 ? WEEKDAY_NAMES.indexOf(day) : SHORT_DAYS[day]
+      // 5 October 2026 is a Monday.
+      return index === undefined ? day : new Date(2026, 9, 5 + index).toLocaleDateString(language, { weekday: 'long' })
+    })
+    words += ' ' + t('recur.on', { days: new Intl.ListFormat(language, { type: 'conjunction' }).format(days) })
+  }
+  return words + tail
+}

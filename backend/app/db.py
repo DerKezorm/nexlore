@@ -7,6 +7,7 @@ Renaming or dropping never happens automatically.
 from __future__ import annotations
 
 import logging
+import re
 import unicodedata
 from collections.abc import Iterator
 from enum import Enum
@@ -17,7 +18,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from .config import get_settings
-from .models import FTS_CREATE, Base
+from .models import FTS_CREATE, TRI_CREATE, TRI_TABLE, Base
 
 logger = logging.getLogger("nexlore.db")
 
@@ -56,11 +57,17 @@ def _fold(value: Any) -> str | None:
     return None if value is None else unicodedata.normalize("NFC", str(value)).casefold()
 
 
+#: A run of digits, compared by its value.
+_DIGITS = re.compile(r"\d+")
+
+
 def sort_key(value: str) -> str:
-    """A text as a reader sorts it: case and accents only break ties (`Ärger` with the A, not after `Zodiac`)."""
+    """A text as a reader sorts it: case and accents only break ties (`Ärger` with the A, not after `Zodiac`), and
+    numbers as numbers (`Topic 2` before `Topic 10`, review P4.15)."""
     folded = unicodedata.normalize("NFKD", value.casefold())
     plain = "".join(char for char in folded if not unicodedata.combining(char)).replace("ß", "ss")
-    return f"{plain}\x00{value.casefold()}"
+    natural = _DIGITS.sub(lambda found: found.group().zfill(20), plain)
+    return f"{natural}\x00{value.casefold()}"
 
 
 def _sort(value: Any) -> str | None:
@@ -76,10 +83,20 @@ def get_db() -> Iterator[Session]:
 
 
 def init_db() -> None:
+    from .services import midword
+
     Base.metadata.create_all(engine)
     _add_missing_columns()
     with engine.begin() as connection:
         connection.execute(text(FTS_CREATE))
+        # A trigram index of another shape (with positions and its own copy of the text) goes: it doubled the database.
+        shape = connection.execute(
+            text("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = :name"), {"name": TRI_TABLE}
+        ).scalar()
+        if shape is not None and "detail" not in shape:
+            connection.execute(text(f"DROP TABLE {TRI_TABLE}"))
+        connection.execute(text(TRI_CREATE))
+        midword.rebuild_if_needed(connection)
     # create_all makes the indexes of new tables only; one added to an existing table comes here.
     for table in Base.metadata.sorted_tables:
         for table_index in table.indexes:

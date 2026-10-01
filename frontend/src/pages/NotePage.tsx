@@ -11,7 +11,7 @@
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { dailyDayOf, dayOfName } from '../lib/dayname'
 import { addDays, today as isoToday } from '../lib/everyday'
@@ -101,6 +101,9 @@ type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'failed' | 'refreshed
  * link in it is followed. On a narrow screen only the left one shows.
  */
 
+/** The search page for a tag (and the tags below it). */
+const tagSearch = (tag: string) => `/search?q=${encodeURIComponent('tag:' + tag)}`
+
 export function NotePage() {
   // Already decoded by the router; decoding again breaks names with a "%" in them.
   const path = useParams()['*'] ?? ''
@@ -165,6 +168,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const [links, setLinks] = useState<Links | null>(null)
   // Comments in the margin: the note's threads, a new one asked for from words in the text, and which are found.
   const [threads, setThreads] = useState<Thread[] | null>(null)
+  const commentsMark = useRef<string | null>(null)
   const [commentDraft, setCommentDraft] = useState<Anchor | null>(null)
   const [commentsFound, setCommentsFound] = useState<Set<number> | undefined>(undefined)
   const [threadFocus, setThreadFocus] = useState<{ id: number; ask: number } | null>(null)
@@ -484,6 +488,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     setRenaming(null)
     setShowText(false)
     setSavedAt(null)
+    commentsMark.current = null
     setNotice(templateMissing.current ? t('today.templateMissing') : null)
     // A message meant for the note just opened (after a rename: how many notes had their links updated).
     setInfo(afterOpen.current)
@@ -572,6 +577,14 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
         return
       }
       if (!state) return
+      // New, changed or resolved comments of others show without a reload (they waited for one, P6.4).
+      if (state.comments !== undefined) {
+        // The first answer too: a comment made between loading the page and this answer would wait otherwise.
+        if (commentsMark.current !== state.comments) {
+          void commentsApi.list(path).then((found) => current.current === path && setThreads(found.threads), () => undefined)
+        }
+        commentsMark.current = state.comments
+      }
       if (!editingNow.current) {
         if (state.hash !== note.hash) void load(path)
         else if ((state.lock?.holder ?? null) !== (note.lock?.holder ?? null)) setNote((known) => known && { ...known, lock: state.lock })
@@ -734,6 +747,26 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     }
   }
 
+  // From a line of the search page (`?hit=words&near=start of the line`): the place shown and the words marked (P4.8).
+  const hit = params.get('hit')
+  const near = params.get('near')
+  useEffect(() => {
+    const root = article.current
+    if (!root || !hit || editing) return
+    const frame = requestAnimationFrame(() => {
+      const fold = (text: string) => text.toLocaleLowerCase().replace(/\s+/g, ' ')
+      const blocks = [...root.querySelectorAll<HTMLElement>('p, li, h1, h2, h3, h4, h5, h6, td, th, blockquote, pre')]
+      const wanted = fold(near ?? '').slice(0, 40)
+      const block =
+        (wanted && blocks.find((item) => fold(item.textContent ?? '').includes(wanted))) ||
+        blocks.find((item) => fold(item.textContent ?? '').includes(fold(hit)))
+      if (!block) return
+      markIn(block, hit)
+      block.scrollIntoView({ block: 'center' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [html, hit, near, editing])
+
   // The boxes of the reading view know their line (in the order `taskLines` counts them); a writer may tick them.
   useEffect(() => {
     const root = article.current
@@ -745,6 +778,11 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     boxes.forEach((box, index) => {
       box.dataset.task = String(index)
       box.disabled = !writable
+    })
+    // Tags are links for the keyboard too.
+    root.querySelectorAll<HTMLElement>('.nn-tag[data-tag]').forEach((tag) => {
+      tag.setAttribute('role', 'link')
+      tag.tabIndex = 0
     })
   }, [html, note, editing, spaces])
   const tickInReading = async (box: HTMLInputElement) => {
@@ -1034,7 +1072,14 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     {
       id: 'versions',
       label: t('note.versions'),
-      content: () => <Versions path={note.path} disabled={editing || !!lockedBy || !mayWrite} onRestored={() => void Promise.all([load(note.path), reload()])} />,
+      content: () => (
+        <Versions
+          path={note.path}
+          disabled={editing || !!lockedBy || !mayWrite}
+          why={!mayWrite ? t('note.readOnlyRight') : editing ? t('note.versionsWhileEditing') : lockedBy ? t('note.lockedTitle', { name: lockedBy }) : null}
+          onRestored={() => void Promise.all([load(note.path), reload()])}
+        />
+      ),
     },
     ...(plugins.some((plugin) => plugin.place.panel)
       ? [{ id: 'plugins' as const, label: t('panel.plugins'), content: () => <PluginPanels plugins={plugins} note={note} onOpen={open} onWritten={pluginWrote} onReveal={reveal} /> }]
@@ -1092,7 +1137,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                     : !mayWrite
                     ? t('note.readOnlyRight')
                     : lockedBy
-                      ? t('note.lockedTitle', { name: lockedBy })
+                      ? (note.lock?.own ? t('note.lockedOwnTitle') : t('note.lockedTitle', { name: lockedBy }))
                       : note.readonly
                         ? t('note.readonlyTitle')
                         : undefined
@@ -1197,7 +1242,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 </Banner>
               ),
             )}
-          {lockedBy && <Banner tone="warn" symbol="lock">{t('note.lockedBanner', { name: lockedBy })}</Banner>}
+          {lockedBy && <Banner tone="warn" symbol="lock">{note.lock?.own ? t('note.lockedOwnBanner') : t('note.lockedBanner', { name: lockedBy })}</Banner>}
           {drafts.length > 0 && (
             <Banner
               tone="info"
@@ -1290,7 +1335,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 <span>{t('note.changed', { when: formatDate(savedAt ?? note.modified) })}</span>
                 {/* While reading, tags in the front matter stand in the properties box below, not twice. */}
                 {(editing || !/^tags\s*:/im.test(readingHead) ? note.tags : []).map((tag) => (
-                  <span key={tag} className="rounded-full bg-accent-500/10 px-2 py-0.5 text-accent-400">#{tag}</span>
+                  <Link key={tag} to={tagSearch(tag)} className="rounded-full bg-accent-500/10 px-2 py-0.5 text-accent-400 hover:bg-accent-500/20">#{tag}</Link>
                 ))}
               </div>
               {!editing && readingHead && (
@@ -1340,6 +1385,10 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 <article
                   ref={article}
                   className="nn-prose"
+                  onKeyDown={(e) => {
+                    const tag = (e.target as HTMLElement).closest<HTMLElement>('[data-tag]')
+                    if (tag && e.key === 'Enter') navigate(tagSearch(tag.dataset.tag!))
+                  }}
                   onClick={(e) => {
                     // A picture opens over the page, at its own size and to zoom into.
                     const image = (e.target as HTMLElement).closest('img')
@@ -1349,6 +1398,9 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                       const start = elements.indexOf(image as HTMLImageElement)
                       if (start >= 0) return setViewing({ pictures, start })
                     }
+                    // A tag shows the notes with that tag, as a link does (it was a coloured word only, P4.7).
+                    const tag = (e.target as HTMLElement).closest<HTMLElement>('[data-tag]')
+                    if (tag) return void navigate(tagSearch(tag.dataset.tag!))
                     // A task's box, for who may write: ticked off as in the task list (it was locked, P5.2).
                     const box = (e.target as HTMLElement).closest<HTMLInputElement>('input[data-task]')
                     if (box && !box.disabled) return void tickInReading(box)
@@ -1463,7 +1515,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                       (taken) => {
                         setProposals((list) => list.filter((item) => item.id !== id))
                         setComparing2(null)
-                        setInfo(taken.conflict ? t('proposals.takenConflict') : t('proposals.taken'))
+                        setInfo(taken.conflict ? (taken.reason === 'locked' ? t('proposals.takenLocked') : t('proposals.takenConflict')) : t('proposals.taken'))
                         void load(note.path)
                       },
                       (error) => setProposalProblem(errorText(error instanceof ApiError ? error.code : 'internal_error')),
@@ -1575,7 +1627,7 @@ function Banner({ tone, symbol, action, children }: { tone: keyof typeof BANNER_
 }
 
 /** The history of a note: every save a version, sessions folded together, old ones thinned out. */
-function Versions({ path, disabled, onRestored }: { path: string; disabled: boolean; onRestored: () => void }) {
+function Versions({ path, disabled, why, onRestored }: { path: string; disabled: boolean; why: string | null; onRestored: () => void }) {
   const { t } = useTranslation()
   const [list, setList] = useState<VersionInfo[] | null>(null)
   const [shown, setShown] = useState<{ id: number; content: string } | null>(null)
@@ -1616,7 +1668,10 @@ function Versions({ path, disabled, onRestored }: { path: string; disabled: bool
             <li key={version.id} className="rounded-lg px-2 py-1.5 text-sm hover:bg-ink-850">
               <div className="flex items-center gap-2">
                 <span className="flex-1 text-mist-300">{formatDate(version.updated_at)}</span>
-                <span className="text-[11px] text-mist-600">{versionSource(version, t)}</span>
+                <span className="text-[11px] text-mist-600">
+                  {versionSource(version, t)}
+                  {version.author ? ` · ${version.author}` : ''}
+                </span>
               </div>
               <div className="mt-0.5 flex gap-3 text-xs">
                 <button
@@ -1627,7 +1682,7 @@ function Versions({ path, disabled, onRestored }: { path: string; disabled: bool
                   {shown?.id === version.id ? t('note.hideVersion') : t('note.showVersion')}
                 </button>
                 {index > 0 && (
-                  <button type="button" disabled={disabled} onClick={() => void restore(version.id)} className="text-accent-400 hover:text-accent-300 disabled:opacity-40">
+                  <button type="button" disabled={disabled} title={disabled && why ? why : undefined} onClick={() => void restore(version.id)} className="text-accent-400 hover:text-accent-300 disabled:opacity-40">
                     {t('note.restoreVersion')}
                   </button>
                 )}
@@ -1639,6 +1694,7 @@ function Versions({ path, disabled, onRestored }: { path: string; disabled: bool
           ))}
         </ul>
       )}
+      {disabled && why && list && list.length > 1 && <p className="mt-2 px-2 text-xs text-mist-500" data-testid="versions-why">{why}</p>}
       {problem && <p className="px-2 text-xs text-bad-500">{errorText(problem)}</p>}
     </section>
   )
@@ -1655,4 +1711,23 @@ function Section({ symbol, title, count, children }: { symbol: 'backlink' | 'lin
       {children}
     </section>
   )
+}
+
+/** The first place of `words` in a block, marked (only in the page: the note is not touched). */
+function markIn(block: HTMLElement, words: string): void {
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+  const wanted = words.toLocaleLowerCase()
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node.textContent ?? ''
+    const at = text.toLocaleLowerCase().indexOf(wanted)
+    if (at < 0) continue
+    const range = document.createRange()
+    range.setStart(node, at)
+    range.setEnd(node, at + words.length)
+    const mark = document.createElement('mark')
+    mark.className = 'nn-hit'
+    range.surroundContents(mark)
+    return
+  }
+  block.classList.add('nn-hit-block')
 }

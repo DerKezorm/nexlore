@@ -434,3 +434,22 @@ def test_an_upload_beyond_the_space_left_stops_before_a_byte_is_stored(client: T
     with pytest.raises(attachments.VaultError) as refused:
         attachments.check_size(plan, 2 * 1024 * 1024)
     assert refused.value.code == "quota_exceeded"
+
+
+def test_a_pdf_moved_or_renamed_is_found_by_its_new_name_in_the_middle_of_a_word(
+    client: TestClient, filled: Path
+) -> None:
+    """Review before 1.0.0, P4.17: the trigram index keeps no text of its own and must be told a new title."""
+    body = upload(client, pdf("zebracorn meadow"), name="Leaflet.pdf").json()
+
+    def middle(q: str) -> list[str]:
+        return [hit["path"] for hit in client.get("/api/search", params={"q": q}, headers=TAB).json()]
+
+    moved = client.post("/api/move", json={"source": body["path"], "destination": "Home/Faltblatt.pdf"}, headers=TAB)
+    assert moved.status_code == 200, moved.text
+    assert middle("altblat") == ["Home/Faltblatt.pdf"]
+    # Renamed outside the app: the next pass finds the same content under a new name.
+    (filled / "Home" / "Faltblatt.pdf").rename(filled / "Home" / "Prospekt.pdf")
+    index.scan()
+    assert middle("rospek") == ["Home/Prospekt.pdf"]
+    assert middle("altblat") == []

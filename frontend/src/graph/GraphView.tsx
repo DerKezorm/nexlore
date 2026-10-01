@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import { THEME_EVENT } from '../lib/theme'
 import { GraphGL, MAX_DOT, MIN_DOT, OPEN_TO, type Camera, type Colors } from './gl'
 import { closedLabelPriority, drawLabels, type LabelItem } from './labels'
-import type { Scene, SceneGroup } from './scene'
+import { openness, type Scene, type SceneGroup } from './scene'
 
 const MAX_ZOOM = 12
 
@@ -47,6 +47,11 @@ type Props = {
   label: string
 }
 
+/** A bubble or note on screen, as a button for Tab. */
+type Place = { kind: 'group' | 'note'; id: number; x: number; y: number; name: string; count?: number; weight: number }
+/** At most this many: more than a screen holds would only lengthen the way through by Tab. */
+const PLACES = 40
+
 function ease(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 }
@@ -74,6 +79,9 @@ function readColors(): Colors {
   }
 }
 
+/** The strip the hint at the bottom of the map takes, kept free when everything is shown. */
+const FIT_HINT = 56
+
 function withAlpha(hex: string, alpha: number): string {
   const a = Math.round(Math.min(1, Math.max(0, alpha)) * 255)
     .toString(16)
@@ -93,6 +101,9 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
   const hover = useRef<Hover | null>(null)
   const frame = useRef(0)
   const flight = useRef<{ from: Camera; to: Camera; start: number; duration: number } | null>(null)
+  const seen = useRef<Place[]>([])
+  const settle = useRef(0)
+  const [placesShown, setPlacesShown] = useState<Place[]>([])
   const fitted = useRef(false)
   const latest = useRef(props)
   latest.current = props
@@ -178,6 +189,7 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
     const sx = (x: number) => (x - cam.x) * cam.k + w / 2
     const sy = (y: number) => (y - cam.y) * cam.k + h / 2
     const items: LabelItem[] = []
+    const places: Place[] = []
     const marked = focus !== null ? around.current.marked : null
     for (const group of scene.groups.values()) {
       const alpha = scene.groupAlpha(group, cam.k)
@@ -186,18 +198,22 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
       const y = sy(group.y)
       if (x + r < 0 || x - r > w || y + r < 0 || y - r > h) continue
       const name = latest.current.groupLabel(group)
+      if ((alpha.closed > 0.05 && r > 16) || alpha.open > 0.5) {
+        places.push({ kind: 'group', id: group.id, x, y, name, count: group.total, weight: 1e6 + r })
+      }
       if (alpha.closed > 0.05 && r > 16) {
         const dimmed = marked && !marked.has(group.id) ? 0.5 : 1
         const fontSize = Math.max(11, Math.min(20, r * 0.2))
         items.push({
           x, y, text: name, sub: r > 34 ? latest.current.countLabel(group.total) : undefined, size: fontSize, weight: 600, icon: group.icon, iconColor: group.color,
           // Opening, the name in the middle fades faster than the bubble, so it never lies over the names inside.
-          color: col.text, subColor: col.dim, alpha: alpha.closed * (1 - alpha.open) * dimmed, baseline: 'middle',
+          // Never both names of one bubble at once (the middle one and the one on top stood over each other, P4.11).
+          color: col.text, subColor: col.dim, alpha: alpha.closed * Math.max(0, 1 - 2 * alpha.open) * dimmed, baseline: 'middle',
           priority: closedLabelPriority(r, alpha.open), maxWidth: Math.max(60, r * 1.7),
         })
       }
       const fade = 1 - smoothstep(Math.max(w, h) * 0.9, Math.max(w, h) * 1.6, r)
-      const openAlpha = alpha.open * fade
+      const openAlpha = Math.max(0, 2 * alpha.open - 1) * fade
       if (openAlpha > 0.02) {
         const top = y - r + (group.depth === 1 ? 22 : 16)
         items.push({
@@ -220,6 +236,7 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
       const isNear = near.has(note.id)
       const labelAlpha = isFocus || isNear ? a : a * smoothstep(3.2, 6, note.r * cam.k)
       if (labelAlpha < 0.03) continue
+      places.push({ kind: 'note', id: note.id, x: sx(note.x), y: sy(note.y), name: note.title, weight: note.r })
       items.push({
         x: sx(note.x), y: sy(note.y) + dot + 5, text: note.title, size: isFocus ? 13 : 12, weight: isFocus ? 600 : 500,
         color: isFocus ? `rgb(${col.accent.map((c) => Math.round(c * 255)).join(',')})` : col.text,
@@ -228,6 +245,15 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
       })
     }
     drawLabels(ctx, items, withAlpha(col.bg, 0.9), w, h)
+    // The places on screen, the biggest first and at most PLACES, for Tab and screen readers once the map stands still.
+    const inView = places.filter((place) => place.x >= 0 && place.x <= w && place.y >= 0 && place.y <= h).sort((a, b) => b.weight - a.weight)
+    // Half for bubbles, half for notes: many bubbles in view must not leave no way to a note.
+    seen.current = [
+      ...inView.filter((place) => place.kind === 'group').slice(0, PLACES / 2),
+      ...inView.filter((place) => place.kind === 'note').slice(0, PLACES / 2),
+    ]
+    window.clearTimeout(settle.current)
+    settle.current = window.setTimeout(() => setPlacesShown(seen.current), 250)
 
     // The zoom, readable from outside (tests of the finger gestures); written only when it changed.
     const zoom = cam.k.toPrecision(4)
@@ -260,8 +286,13 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
       minY = Math.min(minY, space.oy - space.r)
       maxY = Math.max(maxY, space.oy + space.r)
     }
-    const k = Math.min((w * 0.94) / Math.max(maxX - minX, 1), (h * 0.94) / Math.max(maxY - minY, 1))
-    return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, k: Number.isFinite(k) && k > 0 ? k : 0.05 }
+    // The hint at the bottom keeps its strip: the spaces fit above it (it covered one, P4.11).
+    const room = Math.max(h - FIT_HINT, h * 0.6)
+    let k = Math.min((w * 0.94) / Math.max(maxX - minX, 1), (room * 0.94) / Math.max(maxY - minY, 1))
+    if (!Number.isFinite(k) || k <= 0) return { x: 0, y: 0, k: 0.05 }
+    // Not on the edge of opening: a space half open shows its names twice over and its inside pale.
+    for (let step = 0; step < 12 && scene.spaces.some((space) => openness(space.r, k) > 0.08 && openness(space.r, k) < 0.92); step++) k *= 0.9
+    return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 + (h - room) / 2 / k, k }
   }, [])
 
   const clampZoom = useCallback(
@@ -271,6 +302,8 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
 
   const fly = useCallback(
     (to: Camera, duration = 700) => {
+      // Asked for less motion: the camera is there at once (P8.21).
+      if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) duration = 1
       flight.current = { from: { ...camera.current }, to: { ...to, k: clampZoom(to.k) }, start: performance.now(), duration }
       // What was under the mouse moves away: its hint goes, and comes back for whatever is there when the flight ends.
       if (hover.current) {
@@ -539,6 +572,15 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
     }
   }, [clampZoom, fly, fitCamera, redraw])
 
+  const choosePlace = (place: Place) => {
+    const { scene, onOpen } = latest.current
+    if (place.kind === 'note') return onOpen(place.id)
+    const group = scene.groups.get(place.id)
+    if (!group) return
+    const { w, h } = size.current
+    fly({ x: group.x, y: group.y, k: (Math.min(w, h) * 0.44) / group.r })
+  }
+
   return (
     <div className="relative h-full w-full">
       <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" aria-hidden="true" />
@@ -552,6 +594,22 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
         aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight + - 0"
         data-testid="graph-canvas"
       />
+      {/* The places of the map for the keyboard and screen readers: unseen until one has the focus (P8.10). */}
+      <ul className="pointer-events-none absolute inset-0 m-0 list-none p-0" aria-label={t('graph.places')} data-testid="graph-places">
+        {placesShown.map((place) => (
+          <li key={place.kind + place.id}>
+            <button
+              type="button"
+              onClick={() => choosePlace(place)}
+              className="pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full border border-accent-500 bg-ink-900 px-2 py-0.5 text-xs whitespace-nowrap text-mist-100 opacity-0 focus:pointer-events-auto focus:opacity-100 focus:outline-none"
+              style={{ left: place.x, top: place.y }}
+              data-place={place.kind}
+            >
+              {place.kind === 'group' ? t('graph.placeGroup', { name: place.name, count: place.count ?? 0 }) : place.name}
+            </button>
+          </li>
+        ))}
+      </ul>
       {unsupported && (
         <div className="absolute inset-0 flex items-center justify-center p-6">
           <p className="max-w-md rounded-2xl border border-ink-700 bg-ink-900/90 px-5 py-4 text-center text-sm text-mist-400">

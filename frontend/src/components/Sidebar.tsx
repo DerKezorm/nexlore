@@ -8,7 +8,7 @@
  * The right mouse button (or a long press on a touch screen) opens a menu: a new note or folder, renaming, moving,
  * the graph, the trash. A folder that could not be read says so and offers to try again.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -20,7 +20,7 @@ import { askNewNote } from '../lib/newNote'
 import { askFolder, FOLDER_EVENT, narrow, NOTE_LIST_EVENT, RECENT_EVENT, SIDEBAR_EVENT, sidebarHere, takeFolderWish, noteListWished, forgetNoteListWish } from '../lib/shell'
 import { answerNotice, seenAll, useNews } from '../lib/news'
 import { openInTab } from '../lib/tabs'
-import { baseName, noteUrl } from '../lib/vault'
+import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } from '../lib/vaultActions'
 import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
@@ -58,6 +58,9 @@ type Row =
 
 /** Notes, and views over notes (Obsidian's .base files), are what the tree lists. */
 const inTree = (file: { is_note: boolean; path: string }) => file.is_note || /\.base$/i.test(file.path)
+
+/** What a note or folder dragged in the sidebar carries. */
+const DRAG_TYPE = 'application/x-nexlore-path'
 
 export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: Props) {
   const { t } = useTranslation()
@@ -459,7 +462,10 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       if (stopped) return
       const button = element.querySelector<HTMLElement>(`li[data-path="${CSS.escape(target.path)}"] button[aria-expanded]:not([aria-label])`)
       if (button) {
-        if (document.activeElement !== button) button.focus()
+        // A dialog opened meanwhile (Ctrl+K right after choosing a folder) keeps its focus: the late focus here took
+        // the keys away from the field being typed in.
+        const inDialog = document.activeElement?.closest('[role="dialog"], dialog') ?? null
+        if (document.activeElement !== button && !inDialog) button.focus()
       } else if (++frames < 20) requestAnimationFrame(focus)
     }
     requestAnimationFrame(focus)
@@ -614,6 +620,67 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     for (const path of endsInView.split('\n').filter(Boolean)) loadMore(path)
   }, [endsInView, loadMore])
 
+  // Dragging a note or folder onto a folder moves it there (P4.16), as the dialog "Move …" does.
+  const dragged = useRef<string | null>(null)
+  const [dropOn, setDropOn] = useState<string | null>(null)
+  const takes = (folder: string, path: string | null): path is string =>
+    !!path && writable(folder) && !within(folder, path) && folderOf(path) !== folder
+  const startDrag = (event: ReactDragEvent<HTMLElement>, path: string) => {
+    dragged.current = path
+    event.dataTransfer.setData(DRAG_TYPE, path)
+    event.dataTransfer.effectAllowed = 'move'
+    const end = () => {
+      dragged.current = null
+      setDropOn(null)
+    }
+    event.currentTarget.addEventListener('dragend', end, { once: true })
+  }
+  const overFolder = (event: ReactDragEvent<HTMLElement>, folder: string) => {
+    if (!takes(folder, dragged.current)) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    setDropOn(folder)
+  }
+  const dropOnFolder = (event: ReactDragEvent<HTMLElement>, folder: string) => {
+    const path = dragged.current
+    dragged.current = null
+    setDropOn(null)
+    if (!takes(folder, path)) return
+    event.preventDefault()
+    askVaultAction({ kind: 'move-to', path, target: folder })
+  }
+
+  // The arrows walk the tree; right opens a folder, left closes it (P4.16: only Tab moved).
+  const stepKeys = (event: ReactKeyboardEvent<HTMLElement>, folder?: string, open?: boolean) => {
+    if (folder && ((event.key === 'ArrowRight' && !open) || (event.key === 'ArrowLeft' && open))) {
+      event.preventDefault()
+      toggle(folder)
+      return
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
+    event.preventDefault()
+    const element = scroller.current
+    if (!element) return
+    const down = event.key === 'ArrowDown'
+    const from = event.currentTarget
+    const step = () => {
+      const items = [...element.querySelectorAll<HTMLElement>('li[data-path] > button, li[data-path] > div > button[aria-expanded]:not([aria-label])')]
+      items.sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top)
+      const next = items[items.indexOf(from) + (down ? 1 : -1)]
+      if (next) {
+        next.focus({ preventScroll: true })
+        next.scrollIntoView({ block: 'nearest' })
+        return true
+      }
+      return false
+    }
+    // At the edge of the rows drawn: a row further, then once more.
+    if (!step()) {
+      element.scrollTop += down ? ROW : -ROW
+      requestAnimationFrame(() => void step())
+    }
+  }
+
   const renderRow = (row: Row) => {
     if (row.kind === 'loading' || row.kind === 'more') {
       return <div className="py-1 text-xs text-mist-600" style={{ paddingLeft: row.depth * 12 + 10 }}>{t('common.loading')}</div>
@@ -654,6 +721,9 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
             openInTab(row.path, navigate)
           }}
           {...menuTriggers((x, y) => menu.open(x, y, noteMenu(row)))}
+          draggable={writable(row.path)}
+          onDragStart={(event) => startDrag(event, row.path)}
+          onKeyDown={(event) => stepKeys(event)}
           className={
             'flex h-full w-full items-center gap-2 rounded-lg pr-2 text-left text-[13px] ' +
             (activeNote === row.path ? 'bg-accent-500/15 text-accent-400' : 'text-mist-400 hover:bg-ink-850 hover:text-mist-100')
@@ -670,9 +740,19 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     }
     return (
       <div
-        className={'group flex h-full items-center gap-1 rounded-lg pr-1.5 ' + (activeFolder === row.path ? 'bg-accent-500/10 text-accent-400' : 'text-mist-300 hover:bg-ink-850')}
+        className={
+          'group flex h-full items-center gap-1 rounded-lg pr-1.5 ' +
+          (dropOn === row.path ? 'bg-accent-500/20 ring-1 ring-accent-500/60 ' : '') +
+          (activeFolder === row.path ? 'bg-accent-500/10 text-accent-400' : 'text-mist-300 hover:bg-ink-850')
+        }
         style={{ paddingLeft: row.depth * 12 + 4 }}
         {...menuTriggers((x, y) => menu.open(x, y, folderMenu(row)))}
+        draggable={!row.space && writable(row.path)}
+        onDragStart={(event) => startDrag(event, row.path)}
+        onDragOver={(event) => overFolder(event, row.path)}
+        onDragLeave={() => setDropOn((now) => (now === row.path ? null : now))}
+        onDrop={(event) => dropOnFolder(event, row.path)}
+        data-testid="sidebar-folder"
       >
         <button type="button" onClick={() => toggle(row.path)} className="rounded p-1 text-mist-600 hover:text-mist-100" aria-label={row.open ? t('sidebar.collapse') : t('sidebar.expand')} aria-expanded={row.open}>
           <Symbol name={row.open ? 'chevronDown' : 'chevronRight'} className="h-3.5 w-3.5" />
@@ -680,6 +760,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
         <button
           type="button"
           onClick={() => toggle(row.path)}
+          onKeyDown={(event) => stepKeys(event, row.path, row.open)}
           aria-expanded={row.open}
           className={'flex min-w-0 flex-1 items-center gap-2 text-left ' + (row.space ? 'text-[13px] font-semibold text-mist-100' : 'text-[13px]')}
         >
@@ -859,7 +940,13 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
                   }
                 >
                   <Symbol name={FAVORITE_SYMBOLS[favorite.kind]} className="h-3.5 w-3.5 shrink-0 text-mist-600" />
-                  <span className="min-w-0 flex-1 truncate">{favorite.title}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {favorite.title}
+                    {/* A heading says whose: "Section 4" alone was ambiguous (P4.19). */}
+                    {favorite.kind === 'heading' && favorite.note && (
+                      <span className="ml-1.5 text-xs text-mist-600">{baseName(favorite.note).replace(/\.md$/i, '')}</span>
+                    )}
+                  </span>
                 </button>
               </li>
               )),

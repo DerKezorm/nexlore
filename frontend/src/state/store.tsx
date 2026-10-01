@@ -32,7 +32,7 @@ type Store = {
   scan: IndexProgress
 }
 
-export const SCAN_IDLE_MS = 30_000
+export const SCAN_IDLE_MS = 10_000
 export const SCAN_RUNNING_MS = 2_000
 export const SCAN_RELOAD_MS = 10_000
 
@@ -86,6 +86,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     let alive = true
     let wasRunning = false
     let lastReload = Date.now()
+    let seen: number | undefined
     const ask = async () => {
       let running = wasRunning
       try {
@@ -94,7 +95,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         running = answer.running
         setScan(answer)
         const now = Date.now()
-        if ((wasRunning && !running) || (running && now - lastReload >= SCAN_RELOAD_MS)) {
+        // A file added, changed or gone outside the app (Obsidian, a sync): the sidebar follows (P4.9).
+        const moved = seen !== undefined && answer.revision !== undefined && answer.revision !== seen
+        if (answer.revision !== undefined) seen = answer.revision
+        if ((wasRunning && !running) || (running && now - lastReload >= SCAN_RELOAD_MS) || (moved && !running)) {
           lastReload = now
           void reload()
         }

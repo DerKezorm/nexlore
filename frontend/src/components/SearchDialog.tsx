@@ -18,6 +18,7 @@ import { askFolder, askHeading, hasSidebar, shownNote } from '../lib/shell'
 import { folderOf } from '../lib/vault'
 import { Marked } from './Marked'
 import { Symbol } from './Symbol'
+import { useDialogFocus } from '../lib/dialogFocus'
 
 type Result =
   | { kind: 'note'; path: string; title: string; snippet?: string; alias?: string | null }
@@ -48,8 +49,18 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
   const [titles, setTitles] = useState<Found[]>([])
   const [index, setIndex] = useState(0)
   const input = useRef<HTMLInputElement>(null)
+  const box = useRef<HTMLDivElement>(null)
+  const list = useRef<HTMLUListElement>(null)
+  const dismiss = useDialogFocus(box, onClose)
+  // For which words the list was found: Enter right after typing waits for their answer, not the one before (P4.1).
+  const [answered, setAnswered] = useState<string | null>(null)
+  const waiting = useRef(false)
 
   useEffect(() => input.current?.focus(), [])
+  // The chosen line stays in sight while the arrows move through a long list (P4.4).
+  useEffect(() => {
+    list.current?.querySelector('[data-active="true"]')?.scrollIntoView({ block: 'nearest' })
+  }, [index])
 
   useEffect(() => {
     const q = query.trim()
@@ -75,7 +86,10 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
               const seen = new Set(opened.map((note) => note.path))
               return [...opened, ...changed.filter((note) => !seen.has(note.path))].slice(0, 8)
             })
-        titles.then((found) => live && setTitles(found)).catch(() => live && setTitles([]))
+        titles
+          .then((found) => live && setTitles(found))
+          .catch(() => live && setTitles([]))
+          .finally(() => live && setAnswered(q))
         if (!q) return setHits([])
         vaultApi
           .search(q)
@@ -126,6 +140,8 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
     }
   }
 
+  const current = query.trim()
+  const fresh = headingMode || folderMode || answered === current
   const choose = (result: Result) => {
     if (result.kind === 'create') return void create(result.title)
     onClose()
@@ -138,9 +154,17 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
     else onPick(result.path)
   }
 
+  useEffect(() => {
+    if (!waiting.current || !fresh) return
+    waiting.current = false
+    if (results[index]) choose(results[index])
+    // Only when the answer for the words typed has come.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fresh, results])
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-scrim/70 px-4 pt-[12vh]" onMouseDown={onClose}>
-      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-2xl" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-label={t('search.button')}>
+      <div ref={box} className="w-full max-w-xl overflow-hidden rounded-2xl border border-ink-700 bg-ink-900 shadow-2xl" onMouseDown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t('search.button')}>
         <div className="flex items-center gap-3 border-b border-ink-700 px-4">
           <Symbol name="search" className="h-4 w-4 text-mist-500" />
           <input
@@ -151,12 +175,14 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
               setIndex(0)
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Escape') onClose()
               if (e.key === 'ArrowDown') setIndex((i) => Math.min(results.length - 1, i + 1))
               if (e.key === 'ArrowUp') setIndex((i) => Math.max(0, i - 1))
               if (e.key === 'Enter' && e.shiftKey && query.trim() && !headingMode && !folderMode) {
                 e.preventDefault()
                 void create(query.trim())
+              } else if (e.key === 'Enter' && !fresh) {
+                e.preventDefault()
+                waiting.current = true
               } else if (e.key === 'Enter' && results[index]) choose(results[index])
             }}
             placeholder={t('search.placeholder')}
@@ -165,7 +191,7 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
           />
           <button
             type="button"
-            onClick={onClose}
+            onClick={dismiss}
             aria-label={t('common.close')}
             title={t('common.close')}
             className="grid h-8 min-w-8 place-items-center rounded border border-ink-700 px-1.5 text-[11px] text-mist-500 hover:bg-ink-850 hover:text-mist-200"
@@ -174,11 +200,12 @@ export function SearchDialog({ onClose, onPick, createIn = null }: Props) {
             <Symbol name="close" className="h-4 w-4 sm:hidden" />
           </button>
         </div>
-        <ul className="nn-scroll max-h-[50vh] overflow-y-auto p-2">
+        <ul ref={list} className="nn-scroll max-h-[50vh] overflow-y-auto p-2">
           {results.map((result, i) => (
             <li key={result.kind + ':' + result.path + ':' + (result.kind === 'heading' ? result.index : '')}>
               <button
                 type="button"
+                data-active={i === index}
                 onMouseEnter={() => setIndex(i)}
                 onClick={() => choose(result)}
                 className={'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left ' + (i === index ? 'bg-accent-500/12 text-mist-100' : 'text-mist-300')}

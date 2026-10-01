@@ -8,13 +8,14 @@
   --color-ink-800: #1d1d26; /* cards on hover */
   --color-ink-700: #26262f; /* border */
   --color-ink-600: #3a3a46;
+  --color-edge: #66667a; /* the edge of a field or box: 3:1 to its ground (P8.12) */
 
   --color-mist-100: #f2f2f5; /* text */
   --color-mist-200: #dcdce4;
   --color-mist-300: #c3c3ce;
   --color-mist-400: #aeaebc;
   --color-mist-500: #9a9aa8; /* dimmed text */
-  --color-mist-600: #6f6f80;
+  --color-mist-600: #858594; /* small text: 4.5:1 on every ground (it was 3.6 to 4.0, P8.11) */
 
   --color-accent-300: #99f6e4;
   --color-accent-400: #5eead4;
@@ -52,18 +53,20 @@
   --color-ink-800: #ececf2;
   --color-ink-700: #dcdce4;
   --color-ink-600: #b4b4c2;
+  --color-edge: #8a8a97;
 
   --color-mist-100: #14141a;
   --color-mist-200: #26262f;
   --color-mist-300: #3c3c48;
   --color-mist-400: #4e4e5c;
   --color-mist-500: #61616f;
-  --color-mist-600: #8a8a97;
+  --color-mist-600: #696976;
 
   --color-accent-300: #115e59;
   --color-accent-400: #0f766e;
-  --color-accent-500: #0d9488;
-  --color-accent-600: #0f766e;
+  /* A step darker than before: white on it 5.5:1 (it was 3.7, P8.11). */
+  --color-accent-500: #0f766e;
+  --color-accent-600: #115e59;
   --color-accent-700: #134e4a;
 
   --color-on-accent: #ffffff;
@@ -189,6 +192,16 @@
   }
   .nn-prose audio {
     @apply my-2 block w-full max-w-md;
+  }
+  /* Where the search page led to (P4.8). */
+  .nn-prose mark.nn-hit {
+    @apply rounded bg-accent-500/30 px-0.5 text-mist-100;
+  }
+  .nn-prose .nn-hit-block {
+    @apply rounded bg-accent-500/10;
+  }
+  .nn-prose .nn-tag[data-tag] {
+    @apply cursor-pointer hover:bg-accent-500/20;
   }
   .nn-prose .nn-tag {
     @apply rounded-full bg-accent-500/10 px-1.5 py-0.5 text-[0.9em] text-accent-400;
@@ -426,4 +439,37 @@
 /* Pictures in the text open over the page with a click. */
 .nn-prose img {
   cursor: zoom-in;
+}
+
+/* Outside the layers on purpose: these win over the utilities of the elements (review before 1.0.0). */
+
+/* A field's edge at 3:1 to its ground (P8.12); a field in focus keeps the accent, one without a frame stays so. */
+:is(input:not([type='checkbox'], [type='radio'], [type='range'], [type='color']), select, textarea)[class*='border-ink-7']:not(:focus) {
+  border-color: var(--color-edge);
+}
+
+/* Fingers (P8.8): the controls used most are 44 pixels at least; with a mouse the dense look stays. */
+@media (pointer: coarse) {
+  :is(header, [role='toolbar'], [role='group'], [data-testid='note-toolbar'], .nn-touch) :is(button, a[href], select),
+  .nn-touch-self {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  input[type='checkbox'],
+  input[type='radio'] {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+/* Less motion when the system asks for it (P8.21): no fades, no slides, no smooth scrolling. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

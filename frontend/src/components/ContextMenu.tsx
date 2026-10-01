@@ -32,6 +32,8 @@ export function ContextMenu({ x, y, items, onClose, sub = false }: { x: number; 
     setPlace({ left: sub && x + width > window.innerWidth - 4 ? Math.max(4, x - width * 2) : left, top })
   }, [x, y, sub])
 
+  // Where the focus was when the menu opened: Escape gives it back there (it fell to the page, P4.16).
+  const opener = useRef<HTMLElement | null>(document.activeElement instanceof HTMLElement ? document.activeElement : null)
   useEffect(() => {
     if (!sub) buttons.current.find((button) => button && !button.disabled)?.focus({ preventScroll: true })
   }, [sub])
@@ -70,7 +72,11 @@ export function ContextMenu({ x, y, items, onClose, sub = false }: { x: number; 
     const move = (step: number) => buttons.current[enabled[(at + step + enabled.length) % enabled.length]]?.focus()
     if (event.key === 'ArrowDown') move(1)
     else if (event.key === 'ArrowUp') move(at < 0 ? 0 : -1)
-    else if (event.key === 'Escape' || (sub && event.key === 'ArrowLeft')) onClose()
+    else if (event.key === 'Escape' && !sub) {
+      const back = opener.current
+      onClose()
+      if (back?.isConnected) back.focus()
+    } else if (event.key === 'Escape' || (sub && event.key === 'ArrowLeft')) onClose()
     else if (event.key === 'ArrowRight' && at >= 0 && isGroup(items[enabled[at]])) openSub(enabled[at])
     else if (event.key === 'Tab') onClose()
     else return

@@ -387,3 +387,135 @@ def test_ticking_one_of_two_identical_lines_after_the_file_changed_guesses_nothi
     })
     assert done.status_code == 200, done.text
     assert (vault / "Garden" / "Twice.md").read_bytes().endswith(b"## Work\n- [x] call \xe2\x9c\x85 2026-10-01\n")
+
+
+# --- Block T: finding ----------------------------------------------------------------------------------------------
+
+
+def test_a_minus_before_an_operator_leaves_out_what_it_finds(client: TestClient, account: Account, vault: Path) -> None:
+    """P4.2: -tag:, -path:, -space:, -file: and -[property] were dropped without a word."""
+    _garden(vault, {
+        "Beds/Alpha.md": b"---\nstatus: done\n---\nOtter by the pond #fauna\n",
+        "Beds/Beta.md": b"Otter in the reeds\n",
+        "Shed/Gamma.md": b"Otter on the roof #flora\n",
+    })
+
+    def found(q: str) -> list[str]:
+        answer = client.get("/api/search/notes", params={"q": q})
+        assert answer.status_code == 200, answer.text
+        return sorted(note["title"] for note in answer.json()["notes"] if note["path"].startswith("Garden/"))
+
+    assert found("otter") == ["Alpha", "Beta", "Gamma"]
+    assert found("otter -tag:fauna") == ["Beta", "Gamma"]
+    assert found("otter -path:Shed") == ["Alpha", "Beta"]
+    assert found("otter -file:beta") == ["Alpha", "Gamma"]
+    assert found("otter -[status:done]") == ["Beta", "Gamma"]
+    assert found("otter -space:Garden") == []
+
+
+def test_or_finds_either_word(client: TestClient, account: Account, vault: Path) -> None:
+    """P4.17: OR was a word of its own and found nothing."""
+    _garden(vault, {"One.md": b"A heron stood there\n", "Two.md": b"A beaver swam by\n", "Three.md": b"Only reeds\n"})
+    answer = client.get("/api/search/notes", params={"q": "heron OR beaver space:Garden"}).json()
+    assert sorted(note["title"] for note in answer["notes"]) == ["One", "Two"]
+    assert client.get("/api/search/notes", params={"q": "heron OR"}).status_code == 200
+
+
+def test_names_sort_with_their_numbers(client: TestClient, account: Account, vault: Path) -> None:
+    """P4.15: Topic10 came before Topic2."""
+    _garden(vault, {"Topic10.md": b"x", "Topic2.md": b"x", "Topic1.md": b"x", "\u00c4rger.md": b"x", "Zebra.md": b"x"})
+    names = [file["name"] for file in client.get("/api/folder", params={"path": "Garden"}).json()["files"]]
+    assert names == ["\u00c4rger.md", "Topic1.md", "Topic2.md", "Topic10.md", "Zebra.md"]
+
+
+def test_the_quick_switcher_shows_clean_words_without_the_title_again(
+    client: TestClient, account: Account, vault: Path
+) -> None:
+    """P4.14: the preview began with the title (the note's first heading) and ended in a raw `[[Beta`."""
+    long = " ".join(["word"] * 40)
+    _garden(vault, {"Alpha.md": f"# Alpha\n\nThe pygmy otters live here, see {long} [[Beta and more]]\n".encode()})
+    hits = client.get("/api/search", params={"q": "otters", "space": "Garden"}).json()
+    snippet = next(hit["snippet"] for hit in hits if hit["title"] == "Alpha")
+    assert "[[" not in snippet
+    assert not snippet.replace("\x02", "").startswith("Alpha")
+
+
+def test_the_progress_tells_when_the_index_changed(client: TestClient, account: Account, vault: Path) -> None:
+    """P4.9: a file added outside showed in the sidebar only after a reload; the pages ask the progress anyway."""
+    _garden(vault, {"One.md": b"x"})
+    before = client.get("/api/index/progress").json()["revision"]
+    (vault / "Garden" / "Two.md").write_bytes(b"y")
+    index.scan()
+    after = client.get("/api/index/progress").json()["revision"]
+    assert after > before
+    assert client.get("/api/index/progress").json()["revision"] == after
+
+
+def test_words_are_found_in_the_middle_of_a_word_behind_the_usual_hits(
+    client: TestClient, account: Account, vault: Path
+) -> None:
+    """P4.17: "Otter" did not find "Zwergotter" (only the start of a word counted)."""
+    _garden(vault, {
+        "Pond.md": b"The otter swims.\n", "Zoo.md": b"Die Zwergotter schlafen.\n", "Rock.md": b"Stones.\n",
+        # Every trigram of "wergot" (wer, erg, rgo, got), but not the word: the text decides, not the trigrams.
+        "Mix.md": b"Bewerg ergo rgox gotisch\n",
+    })
+    titles = [note["title"] for note in client.get("/api/search/notes", params={"q": "otter space:Garden"}).json()["notes"]]
+    assert titles == ["Pond", "Zoo"]
+    hits = [hit["title"] for hit in client.get("/api/search", params={"q": "otter", "space": "Garden"}).json()]
+    assert hits[:2] == ["Pond", "Zoo"]
+    # Two letters are too few for trigrams: the start of a word only.
+    assert [n["title"] for n in client.get("/api/search/notes", params={"q": "ot space:Garden"}).json()["notes"]] == ["Pond"]
+    # Left out stays left out.
+    assert client.get("/api/search/notes", params={"q": "otter -schlafen space:Garden"}).json()["notes"][0]["title"] == "Pond"
+    assert len(client.get("/api/search/notes", params={"q": "otter -schlafen space:Garden"}).json()["notes"]) == 1
+    # Candidates are checked against the text: "otteX" shares two trigrams with "otter" and is no hit.
+    assert [n["title"] for n in client.get("/api/search/notes", params={"q": "wergot space:Garden"}).json()["notes"]] == ["Zoo"]
+
+    def middle(q: str) -> list[str]:
+        return [note["title"] for note in client.get("/api/search/notes", params={"q": f"{q} space:Garden"}).json()["notes"]]
+
+    # Changed, renamed and gone: the trigram index (it keeps no text of its own) follows each time.
+    (vault / "Garden" / "Zoo.md").write_bytes(b"Die Riesenotter schlafen.\n")
+    index.scan()
+    assert middle("senotter") == ["Zoo"]
+    assert middle("wergot") == []
+    from sqlalchemy import text as sql
+
+    from app.db import engine
+
+    with engine.begin() as connection:
+        # The old text left the trigram index too ("zwe" stood only in it).
+        assert connection.execute(sql("SELECT count(*) FROM notes_tri WHERE notes_tri MATCH '\"zwe\"'")).scalar() == 0
+    moved = client.post("/api/move", json={"source": "Garden/Zoo.md", "destination": "Garden/Gehege.md"})
+    assert moved.status_code == 200, moved.text
+    assert middle("ehege") == ["Gehege"]
+    assert client.delete("/api/files", params={"path": "Garden/Gehege.md"}).status_code == 200
+    assert middle("senotter") == []
+    # And it still holds together: a full check of the index finds nothing wrong.
+    with engine.begin() as connection:
+        connection.execute(sql("INSERT INTO notes_tri(notes_tri) VALUES ('integrity-check')"))
+
+
+def test_a_database_from_before_gets_its_trigram_index(vault: Path) -> None:
+    """The trigram index is filled once from the word index at the start."""
+    from sqlalchemy import text as sql
+
+    from app.db import engine, init_db
+
+    _garden(vault, {"Old.md": b"Wasserbueffel\n"})
+    with engine.begin() as connection:
+        connection.execute(sql("INSERT INTO notes_tri(notes_tri) VALUES ('delete-all')"))
+        connection.execute(sql("DELETE FROM settings WHERE key = 'midword_index'"))
+    init_db()
+    with engine.begin() as connection:
+        found = "SELECT count(*) FROM notes_tri WHERE notes_tri MATCH '\"bue\" \"uef\" \"eff\"'"
+        assert connection.execute(sql(found)).scalar() == 1
+
+
+def test_a_snippet_cut_inside_a_wiki_link_shows_its_words() -> None:
+    """P4.14: a preview ending in `[[Beta` showed the brackets."""
+    from app.services import snippets
+
+    assert snippets.plain("see the [[Beta and") == "see the Beta and"
+    assert snippets.plain("see [[Beta|the beta]] here") == "see the beta here"

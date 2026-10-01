@@ -31,8 +31,20 @@ from sqlalchemy import text as sql
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import FTS_TABLE, File, Link, Lock, MoveJob, MoveJobNote, Share, Space, TrashBlob, Version, utcnow
-from . import favorites, index, looks, mdparse, paths, settings_service
+from ..models import (
+    FTS_TABLE,
+    File,
+    Link,
+    Lock,
+    MoveJob,
+    MoveJobNote,
+    Share,
+    Space,
+    TrashBlob,
+    Version,
+    utcnow,
+)
+from . import favorites, index, looks, mdparse, midword, paths, settings_service
 
 logger = logging.getLogger("nexlore.vault")
 
@@ -214,6 +226,8 @@ class Saved:
     #: Set when the note had changed on disk: the save went into this copy instead.
     conflict: str | None = None
     changed: bool = True
+    #: Why the copy: ``changed`` (the note changed in between), ``locked`` (somebody edits it), ``not_utf8``.
+    reason: str | None = None
 
 
 def _is_utf8(data: bytes) -> bool:
@@ -272,7 +286,8 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str = i
                 file.id, copy.id, "locked" if locked_out else "not utf-8" if not_text else "changed",
             )
             db.expunge(file)
-            return Saved(file=file, conflict=copy_rel)
+            reason = "locked" if locked_out else "not_utf8" if not_text else "changed"
+            return Saved(file=file, conflict=copy_rel, reason=reason)
         stat = atomic_write(full, data)
         index.record(
             db, rel, data, stat, source=source, author=actor.name, session=actor.client,
@@ -925,6 +940,7 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
             except OSError:
                 continue
             file.title = paths.stem(file.path)
+            midword.retitle(db, file.id, file.title)
             db.execute(
                 sql(f"UPDATE {FTS_TABLE} SET title = :title WHERE rowid = :id"),  # noqa: S608
                 {"title": file.title, "id": file.id},

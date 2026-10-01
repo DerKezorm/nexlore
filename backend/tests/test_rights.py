@@ -253,8 +253,11 @@ def test_invitations_are_checked(world: World) -> None:
     assert world.anna.post("/api/spaces/Shared/invites", json={"role": "read", "days": 99}).status_code == 422
     assert world.anna.post("/api/spaces/Private/invites", json={"role": "read", "email": "no"}).status_code == 422
     # Without a mail server nothing is sent, and asking to send says so.
+    before = len(world.anna.get("/api/spaces/Shared/members").json()["invites"])
     sent = world.anna.post("/api/spaces/Shared/invites", json={"role": "read", "email": "a@example.com", "send": True})
     assert sent.status_code == 502 and sent.json()["detail"]["code"] == "mail_off"
+    # Nothing stays behind: its link was to go by mail only and would be lost (review P6.13).
+    assert len(world.anna.get("/api/spaces/Shared/members").json()["invites"]) == before
     # Inviting into nexlore without a space is the operator's.
     assert world.anna.post("/api/invites", json={}).status_code == 403
     made = world.operator.post("/api/invites", json={"days": 30})

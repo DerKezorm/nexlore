@@ -211,6 +211,7 @@ export function CalendarPage() {
                 onClick={() => void open(date)}
                 disabled={opening === date}
                 aria-label={t('calendar.dayLabel', { date: long(date) })}
+                aria-current={date === today ? 'date' : undefined}
                 data-date={date}
                 className="flex h-14 min-w-0 flex-col items-start gap-1 bg-ink-900 p-1 text-left hover:bg-ink-850 focus-visible:ring-2 focus-visible:ring-accent-500 focus-visible:outline-none focus-visible:ring-inset sm:h-24 sm:p-1.5"
               >

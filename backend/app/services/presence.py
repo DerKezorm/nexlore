@@ -12,8 +12,9 @@ import threading
 import time
 from dataclasses import dataclass
 
-#: A page renews its presence about every 25 seconds; after this without a word it counts as gone.
-STALE_SECONDS = 70
+#: A page renews its presence about every 8 seconds; after this without a word it counts as gone (it took up to 25 s
+#: to show somebody and 70 s to see them go, review P6.8).
+STALE_SECONDS = 25
 
 
 @dataclass

@@ -117,10 +117,73 @@ def test_a_proposal_on_a_changed_note_goes_into_a_conflict_copy_and_one_can_be_d
     save(anna, "Garden/Beds.md", "# Beds\n\nAnna's own change.\n")
     taken = anna.post(f"/api/proposals/{first['id']}/take").json()
     assert taken["conflict"] and "conflict" in taken["conflict"]
+    assert taken["reason"] == "changed"
     assert (vault / "Garden" / "Beds.md").read_bytes() == b"# Beds\n\nAnna's own change.\n"
     assert anna.post(f"/api/proposals/{second['id']}/decline").status_code == 204
-    assert [row["status"] for row in bob.get("/api/proposals").json()["mine"]] == ["declined", "taken"]
+    # Into a copy is not into the note: the proposer reads "copied", not "taken" (review P6.5).
+    assert [row["status"] for row in bob.get("/api/proposals").json()["mine"]] == ["declined", "copied"]
     # Withdrawn by its proposer, never by anybody else.
     third = bob.post("/api/proposals", json={"path": "Garden/Beds.md", "content": "x", "base_hash": current["hash"]}).json()
     assert anna.delete(f"/api/proposals/{third['id']}").status_code == 404
     assert bob.delete(f"/api/proposals/{third['id']}").status_code == 204
+
+
+def test_a_proposal_is_taken_once_when_two_take_it_at_the_same_moment(
+    people: dict[str, TestClient], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Review P6.15: three takes at once all answered 200; the status was set only after writing."""
+    import threading
+    import time
+
+    from app.services import vault as vault_service
+
+    anna, bob = people["anna"], people["bob"]
+    current = bob.get("/api/note", params={"path": "Garden/Seeds.md"}).json()
+    proposal = bob.post("/api/proposals", json={
+        "path": "Garden/Seeds.md", "content": "# Seeds\n\nThyme.\n", "base_hash": current["hash"],
+    }).json()
+    original = vault_service.save
+
+    def slow(*args: object, **kwargs: object) -> object:
+        time.sleep(0.3)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(vault_service, "save", slow)
+    codes: list[int] = []
+    takers = [threading.Thread(target=lambda: codes.append(anna.post(f"/api/proposals/{proposal['id']}/take").status_code))
+              for _ in range(3)]
+    for taker in takers:
+        taker.start()
+    for taker in takers:
+        taker.join()
+    assert sorted(codes) == [200, 409, 409]
+
+
+def test_a_proposal_while_somebody_edits_says_so(people: dict[str, TestClient]) -> None:
+    """P6.5: with the lock held, the message said the note had changed, though it had not."""
+    anna, bob = people["anna"], people["bob"]
+    current = bob.get("/api/note", params={"path": "Garden/Seeds.md"}).json()
+    proposal = bob.post("/api/proposals", json={
+        "path": "Garden/Seeds.md", "content": "# Seeds\n\nMint.\n", "base_hash": current["hash"],
+    }).json()
+    other_tab = TestClient(anna.app, base_url="http://testserver", headers={"X-Nexlore-Client": "tab-annaother"})
+    other_tab.cookies = anna.cookies
+    assert other_tab.post("/api/locks", json={"path": "Garden/Seeds.md"}).status_code == 200
+    taken = anna.post(f"/api/proposals/{proposal['id']}/take").json()
+    assert taken["reason"] == "locked"
+
+
+def test_the_note_state_tells_an_own_other_tab_and_new_comments(people: dict[str, TestClient]) -> None:
+    """P1.19: the own name stood in the lock notice; P6.4: comments of others showed only after a reload."""
+    anna, bob = people["anna"], people["bob"]
+    other_tab = TestClient(anna.app, base_url="http://testserver", headers={"X-Nexlore-Client": "tab-annaother"})
+    other_tab.cookies = anna.cookies
+    assert other_tab.post("/api/locks", json={"path": "Garden/Seeds.md"}).status_code == 200
+    state = anna.get("/api/note/state", params={"path": "Garden/Seeds.md"}).json()
+    assert state["lock"]["own"] is True and state["lock"]["mine"] is False
+    assert bob.get("/api/note/state", params={"path": "Garden/Seeds.md"}).json()["lock"]["own"] is False
+    before = bob.get("/api/note/state", params={"path": "Garden/Seeds.md"}).json()["comments"]
+    made = anna.post("/api/comments", json={"path": "Garden/Seeds.md", "body": "Basil or mint?", "quote": "Basil"})
+    assert made.status_code in (200, 201), made.text
+    after = bob.get("/api/note/state", params={"path": "Garden/Seeds.md"}).json()["comments"]
+    assert after != before

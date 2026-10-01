@@ -278,6 +278,20 @@ export function AppShell() {
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
+      {/* The first stop of Tab: past the header and the sidebar straight to the content (it took 92 to 102, P8.9). */}
+      <a
+        href="#content"
+        onClick={(event) => {
+          event.preventDefault()
+          const main = document.querySelector<HTMLElement>('main')
+          if (!main) return
+          main.tabIndex = -1
+          main.focus()
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-lg focus:bg-accent-500 focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-on-accent"
+      >
+        {t('shell.skip')}
+      </a>
       <header className="z-20 shrink-0 border-b border-ink-700/80 bg-ink-950/80 backdrop-blur-xl">
         <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-4 sm:px-4">
           <NavLink to="/" className="hidden shrink-0 sm:block" aria-label={t('app.home')}>
