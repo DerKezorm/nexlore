@@ -240,6 +240,9 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   // Files only this note uses, offered to go into the trash with it; and whether they do.
   const [own, setOwn] = useState<string[]>([])
   const [withOwn, setWithOwn] = useState(true)
+  // The question for them, still on its way when the trash is confirmed at once: the deletion waits for it, or the
+  // files would stay behind and the late question would ask after a note already gone (404).
+  const ownAsked = useRef<Promise<string[]> | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   // When this tab last saved the note: the line under the title says so at once (it kept an older time, P6.20).
   const [savedAt, setSavedAt] = useState<number | null>(null)
@@ -831,16 +834,19 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     setOwn([])
     setWithOwn(true)
     setDeleting(true)
-    const found = await vaultApi.own(path).catch(() => ({ paths: [] as string[] }))
-    if (current.current === path) setOwn(found.paths)
+    const asked = vaultApi.own(path).then((found) => found.paths, () => [] as string[])
+    ownAsked.current = asked
+    const found = await asked
+    if (current.current === path) setOwn(found)
   }
 
   const remove = async () => {
     if (!note) return
     setDeleting(false)
+    const along = withOwn ? await (ownAsked.current ?? Promise.resolve(own)) : []
     setGone(note.path)
     try {
-      await vaultApi.remove(note.path, withOwn ? own : [])
+      await vaultApi.remove(note.path, along)
       await reload()
       // The right one closes; for the left one the note on the right (if any) comes into its place.
       if (side === 'right') navigate({ pathname: location.pathname, search: '' })

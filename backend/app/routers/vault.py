@@ -498,6 +498,28 @@ def move(body: MoveIn, account: Account, who: ActorDep) -> dict[str, Any]:
     return {"path": moved.path, "files": moved.files, "rewritten": rewritten}
 
 
+@router.post("/spaces/{name}/rename", summary="Give a space another name; links naming it follow")
+def rename_space(name: str, body: NameIn, account: Account, who: ActorDep) -> dict[str, Any]:
+    space = need(account, name, MANAGE)
+    if "/" in space:
+        raise error("not_found", "Not found.", 404)
+    new = body.name.strip()
+    if paths.fold(new) != paths.fold(space):
+        # Only the case may change without asking; any other name must be free, also of spaces in the trash.
+        with SessionLocal() as db:
+            try:
+                rights.free_name(db, new)
+            except rights.RightsError as exc:
+                raise error(exc.code, exc.text, exc.status) from exc
+    try:
+        moved = vault.rename_space(space, new, actor=who)
+    except VaultError as exc:
+        raise _fail(exc) from exc
+    readable = readable_spaces(account)
+    rewritten = sum(1 for space_id in moved.rewritten_spaces if space_id in readable)
+    return {"path": moved.path, "files": moved.files, "rewritten": rewritten}
+
+
 class MergeIn(BaseModel):
     source: str = Field(min_length=1, max_length=paths.MAX_PATH_CHARS)
     target: str = Field(min_length=1, max_length=paths.MAX_PATH_CHARS)

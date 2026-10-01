@@ -395,6 +395,9 @@ export const vaultApi = {
   own: (path: string) => api<{ paths: string[] }>('/api/files/own', { query: { path } }),
   move: (source: string, destination: string) =>
     api<{ path: string; files: number; rewritten: number }>('/api/move', { method: 'POST', body: { source, destination } }),
+  /** A space gets another name; links naming it in front follow (block Y2). */
+  renameSpace: (space: string, name: string) =>
+    api<{ path: string; files: number; rewritten: number }>(`/api/spaces/${encodeURIComponent(space)}/rename`, { method: 'POST', body: { name } }),
   links: (path: string) => api<Links>('/api/links', { query: { path } }),
   search: (q: string, space?: string) => api<Hit[]>('/api/search', { query: { q, space, limit: 30 } }),
   lock: (path: string) => api<Lock>('/api/locks', { method: 'POST', body: { path } }),

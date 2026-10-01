@@ -1,27 +1,42 @@
 {
   "0.2.0": {
-    "lead": "Menschen erscheinen jetzt unter einem selbst gewählten Namen, nexlore sagt Bescheid, wenn eine neuere Fassung erschienen ist, und nach einem Update erklärt dieses Fenster, was sich geändert hat.",
+    "lead": "KI-Programme können jetzt alles, was du in nexlore kannst, und du bestimmst je Werkzeug, was sie von sich aus dürfen. Bereiche lassen sich umbenennen, Menschen erscheinen unter einem selbst gewählten Namen, und nexlore sagt Bescheid, wenn eine neuere Fassung erschienen ist.",
     "sections": [
+      {
+        "title": "KI von außen kann alles, mit Rechten je Werkzeug",
+        "where": "Kontomenü, Mein Konto, KI, ein Schlüssel, Rechte je Werkzeug",
+        "body": "Über MCP legt ein KI-Programm jetzt Bereiche, Ordner und Notizen an, benennt und verschiebt sie samt Links und arbeitet mit Versionen, Papierkorb, Tags, Kommentaren und Anhängen. Unter jedem Schlüssel stellst du jedes Werkzeug auf Erlauben, Nachfragen oder Verbieten. Neue Schlüssel lesen frei, fragen vor dem Anlegen und Ändern nach und sehen Werkzeuge zum Löschen, Teilen und für Mitglieder gar nicht. Der Betreiber kann Werkzeuge für alle sperren."
+      },
+      {
+        "title": "Freigaben",
+        "where": "Kontomenü, Freigaben, und Neu seit deinem letzten Besuch",
+        "body": "Ein Werkzeug auf Nachfragen wartet auf dich. Die Anfrage steht mit genau dem da, was das Programm geschickt hat; Annehmen und ausführen tut genau das, Ablehnen nichts, und nach 24 Stunden verfällt sie. Mit einem Haken läuft das Werkzeug künftig ohne Nachfrage."
+      },
+      {
+        "title": "Konnektoren",
+        "where": "Mein Konto, KI, So verbindest du ein Programm",
+        "body": "Programme, die sich selbst anmelden, brauchen nur die Adresse von nexlore mit /api/mcp dahinter. Du meldest dich an, wählst Stufe und Bereiche und stimmst zu; danach steht das Programm wie ein Schlüssel in der Liste. Für KI-Apps, die in der Cloud laufen, muss nexlore aus dem Internet erreichbar sein; ein Programm auf deinem eigenen Rechner erreicht es zu Hause."
+      },
+      {
+        "title": "Bereich umbenennen",
+        "where": "Seitenleiste, Rechtsklick auf einen Bereich, Umbenennen",
+        "body": "Für die Verwalter eines Bereichs. Links, die den Bereich vorn nennen, etwa [[Bereich/Notiz]], ziehen in allen Bereichen nach, ebenso Favoriten, öffentliche Seiten, Entwürfe und der Hauptbereich jedes Kontos. Links ohne den Namen bleiben, wie sie sind."
+      },
       {
         "title": "Ein Anzeigename für jedes Konto",
         "where": "Kontomenü, Mein Konto, Profil, Anzeigename",
-        "body": "Bisher erschien jeder unter dem Namen, mit dem er sich anmeldet. Jetzt bestimmt jedes Konto selbst, wie andere es sehen, etwa mit Vor- und Nachnamen. Er steht überall, wo Menschen auftauchen: wer gerade da ist, wer schreibt, Kommentare, Versionen und das Kontomenü. In Mitgliederlisten und bei den @-Vorschlägen steht der Anmeldename klein daneben, denn der kommt nach dem @ in den Text. Bleibt das Feld leer, erscheint wie bisher der Anmeldename."
+        "body": "Jedes Konto bestimmt selbst, wie andere es sehen, etwa mit Vor- und Nachnamen. In Mitgliederlisten und bei den @-Vorschlägen steht der Anmeldename klein daneben, denn der kommt nach dem @ in den Text."
       },
       {
         "title": "Über nexlore, mit Prüfung auf Aktualisierungen",
         "where": "Kontomenü, Über nexlore",
-        "body": "Die Seite nennt die laufende Fassung, die Lizenz, den Quelltext und die Veröffentlichungen. Einmal am Tag fragt nexlore bei GitHub nach, ob es eine neuere Fassung gibt, und die Seite sagt es mit einem Link zu dem, was neu ist. Hinaus geht nur diese Frage, ohne Namen, Notizen oder Einstellungen. Der Betreiber schaltet das tägliche Nachsehen auf derselben Seite ab und kann jederzeit von Hand nachsehen."
-      },
-      {
-        "title": "Dieses Fenster",
-        "where": "Nach einem Update, die Leiste unter der Kopfzeile",
-        "body": "Jedes Konto liest es einmal, auf dem Gerät, auf dem es sich zuerst anmeldet. Schließen oder die Leiste wegklicken genügt; es kommt erst mit der nächsten Fassung mit Neuigkeiten wieder."
+        "body": "Fassung, Lizenz, Quelltext und Veröffentlichungen. Einmal am Tag fragt nexlore bei GitHub nach, ob es eine neuere Fassung gibt; hinaus geht nur diese Frage. Der Betreiber schaltet das dort ab und kann von Hand nachsehen."
       }
     ],
     "smallTitle": "Außerdem",
     "small": [
-      "Mitgliederlisten und die Kontokarten des Betreibers zeigen den Anzeigenamen mit dem Anmeldenamen daneben.",
-      "Der Betreiber sieht die Anzeigenamen aller Konten, alle anderen die der Menschen, mit denen sie einen Bereich teilen."
+      "Die Einstellungen sind ins Kontomenü gewandert, wie bei Nexview; die Kopfleiste behält die Orte, an denen du arbeitest.",
+      "Dieses Fenster kommt einmal je Fassung mit Neuigkeiten, für jedes Konto."
     ]
   }
 }

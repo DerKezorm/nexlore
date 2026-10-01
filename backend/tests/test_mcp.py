@@ -197,7 +197,7 @@ def test_initialize_and_the_tools_of_each_level(world: World) -> None:
                "list_members", "list_shares"}
     assert levels["read"] == reading
     assert levels["draft"] == levels["read"] | {"propose_change", "propose_note"}
-    changing = {"write_note", "edit_note", "create_note", "complete_task", "append_to_daily", "create_space",
+    changing = {"write_note", "edit_note", "create_note", "complete_task", "append_to_daily", "create_space", "rename_space",
                 "set_space_options", "create_folder", "rename_folder", "move_folder", "rename_note", "move_note",
                 "create_from_template", "set_property", "merge_notes", "restore_version", "restore_from_trash",
                 "rename_tag", "add_comment", "reply_comment", "resolve_comment", "capture_to_inbox",

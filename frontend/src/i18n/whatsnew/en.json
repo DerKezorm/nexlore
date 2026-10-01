@@ -1,27 +1,42 @@
 {
   "0.2.0": {
-    "lead": "People now appear under a name of their own choosing, nexlore tells you when a newer version is out, and after an update this window says what changed.",
+    "lead": "AI programs can now do everything you can do in nexlore, and you decide per tool what they may do on their own. Spaces can be renamed, people appear under a name of their own choosing, and nexlore tells you when a newer version is out.",
     "sections": [
+      {
+        "title": "AI from outside can do everything, with rights per tool",
+        "where": "Account menu, My account, AI, a key, Rights per tool",
+        "body": "Over MCP an AI program now makes spaces, folders and notes, renames and moves them with their links, and works with versions, the trash, tags, comments and attachments. Under each key you set every tool to Allow, Ask or Deny. New keys read freely, ask before they make or change something, and do not even see the tools that delete, share or change members. The operator can block tools for everybody."
+      },
+      {
+        "title": "Approvals",
+        "where": "Account menu, Approvals, and New since your last visit",
+        "body": "A tool set to Ask waits for you. The request shows with exactly what the program sent; Approve and run does exactly that, Decline does nothing, and after 24 hours it runs out. With a tick the tool runs without asking from then on."
+      },
+      {
+        "title": "Connectors",
+        "where": "My account, AI, How to connect a program",
+        "body": "Programs that sign in themselves need only the address of nexlore with /api/mcp after it. You sign in, choose the level and the spaces, and agree; the program then stands in the list like a key. For AI apps that run in the cloud, nexlore must be reachable from the internet; a program on your own computer reaches it at home."
+      },
+      {
+        "title": "Rename a space",
+        "where": "Sidebar, right click on a space, Rename",
+        "body": "For the managers of a space. Links that name the space in front, like [[Space/Note]], follow in every space, and so do favorites, public pages, drafts and the home space of every account. Links without the name stay as they are."
+      },
       {
         "title": "A display name for every account",
         "where": "Account menu, My account, Profile, Display name",
-        "body": "Until now everybody appeared under the name they sign in with. Now each account can choose how others see it, for example with first and last name. It shows wherever people appear: who is here, who is writing, comments, versions and the account menu. In member lists and in the @ suggestions the sign-in name stays beside it in small letters, because that is what goes into the text after @. Leave the field empty and the sign-in name shows as before."
+        "body": "Each account chooses how others see it, for example with first and last name. In member lists and in the @ suggestions the sign-in name stays beside it, because that is what goes into the text after @."
       },
       {
         "title": "About nexlore, with an update check",
         "where": "Account menu, About nexlore",
-        "body": "The page names the running version, the licence, the source code and the release notes. Once a day nexlore asks GitHub whether a newer version is out, and the page says so with a link to what is new. Only that question goes out, with no names, notes or settings. The operator can switch the daily check off on the same page and check by hand at any time."
-      },
-      {
-        "title": "This window",
-        "where": "After an update, the banner under the header",
-        "body": "Each account reads it once, on whichever device it signs in first. Closing it or putting the banner away is enough; it does not come back until the next version with news."
+        "body": "The version, the licence, the source code and the releases. Once a day nexlore asks GitHub whether a newer version is out; only that question goes out. The operator can switch it off there and check by hand."
       }
     ],
     "smallTitle": "Also",
     "small": [
-      "Members lists and the account cards of the operator show the display name with the sign-in name beside it.",
-      "The operator sees the display names of all accounts; everyone else sees those of people they share a space with."
+      "The settings moved into the account menu, as in Nexview; the header keeps the places you work in.",
+      "This window comes once per version with news, for every account."
     ]
   }
 }

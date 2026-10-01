@@ -569,6 +569,8 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       items.push('separator')
     }
     if (write) items.push({ label: t('menu.look'), symbol: 'star', onSelect: () => askVaultAction({ kind: 'look', path: row.path }) })
+    // A space is renamed by its managers (block Y2); a folder by whoever writes in it.
+    if (row.space && manage) items.push({ label: t('menu.rename'), symbol: 'pencil', onSelect: () => askVaultAction({ kind: 'rename', path: row.path, folder: true }) })
     if (write && !row.space) {
       items.push({ label: t('menu.rename'), symbol: 'pencil', onSelect: () => askVaultAction({ kind: 'rename', path: row.path, folder: true }) })
       items.push({ label: t('menu.move'), symbol: 'move', onSelect: () => askVaultAction({ kind: 'move', path: row.path, folder: true }) })

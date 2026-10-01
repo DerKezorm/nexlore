@@ -1529,7 +1529,8 @@
       "set_member_role": "Recht eines Mitglieds ändern",
       "remove_member": "Mitglied entfernen",
       "create_share": "Öffentliche Seite anlegen",
-      "remove_share": "Öffentliche Seite beenden"
+      "remove_share": "Öffentliche Seite beenden",
+      "rename_space": "Bereich umbenennen, Links ziehen nach"
     }
   },
   "drafts": {
@@ -1629,7 +1630,8 @@
     "sharedMove_one": "Eine öffentliche Seite zeigt dies. Sie folgt dem neuen Ort.",
     "sharedMove_other": "{{count}} öffentliche Seiten zeigen dies oder etwas darin. Sie folgen dem neuen Ort.",
     "sharedTrash_one": "Eine öffentliche Seite zeigt dies. Im Papierkorb ist sie nicht mehr erreichbar, bis du es zurückholst.",
-    "sharedTrash_other": "{{count}} öffentliche Seiten zeigen dies oder etwas darin. Im Papierkorb sind sie nicht mehr erreichbar, bis du es zurückholst."
+    "sharedTrash_other": "{{count}} öffentliche Seiten zeigen dies oder etwas darin. Im Papierkorb sind sie nicht mehr erreichbar, bis du es zurückholst.",
+    "renameSpaceHint": "Links, die den Bereich vorn nennen (etwa [[Bereich/Notiz]]), ziehen nach, in allen Bereichen. Links ohne den Namen bleiben, wie sie sind."
   },
   "menu": {
     "newNote": "Neue Notiz",

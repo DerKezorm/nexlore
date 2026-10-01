@@ -40,13 +40,13 @@ export function VaultActions() {
   here.current = shownPath(location.pathname)
 
   /** Moves `path` to `destination`; the page follows if it stood on it or inside it. */
-  const moveTo = async (path: string, destination: string) => {
+  const moveTo = async (path: string, destination: string, how = vaultApi.move) => {
     const affected = here.current !== null && within(here.current, path)
     if (affected) await announceLeaving(here.current!)
-    const moved = await vaultApi.move(path, destination)
+    const moved = await how(path, destination)
     forget(path)
     await reload()
-    reveal(folderOf(moved.path))
+    reveal(moved.path.includes('/') ? folderOf(moved.path) : moved.path)
     if (affected && here.current) {
       const next = moved.path + here.current.slice(path.length)
       navigate(location.pathname.startsWith('/file/') ? fileRoute(next) : noteUrl(next))
@@ -201,12 +201,15 @@ export function VaultActions() {
       {action.kind === 'rename' && (
         <NameDialog
           title={t('actions.renameTitle', { name: baseName(action.path) })}
-          hint={t('actions.renameHint')}
+          hint={t(action.path.includes('/') ? 'actions.renameHint' : 'actions.renameSpaceHint')}
           confirm={t('actions.renameDo')}
           initial={baseName(action.path)}
           onClose={close}
           onSubmit={async (name) => {
-            const moved = await moveTo(action.path, `${folderOf(action.path)}/${name}${action.folder ? '' : '.md'}`)
+            // A space has no folder around it: it is renamed as a whole, and links naming it follow (block Y2).
+            const moved = action.path.includes('/')
+              ? await moveTo(action.path, `${folderOf(action.path)}/${name}${action.folder ? '' : '.md'}`)
+              : await moveTo(action.path, name, vaultApi.renameSpace)
             done(moved.rewritten > 0 ? t('note.linksFollowed', { count: moved.rewritten }) : null)
           }}
         />

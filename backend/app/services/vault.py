@@ -33,6 +33,8 @@ from sqlalchemy.orm import Session
 from ..db import SessionLocal
 from ..models import (
     FTS_TABLE,
+    Account,
+    Draft,
     File,
     Link,
     Lock,
@@ -976,6 +978,114 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
     logger.info("Moved files=%s notes_rewritten=%s", len(files), len(rewritten_spaces))
     return Moved(path=destination, files=len(files), rewritten=len(rewritten_spaces),
                  rewritten_spaces=rewritten_spaces)
+
+
+# --- Renaming a space ---------------------------------------------------------------------------------------------
+
+
+def rename_space(old: str, new: str, *, actor: Actor) -> Moved:
+    """Give a space another name (block Y2): its folder on disk, the paths of everything in it (the trash too), its
+    versions, drafts, public pages and favorites, the home space and start note of every account. Links written with
+    the space's name in front (``[[Old/Note]]`` from another space, or from inside it) follow part by part, as after a
+    move (``MoveJob``, ``_follow``), in every space, also those the renamer may not read. Links into the space without
+    its name, and relative ones, stay as they are.
+
+    Refused while a full scan runs (it may have listed the old folder already), and while somebody else edits a note
+    of the space. The name must be free (``rights.free_name``, checked by the route); only its case may change."""
+    old = _parse_space(old)
+    new = _check_name(new)
+    if new == old:
+        raise VaultError("path_invalid", "source and destination are the same")
+    root = paths.vault_root()
+    full_old, full_new = root / old, root / new
+    case_only = paths.fold(old) == paths.fold(new)
+    if not case_only and (full_new.exists() or taken(full_new)):
+        raise VaultError("exists", "a space of that name exists", 409)
+    if not index.scan_lock.acquire(blocking=False):
+        raise VaultError("scan_running", "the vault is being read; try again in a moment", 409)
+    try:
+        with index.guard, SessionLocal() as db:
+            space = db.scalar(select(Space).where(Space.folder == old))
+            if space is None or not full_old.is_dir():
+                raise VaultError("not_found", "no such space", 404)
+            files = list(db.scalars(select(File).where(File.space_id == space.id)))
+            _refuse_foreign_lock(db, [file for file in files if file.deleted_at is None], actor)
+            ids = sorted(file.id for file in files)
+            # The links that name the space in front, read before anything moves: they are found by that first part.
+            plan: dict[int, dict[tuple[str, str], int]] = {}
+            for chunk in _chunks(ids):
+                for source_id, kind, target, target_id in db.execute(
+                    select(Link.source_id, Link.kind, Link.target, Link.target_id).where(
+                        Link.target_id.in_(chunk), Link.via == paths.fold(old)
+                    )
+                ):
+                    plan.setdefault(source_id, {})[(kind, target)] = target_id
+
+            if case_only:
+                step = full_old.with_name(f"{TEMPORARY_PREFIX}{uuid.uuid4().hex}")
+                os.rename(full_old, step)
+                os.rename(step, full_new)
+            else:
+                os.rename(full_old, full_new)
+
+            def renamed(path: str) -> str:
+                return new + path[len(old) :] if path == old or path.startswith(old + "/") else path
+
+            space.folder = new
+            for file in files:
+                file.path = renamed(file.path)
+                file.path_key = paths.fold(file.path)
+            for chunk in _chunks(ids):
+                for version in db.scalars(select(Version).where(Version.file_id.in_(chunk))):
+                    version.path = renamed(version.path)
+            for draft in db.scalars(select(Draft).where(Draft.space_id == space.id)):
+                draft.path = renamed(draft.path)
+            for share in db.scalars(select(Share).where(Share.space_id == space.id)):
+                share.path = renamed(share.path)
+            favorites.moved(db, old, new)
+            for account in db.scalars(select(Account).where(Account.appearance.is_not(None))):
+                look = dict(account.appearance) if isinstance(account.appearance, dict) else None
+                if look is None:
+                    continue
+                changed = False
+                if look.get("home_space") == old:
+                    look["home_space"], changed = new, True
+                start = look.get("start_note")
+                if isinstance(start, str) and start.startswith(old + "/"):
+                    look["start_note"], changed = renamed(start), True
+                if changed:
+                    # A new dict, not the old one changed in place: SQLAlchemy writes a JSON column only then.
+                    account.appearance = look
+            db.flush()
+
+            keys = {file.name_key for file in files if file.deleted_at is None}
+            job = MoveJob(space_id=space.id, author=actor.name, keys=sorted(keys))
+            db.add(job)
+            db.flush()
+            rows = [
+                {"job_id": job.id, "note_id": note_id, "position": position, "moved": False,
+                 "links": [[kind, target, target_id] for (kind, target), target_id in plan[note_id].items()]}
+                for position, note_id in enumerate(sorted(plan))
+            ]
+            for chunk in _chunks(rows):
+                db.execute(insert(MoveJobNote), chunk)
+            job_id = job.id
+            claimed = _claim(job_id)
+            assert claimed, "a new move job is never worked on yet"
+            try:
+                db.commit()
+            except BaseException:
+                _release(job_id)
+                raise
+    finally:
+        index.scan_lock.release()
+    rewritten_spaces: list[int] = []
+    try:
+        _follow(job_id, rewritten_spaces)
+    except Exception:
+        logger.exception("Rewriting the links of a renamed space stopped half way job=%s", job_id)
+    logger.info("Space renamed files=%s notes_rewritten=%s", len(files), len(rewritten_spaces))
+    return Moved(path=new, files=len(files), rewritten=len(rewritten_spaces), rewritten_spaces=rewritten_spaces)
 
 
 # --- Merging two notes (Obsidian's note composer) -----------------------------------------------------------------

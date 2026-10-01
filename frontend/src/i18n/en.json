@@ -1529,7 +1529,8 @@
       "set_member_role": "Change a member's right",
       "remove_member": "Take a member out",
       "create_share": "Make a public page",
-      "remove_share": "End a public page"
+      "remove_share": "End a public page",
+      "rename_space": "Rename a space, links follow"
     }
   },
   "drafts": {
@@ -1629,7 +1630,8 @@
     "sharedMove_one": "A public page shows this. It follows to the new place.",
     "sharedMove_other": "{{count}} public pages show this or something in it. They follow to the new place.",
     "sharedTrash_one": "A public page shows this. In the trash it cannot be reached until you bring it back.",
-    "sharedTrash_other": "{{count}} public pages show this or something in it. In the trash they cannot be reached until you bring it back."
+    "sharedTrash_other": "{{count}} public pages show this or something in it. In the trash they cannot be reached until you bring it back.",
+    "renameSpaceHint": "Links that name the space in front (like [[Space/Note]]) follow, in every space. Links without its name stay as they are."
   },
   "menu": {
     "newNote": "New note",

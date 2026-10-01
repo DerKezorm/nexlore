@@ -5,7 +5,7 @@ Each tool calls the route the interface calls, with the key's account: the same 
 
 * **No operator powers over MCP.** In the interface an operator may list and set members of every space. A key never
   does: members and public pages need the right to manage the space itself, checked with the key's spaces.
-* **What the interface cannot do, no tool does.** A space cannot be renamed in the interface, so no tool does it.
+* **What the interface cannot do, no tool does.**
 
 Every tool has a group (``read``, ``change``, ``risky``) that gives its default right (``services/mcp.py``).
 """
@@ -177,6 +177,12 @@ def create_space(ctx: Context, args: dict[str, Any]) -> Any:
             looks_routes.LookIn(path=made.name, icon=args.get("icon"), color=args.get("color")), ctx.caller.account
         )
     return {"space": made.name, "role": made.role}
+
+
+def rename_space(ctx: Context, args: dict[str, Any]) -> Any:
+    renamed = vault_routes.rename_space(args["space"], vault_routes.NameIn(name=args["name"]), ctx.caller.account,
+                                        ctx.who)
+    return {"space": renamed["path"], "links_rewritten": renamed["rewritten"]}
 
 
 def set_space_options(ctx: Context, args: dict[str, Any]) -> Any:
@@ -551,6 +557,14 @@ EXTRA_TOOLS: list[dict[str, Any]] = [
             color={"enum": list(looks.COLORS)},
         ),
         create_space,
+    ),
+    _tool(
+        "rename_space",
+        "change",
+        "write",
+        "Give a space another name (manage right); links that name the space in front follow, in every space.",
+        _schema(["space", "name"], space=_SPACE, name={"type": "string", "maxLength": 255}),
+        rename_space,
     ),
     _tool(
         "set_space_options",
