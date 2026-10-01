@@ -28,6 +28,7 @@ import { InstallPrompt } from './InstallPrompt'
 import { Logo } from './Logo'
 import { NewNoteDialog } from './NewNoteDialog'
 import { ScanNotice } from './ScanNotice'
+import { WhatsNewBanner } from './WhatsNew'
 import { SearchDialog } from './SearchDialog'
 import { Symbol, type SymbolName } from './Symbol'
 import { ThemeSwitcher } from './ThemeSwitcher'
@@ -382,6 +383,7 @@ export function AppShell() {
         </div>
       </header>
       <ScanNotice />
+      <WhatsNewBanner />
       {todayProblem && (
         <div className="flex shrink-0 items-center gap-2 border-b border-warn-500/30 bg-warn-500/10 px-4 py-2 text-sm text-warn-500" role="status">
           <span className="flex-1">{todayProblem}</span>

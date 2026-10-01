@@ -434,6 +434,11 @@ export const vaultApi = {
 export type Account = {
   id: number
   name: string
+  /** How others see the account; empty shows the name. */
+  display_name: string
+  /** The running version, and the one whose "What's new" the account has read (block X3). */
+  version: string
+  whats_new_seen: string
   role: 'operator' | 'member'
   sign_in: 'password' | 'oidc'
   email: string
@@ -471,6 +476,24 @@ export type Members = { space: string; members: Member[]; invites: Invite[]; rol
 export type InviteOffer = { space: string | null; role: Role | null; min_password: number; signed_in_as: string | null }
 export type AdminSpace = { name: string; members: number; managers: string[]; role: Role | null }
 
+export type About = { version: string; license: string; repo_url: string; releases_url: string; project_url: string }
+export type Updates = {
+  update_check: boolean
+  checked: boolean
+  latest: string | null
+  newer: boolean
+  checked_at: string | null
+  release_url: string | null
+}
+
+/** About nexlore and whether a newer one is out (block X2); switching and asking now are the operator's. */
+export const aboutApi = {
+  about: () => api<About>('/api/about'),
+  updates: () => api<Updates>('/api/about/updates'),
+  check: () => api<Updates>('/api/about/updates/check', { method: 'POST' }),
+  setCheck: (on: boolean) => api<Updates>('/api/about/updates', { method: 'PUT', body: { update_check: on } }),
+}
+
 export const authApi = {
   setupState: () => api<SetupState>('/api/setup'),
   setup: (name: string, password: string, language: string) =>
@@ -484,6 +507,8 @@ export const authApi = {
   me: () => api<Me>('/api/auth/me'),
   changePassword: (current: string, next: string) => api<void>('/api/auth/password', { method: 'PUT', body: { current, new: next } }),
   setLanguage: (language: string) => api<Account>('/api/me/language', { method: 'PUT', body: { language } }),
+  whatsNewSeen: () => api<Account>('/api/me/whats-new/seen', { method: 'POST' }),
+  setProfile: (displayName: string) => api<Account>('/api/me/profile', { method: 'PUT', body: { display_name: displayName } }),
   setAppearance: (changes: Partial<Appearance>) => api<Appearance>('/api/me/appearance', { method: 'PUT', body: changes }),
   linkStart: (password: string) => api<{ url: string }>('/api/oidc/link/start', { method: 'POST', body: { password } }),
   unlink: () => api<void>('/api/oidc/link', { method: 'DELETE' }),

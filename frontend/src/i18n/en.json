@@ -954,6 +954,10 @@
       "plugins": "Plugins"
     },
     "profile": {
+      "displayName": "Display name",
+      "displayHint": "How others see you. Empty shows your user name {{name}}; you still sign in with it.",
+      "displaySave": "Save",
+      "displaySaved": "Display name saved.",
       "name": "Name",
       "role": "Role",
       "email": "Email",
@@ -1982,5 +1986,44 @@
     "weekday": "every weekday",
     "on": "on {{days}}",
     "whenDone": "when done"
+  },
+  "about": {
+    "menu": "About nexlore",
+    "subtitle": "Notes as Markdown files, with a map to zoom into.",
+    "version": "Version",
+    "newer": "Version {{version}} is out",
+    "licence": "Licence",
+    "source": "Source code",
+    "releases": "Releases",
+    "releasesLink": "All versions and what changed",
+    "project": "Project page",
+    "report": "Found a problem?",
+    "reportLink": "Report it on GitHub",
+    "builtWith": "Built with",
+    "fonts": "Fonts in the image",
+    "fontsText": "nexlore brings its fonts along, so that opening a note asks no other server. Their licences are under /licenses/fonts.txt.",
+    "updates": {
+      "title": "Updates",
+      "text": "Whether a newer version of nexlore is out.",
+      "daily": "Check once a day",
+      "dailyHint": "Asks GitHub for the newest release. Off: only when you press the button.",
+      "now": "Check now",
+      "current": "This is the newest version.",
+      "none": "No release found yet.",
+      "notYet": "Not checked yet.",
+      "off": "The daily check is off.",
+      "toRelease": "What is new",
+      "checkedAt": "last checked {{when}}",
+      "whatGoesOut": "Only the question goes out: a request to api.github.com for the newest release of nexlore, with no names, notes or settings. It is the only call nexlore makes on its own."
+    },
+    "whatsNew": "What's new"
+  },
+  "whatsNew": {
+    "title": "What's new in nexlore {{version}}",
+    "banner": "nexlore {{version}} is here.",
+    "show": "See what's new",
+    "putAway": "Put away",
+    "where": "Where:",
+    "done": "Got it"
   }
 }

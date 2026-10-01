@@ -6,6 +6,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { draftsApi, proposalsApi, type DraftInfo, type Proposal } from '../api/client'
 import { languageOptions, type LanguageOption } from '../i18n'
 import { askPalette } from '../lib/commands'
+import { usePeople } from '../lib/people'
 import { noteUrl } from '../lib/vault'
 import { useAuth } from '../state/auth'
 import { useInstall } from '../lib/install'
@@ -16,6 +17,7 @@ import { ThemeSwitcher } from './ThemeSwitcher'
 
 export function AccountMenu() {
   const { t, i18n } = useTranslation()
+  const person = usePeople()
   const { me, signOut, setLanguage } = useAuth()
   const install = useInstall()
   const navigate = useNavigate()
@@ -73,7 +75,7 @@ export function AccountMenu() {
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="true"
-        aria-label={t('account.menu', { name: me.name })}
+        aria-label={t('account.menu', { name: me.display_name || me.name })}
         className="relative flex h-8 w-8 items-center justify-center rounded-full border border-ink-700 hover:border-accent-500"
       >
         <Avatar account={me} className="h-full w-full text-sm" />
@@ -90,7 +92,10 @@ export function AccountMenu() {
             <ThemeSwitcher />
           </div>
           <div className="px-3 py-2">
-            <div className="font-semibold text-mist-100">{me.name}</div>
+            <div className="font-semibold text-mist-100">
+              {me.display_name || me.name}
+              {me.display_name && <span className="ml-1 text-xs font-normal text-mist-500">@{me.name}</span>}
+            </div>
             <div className="text-xs text-mist-500">{t(`account.role.${me.role}`)}</div>
           </div>
           {drafts.length > 0 && (
@@ -137,13 +142,13 @@ export function AccountMenu() {
                     <span className="block truncate text-mist-100">{proposal.title}</span>
                     <span className="block truncate text-xs text-mist-500">
                       {proposal.by !== me.name
-                        ? proposal.by
+                        ? person(proposal.by)
                         : proposal.status === 'taken'
-                          ? t('proposals.mineTaken', { name: proposal.decided_by })
+                          ? t('proposals.mineTaken', { name: person(proposal.decided_by) })
                           : proposal.status === 'copied'
-                            ? t('proposals.mineCopied', { name: proposal.decided_by })
+                            ? t('proposals.mineCopied', { name: person(proposal.decided_by) })
                           : proposal.status === 'declined'
-                            ? t('proposals.mineDeclined', { name: proposal.decided_by })
+                            ? t('proposals.mineDeclined', { name: person(proposal.decided_by) })
                             : t('proposals.mineOpen')}
                     </span>
                   </span>
@@ -173,6 +178,13 @@ export function AccountMenu() {
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-mist-300 hover:bg-ink-850 hover:text-mist-100"
           >
             <Symbol name="users" /> {t('account.page')}
+          </Link>
+          <Link
+            to="/about"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-mist-300 hover:bg-ink-850 hover:text-mist-100"
+          >
+            <Symbol name="info" /> {t('about.menu')}
           </Link>
           <button type="button" onClick={() => { setOpen(false); askPalette() }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-mist-300 hover:bg-ink-850 hover:text-mist-100">
             <Symbol name="command" /> {t('palette.menu')}

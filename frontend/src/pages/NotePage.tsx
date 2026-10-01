@@ -58,6 +58,7 @@ import { versionSource } from '../lib/versions'
 import { announceLeaving, askVaultAction, copyText, LEAVING_EVENT, within, type Leaving } from '../lib/vaultActions'
 import { useCommands, type Command } from '../lib/commands'
 import { askFolder, HEADING_EVENT, PANEL_EVENT, RECENT_EVENT, setShownNote } from '../lib/shell'
+import { usePeople } from '../lib/people'
 import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
 import { LocalGraph } from '../components/LocalGraph'
@@ -139,6 +140,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const location = useLocation()
   const split = right !== null
   const { t } = useTranslation()
+  const nameOf = usePeople()
   const { reload, spaces, generation, favorites, setFavorite } = useStore()
   const { me, setAppearance } = useAuth()
   const navigate = useNavigate()
@@ -965,6 +967,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const chain = note.path.split('/').slice(0, -1).map((name, index, all) => ({ id: all.slice(0, index + 1).join('/'), name }))
   const foreignLock = note.lock && !note.lock.mine ? note.lock.holder : null
   const lockedBy = lockHolder ?? foreignLock
+  const lockedName = nameOf(lockedBy)
   // The own right in the note's space: reading only hides every change; managing may share.
   const role = spaces.find((space) => space.name === note.path.split('/')[0])?.role ?? 'read'
   const mayWrite = role !== 'read'
@@ -1080,7 +1083,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
         <Versions
           path={note.path}
           disabled={editing || !!lockedBy || !mayWrite}
-          why={!mayWrite ? t('note.readOnlyRight') : editing ? t('note.versionsWhileEditing') : lockedBy ? t('note.lockedTitle', { name: lockedBy }) : null}
+          why={!mayWrite ? t('note.readOnlyRight') : editing ? t('note.versionsWhileEditing') : lockedBy ? t('note.lockedTitle', { name: lockedName }) : null}
           onRestored={() => void Promise.all([load(note.path), reload()])}
         />
       ),
@@ -1141,7 +1144,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                     : !mayWrite
                     ? t('note.readOnlyRight')
                     : lockedBy
-                      ? (note.lock?.own ? t('note.lockedOwnTitle') : t('note.lockedTitle', { name: lockedBy }))
+                      ? (note.lock?.own ? t('note.lockedOwnTitle') : t('note.lockedTitle', { name: lockedName }))
                       : note.readonly
                         ? t('note.readonlyTitle')
                         : undefined
@@ -1231,7 +1234,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 </span>
               }
             >
-              {changed.author ? t('news.bannerBy', { name: changed.author, when: formatDate(changed.changed_at) }) : t('news.bannerOutside', { when: formatDate(changed.changed_at) })}
+              {changed.author ? t('news.bannerBy', { name: nameOf(changed.author), when: formatDate(changed.changed_at) }) : t('news.bannerOutside', { when: formatDate(changed.changed_at) })}
             </Banner>
           )}
           {side === 'left' &&
@@ -1246,7 +1249,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 </Banner>
               ),
             )}
-          {lockedBy && <Banner tone="warn" symbol="lock">{note.lock?.own ? t('note.lockedOwnBanner') : t('note.lockedBanner', { name: lockedBy })}</Banner>}
+          {lockedBy && <Banner tone="warn" symbol="lock">{note.lock?.own ? t('note.lockedOwnBanner') : t('note.lockedBanner', { name: lockedName })}</Banner>}
           {drafts.length > 0 && (
             <Banner
               tone="info"
@@ -1633,6 +1636,7 @@ function Banner({ tone, symbol, action, children }: { tone: keyof typeof BANNER_
 /** The history of a note: every save a version, sessions folded together, old ones thinned out. */
 function Versions({ path, disabled, why, onRestored }: { path: string; disabled: boolean; why: string | null; onRestored: () => void }) {
   const { t } = useTranslation()
+  const nameOf = usePeople()
   const [list, setList] = useState<VersionInfo[] | null>(null)
   const [shown, setShown] = useState<{ id: number; content: string } | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -1674,7 +1678,7 @@ function Versions({ path, disabled, why, onRestored }: { path: string; disabled:
                 <span className="flex-1 text-mist-300">{formatDate(version.updated_at)}</span>
                 <span className="text-[11px] text-mist-600">
                   {versionSource(version, t)}
-                  {version.author ? ` · ${version.author}` : ''}
+                  {version.author ? ` · ${nameOf(version.author)}` : ''}
                 </span>
               </div>
               <div className="mt-0.5 flex gap-3 text-xs">

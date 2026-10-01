@@ -82,7 +82,10 @@ export function AccountsCard() {
         {accounts.map((account) => (
           <li key={account.id} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
             <span className="min-w-0 flex-1">
-              <span className="font-medium">{account.name}</span>
+              <span className="font-medium">
+                {account.display_name || account.name}
+                {account.display_name && <span className="ml-1 text-xs font-normal text-mist-500">@{account.name}</span>}
+              </span>
               <span className="ml-2 text-xs text-mist-500">
                 {t(`account.role.${account.role}`)} · {t(`admin.accounts.signIn.${account.sign_in}`)} ·{' '}
                 {account.last_seen_at ? formatDate(account.last_seen_at) : t('admin.accounts.never')}

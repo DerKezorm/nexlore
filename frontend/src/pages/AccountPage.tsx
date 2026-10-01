@@ -18,6 +18,7 @@ import { MyPluginsCard } from '../plugins/PluginSettings'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { TabRow, type Tab } from '../components/TabRow'
 import { errorText } from '../lib/errors'
+import { rememberName } from '../lib/people'
 import { useAuth } from '../state/auth'
 import { MIN_PASSWORD } from './SetupPage'
 
@@ -32,6 +33,7 @@ function code(error: unknown): string {
 export function AccountPage() {
   const { t } = useTranslation()
   const { me, refresh } = useAuth()
+  const [shownAs, setShownAs] = useState(me?.display_name ?? '')
   // Whether a sign-in provider is set up at all: without one there is nothing to link (P7.14).
   const [methods, setMethods] = useState<Methods | null>(null)
   useEffect(() => {
@@ -137,6 +139,35 @@ export function AccountPage() {
                 }}
               />
             </div>
+            {/* How others see this account (X1); the name below stays what one signs in with and writes after @. */}
+            <form
+              className="flex flex-wrap items-end gap-3"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void run(async () => {
+                  const saved = await authApi.setProfile(shownAs)
+                  setShownAs(saved.display_name)
+                  rememberName(saved.name, saved.display_name)
+                }, t('account.profile.displaySaved'))
+              }}
+            >
+              <div className="min-w-0 flex-1">
+                <Field
+                  label={t('account.profile.displayName')}
+                  value={shownAs}
+                  onChange={setShownAs}
+                  autoComplete="name"
+                  hint={t('account.profile.displayHint', { name: me.name })}
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={busy || shownAs.trim() === (me.display_name ?? '')}
+                className="h-10 rounded-full bg-accent-500 px-4 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-40"
+              >
+                {t('account.profile.displaySave')}
+              </button>
+            </form>
             <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
               <dt className="text-mist-500">{t('account.profile.name')}</dt>
               <dd className="text-mist-100">{me.name}</dd>

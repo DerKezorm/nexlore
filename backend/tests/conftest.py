@@ -22,6 +22,8 @@ os.environ["NEXLORE_WELCOME_GUIDE"] = "0"
 os.environ["NEXLORE_ARGON2_TIME"] = "1"
 os.environ["NEXLORE_ARGON2_MEMORY_KIB"] = "1024"
 os.environ["NEXLORE_ARGON2_PARALLELISM"] = "1"
+# Never GitHub from a test: port 9 refuses at once, and the update tests put their own answer in place.
+os.environ["NEXLORE_UPDATE_URL"] = "http://127.0.0.1:9/releases/latest"
 os.environ["NEXLORE_SECRET_KEY"] = "test-secret-key-for-the-test-run-only"
 
 import shutil  # noqa: E402
@@ -35,7 +37,7 @@ from app.db import SessionLocal, init_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import FTS_TABLE, MEMBER, OPERATOR, TRI_TABLE, Account, Base, Setting  # noqa: E402
 from app.security import SESSION_COOKIE, brake, hash_password, start_session  # noqa: E402
-from app.services import graphstore, mcp, totp  # noqa: E402
+from app.services import graphstore, mcp, totp, updates  # noqa: E402
 
 DATA_DIR = _DATA
 VAULT = Path(_DATA) / "vault"
@@ -71,6 +73,7 @@ def clean_db(schema: None) -> Iterator[None]:
     graphstore.forget()
     mcp.forget()
     totp.forget()
+    updates.forget()
     yield
     app.dependency_overrides.clear()
 

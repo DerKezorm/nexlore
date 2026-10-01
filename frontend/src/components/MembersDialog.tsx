@@ -12,6 +12,7 @@ import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
 import { Button, CopyLink, Feedback, Input, Select } from './settings/ui'
 import { useAction } from './settings/useAction'
+import { Person } from './Person'
 import { Symbol } from './Symbol'
 
 const ROLES: Role[] = ['read', 'write', 'manage']
@@ -89,7 +90,7 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
           {data?.members.map((member) => (
             <li key={member.name} className="flex flex-wrap items-center gap-3 px-4 py-2.5 text-sm">
               <span className="min-w-0 flex-1 truncate font-medium">
-                {member.name}
+                <Person name={member.name} login />
                 {member.you && <span className="ml-2 text-xs text-mist-500">{t('members.you')}</span>}
               </span>
               <label className="sr-only" htmlFor={`role-${member.name}`}>

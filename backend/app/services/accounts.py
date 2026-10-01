@@ -20,6 +20,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+from .. import __version__
 from ..models import (
     MANAGE,
     MEMBER,
@@ -71,7 +72,11 @@ def create_with_password(db: Session, name: str, password: str, role: str = MEMB
     if role not in ROLES:
         raise ValueError("unknown role")
     account = Account(
-        name=check_name(db, name), role=role, sign_in=SIGN_IN_PASSWORD, password_hash=hash_password(password)
+        name=check_name(db, name),
+        role=role,
+        sign_in=SIGN_IN_PASSWORD,
+        password_hash=hash_password(password),
+        whats_new_seen=__version__,
     )
     db.add(account)
     if commit:
@@ -95,7 +100,14 @@ def create_oidc(db: Session, name: str, subject: str, email: str) -> Account:
     while by_name(db, candidate) is not None or not NAME_PATTERN.match(candidate):
         suffix += 1
         candidate = f"{base[:57]}-{suffix}"
-    account = Account(name=candidate, role=MEMBER, sign_in=SIGN_IN_OIDC, oidc_subject=subject, email=email)
+    account = Account(
+        name=candidate,
+        role=MEMBER,
+        sign_in=SIGN_IN_OIDC,
+        oidc_subject=subject,
+        email=email,
+        whats_new_seen=__version__,
+    )
     db.add(account)
     db.commit()
     logger.info("Account created name=%s role=%s sign_in=oidc", account.name, MEMBER)

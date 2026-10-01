@@ -4,6 +4,8 @@ import http from 'node:http'
 
 const PORT = Number(process.env.FAKE_AI_PORT ?? 8478)
 let last = null
+// The newest release the update check is told about; about.spec.ts sets it with POST /releases/latest.
+let release = 'v9.0.0'
 
 function answer(body) {
   const system = body.messages?.[0]?.content ?? ''
@@ -28,6 +30,12 @@ http
       }
       if (request.url === '/health') return send(200, { ok: true })
       if (request.url === '/last') return send(200, last)
+      // The update check (about.spec.ts) asks here instead of GitHub.
+      if (request.url === '/releases/latest' && request.method === 'POST') {
+        release = JSON.parse(raw).tag_name
+        return send(200, { tag_name: release })
+      }
+      if (request.url === '/releases/latest') return send(200, { tag_name: release })
       if (request.headers.authorization !== 'Bearer e2e-stand-in-key') return send(401, { error: 'key' })
       if (request.method === 'GET' && request.url === '/v1/models') return send(200, { data: [{ id: 'stand-in', display_name: 'Stand-in' }] })
       if (request.method === 'POST' && request.url === '/v1/chat/completions') {

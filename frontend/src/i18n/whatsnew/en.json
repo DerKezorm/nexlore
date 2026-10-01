@@ -1,0 +1,27 @@
+{
+  "0.2.0": {
+    "lead": "People now appear under a name of their own choosing, nexlore tells you when a newer version is out, and after an update this window says what changed.",
+    "sections": [
+      {
+        "title": "A display name for every account",
+        "where": "Account menu, My account, Profile, Display name",
+        "body": "Until now everybody appeared under the name they sign in with. Now each account can choose how others see it, for example with first and last name. It shows wherever people appear: who is here, who is writing, comments, versions and the account menu. In member lists and in the @ suggestions the sign-in name stays beside it in small letters, because that is what goes into the text after @. Leave the field empty and the sign-in name shows as before."
+      },
+      {
+        "title": "About nexlore, with an update check",
+        "where": "Account menu, About nexlore",
+        "body": "The page names the running version, the licence, the source code and the release notes. Once a day nexlore asks GitHub whether a newer version is out, and the page says so with a link to what is new. Only that question goes out, with no names, notes or settings. The operator can switch the daily check off on the same page and check by hand at any time."
+      },
+      {
+        "title": "This window",
+        "where": "After an update, the banner under the header",
+        "body": "Each account reads it once, on whichever device it signs in first. Closing it or putting the banner away is enough; it does not come back until the next version with news."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "Members lists and the account cards of the operator show the display name with the sign-in name beside it.",
+      "The operator sees the display names of all accounts; everyone else sees those of people they share a space with."
+    ]
+  }
+}

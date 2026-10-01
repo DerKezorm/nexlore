@@ -6,9 +6,9 @@ Invitations are in ``routers/members.py``, next to the rights they hand out.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -36,7 +36,7 @@ from ..security import (
     session_account,
     start_session,
 )
-from ..services import accounts, ai, appearance, guide, locales, mailer, settings_service, totp
+from ..services import accounts, ai, appearance, avatars, guide, locales, mailer, settings_service, totp
 from ..services.accounts import AccountError
 from . import themes as theme_routes
 
@@ -68,6 +68,26 @@ class PasswordChangeIn(BaseModel):
 
 class LanguageIn(BaseModel):
     language: str = Field(max_length=16)
+
+
+class ProfileIn(BaseModel):
+    display_name: str = Field(max_length=200)
+
+
+#: Longest display name, in characters.
+DISPLAY_NAME_MAX = 80
+
+
+def check_display_name(value: str) -> str:
+    """Spaces gathered, no control characters, at most DISPLAY_NAME_MAX characters; empty shows the name."""
+    if any(ord(char) < 32 or ord(char) == 127 for char in value):
+        raise error("display_name_invalid", "A display name cannot hold control characters.", 422)
+    clean = " ".join(value.split())
+    if len(clean) > DISPLAY_NAME_MAX:
+        raise error(
+            "display_name_too_long", f"Use at most {DISPLAY_NAME_MAX} characters.", 422, maximum=DISPLAY_NAME_MAX
+        )
+    return clean
 
 
 def secure_cookie(request: Request) -> bool:
@@ -112,6 +132,10 @@ def account_view(account: AccountRow) -> dict[str, Any]:
     return {
         "id": account.id,
         "name": account.name,
+        "display_name": account.display_name,
+        # "What's new" (block X3): the running version and the one the account has read.
+        "version": __version__,
+        "whats_new_seen": account.whats_new_seen,
         "role": account.role,
         "sign_in": account.sign_in,
         "email": account.email,
@@ -258,6 +282,40 @@ def change_password(payload: PasswordChangeIn, request: Request, account: Accoun
     reauth_succeeded(request, db, row)
     # Other browsers must sign in again; this one stays.
     end_all_sessions(db, row.id, except_token=request.cookies.get(SESSION_COOKIE))
+
+
+@router.put("/me/profile", summary="The own display name; empty shows the name")
+def set_profile(payload: ProfileIn, account: Account, db: DbSession) -> dict[str, Any]:
+    row = db.get(AccountRow, account.id)
+    assert row is not None
+    row.display_name = check_display_name(payload.display_name)
+    db.commit()
+    return account_view(row)
+
+
+@router.post("/me/whats-new/seen", summary="\"What's new\" of the running version is read or put away")
+def whats_new_seen(account: Account, db: DbSession) -> dict[str, Any]:
+    row = db.get(AccountRow, account.id)
+    assert row is not None
+    row.whats_new_seen = __version__
+    db.commit()
+    return account_view(row)
+
+
+@router.get("/people", summary="Display names for account names: of the own account and of those sharing a space")
+def people(
+    account: Account, db: DbSession, name: Annotated[list[str] | None, Query(max_length=64)] = None
+) -> dict[str, str]:
+    """Only names with a display name come back; one the caller may not see is left out like an unknown one, so
+    nothing tells which names exist."""
+    wanted = sorted({item.strip().lower() for item in (name or []) if item.strip()})[:200]
+    if not wanted:
+        return {}
+    out: dict[str, str] = {}
+    for row in db.scalars(select(AccountRow).where(AccountRow.name.in_(wanted), AccountRow.display_name != "")):
+        if avatars.may_see(db, account, row.id):
+            out[row.name] = row.display_name
+    return out
 
 
 @router.put("/me/language", summary="The language of the own account; empty follows the browser")

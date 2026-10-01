@@ -954,6 +954,10 @@
       "plugins": "Plugins"
     },
     "profile": {
+      "displayName": "Anzeigename",
+      "displayHint": "So sehen dich andere. Leer zeigt deinen Benutzernamen {{name}}; mit ihm meldest du dich weiter an.",
+      "displaySave": "Speichern",
+      "displaySaved": "Anzeigename gespeichert.",
       "name": "Name",
       "role": "Rolle",
       "email": "E-Mail",
@@ -1982,5 +1986,44 @@
     "weekday": "jeden Werktag",
     "on": "am {{days}}",
     "whenDone": "nach dem Erledigen"
+  },
+  "about": {
+    "menu": "Über nexlore",
+    "subtitle": "Notizen als Markdown-Dateien, mit einer Karte zum Hineinzoomen.",
+    "version": "Fassung",
+    "newer": "Fassung {{version}} ist erschienen",
+    "licence": "Lizenz",
+    "source": "Quelltext",
+    "releases": "Veröffentlichungen",
+    "releasesLink": "Alle Fassungen und was sich geändert hat",
+    "project": "Projektseite",
+    "report": "Einen Fehler gefunden?",
+    "reportLink": "Auf GitHub melden",
+    "builtWith": "Gebaut mit",
+    "fonts": "Schriften im Abbild",
+    "fontsText": "nexlore bringt seine Schriften mit, damit beim Öffnen einer Notiz kein anderer Server gefragt wird. Ihre Lizenzen stehen unter /licenses/fonts.txt.",
+    "updates": {
+      "title": "Aktualisierungen",
+      "text": "Ob es eine neuere Fassung von nexlore gibt.",
+      "daily": "Einmal am Tag nachsehen",
+      "dailyHint": "Fragt GitHub nach der neuesten Veröffentlichung. Aus: nur, wenn du den Knopf drückst.",
+      "now": "Jetzt nachsehen",
+      "current": "Das ist die neueste Fassung.",
+      "none": "Noch keine Veröffentlichung gefunden.",
+      "notYet": "Noch nicht nachgesehen.",
+      "off": "Das tägliche Nachsehen ist aus.",
+      "toRelease": "Was neu ist",
+      "checkedAt": "zuletzt nachgesehen {{when}}",
+      "whatGoesOut": "Hinaus geht nur die Frage: eine Anfrage an api.github.com nach der neuesten Veröffentlichung von nexlore, ohne Namen, Notizen oder Einstellungen. Es ist der einzige Ruf, den nexlore von sich aus macht."
+    },
+    "whatsNew": "Was ist neu"
+  },
+  "whatsNew": {
+    "title": "Neu in nexlore {{version}}",
+    "banner": "nexlore {{version}} ist da.",
+    "show": "Was ist neu?",
+    "putAway": "Wegklicken",
+    "where": "Wo:",
+    "done": "Verstanden"
   }
 }

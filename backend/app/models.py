@@ -379,8 +379,14 @@ class Account(Base):
     __tablename__ = "accounts"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    #: Lower case, the name people sign in with and see in locks and versions.
+    #: Lower case, the name people sign in with and write after @. The key wherever a name is kept (versions,
+    #: comments, locks); what people see is the display name, when there is one.
     name: Mapped[str] = mapped_column(String(64), unique=True)
+    #: How the account is shown to others ("Anna Berg"); empty shows the name. Its own to change.
+    display_name: Mapped[str] = mapped_column(String(80), default="")
+    #: The version whose "What's new" the account has read or put away (block X3). A new account starts with the
+    #: version it was made in: there is nothing new to it.
+    whats_new_seen: Mapped[str] = mapped_column(String(32), default="")
     role: Mapped[str] = mapped_column(String(16), default=MEMBER)
     sign_in: Mapped[str] = mapped_column(String(16), default=SIGN_IN_PASSWORD)
     #: Argon2id. Empty for accounts that sign in through OIDC only.

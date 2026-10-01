@@ -5,6 +5,7 @@
 import { useTranslation } from 'react-i18next'
 
 import type { Present } from '../api/client'
+import { usePeople } from '../lib/people'
 import { Avatar } from './Avatar'
 import { Symbol } from './Symbol'
 
@@ -13,9 +14,10 @@ const SHOWN = 4
 
 export function Presence({ people }: { people: Present[] }) {
   const { t } = useTranslation()
+  const nameOf = usePeople()
   if (!people.length) return null
   const shown = people.slice(0, SHOWN)
-  const names = people.map((person) => t(person.writing ? 'presence.writing' : 'presence.reading', { name: person.name })).join(', ')
+  const names = people.map((person) => t(person.writing ? 'presence.writing' : 'presence.reading', { name: nameOf(person.name) })).join(', ')
   return (
     <div className="flex shrink-0 items-center -space-x-1.5" title={names} aria-label={names} role="group" data-testid="presence">
       {shown.map((person) => (

@@ -229,6 +229,8 @@ export default defineConfig({
           NEXLORE_ARGON2_TIME: '1',
           NEXLORE_ARGON2_MEMORY_KIB: '8192',
           NEXLORE_ARGON2_PARALLELISM: '1',
+          // Never GitHub from a test: the stand-in below answers the update check.
+          NEXLORE_UPDATE_URL: 'http://127.0.0.1:8478/releases/latest',
         },
       },
       // A stand-in AI service (ai.spec.ts): the chat interface, answering by rule.

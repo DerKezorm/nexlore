@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     #: Extra languages as JSON files, one per language (``es.json``). Empty: ``<data_dir>/locales``.
     locales_dir: Path | None = None
     disable_background: bool = False
+    #: Where the update check asks for the newest release. Empty: GitHub's API. The tests point it elsewhere.
+    update_url: str = ""
     #: The space "nexlore" with the guide, made at the setup when the vault is still empty (``services/guide.py``).
     welcome_guide: bool = True
     frontend_dist: Path = PROJECT_DIR / "frontend" / "dist"

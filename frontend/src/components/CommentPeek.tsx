@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { PeekState } from '../lib/commentPeek'
 import { formatDate } from '../lib/markdown'
+import { Person } from './Person'
 import { Symbol } from './Symbol'
 
 export function CommentPeek({ state, onShowThread }: { state: PeekState; onShowThread: (id: number) => void }) {
@@ -29,7 +30,7 @@ export function CommentPeek({ state, onShowThread }: { state: PeekState; onShowT
     >
       <div className="rounded-xl border border-ink-700 bg-ink-900 p-3 text-sm shadow-2xl">
         <div className="flex items-baseline gap-2 text-xs text-mist-500">
-          <span className="font-semibold text-mist-300">{first.author}</span>
+          <Person name={first.author} className="font-semibold text-mist-300" />
           <span>{formatDate(first.created_at)}</span>
         </div>
         <p className="mt-1 line-clamp-4 break-words whitespace-pre-wrap text-mist-200">{first.body}</p>

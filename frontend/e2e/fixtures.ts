@@ -4,7 +4,7 @@
  * The tests share one account (`tester`, the operator: the spaces of the invented vault belong to it, and inviting
  * into them would hand them to a second account). What one file leaves set on it, the next would find: the column
  * on its versions tab, the week starting on Sunday, a favorite. So before the first test of each file the account
- * goes back to how the setup made it: its look and its favorites.
+ * goes back to how the setup made it: its look, its display name and its favorites.
  *
  * `E2E_SLOW=3 npx playwright test e2e/<file>` slows every page's processor down, to bring out a race in a test on
  * purpose. Not a model of the CI: measured on 01.10.2026, the CI runs the tests as fast as this machine, and a whole
@@ -26,6 +26,8 @@ async function freshAccount(request: APIRequestContext): Promise<void> {
   const look = JSON.parse(fs.readFileSync(saved, 'utf-8'))
   const put = await request.put('/api/me/appearance', { data: look, headers: TAB })
   if (!put.ok()) throw new Error(`resetting the look failed: ${put.status()}`)
+  const profile = await request.put('/api/me/profile', { data: { display_name: '' }, headers: TAB })
+  if (!profile.ok()) throw new Error(`resetting the display name failed: ${profile.status()}`)
   const favorites = await request.get('/api/favorites')
   if (!favorites.ok()) throw new Error(`reading the favorites failed: ${favorites.status()}`)
   for (const favorite of (await favorites.json()) as { path: string }[]) {

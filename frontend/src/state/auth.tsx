@@ -11,6 +11,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useTranslation } from 'react-i18next'
 
 import { ApiError, authApi, setSignedOut, SIGNED_OUT_EVENT, type Me, themesApi } from '../api/client'
+import { rememberName } from '../lib/people'
 import { changeLanguage } from '../i18n'
 import { forgetSharedKeys, setStorageOwner } from '../lib/accountStorage'
 import { clearCaches } from '../lib/offline'
@@ -52,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       applyThemeColours(account.theme_colours)
       applyOwnCss(account.own_css)
       setStorageOwner(account.id)
+      rememberName(account.name, account.display_name)
       setSignedOut(false)
       setMe(account)
       setStatus('signedIn')

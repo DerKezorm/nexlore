@@ -9,7 +9,9 @@ import { useTranslation } from 'react-i18next'
 import { ApiError, commentsApi, type Thread } from '../api/client'
 import { typingMention, withMentions, type Anchor } from '../lib/comments'
 import { errorText } from '../lib/errors'
+import { usePeople } from '../lib/people'
 import { formatDate } from '../lib/markdown'
+import { Person } from './Person'
 import { Symbol } from './Symbol'
 
 type Props = {
@@ -35,6 +37,7 @@ function MentionBox({ path, value, onChange, onSubmit, label, autoFocus }: {
   path: string; value: string; onChange: (next: string) => void; onSubmit: () => void; label: string; autoFocus?: boolean
 }) {
   const field = useRef<HTMLTextAreaElement>(null)
+  const nameOf = usePeople()
   const [names, setNames] = useState<string[]>([])
   const [typed, setTyped] = useState<{ start: number; words: string } | null>(null)
   const [active, setActive] = useState(0)
@@ -119,7 +122,14 @@ function MentionBox({ path, value, onChange, onSubmit, label, autoFocus }: {
                 onClick={() => take(name)}
                 className={'block w-full rounded-md px-2 py-1 text-left text-sm ' + (index === active ? 'bg-accent-500/15 text-mist-100' : 'text-mist-300 hover:bg-ink-850')}
               >
-                @{name}
+                {/* The display name to find the person by, the name that goes into the text beside it. */}
+                {nameOf(name) !== name ? (
+                  <>
+                    {nameOf(name)} <span className="text-xs text-mist-500">@{name}</span>
+                  </>
+                ) : (
+                  `@${name}`
+                )}
               </button>
             </li>
           ))}
@@ -238,7 +248,7 @@ export function Comments({ path, threads, draft, onDraftDone, found, onReveal, o
         {thread.comments.map((comment) => (
           <li key={comment.id} data-comment={comment.id}>
             <div className="flex items-baseline gap-2 text-xs text-mist-500">
-              <span className="font-semibold text-mist-300">{comment.author}</span>
+              <Person name={comment.author} className="font-semibold text-mist-300" />
               <span title={comment.created_at}>{formatDate(comment.created_at)}</span>
               {comment.edited_at && <span>{t('comments.edited')}</span>}
               <span className="ml-auto flex gap-1">

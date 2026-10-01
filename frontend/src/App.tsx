@@ -8,6 +8,7 @@ import { SecondFactor } from './components/SecondFactor'
 import { AccountPage } from './pages/AccountPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { CleanupPage } from './pages/CleanupPage'
+import { AboutPage } from './pages/AboutPage'
 import { CaptureRoute } from './pages/CaptureRoute'
 import { FilePage } from './pages/FilePage'
 import { FilesPage } from './pages/FilesPage'
@@ -82,6 +83,7 @@ export default function App() {
         <Route path="file/*" element={<FilePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="account" element={<AccountPage />} />
+        <Route path="about" element={<AboutPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

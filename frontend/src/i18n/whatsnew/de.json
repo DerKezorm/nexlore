@@ -1,0 +1,27 @@
+{
+  "0.2.0": {
+    "lead": "Menschen erscheinen jetzt unter einem selbst gewählten Namen, nexlore sagt Bescheid, wenn eine neuere Fassung erschienen ist, und nach einem Update erklärt dieses Fenster, was sich geändert hat.",
+    "sections": [
+      {
+        "title": "Ein Anzeigename für jedes Konto",
+        "where": "Kontomenü, Mein Konto, Profil, Anzeigename",
+        "body": "Bisher erschien jeder unter dem Namen, mit dem er sich anmeldet. Jetzt bestimmt jedes Konto selbst, wie andere es sehen, etwa mit Vor- und Nachnamen. Er steht überall, wo Menschen auftauchen: wer gerade da ist, wer schreibt, Kommentare, Versionen und das Kontomenü. In Mitgliederlisten und bei den @-Vorschlägen steht der Anmeldename klein daneben, denn der kommt nach dem @ in den Text. Bleibt das Feld leer, erscheint wie bisher der Anmeldename."
+      },
+      {
+        "title": "Über nexlore, mit Prüfung auf Aktualisierungen",
+        "where": "Kontomenü, Über nexlore",
+        "body": "Die Seite nennt die laufende Fassung, die Lizenz, den Quelltext und die Veröffentlichungen. Einmal am Tag fragt nexlore bei GitHub nach, ob es eine neuere Fassung gibt, und die Seite sagt es mit einem Link zu dem, was neu ist. Hinaus geht nur diese Frage, ohne Namen, Notizen oder Einstellungen. Der Betreiber schaltet das tägliche Nachsehen auf derselben Seite ab und kann jederzeit von Hand nachsehen."
+      },
+      {
+        "title": "Dieses Fenster",
+        "where": "Nach einem Update, die Leiste unter der Kopfzeile",
+        "body": "Jedes Konto liest es einmal, auf dem Gerät, auf dem es sich zuerst anmeldet. Schließen oder die Leiste wegklicken genügt; es kommt erst mit der nächsten Fassung mit Neuigkeiten wieder."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Mitgliederlisten und die Kontokarten des Betreibers zeigen den Anzeigenamen mit dem Anmeldenamen daneben.",
+      "Der Betreiber sieht die Anzeigenamen aller Konten, alle anderen die der Menschen, mit denen sie einen Bereich teilen."
+    ]
+  }
+}

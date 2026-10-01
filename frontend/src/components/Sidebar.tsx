@@ -22,6 +22,7 @@ import { answerNotice, seenAll, useNews } from '../lib/news'
 import { openInTab } from '../lib/tabs'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } from '../lib/vaultActions'
+import { usePeople } from '../lib/people'
 import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
 import { lookOf } from '../lib/looks'
@@ -64,6 +65,7 @@ const DRAG_TYPE = 'application/x-nexlore-path'
 
 export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: Props) {
   const { t } = useTranslation()
+  const nameOf = usePeople()
   const news = useNews()
   const [newsOpen, setNewsOpen] = useState(() => {
     try {
@@ -860,7 +862,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
             {news.notices.map((notice) => (
               <li key={'n' + notice.id} data-notice={notice.kind} className="rounded-lg px-2 py-1 text-[13px] text-mist-300">
                 <p className="leading-snug">
-                  {t(`notices.${notice.kind}`, { actor: notice.actor, subject: notice.subject, space: notice.space, role: notice.role ? t(`roles.${notice.role}`) : '' })}
+                  {t(`notices.${notice.kind}`, { actor: nameOf(notice.actor), subject: nameOf(notice.subject), space: notice.space, role: notice.role ? t(`roles.${notice.role}`) : '' })}
                 </p>
                 <div className="mt-1 flex gap-2">
                   {notice.kind === 'invite' ? (
@@ -878,13 +880,13 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
               <li key={'m' + item.thread}>
                 <button type="button" onClick={() => onNote(item.path)} title={item.excerpt} data-mention={item.thread} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] text-mist-300 hover:bg-ink-850">
                   <span aria-hidden="true" className="shrink-0 text-accent-400">@</span>
-                  <span className="min-w-0 flex-1 truncate">{t('news.mention', { name: item.author, title: item.title })}</span>
+                  <span className="min-w-0 flex-1 truncate">{t('news.mention', { name: nameOf(item.author), title: item.title })}</span>
                 </button>
               </li>
             ))}
             {news.notes.slice(0, 12).map((item) => (
               <li key={item.path}>
-                <button type="button" onClick={() => onNote(item.path)} title={item.author ? t('news.by', { name: item.author }) : t('news.outside')} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] text-mist-300 hover:bg-ink-850">
+                <button type="button" onClick={() => onNote(item.path)} title={item.author ? t('news.by', { name: nameOf(item.author) }) : t('news.outside')} className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-[13px] text-mist-300 hover:bg-ink-850">
                   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-400" />
                   <span className="min-w-0 flex-1 truncate">{item.title}</span>
                 </button>

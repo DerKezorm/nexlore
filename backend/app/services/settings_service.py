@@ -56,6 +56,8 @@ DEFAULTS: dict[str, Any] = {
     "ai_allowed": False,
     # Own CSS of the accounts (snippets): closed from the start, CSS can change how every page of the account looks.
     "custom_css_allowed": False,
+    #: Ask GitHub once a day whether a newer nexlore is out (services/updates). Only the question goes out, so on.
+    "update_check": True,
     #: Invitation mail: without a host nothing is sent, the link to copy is enough.
     "smtp_host": "",
     "smtp_port": 587,
