@@ -61,7 +61,7 @@ describe('the page answers a plugin only what its manifest allows', () => {
   it('runs the frame sandboxed, without an origin of its own', () => {
     const { frame } = mount([])
     expect(frame.getAttribute('sandbox')).toBe('allow-scripts')
-    expect(frame.getAttribute('src')).toBe('/api/plugins/probe/frame')
+    expect(frame.getAttribute('src')).toBe('/api/plugins/probe/frame?scheme=dark')
   })
 
   it('reads the note only with note:read', async () => {
