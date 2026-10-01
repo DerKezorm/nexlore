@@ -59,9 +59,13 @@ export function TasksPage() {
   // Only the newest answer counts: chips clicked through fast must not show an older filter's tasks.
   const asked = useRef(0)
 
-  // Typing waits a moment before it asks the server.
+  // Typing waits a moment before it asks the server; the same words again ask nothing (a new object reloaded the
+  // list and threw away a part loaded meanwhile, seen on the CI, 01.10.2026).
   useEffect(() => {
-    const timer = setTimeout(() => setQuery({ tag: tag.trim(), q: words.trim() }), 300)
+    const timer = setTimeout(() => {
+      const next = { tag: tag.trim(), q: words.trim() }
+      setQuery((current) => (current.tag === next.tag && current.q === next.q ? current : next))
+    }, 300)
     return () => clearTimeout(timer)
   }, [tag, words])
 

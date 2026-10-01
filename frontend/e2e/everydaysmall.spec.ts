@@ -67,6 +67,75 @@ test('a list of more than 500 tasks stays whole after ticking one off (P5.5)', a
   }
 })
 
+test.describe('while a list is still on its way', () => {
+  // page.route sees nothing the service worker answers.
+  test.use({ serviceWorkers: 'block' })
+  test('a search typed and taken back asks nothing again, and loaded tasks stay (P5.5)', async ({ page }, testInfo) => {
+    const name = `Errands20${testInfo.retry || ''}`
+    const lines = Array.from({ length: 450 }, (_, index) => `- [ ] Slow list task ${String(index).padStart(3, '0')}`)
+    await space(page, name, { Bulk: lines.join('\n') + '\n' })
+    try {
+      await page.goto('/tasks')
+      await page.getByRole('combobox', { name: 'Space' }).selectOption(name)
+      const rows = page.getByTestId('task-row')
+      await expect(rows).toHaveCount(200, { timeout: 15_000 })
+      // From here the whole list comes slowly, a further part at once (what the CI showed, 01.10.2026).
+      let asked = 0
+      await page.route('**/api/tasks?**', async (route) => {
+        if (new URL(route.request().url()).searchParams.get('offset') === '0') {
+          asked++
+          await new Promise((resolve) => setTimeout(resolve, 1500))
+        }
+        await route.continue()
+      })
+      // A letter typed and taken back: the search is what it was.
+      const search = page.getByPlaceholder('Search tasks')
+      await search.press('x')
+      await search.press('Backspace')
+      await page.waitForTimeout(500)
+      await page.getByRole('button', { name: /Load more/ }).click()
+      await expect(rows).toHaveCount(400)
+      // Whatever was still on its way has come by now; the list stays as long as it was.
+      await page.waitForTimeout(2500)
+      await expect(rows).toHaveCount(400)
+      expect(asked).toBe(0)
+      await page.getByRole('button', { name: /Load more/ }).click()
+      await expect(rows).toHaveCount(450)
+    } finally {
+      await page.unroute('**/api/tasks?**')
+      await away(page, name)
+    }
+  })
+
+  test('more tasks asked for while the list is asked again are not put after the wrong ones (P5.5)', async ({ page }, testInfo) => {
+    const name = `Errands21${testInfo.retry || ''}`
+    const lines = Array.from({ length: 450 }, (_, index) => `- [ ] Raced task ${String(index).padStart(3, '0')}`)
+    await space(page, name, { Bulk: lines.join('\n') + '\n' })
+    try {
+      await page.goto('/tasks')
+      await page.getByRole('combobox', { name: 'Space' }).selectOption(name)
+      const rows = page.getByTestId('task-row')
+      await expect(rows).toHaveCount(200, { timeout: 15_000 })
+      // A further part comes slowly; meanwhile the list is asked for again (another chip and back).
+      await page.route('**/api/tasks?**', async (route) => {
+        if (new URL(route.request().url()).searchParams.get('offset') === '200') await new Promise((resolve) => setTimeout(resolve, 1500))
+        await route.continue()
+      })
+      await page.getByRole('button', { name: /Load more/ }).click()
+      const chips = page.getByRole('group', { name: 'Tasks' })
+      await chips.getByRole('button', { name: /^Done/ }).click()
+      await chips.getByRole('button', { name: /^Open/ }).click()
+      await page.waitForTimeout(2500)
+      // The list asked last is shown, nothing of the slow part after it.
+      await expect(rows).toHaveCount(200)
+      await expect(rows.first()).toContainText('Raced task 000')
+    } finally {
+      await page.unroute('**/api/tasks?**')
+      await away(page, name)
+    }
+  })
+})
+
 test('ticking off a repetition nexlore cannot read says there is no next one (P5.8)', async ({ page }) => {
   await space(page, 'Errands3', { List: '- [ ] Water the fern R3 🔁 every blue moon\n' })
   try {
