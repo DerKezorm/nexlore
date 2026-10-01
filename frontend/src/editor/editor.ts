@@ -129,6 +129,11 @@ export type FileHelpers = {
 }
 
 /** A speech bubble with a pen, drawn like Crepe's own symbols (24 by 24, filled with the text colour). */
+/** Crepe's code icon without its clip path: the clip covered the whole icon and did nothing, and its fixed id stood
+ * twice on the page (slash menu and selection bar), which a page must not have (P8.19). Same drawing, no id. */
+const CODE_ICON =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M9.4 16.6L4.8 12L9.4 7.4L8 6L2 12L8 18L9.4 16.6ZM14.6 16.6L19.2 12L14.6 7.4L16 6L22 12L16 18L14.6 16.6Z"/></svg>'
+
 const COMMENT_ICON =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2v10h2v2l2.5-2H20V6zm3 7.5 5.6-5.6 2 2L9 15.5H7z"/></svg>'
 
@@ -364,6 +369,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
       // the next line (review before 1.0.0, P3.11).
       [CrepeFeature.Toolbar]: options.comment
         ? {
+            codeIcon: CODE_ICON,
             buildToolbar: (builder) => {
               builder.addGroup('nx-comment', options.comment!.label).addItem('comment', {
                 icon: COMMENT_ICON,
@@ -373,7 +379,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
               })
             },
           }
-        : undefined,
+        : { codeIcon: CODE_ICON },
       [CrepeFeature.Placeholder]: { text: labels.placeholder, mode: 'doc' },
       [CrepeFeature.LinkTooltip]: { inputPlaceholder: labels.link },
       [CrepeFeature.CodeMirror]: {
@@ -406,7 +412,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
         advancedGroup: {
           label: labels.slash.groupAdvanced,
           image: null,
-          codeBlock: { label: labels.slash.code },
+          codeBlock: { label: labels.slash.code, icon: CODE_ICON },
           table: { label: labels.slash.table },
           math: { label: labels.slash.math },
         },

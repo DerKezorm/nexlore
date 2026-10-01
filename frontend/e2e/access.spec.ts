@@ -173,3 +173,15 @@ test.describe('in German', () => {
     await expect(page.getByTestId('task-row').filter({ hasText: 'Water U22' })).toContainText('alle 2 Wochen am Montag')
   })
 })
+
+test('no id stands twice on the page, in the editor neither (P8.19)', async ({ page }) => {
+  await page.goto('/note/Zoo/Menu.md?edit=1')
+  await expect(page.locator('.ProseMirror')).toBeVisible()
+  // The slash menu and the selection bar are drawn already, hidden: both carry the code icon.
+  const twice = await page.evaluate(() => {
+    const seen = new Map<string, number>()
+    for (const element of document.querySelectorAll('[id]')) seen.set(element.id, (seen.get(element.id) ?? 0) + 1)
+    return [...seen].filter(([, count]) => count > 1).map(([id]) => id)
+  })
+  expect(twice).toEqual([])
+})
