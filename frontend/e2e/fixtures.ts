@@ -28,6 +28,9 @@ async function freshAccount(request: APIRequestContext): Promise<void> {
   if (!put.ok()) throw new Error(`resetting the look failed: ${put.status()}`)
   const profile = await request.put('/api/me/profile', { data: { display_name: '' }, headers: TAB })
   if (!profile.ok()) throw new Error(`resetting the display name failed: ${profile.status()}`)
+  // Following the browser again: a test that stopped while the account spoke Spanish renamed every link after it.
+  const language = await request.put('/api/me/language', { data: { language: '' }, headers: TAB })
+  if (!language.ok()) throw new Error(`resetting the language failed: ${language.status()}`)
   const favorites = await request.get('/api/favorites')
   if (!favorites.ok()) throw new Error(`reading the favorites failed: ${favorites.status()}`)
   for (const favorite of (await favorites.json()) as { path: string }[]) {

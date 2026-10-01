@@ -146,12 +146,17 @@ test('"Today" opens the daily note of today in the main space of the account', a
   }
 })
 
-test('the header fits at every width of a desktop, the settings included', async ({ page }) => {
+test('the header fits at every width of a desktop, and the settings are in the account menu', async ({ page }) => {
   for (const width of [1024, 1152, 1280, 1366, 1440, 1600]) {
     await page.setViewportSize({ width, height: 800 })
     await page.goto('/tasks')
     const menu = page.getByRole('navigation', { name: 'Main menu' })
-    await expect(menu.getByRole('link', { name: 'Settings' })).toBeVisible()
+    await expect(menu.getByRole('link', { name: 'Files' })).toBeVisible()
+    // As in Nexview (idea 279): not in the header, in the account menu on every width.
+    await expect(menu.getByRole('link', { name: 'Settings' })).toHaveCount(0)
+    await page.getByRole('banner').getByRole('button', { name: /^Account of / }).click()
+    await page.getByRole('link', { name: 'Settings' }).click()
+    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible()
     const fits = await menu.evaluate((nav) => nav.scrollWidth <= nav.clientWidth + 1)
     expect(fits, `the menu overflows at ${width} px`).toBe(true)
   }

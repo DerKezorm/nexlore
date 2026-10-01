@@ -16,7 +16,7 @@ test('starts in English for an English browser, without a single console error',
   const problems = collectProblems(page)
   await page.goto('/')
   const menu = page.getByRole('navigation', { name: 'Main menu' })
-  await expect(menu.getByRole('link', { name: 'Settings' })).toBeVisible()
+  await expect(menu.getByRole('link', { name: 'Tasks' })).toBeVisible()
   await expect(page.getByRole('button', { name: /Search/ })).toBeVisible()
   await expect(page.locator('html')).toHaveAttribute('lang', 'en')
   expect(problems).toEqual([])
@@ -34,23 +34,30 @@ test.describe('a German browser', () => {
 
 test('the operator language is offered, falls back to English where it has no text, and stays after a reload', async ({ page }) => {
   test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared data directory')
-  const problems = collectProblems(page)
-  await page.goto('/settings')
-  const select = page.getByLabel('Language of the interface')
-  await expect(select.locator('option')).toHaveText(['English', 'Deutsch', 'Español (added by the operator)'])
-  await select.selectOption('es')
-  const menu = page.getByRole('navigation', { name: 'Main menu' })
-  await expect(menu.getByRole('link', { name: 'Ajustes' })).toBeVisible()
-  // Not in the Spanish file: English instead of a raw key.
-  await expect(page.getByRole('heading', { name: 'Language', level: 2, exact: true })).toBeVisible()
-  await page.reload()
-  await expect(page.getByRole('navigation', { name: 'Main menu' }).getByRole('link', { name: 'Ajustes' })).toBeVisible()
-  await expect(page.locator('html')).toHaveAttribute('lang', 'es')
-  // The choice went with the account: a fresh browser of the same account starts in Spanish too.
-  expect((await (await page.request.get('/api/auth/me')).json()).language).toBe('es')
-  expect(problems).toEqual([])
-  // Back to following the browser, for the tests after this one (they share the account).
-  await page.request.put('/api/me/language', { data: { language: '' }, headers: { 'X-Nexlore-Client': 'tab-e2elanguage' } })
+  try {
+    const problems = collectProblems(page)
+    await page.goto('/settings')
+    const select = page.getByLabel('Language of the interface')
+    await expect(select.locator('option')).toHaveText(['English', 'Deutsch', 'Español (added by the operator)'])
+    await select.selectOption('es')
+    // The settings sit in the account menu: its link says it in Spanish.
+    const account = page.getByRole('banner').getByRole('button', { name: /^Account of / })
+    await account.click()
+    await expect(page.getByRole('link', { name: 'Ajustes' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    // Not in the Spanish file: English instead of a raw key.
+    await expect(page.getByRole('heading', { name: 'Language', level: 2, exact: true })).toBeVisible()
+    await page.reload()
+    await account.click()
+    await expect(page.getByRole('link', { name: 'Ajustes' })).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute('lang', 'es')
+    // The choice went with the account: a fresh browser of the same account starts in Spanish too.
+    expect((await (await page.request.get('/api/auth/me')).json()).language).toBe('es')
+    expect(problems).toEqual([])
+  } finally {
+    // Back to following the browser, for the tests after this one (they share the account).
+    await page.request.put('/api/me/language', { data: { language: '' }, headers: { 'X-Nexlore-Client': 'tab-e2elanguage' } })
+  }
 })
 
 test('the template downloads as the English texts with a _meta entry', async ({ page }) => {

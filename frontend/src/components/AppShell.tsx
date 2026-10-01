@@ -35,26 +35,24 @@ import { ThemeSwitcher } from './ThemeSwitcher'
 
 type NavItem = {
   to: string
-  label: 'nav.graph' | 'nav.notes' | 'nav.calendar' | 'nav.tasks' | 'nav.files' | 'nav.settings'
+  label: 'nav.graph' | 'nav.notes' | 'nav.calendar' | 'nav.tasks' | 'nav.files'
   symbol: SymbolName
   end: boolean
-  right?: boolean
   /** Below `sm` the item is in the account menu: a phone has room for the four daily places only. */
   wide?: boolean
 }
 
+// The settings live in the account menu, as in Nexview (idea 279): the header keeps the places one works in.
 const ITEMS: NavItem[] = [
   { to: '/', label: 'nav.graph', symbol: 'graph', end: true },
   { to: '/note', label: 'nav.notes', symbol: 'note', end: false },
   { to: '/calendar', label: 'nav.calendar', symbol: 'calendar', end: false },
   { to: '/tasks', label: 'nav.tasks', symbol: 'tasks', end: false },
   { to: '/files', label: 'nav.files', symbol: 'files', end: false, wide: true },
-  { to: '/settings', label: 'nav.settings', symbol: 'settings', end: false, right: true, wide: true },
 ]
 
-function navClass(isActive: boolean, right = false, wide = false): string {
+function navClass(isActive: boolean, wide = false): string {
   return (
-    (right ? 'ml-auto ' : '') +
     (wide ? 'hidden sm:inline-flex ' : 'inline-flex ') +
     'shrink-0 items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3.5 ' +
     (isActive ? 'bg-accent-500/15 text-accent-400' : 'text-mist-500 hover:bg-ink-850 hover:text-mist-100')
@@ -306,7 +304,7 @@ export function AppShell() {
                 end={item.end}
                 aria-label={t(item.label)}
                 title={t(item.label)}
-                className={({ isActive }) => navClass(isActive, item.right, item.wide)}
+                className={({ isActive }) => navClass(isActive, item.wide)}
                 onClick={(event) => {
                   // On a phone "Notes" is the list of notes: it opens as a sheet, on the note page without leaving it.
                   if (item.to !== '/note' || !narrow()) return

@@ -135,6 +135,13 @@ test('a click on a folder name opens it on the map as well, and the menu flies t
   await page.waitForLoadState('networkidle')
   // A folder below a space: closed at first. Its name is the button without a label of its own.
   const name = tree.locator('button[aria-expanded="false"]:not([aria-label])').first()
+  // Other tests may have opened a space full of notes above the first closed folder: the tree draws only rows near
+  // the view, so it is scrolled to one.
+  await expect(tree.getByRole('listitem').first()).toBeVisible()
+  for (let step = 0; step < 40 && !(await name.isVisible()); step++) {
+    await tree.evaluate((element) => element.scrollBy(0, element.clientHeight / 2))
+    await page.waitForTimeout(50)
+  }
   await expect(name).toBeVisible()
   const text = (await name.innerText()).split('\n')[0].trim()
   await name.click()

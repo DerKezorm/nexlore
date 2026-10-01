@@ -179,6 +179,14 @@ export function AccountMenu() {
           >
             <Symbol name="users" /> {t('account.page')}
           </Link>
+          {/* Settings here on every width, as in Nexview (idea 279). */}
+          <Link
+            to="/settings"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-mist-300 hover:bg-ink-850 hover:text-mist-100"
+          >
+            <Symbol name="settings" /> {t('nav.settings')}
+          </Link>
           <Link
             to="/about"
             onClick={() => setOpen(false)}
@@ -190,12 +198,9 @@ export function AccountMenu() {
             <Symbol name="command" /> {t('palette.menu')}
             <kbd className="ml-auto hidden rounded border border-ink-700 px-1.5 text-[11px] text-mist-500 sm:inline">Ctrl P</kbd>
           </button>
-          {/* On a phone the header keeps the four daily places; these two live here. */}
+          {/* On a phone the header keeps the four daily places; the files live here. */}
           <Link to="/files" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-mist-300 hover:bg-ink-850 hover:text-mist-100 sm:hidden">
             <Symbol name="files" /> {t('nav.files')}
-          </Link>
-          <Link to="/settings" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-mist-300 hover:bg-ink-850 hover:text-mist-100 sm:hidden">
-            <Symbol name="settings" /> {t('nav.settings')}
           </Link>
           {install.can === 'prompt' && (
             <button
