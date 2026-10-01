@@ -2,7 +2,8 @@
  * Callouts in a theme: every kind has a symbol before its title; a theme gives a kind of its own a colour and a
  * symbol, while reading and while writing, and its editor adds such a kind.
  */
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import { type Locator, type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 

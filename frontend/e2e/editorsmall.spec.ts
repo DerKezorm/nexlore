@@ -2,7 +2,8 @@
  * Small things of the editor from the review before 1.0.0 (block Q): Ctrl+S saves, editing starts at the end, a new
  * property takes the focus, a table's commands show in the palette only in a table.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'writes notes of its own')
 

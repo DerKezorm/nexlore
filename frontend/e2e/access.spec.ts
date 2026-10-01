@@ -3,7 +3,8 @@
  * the map by keyboard, focus that comes back, tabs that answer the arrows, task boxes with names, headings, less
  * motion, repetitions in the interface's words.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'writes notes of its own')
 

@@ -2,7 +2,8 @@
  * The slash menu: headings down to six and a picture of its own, and the entries used most come first in their group
  * (counted in this browser).
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

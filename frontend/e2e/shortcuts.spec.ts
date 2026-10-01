@@ -2,7 +2,8 @@
  * Own keys for commands: set in the command palette with the keyboard beside a command, pressed anywhere the command
  * is on offer, listed and removed under Settings → General, kept with the account.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 

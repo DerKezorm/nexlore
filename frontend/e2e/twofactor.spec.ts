@@ -4,7 +4,8 @@
  * one of their own, the operator resets it, and an account that must set one up sees only that. A fresh account,
  * so the operator's own sign-in stays as the other tests expect it.
  */
-import { expect, request, test, type Browser, type Page } from '@playwright/test'
+import { request, type Browser, type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { createHmac } from 'node:crypto'
 
 import { OPERATOR } from './global-setup'

@@ -4,6 +4,9 @@
  * E2E_PASSWORD. The name and password are made up for the test run and live only in the temporary data directory.
  */
 import { request, type FullConfig } from '@playwright/test'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export const OPERATOR = { name: 'tester', password: 'e2e test operator password' }
 
@@ -23,5 +26,13 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
     if (!signed.ok()) throw new Error(`sign-in failed: ${signed.status()} (E2E_USER and E2E_PASSWORD for a running instance)`)
   }
   await context.storageState({ path: state })
+  // The look the account has now: every test file starts from it again (fixtures.ts).
+  const me = await context.get('/api/auth/me')
+  if (!me.ok()) throw new Error(`reading the account failed: ${me.status()}`)
+  fs.writeFileSync(process.env.NEXLORE_E2E_LOOK!, JSON.stringify((await me.json()).appearance))
   await context.dispose()
+  // A spec that takes `test` from Playwright itself would skip the fresh start and the slow run.
+  const folder = path.dirname(fileURLToPath(import.meta.url))
+  const bypass = fs.readdirSync(folder).filter((name) => name.endsWith('.spec.ts') && /import \{[^}]*\b(test|expect)\b[^}]*\} from '@playwright\/test'/.test(fs.readFileSync(path.join(folder, name), 'utf-8')))
+  if (bypass.length) throw new Error(`take test and expect from ./fixtures: ${bypass.join(', ')}`)
 }

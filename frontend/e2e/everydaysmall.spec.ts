@@ -4,7 +4,8 @@
  * the reading view, and what a view says when it cannot do something. Each test works in a space of its own and takes
  * it away again: the account is shared with the other tests.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'writes spaces of its own')
 

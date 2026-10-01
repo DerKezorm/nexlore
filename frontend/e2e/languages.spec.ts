@@ -1,5 +1,6 @@
 /** The interface in its languages: shipped ones by browser language, the operator's own from the server. */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 
 function collectProblems(page: Page): string[] {

@@ -2,7 +2,8 @@
  * The note composer: chosen words into a note of their own with a link in their place, and a note merged into
  * another (its text at the end, links to it following, it into the trash).
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

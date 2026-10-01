@@ -2,7 +2,8 @@
  * Comments in the margin: words chosen in the reading view get a thread in the column, with @names offered; answers,
  * closing, and the words lit in the text. The file never changes.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

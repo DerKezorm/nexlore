@@ -2,7 +2,8 @@
  * Working together from the review before 1.0.0 (block V): the own note open in another tab, comments of others
  * without a reload, who saved a version and why it cannot be brought back, @names that name nobody.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'writes notes of its own')
 
@@ -13,13 +14,6 @@ async function note(page: Page, title: string, content: string): Promise<string>
   expect(made.status()).toBe(201)
   return (await made.json()).path as string
 }
-
-test.afterEach(async ({ page }) => {
-  // The tests share the account: the column goes back to its links (the versions and comments tabs here are kept
-  // with the account, and the next file looks for the backlinks).
-  await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {})
-  await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links' }, headers: TAB })
-})
 
 const url = (at: string) => '/note/' + at.split('/').map(encodeURIComponent).join('/')
 

@@ -2,7 +2,8 @@
  * Quick capture: a long press on "+" opens it, Ctrl+Enter keeps the words in the inbox of the space chosen, the
  * newest on top; the space is chosen again next time; sharing to the app (`/capture?…`) brings the words along.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

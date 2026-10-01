@@ -2,7 +2,8 @@
  * The map and the folder dots take their colours from the theme: another accent turns the hues, and a change of
  * theme draws the map again at once, without a reload.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 

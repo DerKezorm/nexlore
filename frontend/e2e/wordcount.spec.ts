@@ -2,7 +2,8 @@
  * The line under a note: words and characters of what is shown (embedded notes left out), counted again while
  * typing, and those of the words chosen.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 

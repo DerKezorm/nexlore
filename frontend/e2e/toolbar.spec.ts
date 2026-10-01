@@ -2,7 +2,8 @@
  * The editor's toolbar through the interface: there from the start, formats what is selected and lights it, puts a
  * web link on words, hides and stays hidden, leads to the Markdown view; on a phone one row above the keyboard.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

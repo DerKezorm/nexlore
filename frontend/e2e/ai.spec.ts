@@ -3,7 +3,8 @@
  * operator allows it, the account connects its own service, the editor offers it in the toolbar and the context menu,
  * a result stands next to the text and changes nothing until it is taken over, and the account sees what went out.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

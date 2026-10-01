@@ -2,7 +2,8 @@
  * AI from outside through the interface (M7): the operator opens MCP, the account makes a key and sees it once, a
  * program proposes a draft over MCP, the note shows it, and taking it over writes only the changed line.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

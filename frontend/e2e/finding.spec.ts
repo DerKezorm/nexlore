@@ -3,7 +3,8 @@
  * Tab), tags and search hits that lead somewhere, live search, the sidebar following changes from outside, dragging
  * and the arrows in the sidebar.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

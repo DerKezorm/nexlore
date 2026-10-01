@@ -2,7 +2,8 @@
  * Mentions without a link in the column beside a note, turned into a link there; and the cleaning up page of a space:
  * lonely notes with their mentions, links to nothing made into notes.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

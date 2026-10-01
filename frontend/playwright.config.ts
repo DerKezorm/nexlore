@@ -190,6 +190,8 @@ const DATA_DIR = external ? '' : dataDir()
 /** Where the operator's session is kept for the tests (global-setup.ts signs in once). */
 export const SIGNED_IN = path.join(external ? os.tmpdir() : DATA_DIR, 'e2e-operator.json')
 process.env.NEXLORE_E2E_STATE = SIGNED_IN
+/** The look of the account right after the setup: every test file starts from it (e2e/fixtures.ts). */
+process.env.NEXLORE_E2E_LOOK = path.join(path.dirname(SIGNED_IN), 'e2e-operator-look.json')
 // The project's venv on the development machines, the system Python in CI.
 const venv = path.join('.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python')
 const python = fs.existsSync(path.join('..', 'backend', venv)) ? venv : 'python'

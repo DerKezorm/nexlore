@@ -1,5 +1,6 @@
 /** The start page of the account: chosen under Settings → General, taken once per tab from the first page. */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 function collectProblems(page: Page): string[] {
   const problems: string[] = []

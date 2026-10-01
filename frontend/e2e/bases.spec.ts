@@ -1,5 +1,6 @@
 /** Views over notes, as Obsidian's Bases: a .base file as table and board, cells written back, a code block. */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 function collectProblems(page: Page): string[] {
   const problems: string[] = []

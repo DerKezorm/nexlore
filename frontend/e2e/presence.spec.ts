@@ -2,7 +2,8 @@
  * Who else has the note open: the page says it is here, shows the others' pictures in the note's head (the one
  * writing with a pencil, first), and says goodbye when it moves on.
  */
-import { expect, request, test, type APIRequestContext, type Page } from '@playwright/test'
+import { request, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 const TAB = { 'X-Nexlore-Client': 'tab-e2e-presence' }
 

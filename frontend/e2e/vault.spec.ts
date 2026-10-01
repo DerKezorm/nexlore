@@ -3,7 +3,8 @@
  * copy, search, renaming with links following, the trash. Every test works on its own notes from the prepared vault
  * (playwright.config.ts), so the order does not matter.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

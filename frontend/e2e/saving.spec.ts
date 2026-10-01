@@ -2,7 +2,7 @@
  * A save that fails says why and is tried again (review before 1.0.0, P3.7 and P6.3): without a network the text
  * waits in the editor and goes out as soon as the network is back; a taken right is named.
  */
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'writes a note of its own')
 

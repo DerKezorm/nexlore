@@ -2,7 +2,8 @@
  * Pictures over the whole page: a click while reading (a double click or the menu while writing) opens one, fitted or
  * at its own size, to zoom and move; the arrows go through the note's pictures; marked ones are saved together.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')

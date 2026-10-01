@@ -2,7 +2,7 @@
  * A note being written when the page goes (a reload, a closed tab): the last words are saved and the lock is let go,
  * also when the service worker controls the page (then a request sent while the page unloads was lost).
  */
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

@@ -2,7 +2,8 @@
  * Folding: a heading or a list item folded while reading stays folded after a reload and while writing, "fold all"
  * and "unfold all" from the palette, and the file never changes.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

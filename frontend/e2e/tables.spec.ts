@@ -2,7 +2,8 @@
  * Tables from the toolbar's table menu, in the app as it runs: rows sorted by a column, a column aligned; in the
  * file only the table changes.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

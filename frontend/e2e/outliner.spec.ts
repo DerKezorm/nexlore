@@ -2,7 +2,8 @@
  * Moving blocks as an outliner does, in the app as it runs: Alt with the arrows moves a list item with the items
  * below it; in the file only the lines that changed place change.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

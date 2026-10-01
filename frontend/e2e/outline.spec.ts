@@ -1,5 +1,6 @@
 /** Beside the note its outline; in the sidebar the tags as a tree, renamed everywhere; the notes opened last. */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 function collectProblems(page: Page): string[] {
   const problems: string[] = []

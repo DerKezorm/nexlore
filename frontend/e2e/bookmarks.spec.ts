@@ -2,7 +2,8 @@
  * Favorites beyond notes and folders: a heading kept from the outline opens its note scrolled there, a search kept on
  * the search page opens it again, and favorites sit in groups chosen from their menu.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 

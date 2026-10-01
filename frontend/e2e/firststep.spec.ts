@@ -3,7 +3,8 @@
  * gets a button for it, an empty sign-in names the empty field without asking the server, and after signing out
  * nothing goes out that only meets 401.
  */
-import { expect, request, test, type Browser, type Page } from '@playwright/test'
+import { request, type Browser, type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'makes accounts of its own')
 

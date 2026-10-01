@@ -2,7 +2,8 @@
  * The graph through the interface, against the real backend and the prepared vault: the map of every space, the
  * clouds, a note's card, flying to a search hit, the local graph on the note page, the phone.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 function collectProblems(page: Page): string[] {
   const problems: string[] = []

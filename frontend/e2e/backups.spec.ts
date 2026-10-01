@@ -2,7 +2,7 @@
  * A backup can be carried away from the settings, against the operator's password once more; a wrong one gives
  * nothing.
  */
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 
 import { OPERATOR } from './global-setup'

@@ -1,5 +1,6 @@
 /** Colour themes per account, made and shared; a space's theme under its notes; own CSS behind the operator's switch. */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 function collectProblems(page: Page): string[] {
   const problems: string[] = []

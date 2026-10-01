@@ -2,7 +2,8 @@
  * The reading view shows Obsidian's own writing as Obsidian does: a callout folded shut, a highlight, a comment left
  * out, a wiki link in a table cell, and a part of another note embedded, whose links can be followed.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 function collectProblems(page: Page): string[] {
   const problems: string[] = []

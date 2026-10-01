@@ -2,7 +2,8 @@
  * Find and replace in the editor: Ctrl+F opens the bar with the chosen words, counts and steps through the hits,
  * Ctrl+H replaces one or all, Escape puts the caret on the hit. The file changes only where words were replaced.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

@@ -4,7 +4,8 @@
  * The operator reads every space of the prepared vault (none has members); what a reader of one space only sees is
  * the backend's tests (`test_links_across.py`).
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

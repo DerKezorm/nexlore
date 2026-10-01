@@ -3,7 +3,8 @@
  * the page of a note renamed from the sidebar follows it; a folder that could not be read offers to try again; a
  * click on a folder's name opens it, on the map too.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -292,6 +293,8 @@ test('favorites: the star on a note and the menu of a folder put them on top of 
 })
 
 test('tabs: a note opens in a tab of its own with Ctrl or from the menu, and closing one shows its neighbour', async ({ page }) => {
+  // A step runs thirty times slower on purpose: alone 9 s, in the full run 24 to 35 s as the vault has grown (01.10.2026).
+  test.setTimeout(60_000)
   const problems = collectProblems(page)
   await page.goto('/note/Zoo/Menu.md')
   await expect(page.locator('article')).toContainText('Make this word bold.')

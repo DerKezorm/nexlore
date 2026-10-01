@@ -3,7 +3,8 @@
  * off, a recurring task, the calendar making a daily note from the template, a new note from a template, "Today",
  * the phone, and the service worker (built app only: it never answers for /api, and signing out empties its caches).
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

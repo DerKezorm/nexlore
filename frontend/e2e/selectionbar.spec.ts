@@ -2,7 +2,7 @@
  * The bar over chosen words (review before 1.0.0, P3.10 and P3.11): its symbols are readable in both colour schemes,
  * and "Comment" is one of its buttons instead of a pill over the next line.
  */
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'writes a note of its own')
 

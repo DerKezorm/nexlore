@@ -2,7 +2,8 @@
  * A note named by the minute, from the command palette: made where a new note goes (the open note's folder),
  * opened for writing; a second one in the same minute is numbered.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

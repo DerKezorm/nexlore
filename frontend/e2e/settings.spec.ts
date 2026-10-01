@@ -2,7 +2,8 @@
  * The settings in tabs: General first, Spaces, and Server with a row of its own for the operator; the tab is in the
  * address. An account that is not the operator neither sees Server nor reaches it by the address.
  */
-import { expect, request, test } from '@playwright/test'
+import { request } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'makes an account; not against a running instance')
 

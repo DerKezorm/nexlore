@@ -2,7 +2,7 @@
  * Dragging a block by its grip, in the app as it runs (review before 1.0.0, P3.5): a paragraph dropped between a
  * paragraph and a list lands between them, not inside the list's first item.
  */
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'writes a note of its own')
 

@@ -1,5 +1,6 @@
 /** How nexlore looks for the account: fonts, size, width, light or dark; kept with the account, applied everywhere. */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 function collectProblems(page: Page): string[] {
   const problems: string[] = []

@@ -3,7 +3,8 @@
  * pasted into a note gets the page's title as its words. The server's own fetch is tested in the backend; here its
  * answer is played, a real one would come from the test machine's own network and be refused.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

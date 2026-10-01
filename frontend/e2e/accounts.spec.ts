@@ -3,7 +3,8 @@
  * space that brings a new account, a reader who cannot edit, and a public page that shows only what is shared.
  * Each test works in a space of its own, so the operator's spaces from the disk stay the operator's.
  */
-import { expect, test, type Browser, type Page } from '@playwright/test'
+import { type Browser, type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 import { OPERATOR } from './global-setup'
 

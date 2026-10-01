@@ -1,5 +1,6 @@
 /** The header of a note in one line, the column beside it in tabs, and the sidebar folded to a strip of symbols. */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 function collectProblems(page: Page): string[] {
   const problems: string[] = []

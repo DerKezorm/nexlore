@@ -2,7 +2,8 @@
  * The ways out of block K7: the calendar subscription (closed until the operator opens it, the address shown once),
  * a space as a ZIP file from its menu, and the log for the operator under Server.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')

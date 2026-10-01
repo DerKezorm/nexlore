@@ -3,7 +3,8 @@
  * properties, the save state, long addresses and tables, a phone on its side, ways to close, the pages before signing
  * in, the provider card, and texts of the operator over the shipped ones.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'writes notes of its own')
 

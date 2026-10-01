@@ -2,7 +2,8 @@
  * The row of tabs: a list of all of them at its end, a tab pinned from its menu (left, no cross, a note opened from
  * it comes in a tab of its own, the middle button leaves it), and dragging puts a tab elsewhere.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
 

@@ -3,7 +3,8 @@
  * a dropped PDF becomes a link, embedded pictures show in the editor and when reading, a file has its own page, the
  * files page lists attachments, and the text of a PDF is found.
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 

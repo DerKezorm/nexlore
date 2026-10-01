@@ -2,7 +2,8 @@
  * The command palette on Ctrl+P and what the quick switcher on Ctrl+K learned: aliases, making a note of the name
  * typed, the headings of the note in front after "#".
  */
-import { expect, test, type Page } from '@playwright/test'
+import { type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 function collectProblems(page: Page): string[] {
   const problems: string[] = []

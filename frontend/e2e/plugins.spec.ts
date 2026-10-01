@@ -4,7 +4,8 @@
  * note, a query block, the Kanban board that moves a card by rewriting only its lines. The frame can reach nothing
  * but the page: no cookie, no request of its own.
  */
-import { expect, test, type FrameLocator, type Page } from '@playwright/test'
+import { type FrameLocator, type Page } from '@playwright/test'
+import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
 
