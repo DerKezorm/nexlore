@@ -2,13 +2,9 @@
  * A new theme starts from nexlore's own colours: the values in lib/themes.ts must be those of styles/index.css, in
  * both modes. They drifted once (block U changed the CSS, a new theme then brought the old, weaker greys back).
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import css from '../styles/index.css?raw'
 import { NEXLORE_COLOURS } from './themes'
-
-// The tests run in the frontend folder.
-const css = readFileSync(join(process.cwd(), 'src', 'styles', 'index.css'), 'utf-8')
 
 /** The custom properties of the first block that starts with `opening`. */
 function block(opening: string): Record<string, string> {
