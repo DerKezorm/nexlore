@@ -1459,7 +1459,7 @@
     "recipeConnector": "Address for a connector",
     "rights": {
       "open": "Rights per tool",
-      "title": "Rights for „{{name}}“",
+      "title": "Rights for “{{name}}”",
       "search": "Find a tool",
       "defaults": "Defaults",
       "text": "Allow runs at once. Ask keeps the call until you approve it in nexlore. Deny hides the tool: the program does not even see it. Greyed out: above the key's level, or blocked by the operator.",
@@ -2133,7 +2133,7 @@
     "decided_one": "{{count}} decided",
     "decided_other": "{{count}} decided",
     "number": "No. {{id}}",
-    "from": "from „{{key}}“, {{when}}",
+    "from": "from “{{key}}”, {{when}}",
     "until": "runs out {{when}}",
     "tool": "Tool",
     "noArguments": "No arguments.",

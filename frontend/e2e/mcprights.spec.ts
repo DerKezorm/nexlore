@@ -108,6 +108,9 @@ test('a request waits in the menu and the news, and approving runs exactly it', 
   const first = page.getByTestId(`request-${asked.value.request}`)
   await expect(first).toContainText('Make a note')
   await expect(first).toContainText('Asked for')
+  // It runs out a day later, not "today"; and English quotes in English.
+  await expect(first).not.toContainText('runs out today')
+  await expect(first).toContainText('from “Y asker”')
   await first.getByRole('button', { name: 'Approve and run' }).click()
   // Decided, it moves below the waiting ones, with what came of it.
   await expect(page.getByTestId(`request-${asked.value.request}`)).toContainText('done')

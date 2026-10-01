@@ -59,7 +59,8 @@ function Request({ request, onChange }: { request: McpRequest; onChange: () => v
         <span className="font-semibold text-mist-100">{t('requests.number', { id: request.id })}</span>
         <span className="text-mist-500">
           {t('requests.from', { key: request.key_name, when: formatDate(request.created_at) })}
-          {waiting && ` · ${t('requests.until', { when: formatDate(request.expires_at) })}`}
+          {/* Ahead, not past: formatDate would call every time to come "today". */}
+          {waiting && ` · ${t('requests.until', { when: new Date(request.expires_at).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }) })}`}
         </span>
       </div>
       <h2 id={`request-${request.id}-title`} className="mt-2 font-semibold">
