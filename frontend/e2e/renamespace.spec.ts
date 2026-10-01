@@ -5,28 +5,13 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { type Page } from '@playwright/test'
 import { expect, test } from './fixtures'
+import { clickRow, row, shownRow } from './tree'
 
 const DATA = process.env.NEXLORE_E2E_DATA ?? ''
 const TAB = { 'X-Nexlore-Client': 'tab-e2e-renamespace' }
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
-
-function row(page: Page, name: string) {
-  return page.getByTestId('sidebar-tree').getByRole('button', { name: new RegExp(`^${name}( \\d+)?$`) })
-}
-
-async function shownRow(page: Page, name: string) {
-  const tree = page.getByTestId('sidebar-tree')
-  const button = row(page, name)
-  await expect(tree.getByRole('listitem').first()).toBeVisible()
-  for (let step = 0; step < 40 && !(await button.isVisible()); step++) {
-    await tree.evaluate((element) => element.scrollBy(0, element.clientHeight / 2))
-    await page.waitForTimeout(50)
-  }
-  return button
-}
 
 test('a manager renames a space from its menu, and what names it follows', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -40,7 +25,7 @@ test('a manager renames a space from its menu, and what names it follows', async
   try {
     await page.goto('/note/Zz Old field/Corn.md')
     await expect(page.locator('article')).toContainText('Rows of corn.')
-    await (await shownRow(page, 'Zz Old field')).click({ button: 'right' })
+    await clickRow(page, 'Zz Old field', { button: 'right' })
     await page.getByRole('menuitem', { name: 'Rename …' }).click()
     const naming = page.getByTestId('name-dialog')
     await expect(naming).toContainText('Links that name the space in front')

@@ -5,6 +5,7 @@
  */
 import { type Page } from '@playwright/test'
 import { expect, test } from './fixtures'
+import { clickRow, row } from './tree'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -22,23 +23,6 @@ function collectProblems(page: Page): string[] {
     if (response.status() >= 400) problems.push(`${response.status()} ${decodeURIComponent(response.url().replace(/^https?:\/\/[^/]+/, ''))}`)
   })
   return problems
-}
-
-/** A row of the tree by its name; folders carry their note count after the name. */
-function row(page: Page, name: string) {
-  return page.getByTestId('sidebar-tree').getByRole('button', { name: new RegExp(`^${name}( \\d+)?$`) })
-}
-
-/** The tree draws only what is near the view: a row after a long open folder is scrolled to first, as by hand. */
-async function shownRow(page: Page, name: string) {
-  const tree = page.getByTestId('sidebar-tree')
-  const button = row(page, name)
-  await expect(tree.getByRole('listitem').first()).toBeVisible()
-  for (let step = 0; step < 40 && !(await button.isVisible()); step++) {
-    await tree.evaluate((element) => element.scrollBy(0, element.clientHeight / 2))
-    await page.waitForTimeout(50)
-  }
-  return button
 }
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
@@ -407,7 +391,7 @@ test('on a phone "Notes" and the empty note page open the list as a sheet, and t
   await start.getByRole('button', { name: 'All notes' }).click()
   await expect(sidebar).toBeVisible()
   // Other tests' notes fill the spaces before it: scrolled to.
-  await (await shownRow(page, 'Shopping')).click()
+  await clickRow(page, 'Shopping')
   await expect(page).toHaveURL(/\/note\/Home\/Shopping\.md$/)
   await expect(sidebar).toBeHidden()
   // On a note "Notes" opens the list without leaving it; Escape closes it.

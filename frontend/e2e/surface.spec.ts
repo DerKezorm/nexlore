@@ -47,6 +47,8 @@ test('on a phone the themes card keeps its words readable and properties their v
 
   const path = await note(page, 'Surface properties', '---\nstatus: Editor\n---\nText.\n')
   await page.goto(url(path) + '?edit=1')
+  // The note opens for reading first, with the same field, until the lock is ours: measure the editor's.
+  await expect(page.locator('.ProseMirror')).toBeVisible({ timeout: 15_000 })
   const value = page.getByRole('textbox', { name: 'status' })
   await expect(value).toBeVisible({ timeout: 15_000 })
   expect((await value.boundingBox())!.width).toBeGreaterThan(120)
