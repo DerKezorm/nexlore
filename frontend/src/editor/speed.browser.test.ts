@@ -44,6 +44,31 @@ it('a long note (about 200 KB) opens, follows the cursor and saves in bounded ti
   expect(saving).toBeLessThan(15_000)
 })
 
+// Lists cost more than paragraphs: Crepe's list items set the selection when they mount, and Milkdown's list numbers
+// walked the whole note after every transaction, a moved cursor too: a note full of lists took quadratic time to open
+// (120 KB: 35 s, review before 1.0.0, PG-107). Counted, not timed: walks of the whole note while only the cursor moves.
+it('a moved cursor does not walk a note of lists once per move', async () => {
+  const part = (i: number) => [`## Part ${i}`, '', `- item ${i}.1`, `- item ${i}.2`, `  - nested ${i}.2.1`, '', `1. first ${i}`, `2. second ${i}`, ''].join('\n')
+  const text = Array.from({ length: 200 }, (_, i) => part(i)).join('\n') + '\n'
+  open = await openEditor(text)
+  const editor = open
+  const doc = editor.view.state.doc
+  const walk = Object.getPrototypeOf(doc).descendants as (...args: unknown[]) => void
+  let walks = 0
+  Object.getPrototypeOf(doc).descendants = function (this: typeof doc, ...args: unknown[]) {
+    if (this === editor.view.state.doc) walks++
+    return walk.apply(this, args)
+  }
+  try {
+    moveCursor(editor, 50)
+  } finally {
+    Object.getPrototypeOf(doc).descendants = walk
+  }
+  // Milkdown's own walked once per move: 50 at least.
+  expect(walks).toBeLessThan(10)
+  expect(editor.text()).toBe(text)
+})
+
 // 10,000, not more: micromark itself (the parser under remark) turns superlinear on this line beyond that (20,000:
 // 4 s to parse, without any of nexlore's extensions). Obsidian notes do not look like this.
 it('a hostile line (10,000 unclosed [[, == and <%) does not hang the editor', async () => {

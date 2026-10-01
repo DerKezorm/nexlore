@@ -58,3 +58,21 @@ test("a table's commands show in the palette only with the caret in a table (P4.
   await page.getByRole('dialog').getByRole('combobox').fill('Sort by this column')
   await expect(page.getByRole('dialog').getByText('Sort by this column, A to Z')).toBeVisible()
 })
+
+test('typed fast after Enter, a list keeps every letter where it was typed (PG-106)', async ({ page }, testInfo) => {
+  // A few milliseconds between keys, as a macro or dictation types: the first letter after Enter went to the end of
+  // the note, and empty items grew, in 7 of 12 tries (review before 1.0.0).
+  const path = await editNote(page, `Small fast list ${testInfo.retry}${testInfo.repeatEachIndex}`, 'Start.\n')
+  await page.keyboard.press('ControlOrMeta+End')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('1. one', { delay: 5 })
+  for (const word of ['two', 'three', 'four', 'five']) {
+    await page.keyboard.press('Enter')
+    await page.keyboard.type(word, { delay: 5 })
+  }
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('after', { delay: 5 })
+  await page.keyboard.press('ControlOrMeta+s')
+  await expect.poll(() => onDisk(page, path)).toMatch(/^Start\.\n\n1\. one\n2\. two\n3\. three\n4\. four\n5\. five\n\nafter\n$/)
+})

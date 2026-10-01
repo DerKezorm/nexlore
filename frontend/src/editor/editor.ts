@@ -31,6 +31,7 @@ import {
   remarkInlineLinkPlugin,
   remarkPreserveEmptyLinePlugin,
   sinkListItemCommand,
+  syncListOrderPlugin,
   toggleEmphasisCommand,
   toggleInlineCodeCommand,
   toggleStrongCommand,
@@ -65,6 +66,9 @@ import { findControl, findPlugin, type FindControl } from './find'
 import { commentControl, commentPlugin, type CommentControl } from './commentMarks'
 import { dateSuggest } from './dateSuggest'
 import { taskTicks } from './taskTicks'
+import { keepListOrder } from './listOrder'
+import { listItemView } from './listItemView'
+import { listItemBlockView } from '@milkdown/kit/component/list-item-block'
 import { lineNumbers, type LineControl } from './lineNumbers'
 import { livePreview, refreshLive, type LinkHelpers } from './live'
 import { blockPreviews } from './previews'
@@ -573,8 +577,12 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     .use($prose(() => linkSuggest({ search: options.search, label: () => labels.suggestions })))
     .use($prose(() => dateSuggest(() => ({ ...labels.dates, locale: () => document.documentElement.lang || navigator.language }))))
     .use($prose(() => taskTicks()))
+    .use(keepListOrder)
+    .use(listItemView)
     .use(options.plugins ?? [])
-  await crepe.editor.remove([remarkInlineLinkPlugin, remarkPreserveEmptyLinePlugin, ...replaced].flat())
+  // Milkdown's own walked the whole note after every transaction (listOrder.ts); its list item view set the selection
+  // back to an old place after fast typing (listItemView.ts).
+  await crepe.editor.remove([remarkInlineLinkPlugin, remarkPreserveEmptyLinePlugin, syncListOrderPlugin, listItemBlockView, ...replaced].flat())
   await crepe.create()
   crepe.setReadonly(!!options.readOnly)
   const stopSlashAria = describeSlashMenu(options.root, crepe.editor.ctx.get(editorViewCtx).dom, labels.slash.groupText)

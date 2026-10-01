@@ -16,6 +16,8 @@ export default defineConfig({
   optimizeDeps: {
     include: [
       '@milkdown/kit/component/link-tooltip',
+      '@milkdown/kit/component/list-item-block',
+      'vue',
       '@milkdown/kit/prose/history',
       '@milkdown/kit/prose/keymap',
       '@milkdown/kit/prose/schema-list',
