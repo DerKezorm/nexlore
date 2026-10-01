@@ -22,10 +22,14 @@ Eine Aufgabe ist eine Zeile mit Kästchen, dazu nach Wunsch Fälligkeit, Priorit
 
 Abhaken geht überall: hier im Text, in der Übersicht **Aufgaben** und im **Kalender**. nexlore ändert dabei nur diese eine Zeile.
 
+Eine Aufgabe mit `[-]` gilt als abgebrochen. Sie steht in der eigenen Gruppe **Abgebrochen** und zählt weder als offen noch als erledigt.
+
 ![Die Aufgabenübersicht](Attachments/aufgaben.webp)
 
 ## Der Kalender
 
-Der Reiter **Kalender** zeigt den Monat mit allem, was fällig ist. Ein Klick auf einen Tag öffnet dessen Tagesnotiz oder legt sie an, siehe [[07 Tagesnotizen und Vorlagen]].
+Der Reiter **Kalender** zeigt den Monat mit allem, was fällig ist. Monat und Jahr wählst du oben, ebenso den Tag, mit dem die Woche beginnt. Ein Klick auf einen Tag öffnet dessen Tagesnotiz oder legt sie an, siehe [[07 Tagesnotizen und Vorlagen]].
+
+Fällige Aufgaben im eigenen Kalenderprogramm: unter **Mein Konto → Verbindungen → Kalender-Abo**, sobald der Betreiber Kalender-Abos erlaubt hat.
 
 Weiter mit [[07 Tagesnotizen und Vorlagen]].

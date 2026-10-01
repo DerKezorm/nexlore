@@ -69,8 +69,12 @@ test('the toolbar is there from the start, formats the selection, lights it, and
   await expect(page.locator('.ProseMirror')).toBeFocused()
 
   // The second item goes under the first.
-  await select(page, 'two')
-  await expect(bar.getByRole('button', { name: 'Indent' })).toBeEnabled()
+  // Crepe's link box sets its own selection once more after giving the focus back (seen on the slower CI machine):
+  // choose again until the editor has taken the new one.
+  await expect(async () => {
+    await select(page, 'two')
+    await expect(bar.getByRole('button', { name: 'Indent' })).toBeEnabled({ timeout: 1_000 })
+  }).toPass({ timeout: 10_000 })
   await bar.getByRole('button', { name: 'Indent' }).click()
   await saved(page)
   expect(onDisk('Zoo/Toolbar.md')).toMatch(/^# Toolbar\n\nMake this \*\*word\*\* bold\.\n\nPut a \[link\]\(https:\/\/example\.com\/\) here\.\n\n- one\n\s+- two\n$/)

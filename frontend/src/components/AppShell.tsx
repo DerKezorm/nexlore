@@ -347,7 +347,7 @@ export function AppShell() {
             }}
             disabled={!newNoteTarget}
             aria-label={t('sidebar.newNote')}
-            title={t('sidebar.newNoteShortcut')}
+            title={newNoteTarget || status !== 'ready' ? t('sidebar.newNoteShortcut') : t('today.none')}
             className="inline-flex h-8 shrink-0 items-center gap-2 rounded-full border border-accent-500/60 px-2 text-sm font-semibold text-accent-400 hover:bg-accent-500/10 disabled:opacity-40 2xl:px-3"
           >
             <Symbol name="plus" />

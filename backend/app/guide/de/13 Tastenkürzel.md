@@ -6,10 +6,17 @@ Zurück zu [[00 Willkommen|Willkommen]].
 
 | Tasten | tut |
 | --- | --- |
-| `Strg+K` | suchen |
+| `Strg+K` | zu einer Notiz springen |
+| `Strg+Shift+F` | große Suche |
+| `Strg+P` | Befehlspalette |
 | `Alt+N` | neue Notiz |
 | `Alt+T` | Tagesnotiz von heute |
+| `Alt+Shift+N` | schnell erfassen |
+| `Alt+B` | Seitenleiste ein- und ausklappen |
+| `Alt+R` | Spalte neben der Notiz |
 | Menütaste oder `Shift+F10` | Kontextmenü am markierten Eintrag |
+
+Eigene Tasten für jeden Befehl legst du in der Befehlspalette fest: das Tastatursymbol neben dem Befehl, dann die Tasten.
 
 ## Im Editor
 
@@ -18,6 +25,9 @@ Zurück zu [[00 Willkommen|Willkommen]].
 | `Strg+B` | fett |
 | `Strg+I` | kursiv |
 | `Strg+Z` | rückgängig |
+| `Strg+S` | jetzt speichern |
+| `Strg+F` | in der Notiz suchen |
+| `Strg+H` | suchen und ersetzen |
 | `/` | Block einfügen |
 | `[[` | Link auf eine Notiz |
 | `Escape` | schließt Vorschläge und Dialoge |
@@ -29,5 +39,6 @@ Zurück zu [[00 Willkommen|Willkommen]].
 | Pfeile | verschieben |
 | `+` und `-` | zoomen |
 | `0` | alles zeigen |
+| `Tab` | von Blase zu Blase, `Enter` fliegt hinein oder öffnet die Notiz |
 
 Das war die Anleitung. Viel Freude mit deinen Notizen. Zurück zu [[00 Willkommen|Willkommen]].

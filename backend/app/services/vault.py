@@ -105,14 +105,14 @@ def _full(rel: str) -> Path:
     try:
         return paths.resolve(rel)
     except paths.PathError as exc:
-        raise VaultError(exc.code, str(exc)) from exc
+        raise VaultError(exc.code, str(exc), **exc.values) from exc
 
 
 def _parse(rel: str) -> str:
     try:
         clean = paths.parse(rel)
     except paths.PathError as exc:
-        raise VaultError(exc.code, str(exc)) from exc
+        raise VaultError(exc.code, str(exc), **exc.values) from exc
     if "/" not in clean:
         raise VaultError("path_invalid", "a path must lie inside a space")
     return clean
@@ -122,7 +122,7 @@ def _check_name(name: str) -> str:
     try:
         return paths.check_name(name)
     except paths.PathError as exc:
-        raise VaultError(exc.code, str(exc)) from exc
+        raise VaultError(exc.code, str(exc), **exc.values) from exc
 
 
 def live(db: Session, rel: str) -> File | None:
@@ -337,7 +337,7 @@ def _parse_space(folder: str) -> str:
     try:
         clean = paths.parse(folder)
     except paths.PathError as exc:
-        raise VaultError(exc.code, str(exc)) from exc
+        raise VaultError(exc.code, str(exc), **exc.values) from exc
     if "/" in clean:
         raise VaultError("path_invalid", "not a space")
     return clean

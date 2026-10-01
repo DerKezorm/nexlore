@@ -519,3 +519,29 @@ def test_a_snippet_cut_inside_a_wiki_link_shows_its_words() -> None:
 
     assert snippets.plain("see the [[Beta and") == "see the Beta and"
     assert snippets.plain("see [[Beta|the beta]] here") == "see the beta here"
+
+
+# --- Block W: first steps ----------------------------------------------------------------------------------------------
+
+
+def test_a_refused_name_says_why(client: TestClient, account: Account) -> None:
+    """P1.24: the answer to a name that cannot be used names the character or the rule, not only that it failed."""
+    cases = {
+        "Plan: one": {"reason": "char", "char": ":"},
+        "Notes#2": {"reason": "char", "char": "#"},
+        ".hidden": {"reason": "dot"},
+        "Trailing.": {"reason": "edge"},
+        "CON": {"reason": "reserved", "word": "CON"},
+        "aux.notes": {"reason": "reserved", "word": "aux"},
+        "tab\tname": {"reason": "control"},
+    }
+    for name, why in cases.items():
+        answer = client.post("/api/spaces", json={"name": name})
+        assert answer.status_code in (400, 422), name
+        detail = answer.json()["detail"]
+        assert detail["code"] == "name_invalid", name
+        assert {key: detail.get(key) for key in why} == why, name
+    # The same reasons for a folder inside a space.
+    assert client.post("/api/spaces", json={"name": "Words"}).status_code == 201
+    folder = client.post("/api/folders", json={"parent": "Words", "name": "a|b"})
+    assert (folder.json()["detail"].get("reason"), folder.json()["detail"].get("char")) == ("char", "|")

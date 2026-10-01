@@ -25,6 +25,8 @@ export function SetupPage() {
   if (status === 'signedOut') return <Navigate to="/login" replace />
 
   const submit = async () => {
+    if (!name.trim()) return setProblem(errorText('name_missing'))
+    if (!password) return setProblem(errorText('password_missing'))
     if (password !== again) return setProblem(t('auth.mismatch'))
     setBusy(true)
     setProblem(null)
@@ -49,7 +51,7 @@ export function SetupPage() {
         }}
       >
         <Problem text={problem} />
-        <Field label={t('auth.name')} value={name} onChange={setName} autoComplete="username" autoFocus hint={t('auth.nameHint')} />
+        <Field label={t('auth.name')} value={name} onChange={(value) => setName(value.toLowerCase())} autoComplete="username" autoFocus hint={t('auth.nameHint')} />
         <Field
           label={t('auth.password')}
           value={password}

@@ -4,7 +4,7 @@ Zurück zu [[00 Willkommen|Willkommen]].
 
 ## Mitglieder eines Bereichs
 
-Rechtsklick auf einen Bereich, dann **Mitglieder und Einstellungen**. Dort lädst du jemanden ein, per Link zum Kopieren oder per Mail, und gibst ein Recht:
+Rechtsklick auf einen Bereich, dann **Mitglieder und Einstellungen**. Dort lädst du jemanden ein, per Link zum Kopieren, per Mail oder mit dem Namen eines vorhandenen Kontos, und gibst ein Recht. Wer per Name eingeladen ist, findet die Einladung unter **Neu seit deinem letzten Besuch** und nimmt sie an oder lehnt sie ab.
 
 | Recht | darf |
 | --- | --- |
@@ -20,6 +20,10 @@ Wer einen Bereich verwaltet, kann eine Notiz oder einen Ordner als Leseseite tei
 
 ## Zwei Leute, eine Notiz
 
-Bearbeitet jemand eine Notiz, sehen alle anderen einen Hinweis und können lesen. Ändert jemand dieselbe Datei gleichzeitig außerhalb von nexlore, verliert niemand etwas: nexlore legt eine Konfliktkopie an und zeigt beide Fassungen nebeneinander.
+Oben an der Notiz siehst du, wer sie gerade offen hat. Bearbeitet jemand eine Notiz, sehen alle anderen einen Hinweis und können lesen. Ändert jemand dieselbe Datei gleichzeitig außerhalb von nexlore, verliert niemand etwas: nexlore legt eine Konfliktkopie an und zeigt beide Fassungen nebeneinander.
+
+## Kommentare
+
+Markiere Wörter und wähle **Kommentieren**. Der Faden steht im Reiter **Kommentare** neben der Notiz, nicht in der Datei. Kommentieren darf jeder, der lesen darf. Mit `@name` sprichst du ein Mitglied an; es sieht das unter **Neu seit deinem letzten Besuch**.
 
 Weiter mit [[10 Plugins]].

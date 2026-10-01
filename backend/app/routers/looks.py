@@ -37,7 +37,7 @@ def set_look(body: LookIn, account: Account) -> Response:
     try:
         full = paths.resolve(clean)
     except paths.PathError as exc:
-        raise error(exc.code, str(exc)) from exc
+        raise error(exc.code, str(exc), **exc.values) from exc
     if not full.is_dir():
         raise error("not_found", "Not found.", 404)
     space_name, _, folder = clean.partition("/")

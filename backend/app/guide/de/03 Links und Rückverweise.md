@@ -12,7 +12,9 @@ Links in einen anderen Bereich schreibst du mit seinem Namen davor: `[[Arbeit/Pr
 
 ## Rückverweise
 
-Rechts neben jeder Notiz steht, welche Notizen auf sie zeigen. Diese Notiz hier wird zum Beispiel von [[00 Willkommen|Willkommen]] verlinkt; öffne dort die Spalte rechts und sieh nach.
+Im Reiter **Links** neben jeder Notiz steht, welche Notizen auf sie zeigen. Diese Notiz hier wird zum Beispiel von [[00 Willkommen|Willkommen]] verlinkt; öffne dort die Spalte rechts und sieh nach.
+
+Darunter klappst du **Nicht verlinkt** auf: Stellen, die den Namen der Notiz nennen, ohne sie zu verlinken. **Verlinken** macht daraus einen Link. Notizen ohne jede Verbindung und Links ins Leere zeigt die Seite **Dateien → Aufräumen**.
 
 ## Einbetten
 

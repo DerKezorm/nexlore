@@ -5,6 +5,7 @@
  * Errors come back as `ApiError` with the server's code; the page builds its sentence from `errors.byCode`.
  */
 
+import { nameRefused } from '../lib/errors'
 import { readerNow } from '../lib/everyday'
 import type { Appearance } from '../lib/appearance'
 import type { Colours, Weak } from '../lib/themes'
@@ -22,6 +23,15 @@ export class ApiError extends Error {
 const CLIENT_KEY = 'nexlore.client'
 /** Sent on `window` when a request finds that the session is gone: the page goes back to the sign-in. */
 export const SIGNED_OUT_EVENT = 'nexlore:signed-out'
+/** What a signed-out page still asks for. */
+const OPEN_WHEN_SIGNED_OUT = /^\/api\/(auth|setup|locales|oidc|public|invite)(\/|$)/
+let signedOut = false
+
+/** Once signed out, nothing but signing in goes out: the goodbye of a closing note or a poll still running would
+ * only meet 401 (P1.23). Such a call never settles; nobody is left to wait for it. */
+export function setSignedOut(value: boolean): void {
+  signedOut = value
+}
 
 function randomId(): string {
   const bytes = new Uint8Array(12)
@@ -75,6 +85,7 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
 
 async function once<T>(path: string, options: Options): Promise<T> {
   const url = new URL(path, window.location.origin)
+  if (signedOut && !OPEN_WHEN_SIGNED_OUT.test(url.pathname)) return new Promise<T>(() => undefined)
   for (const [key, value] of Object.entries(options.query ?? {})) {
     if (Array.isArray(value)) for (const item of value) url.searchParams.append(key, item)
     else if (value !== undefined) url.searchParams.set(key, String(value))
@@ -99,6 +110,7 @@ async function once<T>(path: string, options: Options): Promise<T> {
     const detail = data?.detail
     if (detail && typeof detail === 'object' && typeof detail.code === 'string') {
       const { code, message: _message, ...values } = detail
+      if (code === 'name_invalid') nameRefused(values)
       if (code === 'sign_in_required') window.dispatchEvent(new Event(SIGNED_OUT_EVENT))
       throw new ApiError(response.status, code, values)
     }
@@ -240,6 +252,7 @@ export function uploadFile(
       const detail = (data as { detail?: Record<string, unknown> } | null)?.detail
       if (detail && typeof detail.code === 'string') {
         const { code, message: _message, ...values } = detail
+        if (code === 'name_invalid') nameRefused(values)
         return reject(new ApiError(request.status, code as string, values))
       }
       reject(new ApiError(request.status, request.status === 413 ? 'too_large' : 'internal_error'))

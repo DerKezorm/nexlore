@@ -147,7 +147,7 @@ def need(account: AccountRow, rel: str, role: str) -> str:
     try:
         clean = paths.parse(rel)
     except paths.PathError as exc:
-        raise error(exc.code, str(exc)) from exc
+        raise error(exc.code, str(exc), **exc.values) from exc
     with SessionLocal() as db:
         try:
             rights.check(db, account, clean, role)

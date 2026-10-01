@@ -1,7 +1,20 @@
 /** The sentence for an error code from the server, in the page's language; an unknown code gets the general one. */
 import i18n from '../i18n'
 
+/** Why the last name was refused (`reason`, `char`, `word`): pages keep only the code, the sentence still says
+ * which character or rule (P1.24). */
+let lastRefusal: Record<string, unknown> = {}
+
+export function nameRefused(values: Record<string, unknown>): void {
+  lastRefusal = values
+}
+
 export function errorText(code: string, values: Record<string, unknown> = {}): string {
+  if (code === 'name_invalid') {
+    const why = { ...lastRefusal, ...values }
+    const key = `errors.byCode.name_invalid_${String(why.reason)}`
+    if (typeof why.reason === 'string' && i18n.exists(key)) return i18n.t(key, why)
+  }
   // Waiting after too many tries: say how long, in minutes (the server sends seconds).
   if (code === 'too_many_attempts' && typeof values.retry_after === 'number' && values.retry_after > 0) {
     return i18n.t('errors.waitMinutes', { count: Math.ceil(values.retry_after / 60) })

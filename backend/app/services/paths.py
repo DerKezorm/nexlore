@@ -34,11 +34,13 @@ UNTITLED = "Untitled"
 
 
 class PathError(ValueError):
-    """A path or name that nexlore refuses. ``code`` goes to the client, the text to the log."""
+    """A path or name that nexlore refuses. ``code`` goes to the client, the text to the log, ``values`` say why
+    to the client (``reason``, and the character or word at fault)."""
 
-    def __init__(self, code: str, text: str) -> None:
+    def __init__(self, code: str, text: str, **values: str) -> None:
         super().__init__(text)
         self.code = code
+        self.values = values
 
 
 def vault_root() -> Path:
@@ -88,15 +90,19 @@ def check_name(name: str) -> str:
     """A single name nexlore may create: portable on every system. Returns it NFC-normalised."""
     name = unicodedata.normalize("NFC", name)
     if not name or name in (".", ".."):
-        raise PathError("name_invalid", "empty name")
+        raise PathError("name_invalid", "empty name", reason="empty")
     if is_hidden(name):
-        raise PathError("name_invalid", "name starts with a dot")
-    if _CONTROL.search(name) or any(char in FORBIDDEN for char in name):
-        raise PathError("name_invalid", "name contains a forbidden character")
+        raise PathError("name_invalid", "name starts with a dot", reason="dot")
+    if _CONTROL.search(name):
+        raise PathError("name_invalid", "name contains a control character", reason="control")
+    wrong = next((char for char in name if char in FORBIDDEN), None)
+    if wrong is not None:
+        raise PathError("name_invalid", "name contains a forbidden character", reason="char", char=wrong)
     if name != name.rstrip(" .") or name != name.lstrip(" "):
-        raise PathError("name_invalid", "name starts with a space or ends with a space or dot")
-    if name.split(".")[0].upper().rstrip(" ") in RESERVED:
-        raise PathError("name_invalid", "name reserved on Windows")
+        raise PathError("name_invalid", "name starts with a space or ends with a space or dot", reason="edge")
+    word = name.split(".")[0].rstrip(" ")
+    if word.upper() in RESERVED:
+        raise PathError("name_invalid", "name reserved on Windows", reason="reserved", word=word)
     if len(name.encode("utf-8")) > MAX_PART_BYTES:
         raise PathError("path_too_long", "name too long")
     return name

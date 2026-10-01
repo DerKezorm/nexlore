@@ -88,6 +88,8 @@ export function InvitePage() {
         className="space-y-4"
         onSubmit={(event) => {
           event.preventDefault()
+          if (!name.trim()) return setProblem(errorText('name_missing'))
+          if (!password) return setProblem(errorText('password_missing'))
           if (password !== again) return setProblem(t('auth.mismatch'))
           void run(async () => {
             await authApi.accept(token, name.trim(), password)
@@ -98,7 +100,7 @@ export function InvitePage() {
         <Problem text={problem} />
         {methods?.password !== false && (
           <>
-            <Field label={t('auth.name')} value={name} onChange={setName} autoComplete="username" autoFocus hint={t('auth.nameHint')} />
+            <Field label={t('auth.name')} value={name} onChange={(value) => setName(value.toLowerCase())} autoComplete="username" autoFocus hint={t('auth.nameHint')} />
             <Field
               label={t('auth.password')}
               value={password}

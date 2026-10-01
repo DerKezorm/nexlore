@@ -131,7 +131,7 @@ def file(path: PathQuery, request: Request, account: Account, download: bool = F
         clean = paths.parse(path)
         full = paths.resolve(clean)
     except paths.PathError as exc:
-        raise error(exc.code, str(exc)) from exc
+        raise error(exc.code, str(exc), **exc.values) from exc
     with SessionLocal() as db:
         known = db.scalar(select(File.id).where(File.path == clean, File.deleted_at.is_(None)))
     if known is None or not full.is_file():
@@ -248,7 +248,7 @@ def save_file_settings(body: FileSettings, _operator: OperatorAccount) -> FileSe
     try:
         folder_name = paths.check_name(body.attachment_folder.strip())
     except paths.PathError as exc:
-        raise error(exc.code, str(exc)) from exc
+        raise error(exc.code, str(exc), **exc.values) from exc
     values = body.model_dump() | {"attachment_folder": folder_name}
     with SessionLocal() as db:
         settings_service.save(db, values)

@@ -17,7 +17,7 @@ async function note(page: Page, title: string, content: string): Promise<string>
 test.afterEach(async ({ page }) => {
   // The tests share the account: the column goes back to its links (the versions and comments tabs here are kept
   // with the account, and the next file looks for the backlinks).
-  await page.waitForLoadState('networkidle').catch(() => {})
+  await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {})
   await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links' }, headers: TAB })
 })
 

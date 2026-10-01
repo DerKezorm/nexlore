@@ -18,7 +18,7 @@ const look = async (page: Page) => (await (await page.request.get('/api/auth/me'
 // Column and sidebar are kept with the account, and the tests share one: back as they were after each.
 test.afterEach(async ({ page }) => {
   // Saves of the look go one after the other: the last may still wait behind another, and would land after this.
-  await page.waitForLoadState('networkidle').catch(() => {})
+  await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {})
   await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links', sidebar: 'open' }, headers: TAB })
 })
 

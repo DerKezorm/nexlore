@@ -160,6 +160,8 @@ export function AccountPage() {
                   className="space-y-3"
                   onSubmit={(event) => {
                     event.preventDefault()
+                    if (!current) return setProblem(errorText('current_password_missing'))
+                    if (!next) return setProblem(errorText('password_missing'))
                     if (next !== again) return setProblem(t('auth.mismatch'))
                     void run(async () => {
                       await authApi.changePassword(current, next)

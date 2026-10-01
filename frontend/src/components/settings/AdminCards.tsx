@@ -154,7 +154,7 @@ export function AccountsCard() {
           options={DAYS.map((value) => ({ value, label: t('members.invite.days', { count: Number(value) }) }))}
           onChange={setDays}
         />
-        <Input label={t('members.invite.email')} value={email} onChange={setEmail} type="email" className="sm:col-span-2" />
+        <Input label={t('members.invite.email')} value={email} onChange={setEmail} type="email" className="sm:col-span-2" hint={me?.mail ? undefined : t('members.invite.noMail')} />
         {me?.mail && (
           <label className="flex items-center gap-2 text-xs text-mist-400 sm:col-span-3">
             <input type="checkbox" checked={send} onChange={(event) => setSend(event.target.checked)} className="accent-accent-500" />

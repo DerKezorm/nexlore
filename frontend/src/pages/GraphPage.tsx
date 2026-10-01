@@ -9,7 +9,10 @@ import { Symbol } from '../components/Symbol'
 import { GraphView, type GraphHandle, type Hover } from '../graph/GraphView'
 import type { SceneGroup } from '../graph/scene'
 import { useGraph } from '../graph/useGraph'
+import { homeSpace } from '../lib/everyday'
 import { formatDate } from '../lib/markdown'
+import { askNewNote } from '../lib/newNote'
+import { askVaultAction } from '../lib/vaultActions'
 import { folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 import { useAuth } from '../state/auth'
@@ -17,6 +20,7 @@ import { useAuth } from '../state/auth'
 const CLOUD_KEY = 'nexlore.graph.cloud'
 const DAILY_KEY = 'nexlore.graph.daily'
 const CLOUDS: Cloud[] = ['folders', 'tags', 'topics']
+const FIRST_STEP = 'inline-flex items-center gap-2 rounded-full bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400'
 
 function stored<T extends string>(key: string, allowed: readonly T[], fallback: T): T {
   try {
@@ -41,6 +45,7 @@ export function GraphPage() {
   const { t } = useTranslation()
   const { me } = useAuth()
   const { spaces, generation, status, scan, looks } = useStore()
+  const home = homeSpace(spaces, me?.appearance?.home_space)
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const graph = useRef<GraphHandle>(null)
@@ -412,9 +417,28 @@ export function GraphPage() {
 
         {status === 'ready' && data.building.length === 0 && Object.keys(overviews).length === spaces.length && total === 0 && (
           <div className="absolute inset-0 flex items-center justify-center p-6">
-            <p className="max-w-md rounded-2xl border border-ink-700 bg-ink-900/90 px-5 py-4 text-center text-sm text-mist-400">
-              {scan.running ? t('scan.graphEmpty') : me?.role === 'operator' ? t('graph.empty') : t('graph.emptyMember')}
-            </p>
+            <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-ink-700 bg-ink-900/90 px-5 py-4 text-center text-sm text-mist-400" data-testid="graph-empty">
+              {scan.running ? (
+                <p>{t('scan.graphEmpty')}</p>
+              ) : (
+                <>
+                  {/* The first step said, with a button for it (P1.18): a space first, then a note. */}
+                  <p>{spaces.length === 0 ? t('graph.empty') : t('graph.emptyMember')}</p>
+                  {spaces.length === 0 ? (
+                    <button type="button" onClick={() => askVaultAction({ kind: 'new-space' })} className={FIRST_STEP}>
+                      <Symbol name="plus" /> {t('sidebar.newSpace')}
+                    </button>
+                  ) : (
+                    home && (
+                      <button type="button" onClick={() => askNewNote(home.name)} className={FIRST_STEP}>
+                        <Symbol name="plus" /> {t('sidebar.newNote')}
+                      </button>
+                    )
+                  )}
+                  {me?.role === 'operator' && spaces.length === 0 && <p className="text-xs text-mist-500">{t('graph.importHint')}</p>}
+                </>
+              )}
+            </div>
           </div>
         )}
 

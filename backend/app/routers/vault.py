@@ -177,7 +177,7 @@ def folder(
         clean = paths.parse(path)
         full = paths.resolve(clean)
     except paths.PathError as exc:
-        raise error(exc.code, str(exc)) from exc
+        raise error(exc.code, str(exc), **exc.values) from exc
     if not full.is_dir():
         raise error("not_found", "No such folder.", 404)
     prefix = clean + "/"
@@ -566,7 +566,7 @@ def _live_file(db: Any, path: str) -> File:
     try:
         clean = paths.parse(path)
     except paths.PathError as exc:
-        raise error(exc.code, str(exc)) from exc
+        raise error(exc.code, str(exc), **exc.values) from exc
     file = vault.live(db, clean)
     if file is None:
         raise error("not_found", "No such file.", 404)

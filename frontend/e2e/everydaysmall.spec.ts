@@ -141,20 +141,21 @@ test('a view says in the reader\'s words what it cannot show (P5.14)', async ({ 
 test('a space names its daily notes its own way: calendar, links and the steps to the next day follow (P5.22, P5.24)', async ({ page }) => {
   // Calendar, two notes, a link and the editor: more than the usual half minute when the machine is busy.
   test.setTimeout(90_000)
+  // Each wait has a limit of its own: a hang once used up the whole test (01.10.2026), and nothing said where.
   await space(page, 'Errands8', { Links: 'Plan for [[09.05.2031]].\n' })
   try {
     expect((await page.request.put('/api/spaces/Errands8/options', { data: { daily_format: 'DD.MM.YYYY' }, headers: TAB })).status()).toBe(200)
     await page.goto('/calendar?space=Errands8&month=2031-05')
     await page.locator('[data-date="2031-05-06"]').click()
-    await page.waitForURL(/\/note\/Errands8\/Daily\/06\.05\.2031\.md/)
+    await page.waitForURL(/\/note\/Errands8\/Daily\/06\.05\.2031\.md/, { timeout: 15_000 })
     await page.getByTestId('day-steps').getByRole('button', { name: /Day after/ }).click()
-    await page.waitForURL(/\/note\/Errands8\/Daily\/07\.05\.2031\.md/)
+    await page.waitForURL(/\/note\/Errands8\/Daily\/07\.05\.2031\.md/, { timeout: 15_000 })
     await page.goto('/calendar?space=Errands8&month=2031-05')
     await expect(page.locator('[data-date="2031-05-06"]')).toContainText('Daily note')
     // A link in the space's pattern opens that day's note, and makes none beside the linking one.
     await page.goto('/note/Errands8/Links.md')
     await page.locator('.nn-prose a', { hasText: '09.05.2031' }).click()
-    await page.waitForURL(/\/note\/Errands8\/Daily\/09\.05\.2031\.md/)
+    await page.waitForURL(/\/note\/Errands8\/Daily\/09\.05\.2031\.md/, { timeout: 15_000 })
     // "@tomorrow" in the editor links to tomorrow's note as the space names it.
     await page.goto('/note/Errands8/Links.md')
     await page.getByRole('button', { name: 'Edit', exact: true }).click()

@@ -394,7 +394,7 @@
     "title": "Your notes",
     "list": "All notes",
     "recent": "Changed last",
-    "none": "No notes yet. Start with a new one."
+    "none": "No notes yet."
   },
   "sidebar": {
     "label": "Notes and spaces",
@@ -441,7 +441,8 @@
     "flyToNote": "Fly there",
     "hint": "Scroll to zoom · click a folder to open it · double click opens a note · Ctrl K searches",
     "closeHint": "Close hint",
-    "empty": "No notes yet. Create a space under Settings, import an Obsidian vault under Files, or put Markdown files into the vault folder.",
+    "empty": "No space yet. A space is a folder for your notes; you can invite others later.",
+    "importHint": "An Obsidian vault comes in under Files.",
     "noWebgl": "The graph needs WebGL 2, which this browser does not offer (or has switched off).",
     "clouds": "Group by",
     "cloud": {
@@ -465,7 +466,7 @@
     "tagsInfo": "Nested tags (#project/alpha) as a bubble inside a bubble. A note with several tags stands under its first.",
     "building": "The map of {{spaces}} is being worked out …",
     "heading": "Map",
-    "emptyMember": "No notes yet. Create a space under Settings or write the first note.",
+    "emptyMember": "No notes yet. Write the first one.",
     "places": "Places on the map",
     "placeGroup_one": "{{name}}, one note",
     "placeGroup_other": "{{name}}, {{count}} notes"
@@ -624,6 +625,12 @@
       "path_invalid": "This path is not allowed.",
       "path_too_long": "The name or path is too long.",
       "name_invalid": "This name cannot be used: it holds a character or a form Windows, macOS or Linux cannot store.",
+      "name_invalid_empty": "Enter a name.",
+      "name_invalid_dot": "A name may not begin with a dot: such files are hidden on many systems.",
+      "name_invalid_control": "The name holds an invisible control character.",
+      "name_invalid_char": "The character {{char}} cannot stand in a name: Windows, macOS or Linux cannot store it, or links use it.",
+      "name_invalid_edge": "A name may not begin with a space nor end with a space or a dot.",
+      "name_invalid_reserved": "“{{word}}” is a reserved name on Windows.",
       "exists": "Something of that name exists already.",
       "locked": "Somebody else is editing this note.",
       "not_a_note": "This file is not a note.",
@@ -645,7 +652,10 @@
       "too_many_attempts": "Too many attempts. Wait a moment and try again.",
       "password_login_off": "Signing in with a password is turned off.",
       "password_too_short": "The password is too short.",
-      "invalid_name": "Use 2 to 64 small letters, digits, dots, dashes or underscores.",
+      "name_missing": "Enter a name.",
+      "password_missing": "Enter a password.",
+      "current_password_missing": "Enter your current password.",
+      "invalid_name": "The name needs 2 to 64 characters: small letters, digits, dots, dashes or underscores.",
       "name_taken": "This name is taken.",
       "already_set_up": "nexlore is set up already.",
       "unknown_language": "nexlore does not have this language.",
@@ -902,7 +912,7 @@
   },
   "auth": {
     "name": "Name",
-    "nameHint": "Small letters, digits, dots, dashes. You sign in with it.",
+    "nameHint": "2 to 64 characters: small letters, digits, dots, dashes or underscores. You sign in with it.",
     "password": "Password",
     "passwordAgain": "Password again",
     "passwordHint_one": "At least {{count}} character.",
@@ -1006,6 +1016,7 @@
       "days_one": "{{count}} day",
       "days_other": "{{count}} days",
       "email": "Mail address (optional)",
+      "noMail": "Without a mail server nexlore sends nothing: copy the link and pass it on yourself.",
       "send": "Send the link by mail",
       "create": "Create invitation link",
       "copy": "Copy",
@@ -1263,7 +1274,7 @@
   "today": {
     "button": "Today",
     "title": "Open today's daily note (Alt+T)",
-    "none": "There is no space you may write in.",
+    "none": "There is no space you may write in yet. Make one first.",
     "templateMissing": "The space's daily template is gone; the daily note was made empty. Choose another one in the space's options."
   },
   "calendar": {
@@ -1357,7 +1368,7 @@
     "theme": "Theme of the notes",
     "button": "Options",
     "title": "Options of “{{space}}”",
-    "text": "For everybody who writes in this space. A daily note is always named YYYY-MM-DD.md.",
+    "text": "For everybody who writes in this space.",
     "dailyFolder": "Folder for daily notes",
     "dailyTemplate": "Template for daily notes",
     "templateFolder": "Folder for templates",
@@ -1732,7 +1743,7 @@
     "title": "Calendar subscription",
     "text": "Your open tasks with a date as an address your calendar subscribes to (internet calendar, ICS). It asks for it again about every hour.",
     "closed": "The operator has not switched calendar subscriptions on.",
-    "closedOperator": "Switch them on under Settings → Server → Extensions.",
+    "closedOperator": "Switch them on under Settings → Server → AI and plugins, card Calendar subscriptions.",
     "none": "No address yet.",
     "active": "An address is active. It is shown only once; a new one replaces it.",
     "make": "Make an address",

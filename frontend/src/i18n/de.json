@@ -394,7 +394,7 @@
     "title": "Deine Notizen",
     "list": "Alle Notizen",
     "recent": "Zuletzt geändert",
-    "none": "Noch keine Notizen. Fang mit einer neuen an."
+    "none": "Noch keine Notizen."
   },
   "sidebar": {
     "label": "Notizen und Bereiche",
@@ -441,7 +441,8 @@
     "flyToNote": "Hinfliegen",
     "hint": "Scrollen zoomt · Ordner anklicken öffnet ihn · Doppelklick öffnet eine Notiz · Strg K sucht",
     "closeHint": "Hinweis schließen",
-    "empty": "Noch keine Notizen. Lege unter Einstellungen einen Bereich an, hole unter Dateien einen Obsidian-Tresor herein oder lege Markdown-Dateien in den Tresor-Ordner.",
+    "empty": "Noch kein Bereich. Ein Bereich ist ein Ordner für deine Notizen; andere lädst du später dazu ein.",
+    "importHint": "Einen Obsidian-Tresor holst du unter Dateien herein.",
     "noWebgl": "Der Graph braucht WebGL 2, das dieser Browser nicht bietet (oder abgeschaltet hat).",
     "clouds": "Gruppieren nach",
     "cloud": {
@@ -465,7 +466,7 @@
     "tagsInfo": "Verschachtelte Tags (#projekt/alpha) als Blase in der Blase. Eine Notiz mit mehreren Tags steht unter ihrem ersten.",
     "building": "Die Karte von {{spaces}} wird berechnet …",
     "heading": "Karte",
-    "emptyMember": "Noch keine Notizen. Lege unter Einstellungen einen Bereich an oder schreibe die erste Notiz.",
+    "emptyMember": "Noch keine Notizen. Schreib die erste.",
     "places": "Orte auf der Karte",
     "placeGroup_one": "{{name}}, eine Notiz",
     "placeGroup_other": "{{name}}, {{count}} Notizen"
@@ -624,6 +625,12 @@
       "path_invalid": "Dieser Pfad ist nicht erlaubt.",
       "path_too_long": "Der Name oder Pfad ist zu lang.",
       "name_invalid": "Dieser Name geht nicht: Er enthält ein Zeichen oder eine Form, die Windows, macOS oder Linux nicht speichern kann.",
+      "name_invalid_empty": "Gib einen Namen ein.",
+      "name_invalid_dot": "Ein Name darf nicht mit einem Punkt beginnen: Solche Dateien sind auf vielen Systemen versteckt.",
+      "name_invalid_control": "Der Name enthält ein unsichtbares Steuerzeichen.",
+      "name_invalid_char": "Das Zeichen {{char}} geht in einem Namen nicht: Windows, macOS oder Linux können es nicht speichern, oder es gehört zu Links.",
+      "name_invalid_edge": "Ein Name darf nicht mit einem Leerzeichen beginnen und nicht mit einem Leerzeichen oder Punkt enden.",
+      "name_invalid_reserved": "„{{word}}“ ist unter Windows ein reservierter Name.",
       "exists": "Etwas mit diesem Namen gibt es schon.",
       "locked": "Jemand anderes bearbeitet diese Notiz gerade.",
       "not_a_note": "Diese Datei ist keine Notiz.",
@@ -645,7 +652,10 @@
       "too_many_attempts": "Zu viele Versuche. Kurz warten und noch einmal.",
       "password_login_off": "Die Anmeldung mit Passwort ist abgeschaltet.",
       "password_too_short": "Das Passwort ist zu kurz.",
-      "invalid_name": "2 bis 64 Kleinbuchstaben, Ziffern, Punkte, Striche oder Unterstriche.",
+      "name_missing": "Gib einen Namen ein.",
+      "password_missing": "Gib ein Passwort ein.",
+      "current_password_missing": "Gib dein jetziges Passwort ein.",
+      "invalid_name": "Der Name braucht 2 bis 64 Zeichen: Kleinbuchstaben, Ziffern, Punkte, Striche oder Unterstriche.",
       "name_taken": "Dieser Name ist vergeben.",
       "already_set_up": "nexlore ist schon eingerichtet.",
       "unknown_language": "Diese Sprache hat nexlore nicht.",
@@ -902,7 +912,7 @@
   },
   "auth": {
     "name": "Name",
-    "nameHint": "Kleinbuchstaben, Ziffern, Punkte, Striche. Damit meldest du dich an.",
+    "nameHint": "2 bis 64 Zeichen: Kleinbuchstaben, Ziffern, Punkte, Striche oder Unterstriche. Damit meldest du dich an.",
     "password": "Passwort",
     "passwordAgain": "Passwort noch einmal",
     "passwordHint_one": "Mindestens {{count}} Zeichen.",
@@ -1006,6 +1016,7 @@
       "days_one": "{{count}} Tag",
       "days_other": "{{count}} Tage",
       "email": "Mailadresse (freiwillig)",
+      "noMail": "Ohne Mailserver verschickt nexlore nichts: Kopiere den Link und gib ihn selbst weiter.",
       "send": "Link per Mail schicken",
       "create": "Einladungslink erstellen",
       "copy": "Kopieren",
@@ -1263,7 +1274,7 @@
   "today": {
     "button": "Heute",
     "title": "Tagesnotiz von heute öffnen (Alt+T)",
-    "none": "Es gibt keinen Bereich, in dem du schreiben darfst.",
+    "none": "Es gibt noch keinen Bereich, in dem du schreiben darfst. Lege zuerst einen an.",
     "templateMissing": "Die Tagesvorlage des Bereichs gibt es nicht mehr; die Tagesnotiz ist leer angelegt. Unter den Optionen des Bereichs lässt sie sich neu wählen."
   },
   "calendar": {
@@ -1357,7 +1368,7 @@
     "theme": "Theme der Notizen",
     "button": "Optionen",
     "title": "Optionen von „{{space}}“",
-    "text": "Gilt für alle, die in diesem Bereich schreiben. Eine Tagesnotiz heißt immer JJJJ-MM-TT.md.",
+    "text": "Gilt für alle, die in diesem Bereich schreiben.",
     "dailyFolder": "Ordner für Tagesnotizen",
     "dailyTemplate": "Vorlage für Tagesnotizen",
     "templateFolder": "Ordner für Vorlagen",
@@ -1732,7 +1743,7 @@
     "title": "Kalender-Abo",
     "text": "Deine offenen Aufgaben mit Termin als Adresse, die dein Kalender abonniert (Internet-Kalender, ICS). Er fragt sie etwa stündlich neu ab.",
     "closed": "Der Betreiber hat Kalender-Abos nicht eingeschaltet.",
-    "closedOperator": "Einschalten unter Einstellungen → Server → Erweiterungen.",
+    "closedOperator": "Einschalten unter Einstellungen → Server → KI und Plugins, Karte Kalender-Abos.",
     "none": "Noch keine Adresse.",
     "active": "Eine Adresse ist aktiv. Sie wird nur einmal gezeigt; eine neue ersetzt sie.",
     "make": "Adresse erzeugen",

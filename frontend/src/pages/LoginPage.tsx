@@ -36,6 +36,9 @@ export function LoginPage() {
   if (status === 'signedIn') return <Navigate to={next} replace />
 
   const submit = async () => {
+    // Nothing to ask the server about: say which field is empty (P1.22).
+    if (step !== 'code' && !name.trim()) return setProblem('name_missing')
+    if (step !== 'code' && !password) return setProblem('password_missing')
     setBusy(true)
     setProblem(null)
     try {

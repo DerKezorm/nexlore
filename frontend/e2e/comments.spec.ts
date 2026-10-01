@@ -25,7 +25,7 @@ test.beforeEach(async ({ page }) => {
 
 // The tab beside the note is kept with the account, and the tests share one: back to the links after each.
 test.afterEach(async ({ page }) => {
-  await page.waitForLoadState('networkidle').catch(() => {})
+  await page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {})
   await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links' }, headers: TAB })
 })
 

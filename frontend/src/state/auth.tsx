@@ -10,7 +10,7 @@ import { applyOwnCss, applyThemeColours } from '../lib/themes'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { ApiError, authApi, SIGNED_OUT_EVENT, type Me, themesApi } from '../api/client'
+import { ApiError, authApi, setSignedOut, SIGNED_OUT_EVENT, type Me, themesApi } from '../api/client'
 import { changeLanguage } from '../i18n'
 import { forgetSharedKeys, setStorageOwner } from '../lib/accountStorage'
 import { clearCaches } from '../lib/offline'
@@ -52,6 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       applyThemeColours(account.theme_colours)
       applyOwnCss(account.own_css)
       setStorageOwner(account.id)
+      setSignedOut(false)
       setMe(account)
       setStatus('signedIn')
       if (account.language && account.language !== i18n.language) await changeLanguage(account.language)
@@ -77,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh])
 
   const signOut = useCallback(async () => {
+    // Before the sign-out itself: what the page still asks meanwhile would come back as 401 (P1.23).
+    setSignedOut(true)
     try {
       await authApi.logout()
     } finally {

@@ -178,7 +178,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     },
     [choose],
   )
-  const { spaces, generation, scan, looks, favorites, setFavorite, reload } = useStore()
+  const { spaces, generation, scan, looks, favorites, setFavorite, reload, status } = useStore()
   const navigate = useNavigate()
   const location = useLocation()
   const menu = useContextMenu()
@@ -994,7 +994,17 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       </div>
       {view === 'tags' && <TagTree activeNote={activeNote} onNote={onNote} />}
       <div ref={scroller} hidden={view !== 'spaces'} className="nn-scroll min-h-0 flex-1 overflow-y-auto px-2 pb-3" data-testid="sidebar-tree">
-        {spaces.length === 0 && <p className="px-2 text-sm text-mist-500">{scan.running ? t('scan.plain') : t('sidebar.empty')}</p>}
+        {/* Only once the spaces are there: while they load, an account with spaces would see the first step. */}
+        {spaces.length === 0 && status === 'ready' && (
+          <div className="flex flex-col items-start gap-2 px-2">
+            <p className="text-sm text-mist-500">{scan.running ? t('scan.plain') : t('sidebar.empty')}</p>
+            {!scan.running && (
+              <button type="button" onClick={() => askVaultAction({ kind: 'new-space' })} className="inline-flex items-center gap-1.5 rounded-full border border-accent-500/60 px-3 py-1 text-sm text-accent-400 hover:bg-accent-500/10">
+                <Symbol name="plus" /> {t('sidebar.newSpace')}
+              </button>
+            )}
+          </div>
+        )}
         <ul className="relative" style={{ height: rows.out.length * ROW }}>
           {rows.out.slice(first, last).map((row, i) => (
             <li key={row.kind + ':' + row.path} data-path={row.path} className="absolute right-0 left-0" style={{ top: (first + i) * ROW, height: ROW }}>

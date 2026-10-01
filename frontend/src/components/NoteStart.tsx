@@ -9,6 +9,7 @@ import { folderColor } from '../graph/palette'
 import { homeSpace } from '../lib/everyday'
 import { useAuth } from '../state/auth'
 import { askNewNote } from '../lib/newNote'
+import { askVaultAction } from '../lib/vaultActions'
 import { askNoteList, askSearch } from '../lib/shell'
 import { folderOf } from '../lib/vault'
 import { useStore } from '../state/store'
@@ -19,7 +20,7 @@ const button = 'inline-flex items-center gap-2 rounded-full border border-ink-70
 export function NoteStart({ onNote }: { onNote: (path: string) => void }) {
   const { me } = useAuth()
   const { t } = useTranslation()
-  const { spaces, favorites } = useStore()
+  const { spaces, favorites, status } = useStore()
   const [recent, setRecent] = useState<{ opened: boolean; notes: NoteRef[] } | null>(null)
   useEffect(() => {
     let live = true
@@ -61,6 +62,12 @@ export function NoteStart({ onNote }: { onNote: (path: string) => void }) {
             {home && (
               <button type="button" onClick={() => askNewNote(home.name)} className={button}>
                 <Symbol name="plus" /> {t('sidebar.newNote')}
+              </button>
+            )}
+            {/* No space at all, once that is known: the first step is one (P1.18). */}
+            {status === 'ready' && spaces.length === 0 && (
+              <button type="button" onClick={() => askVaultAction({ kind: 'new-space' })} className={button}>
+                <Symbol name="plus" /> {t('sidebar.newSpace')}
               </button>
             )}
           </div>

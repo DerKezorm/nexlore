@@ -22,10 +22,14 @@ A task is a line with a box, with a due date, priority and repetition if you lik
 
 You can tick tasks off anywhere: here in the text, in the **Tasks** overview and in the **Calendar**. nexlore changes only that one line.
 
+A task with `[-]` counts as cancelled. It stands in a group of its own, **Cancelled**, and counts neither as open nor as done.
+
 ![The tasks overview](Attachments/tasks.webp)
 
 ## The calendar
 
-The **Calendar** tab shows the month with everything that is due. A click on a day opens its daily note, or makes it, see [[07 Daily notes and templates]].
+The **Calendar** tab shows the month with everything that is due. Month and year are chosen at the top, as is the day the week begins with. A click on a day opens its daily note, or makes it, see [[07 Daily notes and templates]].
+
+Due tasks in your own calendar program: under **My account → Connections → Calendar subscription**, once the operator allows calendar subscriptions.
 
 Next: [[07 Daily notes and templates]].
