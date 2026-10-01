@@ -37,15 +37,21 @@ async function contrast(page: Page, fore: string, back: string): Promise<number>
 
 test('small text, white on the accent and the edges of fields reach their contrast in both modes (P8.11, P8.12)', async ({ page }) => {
   await page.goto('/settings')
+  // The account's own look first: set later, it would switch the mode back between two readings.
+  await expect(page.getByRole('tablist', { name: 'Settings' })).toBeVisible()
+  await page.waitForLoadState('networkidle')
   for (const mode of ['dark', 'light'] as const) {
-    await page.evaluate((m) => (m === 'light' ? document.documentElement.setAttribute('data-theme', 'light') : document.documentElement.removeAttribute('data-theme')), mode)
-    const token = (name: string) => page.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name)
-    const ground = await token('--color-ink-950')
-    const card = await token('--color-ink-850')
-    expect(await contrast(page, await token('--color-mist-600'), ground)).toBeGreaterThanOrEqual(4.5)
-    expect(await contrast(page, await token('--color-mist-600'), card)).toBeGreaterThanOrEqual(4.5)
-    expect(await contrast(page, await token('--color-on-accent'), await token('--color-accent-500'))).toBeGreaterThanOrEqual(4.5)
-    expect(await contrast(page, await token('--color-edge'), card)).toBeGreaterThanOrEqual(3)
+    // Mode and colours in one step, so nothing of the page comes in between.
+    const tokens = await page.evaluate((m) => {
+      if (m === 'light') document.documentElement.setAttribute('data-theme', 'light')
+      else document.documentElement.removeAttribute('data-theme')
+      const read = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim()
+      return { ground: read('--color-ink-950'), card: read('--color-ink-850'), faint: read('--color-mist-600'), on: read('--color-on-accent'), accent: read('--color-accent-500'), edge: read('--color-edge') }
+    }, mode)
+    expect(await contrast(page, tokens.faint, tokens.ground)).toBeGreaterThanOrEqual(4.5)
+    expect(await contrast(page, tokens.faint, tokens.card)).toBeGreaterThanOrEqual(4.5)
+    expect(await contrast(page, tokens.on, tokens.accent)).toBeGreaterThanOrEqual(4.5)
+    expect(await contrast(page, tokens.edge, tokens.card)).toBeGreaterThanOrEqual(3)
   }
   // A field takes the edge colour, not the faint line of the cards.
   await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'light'))
@@ -144,6 +150,8 @@ test('with less motion asked for, the map does not fly (P8.21)', async ({ page }
   await page.goto('/')
   const canvas = page.getByTestId('graph-canvas')
   await expect(canvas).toHaveAttribute('data-zoom', /./)
+  // The map at rest first: it fits itself once the spaces are there, and only then lists its places.
+  await expect(page.getByTestId('graph-places').locator('li').first()).toBeAttached({ timeout: 15_000 })
   const before = await canvas.getAttribute('data-zoom')
   await canvas.focus()
   await page.keyboard.press('+')

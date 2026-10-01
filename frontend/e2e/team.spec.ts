@@ -14,6 +14,13 @@ async function note(page: Page, title: string, content: string): Promise<string>
   return (await made.json()).path as string
 }
 
+test.afterEach(async ({ page }) => {
+  // The tests share the account: the column goes back to its links (the versions and comments tabs here are kept
+  // with the account, and the next file looks for the backlinks).
+  await page.waitForLoadState('networkidle').catch(() => {})
+  await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links' }, headers: TAB })
+})
+
 const url = (at: string) => '/note/' + at.split('/').map(encodeURIComponent).join('/')
 
 test('the own note open for writing in another tab is said as such, not with the own name (P1.19)', async ({ page, context }) => {

@@ -65,6 +65,12 @@ export function CalendarPage() {
     void load()
   }, [load])
 
+  // From the address as it is now, not as last drawn: a month picked right after a year keeps that year.
+  const shownMonth = () => {
+    const now = new URLSearchParams(window.location.search).get('month') ?? ''
+    return MONTH.test(now) ? now : month
+  }
+
   const go = (changes: Record<string, string>) => {
     const next = new URLSearchParams(params)
     for (const [key, value] of Object.entries(changes)) {
@@ -146,7 +152,7 @@ export function CalendarPage() {
           </h1>
           <select
             value={month.slice(5, 7)}
-            onChange={(event) => go({ month: `${month.slice(0, 4)}-${event.target.value}` })}
+            onChange={(event) => go({ month: `${shownMonth().slice(0, 4)}-${event.target.value}` })}
             aria-label={t('calendar.pickMonth')}
             className="h-8 rounded-full border border-transparent bg-transparent px-1 text-lg font-semibold text-mist-100 capitalize hover:border-ink-700"
           >
@@ -158,7 +164,7 @@ export function CalendarPage() {
           </select>
           <select
             value={shownYear}
-            onChange={(event) => go({ month: `${event.target.value}-${month.slice(5, 7)}` })}
+            onChange={(event) => go({ month: `${event.target.value}-${shownMonth().slice(5, 7)}` })}
             aria-label={t('calendar.pickYear')}
             className="h-8 rounded-full border border-transparent bg-transparent px-1 text-lg font-semibold text-mist-100 tabular-nums hover:border-ink-700"
           >

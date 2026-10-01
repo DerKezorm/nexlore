@@ -69,29 +69,36 @@ def test_only_one_scan_runs_and_the_watcher_waits_for_it(vault: Path, client: Te
     assert client.post("/api/index/scan").status_code == 200
 
 
+def progress(client: TestClient) -> dict:
+    """The progress without its revision, which only counts changes (the sidebar asks by it)."""
+    answer = client.get("/api/index/progress").json()
+    assert isinstance(answer.pop("revision"), int)
+    return answer
+
+
 def test_the_progress_shows_counts_to_the_operator_and_a_share_to_everybody_else(
     vault: Path, client: TestClient, operator: object
 ) -> None:
     put(vault, "Work/a.md", "a")
     index.scan()
-    assert client.get("/api/index/progress").json() == {"running": False}
+    assert progress(client) == {"running": False}
     member = make_account("member")
     saved = (index.status.running, index.status.phase, index.status.done, index.status.total, index.status.first)
     try:
         index.status.running, index.status.phase, index.status.done, index.status.total = True, "indexing", 250, 1000
-        assert client.get("/api/index/progress").json() == {
+        assert progress(client) == {
             "running": True, "phase": "indexing", "percent": 25, "done": 250, "total": 1000,
         }
         with TestClient(app, headers={"X-Nexlore-Client": "tab-member00"}) as other:
             sign_in(other, member)
-            answer = other.get("/api/index/progress").json()
+            answer = progress(other)
         # The counts span every space, the member's and the ones it may not see.
         assert answer == {"running": True, "phase": "indexing", "percent": 25}
         # A small pass of the watcher is nothing to tell about; the first reading of a vault is, from the start.
         index.status.total = index.PROGRESS_MIN - 1
-        assert client.get("/api/index/progress").json() == {"running": False}
+        assert progress(client) == {"running": False}
         index.status.first, index.status.total, index.status.phase = True, 0, "walking"
-        assert client.get("/api/index/progress").json()["percent"] is None
+        assert progress(client)["percent"] is None
     finally:
         (index.status.running, index.status.phase, index.status.done, index.status.total,
          index.status.first) = saved

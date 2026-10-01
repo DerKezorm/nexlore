@@ -245,9 +245,15 @@ test('the palette puts a template, the date or the time into the note being writ
 test('the calendar jumps to a month and year, and its week starts on the day chosen (P5.24)', async ({ page }) => {
   try {
     await page.goto('/calendar?month=2026-10')
-    await page.getByLabel('Year', { exact: true }).selectOption('2024')
-    await expect(page).toHaveURL(/month=2024-10/)
-    await page.getByLabel('Month', { exact: true }).selectOption('02')
+    await expect(page.getByLabel('Year', { exact: true })).toHaveValue('2026')
+    // Year and month right after each other on a slow machine: the month keeps the year just picked.
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 })
+    await Promise.all([
+      page.getByLabel('Year', { exact: true }).selectOption('2024'),
+      page.getByLabel('Month', { exact: true }).selectOption('02'),
+    ])
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
     await expect(page).toHaveURL(/month=2024-02/)
     await page.getByLabel('Week starts on').selectOption('sunday')
     // 1 February 2024 was a Thursday: from Sunday on it is the fifth box after the seven names.
