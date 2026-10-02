@@ -89,8 +89,11 @@ test('the header of a note stays one line on a phone, and its path leads to the 
 test('the sidebar folds to symbols and back, keeps it with the account, and lists the notes opened last', async ({ page }) => {
   const problems = collectProblems(page)
   await page.setViewportSize({ width: 1440, height: 900 })
+  // Noted as opened on the server; going to the next note by address before that would cut it off.
+  const opened = page.waitForResponse((answer) => answer.url().endsWith('/api/recent') && answer.request().method() === 'POST')
   await page.goto('/note/Zyx/Palette.md')
   await expect(page.locator('article')).toContainText('The end.')
+  expect((await opened).ok()).toBe(true)
   await page.goto('/note/Zyx/Tagged.md')
   await expect(page.locator('article')).toContainText('One')
   const recent = page.getByTestId('sidebar-recent').getByRole('button').filter({ hasNotText: 'Recent' })
@@ -111,8 +114,10 @@ test('the sidebar folds to symbols and back, keeps it with the account, and list
   // Unfolded on the same page, the tree draws as many rows as fit, not only the ten it draws ahead (seen on a test server).
   await page.getByTestId('sidebar-rail').getByRole('button', { name: 'Unfold the sidebar (Alt+B)' }).click()
   await expect.poll(() => page.getByTestId('sidebar-tree').locator('li').count()).toBeGreaterThan(14)
+  // The server still says "rail" from the first fold while the unfolding waits in line: wait for this save itself.
+  const folded = page.waitForResponse((answer) => answer.url().endsWith('/api/me/appearance') && answer.request().postData()?.includes('"sidebar":"rail"') === true)
   await page.getByRole('button', { name: 'Fold the sidebar (Alt+B)' }).click()
-  await expect.poll(async () => (await look(page)).sidebar).toBe('rail')
+  expect((await folded).ok()).toBe(true)
   await page.reload()
   await expect(page.getByTestId('sidebar-rail')).toBeVisible()
   // A symbol opens it where it leads; Alt+B folds and unfolds.

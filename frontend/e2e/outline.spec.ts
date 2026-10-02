@@ -65,10 +65,16 @@ test('the tags as a tree: a click shows the notes, and a rename changes the text
 })
 
 test('the notes opened last are on the empty note page and in the quick switcher with nothing typed', async ({ page }) => {
+  // Each noted as opened on the server; going on by address before that would cut it off.
+  const opened = () => page.waitForResponse((answer) => answer.url().endsWith('/api/recent') && answer.request().method() === 'POST')
+  let noted = opened()
   await page.goto('/note/Zyx/Palette.md')
   await expect(page.locator('article')).toContainText('The end.')
+  expect((await noted).ok()).toBe(true)
+  noted = opened()
   await page.goto('/note/Home/Shopping.md')
   await expect(page.locator('article')).toContainText('quinceapple')
+  expect((await noted).ok()).toBe(true)
   await page.goto('/note')
   const start = page.getByTestId('note-start')
   await expect(start.getByRole('heading', { name: 'Opened last' })).toBeVisible()

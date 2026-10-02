@@ -94,6 +94,8 @@ test('the note page shows the neighbourhood, one to three links deep, and leads 
   const problems = collectProblems(page)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/note/Work/Plan.md')
+  // The tab is kept with the account, sent after the click; the reload below must not cut that off.
+  const kept = page.waitForResponse((answer) => answer.url().endsWith('/api/me/appearance') && answer.request().postData()?.includes('"panel_tab":"graph"') === true)
   await page.getByTestId('note-panel').getByRole('tab', { name: 'Graph' }).click()
   const local = page.getByTestId('local-graph')
   await expect(local.getByRole('img', { name: 'Neighbourhood of the note' })).toBeVisible()
@@ -106,6 +108,7 @@ test('the note page shows the neighbourhood, one to three links deep, and leads 
   expect(answer.nodes.map((node: [number, string]) => node[1]).sort()).toEqual(['Work/Ideas/Garden.md', 'Work/Plan.md'])
   await expect(depths.getByRole('radio', { name: 'Depth 2' })).toHaveAttribute('aria-checked', 'true')
   // Kept per browser, and the tab with the account.
+  expect((await kept).ok()).toBe(true)
   await page.reload()
   await expect(page.getByTestId('note-panel').getByRole('tab', { name: 'Graph' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByTestId('local-graph').getByRole('radio', { name: 'Depth 2' })).toHaveAttribute('aria-checked', 'true')

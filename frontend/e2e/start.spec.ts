@@ -45,8 +45,11 @@ test('a note as the start page opens once per tab, the map stays one click away'
     await card.getByRole('radio', { name: 'The note opened last' }).check()
     await expect.poll(async () => (await (await page.request.get('/api/auth/me')).json()).appearance.start).toBe('last')
     const fourth = await context.newPage()
+    // Noted as opened after it shows: the next tab asks the server for it.
+    const noted = fourth.waitForResponse((answer) => answer.url().endsWith('/api/recent') && answer.request().method() === 'POST')
     await fourth.goto('/note/Zyx/Tagged.md')
     await expect(fourth.locator('article')).toContainText('One')
+    expect((await noted).ok()).toBe(true)
     const fifth = await context.newPage()
     await fifth.goto('/')
     await expect(fifth).toHaveURL(/\/note\/Zyx\/Tagged\.md$/)

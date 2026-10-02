@@ -84,8 +84,10 @@ test('while one tab edits a note, another sees who and cannot edit', async ({ pa
   // The same account in a second window: said as its own other tab, not with its own name (P1.19).
   await expect(second.getByRole('alert').filter({ hasText: 'You are editing this note in another tab or window.' })).toBeVisible()
   await expect(second.getByRole('button', { name: 'Edit', exact: true })).toBeDisabled()
-  // Done in the first tab: the lock is given back.
+  // Done in the first tab: the lock is given back (after the click; read again only once it is).
+  const unlocked = page.waitForResponse((answer) => answer.url().includes('/api/locks') && answer.request().method() === 'DELETE')
   await page.getByRole('button', { name: 'Read', exact: true }).click()
+  expect((await unlocked).ok()).toBe(true)
   await second.reload()
   await expect(second.getByRole('button', { name: 'Edit', exact: true })).toBeEnabled()
   await other.close()

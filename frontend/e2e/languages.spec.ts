@@ -39,7 +39,10 @@ test('the operator language is offered, falls back to English where it has no te
     await page.goto('/settings')
     const select = page.getByLabel('Language of the interface')
     await expect(select.locator('option')).toHaveText(['English', 'Deutsch', 'Español (added by the operator)'])
+    // The interface speaks it at once, the account keeps it after: the reload below must not cut that off.
+    const kept = page.waitForResponse((answer) => answer.url().endsWith('/api/me/language') && answer.request().method() === 'PUT')
     await select.selectOption('es')
+    expect((await kept).ok()).toBe(true)
     // The settings sit in the account menu: its link says it in Spanish.
     const account = page.getByRole('banner').getByRole('button', { name: /^Account of / })
     await account.click()

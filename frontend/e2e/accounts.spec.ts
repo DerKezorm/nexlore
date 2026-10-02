@@ -130,8 +130,11 @@ test('a public page shows the shared folder and nothing beyond it', async ({ pag
   await expect(page.getByTestId('note-menu').getByRole('button', { name: 'Rename' })).toBeVisible()
   await expect(page.getByTestId('note-menu').getByRole('button', { name: 'Share' })).toHaveCount(0)
   await page.goto('/settings?tab=server&sub=shares')
+  // The switch shows at once and saves after; the reload would cut the save off (seen in the CI).
+  const allowed = page.waitForResponse((answer) => answer.url().endsWith('/api/settings') && answer.request().method() === 'PUT')
   await page.locator('#shares').getByLabel('Allow public pages').check()
   await expect(page.locator('#shares').getByLabel('Allow public pages')).toBeChecked()
+  expect((await allowed).ok()).toBe(true)
   await page.reload()
 
   await page.goto('/note/Garden/Beds/Roses.md')

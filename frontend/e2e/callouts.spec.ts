@@ -57,7 +57,10 @@ test('a kind of callout of the theme\'s own has its colour and symbol, reading a
   await expect(label).toBeVisible()
   expect(await before(label, 'background-color')).toBe('rgb(255, 136, 0)')
   expect(await before(label, 'mask-image')).toBe(recipeSymbol)
+  // The lock goes back after the click; leaving before that would keep the note locked for the next test.
+  const unlocked = page.waitForResponse((answer) => answer.url().includes('/api/locks') && answer.request().method() === 'DELETE')
   await page.getByRole('button', { name: 'Read', exact: true }).click()
+  expect((await unlocked).ok()).toBe(true)
 
   // The theme's editor lists the kind and adds another.
   await page.goto('/settings?tab=looks')

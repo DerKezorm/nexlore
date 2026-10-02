@@ -38,10 +38,13 @@ test('a theme is chosen, a new one made in the editor with a warning for weak te
   await editor.getByLabel('Text, faint (Dark)', { exact: true }).fill('#a0a0b0')
   await expect(page.getByTestId('theme-weak')).toHaveCount(0)
   await editor.getByLabel('Share in the gallery').check()
+  // Saved, the new theme is chosen: shown at once, sent after. The reload must not cut that off.
+  const chosen = page.waitForResponse((answer) => answer.url().endsWith('/api/me/appearance') && answer.request().postData()?.includes('"theme":') === true)
   await editor.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(editor).toBeHidden()
   const mine = themes.getByRole('button', { name: /^Signal/ })
   await expect(mine).toHaveAttribute('aria-pressed', 'true')
+  expect((await chosen).ok()).toBe(true)
   await page.reload()
   await expect.poll(() => accent(page)).toBe('#ff3355')
   // Cancelling an edit brings back the theme in force.
@@ -115,7 +118,10 @@ test('own CSS waits for the operator, refuses what could load from elsewhere, an
   await expect(page.locator('article.nn-prose h1')).toHaveCSS('letter-spacing', '3px')
   // Switched off: gone from the page.
   await page.goto('/settings?tab=looks')
+  // Off at once, saved after: leaving before that would cut the save off.
+  const off = page.waitForResponse((answer) => answer.url().includes('/api/css-snippets/') && answer.request().method() === 'PUT')
   await snippets.getByRole('checkbox').uncheck()
+  expect((await off).ok()).toBe(true)
   await page.goto('/note/Zyx/Palette.md')
   await expect(page.locator('article.nn-prose h1')).not.toHaveCSS('letter-spacing', '3px')
   await page.goto('/settings?tab=server&sub=extensions')

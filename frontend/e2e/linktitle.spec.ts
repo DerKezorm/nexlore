@@ -29,7 +29,11 @@ test.afterEach(async ({ page }) => {
   await page.waitForLoadState('networkidle')
   await page.request.put('/api/settings', { data: { link_titles_allowed: false, calendar_feed_allowed: false }, headers: TAB })
   const now = await (await page.request.get('/api/note?path=' + encodeURIComponent(NOTE))).json()
-  if (now.content !== '# Pasted\n\nStart.\n') await page.request.put('/api/note', { data: { path: NOTE, content: '# Pasted\n\nStart.\n', base_hash: now.hash }, headers: TAB })
+  if (now.content !== '# Pasted\n\nStart.\n') {
+    // Refused while a lock is still held (423): said here, not found as strange text by the next test.
+    const back = await page.request.put('/api/note', { data: { path: NOTE, content: '# Pasted\n\nStart.\n', base_hash: now.hash }, headers: TAB })
+    expect(back.ok(), `resetting ${NOTE}: ${back.status()}`).toBe(true)
+  }
 })
 
 test('the operator opens titles of pasted links, and a pasted address gets its page\'s title', async ({ page }) => {
@@ -67,8 +71,10 @@ test('the operator opens titles of pasted links, and a pasted address gets its p
   await written
   await expect.poll(onDisk).toContain('[Tea and Biscuits](https://example.com/tea)')
   expect(asked).toEqual(['https://example.com/tea'])
-  // Out of the editor, so the note's lock goes with it (the next test edits it).
+  // Out of the editor, so the note's lock goes with it (the next test edits it, and the reset after this one).
+  const unlocked = page.waitForResponse((answer) => answer.url().includes('/api/locks') && answer.request().method() === 'DELETE')
   await page.getByRole('button', { name: 'Read', exact: true }).click()
+  expect((await unlocked).ok()).toBe(true)
   expect(problems).toEqual([])
 })
 
@@ -90,6 +96,9 @@ test('an address pasted onto chosen words makes them a link, in the app as it ru
   await expect(editor.getByRole('link', { name: 'Start' })).toBeVisible()
   await written
   await expect.poll(onDisk).toBe('# Pasted\n\n[Start](https://example.com/start).\n')
+  // The lock goes back before the reset after this test.
+  const unlocked = page.waitForResponse((answer) => answer.url().includes('/api/locks') && answer.request().method() === 'DELETE')
   await page.getByRole('button', { name: 'Read', exact: true }).click()
+  expect((await unlocked).ok()).toBe(true)
   expect(problems).toEqual([])
 })
