@@ -15,16 +15,16 @@ import logging
 from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi import Path as PathParam
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
-from ..deps import Account, DbSession, OperatorAccount
-from ..errors import error
+from ..deps import Account, DbSession, OperatorAccount, client_ip
+from ..errors import detail, error
 from ..models import MANAGE, OPERATOR, SPACE_ROLES, Invite, Membership, Space
 from ..models import Account as AccountRow
-from ..security import MIN_PASSWORD, SESSION_COOKIE, session_account
+from ..security import MIN_PASSWORD, SESSION_COOKIE, brake, session_account
 from ..services import accounts, mailer, notices, rights, settings_service
 from ..services.accounts import AccountError
 from .auth import check_password, fail, sign_in
@@ -348,14 +348,30 @@ def invite_state(token: Token, request: Request, db: DbSession) -> dict[str, Any
     }
 
 
+#: Taken names one sender may try when accepting invitations before it waits.
+NAME_TRIES = 8
+
+
 @router.post("/invite/{token}", summary="Accept an invitation with a new account")
 def accept(token: Token, payload: AcceptIn, request: Request, response: Response, db: DbSession) -> dict[str, Any]:
+    # A name that is taken must be said, so the person can pick another; the brake keeps it from being a way to try
+    # names one after another (one link took 60 tries without a pause).
+    key = "invite-name:" + client_ip(request)
+    wait = brake.wait_seconds(key, NAME_TRIES)
+    if wait:
+        raise HTTPException(
+            status_code=429,
+            detail=detail("too_many_attempts", "Too many attempts. Try again later.", retry_after=wait),
+            headers={"Retry-After": str(wait)},
+        )
     check_password(payload.password)
     if not settings_service.get(db, "password_login"):
         raise error("password_login_off", "Sign-in with a password is turned off.", 403)
     try:
         account = accounts.accept_invite(db, token, payload.name, payload.password)
     except AccountError as exc:
+        if exc.code == "name_taken":
+            brake.failed(key)
         raise fail(exc) from exc
     return sign_in(db, request, response, account)
 

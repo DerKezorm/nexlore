@@ -25,6 +25,9 @@ os.environ["NEXLORE_ARGON2_PARALLELISM"] = "1"
 # Never GitHub from a test: port 9 refuses at once, and the update tests put their own answer in place.
 os.environ["NEXLORE_UPDATE_URL"] = "http://127.0.0.1:9/releases/latest"
 os.environ["NEXLORE_SECRET_KEY"] = "test-secret-key-for-the-test-run-only"
+# The code the first account brings (otherwise one made at start and written to the log).
+SETUP_CODE = "test-setup-code"
+os.environ["NEXLORE_SETUP_TOKEN"] = SETUP_CODE
 
 import shutil  # noqa: E402
 from pathlib import Path  # noqa: E402

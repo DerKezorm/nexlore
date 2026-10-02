@@ -235,6 +235,8 @@ export default defineConfig({
           NEXLORE_ARGON2_PARALLELISM: '1',
           // Never GitHub from a test: the stand-in below answers the update check.
           NEXLORE_UPDATE_URL: 'http://127.0.0.1:8478/releases/latest',
+          // The code the first account brings; global-setup.ts sends it.
+          NEXLORE_SETUP_TOKEN: 'e2e-setup-code',
         },
       },
       // A stand-in AI service (ai.spec.ts): the chat interface, answering by rule.

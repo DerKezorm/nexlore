@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import re
 import secrets
+import threading
 from datetime import timedelta
 from functools import lru_cache
 
@@ -21,6 +22,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from .. import __version__
+from ..config import get_settings
 from ..models import (
     MANAGE,
     MEMBER,
@@ -87,10 +89,40 @@ def create_with_password(db: Session, name: str, password: str, role: str = MEMB
     return account
 
 
-def create_operator(db: Session, name: str, password: str) -> Account:
-    if count(db) > 0:
-        raise AccountError("already_set_up", "nexlore is already set up.", 409)
-    return create_with_password(db, name, password, OPERATOR)
+#: One setup at a time: two at once each counted no account yet and made two operators.
+_setup_lock = threading.Lock()
+_generated_code: str | None = None
+
+
+def setup_code() -> str:
+    """What the first account must bring: ``NEXLORE_SETUP_TOKEN``, else a code made at start and written to the log.
+    Whoever reaches a fresh instance first would otherwise become its operator."""
+    global _generated_code
+    given = get_settings().setup_token.strip()
+    if given:
+        return given
+    if _generated_code is None:
+        _generated_code = "-".join(secrets.token_hex(2).upper() for _ in range(3))
+    return _generated_code
+
+
+def announce_setup_code(db: Session) -> None:
+    """At start, while nobody has set nexlore up: the code in the log, where only whoever runs the server reads it."""
+    if count(db) == 0:
+        if get_settings().setup_token.strip():
+            logger.warning("nexlore is not set up yet. Open it and give NEXLORE_SETUP_TOKEN as the setup code.")
+        else:
+            logger.warning("nexlore is not set up yet. The setup code is %s (new at every start until set up).",
+                           setup_code())
+
+
+def create_operator(db: Session, name: str, password: str, code: str) -> Account:
+    with _setup_lock:
+        if count(db) > 0:
+            raise AccountError("already_set_up", "nexlore is already set up.", 409)
+        if not secrets.compare_digest(code.strip().upper().encode(), setup_code().upper().encode()):
+            raise AccountError("setup_code_wrong", "The setup code is wrong. It is in the server's log.", 403)
+        return create_with_password(db, name, password, OPERATOR)
 
 
 def create_oidc(db: Session, name: str, subject: str, email: str) -> Account:
@@ -145,23 +177,45 @@ def note_success(db: Session, account: Account) -> None:
     db.commit()
 
 
-def authenticate(db: Session, name: str, password: str) -> Account:
-    """Checks name and password; counts failures and locks the account after too many."""
+_account_locks: dict[int, threading.Lock] = {}
+_account_locks_guard = threading.Lock()
+
+
+def _one_check_at_a_time(account_id: int) -> threading.Lock:
+    """Checks of one account's password in turn: 60 wrong ones at once all passed the lock test before the first
+    failure was counted, and 46 were checked instead of 10."""
+    with _account_locks_guard:
+        return _account_locks.setdefault(account_id, threading.Lock())
+
+
+def authenticate(db: Session, name: str, password: str, device: int | None = None) -> Account:
+    """Checks name and password; counts failures and locks the account after too many.
+
+    A locked account answers like a wrong password (no hint that the name exists), except to a browser that signed in
+    as it before (``device``, the account its cookie names): a stranger guessing can lock the account against the
+    world, not against its owner.
+    Failures from that browser do not count towards the lock.
+    """
     account = by_name(db, name)
     if account is None or account.sign_in != SIGN_IN_PASSWORD:
         verify_password(password, _dummy_hash())
         logger.warning("Sign-in failed for an unknown account")
         raise AccountError("wrong_credentials", "Name or password is wrong.", 401)
-    if is_locked(account):
-        logger.warning("Sign-in refused, account locked name=%s", account.name)
-        raise AccountError("account_locked", "Too many failed sign-ins. Try again later.", 429)
-    if not verify_password(password, account.password_hash):
-        note_failure(db, account)
-        raise AccountError("wrong_credentials", "Name or password is wrong.", 401)
-    if not account.totp_secret_enc:
-        # With a second factor, only the code resets the count of failures: otherwise whoever knows the password
-        # could guess codes forever, a new password step before each lockout.
-        note_success(db, account)
+    known_device = device == account.id
+    with _one_check_at_a_time(account.id):
+        db.refresh(account)
+        if is_locked(account) and not known_device:
+            verify_password(password, _dummy_hash())
+            logger.warning("Sign-in refused, account locked name=%s", account.name)
+            raise AccountError("wrong_credentials", "Name or password is wrong.", 401)
+        if not verify_password(password, account.password_hash):
+            if not known_device:
+                note_failure(db, account)
+            raise AccountError("wrong_credentials", "Name or password is wrong.", 401)
+        if not account.totp_secret_enc:
+            # With a second factor, only the code resets the count of failures: otherwise whoever knows the password
+            # could guess codes forever, a new password step before each lockout.
+            note_success(db, account)
     return account
 
 

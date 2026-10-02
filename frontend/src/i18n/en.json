@@ -745,7 +745,10 @@
       "notify_no_way": "Give a webhook address or switch mail on first.",
       "webhook_invalid": "Give an address like https://example.com/hook.",
       "api_off": "The operator has not switched API tokens on.",
-      "too_many_tokens": "An account holds at most 20 tokens."
+      "too_many_tokens": "An account holds at most 20 tokens.",
+      "setup_code_wrong": "The setup code is wrong. It is in the server's log: docker logs nexlore.",
+      "operator_network": "The operator's settings are open only from the home network.",
+      "bad_date": "That date does not exist."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
@@ -940,7 +943,9 @@
     "setup": {
       "title": "Set up nexlore",
       "text": "The account you make now is the operator's: it runs this server, invites others and sets things up.",
-      "submit": "Create account"
+      "submit": "Create account",
+      "code": "Setup code",
+      "codeHint": "In the server's log: docker logs nexlore (a line saying \"The setup code is …\"), or NEXLORE_SETUP_TOKEN if you set one."
     },
     "invite": {
       "title": "You are invited",

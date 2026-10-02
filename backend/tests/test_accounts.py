@@ -12,27 +12,27 @@ from app.models import OPERATOR, Account, AuthSession, utcnow
 from app.security import MAX_FAILURES, SESSION_COOKIE, decrypt_secret, encrypt_secret, hash_token
 from app.services import settings_service
 
-from .conftest import PASSWORD, make_account, sign_in
+from .conftest import PASSWORD, SETUP_CODE, make_account, sign_in
 
 GOOD = "a long enough password"
 
 
 def test_the_first_account_is_the_operator_and_only_the_first(client: TestClient) -> None:
     assert client.get("/api/setup").json()["needs_setup"] is True
-    short = client.post("/api/setup", json={"name": "boss", "password": "short"})
+    short = client.post("/api/setup", json={"code": SETUP_CODE, "name": "boss", "password": "short"})
     assert short.status_code == 422 and short.json()["detail"]["code"] == "password_too_short"
-    made = client.post("/api/setup", json={"name": "Boss", "password": GOOD, "language": "de"})
+    made = client.post("/api/setup", json={"code": SETUP_CODE, "name": "Boss", "password": GOOD, "language": "de"})
     assert made.status_code == 200
     assert made.json()["name"] == "boss" and made.json()["role"] == OPERATOR and made.json()["language"] == "de"
     # Signed in right away.
     assert client.get("/api/auth/me").json()["name"] == "boss"
     assert client.get("/api/setup").json()["needs_setup"] is False
-    again = client.post("/api/setup", json={"name": "other", "password": GOOD})
+    again = client.post("/api/setup", json={"code": SETUP_CODE, "name": "other", "password": GOOD})
     assert again.status_code == 409 and again.json()["detail"]["code"] == "already_set_up"
 
 
 def test_setup_refuses_a_language_nexlore_does_not_have(client: TestClient) -> None:
-    refused = client.post("/api/setup", json={"name": "boss", "password": GOOD, "language": "xx"})
+    refused = client.post("/api/setup", json={"code": SETUP_CODE, "name": "boss", "password": GOOD, "language": "xx"})
     assert refused.status_code == 422 and refused.json()["detail"]["code"] == "unknown_language"
 
 
@@ -103,8 +103,9 @@ def test_the_account_locks_after_ten_failures_from_anywhere(client: TestClient) 
         )
         assert response.status_code == 401
     brake.forget()
+    # Locked, and saying so no more than a wrong password does (review before 1.0.0): the name stays unconfirmed.
     locked = client.post("/api/auth/login", json={"name": "anna", "password": PASSWORD})
-    assert locked.status_code == 429 and locked.json()["detail"]["code"] == "account_locked"
+    assert locked.status_code == 401 and locked.json()["detail"]["code"] == "wrong_credentials"
     with SessionLocal() as db:
         row = db.scalar(select(Account).where(Account.name == "anna"))
         assert row is not None

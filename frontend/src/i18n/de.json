@@ -745,7 +745,10 @@
       "notify_no_way": "Gib erst eine Webhook-Adresse an oder schalte Mail ein.",
       "webhook_invalid": "Gib eine Adresse wie https://example.com/hook an.",
       "api_off": "Der Betreiber hat API-Token nicht eingeschaltet.",
-      "too_many_tokens": "Ein Konto hat höchstens 20 Token."
+      "too_many_tokens": "Ein Konto hat höchstens 20 Token.",
+      "setup_code_wrong": "Der Einrichtungscode stimmt nicht. Er steht im Log des Servers: docker logs nexlore.",
+      "operator_network": "Die Einstellungen des Betreibers sind nur aus dem Heimnetz erreichbar.",
+      "bad_date": "Dieses Datum gibt es nicht."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
@@ -940,7 +943,9 @@
     "setup": {
       "title": "nexlore einrichten",
       "text": "Das Konto, das du jetzt anlegst, gehört dem Betreiber: Es führt diesen Server, lädt andere ein und stellt alles ein.",
-      "submit": "Konto anlegen"
+      "submit": "Konto anlegen",
+      "code": "Einrichtungscode",
+      "codeHint": "Steht im Log des Servers: docker logs nexlore (Zeile „The setup code is …“), oder NEXLORE_SETUP_TOKEN, wenn du einen gesetzt hast."
     },
     "invite": {
       "title": "Du bist eingeladen",

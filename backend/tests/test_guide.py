@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 from app.services import guide
 
-from .conftest import make_account, sign_in
+from .conftest import SETUP_CODE, make_account, sign_in
 
 PASSWORD = "a long enough password"
 #: The one link that leads nowhere on purpose: it shows what a missing link looks like.
@@ -46,7 +46,7 @@ def notes_of(client: TestClient, space: str) -> dict[str, str]:
 def test_the_first_start_makes_the_guide_in_the_language_chosen(
     client: TestClient, vault: Path, welcome: None, language: str, welcome_note: str, template: str
 ) -> None:
-    made = client.post("/api/setup", json={"name": "boss", "password": PASSWORD, "language": language})
+    made = client.post("/api/setup", json={"code": SETUP_CODE, "name": "boss", "password": PASSWORD, "language": language})
     assert made.status_code == 200
     spaces = {space["name"]: space["role"] for space in client.get("/api/spaces").json()}
     assert spaces == {"nexlore": "manage"}
@@ -80,7 +80,7 @@ def test_every_link_leads_somewhere_and_every_picture_is_there(
 def test_it_is_not_made_when_the_vault_has_notes_already(client: TestClient, vault: Path, welcome: None) -> None:
     (vault / "Mine").mkdir()
     (vault / "Mine" / "Note.md").write_text("# Note\n", encoding="utf-8")
-    assert client.post("/api/setup", json={"name": "boss", "password": PASSWORD, "language": "de"}).status_code == 200
+    assert client.post("/api/setup", json={"code": SETUP_CODE, "name": "boss", "password": PASSWORD, "language": "de"}).status_code == 200
     assert not (vault / "nexlore").exists()
 
 
@@ -118,5 +118,5 @@ def test_days_are_filled_in_from_the_day_it_is_made() -> None:
 
 def test_switched_off_the_first_start_makes_nothing(client: TestClient, vault: Path) -> None:
     assert get_settings().welcome_guide is False
-    assert client.post("/api/setup", json={"name": "boss", "password": PASSWORD, "language": "de"}).status_code == 200
+    assert client.post("/api/setup", json={"code": SETUP_CODE, "name": "boss", "password": PASSWORD, "language": "de"}).status_code == 200
     assert not (vault / "nexlore").exists()

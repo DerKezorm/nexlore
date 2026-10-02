@@ -18,6 +18,7 @@ from ..deps import (
     Account,
     DbSession,
     OperatorAccount,
+    behind_unknown_proxy,
     client_ip,
     confirm_operator,
     reauth_failed,
@@ -28,9 +29,14 @@ from ..errors import detail, error
 from ..models import OPERATOR, ROLES, SIGN_IN_PASSWORD, Membership
 from ..models import Account as AccountRow
 from ..security import (
+    DEVICE_COOKIE,
+    DEVICE_DAYS,
     MIN_PASSWORD,
     SESSION_COOKIE,
+    Brake,
     brake,
+    device_of,
+    device_token,
     end_all_sessions,
     end_session,
     session_account,
@@ -54,6 +60,8 @@ class SetupIn(BaseModel):
     name: str = Field(max_length=64)
     password: str = Field(max_length=200)
     language: str = Field(default="", max_length=16)
+    #: The setup code from the server's log (or NEXLORE_SETUP_TOKEN).
+    code: str = Field(default="", max_length=200)
 
 
 class LoginIn(BaseModel):
@@ -152,6 +160,10 @@ def account_view(account: AccountRow) -> dict[str, Any]:
 def sign_in(db: DbSession, request: Request, response: Response, account: AccountRow) -> dict[str, Any]:
     token = start_session(db, account, client_ip(request), request.headers.get("user-agent", ""))
     _set_cookie(response, request, token)
+    # This browser is known from now on: a lock that strangers cause by guessing does not keep it out.
+    if device_of(request.cookies.get(DEVICE_COOKIE)) != account.id:
+        response.set_cookie(DEVICE_COOKIE, device_token(account.id), max_age=DEVICE_DAYS * 86400, httponly=True,
+                            samesite="lax", secure=secure_cookie(request), path="/api/auth")
     logger.info("Signed in name=%s", account.name)
     return account_view(account)
 
@@ -162,6 +174,8 @@ def setup_state(request: Request, db: DbSession) -> dict[str, Any]:
     # browser's console on every visit of the sign-in page.
     return {
         "needs_setup": accounts.count(db) == 0,
+        # The first account needs the setup code from the server's log.
+        "code_required": True,
         "signed_in": session_account(db, request.cookies.get(SESSION_COOKIE)) is not None,
         "version": __version__,
         "min_password": MIN_PASSWORD,
@@ -170,11 +184,22 @@ def setup_state(request: Request, db: DbSession) -> dict[str, Any]:
 
 @router.post("/setup", summary="Create the operator account")
 def setup(payload: SetupIn, request: Request, response: Response, db: DbSession) -> dict[str, Any]:
+    key = "setup:" + client_ip(request)
+    wait = brake.wait_seconds(key)
+    if wait:
+        raise HTTPException(
+            status_code=429,
+            detail=detail("too_many_attempts", "Too many attempts. Try again later.", retry_after=wait),
+            headers={"Retry-After": str(wait)},
+        )
     check_password(payload.password)
     language = check_language(payload.language)
     try:
-        account = accounts.create_operator(db, payload.name, payload.password)
+        account = accounts.create_operator(db, payload.name, payload.password, payload.code)
     except AccountError as exc:
+        if exc.code == "setup_code_wrong":
+            brake.failed(key)
+            logger.warning("Setup refused: wrong setup code")
         raise fail(exc) from exc
     account.language = language
     db.commit()
@@ -194,12 +219,23 @@ def methods(db: DbSession) -> dict[str, Any]:
     }
 
 
+#: Wrong passwords one sender may give across all names before it waits: room for a household behind one address.
+LOGIN_FREE_PER_SENDER = 30
+
+
 @router.post("/auth/login", summary="Sign in with name and password")
 def login(payload: LoginIn, request: Request, response: Response, db: DbSession) -> dict[str, Any]:
     # The brake first, then the password, then the rules: an unknown name costs the time of a wrong password, so
     # neither the answer nor its timing tells which names exist.
-    key = "login:" + client_ip(request)
-    wait = brake.wait_seconds(key)
+    #
+    # Two counts: per sender and name, and per sender alone with more room. The second is not reset by a sign-in that
+    # works (whoever has an account would otherwise reset it between guesses at other names), and it is left out
+    # when every sender looks like one proxy: then it would keep everybody out after a stranger's guesses.
+    ip = client_ip(request)
+    keys = [("login:" + ip + "|" + payload.name.strip().lower()[:64], Brake.FREE)]
+    if not behind_unknown_proxy(request):
+        keys.append(("login-ip:" + ip, LOGIN_FREE_PER_SENDER))
+    wait = max(brake.wait_seconds(key, free) for key, free in keys)
     if wait:
         raise HTTPException(
             status_code=429,
@@ -207,11 +243,13 @@ def login(payload: LoginIn, request: Request, response: Response, db: DbSession)
             headers={"Retry-After": str(wait)},
         )
     try:
-        account = accounts.authenticate(db, payload.name, payload.password)
+        account = accounts.authenticate(db, payload.name, payload.password,
+                                        device_of(request.cookies.get(DEVICE_COOKIE)))
     except AccountError as exc:
-        brake.failed(key)
+        for key, _free in keys:
+            brake.failed(key)
         raise fail(exc) from exc
-    brake.succeeded(key)
+    brake.succeeded(keys[0][0])
     if not settings_service.get(db, "password_login") and account.role != OPERATOR:
         # The operator keeps the password as the way in when the provider is down.
         raise error("password_login_off", "Sign-in with a password is turned off.", 403)

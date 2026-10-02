@@ -50,7 +50,8 @@ from .routers import themes as themes_router
 from .routers import totp as totp_router
 from .routers import v1 as v1_router
 from .routers import vault as vault_router
-from .services import backups, graphstore, locales, logs, notify, settings_service, totp, watcher
+from .security import HashingBusy, purge_sessions
+from .services import accounts, backups, graphstore, locales, logs, notify, settings_service, totp, watcher
 
 logger = logging.getLogger("nexlore")
 
@@ -77,9 +78,15 @@ def _write_log_mode(mode: str, until: datetime | None) -> None:
 
 
 async def _sweep_forever(stop: asyncio.Event) -> None:
-    """Enrolments and sign-ins waiting for their second factor run out; what ran out goes from memory."""
+    """Enrolments and sign-ins waiting for their second factor run out; what ran out goes from memory, ended
+    sessions from the database once an hour (they stayed until someone showed them again)."""
+    rounds = 0
     while not stop.is_set():
         totp.sweep()
+        if rounds % 60 == 0:
+            with SessionLocal() as db:
+                purge_sessions(db)
+        rounds += 1
         try:
             await asyncio.wait_for(stop.wait(), 60)
         except TimeoutError:
@@ -112,6 +119,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         tasks.append(asyncio.create_task(_sweep_forever(stop)))
         graphstore.worker.start()
     logger.info("nexlore %s started vault=%s", __version__, settings.vault_dir)
+    with SessionLocal() as db:
+        accounts.announce_setup_code(db)
     try:
         yield
     finally:
@@ -148,6 +157,13 @@ async def _validation_error(_request: Request, exc: RequestValidationError) -> J
 async def _too_large_a_number(_request: Request, _exc: OverflowError) -> JSONResponse:
     # A number past what SQLite holds (an id like 99999999999999999999 in the address): not a fault of the server.
     return JSONResponse(status_code=422, content={"detail": detail("invalid_input", "The input is not valid.")})
+
+
+@app.exception_handler(HashingBusy)
+async def _hashing_busy(_request: Request, _exc: HashingBusy) -> JSONResponse:
+    # Every slot for checking a password stayed taken for 15 s: many sign-ins at once, as in a flood of guesses.
+    return JSONResponse(status_code=503, headers={"Retry-After": "5"},
+                        content={"detail": detail("busy", "The server is busy. Try again in a moment.")})
 
 
 @app.exception_handler(UnicodeEncodeError)

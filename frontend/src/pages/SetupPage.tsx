@@ -14,6 +14,7 @@ export function SetupPage() {
   const { t, i18n } = useTranslation()
   const { status, refresh } = useAuth()
   const navigate = useNavigate()
+  const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [again, setAgain] = useState('')
@@ -25,13 +26,14 @@ export function SetupPage() {
   if (status === 'signedOut') return <Navigate to="/login" replace />
 
   const submit = async () => {
+    if (!code.trim()) return setProblem(errorText('setup_code_wrong'))
     if (!name.trim()) return setProblem(errorText('name_missing'))
     if (!password) return setProblem(errorText('password_missing'))
     if (password !== again) return setProblem(t('auth.mismatch'))
     setBusy(true)
     setProblem(null)
     try {
-      await authApi.setup(name.trim(), password, i18n.language)
+      await authApi.setup(name.trim(), password, i18n.language, code.trim())
       await refresh()
       navigate('/', { replace: true })
     } catch (error) {
@@ -51,7 +53,9 @@ export function SetupPage() {
         }}
       >
         <Problem text={problem} />
-        <Field label={t('auth.name')} value={name} onChange={(value) => setName(value.toLowerCase())} autoComplete="username" autoFocus hint={t('auth.nameHint')} />
+        {/* The code from the server's log: whoever reaches a fresh nexlore first should not become its operator. */}
+        <Field label={t('auth.setup.code')} value={code} onChange={setCode} autoComplete="off" autoFocus hint={t('auth.setup.codeHint')} />
+        <Field label={t('auth.name')} value={name} onChange={(value) => setName(value.toLowerCase())} autoComplete="username" hint={t('auth.nameHint')} />
         <Field
           label={t('auth.password')}
           value={password}

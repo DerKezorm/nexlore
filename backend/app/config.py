@@ -59,6 +59,12 @@ class Settings(BaseSettings):
     #: Addresses or networks of reverse proxies whose ``X-Forwarded-For`` may be believed, comma separated. Empty:
     #: the header is ignored, so that nobody dodges the sign-in brake with made-up addresses.
     trusted_proxies: str = ""
+    #: The code the first account must bring. Empty: nexlore makes one at every start until set up and writes it to
+    #: the log, so that whoever reaches a fresh instance first does not become its operator.
+    setup_token: str = ""
+    #: Addresses or networks the operator's settings may be changed from, comma separated (e.g. 192.168.0.0/16).
+    #: Empty: from anywhere. Behind a reverse proxy only with ``trusted_proxies`` set.
+    operator_networks: str = ""
     #: The watcher misses changes on some network shares and container mounts; polling always sees them.
     watch_polling: bool = False
     #: Seconds between two full scans of the vault, the safety net under the watcher. 0 turns it off.

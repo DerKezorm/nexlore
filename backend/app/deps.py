@@ -8,6 +8,7 @@ can make a browser send a form with the cookie, but not a request with a header 
 from __future__ import annotations
 
 import ipaddress
+import logging
 from functools import lru_cache
 from typing import Annotated
 
@@ -24,6 +25,8 @@ from .services import accounts, logs, paths, rights, totp
 
 DbSession = Annotated[Session, Depends(get_db)]
 
+logger = logging.getLogger("nexlore.auth")
+
 
 @lru_cache(maxsize=4)
 def _trusted_networks(spec: str) -> tuple[ipaddress.IPv4Network | ipaddress.IPv6Network, ...]:
@@ -39,29 +42,69 @@ def _trusted_networks(spec: str) -> tuple[ipaddress.IPv4Network | ipaddress.IPv6
     return tuple(networks)
 
 
-def _is_trusted_proxy(address: str) -> bool:
+def parse_address(text: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    """The address in a peer or a forwarded hop, without port, brackets or zone; IPv4 in IPv6 dress unwrapped."""
+    text = text.strip()
+    candidates = [text]
+    if text.startswith("[") and "]" in text:
+        candidates.insert(0, text[1 : text.index("]")])
+    elif text.count(":") == 1:
+        candidates.insert(0, text.split(":")[0])
+    for candidate in candidates:
+        try:
+            address = ipaddress.ip_address(candidate.split("%")[0])
+        except ValueError:
+            continue
+        if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
+            return address.ipv4_mapped
+        return address
+    return None
+
+
+def normal_address(text: str) -> str:
+    """One sender, one spelling, for the brake: IPv6 as its /64 (one connection usually holds a whole /64). Before,
+    every port and every way of writing an address counted as a new sender."""
+    address = parse_address(text)
+    if address is None:
+        return text.strip()[:64]
+    if isinstance(address, ipaddress.IPv6Address) and not address.is_loopback:
+        return str(ipaddress.ip_network(f"{address}/64", strict=False))
+    return str(address)
+
+
+def _is_trusted_proxy(text: str) -> bool:
     networks = _trusted_networks(get_settings().trusted_proxies)
-    if not networks:
+    address = parse_address(text) if networks else None
+    return address is not None and any(address in network for network in networks)
+
+
+_warned_unknown_proxy = False
+
+
+def behind_unknown_proxy(request: Request) -> bool:
+    """A request that came through a proxy nexlore was not told to believe: all senders look alike then."""
+    global _warned_unknown_proxy
+    if not request.headers.get("x-forwarded-for") or _trusted_networks(get_settings().trusted_proxies):
         return False
-    try:
-        parsed = ipaddress.ip_address(address)
-    except ValueError:
-        return False
-    return any(parsed in network for network in networks)
+    if not _warned_unknown_proxy:
+        _warned_unknown_proxy = True
+        logger.warning("Requests arrive with X-Forwarded-For, but NEXLORE_TRUSTED_PROXIES is not set: every sender "
+                       "looks like the proxy. Set it to the proxy's address so the sign-in brake can tell them apart.")
+    return True
 
 
 def client_ip(request: Request) -> str:
     """The sender's address, for the brake. ``X-Forwarded-For`` counts only from a configured trusted proxy, and
     then its rightmost hop that is not itself a trusted proxy: everything left of it the sender wrote itself."""
-    peer = (request.client.host if request.client else "-")[:64]
+    peer = request.client.host if request.client else "-"
     forwarded = request.headers.get("x-forwarded-for", "")
     if not forwarded or not _is_trusted_proxy(peer):
-        return peer
+        return normal_address(peer)
     hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
     for hop in reversed(hops):
         if not _is_trusted_proxy(hop):
-            return hop[:64]
-    return (hops[0] if hops else peer)[:64]
+            return normal_address(hop)
+    return normal_address(hops[0] if hops else peer)
 
 
 #: What an account that must set up its second factor may still reach: itself, the way out, and the setup.
@@ -81,9 +124,19 @@ def require_account(request: Request) -> AccountRow:
     return account
 
 
-def require_operator(account: Annotated[AccountRow, Depends(require_account)]) -> AccountRow:
+def require_operator(request: Request, account: Annotated[AccountRow, Depends(require_account)]) -> AccountRow:
     if account.role != OPERATOR:
         raise error("operator_only", "Only the operator may do this.", 403)
+    networks = _trusted_networks(get_settings().operator_networks)
+    if networks:
+        try:
+            sender = ipaddress.ip_address(client_ip(request).split("/")[0])
+        except ValueError:
+            sender = None
+        # An IPv6 sender stands as its /64 here: its network's first address is inside the operator's networks
+        # exactly when the /64 is (they are not smaller than /64 in a home network).
+        if sender is None or not any(sender in network for network in networks):
+            raise error("operator_network", "The operator's settings are open only from the home network.", 403)
     return account
 
 
