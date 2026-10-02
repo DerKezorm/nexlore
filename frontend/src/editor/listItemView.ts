@@ -1,5 +1,6 @@
 /**
- * The view of a list item: Milkdown's own (`@milkdown/components/list-item-block`, 7.22.2, MIT), with one change.
+ * The view of a list item: Milkdown's own (`@milkdown/components/list-item-block`, 7.22.2), with one change.
+ * Copyright (c) 2020-present Mirone, MIT License; the full notice is in THIRD-PARTY.md.
  *
  * Mounted, Milkdown's moved the content into its frame and, a frame later, set the selection back to where it was at
  * mounting. Typed fast after Enter (a macro, dictation: a few milliseconds between keys), that place was already

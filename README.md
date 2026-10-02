@@ -13,10 +13,11 @@ with WebGL and stays smooth with 100,000 notes. Folders, tags or topics found in
 
 ## Screenshots
 
-![A note in the reading view, with tabs, favorites, a callout, a table, tasks and an embedded part of another note](docs/screenshots/note.png)
+![A note in the reading view, with its properties, a callout, a table and tasks](docs/screenshots/note.png)
 
-*Reading: callouts, tables, tasks, highlights and a part of another note embedded, the way Obsidian shows them. Notes
-in tabs, favorites on top of the sidebar; on the right the local graph, the backlinks and every link of the note.*
+*Reading: properties, callouts, tables, tasks, highlights and parts of other notes embedded, the way Obsidian shows
+them. Recent notes and favorites on top of the sidebar; on the right the backlinks and every link of the note, next to
+the outline, comments, the local graph and the versions.*
 
 ![The editor with its toolbar, properties, a table and a numbered list](docs/screenshots/editor.png)
 
@@ -236,3 +237,4 @@ AGPL-3.0.
 
 The symbols for spaces and folders include the [Lucide](https://lucide.dev) icons (ISC, partly MIT from Feather);
 their notice is in `frontend/public/licenses/lucide.txt` and ships with the app at `/licenses/lucide.txt`.
+Everything else nexlore ships or depends on, with its licence, is listed in [THIRD-PARTY.md](THIRD-PARTY.md).
