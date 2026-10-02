@@ -150,6 +150,12 @@ async def _too_large_a_number(_request: Request, _exc: OverflowError) -> JSONRes
     return JSONResponse(status_code=422, content={"detail": detail("invalid_input", "The input is not valid.")})
 
 
+@app.exception_handler(UnicodeEncodeError)
+async def _not_unicode(_request: Request, _exc: UnicodeEncodeError) -> JSONResponse:
+    # JSON may carry a lone surrogate ("\ud800"); no file name, path or database text can hold it.
+    return JSONResponse(status_code=422, content={"detail": detail("invalid_input", "The input is not valid.")})
+
+
 @app.exception_handler(StarletteHTTPException)
 async def _plain_http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     # FastAPI's own 400 for a body that is not JSON carries only a text; give it a code like every other answer.

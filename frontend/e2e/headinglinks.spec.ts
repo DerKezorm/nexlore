@@ -42,3 +42,14 @@ test('the title of an embedded part opens its note at that part', async ({ page 
   await expect(page).toHaveURL(/#Far%20down$/)
   await expect(page.locator('article h2', { hasText: 'Far down' })).toBeInViewport()
 })
+
+test('an address with a broken escape after # opens the note and ignores it', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  for (const hash of ['%zz', '100%', '%E0%A4%A']) {
+    await page.goto(`/note/Heath/Pointer.md#${hash}`)
+    await expect(page.locator('article')).toBeVisible()
+    await expect(page.locator('header').first()).toBeVisible()
+  }
+  expect(errors).toEqual([])
+})

@@ -45,7 +45,6 @@ _TAG = re.compile(r"(?:(?<=\s)|^)#([\w/-]+)", re.MULTILINE)
 _SCHEME = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 _CALLOUT = re.compile(r"^[ \t]*(?:>[ \t]*)+\[!([\w-]+)\]", re.MULTILINE)
 _HIGHLIGHT = re.compile(r"==[^=\r\n]+==")
-_TEMPLATER = re.compile(r"<%[*_-]?[\s\S]*?[-_]?%>")
 _INLINE_FIELD = re.compile(r"^[ \t]*(?:[-*+][ \t]+)?[\w][\w -]*::[ \t]", re.MULTILINE)
 _TASK = re.compile(r"^[ \t]*(?:>[ \t]*)*(?:[-*+]|\d{1,9}[.)])[ \t]+\[(.)\](?:[ \t]|$)", re.MULTILINE)
 _MATH_SPAN = re.compile(r"\$\$.+?\$\$", re.DOTALL)
@@ -127,6 +126,33 @@ def _line_starts(text: str) -> list[int]:
     return starts
 
 
+#: What front matter may unfold to. YAML aliases let a few hundred bytes stand for millions of values (nine lists of
+#: nine references to the one before), and an alias may point at itself; Obsidian's properties never need either.
+FRONT_MAX_VALUES = 10_000
+FRONT_MAX_DEPTH = 32
+
+
+class TooBig(Exception):
+    pass
+
+
+def unfolded(value: Any) -> Any:
+    """A copy of the loaded YAML as plain values, refused when it unfolds beyond the limits above."""
+    budget = [FRONT_MAX_VALUES]
+
+    def copy(item: Any, depth: int) -> Any:
+        budget[0] -= 1
+        if budget[0] < 0 or depth > FRONT_MAX_DEPTH:
+            raise TooBig
+        if isinstance(item, dict):
+            return {key: copy(inner, depth + 1) for key, inner in item.items()}
+        if isinstance(item, list | tuple):
+            return [copy(inner, depth + 1) for inner in item]
+        return item
+
+    return copy(value, 0)
+
+
 def _front_matter(text: str, parsed: Parsed) -> None:
     opening = _FRONT_OPEN.match(text)
     if not opening:
@@ -138,8 +164,12 @@ def _front_matter(text: str, parsed: Parsed) -> None:
     raw = text[opening.end() : closing.start()]
     try:
         value = yaml.load(raw, Loader=_YAML_LOADER) if raw.strip() else {}
+        value = unfolded(value)
     except yaml.YAMLError as exc:
         parsed.front_error = str(exc).splitlines()[0][:200]
+        return
+    except (RecursionError, TooBig):
+        parsed.front_error = "front matter is nested too deeply or too large"
         return
     if isinstance(value, dict):
         parsed.front = {str(key): item for key, item in value.items()}
@@ -184,6 +214,19 @@ def _inline_code(text: str) -> list[tuple[int, int]]:
 def _count(features: dict[str, int], key: str, amount: int = 1) -> None:
     if amount:
         features[key] = features.get(key, 0) + amount
+
+
+def _templater_count(text: str) -> int:
+    """How many ``<% … %>`` there are. Searched by hand: a pattern would look for the end anew from every ``<%`` and,
+    with many ``<%`` and no ``%>``, take time growing with the square of the note (40 KB held the server 15 s)."""
+    count, at = 0, 0
+    while (start := text.find("<%", at)) != -1:
+        end = text.find("%>", start + 2)
+        if end == -1:
+            break
+        count += 1
+        at = end + 2
+    return count
 
 
 def aliases_of(front: Any) -> list[str]:
@@ -356,7 +399,7 @@ def parse(text: str) -> Parsed:
         parsed.task_lines.append((number, text[starts[number - 1] : end].rstrip("\r\n")))
     _count(features, "tasks", len(tasks))
     _count(features, "tasks_open", sum(1 for mark in tasks if mark == " "))
-    _count(features, "templater", len(_TEMPLATER.findall(text)))
+    _count(features, "templater", _templater_count(text))
     _count(features, "embeds", sum(1 for link in parsed.links if link.kind in (EMBED, MARKDOWN_EMBED)))
     if "excalidraw-plugin" in front:
         _count(features, "excalidraw")

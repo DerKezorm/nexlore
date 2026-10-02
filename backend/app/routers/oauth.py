@@ -19,6 +19,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
+import re
 import secrets
 import threading
 import time
@@ -147,8 +148,16 @@ def valid_redirect(uri: Any) -> bool:
     """HTTPS anywhere, or plain HTTP to the own machine; never a fragment, never a user in the address."""
     if not isinstance(uri, str) or len(uri) > 2048 or any(ord(char) < 33 for char in uri):
         return False
-    parts = urlsplit(uri)
-    if parts.fragment or parts.username or parts.password or not parts.hostname:
+    try:
+        # urlsplit throws on a broken bracket ("http://[::1/cb"), .port on a port that is not a number: both gave 500.
+        parts = urlsplit(uri)
+        hostname, _port = parts.hostname, parts.port
+    except ValueError:
+        return False
+    if parts.fragment or parts.username or parts.password or not hostname:
+        return False
+    # A name of letters, digits, dots and hyphens, or an address in brackets: no "*.example.com" or the like.
+    if not re.fullmatch(r"[a-z0-9.-]+|[0-9a-f:.]+", hostname):
         return False
     if parts.scheme == "https":
         return True

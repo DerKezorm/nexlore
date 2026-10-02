@@ -13,6 +13,15 @@ export function noteUrl(path: string): string {
   return '/note/' + path.split('/').map(encodeURIComponent).join('/')
 }
 
+/** A part of an address decoded, or null when it holds a broken escape such as `%zz` (decoding would throw). */
+export function decodedOrNull(text: string): string | null {
+  try {
+    return text.split('/').map(decodeURIComponent).join('/')
+  } catch {
+    return null
+  }
+}
+
 /** The note an address shows (the reverse of `noteUrl`), or null for any other page. */
 export function notePathOf(pathname: string): string | null {
   if (!pathname.startsWith('/note/')) return null

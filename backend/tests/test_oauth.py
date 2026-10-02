@@ -117,6 +117,14 @@ def test_nothing_of_it_while_mcp_or_connectors_are_off(world: World) -> None:
     "javascript:alert(1)",
     "ftp://connector.example.com/x",
     "https:///no-host",
+    # Review before 1.0.0: these gave 500 or were stored.
+    "http://[::1/cb",
+    "https://[abc/cb",
+    "http://[::1]evil.com/cb",
+    "https://[::1]x/cb",
+    "http://localhost:8080:evil.com/cb",
+    "https://*.example.com/cb",
+    "https://аpple.example/cb",  # a Cyrillic letter that looks Latin: only names in ASCII (punycode)
 ])
 def test_registration_refuses_unsafe_return_addresses(world: World, address: str) -> None:
     answer = stranger().post("/api/oauth/register", json={"redirect_uris": [address]})

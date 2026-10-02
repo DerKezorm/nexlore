@@ -13,7 +13,7 @@ import { ApiError, basesApi, everydayApi, looksApi, shareApi, tagsApi, vaultApi 
 import { errorText } from '../lib/errors'
 import { ensureFolder } from '../lib/folders'
 import { fileRoute } from '../lib/markdown'
-import { baseName, folderOf, noteUrl } from '../lib/vault'
+import { baseName, decodedOrNull, folderOf, noteUrl } from '../lib/vault'
 import { announceLeaving, forget, reveal, VAULT_ACTION_EVENT, within, type VaultAction } from '../lib/vaultActions'
 import { useStore } from '../state/store'
 import type { SymbolName } from '../lib/symbols'
@@ -26,7 +26,7 @@ import { Symbol } from './Symbol'
 /** The note or folder the address stands on, as a vault path (`/note/…`, `/file/…`), or null. */
 function shownPath(pathname: string): string | null {
   const found = /^\/(?:note|file)\/(.+)$/.exec(pathname)
-  return found ? found[1].split('/').map(decodeURIComponent).join('/') : null
+  return found ? decodedOrNull(found[1]) : null
 }
 
 export function VaultActions() {

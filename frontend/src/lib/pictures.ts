@@ -4,6 +4,7 @@
  * looked at, not packed). Saving one picture is a plain download; several go as one ZIP from the server.
  */
 import { api, fileUrl } from '../api/client'
+import { decodedOrNull } from './vault'
 
 export type Picture = { src: string; name: string; path: string | null }
 
@@ -24,7 +25,7 @@ export function picturesIn(root: Element): { pictures: Picture[]; elements: HTML
   const pictures = elements.map((image) => {
     const src = image.currentSrc || image.src
     const path = pathOfSrc(src)
-    const name = path ? path.split('/').pop()! : decodeURIComponent(new URL(src, window.location.origin).pathname.split('/').pop() || '') || image.alt || src
+    const name = path ? path.split('/').pop()! : decodedOrNull(new URL(src, window.location.origin).pathname.split('/').pop() || '') || image.alt || src
     return { src, name, path }
   })
   return { pictures, elements }

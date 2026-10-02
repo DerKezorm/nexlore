@@ -20,7 +20,7 @@ import { startTaken, startWish } from '../lib/start'
 import { CommandPalette } from './CommandPalette'
 import { LinkPreview } from './LinkPreview'
 import { VaultActions } from './VaultActions'
-import { folderOf, noteUrl } from '../lib/vault'
+import { folderOf, notePathOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 import { AccountMenu } from './AccountMenu'
 import { CaptureDialog } from './CaptureDialog'
@@ -175,7 +175,7 @@ export function AppShell() {
   // daily note. The sidebar has a + of its own beside each folder.
   const newNoteFolder = (): string | null => {
     if (location.pathname.startsWith('/note/')) {
-      const path = location.pathname.slice('/note/'.length).split('/').map(decodeURIComponent).join('/')
+      const path = notePathOf(location.pathname) ?? ''
       const role = spaces.find((space) => space.name === path.split('/')[0])?.role
       if (role === 'write' || role === 'manage') return folderOf(path)
     }

@@ -253,6 +253,12 @@ def conflict_name(rel: str, now: datetime) -> str:
     return f"{base} (conflict {now.strftime('%Y-%m-%d %H%M%S')}){suffix}"
 
 
+def _not_too_large(data: bytes) -> None:
+    """Every way a note is written ends here: counted in bytes, not characters (2 million emoji passed as 8 MB)."""
+    if len(data) > index.MAX_NOTE_BYTES:
+        raise VaultError("too_large", "A note holds at most 5 MB.", 413)
+
+
 def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str | None = None) -> Saved:
     """Write a note the client had loaded as ``base_hash``. Changed in between: into a conflict copy instead.
 
@@ -261,6 +267,7 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str | N
     conflict copy; the note itself stays with the lock holder. So does a text for a note that is not UTF-8 on disk:
     it was read with its bytes replaced, and writing it back would lose them.
     """
+    _not_too_large(data)
     rel = _parse(rel)
     source = actor.writes_as(source)
     if not paths.is_note(rel):
@@ -312,6 +319,7 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str | N
 
 def create_note(folder: str, title: str, data: bytes, *, actor: Actor, source: str | None = None) -> File:
     """A new note in ``folder`` (a space or a folder in it). The file name comes from the title, made safe."""
+    _not_too_large(data)
     # Control characters (NUL above all) would land in the front matter and make the file binary for Git and Obsidian.
     title = _CONTROL.sub(" ", title)
     folder = _parse(folder) if "/" in folder else _parse_space(folder)

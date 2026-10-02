@@ -20,7 +20,7 @@ import logging
 import re
 import secrets
 import zlib
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -93,7 +93,13 @@ def _fail(exc: VaultError) -> Exception:
 
 
 def _today(value: str | None) -> str:
-    return value or datetime.now().astimezone().date().isoformat()
+    if not value:
+        return datetime.now().astimezone().date().isoformat()
+    # The pattern lets 2026-13-40 through; the dashboard gave a server error on it.
+    try:
+        return date.fromisoformat(value).isoformat()
+    except ValueError as exc:
+        raise error("bad_date", "The date does not exist.", 400) from exc
 
 
 def _modified(mtime_ns: int) -> datetime:

@@ -137,6 +137,8 @@ def _rewrite(db: Session, path: str, change: Callable[[str], str], *, actor: Act
     new_data = change(content).encode("utf-8")
     if data.startswith(b"\xef\xbb\xbf"):
         new_data = b"\xef\xbb\xbf" + new_data
+    if len(new_data) > index.MAX_NOTE_BYTES:
+        raise InboxError("too_large", "A note holds at most 5 MB.", 413)
     stat = atomic_write(full, new_data)
     index.record(db, path, new_data, stat, source=source, author=actor.name, session=actor.client, file=note)
     db.commit()

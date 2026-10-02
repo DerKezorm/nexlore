@@ -10,18 +10,40 @@ import { useEffect, type RefObject } from 'react'
 
 const DONE = 'data-drawn'
 
+/**
+ * KaTeX as the app uses it. maxExpand and maxSize bound what macros and sizes may grow to; a formula nested deeper
+ * than MAX_FORMULA_DEPTH or longer than MAX_FORMULA stays its text: a reader's tab crashed at about 1,500 levels.
+ */
+const KATEX = { throwOnError: false, trust: false, strict: 'ignore', output: 'htmlAndMathml', maxExpand: 500, maxSize: 50 } as const
+const MAX_FORMULA = 20_000
+const MAX_FORMULA_DEPTH = 100
+
+/** Whether KaTeX may draw it: not too long, braces not nested too deep. */
+export function drawable(tex: string): boolean {
+  if (tex.length > MAX_FORMULA) return false
+  let depth = 0
+  for (const char of tex) {
+    if (char === '{') depth += 1
+    else if (char === '}') depth -= 1
+    if (depth > MAX_FORMULA_DEPTH) return false
+  }
+  return true
+}
+
 /** A formula as HTML (KaTeX); also the editor's preview of a formula block. */
 export async function mathHtml(tex: string, display: boolean): Promise<string> {
   const [{ default: katex }] = await Promise.all([import('katex'), import('katex/dist/katex.min.css')])
-  return katex.renderToString(tex, { displayMode: display, throwOnError: false, trust: false, strict: 'ignore', output: 'htmlAndMathml' })
+  if (!drawable(tex)) throw new Error('formula too deep')
+  return katex.renderToString(tex, { ...KATEX, displayMode: display })
 }
 
 async function drawMath(elements: HTMLElement[]): Promise<void> {
   const [{ default: katex }] = await Promise.all([import('katex'), import('katex/dist/katex.min.css')])
   for (const element of elements) {
     const tex = element.textContent ?? ''
+    if (!drawable(tex)) continue
     try {
-      katex.render(tex, element, { displayMode: element.dataset.display === 'true', throwOnError: false, trust: false, strict: 'ignore', output: 'htmlAndMathml' })
+      katex.render(tex, element, { ...KATEX, displayMode: element.dataset.display === 'true' })
     } catch {
       element.textContent = tex
     }

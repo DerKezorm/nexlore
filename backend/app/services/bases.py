@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from ..db import sort_key
 from ..models import File, Link, Tag
-from . import baseexpr, paths
+from . import baseexpr, mdparse, paths
 
 VIEW_TYPES = ("table", "cards", "list", "board")
 MAX_ROWS = 2000
@@ -67,9 +67,11 @@ def read(text: str) -> dict[str, Any]:
     if len(text) > MAX_TEXT:
         raise BaseError("The view is too long.")
     try:
-        data = yaml.safe_load(text) if text.strip() else {}
+        data = mdparse.unfolded(yaml.safe_load(text)) if text.strip() else {}
     except yaml.YAMLError as exc:
         raise BaseError("The view is no YAML nexlore can read.") from exc
+    except (RecursionError, mdparse.TooBig) as exc:
+        raise BaseError("The view is nested too deeply or too large.") from exc
     if data is None:
         data = {}
     if not isinstance(data, dict):

@@ -335,10 +335,47 @@ def _call(caller: Caller, client: str, name: str, args: dict[str, Any]) -> Any:
     raise ToolError(f"No tool called {name!r}.")
 
 
+#: How deep arguments may nest. A request nested 100 deep was stored, and the list of requests could then not be
+#: shown any more (the serializer gives up there): the owner could neither see nor decide anything.
+MAX_ARGUMENT_DEPTH = 20
+#: What SQLite and the routes behind the tools hold; a larger number answered 422 for the whole request.
+INT_LIMIT = 2**63 - 1
+
+
+def _shape_problem(args: Any) -> str | None:
+    """Arguments no tool takes, however the schema reads: nested too deep, lone surrogates (\\ud800, which cannot be
+    written anywhere and ended in a server error in 45 tools), whole numbers past 64 bits."""
+    waiting: list[tuple[Any, int]] = [(args, 0)]
+    while waiting:
+        value, depth = waiting.pop()
+        if depth > MAX_ARGUMENT_DEPTH:
+            return f"The arguments are nested deeper than {MAX_ARGUMENT_DEPTH} levels."
+        if isinstance(value, str):
+            try:
+                value.encode("utf-8")
+            except UnicodeEncodeError:
+                return "The arguments hold text that is not valid Unicode."
+        elif isinstance(value, bool):
+            continue
+        elif isinstance(value, int):
+            if not -INT_LIMIT - 1 <= value <= INT_LIMIT:
+                return "A number in the arguments is too large."
+        elif isinstance(value, dict):
+            for key, inner in value.items():
+                waiting.append((key, depth + 1))
+                waiting.append((inner, depth + 1))
+        elif isinstance(value, list):
+            waiting.extend((inner, depth + 1) for inner in value)
+    return None
+
+
 def _check(schema: dict[str, Any], args: dict[str, Any]) -> str | None:
     """What is wrong with the arguments by the tool's schema, before anything runs or waits for approval."""
     properties = schema.get("properties", {})
     required = schema.get("required", [])
+    shape = _shape_problem(args)
+    if shape:
+        return shape
     for key in required:
         if args.get(key) is None:
             return f"'{key}' is missing."

@@ -232,7 +232,7 @@ function obsidian(resolve: (target: string) => string | null, targets: Targets):
       level: 'inline',
       start: (src) => src.match(/<%/)?.index,
       tokenizer(src) {
-        const found = /^<%[\s\S]*?%>/.exec(src)
+        const found = /^<%[\s\S]{0,10000}?%>/.exec(src)
         if (found) return { type: 'templater', raw: found[0] }
       },
       renderer: (token) => `<code class="nn-templater">${escape(token.raw)}</code>`,
@@ -253,7 +253,7 @@ function obsidian(resolve: (target: string) => string | null, targets: Targets):
       level: 'inline',
       start: (src) => src.match(/%%/)?.index,
       tokenizer(src) {
-        const found = /^%%[\s\S]*?%%/.exec(src)
+        const found = /^%%[\s\S]{0,20000}?%%/.exec(src)
         if (found) return { type: 'comment', raw: found[0] }
       },
       renderer: () => '',
@@ -288,7 +288,7 @@ function obsidian(resolve: (target: string) => string | null, targets: Targets):
       level: 'inline',
       start: (src) => src.match(/==/)?.index,
       tokenizer(src) {
-        const found = /^==(?=[^\s=])([\s\S]*?[^\s=])==(?!=)/.exec(src)
+        const found = /^==(?=[^\s=])([\s\S]{0,5000}?[^\s=])==(?!=)/.exec(src)
         if (found) return { type: 'highlight', raw: found[0], tokens: this.lexer.inlineTokens(found[1]) }
       },
       renderer(token) {
@@ -434,27 +434,105 @@ function markdownFor(resolve: (target: string) => string | null, targets: Target
         return false
       },
     },
-    walkTokens(token: Token) {
-      if (token.type !== 'link' && token.type !== 'image') return
-      if (!safeUrl(token.href)) {
-        token.href = '#'
-        return
-      }
-      // A path in the vault: pictures come from the server, links to files lead to their page.
-      if (token.type === 'link' && targets.closed?.(token.href)) {
-        token.href = PLAIN
-        return
-      }
-      const target = targets.relative(token.href)
-      if (!target) return
-      // The picture the index found: next to the note, or else from the space's top, as Obsidian reads the path.
-      if (token.type === 'image') token.href = targets.fileUrl(resolve(token.href) ?? resolve(decoded(token.href)) ?? target)
-      else if (!isNotePath(target)) token.href = targets.fileHref(target)
-      else if (targets.noteHref) token.href = targets.noteHref(target)
-    },
   })
-  marked.use({ extensions: [...obsidian(resolve, targets), ...extras(notes)] })
-  return { marked, notes }
+  marked.use({ extensions: [...obsidian(resolve, targets), ...extras(notes)].map(windowed) })
+  const link = (token: Token) => {
+    if (token.type !== 'link' && token.type !== 'image') return
+    if (!safeUrl(token.href)) {
+      token.href = '#'
+      return
+    }
+    // A path in the vault: pictures come from the server, links to files lead to their page.
+    if (token.type === 'link' && targets.closed?.(token.href)) {
+      token.href = PLAIN
+      return
+    }
+    const target = targets.relative(token.href)
+    if (!target) return
+    // The picture the index found: next to the note, or else from the space's top, as Obsidian reads the path.
+    if (token.type === 'image') token.href = targets.fileUrl(resolve(token.href) ?? resolve(decoded(token.href)) ?? target)
+    else if (!isNotePath(target)) token.href = targets.fileHref(target)
+    else if (targets.noteHref) token.href = targets.noteHref(target)
+  }
+  // Every link goes through `link` before it is drawn. Not with marked's own walkTokens: it copies its list of
+  // results at every token, which made a note of 16,000 short paragraphs take 3.5 s, growing with the square.
+  return {
+    notes,
+    draw: (text: string) => {
+      const tokens = marked.lexer(text)
+      everyToken(tokens, link)
+      return marked.parser(tokens)
+    },
+    drawInline: (text: string) => {
+      const tokens = marked.Lexer.lexInline(text, marked.defaults)
+      everyToken(tokens, link)
+      return marked.Parser.parseInline(tokens, marked.defaults)
+    },
+  }
+}
+
+/** Calls `visit` for every token, however deep: in lists, tables, callouts, highlights and footnotes alike. */
+function everyToken(tokens: unknown[], visit: (token: Token) => void): void {
+  const waiting: unknown[] = [...tokens]
+  while (waiting.length) {
+    const value = waiting.pop()
+    if (Array.isArray(value)) {
+      waiting.push(...value)
+      continue
+    }
+    if (!value || typeof value !== 'object') continue
+    if (typeof (value as { type?: unknown }).type === 'string') visit(value as Token)
+    for (const inner of Object.values(value)) if (Array.isArray(inner)) waiting.push(inner)
+  }
+}
+
+/** How far an extension looks ahead for where it might start. */
+const LOOK_AHEAD = 400
+
+/**
+ * marked asks every extension where it might start, before each piece of plain text and before each block, and an
+ * extension that finds nothing has read to the end of the note: 16,000 brackets took 1.4 s, 64 KB of short
+ * paragraphs 6.5 s, growing with the square. Here the search stops after LOOK_AHEAD characters and answers with a cut
+ * there: inline at a blank (or the window's end), so the text before it becomes one piece; for blocks at the start of
+ * a line, where marked joins a paragraph it cut with its continuation. What is drawn stays the same.
+ */
+function windowed(extension: TokenizerAndRendererExtension): TokenizerAndRendererExtension {
+  if (!('level' in extension) || !extension.start) return extension
+  const start = extension.start
+  const inline = extension.level === 'inline'
+  return {
+    ...extension,
+    start(src) {
+      if (src.length <= LOOK_AHEAD + 200) return start.call(this, src)
+      const found = start.call(this, src.slice(0, LOOK_AHEAD + 200))
+      if (typeof found === 'number' && found <= LOOK_AHEAD) return found
+      if (!inline) {
+        const line = src.lastIndexOf('\n', LOOK_AHEAD)
+        return line > 0 ? line + 1 : found
+      }
+      let cut = LOOK_AHEAD - 64
+      while (cut < LOOK_AHEAD && !/\s/.test(src[cut])) cut += 1
+      return cut
+    },
+  }
+}
+
+/** Deeper than this a note is shown as plain text: browsers give up on quotes or lists nested hundreds deep. */
+export const MAX_NESTING = 160
+
+/** The longest run of quote marks, indentation and list markers at the start of any line. */
+function deepestNesting(body: string): number {
+  let deepest = 0
+  for (const match of body.matchAll(/^(?:[ \t>]|[*+-][ \t]|\d{1,9}[.)][ \t])+/gm)) {
+    // Indentation alone is code, not nesting; it counts only with a quote mark or a list marker in it.
+    if (/[>*+\-.)]/.test(match[0])) deepest = Math.max(deepest, match[0].length)
+  }
+  return deepest
+}
+
+/** The note as text, escaped, for when it cannot be drawn. */
+function asPlainText(body: string): string {
+  return `<pre class="nn-plain-note">${escape(body)}</pre>`
 }
 
 /** The front matter at the top of a note: shown as properties, not as text. */
@@ -493,8 +571,16 @@ export function renderMarkdown(
   notePath: string | null = null,
   targets: Targets = appTargets(notePath),
 ): string {
-  const { marked, notes } = markdownFor(resolve, targets)
-  const html = (marked.parse(withoutFrontMatter(body)) as string) + notes.section((text) => marked.parseInline(text) as string)
+  const text = withoutFrontMatter(body)
+  // Nested so deep that the browser would give up, or more than marked can read: the note as text, never a blank page.
+  if (deepestNesting(text) > MAX_NESTING) return asPlainText(text)
+  const { draw, drawInline, notes } = markdownFor(resolve, targets)
+  let html: string
+  try {
+    html = draw(text) + notes.section(drawInline)
+  } catch {
+    return asPlainText(text)
+  }
   return html.replace(/<a href="#nn-plain"[^>]*>([\s\S]*?)<\/a>/g, '$1')
 }
 

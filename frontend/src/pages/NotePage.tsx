@@ -53,7 +53,7 @@ import { errorText } from '../lib/errors'
 import { isFileTarget, isNotePath } from '../lib/files'
 import { distinctOutgoing, LinkIndex, linkedSpace, linkName } from '../lib/links'
 import { fileRoute, formatDate, renderMarkdown, withoutFrontMatter } from '../lib/markdown'
-import { baseName, folderOf, noteUrl } from '../lib/vault'
+import { baseName, decodedOrNull, folderOf, noteUrl } from '../lib/vault'
 import { versionSource } from '../lib/versions'
 import { announceLeaving, askVaultAction, copyText, LEAVING_EVENT, within, type Leaving } from '../lib/vaultActions'
 import { useCommands, type Command } from '../lib/commands'
@@ -694,7 +694,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   // A heading asked for in the address (a favorite of it, `#Heading`): scrolled to once the note is drawn, once.
   const wantedHeading = useRef<string | null>(null)
   useEffect(() => {
-    wantedHeading.current = side === 'left' && location.hash ? decodeURIComponent(location.hash.slice(1)) : null
+    // A hand-made address with a broken escape (`#%zz`) is ignored: decoding it threw and emptied the whole page.
+    wantedHeading.current = side === 'left' && location.hash ? decodedOrNull(location.hash.slice(1)) : null
   }, [side, location.hash, path])
   useEffect(() => {
     const heading = wantedHeading.current
