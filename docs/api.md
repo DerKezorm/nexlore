@@ -9,9 +9,10 @@ MCP for AI programs is a separate way in with its own keys, see [mcp.md](mcp.md)
 
 ## Switching it on
 
-API tokens are off until the operator opens them: Settings, Server, AI, API and plugins, card "API tokens". There the
-operator also sees every token (whose it is, its level, when it was last used, never the token itself) and may block
-one for good. Switched off again, every token answers `401 api_off`; the tokens stay and work again when switched on.
+API tokens are off until the operator opens them: Settings, Server, AI, API and plugins, card "API tokens". While
+they are off, no account can make a token (the account page says so). There the operator also sees every token (whose
+it is, its level, when it was last used, never the token itself) and may block one for good. Switched off again, every
+token answers `401 api_off`; the tokens stay and work again when switched on.
 
 Then every account makes its tokens on its account page: My account, Connections, card "API tokens".
 
