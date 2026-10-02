@@ -77,5 +77,22 @@
       "Eine Woche bevor eines deiner API-Token abläuft, steht es gelb in der Liste, und nexlore sagt dir Bescheid (Mein Konto, Benachrichtigungen, abschaltbar).",
       "Der Teil der Servereinstellungen heißt jetzt „KI, API und Plugins“."
     ]
+  },
+  "0.4.1": {
+    "lead": "Ein Link zu einer Überschrift führt jetzt genau dorthin, und ein paar Dinge, die nicht so liefen, wie sie sollten, sind repariert.",
+    "sections": [
+      {
+        "title": "Links springen zur Überschrift",
+        "where": "Jede Notiz mit einem Link wie [[Notiz#Überschrift]]",
+        "body": "Ein Klick auf einen Link zu einer Überschrift öffnet die Notiz nicht mehr ganz oben, sondern genau an dieser Überschrift, beim Lesen wie im Editor und auch am Titel eines eingebetteten Abschnitts. Groß- und Kleinschreibung spielen dabei keine Rolle. Lässt du den Namen der Notiz weg, also [[#Überschrift]], springst du innerhalb derselben Notiz."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Ein Link wie [[#Überschrift]] erscheint nicht mehr blass als fehlende Notiz und steht beim Aufräumen nicht mehr unter den Links ins Leere.",
+      "Im Log lässt sich die Detailstufe wieder für eine Stunde hochstellen; vorher sprang die Auswahl still zurück.",
+      "Hinweiskästen der Art question, help und faq sind im Editor gelb wie beim Lesen, nicht mehr violett.",
+      "Einige Texte nannten noch den alten Weg „Mein Konto, KI“; sie führen jetzt über Verbindungen."
+    ]
   }
 }

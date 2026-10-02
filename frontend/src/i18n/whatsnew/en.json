@@ -77,5 +77,22 @@
       "A week before one of your API tokens runs out, it stands out in yellow in the list, and nexlore tells you (My account, Notifications, can be switched off).",
       "The part of the server settings is now called “AI, API and plugins”."
     ]
+  },
+  "0.4.1": {
+    "lead": "A link to a heading now takes you right there, and a few things that did not work as they should are repaired.",
+    "sections": [
+      {
+        "title": "Links jump to the heading",
+        "where": "Any note with a link like [[Note#Heading]]",
+        "body": "A click on a link to a heading no longer opens the note at the very top but right at that heading, while reading as in the editor, and on the title of an embedded part too. Upper or lower case does not matter. If you leave out the note's name, as in [[#Heading]], you jump within the same note."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "A link like [[#Heading]] no longer shows pale as a missing note, and cleaning up no longer lists it among the links to nothing.",
+      "The detail of the log can be turned up for an hour again; before, the choice quietly fell back.",
+      "Callouts of the kinds question, help and faq are yellow in the editor as when reading, no longer violet.",
+      "A few texts still named the old way “My account, AI”; they now lead through Connections."
+    ]
   }
 }
