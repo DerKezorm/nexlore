@@ -30,7 +30,8 @@ The level decides which tools a key can have at all:
 | Drafts | the above, plus `propose_change` and `propose_note` |
 | Write | the above, plus every tool that makes, changes, moves, deletes or shares |
 
-The tools follow what the interface can do: spaces (`create_space`, `set_space_options`), folders (`create_folder`,
+The tools follow what the interface can do: spaces (`create_space`, `rename_space` with links naming it following,
+`space_options`, `set_space_options`, `list_templates`), favorites (`set_favorite`), folders (`create_folder`,
 `rename_folder`, `move_folder`), notes (`create_note`, `create_from_template`, `write_note`, `edit_note`,
 `set_property`, `rename_note` and `move_note` with links following, `merge_notes`), versions (`list_versions`,
 `read_version`, `restore_version`), the trash (`list_trash`, `trash_note`, `trash_folder`, `restore_from_trash`,
@@ -40,7 +41,7 @@ attachments (`list_attachments`, `upload_attachment` as base64, at most 10 MB), 
 `unlinked_mentions`, `link_mention`, `cleanup_report`), members (`list_members`, `invite_member`, `set_member_role`,
 `remove_member`), public pages (`list_shares`, `create_share`, `remove_share`) and `delete_space`. `tools/list` gives
 each with its description and input schema, and marks reading tools `readOnlyHint` and deleting, sharing and member
-tools `destructiveHint`. A space cannot be renamed in the interface, so no tool does it.
+tools `destructiveHint`.
 
 Search results mark the words found «like this» in their snippet.
 

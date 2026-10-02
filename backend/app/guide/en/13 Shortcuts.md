@@ -16,6 +16,8 @@ Back to [[00 Welcome|Welcome]].
 | `Alt+R` | column beside the note |
 | Menu key or `Shift+F10` | context menu of the chosen entry |
 
+The shortcuts with `Alt` work as long as you are not typing in a field or in the text of a note. From there the command palette (`Ctrl+P`) reaches the same commands.
+
 Keys of your own for any command: in the command palette, the keyboard symbol beside the command, then the keys.
 
 ## In the editor

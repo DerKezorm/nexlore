@@ -43,7 +43,7 @@ Im Editor steht über dem Text der Bereich **Eigenschaften**. Das sind kurze, fe
 - Gespeichert wird wie der Text von selbst, und in der Datei ändert sich nur die geänderte Zeile.
 - Der kleine Pfeil vor „Eigenschaften“ klappt den Bereich zu und wieder auf.
 - In der Datei stehen die Eigenschaften oben zwischen zwei Zeilen mit `---` (Frontmatter), so wie Obsidian sie schreibt. **MD** in der Werkzeugleiste zeigt sie so.
-- Die Leseansicht zeigt nur den Text; die Eigenschaften siehst du beim Bearbeiten. Auf öffentlichen Seiten bleiben sie verborgen.
+- Beim Lesen stehen die Eigenschaften in einem Kasten über dem Text, den du einklappen kannst; zugeklappt bleibt er es für alle Notizen. Ändern kannst du sie nur beim Bearbeiten. Auf öffentlichen Seiten bleiben sie verborgen.
 
 ## Nur was du änderst, ändert sich
 

@@ -43,7 +43,7 @@ In the editor, above the text, is the part called **Properties**. They are short
 - They are saved by themselves like the text, and in the file only the row that changed changes.
 - The small arrow before "Properties" folds the part shut and open again.
 - In the file the properties stand at the top between two lines of `---` (front matter), the way Obsidian writes them. **MD** in the toolbar shows them so.
-- The reading view shows the text only; you see the properties while editing. Public pages leave them out.
+- While reading, the properties stand in a box above the text that you can fold shut; folded, it stays so for every note. You change them only while editing. Public pages leave them out.
 
 ## Only what you change changes
 

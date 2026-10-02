@@ -134,9 +134,10 @@ An outgoing link with `path: null` leads to no note (or to one the token may not
 
 ### `GET /api/v1/search?q=...&limit=30&offset=0`
 
-The search of the search page, with its operators: words (each must occur), `"a phrase"`, `-left_out`, `OR`,
-`tag:#x`, `path:Folder`, `file:name`, `task:words`, `task-todo:`, `task-done:`, `line:(a b)`, `section:(a b)`,
-`[property:value]`. `limit` at most 100.
+The search of the search page, with its operators: words (each must occur, also in the middle of a word),
+`"a phrase"`, `-left_out`, `a OR b`, `tag:garden` (and the tags below it), `path:Folder`, `space:Garden`, `file:name`,
+`task:` (notes with open tasks; the lines are the task lines), `[property]`, `[property:value]`, `changed:7d` (also
+`h` and `w`). A minus before an operator leaves out what it finds (`-tag:draft`). `limit` at most 100.
 
 ```json
 {"notes": [{"path": "Garden/Beans.md", "title": "Beans",

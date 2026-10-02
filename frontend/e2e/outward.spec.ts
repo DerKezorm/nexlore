@@ -96,3 +96,17 @@ test('the operator reads the log under Server, narrows it, and may download it',
   await expect(page.getByRole('link', { name: 'Download' })).toHaveAttribute('href', '/api/logs/download')
   expect(problems).toEqual([])
 })
+
+test('the operator turns the log detail up for an hour, and it falls back by itself', async ({ page }) => {
+  await page.goto('/settings?tab=server&sub=log')
+  const detail = page.getByRole('combobox', { name: 'Detail', exact: true })
+  try {
+    const saved = page.waitForResponse((answer) => answer.url().endsWith('/api/logs/level') && answer.request().method() === 'PUT')
+    await detail.selectOption('detailed')
+    expect((await saved).status()).toBe(200)
+    await expect(page.getByText(/^Back to normal at /)).toBeVisible()
+    await expect(detail).toHaveValue('detailed')
+  } finally {
+    await page.request.put('/api/logs/level', { data: { mode: 'normal', minutes: 0 }, headers: { 'X-Nexlore-Client': 'tab-e2e-logmode' } })
+  }
+})

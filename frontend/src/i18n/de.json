@@ -1239,7 +1239,7 @@
       "allow": "MCP erlauben",
       "allowHint": "Programme von außen erreichen Notizen mit einem Schlüssel je Konto.",
       "maxLevel": "Höchste Stufe eines Schlüssels",
-      "keysWhere": "Schlüssel legt jedes Konto selbst an, unter Mein Konto → KI von außen, samt den Zeilen zum Einfügen ins Programm.",
+      "keysWhere": "Schlüssel legt jedes Konto selbst an, unter Mein Konto → Verbindungen → KI von außen, samt den Zeilen zum Einfügen ins Programm.",
       "keysLater": "Sobald es an ist, legt jedes Konto seine Schlüssel unter Mein Konto an.",
       "keysLink": "Zu meinen Schlüsseln",
       "oauth": "Konnektoren dürfen sich anmelden",
@@ -1281,7 +1281,7 @@
       "text": "Jedes Konto darf seinen eigenen KI-Dienst anbinden und im Editor nutzen. Der Text, den jemand wählt, verlässt dabei den Server in Richtung dieses Dienstes.",
       "allow": "KI in Notizen erlauben",
       "allowHint": "Aus: Nichts geht hinaus, und der Editor bietet keine KI an. Die Konten behalten ihren Zugang für später.",
-      "where": "Jedes Konto richtet seinen Dienst unter Mein Konto → KI in Notizen ein.",
+      "where": "Jedes Konto richtet seinen Dienst unter Mein Konto → Verbindungen → KI in Notizen ein.",
       "whereLink": "Zu meinem Zugang"
     },
     "guide": {
@@ -2179,7 +2179,7 @@
   "connect": {
     "title": "{{name}} möchte nexlore nutzen",
     "text": "Angemeldet als {{account}}. Danach geht es zurück zu {{host}}.",
-    "after": "Das Programm steht danach unter Mein Konto, KI wie ein Schlüssel, mit denselben Rechten je Werkzeug. Dort trennst du es jederzeit.",
+    "after": "Das Programm steht danach unter Mein Konto, Verbindungen wie ein Schlüssel, mit denselben Rechten je Werkzeug. Dort trennst du es jederzeit.",
     "allow": "Erlauben",
     "decline": "Ablehnen",
     "failed": "Diese Anmeldung geht nicht weiter"

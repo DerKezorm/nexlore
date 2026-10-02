@@ -16,6 +16,8 @@ Zurück zu [[00 Willkommen|Willkommen]].
 | `Alt+R` | Spalte neben der Notiz |
 | Menütaste oder `Shift+F10` | Kontextmenü am markierten Eintrag |
 
+Die Kürzel mit `Alt` wirken, solange du nicht gerade in ein Feld oder in den Text einer Notiz schreibst. Von dort erreichst du dieselben Befehle über die Befehlspalette (`Strg+P`).
+
 Eigene Tasten für jeden Befehl legst du in der Befehlspalette fest: das Tastatursymbol neben dem Befehl, dann die Tasten.
 
 ## Im Editor

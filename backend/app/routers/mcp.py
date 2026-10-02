@@ -70,8 +70,9 @@ TOOLS: list[dict[str, Any]] = [
          "limit": {"type": "integer", "minimum": 1, "maximum": 50}}}},
     {"name": "search_notes", "group": "read", "level": "read",
      "description": "Search like the search page of nexlore, with operators: words, \"a phrase\", -left_out, "
-                    "tag:#x, path:Folder, file:name, task:words, task-todo:, task-done:, line:(a b), section:(a b), "
-                    "[property:value]. Gives each note with the lines that fit.",
+                    "a OR b, tag:x, path:Folder, space:Name, file:name, task: (notes with open tasks), [property], "
+                    "[property:value], changed:7d (also h and w); a minus before an operator leaves out what it "
+                    "finds. Gives each note with the lines that fit.",
      "inputSchema": {"type": "object", "required": ["query"], "properties": {
          "query": {"type": "string"}, "limit": {"type": "integer", "minimum": 1, "maximum": 50}}}},
     {"name": "find_notes", "group": "read", "level": "read",

@@ -60,7 +60,7 @@ MODES: dict[str, dict[str, int]] = {
 }
 DEEP_MODES = ("detailed", "trace")
 DEFAULT_MODE = "normal"
-ALLOWED_MINUTES = (30, 120, 480, 0)
+ALLOWED_MINUTES = (30, 60, 120, 480, 0)
 LEVEL_ORDER = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 
 LINE_PATTERN = re.compile(

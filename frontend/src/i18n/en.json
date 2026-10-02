@@ -1239,7 +1239,7 @@
       "allow": "Allow MCP",
       "allowHint": "Programs outside reach notes with a key per account.",
       "maxLevel": "Highest level a key may have",
-      "keysWhere": "Keys are made by every account for itself, under My account → AI from outside, with the lines to paste into a program.",
+      "keysWhere": "Keys are made by every account for itself, under My account → Connections → AI from outside, with the lines to paste into a program.",
       "keysLater": "Once it is on, every account makes its keys under My account.",
       "keysLink": "Go to my keys",
       "oauth": "Connectors may sign in",
@@ -1281,7 +1281,7 @@
       "text": "Every account may connect its own AI service and use it in the editor. The text a person chooses leaves the server for that service.",
       "allow": "Allow AI in notes",
       "allowHint": "Off: nothing goes out, and the editor offers no AI. Accounts keep their access for later.",
-      "where": "Each account sets up its service under My account → AI in notes.",
+      "where": "Each account sets up its service under My account → Connections → AI in notes.",
       "whereLink": "Go to my access"
     },
     "guide": {
@@ -2179,7 +2179,7 @@
   "connect": {
     "title": "{{name}} wants to use nexlore",
     "text": "Signed in as {{account}}. Afterwards you are sent back to {{host}}.",
-    "after": "The program then appears under My account, AI, like a key, with the same rights per tool. You disconnect it there at any time.",
+    "after": "The program then appears under My account, Connections, like a key, with the same rights per tool. You disconnect it there at any time.",
     "allow": "Allow",
     "decline": "Decline",
     "failed": "This sign-in cannot go on"
