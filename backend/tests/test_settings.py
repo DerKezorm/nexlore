@@ -16,7 +16,7 @@ from app.models import Account, AuthSession, Setting
 from app.security import decrypt_secret
 from app.services import backups, mailer, settings_service
 
-from .conftest import make_account, sign_in
+from .conftest import PASSWORD, make_account, sign_in
 
 
 class FakeSmtp:
@@ -150,7 +150,7 @@ def test_a_backup_keeps_the_secret_key_and_a_restore_signs_everybody_out(
         name = backups.create().name
         key_file.write_text("a key made later", encoding="utf-8")
         monkeypatch.setattr(backups, "restart_soon", lambda: None)
-        assert client.post(f"/api/backups/{name}/restore").status_code == 202
+        assert client.post(f"/api/backups/{name}/restore", json={"password": PASSWORD}).status_code == 202
         with SessionLocal() as db:
             assert db.scalar(select(AuthSession)) is not None
         assert backups.apply_pending() is True
