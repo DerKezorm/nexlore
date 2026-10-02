@@ -144,10 +144,11 @@ test('a summary goes in after the block with the caret, and a written text into 
 
   await page.getByTestId('editor-toolbar').getByRole('button', { name: 'AI' }).click()
   await page.getByRole('menuitem', { name: 'Write for me …' }).click()
-  // Turned down: the service's own words stand after the sentence, "400" alone says nothing.
+  // Turned down: the status stands after the sentence. The stand-in runs on this machine, in the own network: the
+  // words of such a service are never shown to a member (review before 1.0.0), only those of a public one.
   await dialog.getByLabel('What should be written?').fill('Turn this down')
   await dialog.getByRole('button', { name: 'Write', exact: true }).click()
-  await expect(dialog.getByRole('alert')).toHaveText('The service answered with an error. (400: temperature: not allowed here)')
+  await expect(dialog.getByRole('alert')).toHaveText('The service answered with an error. (400)')
   await dialog.getByLabel('What should be written?').fill('An agenda for Thursday')
   await dialog.getByRole('button', { name: 'Write', exact: true }).click()
   // The fence the model put around it is gone.

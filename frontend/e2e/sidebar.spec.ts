@@ -473,13 +473,14 @@ test('pictures and other files stand in the tree as in Obsidian and open their p
   // The folder counts every file below it, not only notes: Anhänge holds one picture.
   const attachments = tree.locator('li[data-path="Media/Anhänge"]').getByTestId('folder-count')
   await expect(attachments).toHaveText('1')
-  await picture.click()
-  await expect(page).toHaveURL(/\/file\/Media\/sunset\.png$/)
-  // The menu copies a link that embeds it, and renaming keeps its ending.
+  // Renaming keeps its ending.
   await picture.click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: 'Rename …' })).toBeVisible()
   await page.getByRole('menuitem', { name: 'Rename …' }).click()
   await expect(page.getByRole('dialog').getByRole('textbox')).toHaveValue('sunset.png')
   await page.keyboard.press('Escape')
+  // A click opens its page.
+  await picture.click()
+  await expect(page).toHaveURL(/\/file\/Media\/sunset\.png$/)
   expect(problems).toEqual([])
 })
