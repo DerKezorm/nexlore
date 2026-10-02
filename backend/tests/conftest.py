@@ -76,6 +76,7 @@ def clean_db(schema: None) -> Iterator[None]:
     # count as the trash of this one.
     shutil.rmtree(Path(_DATA) / "trash", ignore_errors=True)
     brake.forget()
+    notify.forget()
     graphstore.forget()
     mcp.forget()
     apitokens.forget()

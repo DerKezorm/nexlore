@@ -6,6 +6,7 @@ Invitations are in ``routers/members.py``, next to the rights they hand out.
 from __future__ import annotations
 
 import logging
+import unicodedata
 from typing import Annotated, Any
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
@@ -87,9 +88,12 @@ DISPLAY_NAME_MAX = 80
 
 
 def check_display_name(value: str) -> str:
-    """Spaces gathered, no control characters, at most DISPLAY_NAME_MAX characters; empty shows the name."""
-    if any(ord(char) < 32 or ord(char) == 127 for char in value):
-        raise error("display_name_invalid", "A display name cannot hold control characters.", 422)
+    """Spaces gathered, no control or format characters, at most DISPLAY_NAME_MAX characters; empty shows the name.
+
+    Format characters (Unicode Cf: the right-to-left override, zero-width spaces) let a name read other than it is.
+    """
+    if any(ord(char) < 32 or ord(char) == 127 or unicodedata.category(char) == "Cf" for char in value):
+        raise error("display_name_invalid", "A display name cannot hold control or invisible characters.", 422)
     clean = " ".join(value.split())
     if len(clean) > DISPLAY_NAME_MAX:
         raise error(
@@ -326,9 +330,24 @@ def change_password(payload: PasswordChangeIn, request: Request, account: Accoun
 def set_profile(payload: ProfileIn, account: Account, db: DbSession) -> dict[str, Any]:
     row = db.get(AccountRow, account.id)
     assert row is not None
-    row.display_name = check_display_name(payload.display_name)
+    shown = check_display_name(payload.display_name)
+    if shown and _taken_by_another(db, row.id, shown):
+        # Nobody shows up as somebody else: not under another account's name, nor its display name.
+        raise error("display_name_taken", "Another account goes by this name.", 409)
+    row.display_name = shown
     db.commit()
     return account_view(row)
+
+
+def _taken_by_another(db: DbSession, own_id: int, shown: str) -> bool:
+    folded = unicodedata.normalize("NFKC", shown).casefold()
+    for other_id, name, display in db.execute(select(AccountRow.id, AccountRow.name, AccountRow.display_name)):
+        if other_id == own_id:
+            continue
+        for taken in (name, display):
+            if taken and unicodedata.normalize("NFKC", taken).casefold() == folded:
+                return True
+    return False
 
 
 @router.post("/me/whats-new/seen", summary="\"What's new\" of the running version is read or put away")

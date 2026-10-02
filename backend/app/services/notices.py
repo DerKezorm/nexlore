@@ -43,14 +43,21 @@ class NoticeView:
     created_at: datetime
 
 
-def invite(db: Session, space: Space, target: Account, role: str, by: Account) -> None:
-    """An invitation for ``target``; one more for the same space replaces the open one (with the newer right)."""
+def invite(db: Session, space: Space, target: Account | None, role: str, by: Account) -> None:
+    """An invitation for ``target``; one more for the same space replaces the open one (with the newer right).
+
+    ``target`` None (an unknown name) asks the same question of the database and changes nothing, so that the answer
+    takes about as long either way. Only a new invitation, or a new right in it, sends a notification.
+    """
     open_ = db.scalar(
         select(SpaceNotice).where(
-            SpaceNotice.account_id == target.id, SpaceNotice.space_id == space.id,
+            SpaceNotice.account_id == (target.id if target is not None else -1), SpaceNotice.space_id == space.id,
             SpaceNotice.kind == INVITE, SpaceNotice.done_at.is_(None),
         )
     )
+    if target is None:
+        return
+    news = open_ is None or open_.role != role
     if open_ is None:
         open_ = SpaceNotice(account_id=target.id, space_id=space.id, kind=INVITE)
         db.add(open_)
@@ -59,9 +66,11 @@ def invite(db: Session, space: Space, target: Account, role: str, by: Account) -
     open_.actor = by.name
     open_.actor_id = by.id
     open_.created_at = datetime.now(UTC)
-    from . import notify
+    if news:
+        from . import notify
 
-    notify.send(target.id, "invite", f"{by.name} invites you into {space.folder}", "Answer under New in nexlore.", "/")
+        notify.send(target.id, "invite", f"{by.name} invites you into {space.folder}", "Answer under New in nexlore.",
+                    "/")
 
 
 def tell(db: Session, space: Space, kind: str, actor: Account, subject: str, role: str = "",
@@ -94,6 +103,16 @@ def _own(db: Session, account: Account, notice_id: int) -> SpaceNotice:
     return row
 
 
+def _may_invite(db: Session, inviter: Account | None, space: Space) -> bool:
+    """Whether whoever sent the invitation may still invite into the space: manages it, or is the operator."""
+    if inviter is None:
+        return False
+    if inviter.role == OPERATOR:
+        return True
+    membership = db.get(Membership, (space.id, inviter.id))
+    return membership is not None and membership.role == MANAGE
+
+
 def answer(db: Session, account: Account, notice_id: int, *, accept: bool) -> str | None:
     """Accept or decline an invitation; the space's name when accepted. Anything else: seen."""
     row = _own(db, account, notice_id)
@@ -102,12 +121,16 @@ def answer(db: Session, account: Account, notice_id: int, *, accept: bool) -> st
         db.commit()
         return None
     space = db.get(Space, row.space_id) if row.space_id is not None else None
-    if space is None:
+    inviter = db.get(Account, row.actor_id) if row.actor_id is not None else None
+    created = row.created_at if row.created_at.tzinfo else row.created_at.replace(tzinfo=UTC)
+    # Still good only while it is not too old and its sender may still invite: a manager taken out or set down
+    # could otherwise make an accomplice manager through an invitation sent before.
+    too_old = created < datetime.now(UTC) - timedelta(days=INVITE_DAYS)
+    if space is None or too_old or not _may_invite(db, inviter, space):
         db.commit()
         raise NoticeError("not_found")
     if db.get(Membership, (space.id, account.id)) is None:
         members = db.scalar(select(func.count()).select_from(Membership).where(Membership.space_id == space.id)) or 0
-        inviter = db.get(Account, row.actor_id) if row.actor_id is not None else None
         if members == 0 and inviter is not None and inviter.role == OPERATOR:
             # A space without members is the operator's; the operator who invited stays in it as manager.
             db.add(Membership(space_id=space.id, account_id=inviter.id, role=MANAGE))

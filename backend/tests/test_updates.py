@@ -166,8 +166,10 @@ def test_a_private_repository_or_an_error_page_is_no_answer(
     monkeypatch.setattr(updates.httpx, "Client", transport(200, {"tag_name": "v9.9.9"}))
     shown = client.post("/api/about/updates/check").json()
     assert (shown["latest"], shown["newer"]) == ("v9.9.9", True)
-    # An error page is no answer, whatever it carries.
-    monkeypatch.setattr(updates.httpx, "Client", transport(503, {"tag_name": "v9.9.9"}))
+    # An error page is no answer, whatever it carries; what the last good check found stays (review before 1.0.0).
+    monkeypatch.setattr(updates.httpx, "Client", transport(503, {"tag_name": "v1.2.3"}))
+    assert client.post("/api/about/updates/check").json()["latest"] == "v9.9.9"
+    updates.forget()
     assert client.post("/api/about/updates/check").json()["latest"] is None
     monkeypatch.setattr(updates.httpx, "Client", transport(200, ["not", "a", "release"]))
     assert client.post("/api/about/updates/check").json()["latest"] is None

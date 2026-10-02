@@ -748,7 +748,10 @@
       "too_many_tokens": "Ein Konto hat höchstens 20 Token.",
       "setup_code_wrong": "Der Einrichtungscode stimmt nicht. Er steht im Log des Servers: docker logs nexlore.",
       "operator_network": "Die Einstellungen des Betreibers sind nur aus dem Heimnetz erreichbar.",
-      "bad_date": "Dieses Datum gibt es nicht."
+      "bad_date": "Dieses Datum gibt es nicht.",
+      "display_name_taken": "Ein anderes Konto heißt schon so.",
+      "display_name_invalid": "Ein Anzeigename darf keine Steuer- oder unsichtbaren Zeichen enthalten.",
+      "public_url_missing": "Für Mails braucht nexlore seine öffentliche Adresse; der Betreiber trägt sie unter Einstellungen ein."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."

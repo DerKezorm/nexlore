@@ -200,7 +200,9 @@ def test_the_tasks_of_the_morning_go_out_once_at_the_chosen_time(garden: tuple, 
     later = early.replace(hour=8)
     assert notify.tasks_due(later) == 1
     assert sent.titles() == ["1 due today, 1 overdue"]
-    assert "Water the fern" in sent.posts[0][1]["message"]
+    # The notes the tasks stand in, never their words (review before 1.0.0: nothing of a note leaves nexlore).
+    assert sent.posts[0][1]["message"] == "- Tasks"
+    assert "fern" not in str(sent.posts)
     assert notify.tasks_due(later.replace(hour=9)) == 0
 
 

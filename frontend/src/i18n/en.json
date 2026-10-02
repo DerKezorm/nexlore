@@ -748,7 +748,10 @@
       "too_many_tokens": "An account holds at most 20 tokens.",
       "setup_code_wrong": "The setup code is wrong. It is in the server's log: docker logs nexlore.",
       "operator_network": "The operator's settings are open only from the home network.",
-      "bad_date": "That date does not exist."
+      "bad_date": "That date does not exist.",
+      "display_name_taken": "Another account goes by this name.",
+      "display_name_invalid": "A display name cannot hold control or invisible characters.",
+      "public_url_missing": "Mail needs the public address of nexlore; the operator sets it under Settings."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."

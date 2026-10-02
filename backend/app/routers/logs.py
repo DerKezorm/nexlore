@@ -58,7 +58,8 @@ def read_level(operator: OperatorAccount) -> LogMode:
 def set_level(operator: OperatorAccount, change: LogModeChange) -> LogMode:
     if logs.env_mode():
         raise error("log_level_from_environment", "The log level is fixed by NEXLORE_LOG_LEVEL.", 409)
-    if change.minutes not in logs.ALLOWED_MINUTES:
+    deep = change.mode in logs.DEEP_MODES
+    if change.minutes not in (logs.ALLOWED_MINUTES if deep else (0, *logs.ALLOWED_MINUTES)):
         raise error("duration_not_allowed", "This duration is not offered.", 422)
     state = logs.set_mode(change.mode, change.minutes)
     return LogMode(mode=state.mode, until=state.until, fixed_by_env=state.fixed_by_env)

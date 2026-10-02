@@ -12,6 +12,7 @@ from ..deps import Account, DbSession
 from ..errors import error
 from ..models import OPERATOR
 from ..models import Account as AccountRow
+from ..security import brake
 from ..services import mailer, notify
 
 router = APIRouter(prefix="/api/me/notify", tags=["notify"])
@@ -61,8 +62,17 @@ def save(body: NotifyIn, account: Account, db: DbSession) -> dict[str, Any]:
     return _view(db, row)
 
 
+#: Tests one account may send in an hour.
+TESTS_PER_HOUR = 10
+
+
 @router.post("/test", summary="Send a test through every way the account has, now")
 def test(account: Account, db: DbSession) -> dict[str, str]:
+    # A test waits for its answer in the request: a few per hour, so that nobody ties up the server with them.
+    key = f"notify-test:{account.id}"
+    if brake.wait_seconds(key, TESTS_PER_HOUR):
+        raise error("too_many_attempts", "Too many tests. Try again later.", 429)
+    brake.failed(key)
     row = db.get(AccountRow, account.id)
     assert row is not None
     mine = notify.choices(row)

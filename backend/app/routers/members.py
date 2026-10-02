@@ -139,10 +139,15 @@ def set_member(
     target = accounts.by_name(db, person)
     membership = db.get(Membership, (space.id, target.id)) if target is not None else None
     if membership is None and not beyond and (target is None or target.id != account.id):
-        # A name brings an invitation, answered under "New"; unknown names get the same answer and nothing happens.
+        # A name brings an invitation, answered under "New"; unknown names get the same answer, the same work and
+        # the same limit, and nothing happens.
+        key = f"invite-by:{account.id}"
+        if brake.wait_seconds(key, NAMES_PER_HOUR):
+            raise error("too_many_attempts", "Too many invitations. Try again later.", 429)
+        brake.failed(key)
+        notices.invite(db, space, target, payload.role, account)
+        db.commit()
         if target is not None:
-            notices.invite(db, space, target, payload.role, account)
-            db.commit()
             logger.info("Invited space_id=%s name=%s role=%s by=%s", space.id, target.name, payload.role, account.name)
         response.status_code = 202
         return {"name": person, "role": payload.role, "invited": True}
@@ -267,12 +272,26 @@ class AcceptIn(BaseModel):
     password: str = Field(max_length=200)
 
 
+#: Invitation mails one account may send in an hour; invitations by name one account may hand out in an hour.
+MAILS_PER_HOUR = 20
+NAMES_PER_HOUR = 60
+
+
 def _create(db: DbSession, request: Request, by: AccountRow, space: Space | None, payload: InviteIn) -> dict:
     email = payload.email.strip()
     if email and not accounts.EMAIL_PATTERN.match(email):
         raise error("invalid_email", "This is not a mail address.", 422)
     if payload.send and not email:
         raise error("invalid_email", "Sending needs a mail address.", 422)
+    if payload.send:
+        # A mail goes out under the operator's mail server: never with a link to an address the request made up
+        # (the Host header), and not without end.
+        if not settings_service.public_url(db):
+            raise error("public_url_missing", "Mail needs the public address of nexlore; the operator sets it.", 409)
+        key = f"invite-mail:{by.id}"
+        if brake.wait_seconds(key, MAILS_PER_HOUR):
+            raise error("too_many_attempts", "Too many invitation mails. Try again later.", 429)
+        brake.failed(key)
     try:
         invite, token = accounts.create_invite(
             db, by, space_id=space.id if space else None, space_role=payload.role if space else "",

@@ -50,7 +50,9 @@ DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 NOISY_LOGGERS = ("httpx", "httpcore", "watchfiles", "multipart", "uvicorn.access")
 #: Never finer than WARNING, whatever the level: SQLAlchemy writes every statement with its values from INFO on, and
 #: the values are note texts, password and key hashes, sealed seeds.
-SILENT_LOGGERS = ("sqlalchemy.engine", "sqlalchemy.pool")
+#: Never finer than WARNING, at any level: SQL with its values, the addresses httpx calls (a webhook's token sits in
+#: its path), uvicorn's access lines (paths with invitation and share tokens, which our own request line masks).
+SILENT_LOGGERS = ("sqlalchemy.engine", "sqlalchemy.pool", "httpx", "httpcore", "uvicorn.access")
 
 MODES: dict[str, dict[str, int]] = {
     "quiet": {"app": logging.WARNING, "root": logging.WARNING, "libs": logging.WARNING},
@@ -60,7 +62,9 @@ MODES: dict[str, dict[str, int]] = {
 }
 DEEP_MODES = ("detailed", "trace")
 DEFAULT_MODE = "normal"
-ALLOWED_MINUTES = (30, 60, 120, 480, 0)
+#: How long detailed and trace may run; they always end (review before 1.0.0: "0" kept them on for good, writing
+#: request paths and outside addresses for as long as nobody looked).
+ALLOWED_MINUTES = (30, 60, 120, 480)
 LEVEL_ORDER = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
 
 LINE_PATTERN = re.compile(
@@ -103,10 +107,15 @@ def _one_line(text: str) -> str:
 
 #: The key of a calendar subscription travels in its address (a calendar app sends no header): never in the log.
 _FEED_KEY = re.compile(r"(nx[aclr]_)[A-Za-z0-9_-]+")
+#: Tokens that stand in an address without a prefix of their own: invitations, public pages, sign-in returns.
+_PATH_TOKEN = re.compile(r"(/(?:api/)?(?:invite|public|s|oauth/authorize)/)[A-Za-z0-9_-]{12,}")
+_QUERY_TOKEN = re.compile(r"([?&](?:access_token|token|key|code|state|code_challenge|code_verifier)=)[^&\s\"']+")
 
 
 def redact(text: str) -> str:
-    return _FEED_KEY.sub(r"\1…", text)
+    text = _FEED_KEY.sub(r"\1…", text)
+    text = _PATH_TOKEN.sub(r"\1…", text)
+    return _QUERY_TOKEN.sub(r"\1…", text)
 
 
 class _ContextFilter(logging.Filter):

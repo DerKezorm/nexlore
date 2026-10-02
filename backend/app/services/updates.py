@@ -10,10 +10,11 @@ answer is simply not there. While the repository is private, GitHub answers "not
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -34,7 +35,11 @@ INTERVAL = timedelta(hours=24)
 #: The page should not wait on GitHub.
 TIMEOUT = httpx.Timeout(6.0, connect=4.0)
 
-_PATTERN = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)")
+_PATTERN = re.compile(r"^v?(\d{1,6})\.(\d{1,6})\.(\d{1,6})$")
+#: GitHub's answer is a few KB; more is not a release.
+MAX_ANSWER = 256 * 1024
+#: After a failed check, asked again sooner than a day.
+RETRY = timedelta(hours=1)
 
 
 @dataclass(frozen=True)
@@ -66,11 +71,22 @@ def is_newer(latest: str, current: str) -> bool:
 
 
 def _ask() -> str | None:
+    """The newest release's tag, only when it reads as a version (``v1.2.3``): it is shown, put into an address and
+    into a notification's title. Read up to MAX_ANSWER; no proxy or credentials from the environment."""
     try:
-        with httpx.Client(timeout=TIMEOUT) as client:
-            answer = client.get(get_settings().update_url or API_URL, headers={"accept": "application/vnd.github+json"})
+        with (
+            httpx.Client(timeout=TIMEOUT, trust_env=False) as client,
+            client.stream("GET", get_settings().update_url or API_URL,
+                          headers={"accept": "application/vnd.github+json"}) as answer,
+        ):
             answer.raise_for_status()
-            return str(answer.json().get("tag_name") or "") or None
+            body = b""
+            for chunk in answer.iter_bytes():
+                body += chunk
+                if len(body) > MAX_ANSWER:
+                    raise ValueError("answer too large")
+        tag = json.loads(body).get("tag_name")
+        return tag.strip() if isinstance(tag, str) and parse(tag) is not None else None
     except Exception as problem:  # noqa: BLE001
         # Every exception, not a list of names: in Nexview httpx.InvalidURL slipped past httpx.HTTPError and took a
         # whole page with it. A side matter that fails must break nothing.
@@ -85,10 +101,15 @@ def state(*, on: bool = True, force: bool = False) -> State:
         return _known if _known is not None else State(current=__version__)
     now = datetime.now(UTC)
     with _lock:
-        fresh = _known is not None and _known.checked_at is not None and now - _known.checked_at < INTERVAL
+        wait = INTERVAL if _known is not None and _known.latest else RETRY
+        fresh = _known is not None and _known.checked_at is not None and now - _known.checked_at < wait
         if fresh and not force:
             return _known  # type: ignore[return-value]
         latest = _ask()
+        if latest is None and _known is not None and _known.latest:
+            # One failed check (GitHub down, a proxy in the way) keeps what the last good one found.
+            _known = replace(_known, checked_at=now)
+            return _known
         _known = State(
             current=__version__,
             latest=latest,

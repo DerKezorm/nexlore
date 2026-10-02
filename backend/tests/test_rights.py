@@ -16,6 +16,7 @@ from sqlalchemy import select
 from app.db import SessionLocal
 from app.main import app
 from app.models import OPERATOR, Account, Invite, Version, utcnow
+from app.services import settings_service
 
 from .conftest import PASSWORD, join, make_account, sign_in
 
@@ -254,6 +255,8 @@ def test_invitations_are_checked(world: World) -> None:
     assert world.anna.post("/api/spaces/Private/invites", json={"role": "read", "email": "no"}).status_code == 422
     # Without a mail server nothing is sent, and asking to send says so.
     before = len(world.anna.get("/api/spaces/Shared/members").json()["invites"])
+    with SessionLocal() as db:
+        settings_service.save(db, {"public_url": "https://notes.example.com"})
     sent = world.anna.post("/api/spaces/Shared/invites", json={"role": "read", "email": "a@example.com", "send": True})
     assert sent.status_code == 502 and sent.json()["detail"]["code"] == "mail_off"
     # Nothing stays behind: its link was to go by mail only and would be lost (review P6.13).

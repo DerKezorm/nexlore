@@ -58,4 +58,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 ENTRYPOINT ["/entrypoint.sh"]
 # No --forwarded-allow-ips "*": which proxies may speak for a sender will be decided inside the app (M4), so that
 # nobody can dodge the sign-in brake with a made-up X-Forwarded-For.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--workers", "1", "--no-proxy-headers"]
+# No access log: nexlore logs each request itself, with tokens in paths masked; uvicorn's lines would carry them.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--workers", "1", "--no-proxy-headers", "--no-access-log"]

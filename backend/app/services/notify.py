@@ -20,8 +20,10 @@ line, the names of notes and people, never a note's text.
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from email.message import EmailMessage
@@ -54,7 +56,16 @@ LOW_DISK_SHARE = 0.05
 
 #: Set by the tests: deliver at once instead of in the worker.
 INLINE = False
-_worker = ThreadPoolExecutor(max_workers=2, thread_name_prefix="notify")
+_worker = ThreadPoolExecutor(max_workers=4, thread_name_prefix="notify")
+#: What one account may receive in an hour, and how many may wait at all. A reader naming somebody a hundred times
+#: in comments queued a hundred posts; a slow webhook then held up everybody's, the operator's alarms too.
+PER_HOUR = 60
+MAX_WAITING = 500
+_counts: dict[int, list[float]] = {}
+_counts_lock = threading.Lock()
+_waiting = 0
+#: Control characters and line breaks of any kind: a mail subject must be one line, or the mail is never sent.
+_UNSAFE_LINE = re.compile("[\x00-\x1f\x7f\x85\u2028\u2029]")
 
 
 class NotifyError(Exception):
@@ -113,14 +124,20 @@ def _link(path: str) -> str:
 
 
 def _post(url: str, body: dict[str, Any]) -> int:
-    with httpx.Client(timeout=TIMEOUT, follow_redirects=False) as client:
-        return client.post(url, json=body).status_code
+    """The status of the answer, and nothing of its body: it is not read at all (300 MB were read into memory
+    before). No proxy or credentials from the environment."""
+    with (
+        httpx.Client(timeout=TIMEOUT, follow_redirects=False, trust_env=False) as client,
+        client.stream("POST", url, json=body) as response,
+    ):
+        return response.status_code
 
 
 def _mail(db: Session, to: str, title: str, message: str, url: str) -> None:
     mail = EmailMessage()
     mail["To"] = to
-    mail["Subject"] = title
+    # A line break in a note's title made the subject invalid and the mail was never sent.
+    mail["Subject"] = " ".join(_UNSAFE_LINE.sub(" ", title).split())[:200]
     ending = "\nYou get this because you switched it on in nexlore.\n"
     mail.set_content(message + (f"\n\n{url}\n" if url else "\n") + ending)
     mailer._send(db, mail)
@@ -169,17 +186,53 @@ def send(account_id: int, event: str, title: str, message: str, path: str = "", 
             return
         if not account.notify_webhook_enc and not (choices(account)["email"] and account.email):
             return
+    if not _room_for(account_id):
+        return
     if INLINE:
         deliver(account_id, event, title, message, path, priority)
-    else:
-        _worker.submit(_safely, account_id, event, title, message, path, priority)
+        return
+    global _waiting
+    with _counts_lock:
+        if _waiting >= MAX_WAITING:
+            logger.warning("Notification dropped: %s are waiting already", MAX_WAITING)
+            return
+        _waiting += 1
+    _worker.submit(_safely, account_id, event, title, message, path, priority)
+
+
+def _room_for(account_id: int) -> bool:
+    """Whether the account may get one more this hour; the first dropped one is logged."""
+    now = time.monotonic()
+    with _counts_lock:
+        recent = [moment for moment in _counts.get(account_id, []) if now - moment < 3600]
+        if len(recent) >= PER_HOUR:
+            if len(recent) == PER_HOUR:
+                logger.warning("Notifications for account_id=%s held back: %s in the last hour", account_id, PER_HOUR)
+                recent.append(now)
+            _counts[account_id] = recent
+            return False
+        recent.append(now)
+        _counts[account_id] = recent
+        return True
+
+
+def forget() -> None:
+    """For the tests: the hourly counts start again."""
+    global _waiting
+    with _counts_lock:
+        _counts.clear()
+        _waiting = 0
 
 
 def _safely(*args: Any) -> None:
+    global _waiting
     try:
         deliver(*args)
     except Exception:
         logger.exception("Notification failed")
+    finally:
+        with _counts_lock:
+            _waiting = max(0, _waiting - 1)
 
 
 def operators(title: str, message: str, path: str = "", priority: int = 4) -> None:
@@ -226,9 +279,10 @@ def tasks_due(now: datetime | None = None) -> int:
             count_today, count_overdue = today_items["total"], overdue["total"]
             if not count_today and not count_overdue:
                 continue
-            lines = [f"- {item['text']}" for item in (overdue["items"] + today_items["items"])[:10]]
+            # The notes they stand in, never the tasks' own words: what leaves nexlore is titles and names.
+            titles = list(dict.fromkeys(item["title"] for item in overdue["items"] + today_items["items"]))[:10]
             send(row.id, "tasks", f"{count_today} due today, {count_overdue} overdue",
-                 "\n".join(lines), "/tasks", 3)
+                 "\n".join(f"- {title}" for title in titles), "/tasks", 3)
             sent += 1
     return sent
 
