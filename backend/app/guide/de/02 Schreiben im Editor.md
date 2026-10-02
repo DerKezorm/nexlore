@@ -16,6 +16,9 @@ Mit **Bearbeiten** öffnest du den Editor. Er zeigt den Text so, wie er später 
 2. **Der Schrägstrich:** Tipp `/` am Anfang einer Zeile, dann ein Wort wie „Tabelle“ oder „Aufgabe“.
 3. **Markdown direkt:** `**fett**`, `# Überschrift` oder `- ` für eine Liste gehen genauso.
 
+> [!tip] Markdown üben
+> Wer Markdown von Grund auf lernen will, übt auf der Website mit kleinen Aufgaben: [Markdown üben](https://www.nexlore.de/anleitung/ueben/). Ein Konto brauchst du dafür nicht, und was du dort übst, funktioniert hier genauso.
+
 Ein Rechtsklick in den Text öffnet ein Menü mit Format, Absatz und Einfügen.
 
 ## Der Griff neben jedem Absatz

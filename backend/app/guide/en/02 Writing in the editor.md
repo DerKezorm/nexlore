@@ -16,6 +16,9 @@ Back to [[00 Welcome|Welcome]].
 2. **The slash:** type `/` at the start of a line, then a word like "table" or "task".
 3. **Markdown itself:** `**bold**`, `# Heading` or `- ` for a list work just as well.
 
+> [!tip] Practise Markdown
+> To learn Markdown from scratch, practise on the website with small tasks: [Practise Markdown](https://www.nexlore.de/en/guide/practice/). You don't need an account, and what you practise there works the same here.
+
 A right-click into the text opens a menu with format, paragraph and insert.
 
 ## The grip beside every paragraph
