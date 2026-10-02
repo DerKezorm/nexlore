@@ -94,5 +94,39 @@
       "Callouts of the kinds question, help and faq are yellow in the editor as when reading, no longer violet.",
       "A few texts still named the old way “My account, AI”; they now lead through Connections."
     ]
+  },
+  "1.0.0": {
+    "lead": "nexlore 1.0. Before this version it went through a large security review with one question: what happens when you open nexlore to the internet? What came out is in here: a fresh server nobody else can claim, a sign-in strangers cannot use to lock you out, and no way into your home network through nexlore.",
+    "sections": [
+      {
+        "title": "The first start asks for a code",
+        "where": "The setup page, the first time you open nexlore",
+        "body": "Whoever reached a fresh nexlore first used to become its operator. Now the setup page asks for a code that nexlore writes to its log when it starts (docker logs nexlore), or the one you set as NEXLORE_SETUP_TOKEN. Servers already set up notice nothing."
+      },
+      {
+        "title": "Guessing passwords cannot keep you out",
+        "where": "Sign-in",
+        "body": "After ten wrong passwords an account still waits a quarter of an hour, but the browser you signed in with before gets in anyway: a stranger's guesses lock the account against the world, not against you. The brake now counts per sender and name, so one person guessing behind your proxy no longer slows everybody else."
+      },
+      {
+        "title": "AI services in your own network, by name",
+        "where": "Settings, Server, AI, API and plugins, AI in notes",
+        "body": "Members may use any public AI service. A service in your own network (Ollama at home, for example) works once you list its host under Services in your own network; every other address there is refused, so nobody can reach your router or NAS through nexlore. If your members already use one at home, add it there."
+      },
+      {
+        "title": "Backups ask for your password",
+        "where": "Settings, Server, Backups",
+        "body": "Deleting a backup and going back to one now ask for your password once more, as downloading did. Backups, the database and the log are readable only for nexlore's own user."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "A new password, or Sign out everywhere, also ends every program that signed in over OAuth; a refresh token used twice ends its program, and programs sign in again after 90 days.",
+      "An approval runs once, however often it is clicked, and a program never has the operator's powers.",
+      "Display names cannot pass for another account any more.",
+      "Notes written to slow nexlore down (thousands of open brackets, deep quotes, YAML aliases, endless headings) are read quickly now, on the server and in the browser; the reading view never goes blank.",
+      "At most 60 notifications an hour reach one account, and invitation mails need the public address.",
+      "The README has a checklist for running nexlore on the internet."
+    ]
   }
 }

@@ -94,5 +94,39 @@
       "Hinweiskästen der Art question, help und faq sind im Editor gelb wie beim Lesen, nicht mehr violett.",
       "Einige Texte nannten noch den alten Weg „Mein Konto, KI“; sie führen jetzt über Verbindungen."
     ]
+  },
+  "1.0.0": {
+    "lead": "nexlore 1.0. Vor dieser Fassung ging es durch eine große Sicherheitsprüfung mit einer Frage: Was passiert, wenn du nexlore ins Internet stellst? Das Ergebnis steckt hier drin: ein frischer Server, den kein Fremder übernehmen kann, eine Anmeldung, mit der dich niemand aussperrt, und kein Weg über nexlore in dein Heimnetz.",
+    "sections": [
+      {
+        "title": "Der erste Start fragt nach einem Code",
+        "where": "Die Einrichtungsseite, beim ersten Öffnen von nexlore",
+        "body": "Wer ein frisches nexlore zuerst erreichte, wurde bisher sein Betreiber. Jetzt fragt die Einrichtung nach einem Code, den nexlore beim Start ins Log schreibt (docker logs nexlore), oder nach dem, den du als NEXLORE_SETUP_TOKEN setzt. Eingerichtete Server merken davon nichts."
+      },
+      {
+        "title": "Passwörter raten sperrt dich nicht aus",
+        "where": "Anmeldung",
+        "body": "Nach zehn falschen Passwörtern wartet ein Konto weiter eine Viertelstunde, aber der Browser, mit dem du dich schon angemeldet hast, kommt trotzdem hinein: Ein Fremder sperrt das Konto gegen die Welt, nicht gegen dich. Die Bremse zählt jetzt je Absender und Name, ein Rater hinter deinem Proxy bremst also nicht mehr alle anderen."
+      },
+      {
+        "title": "KI-Dienste im eigenen Netz, mit Namen",
+        "where": "Einstellungen, Server, KI, API und Plugins, KI in Notizen",
+        "body": "Mitglieder dürfen jeden öffentlichen KI-Dienst nutzen. Ein Dienst im eigenen Netz (etwa Ollama zu Hause) geht, sobald du seinen Host unter Dienste im eigenen Netz einträgst; jede andere Adresse dort wird abgelehnt, so erreicht niemand über nexlore deinen Router oder dein NAS. Nutzen Mitglieder schon einen zu Hause, trag ihn dort ein."
+      },
+      {
+        "title": "Sicherungen fragen nach deinem Passwort",
+        "where": "Einstellungen, Server, Sicherung",
+        "body": "Eine Sicherung löschen und zu einer zurückgehen fragt jetzt noch einmal dein Passwort, wie schon das Herunterladen. Sicherungen, Datenbank und Log kann nur noch nexlores eigener Nutzer lesen."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Ein neues Passwort oder Überall abmelden beendet auch jedes Programm, das sich per OAuth angemeldet hat; ein doppelt benutztes Refresh-Token beendet sein Programm, und Programme melden sich nach 90 Tagen neu an.",
+      "Eine Freigabe läuft einmal, wie oft auch geklickt wird, und ein Programm hat nie die Rechte des Betreibers.",
+      "Anzeigenamen können sich nicht mehr als ein anderes Konto ausgeben.",
+      "Notizen, die nexlore ausbremsen sollen (tausende offene Klammern, tiefe Zitate, YAML-Aliasse, endlose Überschriften), liest es jetzt schnell, auf dem Server und im Browser; die Leseansicht bleibt nie leer.",
+      "Höchstens 60 Benachrichtigungen je Stunde erreichen ein Konto, und Einladungsmails brauchen die öffentliche Adresse.",
+      "Die README hat eine Checkliste für nexlore im Internet."
+    ]
   }
 }
