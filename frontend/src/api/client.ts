@@ -811,8 +811,10 @@ export const adminApi = {
   backups: () => api<Backup[]>('/api/backups'),
   makeBackup: (note: string) => api<{ name: string }>('/api/backups', { method: 'POST', body: { note } }),
   checkBackup: (name: string) => api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/check`, { method: 'POST' }),
-  restoreBackup: (name: string) => api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/restore`, { method: 'POST' }),
-  deleteBackup: (name: string) => api<void>(`/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+  restoreBackup: (name: string, password: string) =>
+    api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/restore`, { method: 'POST', body: { password } }),
+  deleteBackup: (name: string, password: string) =>
+    api<void>(`/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE', body: { password } }),
   /** The archive itself; the password is asked again (empty for an account that signs in through the provider). */
   downloadBackup: (name: string, password: string) =>
     api<Blob>(`/api/backups/${encodeURIComponent(name)}/download`, { method: 'POST', body: { password }, blob: true }),

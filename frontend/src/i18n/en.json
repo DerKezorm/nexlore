@@ -1232,7 +1232,8 @@
       "restoreTitle": "Restore this backup?",
       "restoreText": "The current state is backed up first. nexlore then restarts, and everybody signs in again.",
       "restarting": "nexlore restarts with the backup. Sign in again in a moment.",
-      "restartingWait": "This page waits and goes to the sign-in as soon as nexlore is back."
+      "restartingWait": "This page waits and goes to the sign-in as soon as nexlore is back.",
+      "deleteText": "Deleting a backup asks for your password once more: a stolen session must not throw every copy away."
     },
     "languages": {
       "title": "Languages",

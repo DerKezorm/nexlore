@@ -1232,7 +1232,8 @@
       "restoreTitle": "Diese Sicherung wiederherstellen?",
       "restoreText": "Der jetzige Stand wird vorher gesichert. Danach startet nexlore neu, und alle melden sich neu an.",
       "restarting": "nexlore startet mit der Sicherung neu. Gleich neu anmelden.",
-      "restartingWait": "Die Seite wartet und führt zur Anmeldung, sobald nexlore wieder da ist."
+      "restartingWait": "Die Seite wartet und führt zur Anmeldung, sobald nexlore wieder da ist.",
+      "deleteText": "Eine Sicherung zu löschen fragt dein Passwort noch einmal: Eine gestohlene Sitzung soll nicht jede Kopie wegwerfen können."
     },
     "languages": {
       "title": "Sprachen",

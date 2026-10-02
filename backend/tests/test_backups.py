@@ -15,7 +15,7 @@ from app.db import SessionLocal
 from app.models import OPERATOR, Version
 from app.services import backups, index
 
-from .conftest import make_account, sign_in
+from .conftest import PASSWORD, make_account, sign_in
 
 
 @pytest.fixture(autouse=True)
@@ -204,7 +204,13 @@ def test_backup_routes_are_for_the_operator(client: TestClient, vault: Path, mon
     assert client.post(f"/api/backups/{name}/check").json()["usable"] is True
     restarted: list[bool] = []
     monkeypatch.setattr(backups, "restart_soon", lambda: restarted.append(True))
-    assert client.post(f"/api/backups/{name}/restore").json()["restarting"] is True and restarted
+    # Going back, and deleting one, ask for the password again (review before 1.0.0).
+    refused = client.post(f"/api/backups/{name}/restore", json={"password": "not it"})
+    assert refused.status_code == 401 and not restarted
+    assert client.request("DELETE", f"/api/backups/{name}", json={}).status_code == 401
+    answer = client.post(f"/api/backups/{name}/restore", json={"password": PASSWORD})
+    assert answer.json()["restarting"] is True and restarted
+    assert client.request("DELETE", f"/api/backups/{name}", json={"password": PASSWORD}).status_code == 204
     assert client.post("/api/backups/..%2Fx/check").status_code in (404, 422)
     assert get_settings().data_dir.is_dir()
 

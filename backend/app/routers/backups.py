@@ -49,9 +49,17 @@ def check(name: BackupName, _operator: OperatorAccount) -> dict[str, Any]:
     return {**asdict(brief), "usable": brief.usable}
 
 
+class PasswordIn(BaseModel):
+    #: The operator's password once more; an account from a provider has none and needs none.
+    password: str = Field(default="", max_length=200)
+
+
 @router.post("/{name}/restore", status_code=202)
-def restore(name: BackupName, _operator: OperatorAccount) -> dict[str, Any]:
-    """Checks, keeps the current state as a backup, and restarts; the restore happens at the next start."""
+def restore(name: BackupName, body: PasswordIn, request: Request, operator: OperatorAccount) -> dict[str, Any]:
+    """Checks, keeps the current state as a backup, and restarts; the restore happens at the next start. Asks for
+    the password again: going back brings back old passwords and keys (review before 1.0.0)."""
+    with SessionLocal() as db:
+        confirm_operator(request, db, operator, body.password)
     try:
         brief = backups.stage_restore(name)
     except backups.BackupError as exc:
@@ -81,7 +89,10 @@ def download(name: BackupName, body: DownloadIn, request: Request, operator: Ope
 
 
 @router.delete("/{name}", status_code=204)
-def delete(name: BackupName, _operator: OperatorAccount) -> None:
+def delete(name: BackupName, body: PasswordIn, request: Request, operator: OperatorAccount) -> None:
+    """Asks for the password again: a stolen session must not throw every copy away (review before 1.0.0)."""
+    with SessionLocal() as db:
+        confirm_operator(request, db, operator, body.password)
     try:
         backups.remove(name)
     except backups.BackupError as exc:

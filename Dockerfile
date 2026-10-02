@@ -39,10 +39,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/app ./app
 COPY --from=interface /build/dist ./static
 
-# The user nexlore runs as. The container starts as root and drops the rights in the entrypoint.
+# The user nexlore runs as. The container starts as root and drops the rights in the entrypoint. The code and the
+# interface stay root's: whoever got to run something as nexlore could otherwise change what every browser loads.
 RUN useradd --system --create-home --uid 1000 nexlore \
     && mkdir -p /data \
-    && chown -R nexlore:nexlore /data /app
+    && chown -R nexlore:nexlore /data
 
 COPY docker/entrypoint.sh /entrypoint.sh
 # Strips Windows line endings: checked out on Windows the script would not start otherwise.

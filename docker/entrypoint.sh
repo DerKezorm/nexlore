@@ -10,6 +10,21 @@ set -e
 PUID=${PUID:-1000}
 PGID=${PGID:-1000}
 
+# A number, and not root's: PUID=0 is a common way out of rights trouble, and would run nexlore as root.
+for value in "$PUID" "$PGID"; do
+    case "$value" in
+        ''|*[!0-9]*)
+            echo "nexlore: PUID and PGID must be numbers (got '$PUID' and '$PGID'). Nothing has been started." >&2
+            exit 1
+            ;;
+    esac
+done
+if [ "$PUID" = "0" ] || [ "$PGID" = "0" ]; then
+    echo "nexlore: PUID and PGID must not be 0: nexlore does not run as root. Use the ids of the user who owns" >&2
+    echo "  your data directory ('id' on the host shows yours). Nothing has been started." >&2
+    exit 1
+fi
+
 # Port inside the container, default 8000. NEXLORE_PORT is for host networking, where the container's port
 # is the server's port. Docker does not expand variables in the JSON form of CMD, hence here.
 if [ "$1" = "uvicorn" ]; then

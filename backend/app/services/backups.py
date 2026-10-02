@@ -40,7 +40,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .. import __version__
+from .. import __version__, private
 from ..config import get_settings
 from . import index, paths, settings_service
 
@@ -215,6 +215,7 @@ def create(*, kind: str = MANUAL, note: str = "") -> Path:
     """A new backup archive. Returns its path."""
     base = folder()
     base.mkdir(parents=True, exist_ok=True)
+    private.tighten(base)
     moment = datetime.now(UTC)
     name = f"nexlore-{_stamp(moment)}.zip"
     number = 2
@@ -226,7 +227,11 @@ def create(*, kind: str = MANUAL, note: str = "") -> Path:
     trash = base / f".{name}.trash"
     root = paths.vault_root()
     try:
+        # Both only the owner's before a byte is in them: the archive holds the key and everything else.
+        private.new_file(database)
+        private.new_file(partial)
         _database_copy(database, trash)
+        private.tighten(trash)
         manifest = Manifest(version=__version__, created=moment.isoformat(timespec="seconds"), kind=kind, note=note)
         with zipfile.ZipFile(partial, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
             archive.write(database, DATABASE_ENTRY)

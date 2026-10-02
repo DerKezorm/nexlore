@@ -104,7 +104,10 @@ class Settings(BaseSettings):
             self._remembered_key = key_file.read_text(encoding="utf-8").strip()
         else:
             self._remembered_key = secrets.token_urlsafe(48)
-            key_file.write_text(self._remembered_key, encoding="utf-8")
+            # Made only the owner's from the first byte: written first and narrowed after, it stood open a moment.
+            descriptor = os.open(key_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
+                handle.write(self._remembered_key)
         try:
             os.chmod(key_file, 0o600)
         except OSError:

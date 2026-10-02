@@ -36,6 +36,7 @@ from datetime import UTC, datetime, timedelta
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
+from .. import private
 from ..config import get_settings
 
 BACKUP_COUNT = 3
@@ -160,6 +161,7 @@ class ModeState:
 def log_dir() -> Path:
     directory = get_settings().data_dir / "logs"
     directory.mkdir(parents=True, exist_ok=True)
+    private.tighten(directory)
     return directory
 
 

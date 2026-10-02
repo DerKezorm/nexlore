@@ -906,10 +906,12 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
     }, 1500)
     return () => window.clearInterval(timer)
   }, [restarting])
-  // The archive holds everything, so it is handed out only against the password once more.
-  const [fetching, setFetching] = useState<{ name: string; password: string } | null>(null)
-  const [note, setNote] = useState('')
+  // The archive holds everything, so it is handed out only against the password once more; deleting one or going
+  // back to it ask too (a stolen session must not throw every copy away or bring back old keys).
   const { me } = useAuth()
+  const [asking, setAsking] = useState<{ name: string; action: 'download' | 'delete' | 'restore'; password: string } | null>(null)
+  const ownPassword = me?.sign_in === 'password'
+  const [note, setNote] = useState('')
   const { busy, problem, done, run } = useAction()
   const load = useCallback(async () => setBackups(await adminApi.backups()), [])
   const download = (name: string, password: string) =>
@@ -921,8 +923,21 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
       link.download = name
       link.click()
       setTimeout(() => URL.revokeObjectURL(url), 60_000)
-      setFetching(null)
+      setAsking(null)
     }, t('admin.backups.downloaded'))
+  const remove = (name: string, password: string) =>
+    void run(async () => {
+      await adminApi.deleteBackup(name, password)
+      setAsking(null)
+      await load()
+    })
+  const restore = (name: string, password: string) =>
+    void run(async () => {
+      await adminApi.restoreBackup(name, password)
+      setAsking(null)
+      setRestoring(null)
+      setRestarting(true)
+    }, t('admin.backups.restarting'))
   useEffect(() => {
     void run(load)
   }, [run, load])
@@ -975,40 +990,38 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
             <Button
               small
               busy={busy}
-              onClick={() => (me?.sign_in === 'password' ? setFetching({ name: backup.name, password: '' }) : download(backup.name, ''))}
+              onClick={() => (ownPassword ? setAsking({ name: backup.name, action: 'download', password: '' }) : download(backup.name, ''))}
             >
               {t('admin.backups.download')}
             </Button>
-            <Button small onClick={() => setRestoring(backup.name)}>
+            <Button small onClick={() => (ownPassword ? setAsking({ name: backup.name, action: 'restore', password: '' }) : setRestoring(backup.name))}>
               {t('admin.backups.restore')}
             </Button>
-            <Button small danger busy={busy} onClick={() => void run(async () => {
-              await adminApi.deleteBackup(backup.name)
-              await load()
-            })}>
+            <Button small danger busy={busy} onClick={() => (ownPassword ? setAsking({ name: backup.name, action: 'delete', password: '' }) : remove(backup.name, ''))}>
               {t('admin.backups.delete')}
             </Button>
-            {fetching?.name === backup.name && (
+            {asking?.name === backup.name && (
               <form
                 className="flex w-full flex-wrap items-end gap-2 pt-1"
                 onSubmit={(event) => {
                   event.preventDefault()
-                  download(backup.name, fetching.password)
+                  const act = { download, delete: remove, restore }[asking.action]
+                  act(backup.name, asking.password)
                 }}
               >
-                <p className="w-full text-xs text-mist-400">{t('admin.backups.downloadText')}</p>
+                <p className="w-full text-xs text-mist-400">{t(`admin.backups.${asking.action}Text`)}</p>
                 <Input
                   label={t('admin.backups.password')}
-                  value={fetching.password}
-                  onChange={(password) => setFetching({ name: backup.name, password })}
+                  value={asking.password}
+                  onChange={(password) => setAsking({ ...asking, password })}
                   type="password"
                   autoComplete="current-password"
                   className="min-w-52 flex-1"
                 />
-                <Button type="submit" primary busy={busy}>
-                  {t('admin.backups.download')}
+                <Button type="submit" primary={asking.action === 'download'} danger={asking.action !== 'download'} busy={busy}>
+                  {t(`admin.backups.${asking.action}`)}
                 </Button>
-                <Button onClick={() => setFetching(null)}>{t('common.cancel')}</Button>
+                <Button onClick={() => setAsking(null)}>{t('common.cancel')}</Button>
                 {problem && (
                   <p role="alert" className="w-full text-xs text-bad-500">
                     {problem}
@@ -1029,7 +1042,7 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
         </div>
       )}
       {/* While a download asks for the password, its message stands by the field, not twice. */}
-      <Feedback problem={fetching ? null : problem} done={done} />
+      <Feedback problem={asking ? null : problem} done={done} />
       {restarting && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-scrim p-4" role="alertdialog" aria-labelledby="restarting-title" data-testid="restarting">
           <div className="max-w-sm rounded-2xl border border-ink-700 bg-ink-900 p-5 text-sm shadow-2xl">
@@ -1047,11 +1060,7 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
         danger
         busy={busy}
         onCancel={() => setRestoring(null)}
-        onConfirm={() => void run(async () => {
-          await adminApi.restoreBackup(restoring!)
-          setRestoring(null)
-          setRestarting(true)
-        }, t('admin.backups.restarting'))}
+        onConfirm={() => restore(restoring!, '')}
       >
         {t('admin.backups.restoreText')}
       </ConfirmDialog>
