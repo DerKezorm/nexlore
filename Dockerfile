@@ -7,7 +7,7 @@
 #
 # --platform=$BUILDPLATFORM: the image is built for amd64 and arm64. Without it this stage would run under
 # emulation too, and "npm ci" under emulated ARM is very slow. Only /build/dist moves on from here.
-FROM --platform=$BUILDPLATFORM node:22-alpine AS interface
+FROM --platform=$BUILDPLATFORM node:26-alpine AS interface
 
 WORKDIR /build
 
