@@ -65,3 +65,13 @@ describe('atx', () => {
     }
   })
 })
+
+describe('headingText on a hostile heading', () => {
+  it('cuts long headings before cleaning them', () => {
+    for (const raw of ['[['.repeat(100_000), '*a '.repeat(100_000), '[a]('.repeat(100_000)]) {
+      const started = performance.now()
+      expect(headingText(raw).length).toBeLessThanOrEqual(1000)
+      expect(performance.now() - started).toBeLessThan(500)
+    }
+  })
+})

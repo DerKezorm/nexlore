@@ -25,9 +25,15 @@ export function atx(line: string): [string, string, string] | null {
 }
 const SETEXT = /^ {0,3}(=+|-+)[ \t]*$/
 
+/** How much of a heading is shown and cleaned. */
+const MAX_HEADING = 1000
+
 /** Inline marks as the reader sees them: `**Plan**` is "Plan", `[[Note|Alias]]` is "Alias". */
 export function headingText(raw: string): string {
+  // What the outline and the switcher show is a line; cut before cleaning, whose patterns grow with the square of a
+  // long heading full of marks (review before 1.0.0).
   return raw
+    .slice(0, MAX_HEADING)
     .replace(/!?\[\[([^\]|]*)(?:\|([^\]]*))?\]\]/g, (_, target: string, alias?: string) => alias ?? target)
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\*\*|__|==|~~|`/g, '')
