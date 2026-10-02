@@ -9,6 +9,7 @@ import { Marked, type Token, type TokenizerAndRendererExtension, type Tokens } f
 import { fileUrl } from '../api/client'
 import i18n, { locale } from '../i18n'
 import { fileKind, isNotePath, relativeTarget } from './files'
+import { atx } from './outline'
 
 function escape(text: string | undefined): string {
   // An i18n text is undefined until the languages are loaded (in tests, for example).
@@ -110,7 +111,11 @@ export function noteSection(body: string, section: string): string | null {
     }
     return true
   })
-  const heading = (index: number) => (outside[index] ? /^ {0,3}(#{1,6})[ \t]+(.*?)(?:[ \t]+#+)?[ \t]*$/.exec(lines[index]) : null)
+  // An empty heading (`#` alone) is no section to jump to.
+  const heading = (index: number) => {
+    const found = outside[index] ? atx(lines[index]) : null
+    return found && /[ \t]/.test(lines[index].trimStart().slice(found[1].length, found[1].length + 1)) ? found : null
+  }
   if (section.startsWith('^')) {
     // A block: the line that ends in `^id`; a paragraph around it, a list item alone. The mark itself is left out.
     const id = section.slice(1).trim()

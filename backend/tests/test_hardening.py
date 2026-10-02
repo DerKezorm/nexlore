@@ -73,3 +73,27 @@ def test_saving_an_alias_bomb_answers_and_the_note_stays_readable(client: TestCl
     assert time.perf_counter() - started < 5
     read = client.get("/api/note", params={"path": "Bomb/Laughs.md"})
     assert read.status_code == 200
+
+
+@pytest.mark.parametrize("line", ["# a" + " " * 200_000 + "b", "# a" + " #" * 100_000 + "b"], ids=["blanks", "hashes"])
+def test_a_heading_line_full_of_blanks_takes_linear_time(line: str) -> None:
+    # Before: 8,000 characters took 0.8 s, growing with the square of the line.
+    started = time.perf_counter()
+    mdparse.parse(line)
+    assert time.perf_counter() - started < 2
+
+
+@pytest.mark.parametrize(("line", "words"), [
+    ("# Title", "Title"), ("## Title ##", "Title"), ("# Title#", "Title#"), ("# C# and F#", "C# and F#"),
+    ("# a  #b", "a  #b"), ("   ### Three   ", "Three"), ("# Tabs\t#\t", "Tabs"), ("# ###", ""),
+])
+def test_headings_read_as_commonmark_reads_them(line: str, words: str) -> None:
+    assert mdparse.parse(line).headings == [(len(line.strip().split()[0]), words)]
+
+
+def test_a_front_matter_list_item_full_of_blanks_takes_linear_time() -> None:
+    from app.services import tagrename
+
+    started = time.perf_counter()
+    assert tagrename._item("- plans" + " " * 200_000) == ("- ", "plans", " " * 200_000)
+    assert time.perf_counter() - started < 1

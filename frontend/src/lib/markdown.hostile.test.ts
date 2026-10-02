@@ -35,15 +35,22 @@ describe('a hostile note in the reading view', () => {
   })
 
   // Each grew with the square of its length before: 64 KB took 2 to 7 s.
+  // Measured as growth, four times the text against a quarter of it, so that a busy machine does not decide: linear
+  // is about 4, the square 16.
   it.each([
-    ['brackets', '['.repeat(64_000)],
-    ['wiki openings', '[['.repeat(32_000)],
-    ['short paragraphs', '[\n\n'.repeat(21_000)],
-    ['lines of brackets', '[\n'.repeat(32_000)],
-    ['templater openings', '<%'.repeat(32_000)],
-    ['open highlights', '==a '.repeat(16_000)],
-  ])('reads 64 KB of %s in linear time', (_, text) => {
-    expect(timed(text).ms).toBeLessThan(1500)
+    ['brackets', (n: number) => '['.repeat(n)],
+    ['wiki openings', (n: number) => '[['.repeat(n / 2)],
+    ['short paragraphs', (n: number) => '[\n\n'.repeat(n / 3)],
+    ['lines of brackets', (n: number) => '[\n'.repeat(n / 2)],
+    ['templater openings', (n: number) => '<%'.repeat(n / 2)],
+    ['open highlights', (n: number) => '==a '.repeat(n / 4)],
+    ['heading blanks', (n: number) => '# a' + ' '.repeat(n) + 'b'],
+    ['heading with hashes', (n: number) => '# a' + ' #'.repeat(n / 2) + 'b'],
+  ])('reads %s in linear time', (_, make) => {
+    timed(make(4_000))
+    const small = timed(make(16_000)).ms
+    const large = timed(make(64_000)).ms
+    expect(large).toBeLessThan(Math.max(400, 8 * small))
   })
 
   it('still finds every unsafe link, wherever it stands', () => {

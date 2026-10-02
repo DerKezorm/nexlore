@@ -27,7 +27,19 @@ TAG_NAME = re.compile(r"^[\w-]+(?:/[\w-]+)*$")
 PART = 100
 
 _KEY = re.compile(r"^(tags?)[ \t]*:(.*)$")
-_ITEM = re.compile(r"^([ \t]*-[ \t]+)(.*?)([ \t]*)$")
+_ITEM_HEAD = re.compile(r"^[ \t]*-[ \t]+")
+
+
+def _item(line: str) -> tuple[str, str, str] | None:
+    """A list item of the front matter as (dash with its blanks, value, blanks at the end). Split by hand: the
+    pattern before tried every blank in the line as the end, and a line of 80,000 blanks took 50 s (review before
+    1.0.0)."""
+    head = _ITEM_HEAD.match(line)
+    if head is None:
+        return None
+    rest = line[head.end():]
+    value = rest.rstrip(" \t")
+    return head.group(0), value, rest[len(value):]
 _TOKEN = re.compile(r"""(["']?)(#?)([\w/-]+)(\1)""")
 
 
@@ -76,10 +88,10 @@ def _front(block: str, old_key: str, new: str) -> str:
             out.append(f"{key.group(1)}:" + _swap_tokens(key.group(2), old_key, new))
             continue
         if inside:
-            item = _ITEM.match(line.rstrip("\r"))
+            item = _item(line.rstrip("\r"))
             if item and (line.startswith((" ", "\t", "-"))):
                 ending = "\r" if line.endswith("\r") else ""
-                out.append(item.group(1) + _swap_tokens(item.group(2), old_key, new) + item.group(3) + ending)
+                out.append(item[0] + _swap_tokens(item[1], old_key, new) + item[2] + ending)
                 continue
             if line.strip() and not line.startswith((" ", "\t")):
                 inside = False

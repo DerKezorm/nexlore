@@ -33,11 +33,11 @@ MAX_TITLE = 200
 MAX_URL = 2000
 AGENT = "nexlore (link title)"
 
-_TITLE = re.compile(rb"<title[^>]*>(.*?)</title\s*>", re.IGNORECASE | re.DOTALL)
-_META = re.compile(
-    rb"<meta\s+[^>]*?(?:property|name)\s*=\s*[\"'](?:og:title|twitter:title)[\"'][^>]*?content\s*=\s*[\"']([^\"']*)[\"']",
-    re.IGNORECASE | re.DOTALL,
-)
+#: What one tag may be long; a page whose <meta> runs on for longer is not read for its title.
+TAG_LIMIT = 4096
+#: Within one <meta> tag only (bounded by TAG_LIMIT), never over the whole page.
+_META_TITLE = re.compile(rb"(?:property|name)\s*=\s*[\"'](?:og:title|twitter:title)[\"']", re.IGNORECASE)
+_META_CONTENT = re.compile(rb"content\s*=\s*[\"']([^\"']*)[\"']", re.IGNORECASE)
 _CHARSET = re.compile(r"charset=([\w-]+)", re.IGNORECASE)
 
 
@@ -91,15 +91,53 @@ def _checked(url: str, resolve: Resolver) -> tuple[str, str, int, str]:
     return parts.scheme, host, port, addresses[0]
 
 
+def _title_tag(body: bytes) -> bytes | None:
+    """The text of the first <title>, found by plain searching. The pattern before took time growing with the square
+    of the page for every "<title" without its end: 64 KB of them held the server for minutes (review before 1.0.0)."""
+    lower = body.lower()
+    start = lower.find(b"<title")
+    if start == -1:
+        return None
+    opened = lower.find(b">", start, start + TAG_LIMIT)
+    if opened == -1:
+        return None
+    closed = lower.find(b"</title", opened)
+    return body[opened + 1 : closed] if closed != -1 else None
+
+
+def _meta_title(body: bytes) -> bytes | None:
+    """og:title or twitter:title, each <meta> looked at alone and only up to TAG_LIMIT."""
+    lower = body.lower()
+    at = lower.find(b"<meta")
+    while at != -1:
+        end = lower.find(b">", at, at + TAG_LIMIT)
+        if end == -1:
+            return None
+        tag = body[at:end]
+        if _META_TITLE.search(tag):
+            found = _META_CONTENT.search(tag)
+            if found:
+                return found.group(1)
+        at = lower.find(b"<meta", end)
+    return None
+
+
+def _has_title(body: bytes) -> bool:
+    """Whether reading may stop: a closed <title> is there."""
+    lower = body.lower()
+    start = lower.find(b"<title")
+    return start != -1 and lower.find(b"</title", start) != -1
+
+
 def _title_of(body: bytes, content_type: str) -> str | None:
-    found = _TITLE.search(body) or _META.search(body)
-    if not found:
+    raw = _title_tag(body) or _meta_title(body)
+    if raw is None:
         return None
     charset = _CHARSET.search(content_type)
     try:
-        text = found.group(1).decode(charset.group(1) if charset else "utf-8", errors="replace")
+        text = raw.decode(charset.group(1) if charset else "utf-8", errors="replace")
     except LookupError:
-        text = found.group(1).decode("utf-8", errors="replace")
+        text = raw.decode("utf-8", errors="replace")
     clean = " ".join(html.unescape(text).split())
     return clean[:MAX_TITLE] or None
 
@@ -135,7 +173,7 @@ def fetch(url: str, *, resolve: Resolver = _resolve, transport: httpx.BaseTransp
                     body = b""
                     for chunk in answer.iter_bytes():
                         body += chunk
-                        if len(body) >= MAX_BYTES or _TITLE.search(body):
+                        if len(body) >= MAX_BYTES or _has_title(body):
                             break
                         if time.monotonic() > deadline:
                             raise TitleError("timeout")

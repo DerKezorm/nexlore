@@ -7,7 +7,22 @@
 export type Heading = { level: number; text: string; line: number }
 
 const FENCE = /^ {0,3}(`{3,}|~{3,})/
-const ATX = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$/
+const ATX_START = /^ {0,3}(#{1,6})(?:[ \t]+([^\n]*))?$/
+
+/**
+ * An ATX heading line as `[line, hashes, words]`, the closing hashes of `## Title ##` taken off; null for any other
+ * line. The rest of the line is taken whole and trimmed by hand: a pattern with a lazy middle and an optional closing
+ * tried every blank as the end, and a long line of them held the page (review before 1.0.0).
+ */
+export function atx(line: string): [string, string, string] | null {
+  const found = ATX_START.exec(line)
+  if (!found) return null
+  let words = (found[2] ?? '').trimEnd()
+  let end = words.length
+  while (end > 0 && words[end - 1] === '#') end -= 1
+  if (end < words.length && (end === 0 || words[end - 1] === ' ' || words[end - 1] === '\t')) words = words.slice(0, end).trimEnd()
+  return [line, found[1], words.trim()]
+}
 const SETEXT = /^ {0,3}(=+|-+)[ \t]*$/
 
 /** Inline marks as the reader sees them: `**Plan**` is "Plan", `[[Note|Alias]]` is "Alias". */
@@ -54,15 +69,15 @@ export function headingsOf(markdown: string): Heading[] {
       continue
     }
     if (math) continue
-    const atx = ATX.exec(line)
-    if (atx) {
-      const text = headingText(atx[2] ?? '')
-      if (text) out.push({ level: atx[1].length, text, line: i + 1 })
+    const found = atx(line)
+    if (found) {
+      const text = headingText(found[2])
+      if (text) out.push({ level: found[1].length, text, line: i + 1 })
       continue
     }
     const under = SETEXT.exec(line)
     const above = lines[i - 1]
-    if (under && i > start && above !== undefined && above.trim() && !ATX.exec(above) && !/^ {0,3}([-*+]|\d+[.)])\s/.test(above) && !/^\s*>/.test(above)) {
+    if (under && i > start && above !== undefined && above.trim() && !atx(above) && !/^ {0,3}([-*+]|\d+[.)])\s/.test(above) && !/^\s*>/.test(above)) {
       // "---" under a paragraph is a heading; on its own (after an empty line) it is a rule, handled above.
       const text = headingText(above)
       const last = out[out.length - 1]

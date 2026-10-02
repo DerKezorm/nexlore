@@ -53,7 +53,9 @@ _MATH_SPAN = re.compile(r"\$\$.+?\$\$", re.DOTALL)
 #: HTML block. Most notes have none of them and skip the block parser, which costs most of the time.
 _NEEDS_BLOCKS = re.compile(r"```|~~~|^(?:[ \t]*>)*(?: {4}|\t)|^ {0,3}(?:>[ \t]?)*<[A-Za-z/!?]", re.MULTILINE)
 #: ATX headings, also inside quotes and callouts. Setext headings (underlined) are not collected.
-_HEADING = re.compile(r"^ {0,3}(?:>[ \t]?)*(#{1,6})(?:[ \t]+(.*?))?(?:[ \t]+#+)?[ \t]*$", re.MULTILINE)
+#: The rest of the line taken whole; the closing #s come off by hand (``_heading_text``). A lazy middle with an
+#: optional closing tried every blank as the end: 8,000 characters took 0.8 s, a long line hours (review before 1.0.0).
+_HEADING = re.compile(r"^ {0,3}(?:>[ \t]?)*(#{1,6})(?:[ \t]+([^\n]*))?[ \t]*$", re.MULTILINE)
 _YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
 #: Code block languages that belong to plugins; their content is shown as code and never touched.
@@ -211,6 +213,15 @@ def _inline_code(text: str) -> list[tuple[int, int]]:
         position = closing.end()
 
 
+def _heading_text(raw: str) -> str:
+    """A heading's words without the closing sequence (``## Title ##``), as CommonMark reads it."""
+    text = raw.rstrip(" \t\r")
+    bare = text.rstrip("#")
+    if bare != text and (not bare or bare[-1] in " \t"):
+        text = bare
+    return text.strip()
+
+
 def _count(features: dict[str, int], key: str, amount: int = 1) -> None:
     if amount:
         features[key] = features.get(key, 0) + amount
@@ -304,7 +315,7 @@ def parse(text: str) -> Parsed:
     math = [(match.start(), match.end()) for match in _MATH_SPAN.finditer(masked)]
     _count(features, "math_blocks", len(math))
     masked = _mask(masked, math)
-    parsed.headings =[(len(match.group(1)), (match.group(2) or "").strip()) for match in _HEADING.finditer(masked)]
+    parsed.headings = [(len(match.group(1)), _heading_text(match.group(2) or "")) for match in _HEADING.finditer(masked)]
 
     def line_of(offset: int) -> int:
         low, high = 0, len(starts) - 1

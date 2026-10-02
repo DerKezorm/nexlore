@@ -1,4 +1,4 @@
-import { headingsOf, headingText } from './outline'
+import { atx, headingsOf, headingText } from './outline'
 
 describe('headingsOf', () => {
   it('finds ATX and setext headings with their level and line', () => {
@@ -43,5 +43,25 @@ describe('headingText', () => {
       'Big plan with alias, Other and site code hi soft',
     )
     expect(headingText('snake_case_name stays')).toBe('snake_case_name stays')
+  })
+})
+
+describe('atx', () => {
+  it('reads headings as before, closing hashes off', () => {
+    expect(atx('## Title ##')).toEqual(['## Title ##', '##', 'Title'])
+    expect(atx('# C# and F#')?.[2]).toBe('C# and F#')
+    expect(atx('# Title#')?.[2]).toBe('Title#')
+    expect(atx('   ### Three   ')?.[2]).toBe('Three')
+    expect(atx('#tag')).toBeNull()
+    expect(atx('####### seven')).toBeNull()
+  })
+
+  it('takes linear time on a line full of blanks or hashes (review before 1.0.0)', () => {
+    for (const line of ['# a' + ' '.repeat(200_000) + 'b', '# a' + ' #'.repeat(100_000) + 'b']) {
+      const started = performance.now()
+      atx(line)
+      headingsOf(line)
+      expect(performance.now() - started).toBeLessThan(500)
+    }
   })
 })

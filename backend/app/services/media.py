@@ -579,6 +579,10 @@ def strip(path: Path, kind: str | None) -> set[str]:
     return removed
 
 
+#: Pixels a picture may have for nexlore to draw a WebP of it (review before 1.0.0).
+MAX_WEBP_PIXELS = 64_000_000
+
+
 def to_webp(source: Path, target: Path) -> bool:
     """A WebP of a picture browsers cannot show (HEIC), turned upright, without any metadata. False when the
     picture cannot be read. Pillow refuses pictures of absurd pixel counts by itself (decompression bombs); a file
@@ -591,6 +595,11 @@ def to_webp(source: Path, target: Path) -> bool:
 
         pillow_heif.register_heif_opener()
         with Image.open(source) as image:
+            # Read from the header, before a pixel is decoded: Pillow itself allows up to 178 million, which as RGBA
+            # is 700 MB for one upload on a small NAS. 64 million is more than any phone takes by default.
+            if image.width * image.height > MAX_WEBP_PIXELS:
+                logger.info("No WebP of a picture larger than %s pixels", MAX_WEBP_PIXELS)
+                return False
             upright = ImageOps.exif_transpose(image)
             profile = image.info.get("icc_profile")
             options: dict[str, object] = {"quality": 85, "method": 4, "exif": b"", "xmp": b""}
