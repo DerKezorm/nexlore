@@ -117,6 +117,11 @@
         "title": "Sicherungen fragen nach deinem Passwort",
         "where": "Einstellungen, Server, Sicherung",
         "body": "Eine Sicherung löschen und zu einer zurückgehen fragt jetzt noch einmal dein Passwort, wie schon das Herunterladen. Sicherungen, Datenbank und Log kann nur noch nexlores eigener Nutzer lesen."
+      },
+      {
+        "title": "Bilder und Dateien in der Seitenleiste",
+        "where": "Seitenleiste, in einem Ordner",
+        "body": "Bilder, PDFs und andere Anhänge stehen jetzt im Baum neben den Notizen, und ein Ordner zählt sie mit. Ein Klick öffnet die Seite der Datei; der Rechtsklick benennt sie um (die Endung bleibt), verschiebt sie, kopiert einen Link, der sie einbettet, oder legt sie in den Papierkorb."
       }
     ],
     "smallTitle": "Außerdem",
@@ -126,7 +131,8 @@
       "Anzeigenamen können sich nicht mehr als ein anderes Konto ausgeben.",
       "Notizen, die nexlore ausbremsen sollen (tausende offene Klammern, tiefe Zitate, YAML-Aliasse, endlose Überschriften), liest es jetzt schnell, auf dem Server und im Browser; die Leseansicht bleibt nie leer.",
       "Höchstens 60 Benachrichtigungen je Stunde erreichen ein Konto, und Einladungsmails brauchen die öffentliche Adresse.",
-      "Die README hat eine Checkliste für nexlore im Internet."
+      "Die README hat eine Checkliste für nexlore im Internet.",
+      "Die im Kontomenü gewählte Sprache hält beim ersten Mal; auf einem langsamen Server sprang sie zurück."
     ]
   }
 }

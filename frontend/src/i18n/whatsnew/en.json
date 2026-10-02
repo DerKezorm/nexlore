@@ -117,6 +117,11 @@
         "title": "Backups ask for your password",
         "where": "Settings, Server, Backups",
         "body": "Deleting a backup and going back to one now ask for your password once more, as downloading did. Backups, the database and the log are readable only for nexlore's own user."
+      },
+      {
+        "title": "Pictures and files in the sidebar",
+        "where": "Sidebar, inside a folder",
+        "body": "Pictures, PDFs and other attachments now stand in the tree beside the notes, and a folder counts them too. A click opens the file's page; the right click renames it (the ending stays), moves it, copies a link that embeds it or puts it in the trash."
       }
     ],
     "smallTitle": "Also",
@@ -126,7 +131,8 @@
       "Display names cannot pass for another account any more.",
       "Notes written to slow nexlore down (thousands of open brackets, deep quotes, YAML aliases, endless headings) are read quickly now, on the server and in the browser; the reading view never goes blank.",
       "At most 60 notifications an hour reach one account, and invitation mails need the public address.",
-      "The README has a checklist for running nexlore on the internet."
+      "The README has a checklist for running nexlore on the internet.",
+      "The language picked in the account menu holds the first time; on a slow server it used to switch back."
     ]
   }
 }
