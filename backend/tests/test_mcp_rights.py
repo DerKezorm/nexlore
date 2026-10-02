@@ -242,11 +242,15 @@ def test_a_request_with_wrong_arguments_is_refused_before_it_waits(world: World)
 
 
 def test_waiting_requests_are_limited(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mcp, "MAX_WAITING", 2)
-    token = world.key("write", ask=True)
+    monkeypatch.setattr(mcp, "MAX_WAITING", 4)
+    token, other = world.key("write", ask=True), world.key("write", ask=True)
     ask_for_a_note(world, token, "A")
     ask_for_a_note(world, token, "B")
-    assert "requests are waiting already" in failure(call(token, "create_note", folder="Garden", title="C", content="x"))
+    # Half of the room per program at most (review before 1.0.0), the rest for the account's others.
+    assert "requests waiting" in failure(call(token, "create_note", folder="Garden", title="C", content="x"))
+    ask_for_a_note(world, other, "D")
+    ask_for_a_note(world, other, "E")
+    assert "requests are waiting already" in failure(call(other, "create_note", folder="Garden", title="F", content="x"))
 
 
 # --- The tools of block Y ----------------------------------------------------------------------------------------------

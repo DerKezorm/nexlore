@@ -2190,7 +2190,8 @@
     "after": "Das Programm steht danach unter Mein Konto, Verbindungen wie ein Schlüssel, mit denselben Rechten je Werkzeug. Dort trennst du es jederzeit.",
     "allow": "Erlauben",
     "decline": "Ablehnen",
-    "failed": "Diese Anmeldung geht nicht weiter"
+    "failed": "Diese Anmeldung geht nicht weiter",
+    "unverified": "Den Namen gibt sich das Programm selbst; nexlore hat ihn nicht geprüft. Erlaube nur, wenn du diese Anmeldung selbst begonnen hast und zu {{host}} zurück willst."
   },
   "notify": {
     "ways": "Wohin Benachrichtigungen gehen",

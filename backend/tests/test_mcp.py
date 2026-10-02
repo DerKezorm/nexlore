@@ -411,7 +411,11 @@ def test_writing_against_an_old_state_writes_a_conflict_copy(world: World) -> No
     edited = value(call(token, "edit_note", path="Garden/Plan.md", base_hash=base,
                         edits=[{"old": "Second line.", "new": "Second, edited."}]))
     assert edited["conflict"] is not None
-    assert "never" not in failure(call(token, "write_note", path="Garden/Plan.md", base_hash="1" * 64, content="x"))
+    # A state nexlore no longer keeps (review before 1.0.0): a whole text still goes into a copy instead of being
+    # lost; changes to a text that is gone cannot be placed.
+    assert value(call(token, "write_note", path="Garden/Plan.md", base_hash="1" * 64, content="x"))["conflict"]
+    assert "Read it again" in failure(call(token, "edit_note", path="Garden/Plan.md", base_hash="1" * 64,
+                                           edits=[{"old": "Plan", "new": "Plan!"}]))
 
 
 def test_writing_while_somebody_edits_goes_into_a_conflict_copy(world: World) -> None:

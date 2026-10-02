@@ -364,8 +364,10 @@ def test_replace_keeps_unchanged_lines_and_makes_a_conflict_copy(world: World) -
                                                         "base_hash": read["hash"]}))
     assert stale["saved"] is False and stale["conflict"] and (world.vault / stale["conflict"]).exists()
     assert (world.vault / "Garden" / "Plan.md").read_bytes() == on_disk
-    assert code(api(token, "PUT", "/api/v1/note", json={"path": "Garden/Plan.md", "content": "x",
-                                                         "base_hash": "a" * 64})) == (409, "base_unknown")
+    # A state nexlore no longer keeps: a conflict copy too (review before 1.0.0: it was refused, the text lost).
+    unknown = ok(api(token, "PUT", "/api/v1/note", json={"path": "Garden/Plan.md", "content": "x",
+                                                          "base_hash": "a" * 64}))
+    assert unknown["saved"] is False and (world.vault / unknown["conflict"]).read_bytes() == b"x"
 
 
 def test_a_note_somebody_edits_is_not_written_over(world: World) -> None:

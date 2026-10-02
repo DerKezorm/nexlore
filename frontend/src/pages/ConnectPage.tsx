@@ -33,7 +33,8 @@ export function ConnectPage() {
       (found) => {
         if (!live) return
         setInfo(found)
-        setLevel(found.max_level)
+        // Reading first: a program asks for more on purpose, it is not given it by a click on Allow.
+        setLevel('read')
       },
       (error) => live && setProblem(errorText(error instanceof ApiError ? error.code : 'internal_error')),
     )
@@ -78,6 +79,8 @@ export function ConnectPage() {
   const offered = LEVELS.slice(0, LEVELS.indexOf(info.max_level) + 1)
   return (
     <AuthFrame title={t('connect.title', { name: info.client_name })} text={t('connect.text', { account: me?.name ?? '', host: info.redirect_host })}>
+      {/* The name is the program's own claim: anybody may register under any name. Where it sends you is not. */}
+      <p className="mb-4 rounded-lg border border-warn-500/40 bg-warn-500/10 px-3 py-2 text-xs text-mist-200">{t('connect.unverified', { host: info.redirect_host })}</p>
       <fieldset className="space-y-2">
         <legend className="mb-1 text-sm text-mist-300">{t('mcp.what')}</legend>
         {offered.map((option) => (

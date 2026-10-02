@@ -34,10 +34,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select
 
 from ..db import SessionLocal
-from ..deps import Account, DbSession
+from ..deps import Account, DbSession, client_ip
 from ..errors import error
+from ..models import Account as AccountRow
 from ..models import McpKey, OAuthClient, OAuthCode, Space, utcnow
-from ..services import mcp, rights, settings_service
+from ..security import brake
+from ..services import mcp, rights, settings_service, totp
 
 logger = logging.getLogger("nexlore.oauth")
 
@@ -50,6 +52,8 @@ REFRESH_PREFIX = "nxr_"
 MAX_CLIENTS = 500
 #: Registrations per minute, for the whole server: registering needs no account.
 REGISTER_PER_MINUTE = 30
+#: Registrations one sender may make in an hour: one sender used up the server's whole minute before.
+REGISTER_PER_SENDER = 10
 LOOPBACK = ("localhost", "127.0.0.1", "[::1]")
 
 
@@ -74,7 +78,7 @@ def _resource_metadata(request: Request) -> JSONResponse:
         if not _open(db):
             return JSONResponse({"detail": {"code": "not_found", "message": "Not found."}}, status_code=404)
         base = base_url(request, db)
-    return JSONResponse({
+    return JSONResponse(headers={"Cache-Control": "no-store"}, content={
         "resource": f"{base}/api/mcp",
         "authorization_servers": [base],
         "bearer_methods_supported": ["header"],
@@ -99,7 +103,7 @@ def server_metadata(request: Request) -> JSONResponse:
         if not _open(db):
             return JSONResponse({"detail": {"code": "not_found", "message": "Not found."}}, status_code=404)
         base = base_url(request, db)
-    return JSONResponse({
+    return JSONResponse(headers={"Cache-Control": "no-store"}, content={
         "issuer": base,
         "authorization_endpoint": f"{base}/oauth/authorize",
         "token_endpoint": f"{base}/api/oauth/token",
@@ -185,8 +189,10 @@ async def register(request: Request) -> JSONResponse:
     method = body.get("token_endpoint_auth_method", "none")
     if method != "none":
         return _oauth_error("invalid_client_metadata", "Only public clients with PKCE sign in here.")
-    if not _may_register():
-        return _oauth_error("temporarily_unavailable", "Too many registrations. Try again in a minute.", 429)
+    sender = "oauth-register:" + client_ip(request)
+    if brake.wait_seconds(sender, REGISTER_PER_SENDER) or not _may_register():
+        return _oauth_error("temporarily_unavailable", "Too many registrations. Try again later.", 429)
+    brake.failed(sender)
     name = body.get("client_name") if isinstance(body.get("client_name"), str) else ""
     name = " ".join(name.split())[:100] or "MCP client"
     client = OAuthClient(
@@ -197,10 +203,13 @@ async def register(request: Request) -> JSONResponse:
         db.commit()
         count = db.scalar(select(func.count()).select_from(OAuthClient)) or 0
         if count > MAX_CLIENTS:
-            # The ones used longest ago (never used first) make room; their keys stay until revoked.
+            # The ones used longest ago (never used first) make room; their keys stay until revoked. Not one made in
+            # the last hour: its person may be on the consent page right now.
             oldest = db.scalars(
-                select(OAuthClient.id).order_by(OAuthClient.last_used_at.is_not(None), OAuthClient.last_used_at,
-                                               OAuthClient.created_at).limit(count - MAX_CLIENTS)
+                select(OAuthClient.id)
+                .where(OAuthClient.created_at < utcnow() - timedelta(hours=1))
+                .order_by(OAuthClient.last_used_at.is_not(None), OAuthClient.last_used_at, OAuthClient.created_at)
+                .limit(count - MAX_CLIENTS)
             ).all()
             db.execute(delete(OAuthClient).where(OAuthClient.id.in_(oldest)))
             db.commit()
@@ -312,6 +321,14 @@ def consent(body: ConsentIn, request: Request, account: Account, db: DbSession) 
 # --- Tokens -----------------------------------------------------------------------------------------------------------
 
 
+def _account_may(db: Any, account_id: int) -> bool:
+    """No new tokens for an account that is locked, gone, or still owes the second factor the operator requires."""
+    account = db.get(AccountRow, account_id)
+    if account is None or (account.locked_until is not None and account.locked_until > utcnow()):
+        return False
+    return not totp.setup_required(db, account)
+
+
 def _verifier_fits(verifier: str, challenge: str) -> bool:
     if not 43 <= len(verifier) <= 128:
         return False
@@ -319,11 +336,17 @@ def _verifier_fits(verifier: str, challenge: str) -> bool:
     return secrets.compare_digest(made.decode(), challenge)
 
 
+#: A connector signs in again after this long, and after IDLE_DAYS without a refresh.
+REFRESH_DAYS = 90
+IDLE_DAYS = 30
+
+
 def _issue(db: Any, key: McpKey) -> dict[str, Any]:
     access = mcp.TOKEN_PREFIX + secrets.token_urlsafe(32)
     refresh = REFRESH_PREFIX + secrets.token_urlsafe(32)
     key.token_hash = mcp.digest(access)
     key.prefix = access[: len(mcp.TOKEN_PREFIX) + 4]
+    key.refresh_old_hash = key.refresh_hash
     key.refresh_hash = mcp.digest(refresh)
     key.expires_at = utcnow() + timedelta(hours=ACCESS_HOURS)
     db.commit()
@@ -367,6 +390,8 @@ async def token(request: Request) -> JSONResponse:
                 or not _verifier_fits(form.get("code_verifier", ""), row.challenge)
             ):
                 return _oauth_error("invalid_grant", "The code is not valid (any more).")
+            if not _account_may(db, row.account_id):
+                return _oauth_error("invalid_grant", "The account may not sign in now.")
             key = db.scalar(select(McpKey).where(McpKey.account_id == row.account_id, McpKey.kind == "oauth",
                                                  McpKey.client_id == client.id))
             if key is None:
@@ -379,15 +404,33 @@ async def token(request: Request) -> JSONResponse:
             else:
                 # Signing in again keeps the rights per tool that were set for this connector.
                 key.level, key.spaces = row.level, row.spaces
+            key.signed_in_at = utcnow()
+            key.refresh_hash = None
             client.last_used_at = utcnow()
             answer = _issue(db, key)
             logger.info("OAuth tokens issued key_id=%s", key.id)
             return JSONResponse(answer, headers={"Cache-Control": "no-store"})
         if grant == "refresh_token":
-            key = db.scalar(select(McpKey).where(McpKey.refresh_hash == mcp.digest(form.get("refresh_token", "")),
-                                                 McpKey.client_id == client.id))
+            brought = mcp.digest(form.get("refresh_token", ""))
+            key = db.scalar(select(McpKey).where(McpKey.refresh_hash == brought, McpKey.client_id == client.id))
             if key is None:
+                # A refresh token that was already traded in: whoever brings it has a copy. The whole connector ends,
+                # for the thief and for the program alike; its account signs it in again (OAuth 2.1, section 4.3.1).
+                used = db.scalar(
+                    select(McpKey).where(McpKey.refresh_old_hash == brought, McpKey.client_id == client.id)
+                )
+                if used is not None:
+                    db.delete(used)
+                    db.commit()
+                    logger.warning("OAuth refresh token used twice, connector ended key_id=%s", used.id)
                 return _oauth_error("invalid_grant", "The refresh token is not valid (any more).")
+            now = utcnow()
+            started = key.signed_in_at or key.created_at
+            idle_since = key.expires_at or started
+            if now - started > timedelta(days=REFRESH_DAYS) or now - idle_since > timedelta(days=IDLE_DAYS):
+                return _oauth_error("invalid_grant", "The connector has to sign in again.")
+            if not _account_may(db, key.account_id):
+                return _oauth_error("invalid_grant", "The account may not sign in now.")
             client.last_used_at = utcnow()
             answer = _issue(db, key)
             logger.info("OAuth tokens refreshed key_id=%s", key.id)

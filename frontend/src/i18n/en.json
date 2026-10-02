@@ -2190,7 +2190,8 @@
     "after": "The program then appears under My account, Connections, like a key, with the same rights per tool. You disconnect it there at any time.",
     "allow": "Allow",
     "decline": "Decline",
-    "failed": "This sign-in cannot go on"
+    "failed": "This sign-in cannot go on",
+    "unverified": "The name is what the program calls itself; nexlore has not checked it. Allow only when you started this sign-in yourself and expect to return to {{host}}."
   },
   "notify": {
     "ways": "Where notifications go",

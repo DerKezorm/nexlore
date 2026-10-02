@@ -429,6 +429,9 @@ class Account(Base):
     #: Not stored. Set on the account an MCP key acts as when the key may see only some spaces (``services/mcp.py``):
     #: ``rights`` then answers for every other space as if it did not exist.
     key_spaces: ClassVar[frozenset[int] | None] = None
+    #: Not stored. True on the account an MCP key or API token acts as: a program never has the operator's powers
+    #: over other people's spaces (members, public pages), even when its account is the operator's.
+    via_key: ClassVar[bool] = False
 
 
 class AuthSession(Base):
@@ -574,6 +577,10 @@ class McpKey(Base):
     client_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     refresh_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     expires_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: The refresh token before the current one: brought again, it was stolen or copied, and the connector is ended.
+    refresh_old_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    #: When the connector signed in: its refresh tokens run out REFRESH_DAYS later, refreshed or not.
+    signed_in_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
 
 class ApiToken(Base):

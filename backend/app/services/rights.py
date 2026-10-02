@@ -35,6 +35,12 @@ class RightsError(Exception):
         self.status = status
 
 
+def operator_powers(account: Account) -> bool:
+    """The operator acting where it does not manage (members, public pages): in the interface, never through a
+    program's key or token (review before 1.0.0: an operator's key withdrew anybody's public page)."""
+    return account.role == OPERATOR and not account.via_key
+
+
 def at_least(role: str | None, need: str) -> bool:
     return role is not None and SPACE_ROLES.index(role) >= SPACE_ROLES.index(need)
 

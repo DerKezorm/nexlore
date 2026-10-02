@@ -134,6 +134,7 @@ def authenticate(db: Session, token: str | None) -> Caller | None:
     spaces = row.spaces
     token_id = row.id
     db.expunge(account)
+    account.via_key = True
     if spaces is not None:
         account.key_spaces = frozenset(int(space_id) for space_id in spaces)
     return Caller(account=account, token_id=token_id, level=level)

@@ -21,7 +21,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .config import get_settings
-from .models import Account, AuthSession, utcnow
+from .models import Account, AuthSession, McpKey, utcnow
 
 SESSION_COOKIE = "nexlore_session"
 MIN_PASSWORD = 12
@@ -128,10 +128,14 @@ def end_session(db: Session, token: str | None) -> None:
 
 
 def end_all_sessions(db: Session, account_id: int, except_token: str | None = None) -> None:
+    """Every browser session of the account but ``except_token``, and every connector that signed in over OAuth: a
+    new password or "sign out everywhere" is what one does when the account was taken, and a connector's refresh
+    token would have kept the taker in. Keys made by hand in the interface stay; they are revoked there."""
     statement = delete(AuthSession).where(AuthSession.account_id == account_id)
     if except_token:
         statement = statement.where(AuthSession.token_hash != hash_token(except_token))
     db.execute(statement)
+    db.execute(delete(McpKey).where(McpKey.account_id == account_id, McpKey.kind == "oauth"))
     db.commit()
 
 

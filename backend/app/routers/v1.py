@@ -527,16 +527,15 @@ class ReplaceIn(BaseModel):
     base_hash: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
-def _base(file: File, current: bytes, base_hash: str) -> bytes:
-    """The text the program read: the file, or, when it changed since, that state from the note's versions."""
+def _base(file: File, current: bytes, base_hash: str) -> bytes | None:
+    """The text the program read: the file, or, when it changed since, that state from the note's versions; None
+    when that state is not kept any more (a version bundled away)."""
     if index.digest(current) == base_hash:
         return current
     with SessionLocal() as db:
         content = db.scalar(select(Version.content).where(Version.file_id == file.id, Version.hash == base_hash)
                             .limit(1))
-    if content is None:
-        raise error("base_unknown", "The note is not at that hash any more, nor in its history. Read it again.", 409)
-    return zlib.decompress(content)
+    return zlib.decompress(content) if content is not None else None
 
 
 @router.put("/note", response_model=SavedOut, summary="Replace a note's text; unchanged lines stay as they were")
@@ -552,7 +551,10 @@ def replace(body: ReplaceIn, found: Writer) -> SavedOut:
         current.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise error("not_utf8", "The note is not UTF-8; it is shown, never written from text.", 409) from exc
-    data = textblocks.keep_unchanged(_base(file, current, body.base_hash), body.content)
+    # Read in a state nexlore no longer keeps: the text as written, and saving makes it a conflict copy, as promised
+    # (review before 1.0.0: it was refused with base_unknown and the program's text was lost).
+    base = _base(file, current, body.base_hash)
+    data = textblocks.keep_unchanged(base, body.content) if base is not None else body.content.encode("utf-8")
     if len(data) > MAX_TEXT:
         raise error("too_large", "A note holds at most 5 MB.", 413)
     try:

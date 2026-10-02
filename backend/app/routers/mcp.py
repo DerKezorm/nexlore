@@ -25,7 +25,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field, ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from .. import __version__
 from ..db import SessionLocal
@@ -160,19 +160,20 @@ def _limit(args: dict[str, Any]) -> int:
     return value if isinstance(value, int) and 1 <= value <= 50 else 20
 
 
-def _base(db: Any, file: File, current: bytes, base_hash: str) -> bytes:
-    """The text the AI read, from the file or, when it changed since, from the note's versions."""
+def _base(db: Any, file: File, current: bytes, base_hash: str) -> bytes | None:
+    """The text the AI read, from the file or, when it changed since, from the note's versions; None when that state
+    is not kept any more (a version bundled away)."""
     if index.digest(current) == base_hash:
         return current
     content = db.scalar(select(Version.content).where(Version.file_id == file.id, Version.hash == base_hash).limit(1))
     if content is None:
-        raise ToolError("The note is not at that hash any more, nor in its history. Read it again.")
+        return None
     import zlib
 
     return zlib.decompress(content)
 
 
-def _read_for_change(caller: Caller, path: str, base_hash: str) -> tuple[str, File, bytes]:
+def _read_for_change(caller: Caller, path: str, base_hash: str) -> tuple[str, File, bytes | None]:
     clean = need(caller.account, path, WRITE)
     try:
         file, current = vault.read(clean)
@@ -276,6 +277,9 @@ def _call(caller: Caller, client: str, name: str, args: dict[str, Any]) -> Any:
             edits = args.get("edits")
             if not isinstance(edits, list) or not edits or len(edits) > 100:
                 raise ToolError("'edits' must list 1 to 100 changes.")
+            if base is None:
+                # Changes to a text nexlore no longer has cannot be placed; a whole text can (below).
+                raise ToolError("The note is not at that hash any more, nor in its history. Read it again.")
             text = base.decode("utf-8").removeprefix("\ufeff").replace("\r\n", "\n")
             for number, edit in enumerate(edits, 1):
                 old = edit.get("old") if isinstance(edit, dict) else None
@@ -289,7 +293,9 @@ def _call(caller: Caller, client: str, name: str, args: dict[str, Any]) -> Any:
             content = text
         else:
             content = _text(args, "content", limit=MAX_TEXT)
-        data = textblocks.keep_unchanged(base, content)
+        # Read in a state nexlore no longer keeps: the text as written, and since the note changed since, saving
+        # makes it a conflict copy next to it (review before 1.0.0: it was refused and the program's text lost).
+        data = textblocks.keep_unchanged(base, content) if base is not None else content.encode("utf-8")
         if len(data) > MAX_TEXT:
             raise ToolError("A note holds at most 5 MB.")
         if name == "propose_change":
@@ -755,6 +761,19 @@ def _own_waiting(db: Any, account: Any, request_id: int) -> McpRequest:
     return row
 
 
+def _claim(db: Any, row: McpRequest, status: str) -> None:
+    """Takes the request out of "waiting" in one step, or answers that another click was first. Six approvals at
+    once ran the tool six times, and an approval and a refusal at once both went through."""
+    taken = db.execute(
+        update(McpRequest).where(McpRequest.id == row.id, McpRequest.status == "waiting")
+        .values(status=status, decided_at=mcp.utcnow())
+    )
+    db.commit()
+    if taken.rowcount != 1:
+        raise error("request_closed", "This request was decided already or ran out.", 409)
+    db.refresh(row)
+
+
 def _finish(db: Any, row: McpRequest, status: str, result: Any) -> None:
     row.status = status
     row.result = json.dumps(result, ensure_ascii=False)
@@ -768,9 +787,11 @@ def approve(
     request_id: Annotated[int, Path(ge=1)], body: DecideIn, request: Request, account: Account, db: DbSession
 ) -> RequestOut:
     row = _own_waiting(db, account, request_id)
+    _claim(db, row, "running")
     try:
         arguments = mcp.request_arguments(row)
     except McpError as exc:
+        _finish(db, row, "failed", {"error": exc.text})
         raise error(exc.code, exc.text, exc.status) from exc
     caller = mcp.caller_of_key(db, row.key_id) if mcp.allowed(db) else None
     tool = BY_NAME.get(row.tool)
@@ -787,7 +808,11 @@ def approve(
             key.tool_rights = _clean_rights(own) or None
     db.commit()
     client = f"mcp-{row.key_id}-{secrets.token_hex(4)}"
-    answer = _run(caller, client, row.tool, arguments, request)
+    try:
+        answer = _run(caller, client, row.tool, arguments, request)
+    except Exception:
+        _finish(db, row, "failed", {"error": "The tool failed."})
+        raise
     text = answer["content"][0]["text"]
     try:
         value: Any = json.loads(text)
@@ -801,6 +826,7 @@ def approve(
 @router.post("/api/mcp/requests/{request_id}/decline", response_model=RequestOut, summary="Turn a request down")
 def decline(request_id: Annotated[int, Path(ge=1)], account: Account, db: DbSession) -> RequestOut:
     row = _own_waiting(db, account, request_id)
+    _claim(db, row, "declined")
     _finish(db, row, "declined", None)
     logger.info("MCP request declined request_id=%s", row.id)
     return _request_out(row)

@@ -264,7 +264,8 @@ def test_knowing_the_password_is_no_way_around_the_lockout(client: TestClient, o
             wrong += 1
     brake.forget()
     locked = client.post("/api/auth/login", json={"name": "tester", "password": PASSWORD})
-    assert locked.status_code == 429 and locked.json()["detail"]["code"] == "account_locked"
+    # Locked, and saying no more than a wrong password does (review before 1.0.0).
+    assert locked.status_code == 401 and locked.json()["detail"]["code"] == "wrong_credentials"
     with SessionLocal() as db:
         row = db.get(Account, operator.id)
         assert row is not None and row.locked_until is not None

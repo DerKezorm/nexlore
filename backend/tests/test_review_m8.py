@@ -85,7 +85,7 @@ def test_the_deepest_log_levels_hold_no_note_text_and_no_hash(
     """SQLAlchemy writes every statement with its values from INFO on: note texts, password and key hashes."""
     (vault / "S").mkdir()
     index.scan()
-    assert client.put("/api/logs/level", json={"mode": mode}).status_code == 200
+    assert client.put("/api/logs/level", json={"mode": mode, "minutes": 60}).status_code == 200
     made = client.post("/api/notes", json={"folder": "S", "title": "Private", "content": "quetzalcoatl-secret"})
     assert made.status_code in (200, 201), made.text
     with SessionLocal() as db:

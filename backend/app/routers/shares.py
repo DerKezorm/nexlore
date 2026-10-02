@@ -20,7 +20,7 @@ from sqlalchemy import func, or_, select
 
 from ..deps import Account, DbSession, OperatorAccount, client_ip, need
 from ..errors import detail, error
-from ..models import MANAGE, OPERATOR, WRITE, Share, Space
+from ..models import MANAGE, WRITE, Share, Space
 from ..models import Account as AccountRow
 from ..security import brake
 from ..services import media, paths, rights, settings_service, shares
@@ -123,7 +123,7 @@ def covers(
 def withdraw(share_id: int, account: Account, db: DbSession) -> None:
     share = db.get(Share, share_id)
     allowed = share is not None and (
-        account.role == OPERATOR or rights.at_least(rights.role_in(db, account, share.space_id), MANAGE)
+        rights.operator_powers(account) or rights.at_least(rights.role_in(db, account, share.space_id), MANAGE)
     )
     if share is None or not allowed:
         raise error("not_found", "No such link.", 404)

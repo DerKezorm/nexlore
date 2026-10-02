@@ -44,7 +44,7 @@ def _space(db: DbSession, account: AccountRow, name: str, *, operator_may: bool 
     if space is None:
         raise error("not_found", "No such space.", 404)
     role = rights.role_in(db, account, space.id)
-    if operator_may and account.role == OPERATOR:
+    if operator_may and rights.operator_powers(account):
         return space
     if not rights.at_least(role, rights.READ):
         raise error("not_found", "No such space.", 404)
@@ -135,7 +135,7 @@ def set_member(
     space = _space(db, account, name, operator_may=True)
     own = rights.role_in(db, account, space.id)
     # The operator acting where it does not manage: allowed, but every member is told.
-    beyond = account.role == OPERATOR and not rights.at_least(own, MANAGE)
+    beyond = rights.operator_powers(account) and not rights.at_least(own, MANAGE)
     target = accounts.by_name(db, person)
     membership = db.get(Membership, (space.id, target.id)) if target is not None else None
     if membership is None and not beyond and (target is None or target.id != account.id):
@@ -198,7 +198,7 @@ def remove_member(name: SpaceName, person: AccountName, account: Account, db: Db
     if membership.role == MANAGE and _managers_left(db, space.id, target.id) == 0 and _others(db, space.id, target.id):
         raise error("last_manager", "The space needs another manager first.", 409)
     own = rights.role_in(db, account, space.id)
-    beyond = not leaving and account.role == OPERATOR and not rights.at_least(own, MANAGE)
+    beyond = not leaving and rights.operator_powers(account) and not rights.at_least(own, MANAGE)
     db.delete(membership)
     if beyond:
         # Taking the last member out makes the space the operator's: the one taken out is told as well.
@@ -337,7 +337,7 @@ def invite(payload: InviteIn, request: Request, operator: OperatorAccount, db: D
 def withdraw(invite_id: int, account: Account, db: DbSession) -> None:
     row = db.get(Invite, invite_id)
     allowed = row is not None and (
-        account.role == OPERATOR
+        rights.operator_powers(account)
         or row.created_by == account.id
         or (row.space_id is not None and rights.at_least(rights.role_in(db, account, row.space_id), MANAGE))
     )

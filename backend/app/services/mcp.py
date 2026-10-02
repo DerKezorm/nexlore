@@ -166,6 +166,9 @@ def authenticate(db: Session, token: str | None) -> Caller | None:
     if key is None or (key.expires_at is not None and key.expires_at <= utcnow()):
         # A connector's access token runs out after an hour; the connector refreshes it.
         return None
+    if key.kind == "oauth" and not settings_service.get(db, "mcp_oauth_allowed"):
+        # Connectors switched off: their tokens stop at once, not when they run out within the hour.
+        return None
     return _caller(db, key, used=True)
 
 
@@ -190,6 +193,7 @@ def _caller(db: Session, key: McpKey, *, used: bool) -> Caller | None:
     level = key.level if at_least(ceiling, key.level) else ceiling
     own = dict(key.tool_rights) if isinstance(key.tool_rights, dict) else {}
     db.expunge(account)
+    account.via_key = True
     if key.spaces is not None:
         account.key_spaces = frozenset(int(space_id) for space_id in key.spaces)
     return Caller(account=account, key_id=key.id, key_name=key.name, level=level, rights=own, blocked=blocked(db))
@@ -272,6 +276,14 @@ def add_request(db: Session, caller: Caller, tool: str, arguments: dict[str, obj
     )
     if (waiting or 0) >= MAX_WAITING:
         raise McpError("too_many_requests", "100 requests are waiting already. Let the account decide first.", 409)
+    # Half of them at most from one key: a busy program leaves room for the account's others.
+    of_key = db.scalar(
+        select(func.count())
+        .select_from(McpRequest)
+        .where(McpRequest.key_id == caller.key_id, McpRequest.status == "waiting")
+    )
+    if (of_key or 0) >= MAX_WAITING // 2:
+        raise McpError("too_many_requests", "This program has 50 requests waiting. Let the account decide first.", 409)
     now = utcnow()
     row = McpRequest(
         account_id=caller.account.id,
