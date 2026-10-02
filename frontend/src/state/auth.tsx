@@ -8,7 +8,7 @@
 import { applyAppearance, DEFAULT_APPEARANCE, type Appearance } from '../lib/appearance'
 import { applyOwnCss, applyThemeColours } from '../lib/themes'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import i18n from 'i18next'
 
 import { ApiError, authApi, setSignedOut, SIGNED_OUT_EVENT, type Me, themesApi } from '../api/client'
 import { rememberName } from '../lib/people'
@@ -32,13 +32,16 @@ type Auth = {
 const AuthContext = createContext<Auth | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { i18n } = useTranslation()
+  // The language being saved right now. Until its answer is in, the server still has the old one: a look at the
+  // account meanwhile must not switch back (seen on a slow NAS, the pick held only the second time).
+  const languageWrite = useRef<string | null>(null)
   const [status, setStatus] = useState<Status>('loading')
   const [me, setMe] = useState<Me | null>(null)
   const appearanceWrites = useRef<Promise<unknown>>(Promise.resolve())
   const appearanceTicket = useRef(0)
   const themePending = useRef(false)
 
+  // Without dependencies: with the language among them, every switch asked again who is signed in.
   const refresh = useCallback(async () => {
     try {
       const setup = await authApi.setupState()
@@ -57,14 +60,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSignedOut(false)
       setMe(account)
       setStatus('signedIn')
-      if (account.language && account.language !== i18n.language) await changeLanguage(account.language)
+      if (languageWrite.current === null && account.language && account.language !== i18n.language) {
+        await changeLanguage(account.language)
+      }
       return account
     } catch (problem) {
       setMe(null)
       setStatus(problem instanceof ApiError && problem.status === 401 ? 'signedOut' : 'error')
       return null
     }
-  }, [i18n])
+  }, [])
 
   useEffect(() => {
     forgetSharedKeys()
@@ -93,9 +98,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const setLanguage = useCallback(async (code: string) => {
-    await changeLanguage(code)
-    const account = await authApi.setLanguage(code)
-    setMe((current) => (current ? { ...current, language: account.language } : current))
+    languageWrite.current = code
+    try {
+      await changeLanguage(code)
+      const account = await authApi.setLanguage(code)
+      setMe((current) => (current ? { ...current, language: account.language } : current))
+    } finally {
+      if (languageWrite.current === code) languageWrite.current = null
+    }
   }, [])
 
   const setAppearance = useCallback(async (changes: Partial<Appearance>) => {

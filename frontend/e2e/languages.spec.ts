@@ -92,3 +92,33 @@ test('a file of the operator for English lays its words over the shipped ones (P
     await page.request.delete('/api/locales/en', { headers })
   }
 })
+
+test('the language picked in the account menu holds the first time, even when saving it takes a while', async ({ page }) => {
+  const headers = { 'X-Nexlore-Client': 'tab-e2elanguage' }
+  try {
+    await page.request.put('/api/me/language', { data: { language: 'en' }, headers })
+    // As on a slow NAS: the answer to the save comes after the page asked again who is signed in. Until 1.0.0 that
+    // question answered with the old language and switched back; a second pick then seemed to work.
+    await page.route('**/api/me/language', async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 800))
+      await route.continue()
+    })
+    await page.goto('/')
+    await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+    await page.evaluate(() => {
+      const seen: string[] = []
+      ;(window as unknown as { langs: string[] }).langs = seen
+      new MutationObserver(() => seen.push(document.documentElement.lang)).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
+    })
+    await page.getByRole('banner').getByRole('button', { name: /^Account of / }).click()
+    const select = page.locator('select').filter({ has: page.locator('option[value="de"]') })
+    await expect(select.locator('option[value="de"]')).toHaveCount(1)
+    await select.selectOption('de')
+    await expect.poll(async () => (await (await page.request.get('/api/auth/me')).json()).language).toBe('de')
+    await page.waitForTimeout(1500)
+    expect(await page.evaluate(() => (window as unknown as { langs: string[] }).langs)).toEqual(['de'])
+    await expect(page.getByRole('link', { name: 'Mein Konto' })).toBeVisible()
+  } finally {
+    await page.request.put('/api/me/language', { data: { language: '' }, headers })
+  }
+})
