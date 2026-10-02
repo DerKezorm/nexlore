@@ -4,6 +4,14 @@
  * running version, so the first answer of /api/auth/me is made older here.
  */
 import { expect, test, type Page } from './fixtures'
+import fs from 'node:fs'
+import path from 'node:path'
+
+/** The first section of the written text of a version, as the window shows it. */
+function firstSection(version: string): { title: string; where: string } {
+  const texts = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '..', 'src', 'i18n', 'whatsnew', 'en.json'), 'utf-8'))
+  return texts[version].sections[0]
+}
 
 // Otherwise the service worker answers and page.route sees nothing.
 test.use({ serviceWorkers: 'block' })
@@ -27,8 +35,9 @@ test('the banner opens the window, and reading it puts it away for good', async 
   await expect(banner).toContainText(`nexlore ${version} is here.`)
   await banner.getByRole('button', { name: "See what's new" }).click()
   const window = page.getByRole('dialog', { name: `What's new in nexlore ${version}` })
-  await expect(window.getByRole('heading', { name: 'A display name for every account' })).toBeVisible()
-  await expect(window.getByText('Account menu, My account, Profile, Display name')).toBeVisible()
+  const first = firstSection(version)
+  await expect(window.getByRole('heading', { name: first.title })).toBeVisible()
+  await expect(window.getByText(first.where).first()).toBeVisible()
   const seen = page.waitForResponse((answer) => answer.url().endsWith('/api/me/whats-new/seen') && answer.request().method() === 'POST')
   await window.getByRole('button', { name: 'Got it' }).click()
   expect((await seen).status()).toBe(200)
