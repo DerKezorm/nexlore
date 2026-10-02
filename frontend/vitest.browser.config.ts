@@ -27,6 +27,10 @@ export default defineConfig({
       '@codemirror/language',
       '@codemirror/language-data',
       '@lezer/highlight',
+      // Found late on a fresh machine as well (CI run on b817150): the reload cut off the import of a test file.
+      'react-dom/client',
+      'react-router-dom',
+      'd3-force',
     ],
   },
   test: {
