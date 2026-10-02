@@ -198,7 +198,10 @@
 }
 .nx-callout-warning,
 .nx-callout-caution,
-.nx-callout-attention {
+.nx-callout-attention,
+.nx-callout-question,
+.nx-callout-help,
+.nx-callout-faq {
   --nx-callout: var(--color-warn-500);
 }
 .nx-callout-danger,
@@ -212,9 +215,6 @@
 .nx-callout-done {
   --nx-callout: var(--color-ok-500);
 }
-.nx-callout-question,
-.nx-callout-help,
-.nx-callout-faq,
 .nx-callout-example {
   --nx-callout: var(--color-ai-500);
 }

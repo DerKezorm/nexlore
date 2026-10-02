@@ -69,3 +69,14 @@ test('a kind of callout of the theme\'s own has its colour and symbol, reading a
   await expect(callouts.locator('[data-kind="shop"]')).toBeVisible()
   expect(problems).toEqual([])
 })
+
+test('a question looks the same while reading and while writing', async ({ page }) => {
+  await page.goto('/note/Heath/Callouts.md')
+  const reading = await page.locator('article .nn-callout-faq').evaluate((node) => getComputedStyle(node).borderLeftColor)
+  expect(reading).toBe(await page.locator('article .nn-callout-warning').evaluate((node) => getComputedStyle(node).borderLeftColor))
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  const writing = page.locator('.ProseMirror .nx-callout-faq')
+  await expect(writing).toBeVisible()
+  expect(await writing.evaluate((node) => getComputedStyle(node).borderLeftColor)).toBe(reading)
+  await page.getByRole('button', { name: 'Read', exact: true }).click()
+})
