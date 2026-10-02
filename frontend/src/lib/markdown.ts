@@ -41,8 +41,13 @@ export type Targets = {
   fileUrl: (path: string) => string
   /** Where a link to a file leads. */
   fileHref: (path: string) => string
-  /** The attributes of a link to a note: `data-note` in the app (the page opens it), an address on a public page. */
-  noteAttributes: (path: string) => string
+  /**
+   * The attributes of a link to a note: `data-note` in the app (the page opens it), an address on a public page.
+   * `section`: the heading or block after `#` (`[[Note#Heading]]`); in the app the page scrolls to it.
+   */
+  noteAttributes: (path: string, section?: string) => string
+  /** The note itself, for `[[#Heading]]`: a link to a part of the same note. Left out, such a link leads nowhere. */
+  self?: string
   /** Where a relative Markdown link or picture points, as a path; null leaves it as written. */
   relative: (href: string) => string | null
   /** Where a Markdown link to a note leads; left out, the link stays as written (the note page handles it). */
@@ -72,16 +77,18 @@ function decoded(href: string): string {
 
 /** `embeds`: whether notes embedded in this one are shown; false inside an embed, so it goes one level deep. */
 export function appTargets(notePath: string | null, embeds = true): Targets {
-  const noteAttributes = (path: string) => `data-note="${escape(path)}"`
+  const noteAttributes = (path: string, section = '') =>
+    `data-note="${escape(path)}"` + (section ? ` data-section="${escape(section)}"` : '')
   return {
     fileUrl: (path) => fileUrl(path),
     fileHref: fileRoute,
     noteAttributes,
+    self: notePath ?? undefined,
     relative: (href) => (notePath ? relativeTarget(notePath, href) : null),
     // The link stays inside as long as nothing is filled in (too many embeds, or no page to fill them).
     embedNote: embeds
       ? (path, section, text) =>
-          `<span class="nn-embed-note" data-embed="${escape(path)}" data-section="${escape(section)}"><a class="nn-wikilink" ${noteAttributes(path)}>${text}</a></span>`
+          `<span class="nn-embed-note" data-embed="${escape(path)}" data-section="${escape(section)}"><a class="nn-wikilink" ${noteAttributes(path, section)}>${text}</a></span>`
       : undefined,
   }
 }
@@ -144,16 +151,19 @@ const CALLOUT_KIND = /^[a-z0-9-]{1,40}$/
 
 function wikiLink(embed: boolean, inner: string, resolve: (target: string) => string | null, targets: Targets): string {
   const { target, section, label } = wikiParts(inner)
-  const path = target ? resolve(target) : null
+  // `[[#Heading]]` leads to a part of the same note.
+  const path = target ? resolve(target) : section && !embed ? (targets.self ?? null) : null
   // An embed's `|300` is its width, not a caption.
   const width = embed && label && /^\d+(x\d+)?$/.test(label.trim()) ? label.trim().split('x')[0] : ''
-  // Without a label, a link to a heading or block names it too (`Note › Heading`), as the editor shows it.
-  const shown = section && !embed ? `${target || ''} › ${section.replace(/^\^/, '')}`.trim() : target
+  // Without a label, a link to a heading or block names it too (`Note › Heading`), as the editor shows it; a part of
+  // the same note only by its own name.
+  const part = section.replace(/^\^/, '')
+  const shown = section && !embed ? (target ? `${target} › ${part}` : part) : target
   const text = escape((width || label === undefined ? shown : label).trim() || target)
   if (path && !isNotePath(path)) return embed ? embedded(path, text, width, targets) : fileLink(path, text, targets)
   if (path && embed && targets.embedNote) return targets.embedNote(path, section, text)
   return path
-    ? `<a class="nn-wikilink" ${targets.noteAttributes(path)}>${text}</a>`
+    ? `<a class="nn-wikilink" ${targets.noteAttributes(path, section)}>${text}</a>`
     : targets.missing
       ? targets.missing(text)
       : `<a class="nn-wikilink nn-wikilink-missing" data-missing="${escape(section ? `${target}#${section}` : target)}" title="${escape(i18n.t('note.missingLink'))}">${text}</a>`

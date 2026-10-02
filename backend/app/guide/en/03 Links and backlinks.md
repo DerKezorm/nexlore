@@ -8,6 +8,8 @@ Two square brackets connect notes: `[[05 The map]]` becomes [[05 The map]]. Whil
 
 A link to a note that does not exist yet looks paler, like [[An idea for later]]. Click it and nexlore makes the note.
 
+A link can also lead to a heading: `[[13 Shortcuts#In the editor]]` opens the note right there, try it: [[13 Shortcuts#In the editor]]. Without a note's name you jump within the same note, [[#Embedding]] takes you to the part further down.
+
 A link into another space starts with its name: `[[Work/Project plan]]`. Whoever may not read the other space sees such a link as missing.
 
 ## Backlinks

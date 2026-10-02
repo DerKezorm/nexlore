@@ -149,13 +149,21 @@ describe("Obsidian's own writing in the reading view", () => {
   it('embeds a note in a holder the note page fills, one level deep, and as a link elsewhere', () => {
     const html = renderMarkdown('![[Plan#Next steps]]\n\ntext ![[Plan]] more\n\n![[Nowhere]]', plan, 'S/Home.md')
     expect(html).toContain(
-      '<div class="nn-embed-block"><span class="nn-embed-note" data-embed="S/Plan.md" data-section="Next steps"><a class="nn-wikilink" data-note="S/Plan.md">Plan</a></span></div>',
+      '<div class="nn-embed-block"><span class="nn-embed-note" data-embed="S/Plan.md" data-section="Next steps"><a class="nn-wikilink" data-note="S/Plan.md" data-section="Next steps">Plan</a></span></div>',
     )
     expect(html).toContain('<p>text <span class="nn-embed-note" data-embed="S/Plan.md" data-section="">')
     expect(html).toContain('nn-wikilink-missing')
     const inside = renderMarkdown('![[Plan]]', plan, 'S/Plan.md', appTargets('S/Plan.md', false))
     expect(inside).not.toContain('data-embed')
     expect(inside).toContain('<a class="nn-wikilink" data-note="S/Plan.md">Plan</a>')
+  })
+
+  it('a link to a heading carries it, for the page to scroll to; one to a heading of the same note leads here', () => {
+    const html = renderMarkdown('[[Plan#Next steps]] and [[#Here]]', plan, 'S/Home.md')
+    expect(html).toContain('<a class="nn-wikilink" data-note="S/Plan.md" data-section="Next steps">Plan › Next steps</a>')
+    expect(html).toContain('<a class="nn-wikilink" data-note="S/Home.md" data-section="Here">Here</a>')
+    // Without a page of its own (a public page), the part of the same note stays text, as before.
+    expect(renderMarkdown('[[#Here]]', plan, null, { ...appTargets(null), self: undefined })).not.toContain('data-note')
   })
 
   it('cuts a section out of a note: a heading down to the next of its level, or a block by its id', () => {

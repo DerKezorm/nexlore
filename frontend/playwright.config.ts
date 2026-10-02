@@ -104,6 +104,10 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Heath/Present there.md': '# Present there\n',
   'Heath/Counted.md': '# Counted\n\nFive words stand here now.\n',
   'Heath/Marked.md': '# Marked\n\nTop.\n\n' + Array.from({ length: 60 }, (_, i) => `Line ${i + 1} of the long way down.\n\n`).join('') + '## Far below\n\nThe end.\n',
+  // Links to a heading far down (headinglinks.spec.ts): enough lines that it starts out of view.
+  'Heath/Far.md': '# Far\n\n' + 'A line that fills the page.\n\n'.repeat(70) + '## Far down\n\nThe bottom.\n',
+  'Heath/Pointer.md': '# Pointer\n\nTo [[Far#far DOWN]] and [[#Here]].\n\n' + 'Filling.\n\n'.repeat(70) + '## Here\n\nRight here.\n',
+  'Heath/Embedder.md': '# Embedder\n\n![[Far#Far down]]\n',
   'Heath/Callouts.md': '# Callouts\n\n> [!recipe] Soup\n> Water and salt.\n\n> [!warning] Care\n> Hot.\n\n> [!faq] Why\n> Because.\n',
   'Heath/Pasted.md': '# Pasted\n\nStart.\n',
   'Heath/Table.md': '# Table\n\nKeep  this   line.\n\n| Item | Price |\n| --- | --- |\n| Tea | 10 |\n| Cake | 2 |\n',

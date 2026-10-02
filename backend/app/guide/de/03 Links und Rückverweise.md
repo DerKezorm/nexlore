@@ -8,6 +8,8 @@ Zwei eckige Klammern verbinden Notizen: `[[05 Die Karte]]` wird zu [[05 Die Kart
 
 Ein Link auf eine Notiz, die es noch nicht gibt, erscheint blasser, zum Beispiel [[Eine Idee für später]]. Klickst du ihn an, legt nexlore die Notiz an.
 
+Ein Link kann auch zu einer Überschrift führen: `[[13 Tastenkürzel#Im Editor]]` öffnet die Notiz genau dort, probier es aus: [[13 Tastenkürzel#Im Editor]]. Ohne Notizname springst du innerhalb derselben Notiz, [[#Einbetten]] führt zum Abschnitt weiter unten.
+
 Links in einen anderen Bereich schreibst du mit seinem Namen davor: `[[Arbeit/Projektplan]]`. Wer den anderen Bereich nicht lesen darf, sieht so einen Link als fehlend.
 
 ## Rückverweise

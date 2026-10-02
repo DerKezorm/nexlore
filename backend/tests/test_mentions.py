@@ -157,3 +157,13 @@ def test_cleaning_up_lists_lonely_notes_and_links_to_nothing(people: dict[str, T
     assert found["broken_total"] == 2
     assert people["carl"].get("/api/cleanup", params={"space": "Garden"}).status_code == 404
     assert bob.get("/api/cleanup", params={"space": "Nowhere"}).status_code == 404
+
+
+def test_a_link_to_a_part_of_the_same_note_leads_somewhere(people: dict[str, TestClient]) -> None:
+    """`[[#Heading]]` jumps within its note: no link to nothing, and no link to another note either."""
+    anna = people["anna"]
+    note(anna, "Garden", "Long read", "Skip to [[#The end]] or [[#^summary]].\n\n## The end\n\nDone. ^summary\n")
+    found = anna.get("/api/cleanup", params={"space": "Garden"}).json()
+    assert [row["target"] for row in found["broken"] if row["path"] == "Garden/Long read.md"] == []
+    links = anna.get("/api/links", params={"path": "Garden/Long read.md"}).json()
+    assert links["outgoing"] == [] and links["backlinks"] == []

@@ -20,7 +20,7 @@ export const MAX_EMBEDS = 20
 
 type Holder = { holder: HTMLElement; path: string; section: string; key: string }
 
-export function NoteEmbeds({ article, html, onOpen }: { article: RefObject<HTMLElement | null>; html: string; onOpen: (path: string) => void }) {
+export function NoteEmbeds({ article, html, onOpen }: { article: RefObject<HTMLElement | null>; html: string; onOpen: (path: string, section?: string) => void }) {
   const [holders, setHolders] = useState<Holder[]>([])
   useLayoutEffect(() => {
     const found: Holder[] = []
@@ -36,7 +36,7 @@ export function NoteEmbeds({ article, html, onOpen }: { article: RefObject<HTMLE
 
 type State = { html: string } | 'loading' | 'missing' | 'no-section'
 
-function EmbeddedNote({ path, section, onOpen }: { path: string; section: string; onOpen: (path: string) => void }) {
+function EmbeddedNote({ path, section, onOpen }: { path: string; section: string; onOpen: (path: string, section?: string) => void }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [state, setState] = useState<State>('loading')
@@ -73,7 +73,7 @@ function EmbeddedNote({ path, section, onOpen }: { path: string; section: string
     const note = (e.target as HTMLElement).closest('a[data-note]')
     if (note) {
       e.preventDefault()
-      onOpen(note.getAttribute('data-note')!)
+      onOpen(note.getAttribute('data-note')!, note.getAttribute('data-section') ?? '')
       return
     }
     const file = (e.target as HTMLElement).closest('a[data-file], a[href^="/file/"]')
@@ -86,7 +86,7 @@ function EmbeddedNote({ path, section, onOpen }: { path: string; section: string
   const title = baseName(path).replace(/\.md$/i, '') + (section ? ` › ${section.replace(/^\^/, '')}` : '')
   return (
     <span className="nn-embedded" data-state={typeof state === 'string' ? state : 'shown'}>
-      <button type="button" className="nn-embedded-title" onClick={() => onOpen(path)}>
+      <button type="button" className="nn-embedded-title" onClick={() => onOpen(path, section)}>
         <Symbol name="note" className="h-3.5 w-3.5" /> {title}
       </button>
       {state === 'loading' && <span className="nn-embedded-note">{t('note.embedLoading')}</span>}

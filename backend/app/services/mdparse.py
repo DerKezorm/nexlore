@@ -277,7 +277,9 @@ def parse(text: str) -> Parsed:
     for match in _WIKI.finditer(masked):
         inner = match.group(2)
         target, subpath, target_start, target_end = _split_wiki(inner, match.start(2))
-        if not target and not subpath:
+        if not target:
+            # `[[#Heading]]`: a place in the same note, like `[x](#heading)` below; no link to another note, and
+            # none to nothing (it stood among the links to nothing when cleaning up).
             continue
         kind = EMBED if match.group(1) else WIKI
         parsed.links.append(

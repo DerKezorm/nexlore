@@ -105,6 +105,25 @@ type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'failed' | 'refreshed
 /** The search page for a tag (and the tags below it). */
 const tagSearch = (tag: string) => `/search?q=${encodeURIComponent('tag:' + tag)}`
 
+/** The heading a link's part asks for (`[[Note#Part#Subpart]]` means the subpart); none for a block (`#^id`). */
+function headingOf(section: string): string {
+  const last = section.split('#').pop()?.trim() ?? ''
+  return last.startsWith('^') ? '' : last
+}
+
+/** The part after `#` of what a link says (`Note#Heading|Shown`), as the editor hands it over. */
+function sectionOf(target: string): string {
+  const inner = target.split('|')[0]
+  const at = inner.indexOf('#')
+  return at < 0 ? '' : inner.slice(at + 1).trim()
+}
+
+/** Headings compare as link targets do: case and runs of spaces do not count. */
+const sameHeading = (a: string, b: string) => {
+  const fold = (text: string) => text.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim()
+  return fold(a) === fold(b)
+}
+
 export function NotePage() {
   // Already decoded by the router; decoding again breaks names with a "%" in them.
   const path = useParams()['*'] ?? ''
@@ -273,9 +292,12 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const editingNow = useRef(editing)
   editingNow.current = editing
 
-  /** Where a note opens from this pane: the right pane changes only `right`; the left one keeps the right note. */
+  /**
+   * Where a note opens from this pane: the right pane changes only `right`; the left one keeps the right note.
+   * `section`: the part a link asks for; the left pane scrolls to its heading (`#Heading` in the address).
+   */
   const go = useCallback(
-    (next: string, edit = false) => {
+    (next: string, edit = false, section = '') => {
       if (side === 'right') {
         navigate({ pathname: location.pathname, search: `?right=${encodeURIComponent(next)}` })
         return
@@ -284,11 +306,21 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       if (right) query.set('right', right)
       if (edit) query.set('edit', '1')
       const search = query.toString()
-      navigate(noteUrl(next) + (search ? `?${search}` : ''))
+      const heading = headingOf(section)
+      navigate(noteUrl(next) + (search ? `?${search}` : '') + (heading ? `#${encodeURIComponent(heading)}` : ''))
     },
     [side, right, navigate, location.pathname],
   )
-  const open = useCallback((next: string) => go(next), [go])
+  // A part of the note in front (`[[#Heading]]`): scrolled to at once, nothing to load.
+  const revealHere = useRef<(heading: string) => void>(() => undefined)
+  const open = useCallback(
+    (next: string, section = '') => {
+      const heading = headingOf(section)
+      if (heading && next === current.current) return revealHere.current(heading)
+      go(next, false, section)
+    },
+    [go],
+  )
 
   // The "More" menu closes on a click elsewhere and on Escape, like any menu.
   const menu = useRef<HTMLDetailsElement>(null)
@@ -638,13 +670,14 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     // Reading: the article; writing: the editor of this pane.
     const root = article.current ?? document.querySelector(`[data-pane="${side}"] .ProseMirror`)
     const found = [...(root?.querySelectorAll('h1, h2, h3, h4, h5, h6') ?? [])]
-    const target = found.find((element) => element.textContent?.trim() === heading.trim()) ?? found[index]
+    const target = found.find((element) => sameHeading(element.textContent ?? '', heading)) ?? found[index]
     target?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
   const pluginWrote = () => void load(path)
   // The note in front, for the quick switcher's headings after "#" (with what is typed in the editor).
   const revealNow = useRef(reveal)
   revealNow.current = reveal
+  revealHere.current = (heading) => revealNow.current(heading, -1)
   useEffect(() => {
     if (side !== 'left' || !note) return
     setShownNote({ path: note.path, read: () => (editingNow.current && editor.current ? editor.current.text() : note.content) })
@@ -680,6 +713,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   }
 
   const openLink = async (target: string, newTab: boolean) => {
+    // `[[#Heading]]` in the editor: a part of this very note.
+    if (target.trim().startsWith('#')) return void open(path, sectionOf(target))
     let found: string | null
     try {
       found = await linkIdx.resolveNow(target)
@@ -690,7 +725,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     }
     if (found) {
       if (newTab) openInTab(found, navigate)
-      else open(found)
+      else open(found, sectionOf(target))
       return
     }
     // A file (`photo.png`, `doc.pdf`): the server knows where it is; a missing one is never made into a note.
@@ -1418,7 +1453,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                     const box = (e.target as HTMLElement).closest<HTMLInputElement>('input[data-task]')
                     if (box && !box.disabled) return void tickInReading(box)
                     const target = (e.target as HTMLElement).closest('a[data-note]')
-                    if (target) open(target.getAttribute('data-note')!)
+                    if (target) open(target.getAttribute('data-note')!, target.getAttribute('data-section') ?? '')
                     // A link to a note not written yet makes it, as in the editor (it did nothing here, P1.2).
                     const missing = (e.target as HTMLElement).closest('a[data-missing]')
                     if (missing) void openLink(missing.getAttribute('data-missing')!, e.ctrlKey || e.metaKey)
