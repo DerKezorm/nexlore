@@ -57,7 +57,7 @@ Every error has the same shape:
 | 403 | `read_only_token` | A write with a token of the level Read. |
 | 403 | `forbidden` | The account may read the space but not write in it. |
 | 404 | `not_found` | Not there, **or** in a space the token may not see. The two look the same on purpose. |
-| 409 | `base_unknown` | `PUT /note` with a `base_hash` the note never had. Read it again. |
+| 400 | `bad_date` | A `today` or `date` that does not exist (`2026-13-40`). |
 | 409 | `note_locked` | Appending while somebody edits the note. Try again in a moment. |
 | 409 | `task_changed` | The task is no longer where it was. List the tasks again. |
 | 413 | `too_large` | A note holds at most 5 MB. |
@@ -227,7 +227,9 @@ Replace a note's text.
 - Lines that did not change stay byte for byte as they were (line ends, a byte order mark).
 - **Conflict:** when the note changed since, or somebody is editing it right now, nothing is overwritten. The text
   goes into a conflict copy next to the note, `saved` is `false` and `conflict` names the copy. The account sees the
-  copy in nexlore and merges it there.
+  copy in nexlore and merges it there. The same when `base_hash` names a state nexlore no longer keeps: the text is
+  never lost.
+- 5 MB counts in bytes of UTF-8, on every way a note is written.
 
 ### `POST /api/v1/note/append`
 

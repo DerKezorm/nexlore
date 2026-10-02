@@ -3,7 +3,7 @@
 nexlore speaks the Model Context Protocol, so an AI program on your computer, an agent or an AI app can search and
 read your notes, propose changes, or change them, depending on the key you give it and the rights you set per tool. It
 sees only what your account may read, and less if you limit the key to some spaces. It never gets the powers of an
-operator: members and public pages need the right to manage the space itself.
+operator, not even with the operator's own key: members and public pages need the right to manage the space itself.
 
 ## Switching it on
 
@@ -71,7 +71,9 @@ with the tool and its arguments exactly as they were sent. Approving runs exactl
 of the notes at that moment (a note changed in the meantime gets a conflict copy, as always); the program cannot
 change a request, only make a new one. The rights of the key are checked again on approval: a key revoked, a tool
 denied or blocked since, or MCP switched off, and nothing runs. "From now on allow without asking" sets the tool to
-Allow for that key. A request runs out after 24 hours; an account has at most 100 waiting.
+Allow for that key. A request is decided once: two clicks at the same moment run it once, and approving and declining
+at once cannot both happen. A request runs out after 24 hours; an account has at most 100 waiting, one program at
+most half of them.
 
 The program learns what came of it with `request_status` (`waiting`, `done` with the tool's answer, `failed`,
 `declined`, `expired`). Only the key that asked sees its request.
@@ -87,8 +89,13 @@ the note changed in the meantime, the draft goes into a conflict copy.
 
 **Writing** needs the hash `read_note` gave (`base_hash`). Lines the AI did not change stay byte for byte as they
 were. If the note changed since it was read, or somebody is editing it right now, the new text goes into a conflict
-copy and nothing is overwritten. Every write is a version with the source "AI (MCP)"; restoring a version or the
-trash says "restored", and links rewritten after a rename say who renamed, as in the interface.
+copy and nothing is overwritten; the same when the hash names a state nexlore no longer keeps (a version bundled into
+the next one). `edit_note` needs that state and then asks to read again. Every write is a version with the source "AI
+(MCP)"; restoring a version or the trash says "restored", and links rewritten after a rename say who renamed, as in
+the interface.
+
+**Renaming and moving** rewrite every link to the note, also in spaces the key does not see (as in the interface: a
+link elsewhere would otherwise point to nothing). The program learns only how many links in its own spaces changed.
 
 ## Connecting a client
 
@@ -131,11 +138,16 @@ curl -s https://notes.example.com/api/mcp \
   own machine (`http://localhost`, `http://127.0.0.1`).
 - It sends you to `/oauth/authorize` with PKCE (S256). You sign in, choose and agree.
 - It trades the code once (`/api/oauth/token`), within 10 minutes. Access tokens last an hour; the refresh token changes
-  with every refresh, and an old one is refused.
+  with every refresh. An old one brought again ends the connector (whoever brings it has a copy); the program then
+  signs in again. A connector signs in again after 90 days, or after 30 days without a refresh.
+- The consent page starts at the level Read: a program gets more only when you choose it. The name it shows is the
+  name the program gave itself; where you are sent back to is what counts.
 
 For connectors of hosted AI apps, nexlore must be reachable from the internet over HTTPS, and the addresses it names
 come from the public address in Settings, Server (or `NEXLORE_PUBLIC_URL`): set it when nexlore runs behind a reverse
-proxy. Revoking the connector in the list ends it at once.
+proxy. Revoking the connector in the list ends it at once, and so do a new password, "sign out everywhere", the
+operator signing the account out, and the operator switching connectors off. Registering is limited: ten an hour from
+one sender.
 
 ## What is refused
 

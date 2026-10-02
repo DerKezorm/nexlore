@@ -39,3 +39,29 @@ services:
 
       # Behind a reverse proxy: its address, so that the brake against password guessing sees the real sender.
       # NEXLORE_TRUSTED_PROXIES: 172.16.0.0/12
+
+      # Behind a TLS proxy: the session cookie only over HTTPS, also when the proxy sends no X-Forwarded-Proto.
+      # NEXLORE_COOKIE_SECURE: "on"
+
+      # The code the first account needs. Without it nexlore makes one at every start until it is set up and
+      # writes it to the log: docker logs nexlore
+      # NEXLORE_SETUP_TOKEN: choose-a-long-one
+
+      # The operator's settings only from these networks (behind a proxy only with NEXLORE_TRUSTED_PROXIES set).
+      # NEXLORE_OPERATOR_NETWORKS: 192.168.0.0/16
+
+    # Harder to break out of, if you like. With "user:" instead of PUID/PGID the container never runs as root, and
+    # then all of the following work: nexlore writes only to /data and /tmp. Your data directory must belong to
+    # that user already (sudo chown -R 1000:1000 ./data).
+    # user: "1000:1000"
+    # read_only: true
+    # tmpfs:
+    #   - /tmp
+    # cap_drop: [ALL]
+    # security_opt:
+    #   - no-new-privileges:true
+    # mem_limit: 1g
+    # logging:
+    #   options:
+    #     max-size: "10m"
+    #     max-file: "3"

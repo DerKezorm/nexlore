@@ -119,11 +119,47 @@ docker compose up -d
 Built from source instead: clone this repository, put `build: .` in place of `image:` and run
 `docker compose up -d --build`.
 
-Open `http://<your-host>:8470`. The first account you create there is the operator. `docker-compose.yml` in this
-repository has the same service with every option explained.
+Open `http://<your-host>:8470`. The first account you create there is the operator. It needs the **setup code**
+from the server's log, so that nobody who reaches a fresh instance first can take it:
+
+```
+docker logs nexlore
+```
+
+shows a line `The setup code is 3F9A-0C21-B7E4`, new at every start until nexlore is set up. To choose it yourself,
+set `NEXLORE_SETUP_TOKEN`. `docker-compose.yml` in this repository has the same service with every option explained.
 
 **Put nexlore behind a reverse proxy with TLS** before you use it from anywhere but your own desk. Installing it on
 a phone also needs HTTPS; browsers offer it only on secure origins.
+
+## nexlore on the internet
+
+nexlore is made to be reachable from outside, for yourself on the road or for a small team. Before you open it:
+
+1. **Set it up first**, from your own network, with the setup code from the log. Only then forward a port.
+2. **TLS at a reverse proxy**, and nexlore reachable only through it: publish the port as `127.0.0.1:8470:8000`
+   when the proxy runs on the same host, or keep both on a Docker network without a published port. Send HSTS from
+   the proxy.
+3. **Tell nexlore about the proxy**: `NEXLORE_PUBLIC_URL` (the address people use), `NEXLORE_TRUSTED_PROXIES` (the
+   proxy's address or network; without it every sign-in seems to come from the proxy and the brake against guessing
+   cannot tell people apart; the log says so), and `NEXLORE_COOKIE_SECURE: "on"`.
+4. **A second factor**: set up your own under My account, then Settings, Sign-in, "Require a second factor". Or sign
+   in through your OpenID Connect provider.
+5. **Leave the switches closed you do not need**: MCP and connectors, API tokens, public pages, calendar feeds, AI in
+   notes, page titles for pasted links, uploaded plugins, own CSS. Each is off until you open it.
+6. **Optionally keep the operator's settings at home**: `NEXLORE_OPERATOR_NETWORKS: "192.168.0.0/16"` refuses them
+   from anywhere else (behind a proxy only together with `NEXLORE_TRUSTED_PROXIES`).
+7. **Backups somewhere else**: nexlore makes them daily; they hold everything, `secret.key` included. Copy one off
+   the machine now and then, as carefully as the data directory, and try a restore with "Check".
+8. **Pin a version** (`ghcr.io/derkezorm/nexlore:1.0`) instead of `latest`, update on purpose, back up before.
+9. **Harden the container** if you like: the commented lines in `docker-compose.yml` (`read_only`, `cap_drop`,
+   `no-new-privileges`, a memory limit, log rotation) work with nexlore.
+10. **Rate-limit sign-in at the proxy** if it can (fail2ban, or the proxy's own limits): nexlore brakes guessing per
+    sender and name, but a proxy can turn a flood away before it costs anything.
+
+Whatever is in nexlore leaves only where you open a way: the webhooks and mail of each account, the AI service an
+account enters (public addresses, or hosts in your own network you list), the daily update check against GitHub (off
+on the About page), and connectors you sign in.
 
 ## Your notes in a folder of their own
 
@@ -179,6 +215,8 @@ nothing needs doing by hand. Make a backup before a big jump anyway (Settings, B
 | `NEXLORE_SECRET_KEY` | created on first start | Protects server-side secrets; when set, it wins over `secret.key` |
 | `NEXLORE_PUBLIC_URL` | from the request | The address people use to reach nexlore, for invitation links, public pages and the OIDC redirect. The setting under Settings, Sign-in wins when set |
 | `NEXLORE_TRUSTED_PROXIES` | none | Addresses or networks of reverse proxies whose `X-Forwarded-For` is believed, comma separated. Without it every request counts as coming from its peer |
+| `NEXLORE_SETUP_TOKEN` | made at start | The code the first account needs; without it nexlore makes one at every start until set up and writes it to the log |
+| `NEXLORE_OPERATOR_NETWORKS` | none | Networks the operator's settings may be changed from, comma separated (`192.168.0.0/16`); everything else stays reachable from anywhere |
 | `NEXLORE_WATCH_POLLING` | `false` | Watch the vault by polling, for mounts without change notifications |
 | `NEXLORE_SCAN_INTERVAL` | `300` | Seconds between two full passes over the vault; `0` turns them off |
 | `NEXLORE_SESSION_DAYS` | `30` | A browser session ends after this many days |
@@ -201,23 +239,30 @@ macOS and Linux (a title with other characters goes into the front matter as `ti
 
 ## Security in short
 
-- Passwords are at least 12 characters and hashed with Argon2id. Ten failed checks in a row lock an account for
-  fifteen minutes, whatever address they come from; a brake per sender slows guessing on top.
+- Passwords are at least 12 characters and hashed with Argon2id, at most four checks at a time. Ten failed checks
+  in a row lock an account for fifteen minutes, whatever address they come from; the browser that signed in before
+  still gets in, so that a stranger's guesses cannot keep the owner out. A brake per sender and name, and per sender,
+  slows guessing on top; a locked account answers like a wrong password.
 - With a second factor, the password alone opens nothing: the sign-in waits for the code at most five minutes and
   five tries, a code counts once, and a right password does not reset the count of wrong codes. The seed is stored
   encrypted, recovery codes as hashes.
-- A session alone is not enough for what would hand over other people's notes: downloading a backup, giving
-  another account a password, resetting its second factor, changing a role or deleting an account ask for the
-  operator's own password once more, counted like a sign-in. An operator who signs in through the provider has no
+- A session alone is not enough for what would hand over other people's notes: downloading, deleting or going back
+  to a backup, giving another account a password, resetting its second factor, changing a role or deleting an account
+  ask for the operator's own password once more, counted like a sign-in. An operator who signs in through the provider has no
   password in nexlore and is not asked.
 - Every changing request needs the header `X-Nexlore-Client`, which a page on another site cannot send.
 - A space somebody may not read answers exactly like one that does not exist, in every route.
 - Uploaded files are served with their own sandboxing policy; SVG, HTML and PDF only as downloads.
 - Plugins run in sandboxed frames without an origin, without cookies and without network, and may only ask the page
   for what their manifest lists.
-- MCP keys are shown once and stored as hashes, work only as a Bearer header, never from a web page, and never reach
-  further than their account (or the spaces chosen for them).
-- The log never contains note contents, passwords, keys or tokens; a test scans the code for the obvious mistakes.
+- MCP keys and API tokens are shown once and stored as hashes, work only as a Bearer header, never from a web page,
+  and never reach further than their account (or the spaces chosen for them); a program never has the operator's
+  powers over other people's spaces. A new password ends every connector that signed in over OAuth.
+- Requests nexlore makes on its own go to the address checked once (no way into the own network by a name that
+  answers differently later), follow no redirects, and read answers only up to a limit.
+- The key, the database, the backups and the log are readable for nexlore's own user only.
+- The log never contains note contents, passwords, keys or tokens, nor the tokens in invitation, share or sign-in
+  addresses; a test scans the code for the obvious mistakes.
 
 ## Development
 
