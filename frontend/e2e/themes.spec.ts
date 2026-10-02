@@ -98,7 +98,10 @@ test('own CSS waits for the operator, refuses what could load from elsewhere, an
   const snippets = page.getByTestId('snippets')
   await expect(snippets).toContainText('The operator has not allowed own CSS')
   await page.goto('/settings?tab=server&sub=extensions')
+  // The switch shows at once and saves after; going to another page before that would cut the save off.
+  const saved = page.waitForResponse((answer) => answer.url().endsWith('/api/settings') && answer.request().method() === 'PUT')
   await page.locator('#css').getByRole('checkbox', { name: 'Allow own CSS' }).click()
+  expect((await saved).ok()).toBe(true)
   await page.goto('/settings?tab=looks')
   await snippets.getByRole('button', { name: 'New snippet' }).click()
   const editor = page.getByTestId('snippet-editor')
