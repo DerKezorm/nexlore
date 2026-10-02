@@ -105,7 +105,8 @@ def test_invitation_links_use_the_public_address(client: TestClient, operator: A
 
 
 def test_an_invitation_goes_out_by_mail(client: TestClient, operator: Account, smtp: type[FakeSmtp]) -> None:
-    client.put("/api/settings", json=MAIL)
+    # Mail links to the public address, never to one the request names (review before 1.0.0).
+    client.put("/api/settings", json=MAIL | {"public_url": "https://notes.example.com"})
     client.post("/api/spaces", json={"name": "Team"})
     made = client.post(
         "/api/spaces/Team/invites", json={"role": "read", "email": "dora@example.com", "send": True}

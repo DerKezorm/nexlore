@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from ..deps import Account, DbSession
 from ..errors import error
 from ..models import Account as AccountRow
+from ..security import brake
 from ..services import ai
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -67,16 +68,25 @@ def save(payload: AccessIn, account: Account, db: DbSession) -> dict[str, Any]:
     return {"allowed": ai.allowed(db), "ready": ai.ready(db, row), "access": access, "tones": list(ai.TONES)}
 
 
+#: Model lists one account may ask for in an hour.
+MODEL_LISTS_PER_HOUR = 30
+
+
 @router.post("/models", summary="The models of an access: the test that address and key are right")
 def models(payload: ModelsIn, account: Account, db: DbSession) -> list[dict[str, str]]:
     # It sends the key out: only with the operator's lock open.
     if not ai.allowed(db):
         raise error("ai_off", "AI in notes is off on this server.", 403)
+    # Each asking may wait on a slow service: a few an hour, or one account ties up the server (review before 1.0.0).
+    key_name = f"ai-models:{account.id}"
+    if brake.wait_seconds(key_name, MODEL_LISTS_PER_HOUR):
+        raise error("too_many_attempts", "Too many tries. Try again later.", 429)
+    brake.failed(key_name)
     row = _row(db, account)
     url = payload.url if payload.url is not None else row.ai_url
     key = payload.key if payload.key else ai.key_of(row)
     try:
-        return ai.list_models(url, key)
+        return ai.list_models(db, url, key)
     except ai.AiError as exc:
         raise _fail(exc) from exc
 

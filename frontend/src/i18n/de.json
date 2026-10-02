@@ -751,7 +751,10 @@
       "bad_date": "Dieses Datum gibt es nicht.",
       "display_name_taken": "Ein anderes Konto heißt schon so.",
       "display_name_invalid": "Ein Anzeigename darf keine Steuer- oder unsichtbaren Zeichen enthalten.",
-      "public_url_missing": "Für Mails braucht nexlore seine öffentliche Adresse; der Betreiber trägt sie unter Einstellungen ein."
+      "public_url_missing": "Für Mails braucht nexlore seine öffentliche Adresse; der Betreiber trägt sie unter Einstellungen ein.",
+      "ai_address_private": "Diese Adresse liegt im eigenen Netz. Der Betreiber erlaubt solche Dienste einzeln, unter Einstellungen, KI in Notizen.",
+      "ai_address_refused": "An diese Adresse schickt nexlore nichts.",
+      "ai_hosts_invalid": "Ein Host je Eintrag, etwa 192.168.1.20 oder ollama.lan:11434."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
@@ -1290,7 +1293,9 @@
       "allow": "KI in Notizen erlauben",
       "allowHint": "Aus: Nichts geht hinaus, und der Editor bietet keine KI an. Die Konten behalten ihren Zugang für später.",
       "where": "Jedes Konto richtet seinen Dienst unter Mein Konto → Verbindungen → KI in Notizen ein.",
-      "whereLink": "Zu meinem Zugang"
+      "whereLink": "Zu meinem Zugang",
+      "hosts": "Dienste im eigenen Netz",
+      "hostsHint": "Hosts, die Mitglieder als KI-Dienst nutzen dürfen, obwohl sie im eigenen Netz oder auf diesem Rechner stehen, durch Komma getrennt: 192.168.1.20, ollama.lan:11434. Jede andere Adresse im eigenen Netz wird abgelehnt; öffentliche Adressen gehen immer."
     },
     "guide": {
       "title": "Die Anleitung",

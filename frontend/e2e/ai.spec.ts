@@ -54,6 +54,10 @@ test('the account connects its own service, and the switch goes on only with a c
   await page.getByTestId('ai-off').getByRole('link', { name: /Switch it on under Settings/ }).click()
   const card = page.locator('#ai')
   await card.getByRole('checkbox', { name: /Allow AI in notes/ }).check()
+  // The stand-in runs on this machine: allowed only once the operator names it (review before 1.0.0).
+  await card.getByLabel('Services in your own network').fill('127.0.0.1:8478')
+  await card.getByRole('button', { name: 'Save' }).click()
+  await expect(card.getByLabel('Services in your own network')).toHaveValue('127.0.0.1:8478')
   await card.getByRole('link', { name: 'Go to my access' }).click()
   await expect(page).toHaveURL(/\/account#ai$/)
 

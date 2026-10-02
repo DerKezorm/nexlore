@@ -29,7 +29,7 @@ def works(access: str) -> bool:
 # --- Requests waiting for approval ------------------------------------------------------------------------------------
 
 
-def waiting_request(world: World, title: str) -> tuple[str, int]:
+def waiting_request(world: World, title: str) -> tuple[str, int]:  # noqa: F811
     token = world.key("write", ask=True)
     result = value(call(token, "create_note", folder="Garden", title=title, content="once"))
     return token, int(result["request"])

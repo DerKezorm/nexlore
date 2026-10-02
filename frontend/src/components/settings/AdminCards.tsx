@@ -645,7 +645,9 @@ export function GuideCard() {
 export function AiCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
   const { t } = useTranslation()
   const { refresh } = useAuth()
-  const { problem, run } = useAction()
+  const { busy, problem, done, run } = useAction()
+  // Hosts in the own network members may use (Ollama at home); everything else there is refused, link-local always.
+  const [hosts, setHosts] = useState(settings.ai_private_hosts.split('\n').filter(Boolean).join(', '))
   const save = (value: boolean) => {
     onChange({ ...settings, ai_allowed: value })
     void run(async () => {
@@ -654,16 +656,37 @@ export function AiCard({ settings, onChange }: { settings: ServerSettings; onCha
       await refresh()
     }).then((ok) => ok || onChange(settings))
   }
+  const saveHosts = () => {
+    void run(async () => {
+      const saved = await adminApi.saveSettings({ ai_private_hosts: hosts })
+      onChange(saved)
+      setHosts(saved.ai_private_hosts.split('\n').filter(Boolean).join(', '))
+    }, t('common.saved'))
+  }
   return (
     <Card id="ai" symbol="sparkle" title={t('admin.ai.title')} text={t('admin.ai.text')}>
       <Toggle label={t('admin.ai.allow')} hint={t('admin.ai.allowHint')} checked={settings.ai_allowed} onChange={save} />
+      {settings.ai_allowed && (
+        <form
+          className="mt-3 flex flex-wrap items-end gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            saveHosts()
+          }}
+        >
+          <Input label={t('admin.ai.hosts')} value={hosts} onChange={setHosts} placeholder="192.168.1.20, ollama.lan:11434" hint={t('admin.ai.hostsHint')} className="min-w-60 flex-1" />
+          <Button type="submit" busy={busy}>
+            {t('common.save')}
+          </Button>
+        </form>
+      )}
       <p className="mt-3 text-sm text-mist-400" data-testid="ai-where-access">
         {t('admin.ai.where')}{' '}
         <Link to="/account#ai" className="text-accent-400 hover:underline">
           {t('admin.ai.whereLink')}
         </Link>
       </p>
-      <Feedback problem={problem} />
+      <Feedback problem={problem} done={done} />
     </Card>
   )
 }

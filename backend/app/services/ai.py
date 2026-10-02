@@ -20,14 +20,16 @@ exactly as written.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import logging
 import re
 import threading
 import time
+from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, urlsplit
 
 import httpx
 from sqlalchemy import delete, select
@@ -36,7 +38,7 @@ from sqlalchemy.orm import Session
 from ..models import Account as AccountRow
 from ..models import AiEvent, utcnow
 from ..security import decrypt_secret, encrypt_secret
-from . import settings_service
+from . import linktitle, settings_service
 
 logger = logging.getLogger("nexlore.ai")
 
@@ -44,7 +46,7 @@ logger = logging.getLogger("nexlore.ai")
 transport: httpx.BaseTransport | None = None
 
 #: A model list that takes longer is a broken access, and the person should hear so soon.
-LIST_SECONDS = 20.0
+LIST_SECONDS = 10.0
 #: Writing takes longer than listing; a model at home without a graphics card takes minutes.
 TEXT_SECONDS = 120.0
 MAX_MODELS = 500
@@ -88,6 +90,91 @@ def _event_context(account_id: int) -> str:
     return f"account:{account_id}:ai-event"
 
 
+#: Resolves a name to its addresses; the tests put their own in.
+resolver = linktitle._resolve
+#: What the answer of a service may weigh; a model list or a text is far less.
+MAX_ANSWER = 4 * 1024 * 1024
+
+
+def parse_hosts(text: str) -> list[str]:
+    """The operator's list of own-network hosts, one per line (or comma): ``host`` or ``host:port``, lower case."""
+    hosts: list[str] = []
+    for part in text.replace(",", "\n").splitlines():
+        part = part.strip().lower()
+        if not part:
+            continue
+        if not re.fullmatch(r"(?:\[[0-9a-f:.]+\]|[a-z0-9.-]+)(?::\d{1,5})?", part):
+            raise AiError("ai_hosts_invalid")
+        hosts.append(part)
+    return list(dict.fromkeys(hosts))[:50]
+
+
+@dataclass(frozen=True)
+class Target:
+    """Where a request really goes: the checked address, with the name kept for Host and TLS."""
+
+    url: str
+    host: str
+    named: str
+    scheme: str
+    public: bool
+
+
+def checked_target(db: Session, url: str) -> Target:
+    """The service's address, resolved and checked once (review before 1.0.0: any member reached the router, the NAS
+    and 169.254.169.254, and read their answers). Public addresses go; this machine and the own network only when
+    the operator listed the host; link-local never. The connection then goes to exactly the address checked."""
+    parts = urlsplit(url)
+    host = (parts.hostname or "").lower()
+    try:
+        port = parts.port or (443 if parts.scheme == "https" else 80)
+    except ValueError as exc:
+        raise AiError("ai_address_invalid") from exc
+    if parts.scheme not in ("http", "https") or not host or parts.username or parts.password:
+        raise AiError("ai_address_invalid")
+    try:
+        addresses = resolver(host, port)
+    except linktitle.TitleError as exc:
+        raise AiError("ai_unreachable", 502) from exc
+    if not addresses:
+        raise AiError("ai_unreachable", 502)
+    listed = set(parse_hosts(str(settings_service.get(db, "ai_private_hosts") or "")))
+    for address in addresses:
+        try:
+            ip = ipaddress.ip_address(address.split("%", 1)[0])
+        except ValueError as exc:
+            raise AiError("ai_address_refused", 422) from exc
+        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+            ip = ip.ipv4_mapped
+        if ip.is_link_local or ip.is_multicast or ip.is_unspecified:
+            raise AiError("ai_address_refused", 422)
+        if not linktitle.public(str(ip)) and not ({host, f"{host}:{port}", str(ip), f"{ip}:{port}"} & listed):
+            raise AiError("ai_address_private", 422)
+    first = addresses[0]
+    netloc = f"[{first}]:{port}" if ":" in first else f"{first}:{port}"
+    return Target(
+        url=parts._replace(netloc=netloc).geturl(),
+        host=host,
+        named=host if port in (80, 443) else f"{host}:{port}",
+        scheme=parts.scheme,
+        public=all(linktitle.public(address) for address in addresses),
+    )
+
+
+def _send(client: httpx.Client, method: str, place: Target, headers: dict[str, str], **sent: Any) -> httpx.Response:
+    """One request to the checked address: never a redirect followed (that led into the own network), the answer
+    read up to MAX_ANSWER."""
+    extensions = {"sni_hostname": place.host} if place.scheme == "https" else {}
+    with client.stream(method, place.url, headers={**headers, "Host": place.named}, extensions=extensions,
+                       **sent) as answer:
+        body = b""
+        for chunk in answer.iter_bytes():
+            body += chunk
+            if len(body) > MAX_ANSWER:
+                raise AiError("ai_unreadable", 502)
+        return httpx.Response(answer.status_code, headers=answer.headers, content=body, request=answer.request)
+
+
 def check_address(url: str) -> str:
     """The base address, cleaned, with its slash at the end.
 
@@ -115,8 +202,9 @@ def _headers(key: str) -> dict[str, str]:
     return headers
 
 
-def _judge(answer: httpx.Response) -> None:
-    """A status that says where to look: the key, the address, or waiting."""
+def _judge(answer: httpx.Response, public: bool = True) -> None:
+    """A status that says where to look: the key, the address, or waiting. The service's own words only from a public
+    address: a host in the own network could be any device there, and its answer is not the member's to read."""
     if answer.status_code == 200:
         return
     if answer.status_code in (401, 403):
@@ -126,7 +214,7 @@ def _judge(answer: httpx.Response) -> None:
     if answer.status_code == 429:
         raise AiError("ai_service_busy", 502)
     logger.info("The AI service answered %s", answer.status_code)
-    raise AiError("ai_service_failed", 502, answered=answer.status_code, said=_said(answer))
+    raise AiError("ai_service_failed", 502, answered=answer.status_code, said=_said(answer) if public else "")
 
 
 def _said(answer: httpx.Response) -> str:
@@ -144,12 +232,12 @@ def _said(answer: httpx.Response) -> str:
     return " ".join("".join(c if c.isprintable() else " " for c in found).split())[:SAID_CHARS]
 
 
-def list_models(url: str, key: str) -> list[dict[str, str]]:
+def list_models(db: Session, url: str, key: str) -> list[dict[str, str]]:
     """The models this access offers; coming back at all is the test that address and key are right."""
-    target = urljoin(check_address(url), "models")
+    place = checked_target(db, urljoin(check_address(url), "models"))
     try:
-        with httpx.Client(timeout=LIST_SECONDS, follow_redirects=True, transport=transport) as client:
-            answer = client.get(target, headers=_headers(key))
+        with httpx.Client(timeout=LIST_SECONDS, follow_redirects=False, transport=transport, trust_env=False) as client:
+            answer = _send(client, "GET", place, _headers(key))
     except httpx.ReadTimeout as exc:
         raise AiError("ai_timeout", 504, seconds=int(LIST_SECONDS)) from exc
     except httpx.HTTPError as exc:
@@ -158,7 +246,7 @@ def list_models(url: str, key: str) -> list[dict[str, str]]:
     # Not every service lists: then the model is typed by hand. A way on, not a dead end.
     if answer.status_code in (404, 405, 501):
         raise AiError("ai_no_list")
-    _judge(answer)
+    _judge(answer, place.public)
     try:
         data = answer.json()
     except ValueError as exc:
@@ -406,15 +494,15 @@ def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "",
             db, row, task=task, target=kept_target, body=body, tokens_in=tokens_in, tokens_out=tokens_out, failed=failed
         )
 
-    target_url = urljoin(check_address(row.ai_url), "chat/completions")
+    place = checked_target(db, urljoin(check_address(row.ai_url), "chat/completions"))
     try:
-        with httpx.Client(timeout=TEXT_SECONDS, follow_redirects=True, transport=transport) as client:
-            answer = client.post(target_url, headers=_headers(key_of(row)), json=body)
+        with httpx.Client(timeout=TEXT_SECONDS, follow_redirects=False, transport=transport, trust_env=False) as client:
+            answer = _send(client, "POST", place, _headers(key_of(row)), json=body)
             # Newer models choose it themselves and turn down a request that sets it ("`temperature` is deprecated
             # for this model"): once more without, which older models and other services still take.
             if answer.status_code == 400 and "temperature" in _said(answer).lower():
                 del body["temperature"]
-                answer = client.post(target_url, headers=_headers(key_of(row)), json=body)
+                answer = _send(client, "POST", place, _headers(key_of(row)), json=body)
     except httpx.ReadTimeout as exc:
         # Only a read timeout: the connection stood and the service wrote too slowly. Not connecting is "unreachable".
         keep(failed="ai_timeout")
@@ -424,7 +512,7 @@ def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "",
         keep(failed="ai_unreachable")
         raise AiError("ai_unreachable", 502) from exc
     try:
-        _judge(answer)
+        _judge(answer, place.public)
     except AiError as exc:
         keep(failed=exc.code)
         raise

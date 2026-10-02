@@ -584,6 +584,7 @@ export type ServerSettings = {
   api_tokens_allowed: boolean
   plugin_upload_allowed: boolean
   ai_allowed: boolean
+  ai_private_hosts: string
   custom_css_allowed: boolean
   calendar_feed_allowed: boolean
   link_titles_allowed: boolean

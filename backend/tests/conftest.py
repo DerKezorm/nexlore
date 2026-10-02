@@ -40,10 +40,12 @@ from app.db import SessionLocal, init_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import FTS_TABLE, MEMBER, OPERATOR, TRI_TABLE, Account, Base, Setting  # noqa: E402
 from app.security import SESSION_COOKIE, brake, hash_password, start_session  # noqa: E402
-from app.services import apitokens, graphstore, mcp, notify, totp, updates  # noqa: E402
+from app.services import ai, apitokens, graphstore, mcp, notify, totp, updates  # noqa: E402
 
 # Notifications go out at once in the tests, so that a test sees them (block Z2).
 notify.INLINE = True
+# Every AI service in the tests stands at one public address; the tests of the address rules put in their own.
+ai.resolver = lambda host, port: ["93.184.216.34"]
 
 DATA_DIR = _DATA
 VAULT = Path(_DATA) / "vault"

@@ -16,7 +16,7 @@ from ..deps import DbSession, OperatorAccount
 from ..errors import error
 from ..models import SIGN_IN_PASSWORD
 from ..security import encrypt_secret
-from ..services import accounts, guide, mailer, settings_service
+from ..services import accounts, ai, guide, mailer, settings_service
 
 logger = logging.getLogger("nexlore.settings")
 
@@ -44,6 +44,7 @@ class SettingsOut(BaseModel):
     link_titles_allowed: bool
     plugin_upload_allowed: bool
     ai_allowed: bool
+    ai_private_hosts: str
     custom_css_allowed: bool
 
 
@@ -69,6 +70,7 @@ class SettingsIn(BaseModel):
     link_titles_allowed: bool | None = None
     plugin_upload_allowed: bool | None = None
     ai_allowed: bool | None = None
+    ai_private_hosts: str | None = Field(default=None, max_length=2000)
     custom_css_allowed: bool | None = None
 
 
@@ -99,6 +101,7 @@ def _view(db: DbSession) -> SettingsOut:
         link_titles_allowed=bool(values["link_titles_allowed"]),
         plugin_upload_allowed=bool(values["plugin_upload_allowed"]),
         ai_allowed=bool(values["ai_allowed"]),
+        ai_private_hosts=str(values["ai_private_hosts"] or ""),
         custom_css_allowed=bool(values["custom_css_allowed"]),
     )
 
@@ -133,6 +136,12 @@ def save(payload: SettingsIn, operator: OperatorAccount, db: DbSession) -> Setti
             if not (current["oidc_issuer"] and current["oidc_client_id"]):
                 # Without a provider nobody but the operator could sign in any more, and invitations would fail.
                 raise error("provider_first", "Set up a sign-in provider first.", 409)
+        elif key == "ai_private_hosts":
+            try:
+                value = "\n".join(ai.parse_hosts(value))
+            except ai.AiError as exc:
+                raise error("ai_hosts_invalid", "One host per line, like 192.168.1.20 or ollama.lan:11434.",
+                            422) from exc
         elif key == "smtp_password":
             changes["smtp_password_enc"] = encrypt_secret(value)
             continue

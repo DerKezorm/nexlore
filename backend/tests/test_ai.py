@@ -118,7 +118,8 @@ def test_the_access_keeps_its_key_to_itself_and_is_on_only_when_complete(
     assert sent.headers["authorization"] == f"Bearer {KEY}" and sent.headers["x-api-key"] == KEY
     assert sent.headers["anthropic-version"] == "2023-06-01"
     assert service.last_body()["model"] == "model-b"
-    assert str(sent.url) == "http://ai.example.test/v1/chat/completions"
+    # To the address checked for the name, the name kept in Host (review before 1.0.0).
+    assert (sent.headers["host"], sent.url.path) == ("ai.example.test", "/v1/chat/completions")
     # An access that becomes incomplete switches itself off.
     assert anna.put("/api/ai", json={"url": ""}).json()["access"]["active"] is False
     assert anna.put("/api/ai", json={"url": "ftp://ai.example.test"}).json()["detail"]["code"] == "ai_address_invalid"
@@ -130,7 +131,8 @@ def test_the_model_list_tests_the_access_and_says_where_to_look(anna: TestClient
     assert [m["id"] for m in anna.post("/api/ai/models", json={}).json()] == ["model-a", "model-b"]
     # What is being typed, before it is saved.
     anna.post("/api/ai/models", json={"url": "http://other.example.test/api", "key": "typed-key"})
-    assert str(service.requests[-1].url) == "http://other.example.test/api/models"
+    asked = service.requests[-1]
+    assert (asked.headers["host"], asked.url.path) == ("other.example.test", "/api/models")
     assert service.requests[-1].headers["authorization"] == "Bearer typed-key"
     # One service's list answers 400 without its version header.
     assert service.requests[-1].headers["anthropic-version"] == "2023-06-01"

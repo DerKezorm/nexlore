@@ -751,7 +751,10 @@
       "bad_date": "That date does not exist.",
       "display_name_taken": "Another account goes by this name.",
       "display_name_invalid": "A display name cannot hold control or invisible characters.",
-      "public_url_missing": "Mail needs the public address of nexlore; the operator sets it under Settings."
+      "public_url_missing": "Mail needs the public address of nexlore; the operator sets it under Settings.",
+      "ai_address_private": "This address is in your own network. The operator allows such services one by one, under Settings, AI in notes.",
+      "ai_address_refused": "nexlore does not send to this address.",
+      "ai_hosts_invalid": "One host per entry, like 192.168.1.20 or ollama.lan:11434."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
@@ -1290,7 +1293,9 @@
       "allow": "Allow AI in notes",
       "allowHint": "Off: nothing goes out, and the editor offers no AI. Accounts keep their access for later.",
       "where": "Each account sets up its service under My account → Connections → AI in notes.",
-      "whereLink": "Go to my access"
+      "whereLink": "Go to my access",
+      "hosts": "Services in your own network",
+      "hostsHint": "Hosts members may use as AI service although they are in your network or on this machine, separated by commas: 192.168.1.20, ollama.lan:11434. Every other address in your network is refused; public addresses always work."
     },
     "guide": {
       "title": "The guide",

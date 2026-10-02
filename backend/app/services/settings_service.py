@@ -64,6 +64,9 @@ DEFAULTS: dict[str, Any] = {
     "plugin_upload_allowed": False,
     #: AI in notes, with each account's own service: note text leaves the house, so closed until the operator opens it.
     "ai_allowed": False,
+    #: Hosts in the own network (or this machine) members may use as AI service, one per line: "192.168.1.20",
+    #: "ollama.lan:11434". Everything else in the own network is refused; public addresses are always allowed.
+    "ai_private_hosts": "",
     # Own CSS of the accounts (snippets): closed from the start, CSS can change how every page of the account looks.
     "custom_css_allowed": False,
     #: Ask GitHub once a day whether a newer nexlore is out (services/updates). Only the question goes out, so on.
