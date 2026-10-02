@@ -128,7 +128,7 @@ class Daily:
 
 def open_daily(
     space_name: str, day: str, *, actor: Actor, may_write: bool, language: str = "en", now: datetime | None = None,
-    source: str = index.APP,
+    source: str | None = None,
 ) -> Daily:
     """The daily note of ``day`` in a space; made (from the space's template) when it is not there and the caller
     may write. Two clicks at once make one note."""
@@ -371,7 +371,7 @@ def _lines(data: bytes) -> list[tuple[bytes, bytes]]:
 
 def toggle(
     rel: str, line: int, raw: str, *, done: bool, today: str, actor: Actor, seen: str | None = None,
-    source: str = index.APP,
+    source: str | None = None,
 ) -> dict[str, Any]:
     """Tick the task on ``line`` off (or open it again). ``raw`` is the line as the caller saw it; when the file
     changed since, the task is looked for by its text, and when it is not there exactly once, nothing is written.

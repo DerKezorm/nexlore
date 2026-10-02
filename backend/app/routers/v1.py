@@ -85,7 +85,7 @@ Writer = Annotated[Caller, Depends(writer)]
 
 def _actor(found: Caller) -> Actor:
     # One identity per request: an API write never holds a lock and never passes for an editor's tab.
-    return Actor(name=found.account.name, client=f"api-{found.token_id}-{secrets.token_hex(4)}")
+    return Actor(name=found.account.name, client=f"api-{found.token_id}-{secrets.token_hex(4)}", source=index.API)
 
 
 def _fail(exc: VaultError) -> Exception:

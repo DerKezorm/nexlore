@@ -53,7 +53,8 @@ def link(body: LinkIn, account: Account, who: Annotated[Actor, Depends(actor)]) 
     source = need(account, body.source, WRITE)
     target = need(account, body.target, READ)
     try:
-        written = mentions.link_place(source, target, body.line, body.column, body.words, author=who.name)
+        written = mentions.link_place(source, target, body.line, body.column, body.words, author=who.name,
+                                      as_source=who.writes_as())
     except mentions.MentionError as exc:
         status = 404 if exc.code == "not_found" else 409
         raise error(exc.code, str(exc), status) from exc

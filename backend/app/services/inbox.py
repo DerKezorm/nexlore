@@ -97,9 +97,10 @@ def _find(db: object, space: str, language: str | None) -> str | None:
 
 
 def capture(
-    space: str, text: str, stamp: str, *, actor: Actor, language: str | None, source: str = index.APP
+    space: str, text: str, stamp: str, *, actor: Actor, language: str | None, source: str | None = None
 ) -> str:
     """Puts the words into the space's inbox; the path of the inbox. ``source``: who wrote, for the version."""
+    source = actor.writes_as(source)
     words = text.strip()
     if not words:
         raise InboxError("empty", "Nothing to keep.", 422)

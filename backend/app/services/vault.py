@@ -75,6 +75,13 @@ class Actor:
 
     name: str
     client: str
+    #: What its changes are recorded as when they do not come from the interface: ``index.MCP`` for an AI program,
+    #: ``index.API`` for a program with a token. A route of the interface called for them writes that, not ``app``.
+    source: str | None = None
+
+    def writes_as(self, source: str | None = None) -> str:
+        """The source of a change: the one asked for, else the actor's own, else the interface."""
+        return source or self.source or index.APP
 
 
 # --- Low-level file work --------------------------------------------------------------------------------------------
@@ -246,7 +253,7 @@ def conflict_name(rel: str, now: datetime) -> str:
     return f"{base} (conflict {now.strftime('%Y-%m-%d %H%M%S')}){suffix}"
 
 
-def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str = index.APP) -> Saved:
+def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str | None = None) -> Saved:
     """Write a note the client had loaded as ``base_hash``. Changed in between: into a conflict copy instead.
 
     Somebody else holding the note's lock does not refuse the text either: a tab that lost its lock (it ran out, the
@@ -255,6 +262,7 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str = i
     it was read with its bytes replaced, and writing it back would lose them.
     """
     rel = _parse(rel)
+    source = actor.writes_as(source)
     if not paths.is_note(rel):
         raise VaultError("not_a_note", "only notes are saved this way")
     full = _full(rel)
@@ -302,7 +310,7 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str = i
     return Saved(file=file)
 
 
-def create_note(folder: str, title: str, data: bytes, *, actor: Actor, source: str = index.APP) -> File:
+def create_note(folder: str, title: str, data: bytes, *, actor: Actor, source: str | None = None) -> File:
     """A new note in ``folder`` (a space or a folder in it). The file name comes from the title, made safe."""
     # Control characters (NUL above all) would land in the front matter and make the file binary for Git and Obsidian.
     title = _CONTROL.sub(" ", title)
@@ -318,7 +326,8 @@ def create_note(folder: str, title: str, data: bytes, *, actor: Actor, source: s
             # The title held what a file name cannot: it lives on in the front matter.
             data = _front_title(title.strip()) + data
         stat = atomic_write(directory / name, data)
-        file = index.record(db, rel, data, stat, source=source, author=actor.name, session=actor.client)
+        file = index.record(db, rel, data, stat, source=actor.writes_as(source), author=actor.name,
+                            session=actor.client)
         index.reresolve(db, file.space_id, [file.name_key])
         db.commit()
         db.refresh(file)
@@ -1132,7 +1141,8 @@ def merge(source: str, target: str, *, actor: Actor) -> Merged:
         ):
             plan.setdefault(note_id, {})[(kind, written)] = into.id
         stat = atomic_write(full_target, data)
-        index.record(db, target, data, stat, source=index.APP, author=actor.name, session=actor.client, file=into)
+        index.record(db, target, data, stat, source=actor.writes_as(), author=actor.name, session=actor.client,
+                     file=into)
         job = MoveJob(space_id=into.space_id, author=actor.name, keys=sorted({taken.name_key, into.name_key}))
         db.add(job)
         db.flush()

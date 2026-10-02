@@ -181,7 +181,10 @@ def wiki_for(link: str, words: str) -> str:
     return f"[[{link}]]" if words == name else f"[[{link}|{words}]]"
 
 
-def link_place(source_path: str, target_path: str, line: int, column: int, words: str, *, author: str) -> str:
+def link_place(
+    source_path: str, target_path: str, line: int, column: int, words: str, *, author: str,
+    as_source: str = index.APP,
+) -> str:
     """Turns the words at that place into a link to the note; returns the link written."""
     with index.guard, SessionLocal() as db:
         source = vault.live(db, source_path)
@@ -208,7 +211,7 @@ def link_place(source_path: str, target_path: str, line: int, column: int, words
         if data.startswith(b"\xef\xbb\xbf"):
             new_data = b"\xef\xbb\xbf" + new_data
         stat = atomic_write(full, new_data)
-        index.record(db, source.path, new_data, stat, source=index.APP, author=author, file=source)
+        index.record(db, source.path, new_data, stat, source=as_source, author=author, file=source)
         db.commit()
     logger.info("Mention linked")
     return wiki

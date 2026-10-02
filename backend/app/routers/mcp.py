@@ -196,7 +196,7 @@ def _save(caller: Caller, client: str, clean: str, data: bytes, base_hash: str) 
 
 def _call(caller: Caller, client: str, name: str, args: dict[str, Any]) -> Any:
     account = caller.account
-    who = Actor(name=account.name, client=client)
+    who = Actor(name=account.name, client=client, source=index.MCP)
     if name == "list_spaces":
         return [{"name": s.name, "role": s.role, "notes": s.notes} for s in vault_routes.spaces(account)]
     if name == "search":
@@ -376,7 +376,8 @@ def _run(caller: Caller, client: str, name: str, args: dict[str, Any], request: 
     tool = BY_NAME[name]
     try:
         if "run" in tool:
-            context = mcptools.Context(caller=caller, who=Actor(name=caller.account.name, client=client),
+            who = Actor(name=caller.account.name, client=client, source=index.MCP)
+            context = mcptools.Context(caller=caller, who=who,
                                        request=request)
             return _tool_result(tool["run"](context, dict(args)))
         return _tool_result(_call(caller, client, name, args))

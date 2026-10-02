@@ -16,7 +16,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.db import SessionLocal
-from app.models import McpKey, McpRequest, utcnow
+from app.models import File, McpKey, McpRequest, Version, utcnow
 from app.services import index, mcp
 
 from .conftest import join
@@ -365,3 +365,57 @@ def test_properties_inbox_tags_and_templates(world: World) -> None:
     renamed = value(call(token, "rename_tag", old="beans", new="greens"))
     assert renamed["changed"] == 1
     assert b"#greens" in (world.vault / "Garden" / "Tags.md").read_bytes()
+
+
+def sources_of(path: str) -> list[tuple[str, str]]:
+    """Source and author of each version of a note, oldest first."""
+    with SessionLocal() as db:
+        file_id = db.scalar(select(File.id).where(File.path == path, File.deleted_at.is_(None)))
+        return [(row.source, row.author) for row in
+                db.scalars(select(Version).where(Version.file_id == file_id).order_by(Version.id))]
+
+
+def test_every_note_a_tool_writes_is_a_version_with_the_source_mcp(world: World) -> None:
+    """The tools that go through the routes of the interface write as the AI, not as the interface (``app``)."""
+    token = world.key("write")
+    (world.vault / "Garden" / "Templates").mkdir(exist_ok=True)
+    (world.vault / "Garden" / "Templates" / "Day.md").write_bytes(b"# {{title}}\n")
+    (world.vault / "Garden" / "Extra.md").write_bytes(b"# Extra\n\nMore to plant.\n")
+    (world.vault / "Garden" / "Mention.md").write_bytes(b"# Mention\n\nSee the Plan for spring.\n")
+    index.scan()
+    mcp_by_anna = (index.MCP, "anna")
+
+    value(call(token, "set_property", path="Garden/Plan.md", key="status", value="draft"))
+    assert sources_of("Garden/Plan.md")[-1] == mcp_by_anna
+    inbox = value(call(token, "capture_to_inbox", space="Garden", text="Water the beans"))["path"]
+    value(call(token, "capture_to_inbox", space="Garden", text="Buy seeds"))
+    assert sources_of(inbox) == [mcp_by_anna, mcp_by_anna]
+    made = value(call(token, "create_from_template", folder="Garden", title="Monday", template="Garden/Templates/Day.md"))
+    assert sources_of(made["path"]) == [mcp_by_anna]
+    value(call(token, "merge_notes", source="Garden/Extra.md", target="Garden/Plan.md"))
+    assert b"More to plant." in (world.vault / "Garden" / "Plan.md").read_bytes()
+    assert sources_of("Garden/Plan.md")[-1] == mcp_by_anna
+    place = next(p for p in value(call(token, "unlinked_mentions", path="Garden/Plan.md"))["places"]
+                 if p["path"] == "Garden/Mention.md")
+    value(call(token, "link_mention", source=place["path"], target="Garden/Plan.md", line=place["line"],
+               column=place["column"], words=place["words"]))
+    assert b"[[Plan]]" in (world.vault / "Garden" / "Mention.md").read_bytes()
+    assert sources_of("Garden/Mention.md")[-1] == mcp_by_anna
+
+    # The interface itself still writes as the interface.
+    note = world.anna.get("/api/note", params={"path": "Garden/Mention.md"}).json()
+    saved = world.anna.put("/api/note", json={"path": "Garden/Mention.md", "content": note["content"] + "More.\n",
+                                              "base_hash": note["hash"]})
+    assert saved.status_code == 200, saved.text
+    assert sources_of("Garden/Mention.md")[-1] == (index.APP, "anna")
+    linked = world.anna.post("/api/inbox", json={"space": "Garden", "text": "by hand", "stamp": "2026-10-02 08:00"})
+    assert linked.status_code == 200, linked.text
+    assert sources_of(inbox)[-1] == (index.APP, "anna")
+
+
+def test_a_source_asked_for_wins_over_the_actors_own() -> None:
+    from app.services.vault import Actor
+
+    ai = Actor(name="anna", client="mcp-1-abcd", source=index.MCP)
+    assert (ai.writes_as(), ai.writes_as(index.RESTORE)) == (index.MCP, index.RESTORE)
+    assert Actor(name="anna", client="tab-anna0000").writes_as() == index.APP

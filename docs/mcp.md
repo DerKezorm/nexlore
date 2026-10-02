@@ -86,7 +86,8 @@ the note changed in the meantime, the draft goes into a conflict copy.
 
 **Writing** needs the hash `read_note` gave (`base_hash`). Lines the AI did not change stay byte for byte as they
 were. If the note changed since it was read, or somebody is editing it right now, the new text goes into a conflict
-copy and nothing is overwritten. Every write is a version with the source "AI (MCP)".
+copy and nothing is overwritten. Every write is a version with the source "AI (MCP)"; restoring a version or the
+trash says "restored", and links rewritten after a rename say who renamed, as in the interface.
 
 ## Connecting a client
 
