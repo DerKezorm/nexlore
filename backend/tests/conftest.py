@@ -32,6 +32,7 @@ os.environ["NEXLORE_SETUP_TOKEN"] = SETUP_CODE
 import shutil  # noqa: E402
 from pathlib import Path  # noqa: E402
 
+import httpx  # noqa: E402
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import delete, text  # noqa: E402
@@ -64,6 +65,10 @@ def schema() -> None:
     init_db()
 
 
+def _no_network(request: httpx.Request) -> httpx.Response:
+    raise httpx.ConnectError("no network in the tests", request=request)
+
+
 @pytest.fixture(autouse=True)
 def clean_db(schema: None) -> Iterator[None]:
     with SessionLocal() as db:
@@ -84,6 +89,9 @@ def clean_db(schema: None) -> Iterator[None]:
     apitokens.forget()
     totp.forget()
     updates.forget()
+    # No AI service is reached from a test: every address resolves to one public stand-in, and a test without its
+    # own stand-in service (``test_ai.service``) is refused at once instead of waiting on the internet.
+    ai.transport = httpx.MockTransport(_no_network)
     yield
     app.dependency_overrides.clear()
 

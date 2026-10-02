@@ -203,12 +203,12 @@ export function VaultActions() {
           title={t('actions.renameTitle', { name: baseName(action.path) })}
           hint={t(action.path.includes('/') ? 'actions.renameHint' : 'actions.renameSpaceHint')}
           confirm={t('actions.renameDo')}
-          initial={baseName(action.path)}
+          initial={action.file ? action.path.slice(action.path.lastIndexOf('/') + 1) : baseName(action.path)}
           onClose={close}
           onSubmit={async (name) => {
             // A space has no folder around it: it is renamed as a whole, and links naming it follow (block Y2).
             const moved = action.path.includes('/')
-              ? await moveTo(action.path, `${folderOf(action.path)}/${name}${action.folder ? '' : '.md'}`)
+              ? await moveTo(action.path, `${folderOf(action.path)}/${name}${action.folder || action.file ? '' : '.md'}`)
               : await moveTo(action.path, name, vaultApi.renameSpace)
             done(moved.rewritten > 0 ? t('note.linksFollowed', { count: moved.rewritten }) : null)
           }}

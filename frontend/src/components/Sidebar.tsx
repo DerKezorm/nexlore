@@ -15,6 +15,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { recentApi, spaceZipUrl, vaultApi, type Favorite, type FolderEntry, type FileEntry, type NoteRef } from '../api/client'
 import { folderColor, spaceColor } from '../graph/palette'
 import { fileRoute } from '../lib/markdown'
+import { fileKind } from '../lib/files'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
 import { askFolder, FOLDER_EVENT, narrow, NOTE_LIST_EVENT, RECENT_EVENT, SIDEBAR_EVENT, sidebarHere, takeFolderWish, noteListWished, forgetNoteListWish } from '../lib/shell'
@@ -47,17 +48,19 @@ type Props = {
   onFolder?: (path: string) => void
 }
 
-type Listing = { folders: FolderEntry[]; notes: FileEntry[]; loaded: number; total: number; more: boolean }
+type Listing = { folders: FolderEntry[]; items: FileEntry[]; loaded: number; total: number; more: boolean }
 
 type Row =
   | { kind: 'folder'; path: string; name: string; depth: number; count: number; color: string; icon: string | null; open: boolean; space: boolean }
   | { kind: 'note'; path: string; title: string; depth: number }
+  | { kind: 'file'; path: string; name: string; depth: number }
   | { kind: 'loading'; path: string; depth: number }
   | { kind: 'more'; path: string; depth: number }
   | { kind: 'failed'; path: string; depth: number }
   | { kind: 'empty'; path: string; depth: number }
 
-/** Notes, and views over notes (Obsidian's .base files), are what the tree lists. */
+/** Notes, and views over notes (Obsidian's .base files), open as notes; every other file (pictures, PDFs, other
+ * attachments) stands in the tree too, as in Obsidian, and opens its file page. */
 const inTree = (file: { is_note: boolean; path: string }) => file.is_note || /\.base$/i.test(file.path)
 
 /** What a note or folder dragged in the sidebar carries. */
@@ -223,7 +226,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
         setListings((current) =>
           new Map(current).set(path, {
             folders: listing.folders,
-            notes: listing.files.filter(inTree),
+            items: listing.files,
             loaded: listing.files.length,
             total: listing.total_files,
             more: false,
@@ -255,7 +258,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           setListings((current) =>
             new Map(current).set(path, {
               folders: fresh.folders,
-              notes: fresh.files.filter(inTree),
+              items: fresh.files,
               loaded: fresh.files.length,
               total: fresh.total_files,
               more: false,
@@ -286,7 +289,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
             if (!now || typeof now === 'string') return latest
             return new Map(latest).set(path, {
               ...now,
-              notes: [...now.notes, ...page.files.filter(inTree)],
+              items: [...now.items, ...page.files],
               loaded: now.loaded + page.files.length,
               total: page.total_files,
               more: false,
@@ -333,13 +336,19 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
         out.push({ kind: 'failed', path, depth: depth + 1 })
         return
       }
-      for (const folder of listing.folders) walk(folder.path, folder.name, depth + 1, folder.notes, folderColor(folder.path, true), false)
-      for (const note of listing.notes) out.push({ kind: 'note', path: note.path, title: note.title || note.name.replace(/\.md$/i, ''), depth: depth + 1 })
+      for (const folder of listing.folders) walk(folder.path, folder.name, depth + 1, folder.files ?? folder.notes, folderColor(folder.path, true), false)
+      for (const item of listing.items) {
+        out.push(
+          inTree(item)
+            ? { kind: 'note', path: item.path, title: item.title || item.name.replace(/\.md$/i, ''), depth: depth + 1 }
+            : { kind: 'file', path: item.path, name: item.name, depth: depth + 1 },
+        )
+      }
       if (listing.loaded < listing.total) out.push({ kind: 'more', path, depth: depth + 1 })
       // Opened and nothing in it: say so, and offer the first note.
-      if (!listing.folders.length && !listing.notes.length && listing.loaded >= listing.total) out.push({ kind: 'empty', path, depth: depth + 1 })
+      if (!listing.folders.length && !listing.items.length && listing.loaded >= listing.total) out.push({ kind: 'empty', path, depth: depth + 1 })
     }
-    spaces.forEach((space, index) => walk(space.name, space.name, 0, space.notes, spaceColor(index), true))
+    spaces.forEach((space, index) => walk(space.name, space.name, 0, space.files ?? space.notes, spaceColor(index), true))
     return { out, wanted, themed }
   }, [spaces, listings, isOpen, looks, folderIcon, themed])
 
@@ -617,6 +626,28 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     return items
   }
 
+  const fileMenu = (row: Extract<Row, { kind: 'file' }>): MenuItem[] => {
+    const write = writable(row.path)
+    const items: MenuItem[] = [{ label: t('menu.open'), symbol: 'open', onSelect: () => navigate(fileRoute(row.path)) }, 'separator']
+    if (write) {
+      items.push({ label: t('menu.rename'), symbol: 'pencil', onSelect: () => askVaultAction({ kind: 'rename', path: row.path, folder: false, file: true }) })
+      items.push({ label: t('menu.move'), symbol: 'move', onSelect: () => askVaultAction({ kind: 'move', path: row.path, folder: false, file: true }) })
+    }
+    items.push({
+      label: t('menu.copyLink'),
+      symbol: 'copy',
+      onSelect: () => {
+        const text = `${fileKind(row.path) === 'image' ? '!' : ''}[[${row.name}]]`
+        void copyText(text).then((ok) => ok && setCopied(text))
+      },
+    })
+    if (write) {
+      items.push('separator')
+      items.push({ label: t('menu.trash'), symbol: 'trash', danger: true, onSelect: () => askVaultAction({ kind: 'delete', path: row.path, folder: false, file: true }) })
+    }
+    return items
+  }
+
   const first = Math.max(0, Math.floor(viewport.top / ROW) - 10)
   const last = Math.min(rows.out.length, Math.ceil((viewport.top + viewport.height) / ROW) + 10)
   const endsInView = rows.out.slice(first, last).filter((row) => row.kind === 'more').map((row) => row.path).join('\n')
@@ -709,6 +740,24 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
             {t('sidebar.retry')}
           </button>
         </div>
+      )
+    }
+    if (row.kind === 'file') {
+      return (
+        <button
+          type="button"
+          onClick={() => navigate(fileRoute(row.path))}
+          {...menuTriggers((x, y) => menu.open(x, y, fileMenu(row)))}
+          draggable={writable(row.path)}
+          onDragStart={(event) => startDrag(event, row.path)}
+          onKeyDown={(event) => stepKeys(event)}
+          className={'flex h-full w-full items-center gap-2 rounded-lg pr-2 text-left text-[13px] text-mist-500 hover:bg-ink-850 hover:text-mist-100'}
+          style={{ paddingLeft: row.depth * 12 + 10 }}
+          data-testid="sidebar-file"
+        >
+          <Symbol name={fileKind(row.path) === 'image' ? 'image' : 'file'} className="h-3.5 w-3.5 shrink-0 opacity-60" />
+          <span className="truncate">{row.name}</span>
+        </button>
       )
     }
     if (row.kind === 'note') {

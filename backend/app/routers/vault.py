@@ -143,6 +143,8 @@ class FolderEntry(BaseModel):
     name: str
     path: str
     notes: int
+    #: Every file below it, pictures and other attachments too: what the sidebar shows and counts.
+    files: int = 0
 
 
 class FileEntry(BaseModel):
@@ -183,19 +185,23 @@ def folder(
     prefix = clean + "/"
     with SessionLocal() as db:
         child = func.substr(File.path, len(prefix) + 1)
-        counts = dict(
-            db.execute(
-                select(
-                    func.substr(child, 1, func.instr(child, "/") - 1).label("child"),
-                    func.count(),
-                )
-                .where(
-                    File.deleted_at.is_(None), File.is_note.is_(True), File.path > prefix, File.path < clean + "0",
-                    func.instr(child, "/") > 0,
-                )
-                .group_by(text("child"))
-            ).all()
-        )
+        counts: dict[str, int] = {}
+        every: dict[str, int] = {}
+        for name, is_note, amount in db.execute(
+            select(
+                func.substr(child, 1, func.instr(child, "/") - 1).label("child"),
+                File.is_note,
+                func.count(),
+            )
+            .where(
+                File.deleted_at.is_(None), File.path > prefix, File.path < clean + "0",
+                func.instr(child, "/") > 0,
+            )
+            .group_by(text("child"), File.is_note)
+        ).all():
+            every[name] = every.get(name, 0) + amount
+            if is_note:
+                counts[name] = counts.get(name, 0) + amount
         files = list(
             db.scalars(
                 select(File).where(
@@ -212,7 +218,8 @@ def folder(
     for entry in entries:
         if paths.is_hidden(entry.name) or entry.is_symlink() or not entry.is_dir(follow_symlinks=False):
             continue
-        folders.append(FolderEntry(name=entry.name, path=prefix + entry.name, notes=counts.get(entry.name, 0)))
+        folders.append(FolderEntry(name=entry.name, path=prefix + entry.name, notes=counts.get(entry.name, 0),
+                                   files=every.get(entry.name, 0)))
     folders.sort(key=lambda item: sort_key(item.name))
     ordered = sorted(
         (

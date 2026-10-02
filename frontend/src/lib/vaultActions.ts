@@ -9,7 +9,7 @@ export type VaultAction =
   | { kind: 'new-space' }
   | { kind: 'look'; path: string }
   | { kind: 'as-template'; path: string }
-  | { kind: 'rename' | 'move' | 'delete'; path: string; folder: boolean }
+  | { kind: 'rename' | 'move' | 'delete'; path: string; folder: boolean; file?: boolean }
   | { kind: 'rename-tag'; tag: string }
   | { kind: 'new-base'; folder: string }
   /** Dragged onto a folder in the sidebar: moved at once, said as the dialog says it. */

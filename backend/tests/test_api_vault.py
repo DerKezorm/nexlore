@@ -251,3 +251,15 @@ def test_a_reader_without_header_never_passes_as_a_lock_holder(client: TestClien
 
 def test_teardown_clears_overrides() -> None:
     assert app.dependency_overrides == {}
+
+
+def test_a_folder_counts_its_notes_and_every_file_below_it(client: TestClient, filled: Path) -> None:
+    # The sidebar shows pictures and other files too, as Obsidian does, and counts them (review before 1.0.0).
+    put(filled, "Work/Pictures/a.png", b"\x89PNG\r\n\x1a\n" + b"0" * 32)
+    put(filled, "Work/Pictures/Deeper/b.pdf", b"%PDF-1.4\n%%EOF\n")
+    put(filled, "Work/Pictures/note.md", "# Note\n")
+    index.scan()
+    folders = {item["name"]: item for item in client.get("/api/folder", params={"path": "Work"}).json()["folders"]}
+    assert (folders["Pictures"]["notes"], folders["Pictures"]["files"]) == (1, 3)
+    listing = client.get("/api/folder", params={"path": "Work/Pictures"}).json()
+    assert sorted(item["name"] for item in listing["files"]) == ["a.png", "note.md"]

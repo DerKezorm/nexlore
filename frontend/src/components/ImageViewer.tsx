@@ -106,7 +106,7 @@ export function ImageViewer({ pictures, start, archive, onClose }: Props) {
       else if (event.key === '-') zoomAt((view?.scale ?? 1) / STEP)
       else if (event.key === '0') fit()
       else if (event.key === '1') actual()
-      else if (event.key.toLowerCase() === 'm') toggleMark(index)
+      else if (event.key.toLowerCase() === 'm' && pictures.length > 1) toggleMark(index)
       else return
       event.preventDefault()
       event.stopPropagation()
@@ -189,10 +189,13 @@ export function ImageViewer({ pictures, start, archive, onClose }: Props) {
           <Symbol name="fit" className="h-4 w-4" />
         </button>
         <span aria-hidden="true" className="mx-1 h-5 w-px bg-white/20" />
-        <button type="button" className={tool} aria-pressed={marked.has(index)} title={`${t('viewer.mark')} (M)`} onClick={() => toggleMark(index)}>
-          <Symbol name="check" className={'h-4 w-4 ' + (marked.has(index) ? 'text-accent-400' : 'opacity-50')} />
-          <span className="hidden sm:inline">{t('viewer.mark')}</span>
-        </button>
+        {/* Marking gathers several pictures for one download: with one picture there is nothing to gather. */}
+        {pictures.length > 1 && (
+          <button type="button" className={tool} aria-pressed={marked.has(index)} title={`${t('viewer.mark')} (M)`} onClick={() => toggleMark(index)}>
+            <Symbol name="check" className={'h-4 w-4 ' + (marked.has(index) ? 'text-accent-400' : 'opacity-50')} />
+            <span className="hidden sm:inline">{t('viewer.mark')}</span>
+          </button>
+        )}
         <button type="button" className={tool} disabled={!picture.path} title={picture.path ? t('viewer.download') : t('viewer.fromWeb')} onClick={() => void save([picture])}>
           <Symbol name="download" className="h-4 w-4" />
           <span className="hidden sm:inline">{t('viewer.download')}</span>

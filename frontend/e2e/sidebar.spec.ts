@@ -463,3 +463,23 @@ test('on a slow phone "Notes" from another page still opens the list', async ({ 
   }
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
 })
+
+test('pictures and other files stand in the tree as in Obsidian and open their page', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.goto('/note/Media/Gallery.md')
+  const tree = page.getByTestId('sidebar-tree')
+  const picture = tree.getByTestId('sidebar-file').filter({ hasText: 'sunset.png' })
+  await expect(picture).toBeVisible()
+  // The folder counts every file below it, not only notes: Anhänge holds one picture.
+  const attachments = tree.locator('li[data-path="Media/Anhänge"]').getByTestId('folder-count')
+  await expect(attachments).toHaveText('1')
+  await picture.click()
+  await expect(page).toHaveURL(/\/file\/Media\/sunset\.png$/)
+  // The menu copies a link that embeds it, and renaming keeps its ending.
+  await picture.click({ button: 'right' })
+  await expect(page.getByRole('menuitem', { name: 'Rename …' })).toBeVisible()
+  await page.getByRole('menuitem', { name: 'Rename …' }).click()
+  await expect(page.getByRole('dialog').getByRole('textbox')).toHaveValue('sunset.png')
+  await page.keyboard.press('Escape')
+  expect(problems).toEqual([])
+})
