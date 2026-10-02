@@ -315,7 +315,9 @@ def parse(text: str) -> Parsed:
     math = [(match.start(), match.end()) for match in _MATH_SPAN.finditer(masked)]
     _count(features, "math_blocks", len(math))
     masked = _mask(masked, math)
-    parsed.headings = [(len(match.group(1)), _heading_text(match.group(2) or "")) for match in _HEADING.finditer(masked)]
+    parsed.headings = [
+        (len(match.group(1)), _heading_text(match.group(2) or "")) for match in _HEADING.finditer(masked)
+    ]
 
     def line_of(offset: int) -> int:
         low, high = 0, len(starts) - 1
