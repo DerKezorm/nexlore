@@ -10,6 +10,7 @@ import { useLocation, useSearchParams } from 'react-router-dom'
 import { ApiError, authApi, type Methods } from '../api/client'
 import { Field, Problem } from '../components/AuthFrame'
 import { AiAccess } from '../components/AiAccess'
+import { ApiTokens } from '../components/ApiTokens'
 import { Avatar } from '../components/Avatar'
 import { McpKeys } from '../components/McpKeys'
 import { NotifySettings } from '../components/NotifySettings'
@@ -25,7 +26,7 @@ import { MIN_PASSWORD } from './SetupPage'
 
 type Part = 'profile' | 'security' | 'notify' | 'ai' | 'plugins'
 const PARTS: Part[] = ['profile', 'security', 'notify', 'ai', 'plugins']
-const ANCHORS: Record<string, Part> = { '#ai': 'ai', '#mcp': 'ai', '#calendar': 'ai', '#plugins': 'plugins' }
+const ANCHORS: Record<string, Part> = { '#ai': 'ai', '#mcp': 'ai', '#api-tokens': 'ai', '#calendar': 'ai', '#plugins': 'plugins' }
 
 function code(error: unknown): string {
   return error instanceof ApiError ? error.code : 'internal_error'
@@ -283,6 +284,7 @@ export function AccountPage() {
 
         {part === 'ai' && (
           <>
+            <ApiTokens />
             <AiAccess />
             <McpKeys />
             <CalendarFeed />

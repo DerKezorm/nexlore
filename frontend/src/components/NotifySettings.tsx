@@ -10,7 +10,7 @@ import { ApiError, notifyApi, type NotifyChoices, type NotifyView } from '../api
 import { errorText } from '../lib/errors'
 import { Button, Card, Feedback, Toggle } from './settings/ui'
 
-const OCCASIONS = ['mention', 'invite', 'approval', 'tasks'] as const
+const OCCASIONS = ['mention', 'invite', 'approval', 'tokens', 'tasks'] as const
 
 function code(error: unknown): string {
   return error instanceof ApiError ? error.code : 'internal_error'

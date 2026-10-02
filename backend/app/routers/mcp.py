@@ -248,7 +248,8 @@ def _call(caller: Caller, client: str, name: str, args: dict[str, Any]) -> Any:
             raise ToolError("'line' must be a whole number from 1, 'done' true or false.")
         today = datetime.now().astimezone().date().isoformat()
         try:
-            changed = everyday.toggle(rel, line, _text(args, "raw", limit=100_000), done=done, today=today, actor=who)
+            changed = everyday.toggle(rel, line, _text(args, "raw", limit=100_000), done=done, today=today, actor=who,
+                                       source=index.MCP)
         except VaultError as exc:
             raise ToolError("Not found." if exc.status == 404 else exc.text) from exc
         return {"path": changed["path"], "line": changed["line"], "raw": changed["raw"],
@@ -260,7 +261,8 @@ def _call(caller: Caller, client: str, name: str, args: dict[str, Any]) -> Any:
         day = _text(args, "date", required=False, limit=10) or datetime.now().astimezone().date().isoformat()
         words = _text(args, "text", limit=MAX_TEXT)
         try:
-            daily = everyday.open_daily(space, day, actor=who, may_write=True, language=account.language or "en")
+            daily = everyday.open_daily(space, day, actor=who, may_write=True, language=account.language or "en",
+                                         source=index.MCP)
             path = inbox.append(daily.path, words, actor=who, source=index.MCP)
         except (VaultError, inbox.InboxError) as exc:
             raise ToolError("Not found." if getattr(exc, "status", 0) == 404 else str(exc)) from exc

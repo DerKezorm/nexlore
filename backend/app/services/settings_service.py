@@ -49,6 +49,9 @@ DEFAULTS: dict[str, Any] = {
     "mcp_blocked_tools": ["delete_space", "empty_trash"],
     #: Connectors may sign in for MCP (OAuth, block Y); only while MCP itself is open.
     "mcp_oauth_allowed": True,
+    #: Tokens for programs such as n8n or nexdeck (``/api/v1``): a way in from outside, closed until the operator
+    #: opens it (design answer).
+    "api_tokens_allowed": False,
     #: Notifications (block Z2): the day the disk was last looked at, and the newest version operators were told of.
     "notify_disk_day": "",
     "notify_version": "",

@@ -257,7 +257,7 @@
     "newName": "My snippet",
     "name": "Name of the snippet",
     "css": "CSS of the snippet",
-    "notAllowed": "The operator has not allowed own CSS (Settings → Server → AI and plugins).",
+    "notAllowed": "The operator has not allowed own CSS (Settings → Server → AI, API and plugins).",
     "problem": "Line {{line}}: {{what}} is not allowed here.",
     "rules": "Allowed: rules, @media and @supports. Refused: url(), @import, @font-face and everything else that could load something."
   },
@@ -525,7 +525,8 @@
       "restore": "restored",
       "import": "imported",
       "mcp": "AI (MCP)",
-      "plugin": "plugin"
+      "plugin": "plugin",
+      "api": "Program (API)"
     },
     "editorFailed": "The editor could not start. Reload the page; nothing was saved from it.",
     "deleteTitle": "Move “{{title}}” to the trash?",
@@ -606,7 +607,7 @@
       "accounts": "Accounts",
       "signin": "Sign-in",
       "shares": "Public pages",
-      "extensions": "AI and plugins",
+      "extensions": "AI, API and plugins",
       "files": "Files",
       "backups": "Backups",
       "languages": "Languages",
@@ -742,7 +743,9 @@
       "request_closed": "This request was decided already or ran out.",
       "request_changed": "This request does not match what was asked; nothing ran.",
       "notify_no_way": "Give a webhook address or switch mail on first.",
-      "webhook_invalid": "Give an address like https://example.com/hook."
+      "webhook_invalid": "Give an address like https://example.com/hook.",
+      "api_off": "The operator has not switched API tokens on.",
+      "too_many_tokens": "An account holds at most 20 tokens."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
@@ -1288,6 +1291,26 @@
       "make": "Make the guide again",
       "made": "Made the space “{{space}}”.",
       "open": "Open it"
+    },
+    "apiTokens": {
+      "title": "API tokens",
+      "text": "Accounts connect nexlore with programs such as n8n or nexdeck. A token can never do more than its account and deletes, moves and shares nothing. Off by default.",
+      "allow": "Accounts may make API tokens",
+      "allowHint": "Every account makes its own tokens under My account → Connections.",
+      "account": "Account",
+      "token": "Token",
+      "level": "Level",
+      "spaces": "Spaces",
+      "used": "Last used",
+      "allSpaces": "all",
+      "someSpaces_one": "{{count}} space",
+      "someSpaces_other": "{{count}} spaces",
+      "blocked": "blocked",
+      "block": "Block",
+      "blockNamed": "Block token {{name}} of {{account}}",
+      "blockTitle": "Block the token “{{name}}” of {{account}}?",
+      "blockText": "The token then answers like none, for good. The account sees it as “blocked by the operator” and may make a new one while API tokens are on.",
+      "offHint": "Switch API tokens off and every token answers 401. The tokens stay and work again when you switch them on."
     }
   },
   "today": {
@@ -1444,7 +1467,7 @@
       "write": "Changes notes directly: every change a version, a conflict copy when the note changed in the meantime."
     },
     "off": "The operator has not switched on AI from outside, so there are no keys to make here.",
-    "offOperator": "Switch it on under Settings → Server → AI and plugins.",
+    "offOperator": "Switch it on under Settings → Server → AI, API and plugins.",
     "nextStep": "Next: give your AI program the address and the key. Programs that read an mcp.json (Cursor, for example, or a project’s .mcp.json) take the JSON below; Claude Code takes the command. Others ask for the same two things in their own settings. The key works until you revoke it.",
     "recipeJson": "JSON in the mcp.json format",
     "copyNamed": "Copy: {{what}}",
@@ -1575,7 +1598,7 @@
     },
     "none": "The operator has not let out a plugin yet. Once they do, you switch it on for yourself here.",
     "noneOperator": "No plugin is installed and let out yet. Four checked ones wait in the catalog: contents, query, kanban and rediscover.",
-    "toCatalog": "To the catalog under Server → AI and plugins"
+    "toCatalog": "To the catalog under Server → AI, API and plugins"
   },
   "twofactor": {
     "title": "Second factor",
@@ -1846,7 +1869,7 @@
     "title": "Calendar subscription",
     "text": "Your open tasks with a date as an address your calendar subscribes to (internet calendar, ICS). It asks for it again about every hour.",
     "closed": "The operator has not switched calendar subscriptions on.",
-    "closedOperator": "Switch them on under Settings → Server → AI and plugins, card Calendar subscriptions.",
+    "closedOperator": "Switch them on under Settings → Server → AI, API and plugins, card Calendar subscriptions.",
     "none": "No address yet.",
     "active": "An address is active. It is shown only once; a new one replaces it.",
     "make": "Make an address",
@@ -1935,7 +1958,7 @@
     "title": "AI in notes",
     "text": "Your own AI service corrects, rewrites, translates, summarizes and writes in the editor. You pay for its key yourself; a result is always shown next to the text first and changes nothing until you take it over.",
     "off": "The operator has not switched on AI in notes.",
-    "offOperator": "Switch it on under Settings → Server → AI and plugins.",
+    "offOperator": "Switch it on under Settings → Server → AI, API and plugins.",
     "tiles": "Fill in the address of a service",
     "getKey": "Get a key from {{name}}",
     "address": "Address (any service that speaks the usual chat interface)",
@@ -2188,15 +2211,55 @@
       "invite": "Invitations",
       "approval": "Approvals for AI programs",
       "tasks": "Tasks of the day",
-      "operator": "Server troubles"
+      "operator": "Server troubles",
+      "tokens": "API tokens run out"
     },
     "occasionHint": {
       "mention": "Somebody names you with @ in a comment, or answers in a thread you take part in.",
       "invite": "An invitation into a space waits for your answer.",
       "approval": "An AI program waits for your yes.",
       "tasks": "Once a day at the time below: what is due today or overdue.",
-      "operator": "For operators: a backup failed, a newer version is out, the disk runs full."
+      "operator": "For operators: a backup failed, a newer version is out, the disk runs full.",
+      "tokens": "Seven days before one of your API tokens runs out, once per token."
     },
     "tasksTime": "Time for the tasks of the day"
+  },
+  "apiTokens": {
+    "title": "API tokens",
+    "text": "For programs such as n8n or nexdeck. A token may do what you may, limited to its level and its spaces. Deleting, moving and sharing never go through a token.",
+    "none": "No tokens yet.",
+    "new": "New token",
+    "name": "Name, so you know it again",
+    "levelTitle": "Level",
+    "level": {
+      "read": "Read",
+      "write": "Write"
+    },
+    "levelText": {
+      "read": "Spaces, notes, search, tasks, numbers. Changes nothing.",
+      "write": "Also makes and changes notes, appends, the daily note, the inbox, ticks tasks off. Each change becomes a version with the source “Program (API)”. Never deletes, moves or shares."
+    },
+    "where": "Spaces",
+    "lifetime": "Runs out",
+    "lifetimeDays": {
+      "30": "in 30 days",
+      "90": "in 90 days",
+      "365": "in a year"
+    },
+    "lifetimeNever": "never",
+    "make": "Make",
+    "shownOnce": "Token “{{name}}” made. It is shown only now. Copy it into your program; nexlore keeps only a checksum.",
+    "header": "As a header in n8n (HTTP Request, Header Auth) or nexdeck",
+    "tryIt": "To try it",
+    "never": "never runs out",
+    "runsOut": "runs out on {{day}}",
+    "ranOut": "ran out on {{day}}",
+    "blocked": "blocked by the operator",
+    "delete": "Delete",
+    "deleteNamed": "Delete token {{name}}",
+    "off": "The operator has not switched API tokens on. Ask them if you want to connect nexlore with n8n or nexdeck.",
+    "offOperator": "Switch them on under Settings → Server → AI, API and plugins.",
+    "whatItDoes": "What the API does",
+    "whatItDoesText": "Every request carries the token in the header Authorization: Bearer, the answers are JSON. Writing needs the level Write and the right in the space."
   }
 }

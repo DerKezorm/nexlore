@@ -57,5 +57,25 @@
     "small": [
       "Moving a note to the trash right after opening the dialog takes the files only this note uses along again; before, they could stay behind."
     ]
+  },
+  "0.4.0": {
+    "lead": "nexlore now works with programs such as n8n and nexdeck. An API token reads your notes, tasks and the numbers for a dashboard, and if you want it also writes: makes, changes, appends, ticks off. It can never delete, move or share.",
+    "sections": [
+      {
+        "title": "API tokens for programs",
+        "where": "Account menu, My account, Connections, API tokens",
+        "body": "Make a token of its own for each program: read or write, for all your spaces or only some, and if you like running out after 30 days, 90 days or a year. The token is shown once, with the header line for n8n and a command to try it. What a program writes becomes a version with the source “Program (API)”; when the note changed meanwhile or somebody is editing it, the text goes into a conflict copy."
+      },
+      {
+        "title": "The operator holds the latch",
+        "where": "Settings, Server, AI, API and plugins, API tokens",
+        "body": "API tokens are off by default. The operator switches them on, sees every token with its account, level and last use, never the token itself, and can block one for good. Switched off, every token answers 401 until they are switched on again."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "A week before one of your API tokens runs out, it stands out in yellow in the list, and nexlore tells you (My account, Notifications, can be switched off).",
+      "The part of the server settings is now called “AI, API and plugins”."
+    ]
   }
 }

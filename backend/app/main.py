@@ -23,6 +23,7 @@ from .errors import detail
 from .middleware import GuardMiddleware, RequestContextMiddleware, unhandled_error
 from .routers import about, attachments, auth, drafts, everyday, graph, health, imports, members, oidc, shares
 from .routers import ai as ai_router
+from .routers import apitokens as apitokens_router
 from .routers import avatars as avatars_router
 from .routers import backups as backups_router
 from .routers import bases as bases_router
@@ -47,6 +48,7 @@ from .routers import search as search_router
 from .routers import settings as settings_router
 from .routers import themes as themes_router
 from .routers import totp as totp_router
+from .routers import v1 as v1_router
 from .routers import vault as vault_router
 from .services import backups, graphstore, locales, logs, notify, settings_service, totp, watcher
 
@@ -57,7 +59,7 @@ ROUTERS = [
     attachments, imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router, looks_router,
     ai_router, favorites_router, avatars_router, recent_router, themes_router, search_router, news_router,
     proposals_router, bases_router, cleanup_router, inbox_router, feed_router, comments_router,
-    presence_router, linktitle_router, oauth_router, notify_router,
+    presence_router, linktitle_router, oauth_router, notify_router, apitokens_router, v1_router,
 ]
 
 

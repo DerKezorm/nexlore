@@ -96,8 +96,10 @@ def _find(db: object, space: str, language: str | None) -> str | None:
     return None
 
 
-def capture(space: str, text: str, stamp: str, *, actor: Actor, language: str | None) -> str:
-    """Puts the words into the space's inbox; the path of the inbox."""
+def capture(
+    space: str, text: str, stamp: str, *, actor: Actor, language: str | None, source: str = index.APP
+) -> str:
+    """Puts the words into the space's inbox; the path of the inbox. ``source``: who wrote, for the version."""
     words = text.strip()
     if not words:
         raise InboxError("empty", "Nothing to keep.", 422)
@@ -109,11 +111,11 @@ def capture(space: str, text: str, stamp: str, *, actor: Actor, language: str | 
     with index.guard, SessionLocal() as db:
         path = _find(db, space, language)
         if path is not None:
-            _rewrite(db, path, lambda content: put_in(content, item), actor=actor, source=index.APP)
+            _rewrite(db, path, lambda content: put_in(content, item), actor=actor, source=source)
             logger.info("Captured into the inbox")
             return path
     name = name_for(language)
-    made = vault.create_note(space, name, f"# {name}\n\n{item}".encode(), actor=actor)
+    made = vault.create_note(space, name, f"# {name}\n\n{item}".encode(), actor=actor, source=source)
     logger.info("Captured into a new inbox")
     return made.path
 

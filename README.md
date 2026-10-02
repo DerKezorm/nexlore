@@ -81,6 +81,10 @@ from one space into another that only resolve for people who may read both.*
   connector that signs in (OAuth), at three levels (read, drafts, write), each optionally limited to some spaces.
   Rights per tool (allow, ask, deny): asked calls wait for your approval in nexlore, drafts wait on the note. See
   [docs/mcp.md](docs/mcp.md).
+- **An API for programs** such as n8n, nexdeck or a script (off by default): tokens per account, reading or writing,
+  each optionally limited to some spaces and running out after a chosen time. Read spaces, notes, search, links,
+  tasks and the numbers for a dashboard; make notes (also from a template), change them with conflict copies, append,
+  write the daily note and the inbox, tick tasks off. Never delete, move or share. See [docs/api.md](docs/api.md).
 - **Plugins**, locked up in the browser: installed from the checked catalog that comes with nexlore (contents and
   reading time, queries, Kanban boards, rediscover old notes), let out by the operator, switched on by each person.
   See [docs/plugins.md](docs/plugins.md).

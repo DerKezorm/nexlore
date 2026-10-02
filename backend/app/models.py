@@ -576,6 +576,31 @@ class McpKey(Base):
     expires_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
 
+class ApiToken(Base):
+    """A token an account made for programs such as n8n or nexdeck (``/api/v1``). Only the SHA-256 is stored."""
+
+    __tablename__ = "api_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    #: ``read`` or ``write`` (``services/apitokens.py``).
+    level: Mapped[str] = mapped_column(String(8))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    #: The first characters of the token, to tell tokens apart in the interface.
+    prefix: Mapped[str] = mapped_column(String(16))
+    #: The ids of the spaces the token may see, of those its account may read; empty (None): all of them.
+    spaces: Mapped[Any] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    last_used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: None: never runs out.
+    expires_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: Set when the operator blocked the token; it then answers like none, for good.
+    blocked_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: Set once the account heard that the token runs out soon.
+    warned_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
 class Favorite(Base):
     """Something an account wants at hand (``services/favorites``): a note or folder by its vault path, a heading as
     ``Note.md#Heading``, a search as ``?words``; per account, in a group of its choosing (empty: none)."""

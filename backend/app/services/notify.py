@@ -1,10 +1,11 @@
 """Notifications (block Z2): what an account wants to hear about, sent to its webhook and, when the operator set up a
 mail server, by mail.
 
-Five occasions, each switched per account: ``mention`` (somebody names you with @ in a comment, or answers in a thread
+Six occasions, each switched per account: ``mention`` (somebody names you with @ in a comment, or answers in a thread
 you take part in), ``invite`` (an invitation into a space), ``approval`` (an AI program waits for your yes, block Y),
 ``tasks`` (once a day at a time of your choosing: what is due today or overdue) and ``operator`` (for operators: a
-backup failed, a newer version is out, the disk runs full).
+backup failed, a newer version is out, the disk runs full); and ``tokens`` (an API token runs out within a week,
+once per token).
 
 **The webhook is always open** (design answer Z2): an address of the account's choosing, http or https, kept encrypted
 and never shown again in full. It gets a small JSON body (``app``, ``event``, ``title``, ``message``, ``url``,
@@ -33,16 +34,16 @@ from sqlalchemy.orm import Session
 
 from ..config import get_settings
 from ..db import SessionLocal
-from ..models import OPERATOR, Account
+from ..models import OPERATOR, Account, utcnow
 from ..security import decrypt_secret, encrypt_secret
 from . import mailer, settings_service
 
 logger = logging.getLogger("nexlore.notify")
 
-EVENTS = ("mention", "invite", "approval", "tasks", "operator")
+EVENTS = ("mention", "invite", "approval", "tasks", "operator", "tokens")
 DEFAULTS: dict[str, Any] = {
     "email": False, "mention": True, "invite": True, "approval": True, "tasks": False, "tasks_time": "07:00",
-    "operator": True,
+    "operator": True, "tokens": True,
 }
 #: The key's purpose for the encryption of webhook addresses: one secret, another context than SMTP or AI keys.
 CONTEXT = "notify-webhook"
@@ -266,8 +267,29 @@ def daily_operator_checks(now: datetime | None = None) -> None:
             operators(f"nexlore {known.latest.lstrip('v')} is out", "A newer version of nexlore is out.", "/about", 2)
 
 
+def tokens_expiring() -> int:
+    """Every API token that runs out within a week and whose account has not heard yet: told once."""
+    from . import apitokens
+
+    sent = 0
+    with _daily_lock:
+        with SessionLocal() as db:
+            rows = apitokens.due_for_warning(db)
+            due = [(row.account_id, row.name, row.expires_at) for row in rows]
+            for row in rows:
+                row.warned_at = utcnow()
+            db.commit()
+        for account_id, name, expires_at in due:
+            day = expires_at.astimezone().date().isoformat()
+            send(account_id, "tokens", f"The API token {name} runs out on {day}",
+                 "Make a new one under My account, Connections, and put it where the old one is used.",
+                 "/account?tab=ai", 3)
+            sent += 1
+    return sent
+
+
 async def run_forever(stop: Any) -> None:
-    """Every minute: the tasks of the morning; the operator's checks."""
+    """Every minute: the tasks of the morning; the operator's checks; API tokens about to run out."""
     import asyncio
 
     while not stop.is_set():
@@ -276,7 +298,7 @@ async def run_forever(stop: Any) -> None:
             return
         except TimeoutError:
             pass
-        for job in (tasks_due, daily_operator_checks):
+        for job in (tasks_due, daily_operator_checks, tokens_expiring):
             try:
                 await asyncio.to_thread(job)
             except Exception:

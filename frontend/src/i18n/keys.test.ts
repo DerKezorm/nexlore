@@ -47,13 +47,17 @@ describe('translation keys used in the code', () => {
       ...['text', 'list', 'number', 'checkbox', 'date', 'datetime'].map((kind) => `properties.kinds.${kind}`),
       ...['left', 'right', 'both'].map((choice) => `compare.take.${choice}`),
       // How a version came about, as the server names it.
-      ...['initial', 'app', 'external', 'rename', 'restore', 'import'].map((source) => `note.source.${source}`),
+      ...['initial', 'app', 'external', 'rename', 'restore', 'import', 'mcp', 'api', 'plugin'].map((source) => `note.source.${source}`),
+      // API tokens: levels, their texts, the lifetimes offered; the occasion of the notification.
+      ...['read', 'write'].flatMap((level) => [`apiTokens.level.${level}`, `apiTokens.levelText.${level}`]),
+      ...['30', '90', '365'].map((days) => `apiTokens.lifetimeDays.${days}`),
+      ...['mention', 'invite', 'approval', 'tokens', 'tasks', 'operator'].flatMap((occasion) => [`notify.occasion.${occasion}`, `notify.occasionHint.${occasion}`]),
       // The server's error codes, which the UI turns into sentences.
       ...[
         'not_found', 'invalid_input', 'sign_in_required', 'locale_unusable', 'internal_error', 'path_invalid',
         'path_too_long', 'name_invalid', 'exists', 'locked', 'not_a_note', 'move_across_spaces', 'too_large_for_trash',
         'archive_invalid', 'archive_unsafe', 'archive_too_large', 'archive_too_many_files', 'client_required', 'too_large',
-        'changed_meanwhile',
+        'changed_meanwhile', 'api_off', 'too_many_tokens',
       ].map((code) => `errors.byCode.${code}`),
     ]
     expect(composed.filter((key) => !existsWithPlural(key))).toEqual([])

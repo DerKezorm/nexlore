@@ -17,6 +17,7 @@ import {
   AiCard,
   GuideCard,
   McpCard,
+  ApiTokensCard,
   SharesCard,
   SignInCard,
   CssCard,
@@ -109,6 +110,7 @@ function ServerPart({ part }: { part: Part }) {
       return (
         settings && (
           <>
+            <ApiTokensCard settings={settings} onChange={setSettings} />
             <McpCard settings={settings} onChange={setSettings} />
             <CalendarFeedSwitch settings={settings} onChange={setSettings} />
             <LinkTitleSwitch settings={settings} onChange={setSettings} />

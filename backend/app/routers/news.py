@@ -22,7 +22,7 @@ from ..services import comments, index
 router = APIRouter(prefix="/api", tags=["news"])
 
 #: What counts as a change somebody made; a rename's rewritten link, a first reading or an import do not.
-COUNTING = (index.APP, index.EXTERNAL, index.RESTORE, index.MCP, index.PLUGIN, "proposal", "ai")
+COUNTING = (index.APP, index.EXTERNAL, index.RESTORE, index.MCP, index.API, index.PLUGIN, "proposal", "ai")
 
 
 class NewNote(BaseModel):

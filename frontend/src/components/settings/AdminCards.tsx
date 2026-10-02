@@ -8,10 +8,12 @@ import { Link } from 'react-router-dom'
 
 import {
   adminApi,
+  apiTokensApi,
   authApi,
   mcpApi,
   type AdminAccount,
   type AdminSpace,
+  type AnyApiToken,
   type AuthentikResult,
   type Backup,
   type BackupCheck,
@@ -500,6 +502,94 @@ function BlockedTools() {
       ))}
       <Feedback problem={problem} />
     </details>
+  )
+}
+
+// --- API tokens for programs (n8n, nexdeck) ------------------------------------------------------------------------
+
+/** The switch for API tokens, and every token there is: who made it, its level, when it was used; blocked for good
+ * on request (design answer: every way out needs a latch). Never the token itself. */
+export function ApiTokensCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
+  const { t } = useTranslation()
+  const { busy, problem, run } = useAction()
+  const [tokens, setTokens] = useState<AnyApiToken[] | null>(null)
+  const [blocking, setBlocking] = useState<AnyApiToken | null>(null)
+  const load = useCallback(() => apiTokensApi.every().then(setTokens, () => setTokens(null)), [])
+  useEffect(() => {
+    void load()
+  }, [load])
+  const save = (change: Partial<ServerSettings>) => {
+    onChange({ ...settings, ...change })
+    void run(async () => onChange(await adminApi.saveSettings(change))).then((ok) => ok || onChange(settings))
+  }
+  return (
+    <Card id="api-tokens" symbol="key" title={t('admin.apiTokens.title')} text={t('admin.apiTokens.text')}>
+      <Toggle
+        label={t('admin.apiTokens.allow')}
+        hint={t('admin.apiTokens.allowHint')}
+        checked={settings.api_tokens_allowed}
+        onChange={(value) => save({ api_tokens_allowed: value })}
+      />
+      {tokens && tokens.length > 0 && (
+        <div className="nn-scroll mt-3 overflow-x-auto">
+          <table className="w-full text-left text-sm" data-testid="admin-api-tokens">
+            <thead className="text-xs text-mist-500">
+              <tr>
+                <th className="py-1.5 pr-3 font-medium">{t('admin.apiTokens.account')}</th>
+                <th className="py-1.5 pr-3 font-medium">{t('admin.apiTokens.token')}</th>
+                <th className="py-1.5 pr-3 font-medium">{t('admin.apiTokens.level')}</th>
+                <th className="py-1.5 pr-3 font-medium">{t('admin.apiTokens.spaces')}</th>
+                <th className="py-1.5 pr-3 font-medium">{t('admin.apiTokens.used')}</th>
+                <th className="py-1.5" />
+              </tr>
+            </thead>
+            <tbody>
+              {tokens.map((token) => (
+                <tr key={token.id} className="border-t border-ink-700">
+                  <td className="py-1.5 pr-3">{token.account}</td>
+                  <td className="py-1.5 pr-3">
+                    {token.name} <code className="font-mono text-xs text-mist-500">{token.prefix}…</code>
+                  </td>
+                  <td className="py-1.5 pr-3">{t(`apiTokens.level.${token.level}`)}</td>
+                  <td className="py-1.5 pr-3">
+                    {token.spaces === null ? t('admin.apiTokens.allSpaces') : t('admin.apiTokens.someSpaces', { count: token.spaces })}
+                  </td>
+                  <td className="py-1.5 pr-3 text-mist-400">{token.last_used_at ? formatDate(token.last_used_at) : t('mcp.unused')}</td>
+                  <td className="py-1.5 text-right">
+                    {token.blocked ? (
+                      <span className="text-xs text-bad-500">{t('admin.apiTokens.blocked')}</span>
+                    ) : (
+                      <Button small danger onClick={() => setBlocking(token)} label={t('admin.apiTokens.blockNamed', { name: token.name, account: token.account })}>
+                        {t('admin.apiTokens.block')}
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="mt-3 text-xs text-mist-500">{t('admin.apiTokens.offHint')}</p>
+      <Feedback problem={problem} />
+      <ConfirmDialog
+        open={blocking !== null}
+        title={t('admin.apiTokens.blockTitle', { name: blocking?.name ?? '', account: blocking?.account ?? '' })}
+        confirm={t('admin.apiTokens.block')}
+        danger
+        busy={busy}
+        onCancel={() => setBlocking(null)}
+        onConfirm={() =>
+          void run(async () => {
+            await apiTokensApi.block(blocking!.id)
+            setBlocking(null)
+            await load()
+          })
+        }
+      >
+        {t('admin.apiTokens.blockText')}
+      </ConfirmDialog>
+    </Card>
   )
 }
 

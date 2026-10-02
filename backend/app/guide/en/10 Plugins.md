@@ -2,7 +2,7 @@
 
 Back to [[00 Welcome|Welcome]].
 
-Plugins come from a checked catalog that ships with nexlore. The operator installs and lets them out (Settings → Server → AI and plugins); then every account switches them on for itself under **My account → Plugins for me**. Every plugin runs locked up: no network, no sign-in, only what its card lists.
+Plugins come from a checked catalog that ships with nexlore. The operator installs and lets them out (Settings → Server → AI, API and plugins); then every account switches them on for itself under **My account → Plugins for me**. Every plugin runs locked up: no network, no sign-in, only what its card lists.
 
 ## The four plugins
 

@@ -145,6 +145,8 @@ RESTORE = "restore"
 IMPORT = "import"
 #: Written by an AI over MCP, directly or as a draft taken over (M7).
 MCP = "mcp"
+#: Written by a program with an API token (``/api/v1``).
+API = "api"
 #: Written by a plugin in the browser (M7), with the account of the person using it.
 PLUGIN = "plugin"
 

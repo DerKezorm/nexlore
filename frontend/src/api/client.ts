@@ -581,6 +581,7 @@ export type ServerSettings = {
   mcp_allowed: boolean
   mcp_max_level: McpLevel
   mcp_oauth_allowed: boolean
+  api_tokens_allowed: boolean
   plugin_upload_allowed: boolean
   ai_allowed: boolean
   custom_css_allowed: boolean
@@ -1033,6 +1034,35 @@ export const mcpApi = {
   decline: (id: number) => api<McpRequest>(`/api/mcp/requests/${id}/decline`, { method: 'POST' }),
 }
 
+// --- API tokens for programs (n8n, nexdeck) ------------------------------------------------------------------------
+
+export type ApiLevel = 'read' | 'write'
+export type ApiToken = {
+  id: number
+  name: string
+  level: ApiLevel
+  prefix: string
+  created_at: string
+  last_used_at: string | null
+  /** null: never runs out. */
+  expires_at: string | null
+  /** The operator blocked it for good. */
+  blocked: boolean
+  /** The spaces it may see, of those the account may read now; null: all of them. */
+  spaces: string[] | null
+}
+/** Every token, for the operator: who it belongs to, never the token itself. */
+export type AnyApiToken = Omit<ApiToken, 'spaces'> & { account: string; spaces: number | null }
+
+export const apiTokensApi = {
+  list: () => api<{ allowed: boolean; tokens: ApiToken[] }>('/api/api-tokens'),
+  make: (name: string, level: ApiLevel, spaces: number[] | null, days: number | null) =>
+    api<{ token: ApiToken; secret: string }>('/api/api-tokens', { method: 'POST', body: { name, level, spaces, days } }),
+  remove: (id: number) => api<void>(`/api/api-tokens/${id}`, { method: 'DELETE' }),
+  every: () => api<AnyApiToken[]>('/api/admin/api-tokens'),
+  block: (id: number) => api<AnyApiToken>(`/api/admin/api-tokens/${id}/block`, { method: 'POST' }),
+}
+
 export type NotifyChoices = {
   email: boolean
   mention: boolean
@@ -1041,6 +1071,7 @@ export type NotifyChoices = {
   tasks: boolean
   tasks_time: string
   operator: boolean
+  tokens: boolean
 }
 export type NotifyView = {
   choices: NotifyChoices

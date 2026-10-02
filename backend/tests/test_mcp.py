@@ -511,6 +511,10 @@ def test_a_task_is_ticked_off_by_its_line_with_the_right_to_write(world: World) 
     assert done["raw"].startswith("- [x] Water the beds")
     text = (world.vault / "Garden" / "Todo.md").read_bytes().decode()
     assert text.startswith("# Todo\n\n- [x] Water the beds") and text.endswith("- [ ] Buy seeds\n")
+    with SessionLocal() as db:
+        file_id = db.scalar(select(File.id).where(File.path == "Garden/Todo.md"))
+        newest = db.scalars(select(Version).where(Version.file_id == file_id).order_by(Version.id.desc())).first()
+        assert newest is not None and (newest.source, newest.author) == (index.MCP, "anna")
     # Open again.
     value(call(token, "complete_task", path="Garden/Todo.md", line=3, raw=done["raw"], done=False))
     assert (world.vault / "Garden" / "Todo.md").read_bytes().decode().startswith("# Todo\n\n- [ ] Water the beds")
@@ -524,7 +528,12 @@ def test_text_goes_at_the_end_of_the_daily_note_made_when_missing(world: World) 
     assert first["created"] is True
     path = first["path"]
     assert path.startswith("Garden/") and "2026-09-29" in path
-    again = value(call(token, "append_to_daily", space="Garden", text="Watered\nall of them", date="2026-09-29"))
+    with SessionLocal() as db:
+        file_id = db.scalar(select(File.id).where(File.path == path))
+        sources = list(db.scalars(select(Version.source).where(Version.file_id == file_id).order_by(Version.id)))
+    # Made and written by the AI, both versions say so.
+    assert sources == [index.MCP, index.MCP]
+    again =value(call(token, "append_to_daily", space="Garden", text="Watered\nall of them", date="2026-09-29"))
     assert again == {"path": path, "created": False}
     assert (world.vault / path).read_bytes().decode().endswith("Bought seeds\n\nWatered\nall of them\n")
     # Somebody editing it: nothing written.

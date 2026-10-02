@@ -257,7 +257,7 @@
     "newName": "Mein Schnipsel",
     "name": "Name des Schnipsels",
     "css": "CSS des Schnipsels",
-    "notAllowed": "Der Betreiber hat eigenes CSS nicht freigegeben (Einstellungen → Server → KI und Plugins).",
+    "notAllowed": "Der Betreiber hat eigenes CSS nicht freigegeben (Einstellungen → Server → KI, API und Plugins).",
     "problem": "Zeile {{line}}: {{what}} ist hier nicht erlaubt.",
     "rules": "Erlaubt: Regeln, @media und @supports. Abgewiesen: url(), @import, @font-face und alles andere, was etwas nachladen könnte."
   },
@@ -525,7 +525,8 @@
       "restore": "zurückgeholt",
       "import": "importiert",
       "mcp": "KI (MCP)",
-      "plugin": "Plugin"
+      "plugin": "Plugin",
+      "api": "Programm (API)"
     },
     "editorFailed": "Der Editor konnte nicht starten. Lade die Seite neu; aus ihm wurde nichts gespeichert.",
     "deleteTitle": "„{{title}}“ in den Papierkorb legen?",
@@ -606,7 +607,7 @@
       "accounts": "Konten",
       "signin": "Anmeldung",
       "shares": "Öffentliche Seiten",
-      "extensions": "KI und Plugins",
+      "extensions": "KI, API und Plugins",
       "files": "Dateien",
       "backups": "Sicherung",
       "languages": "Sprachen",
@@ -742,7 +743,9 @@
       "request_closed": "Diese Anfrage ist schon entschieden oder verfallen.",
       "request_changed": "Diese Anfrage passt nicht zu dem, was gefragt wurde; nichts wurde ausgeführt.",
       "notify_no_way": "Gib erst eine Webhook-Adresse an oder schalte Mail ein.",
-      "webhook_invalid": "Gib eine Adresse wie https://example.com/hook an."
+      "webhook_invalid": "Gib eine Adresse wie https://example.com/hook an.",
+      "api_off": "Der Betreiber hat API-Token nicht eingeschaltet.",
+      "too_many_tokens": "Ein Konto hat höchstens 20 Token."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
@@ -1288,6 +1291,26 @@
       "make": "Anleitung neu anlegen",
       "made": "Bereich „{{space}}“ angelegt.",
       "open": "Öffnen"
+    },
+    "apiTokens": {
+      "title": "API-Token",
+      "text": "Konten verbinden nexlore mit Programmen wie n8n oder nexdeck. Ein Token darf nie mehr als sein Konto und löscht, verschiebt und teilt nichts. Ab Werk aus.",
+      "allow": "Konten dürfen API-Token anlegen",
+      "allowHint": "Jedes Konto legt eigene Token unter Mein Konto → Verbindungen an.",
+      "account": "Konto",
+      "token": "Token",
+      "level": "Stufe",
+      "spaces": "Bereiche",
+      "used": "Zuletzt",
+      "allSpaces": "alle",
+      "someSpaces_one": "{{count}} Bereich",
+      "someSpaces_other": "{{count}} Bereiche",
+      "blocked": "gesperrt",
+      "block": "Sperren",
+      "blockNamed": "Token {{name}} von {{account}} sperren",
+      "blockTitle": "Token „{{name}}“ von {{account}} sperren?",
+      "blockText": "Das Token antwortet danach wie keines, für immer. Das Konto sieht es als „vom Betreiber gesperrt“ und kann ein neues anlegen, solange API-Token eingeschaltet sind.",
+      "offHint": "Schaltest du API-Token ab, antwortet jedes Token mit 401. Die Token bleiben stehen und gehen wieder, wenn du einschaltest."
     }
   },
   "today": {
@@ -1444,7 +1467,7 @@
       "write": "Ändert Notizen direkt: jede Änderung eine Version, eine Konfliktkopie, wenn sich die Notiz inzwischen geändert hat."
     },
     "off": "Der Betreiber hat KI von außen nicht eingeschaltet, deshalb gibt es hier keine Schlüssel.",
-    "offOperator": "Einschalten unter Einstellungen → Server → KI und Plugins.",
+    "offOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins.",
     "nextStep": "Als Nächstes: Adresse und Schlüssel in dein KI-Programm eintragen. Programme, die eine mcp.json lesen (etwa Cursor oder die .mcp.json eines Projekts), nehmen das JSON unten; Claude Code nimmt den Befehl. Andere fragen in ihren eigenen Einstellungen nach denselben zwei Dingen. Der Schlüssel gilt, bis du ihn widerrufst.",
     "recipeJson": "JSON im mcp.json-Format",
     "copyNamed": "Kopieren: {{what}}",
@@ -1575,7 +1598,7 @@
     },
     "none": "Der Betreiber hat noch kein Plugin freigegeben. Sobald er eins freigibt, schaltest du es hier für dich ein.",
     "noneOperator": "Noch ist kein Plugin installiert und freigegeben. Vier geprüfte liegen im Katalog bereit: Inhaltsverzeichnis, Abfrage, Kanban und Wiederentdecken.",
-    "toCatalog": "Zum Katalog unter Server → KI und Plugins"
+    "toCatalog": "Zum Katalog unter Server → KI, API und Plugins"
   },
   "twofactor": {
     "title": "Zweiter Faktor",
@@ -1846,7 +1869,7 @@
     "title": "Kalender-Abo",
     "text": "Deine offenen Aufgaben mit Termin als Adresse, die dein Kalender abonniert (Internet-Kalender, ICS). Er fragt sie etwa stündlich neu ab.",
     "closed": "Der Betreiber hat Kalender-Abos nicht eingeschaltet.",
-    "closedOperator": "Einschalten unter Einstellungen → Server → KI und Plugins, Karte Kalender-Abos.",
+    "closedOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins, Karte Kalender-Abos.",
     "none": "Noch keine Adresse.",
     "active": "Eine Adresse ist aktiv. Sie wird nur einmal gezeigt; eine neue ersetzt sie.",
     "make": "Adresse erzeugen",
@@ -1935,7 +1958,7 @@
     "title": "KI in Notizen",
     "text": "Dein eigener KI-Dienst korrigiert, formuliert um, übersetzt, fasst zusammen und schreibt im Editor. Den Schlüssel bezahlst du selbst; ein Ergebnis steht immer erst neben dem Text und ändert nichts, bis du es übernimmst.",
     "off": "Der Betreiber hat KI in Notizen nicht eingeschaltet.",
-    "offOperator": "Einschalten unter Einstellungen → Server → KI und Plugins.",
+    "offOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins.",
     "tiles": "Adresse eines Dienstes eintragen",
     "getKey": "Schlüssel bei {{name}} holen",
     "address": "Adresse (jeder Dienst mit der üblichen Chat-Schnittstelle)",
@@ -2188,15 +2211,55 @@
       "invite": "Einladungen",
       "approval": "Freigaben für KI-Programme",
       "tasks": "Aufgaben des Tages",
-      "operator": "Ärger mit dem Server"
+      "operator": "Ärger mit dem Server",
+      "tokens": "API-Token laufen ab"
     },
     "occasionHint": {
       "mention": "Jemand nennt dich mit @ in einem Kommentar oder antwortet in einem Faden, an dem du teilnimmst.",
       "invite": "Eine Einladung in einen Bereich wartet auf deine Antwort.",
       "approval": "Ein KI-Programm wartet auf dein Ja.",
       "tasks": "Einmal am Tag zur Uhrzeit unten: was heute fällig oder überfällig ist.",
-      "operator": "Für Betreiber: eine Sicherung ist gescheitert, eine neuere Fassung ist da, die Platte läuft voll."
+      "operator": "Für Betreiber: eine Sicherung ist gescheitert, eine neuere Fassung ist da, die Platte läuft voll.",
+      "tokens": "Sieben Tage bevor eines deiner API-Token abläuft, einmal je Token."
     },
     "tasksTime": "Uhrzeit für die Aufgaben des Tages"
+  },
+  "apiTokens": {
+    "title": "API-Token",
+    "text": "Für Programme wie n8n oder nexdeck. Ein Token darf, was du darfst, beschränkt auf seine Stufe und seine Bereiche. Löschen, Verschieben und Teilen gehen nie über ein Token.",
+    "none": "Noch keine Token.",
+    "new": "Neues Token",
+    "name": "Name, damit du es wiedererkennst",
+    "levelTitle": "Stufe",
+    "level": {
+      "read": "Lesen",
+      "write": "Schreiben"
+    },
+    "levelText": {
+      "read": "Bereiche, Notizen, Suche, Aufgaben, Zahlen. Ändert nichts.",
+      "write": "Dazu Notizen anlegen und ändern, anhängen, Tagesnotiz, Eingang, Aufgaben abhaken. Jede Änderung wird eine Version mit der Quelle „Programm (API)“. Nie löschen, verschieben oder teilen."
+    },
+    "where": "Bereiche",
+    "lifetime": "Läuft ab",
+    "lifetimeDays": {
+      "30": "in 30 Tagen",
+      "90": "in 90 Tagen",
+      "365": "in einem Jahr"
+    },
+    "lifetimeNever": "nie",
+    "make": "Anlegen",
+    "shownOnce": "Token „{{name}}“ angelegt. Es steht nur jetzt hier. Kopier es in dein Programm; nexlore speichert nur eine Prüfsumme.",
+    "header": "Als Kopfzeile in n8n (HTTP Request, Header Auth) oder nexdeck",
+    "tryIt": "Zum Ausprobieren",
+    "never": "läuft nie ab",
+    "runsOut": "läuft am {{day}} ab",
+    "ranOut": "abgelaufen am {{day}}",
+    "blocked": "vom Betreiber gesperrt",
+    "delete": "Löschen",
+    "deleteNamed": "Token {{name}} löschen",
+    "off": "Der Betreiber hat API-Token nicht eingeschaltet. Frag ihn, wenn du nexlore mit n8n oder nexdeck verbinden willst.",
+    "offOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins.",
+    "whatItDoes": "Was die API kann",
+    "whatItDoesText": "Jede Anfrage trägt das Token in der Kopfzeile Authorization: Bearer, die Antworten sind JSON. Schreiben braucht die Stufe Schreiben und das Recht im Bereich."
   }
 }

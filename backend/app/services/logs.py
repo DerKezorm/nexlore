@@ -102,7 +102,7 @@ def _one_line(text: str) -> str:
 
 
 #: The key of a calendar subscription travels in its address (a calendar app sends no header): never in the log.
-_FEED_KEY = re.compile(r"(nx[clr]_)[A-Za-z0-9_-]+")
+_FEED_KEY = re.compile(r"(nx[aclr]_)[A-Za-z0-9_-]+")
 
 
 def redact(text: str) -> str:

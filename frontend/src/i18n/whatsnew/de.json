@@ -57,5 +57,25 @@
     "small": [
       "Wer eine Notiz gleich nach dem Öffnen des Dialogs in den Papierkorb legt, nimmt die Dateien, die nur sie nutzt, wieder mit; vorher konnten sie liegen bleiben."
     ]
+  },
+  "0.4.0": {
+    "lead": "nexlore arbeitet jetzt mit Programmen wie n8n und nexdeck zusammen. Ein API-Token liest deine Notizen, Aufgaben und Zahlen fürs Dashboard, und wenn du willst, schreibt es auch: anlegen, ändern, anhängen, abhaken. Löschen, verschieben und teilen kann es nie.",
+    "sections": [
+      {
+        "title": "API-Token für Programme",
+        "where": "Kontomenü, Mein Konto, Verbindungen, API-Token",
+        "body": "Leg für jedes Programm ein eigenes Token an: Lesen oder Schreiben, für alle deine Bereiche oder nur einzelne, und auf Wunsch mit Ablauf nach 30 Tagen, 90 Tagen oder einem Jahr. Das Token steht nur einmal da, mit der Kopfzeile für n8n und einem Befehl zum Ausprobieren. Was ein Programm schreibt, wird eine Version mit der Quelle „Programm (API)“; hat sich die Notiz inzwischen geändert oder bearbeitet sie gerade jemand, landet der Text in einer Konfliktkopie."
+      },
+      {
+        "title": "Der Betreiber hält den Riegel",
+        "where": "Einstellungen, Server, KI, API und Plugins, API-Token",
+        "body": "API-Token sind ab Werk aus. Der Betreiber schaltet sie ein, sieht jedes Token mit Konto, Stufe und letzter Nutzung, nie das Token selbst, und kann eines für immer sperren. Schaltet er ab, antwortet jedes Token mit 401, bis er wieder einschaltet."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Eine Woche bevor eines deiner API-Token abläuft, steht es gelb in der Liste, und nexlore sagt dir Bescheid (Mein Konto, Benachrichtigungen, abschaltbar).",
+      "Der Teil der Servereinstellungen heißt jetzt „KI, API und Plugins“."
+    ]
   }
 }

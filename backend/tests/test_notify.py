@@ -63,7 +63,7 @@ def test_choices_have_defaults_and_are_checked(client: TestClient, account: Acco
     anna = person("anna")
     shown = anna.get("/api/me/notify").json()
     assert shown["choices"] == {"email": False, "mention": True, "invite": True, "approval": True, "tasks": False,
-                                "tasks_time": "07:00", "operator": True}
+                                "tasks_time": "07:00", "operator": True, "tokens": True}
     assert shown["webhook"] == {"set": False, "host": ""} and shown["operator"] is False
     saved = anna.put("/api/me/notify", json={"choices": {"tasks": True, "tasks_time": "06:45"}}).json()
     assert saved["choices"]["tasks"] is True and saved["choices"]["tasks_time"] == "06:45"

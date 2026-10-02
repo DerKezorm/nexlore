@@ -2,7 +2,7 @@
 
 Zurück zu [[00 Willkommen|Willkommen]].
 
-Plugins kommen aus einem geprüften Katalog, der mit nexlore geliefert wird. Der Betreiber installiert und gibt sie frei (Einstellungen → Server → KI und Plugins), danach schaltet jedes Konto sie unter **Mein Konto → Plugins für mich** für sich ein. Jedes Plugin läuft eingesperrt: kein Netz, keine Anmeldung, nur was es in seiner Karte angibt.
+Plugins kommen aus einem geprüften Katalog, der mit nexlore geliefert wird. Der Betreiber installiert und gibt sie frei (Einstellungen → Server → KI, API und Plugins), danach schaltet jedes Konto sie unter **Mein Konto → Plugins für mich** für sich ein. Jedes Plugin läuft eingesperrt: kein Netz, keine Anmeldung, nur was es in seiner Karte angibt.
 
 ## Die vier Plugins
 
