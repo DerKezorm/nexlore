@@ -281,7 +281,11 @@ function obsidian(resolve: (target: string) => string | null, targets: Targets):
         const found = /(^|\s)#[\p{L}\p{N}_/-]/u.exec(src)
         return found ? found.index + found[1].length : undefined
       },
-      tokenizer(src) {
+      tokenizer(src, tokens) {
+        // Asked at every place, not only where `start` pointed: after anything but a blank it is no tag. `&#x20;`,
+        // the editor's way of writing a space at the start of a line, showed as "&", a tag "#x20" and ";".
+        const before = tokens.at(-1)?.raw.at(-1)
+        if (before !== undefined && !/\s/.test(before)) return undefined
         const found = /^#([\p{L}\p{N}_/-]+)/u.exec(src)
         const tag = found?.[1].replace(/\/+$/, '')
         if (tag && !/^[\d/]+$/.test(tag)) return { type: 'tag', raw: '#' + tag, tag }

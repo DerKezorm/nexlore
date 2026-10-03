@@ -120,6 +120,13 @@ describe("Obsidian's own writing in the reading view", () => {
     expect(renderMarkdown('# Title', nowhere)).toContain('<h1>Title</h1>')
   })
 
+  it('reads a character reference as a character, never as a tag', () => {
+    // The editor writes a space at the start of a line as `&#x20;` (it was shown as "&", a tag "#x20" and ";a").
+    const html = renderMarkdown('&#x20;a and x&#35;y, then a #real one', nowhere)
+    expect(html.match(/data-tag="[^"]*"/g)).toEqual(['data-tag="real"'])
+    expect(html).toContain('&#x20;a')
+  })
+
   it('marks ==highlights==, with Markdown inside', () => {
     expect(renderMarkdown('a ==very **important**== b', nowhere)).toContain('<mark>very <strong>important</strong></mark>')
     expect(renderMarkdown('a == b and c == d', nowhere)).not.toContain('<mark>')
