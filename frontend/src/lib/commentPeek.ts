@@ -16,8 +16,12 @@ export function usePeek() {
   const leave = useRef(0)
   // The mouse on the preview: nothing over the text closes it then.
   const onPeek = useRef(false)
+  // Where its words stand: only a scroll that moves them takes the preview away.
+  const words = useRef<Node | null>(null)
 
-  const show = useCallback((thread: Thread, box: DOMRect) => {
+  /** The preview of ``thread`` under ``box``; ``near`` is a node of its words. */
+  const show = useCallback((thread: Thread, box: DOMRect, near?: Node) => {
+    words.current = near ?? null
     window.clearTimeout(leave.current)
     setPeek((was) => (was?.thread.id === thread.id ? was : { thread, x: Math.min(box.left, window.innerWidth - 300), y: box.bottom }))
   }, [])
@@ -42,10 +46,14 @@ export function usePeek() {
     setPeek(null)
   }, [])
 
-  // Scrolling moves the words away from a preview that stays where it was: it goes.
+  // Scrolling moves the words away from a preview that stays where it was: it goes. Only a scroll around the words:
+  // the sidebar scrolls by itself (it keeps the open note in view while folders above it load), and that took the
+  // preview away under the mouse.
   useEffect(() => {
     if (!peek) return
-    const gone = () => {
+    const gone = (event: Event) => {
+      const scrolled = event.target
+      if (words.current && scrolled instanceof Node && !scrolled.contains(words.current)) return
       onPeek.current = false
       setPeek(null)
     }

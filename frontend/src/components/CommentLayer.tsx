@@ -45,10 +45,11 @@ function chosenAnchor(root: HTMLElement | null, release = true): Anchor | null {
 }
 
 /** The thread whose lit words lie under a point of the screen. */
-function threadAt(marks: { thread: Thread; range: Range }[], x: number, y: number): { thread: Thread; box: DOMRect } | null {
+function threadAt(marks: { thread: Thread; range: Range }[], x: number, y: number): { thread: Thread; box: DOMRect; node: Node } | null {
   for (const mark of marks)
     for (const box of mark.range.getClientRects())
-      if (x >= box.left - 1 && x <= box.right + 1 && y >= box.top - 1 && y <= box.bottom + 1) return { thread: mark.thread, box }
+      if (x >= box.left - 1 && x <= box.right + 1 && y >= box.top - 1 && y <= box.bottom + 1)
+        return { thread: mark.thread, box, node: mark.range.startContainer }
   return null
 }
 
@@ -101,7 +102,7 @@ export function CommentLayer({ article, html, threads, onAsk, onFound, onShowThr
       // Words being chosen: no preview over them (it covered the words a right click was meant for).
       if (document.getSelection()?.isCollapsed === false) return hidePeek()
       const hit = threadAt(marks.current, x, y)
-      if (hit) showPeek(hit.thread, hit.box)
+      if (hit) showPeek(hit.thread, hit.box, hit.node)
       else hideSoon()
     }
     const move = (event: MouseEvent) => {

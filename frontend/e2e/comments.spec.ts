@@ -172,6 +172,22 @@ test('resting on lit words shows their comment and leads to it; a thread picked 
   const peek = page.getByTestId('comment-peek')
   await expect(peek).toContainText('About the second')
   await expect(peek).not.toContainText('About the first')
+  // Something else scrolling leaves it alone: the sidebar scrolls by itself, keeping the open note in view while
+  // folders above it load (in the full run the spaces of earlier tests did, and the preview went under the mouse).
+  await page.getByTestId('sidebar-tree').evaluate((tree) => tree.scrollBy(0, 40))
+  await page.waitForTimeout(200)
+  await expect(peek).toContainText('About the second')
+  // The note's own scrolling moves the words away from it: then it goes (the note is short, so the scroll is told).
+  await page.locator('article').evaluate((article) => {
+    let around = article.parentElement
+    while (around && !/(auto|scroll)/.test(getComputedStyle(around).overflowY)) around = around.parentElement
+    ;(around ?? document).dispatchEvent(new Event('scroll'))
+  })
+  // At once, not a moment later when it would go on its own anyway.
+  await page.waitForTimeout(100)
+  expect(await peek.count()).toBe(0)
+  await page.mouse.move(box.x + 2, box.y)
+  await expect(peek).toContainText('About the second')
   // The way to its button as a hand takes it, over the gap: the preview stays.
   const to = (await peek.getByRole('button', { name: 'To the comment' }).boundingBox())!
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 15 })
@@ -251,6 +267,10 @@ test('while writing, chosen words are commented from the button or the menu, and
   await expect(marks).toHaveCount(2)
   await marks.filter({ hasText: 'purple bells' }).hover()
   const peek = page.getByTestId('comment-peek')
+  await expect(peek).toContainText('From the button')
+  // The sidebar scrolling by itself leaves it alone here too.
+  await page.getByTestId('sidebar-tree').evaluate((tree) => tree.scrollBy(0, 40))
+  await page.waitForTimeout(200)
   await expect(peek).toContainText('From the button')
   const to = (await peek.getByRole('button', { name: 'To the comment' }).boundingBox())!
   await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 15 })

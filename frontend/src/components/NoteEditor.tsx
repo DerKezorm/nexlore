@@ -404,7 +404,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       const mark = (event.target as Element).closest?.('[data-comment-thread]')
       if (!mark) return hideSoon()
       const thread = threadsRef.current?.find((item) => String(item.id) === mark.getAttribute('data-comment-thread'))
-      if (thread) showPeek(thread, mark.getBoundingClientRect())
+      if (thread) showPeek(thread, mark.getBoundingClientRect(), mark)
     }
     root.addEventListener('mouseover', over)
     root.addEventListener('click', over)
