@@ -68,7 +68,7 @@ with an AGPL-3.0 work, and the source of every part is public.
 
 | Package | Licence |
 |---|---|
-| React, React DOM, React Router, Milkdown (Crepe, Kit), Vue (used by Milkdown's components), CodeMirror language support, Lezer, marked, KaTeX, Mermaid, i18next, react-i18next, unist-util-visit, mdast-util-gfm-table | MIT |
+| React, React DOM, React Router, React Flow (`@xyflow/react`, the canvas; notice at `/licenses/xyflow.txt`), Milkdown (Crepe, Kit), Vue (used by Milkdown's components), CodeMirror language support, Lezer, marked, KaTeX, Mermaid, i18next, react-i18next, unist-util-visit, mdast-util-gfm-table | MIT |
 | d3-force, yaml | ISC |
 | Fontsource packages | MIT (the fonts themselves OFL-1.1, see above) |
 

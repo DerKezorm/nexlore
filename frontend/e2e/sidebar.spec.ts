@@ -415,6 +415,34 @@ test('on a phone "Notes" and the empty note page open the list as a sheet, and t
   expect(problems).toEqual([])
 })
 
+test('the sidebar is made wider at its edge, keeps that width, and names a cut short note in full', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/note/Zoo/Tidy/Keep.md')
+  const sidebar = page.getByTestId('sidebar')
+  await expect(sidebar).toBeVisible()
+  expect(Math.round((await sidebar.boundingBox())!.width)).toBe(256)
+  // The whole name under the pointer, however narrow the row.
+  await expect(row(page, 'Keep')).toHaveAttribute('title', 'Keep')
+  const edge = (await page.getByTestId('sidebar-resize').boundingBox())!
+  await page.mouse.move(edge.x + edge.width / 2, edge.y + 300)
+  await page.mouse.down()
+  await page.mouse.move(edge.x + edge.width / 2 + 120, edge.y + 300, { steps: 8 })
+  await page.mouse.up()
+  await expect.poll(async () => Math.round((await sidebar.boundingBox())!.width)).toBe(376)
+  // Kept on the next page and after loading again.
+  await page.reload()
+  await expect.poll(async () => Math.round((await page.getByTestId('sidebar').boundingBox())!.width)).toBe(376)
+  // The arrow keys at the edge move it by 16 px; a double click goes back to the usual width.
+  await page.getByTestId('sidebar-resize').focus()
+  await page.keyboard.press('ArrowLeft')
+  await expect.poll(async () => Math.round((await sidebar.boundingBox())!.width)).toBe(360)
+  await page.getByTestId('sidebar-resize').dblclick()
+  await expect.poll(async () => Math.round((await sidebar.boundingBox())!.width)).toBe(256)
+  expect(await page.evaluate(() => localStorage.getItem('nexlore.sidebarWidth'))).toBeNull()
+  expect(problems).toEqual([])
+})
+
 test('on a wide screen the sidebar stays in place and "Notes" is a plain link', async ({ page }) => {
   await page.goto('/note')
   await expect(page.getByTestId('sidebar')).toBeVisible()

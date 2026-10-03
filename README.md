@@ -61,6 +61,11 @@ from one space into another that only resolve for people who may read both.*
 - **The graph**, drawn with WebGL: folders are bubbles that open as you zoom in (semantic zoom), grouped by folder,
   by tag or by topics worked out from the notes themselves. 100,000 notes stay fluid; the layout is computed on the
   server and loaded in tiles. Every note also shows its local graph.
+- **Canvases** in the open JSON Canvas format (`.canvas`, as Obsidian writes them): lay notes, text, pictures and
+  links on a surface without edges, group them and join them with arrows. Notes show on their cards and open beside
+  the canvas for editing, text cards are edited in place with the same editor, cards snap to each other while you
+  move them. A canvas is saved like a note (one person at a time, a conflict copy instead of overwriting, versions),
+  renaming a note rewrites its path on every canvas, and a change rewrites only the lines of the cards it touched.
 - **Everyday use**: daily notes with a calendar, templates (`{{date}}`, `{{title}}` and friends), a task overview
   across all spaces (due, scheduled, recurring, done), installable on a phone as an app.
 - **Attachments** next to the note in an `Attachments` folder, pasted pictures named after the note. Place and

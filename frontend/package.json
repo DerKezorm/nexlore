@@ -25,6 +25,7 @@
     "@lezer/highlight": "1.2.5",
     "@milkdown/crepe": "^7.22.2",
     "@milkdown/kit": "^7.22.2",
+    "@xyflow/react": "12.12.0",
     "d3-force": "^3.0.0",
     "i18next": "^25.10.10",
     "katex": "0.18.9",

@@ -18,6 +18,7 @@ import { addDays, today as isoToday } from '../lib/everyday'
 import { taskLines } from '../lib/taskLines'
 import { ApiError, draftsApi, everydayApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi, themesApi, proposalsApi, type NoteNews, type Proposal, commentsApi, type Thread } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { TrashWarnings } from '../components/TrashWarnings'
 import { ConflictCompare } from '../components/ConflictCompare'
 import { DraftCompare } from '../components/DraftCompare'
 import type { EditorHandle, EditorMode } from '../components/NoteEditor'
@@ -50,7 +51,7 @@ import { TabBar } from '../components/TabBar'
 import { openInTab } from '../lib/tabs'
 import { copiesOf, originalOf } from '../lib/compare'
 import { errorText } from '../lib/errors'
-import { isFileTarget, isNotePath } from '../lib/files'
+import { isCanvasPath, isFileTarget, isNotePath } from '../lib/files'
 import { distinctOutgoing, LinkIndex, linkedSpace, linkName } from '../lib/links'
 import { fileRoute, formatDate, renderMarkdown, withoutFrontMatter } from '../lib/markdown'
 import { baseName, decodedOrNull, folderOf, noteUrl } from '../lib/vault'
@@ -1057,9 +1058,19 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
           <Section symbol="backlink" title={t('note.backlinks')} count={backNotes.length}>
             {backNotes.length === 0 && <p className="px-2 text-sm text-mist-600">{t('note.noBacklinks')}</p>}
             {backNotes.map((item) => (
-              <button key={item.path} type="button" data-note={item.path} onClick={() => open(item.path)} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-ink-850">
+              <button
+                key={item.path}
+                type="button"
+                data-note={isCanvasPath(item.path) ? undefined : item.path}
+                // A canvas this note lies on opens as a canvas (D8 of the canvas concept).
+                onClick={() => (isCanvasPath(item.path) ? navigate(fileRoute(item.path)) : open(item.path))}
+                className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-ink-850"
+              >
                 <span className="flex items-baseline gap-2">
-                  <span className="min-w-0 flex-1 text-sm font-medium text-mist-200">{item.title}</span>
+                  <span className="min-w-0 flex-1 text-sm font-medium text-mist-200">{isCanvasPath(item.path) ? item.title.replace(/\.canvas$/i, '') : item.title}</span>
+                  {isCanvasPath(item.path) && (
+                    <span className="shrink-0 rounded-md border border-accent-700 px-1.5 text-[11px] text-accent-400">{t('canvas.tag')}</span>
+                  )}
                   {item.count > 1 && (
                     <span className="shrink-0 text-xs text-mist-600 tabular-nums" title={t('note.linksFromThere', { count: item.count })}>
                       ×{item.count}
@@ -1601,6 +1612,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
         onConfirm={() => void remove()}
       >
         {t('note.deleteText')}
+        {deleting && <TrashWarnings path={note.path} folder={false} />}
         {own.length > 0 && (
           <div className="mt-3 rounded-xl border border-ink-700 bg-ink-850 px-3 py-2">
             <label className="flex items-start gap-2 text-sm text-mist-200">

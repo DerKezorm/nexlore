@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { ApiError, basesApi, everydayApi, looksApi, shareApi, tagsApi, vaultApi } from '../api/client'
+import { ApiError, basesApi, canvasApi, everydayApi, looksApi, shareApi, tagsApi, vaultApi } from '../api/client'
 import { errorText } from '../lib/errors'
 import { ensureFolder } from '../lib/folders'
 import { fileRoute } from '../lib/markdown'
@@ -22,6 +22,7 @@ import { FolderTree } from './FolderTree'
 import { isLucide, searchLucide, useLucide } from '../lib/lucide'
 import { LookIcon } from './LookIcon'
 import { Symbol } from './Symbol'
+import { TrashWarnings } from './TrashWarnings'
 
 /** The note or folder the address stands on, as a vault path (`/note/…`, `/file/…`), or null. */
 function shownPath(pathname: string): string | null {
@@ -176,6 +177,21 @@ export function VaultActions() {
           onClose={close}
           onSubmit={async (name) => {
             const made = await basesApi.create(action.folder, name)
+            await reload()
+            done(null)
+            navigate(fileRoute(made.path))
+          }}
+        />
+      )}
+      {action.kind === 'new-canvas' && (
+        <NameDialog
+          title={t('canvas.newTitle', { folder: action.folder.split('/').join(' / ') })}
+          hint={t('canvas.newHint')}
+          confirm={t('actions.create')}
+          initial={t('canvas.untitled')}
+          onClose={close}
+          onSubmit={async (name) => {
+            const made = await canvasApi.create(action.folder, name)
             await reload()
             done(null)
             navigate(fileRoute(made.path))
@@ -509,7 +525,6 @@ function TrashDialog({ path, folder, onClose, onTrash }: { path: string; folder:
   const [own, setOwn] = useState<string[]>([])
   const [withOwn, setWithOwn] = useState(true)
   const { busy, problem, submit } = useSubmit(() => onTrash(withOwn ? own : []))
-  const shared = useShared(path)
   useEffect(() => {
     if (folder) return
     let live = true
@@ -532,7 +547,7 @@ function TrashDialog({ path, folder, onClose, onTrash }: { path: string; folder:
       onConfirm={() => void submit()}
     >
       {folder ? t('actions.trashFolderText') : t('note.deleteText')}
-      {shared > 0 && <p className="mt-3 rounded-lg border border-warn-500/40 bg-warn-500/10 px-3 py-2 text-sm text-warn-500" data-testid="shared-warning">{t('actions.sharedTrash', { count: shared })}</p>}
+      <TrashWarnings path={path} folder={folder} />
       {!folder && own.length > 0 && (
         <label className="mt-3 flex items-start gap-2 rounded-xl border border-ink-700 bg-ink-850 px-3 py-2 text-sm text-mist-200">
           <input type="checkbox" checked={withOwn} onChange={(event) => setWithOwn(event.target.checked)} className="mt-1 accent-accent-500" />

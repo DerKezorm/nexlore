@@ -158,6 +158,40 @@ export type EditorOptions = {
   linkTitle?: (url: string) => Promise<string | null> | null
   /** For tests: more Milkdown plugins, after nexlore's own. */
   plugins?: MilkdownPlugin[]
+  /**
+   * Where the bar over chosen words, the slash menu, the link boxes and the block handle go instead of beside the
+   * text: a layer outside a zoomed canvas card, so they keep their size and are never cut off by the card (measured
+   * on a probe: inside, the bar was 22 px high at half zoom and the slash menu ran out of the window at double). The
+   * layer must carry the class `milkdown`, Crepe's styles start there.
+   */
+  menus?: HTMLElement
+  /**
+   * The browser's own caret instead of the one Crepe draws (which hides the browser's): on a canvas card the drawn one
+   * never showed, and nobody saw where the next letter would go.
+   */
+  browserCaret?: boolean
+}
+
+/** What Crepe hangs beside the text without asking where (only slash menu and handle take a `root`). */
+const FLOATING = ['milkdown-toolbar', 'milkdown-link-preview', 'milkdown-link-edit', 'milkdown-latex-inline-edit']
+
+/** Moves Crepe's floating parts into `menus` as they come; returns the way to stop and take them away. */
+function floatInto(root: HTMLElement, menus: HTMLElement): () => void {
+  const moved = new Set<Element>()
+  const move = () => {
+    for (const element of root.querySelectorAll(FLOATING.map((name) => `.${name}`).join(','))) {
+      if (moved.has(element)) continue
+      moved.add(element)
+      menus.appendChild(element)
+    }
+  }
+  move()
+  const watch = new MutationObserver(move)
+  watch.observe(root, { childList: true, subtree: true })
+  return () => {
+    watch.disconnect()
+    for (const element of moved) element.remove()
+  }
 }
 
 /** What the toolbar, the context menu (and anyone else) can ask of the editor, the same commands as "/". */
@@ -380,6 +414,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
             },
           }
         : { codeIcon: CODE_ICON },
+      ...(options.browserCaret ? { [CrepeFeature.Cursor]: { virtual: false } } : {}),
       [CrepeFeature.Placeholder]: { text: labels.placeholder, mode: 'doc' },
       [CrepeFeature.LinkTooltip]: { inputPlaceholder: labels.link },
       [CrepeFeature.CodeMirror]: {
@@ -391,6 +426,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
         previewLoading: labels.code.loading,
       },
       [CrepeFeature.BlockEdit]: {
+        ...(options.menus ? { slashMenu: { root: options.menus }, blockHandle: { root: options.menus } } : {}),
         textGroup: {
           label: labels.slash.groupText,
           text: { label: labels.slash.text },
@@ -591,11 +627,13 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
   await crepe.editor.remove([remarkInlineLinkPlugin, remarkPreserveEmptyLinePlugin, syncListOrderPlugin, listItemBlockView, ...replaced].flat())
   await crepe.create()
   crepe.setReadonly(!!options.readOnly)
-  const stopSlashAria = describeSlashMenu(options.root, crepe.editor.ctx.get(editorViewCtx).dom, labels.slash.groupText)
+  const stopFloating = options.menus ? floatInto(options.root, options.menus) : () => undefined
+  const menusRoot = options.menus ?? options.root
+  const stopSlashAria = describeSlashMenu(menusRoot, crepe.editor.ctx.get(editorViewCtx).dom, labels.slash.groupText)
   // The "+" and the eight dots beside a block: a tooltip each, and a name for screen readers. Crepe draws them a
   // moment after the editor is there, so they are named when they come.
   const nameHandle = () => {
-    const [addButton, dragButton] = options.root.querySelectorAll<HTMLElement>('.milkdown-block-handle .operation-item')
+    const [addButton, dragButton] = menusRoot.querySelectorAll<HTMLElement>('.milkdown-block-handle .operation-item')
     if (!dragButton) return false
     for (const [button, label] of [[addButton, labels.handle.add], [dragButton, labels.handle.drag]] as const) {
       button.title = label
@@ -605,7 +643,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     return true
   }
   const handleWatch = new MutationObserver(() => nameHandle() && handleWatch.disconnect())
-  if (!nameHandle()) handleWatch.observe(options.root, { childList: true, subtree: true })
+  if (!nameHandle()) handleWatch.observe(menusRoot, { childList: true, subtree: true })
 
   const ctx = crepe.editor.ctx
   const view = ctx.get(editorViewCtx)
@@ -921,6 +959,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
     destroy: async () => {
       handleWatch.disconnect()
       stopSlashAria()
+      stopFloating()
       for (const key of forcedKeys) releaseRaw(key)
       await crepe.destroy()
     },

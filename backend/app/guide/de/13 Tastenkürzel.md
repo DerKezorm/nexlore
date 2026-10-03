@@ -43,4 +43,4 @@ Eigene Tasten für jeden Befehl legst du in der Befehlspalette fest: das Tastatu
 | `0` | alles zeigen |
 | `Tab` | von Blase zu Blase, `Enter` fliegt hinein oder öffnet die Notiz |
 
-Das war die Anleitung. Viel Freude mit deinen Notizen. Zurück zu [[00 Willkommen|Willkommen]].
+Die Tasten der Leinwand stehen bei ihr. Weiter mit [[14 Die Leinwand]].

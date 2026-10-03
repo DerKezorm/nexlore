@@ -8,18 +8,19 @@
  * The right mouse button (or a long press on a touch screen) opens a menu: a new note or folder, renaming, moving,
  * the graph, the trash. A folder that could not be read says so and offers to try again.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import { recentApi, spaceZipUrl, vaultApi, type Favorite, type FolderEntry, type FileEntry, type NoteRef } from '../api/client'
 import { folderColor, spaceColor } from '../graph/palette'
 import { fileRoute } from '../lib/markdown'
-import { fileKind } from '../lib/files'
+import { PATH_DRAG_TYPE, fileKind } from '../lib/files'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
 import { askFolder, FOLDER_EVENT, narrow, NOTE_LIST_EVENT, RECENT_EVENT, SIDEBAR_EVENT, sidebarHere, takeFolderWish, noteListWished, forgetNoteListWish } from '../lib/shell'
 import { answerNotice, seenAll, useNews } from '../lib/news'
+import { fitWidth, keepWidth, storedWidth, USUAL_WIDTH } from '../lib/sidebarWidth'
 import { openInTab } from '../lib/tabs'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } from '../lib/vaultActions'
@@ -61,10 +62,14 @@ type Row =
 
 /** Notes, and views over notes (Obsidian's .base files), open as notes; every other file (pictures, PDFs, other
  * attachments) stands in the tree too, as in Obsidian, and opens its file page. */
-const inTree = (file: { is_note: boolean; path: string }) => file.is_note || /\.base$/i.test(file.path)
+const inTree = (file: { is_note: boolean; path: string }) => file.is_note || /\.(base|canvas)$/i.test(file.path)
+
+/** A view or a canvas looks the same wherever it is listed (tree, favorites): its own symbol, its name without the ending. */
+const opensAsPage = (path: string) => /\.(base|canvas)$/i.test(path)
+const pageSymbol = (path: string): SymbolName => (/\.base$/i.test(path) ? 'table' : /\.canvas$/i.test(path) ? 'canvas' : 'note')
+const pageName = (path: string, title: string) => (opensAsPage(path) ? title.replace(/\.(base|canvas)$/i, '') : title)
 
 /** What a note or folder dragged in the sidebar carries. */
-const DRAG_TYPE = 'application/x-nexlore-path'
 
 export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: Props) {
   const { t, i18n } = useTranslation()
@@ -88,6 +93,14 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
   }
   // On a phone the sidebar is a sheet from the left: the header's "Notes" or the empty note page ask for it.
   const [sheet, setSheet] = useState(() => noteListWished() && narrow())
+  // Wide enough for long names: dragged at the right edge, the arrow keys there, a double click back to the usual.
+  const [width, setWidth] = useState(storedWidth)
+  const widthAtStart = useRef<{ x: number; width: number } | null>(null)
+  const resizeTo = (next: number, keep: boolean) => {
+    const fitted = fitWidth(next)
+    setWidth(fitted)
+    if (keep) keepWidth(fitted)
+  }
   // Closed by any way (or never opened here): the wish is done.
   useEffect(() => {
     if (!sheet) forgetNoteListWish()
@@ -460,7 +473,8 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
   useEffect(() => {
     const element = scroller.current
     if (!target || !element) return
-    const index = rows.out.findIndex((row) => row.kind === 'folder' && row.path === target.path)
+    // A folder, or a note or file in one (shown from a card on a canvas).
+    const index = rows.out.findIndex((row) => (row.kind === 'folder' || row.kind === 'note' || row.kind === 'file') && row.path === target.path)
     if (index < 0) return
     const top = index * ROW
     if (top < element.scrollTop || top + ROW > element.scrollTop + element.clientHeight) {
@@ -471,7 +485,8 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     let stopped = false
     const focus = () => {
       if (stopped) return
-      const button = element.querySelector<HTMLElement>(`li[data-path="${CSS.escape(target.path)}"] button[aria-expanded]:not([aria-label])`)
+      const at = `li[data-path="${CSS.escape(target.path)}"]`
+      const button = element.querySelector<HTMLElement>(`${at} button[aria-expanded]:not([aria-label]), ${at} > button`)
       if (button) {
         // A dialog opened meanwhile (Ctrl+K right after choosing a folder) keeps its focus: the late focus here took
         // the keys away from the field being typed in.
@@ -575,6 +590,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       items.push({ label: t('menu.newNote'), symbol: 'plus', onSelect: () => askNewNote(row.path) })
       items.push({ label: t('menu.newFolder'), symbol: 'folderPlus', onSelect: () => askVaultAction({ kind: 'new-folder', parent: row.path }) })
       items.push({ label: t('bases.new'), symbol: 'table', onSelect: () => askVaultAction({ kind: 'new-base', folder: row.path }) })
+      items.push({ label: t('canvas.new'), symbol: 'canvas', onSelect: () => askVaultAction({ kind: 'new-canvas', folder: row.path }) })
       items.push('separator')
     }
     if (write) items.push({ label: t('menu.look'), symbol: 'star', onSelect: () => askVaultAction({ kind: 'look', path: row.path }) })
@@ -662,8 +678,10 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     !!path && writable(folder) && !within(folder, path) && folderOf(path) !== folder
   const startDrag = (event: ReactDragEvent<HTMLElement>, path: string) => {
     dragged.current = path
-    event.dataTransfer.setData(DRAG_TYPE, path)
-    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData(PATH_DRAG_TYPE, path)
+    // Moved into a folder, or laid on a canvas as a card (a copy: the note stays where it is). With only "move" the
+    // browser refused the canvas's drop and showed its no-entry sign.
+    event.dataTransfer.effectAllowed = 'copyMove'
     const end = () => {
       dragged.current = null
       setDropOn(null)
@@ -723,7 +741,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     if (row.kind === 'empty') {
       return (
         <div className="flex h-full items-center gap-2 text-xs text-mist-600" style={{ paddingLeft: row.depth * 12 + 10 }} data-testid="sidebar-empty">
-          <span className="truncate">{t('sidebar.nothingHere')}</span>
+          <span className="truncate" title={t('sidebar.nothingHere')}>{t('sidebar.nothingHere')}</span>
           {writable(row.path) && (
             <button type="button" onClick={() => askNewNote(row.path)} className="shrink-0 rounded px-1.5 py-0.5 text-accent-400 hover:bg-ink-850">
               {t('sidebar.firstNote')}
@@ -753,6 +771,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           onKeyDown={(event) => stepKeys(event)}
           className={'flex h-full w-full items-center gap-2 rounded-lg pr-2 text-left text-[13px] text-mist-500 hover:bg-ink-850 hover:text-mist-100'}
           style={{ paddingLeft: row.depth * 12 + 10 }}
+          title={row.name}
           data-testid="sidebar-file"
         >
           <Symbol name={fileKind(row.path) === 'image' ? 'image' : 'file'} className="h-3.5 w-3.5 shrink-0 opacity-60" />
@@ -766,7 +785,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           type="button"
           // With Ctrl or Cmd, or the middle button: in a tab of its own.
           onClick={(event) =>
-            /\.base$/i.test(row.path) ? navigate(fileRoute(row.path)) : event.ctrlKey || event.metaKey ? openInTab(row.path, navigate) : onNote(row.path)
+            opensAsPage(row.path) ? navigate(fileRoute(row.path)) : event.ctrlKey || event.metaKey ? openInTab(row.path, navigate) : onNote(row.path)
           }
           onAuxClick={(event) => {
             if (event.button !== 1) return
@@ -783,10 +802,11 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           }
           style={{ paddingLeft: row.depth * 12 + 10 }}
           data-new={news.paths.has(row.path) || undefined}
-          title={news.paths.has(row.path) ? t('news.newDot') : undefined}
+          // The whole name, which the row may cut short (and whether it is new).
+          title={pageName(row.path, row.title) + (news.paths.has(row.path) ? ` · ${t('news.newDot')}` : '')}
         >
-          <Symbol name={/\.base$/i.test(row.path) ? 'table' : 'note'} className="h-3.5 w-3.5 shrink-0 opacity-60" />
-          <span className="truncate">{/\.base$/i.test(row.path) ? row.title.replace(/\.base$/i, '') : row.title}</span>
+          <Symbol name={pageSymbol(row.path)} className="h-3.5 w-3.5 shrink-0 opacity-60" />
+          <span className="truncate">{pageName(row.path, row.title)}</span>
           {news.paths.has(row.path) && <span aria-hidden="true" className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-accent-400" />}
         </button>
       )
@@ -815,6 +835,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           onClick={() => toggle(row.path)}
           onKeyDown={(event) => stepKeys(event, row.path, row.open)}
           aria-expanded={row.open}
+          title={row.name}
           className={'flex min-w-0 flex-1 items-center gap-2 text-left ' + (row.space ? 'text-[13px] font-semibold text-mist-100' : 'text-[13px]')}
         >
           {row.icon ? (
@@ -884,12 +905,48 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       aria-label={t('sidebar.label')}
       data-testid="sidebar"
       data-sheet={sheet || undefined}
+      style={{ '--sidebar-width': `${width}px` } as CSSProperties}
       className={
         sheet
-          ? 'fixed inset-y-0 left-0 z-40 flex w-[85vw] max-w-80 flex-col border-r border-ink-700/80 bg-ink-950 pt-[env(safe-area-inset-top)] shadow-2xl md:static md:z-auto md:w-64 md:max-w-none md:shrink-0 md:bg-ink-950/60 md:pt-0 md:shadow-none'
-          : 'hidden w-64 shrink-0 flex-col border-r border-ink-700/80 bg-ink-950/60 md:flex'
+          ? 'fixed inset-y-0 left-0 z-40 flex w-[85vw] max-w-80 flex-col border-r border-ink-700/80 bg-ink-950 pt-[env(safe-area-inset-top)] shadow-2xl md:relative md:z-auto md:w-(--sidebar-width) md:max-w-none md:shrink-0 md:bg-ink-950/60 md:pt-0 md:shadow-none'
+          : 'relative hidden w-(--sidebar-width) shrink-0 flex-col border-r border-ink-700/80 bg-ink-950/60 md:flex'
       }
     >
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t('sidebar.resize')}
+        title={t('sidebar.resize')}
+        aria-valuenow={width}
+        tabIndex={0}
+        data-testid="sidebar-resize"
+        className="absolute inset-y-0 -right-1 z-20 hidden w-2 cursor-col-resize touch-none hover:bg-accent-500/30 focus-visible:bg-accent-500/40 focus-visible:outline-none md:block"
+        onPointerDown={(event) => {
+          if (event.button !== 0) return
+          event.preventDefault()
+          event.currentTarget.setPointerCapture(event.pointerId)
+          widthAtStart.current = { x: event.clientX, width }
+        }}
+        onPointerMove={(event) => {
+          const start = widthAtStart.current
+          if (start) resizeTo(start.width + event.clientX - start.x, false)
+        }}
+        onPointerUp={(event) => {
+          const start = widthAtStart.current
+          widthAtStart.current = null
+          if (start) resizeTo(start.width + event.clientX - start.x, true)
+        }}
+        onPointerCancel={() => {
+          widthAtStart.current = null
+          keepWidth(width)
+        }}
+        onDoubleClick={() => resizeTo(USUAL_WIDTH, true)}
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+          event.preventDefault()
+          resizeTo(width + (event.key === 'ArrowRight' ? 16 : -16), true)
+        }}
+      />
       {sheet && (
         <div className="flex items-center justify-between border-b border-ink-700/60 px-4 py-2.5 md:hidden">
           <span className="text-sm font-semibold text-mist-100">{t('sidebar.label')}</span>
@@ -1000,9 +1057,12 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
                     (favorite.path === activeNote ? 'bg-accent-500/10 text-accent-300' : 'text-mist-300')
                   }
                 >
-                  <Symbol name={FAVORITE_SYMBOLS[favorite.kind]} className="h-3.5 w-3.5 shrink-0 text-mist-600" />
+                  <Symbol
+                    name={favorite.kind === 'file' && opensAsPage(favorite.path) ? pageSymbol(favorite.path) : FAVORITE_SYMBOLS[favorite.kind]}
+                    className="h-3.5 w-3.5 shrink-0 text-mist-600"
+                  />
                   <span className="min-w-0 flex-1 truncate">
-                    {favorite.title}
+                    {favorite.kind === 'file' ? pageName(favorite.path, favorite.title) : favorite.title}
                     {/* A heading says whose: "Section 4" alone was ambiguous (P4.19). */}
                     {favorite.kind === 'heading' && favorite.note && (
                       <span className="ml-1.5 text-xs text-mist-600">{baseName(favorite.note).replace(/\.md$/i, '')}</span>

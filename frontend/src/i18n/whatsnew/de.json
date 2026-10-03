@@ -134,5 +134,51 @@
       "Die README hat eine Checkliste für nexlore im Internet.",
       "Die im Kontomenü gewählte Sprache hält beim ersten Mal; auf einem langsamen Server sprang sie zurück."
     ]
+  },
+  "1.1.0": {
+    "lead": "nexlore 1.1 bringt die Leinwand: eine Fläche ohne Rand für Notizen, Gedanken, Bilder und Links, verbunden mit Pfeilen. Sie liegt als .canvas-Datei neben deinen Notizen, im offenen Format JSON Canvas, und Obsidian öffnet sie genauso.",
+    "sections": [
+      {
+        "title": "Eine Leinwand anlegen",
+        "where": "Seitenleiste, Rechtsklick auf einen Ordner oder Bereich, Neue Leinwand …",
+        "body": "Eine neue Leinwand ist leer und liegt in dem Ordner, in dem du sie anlegst. Die Anleitung hat dazu Kapitel 14 und eine Beispiel-Leinwand zum Ausprobieren."
+      },
+      {
+        "title": "Notizen als Karten",
+        "where": "Auf der Leinwand unten Notiz, oder eine Notiz aus der Seitenleiste hineinziehen",
+        "body": "Eine Notizkarte zeigt die Notiz, auf Wunsch nur einen Abschnitt. Ein Doppelklick öffnet sie rechts daneben im gewohnten Editor; was du dort schreibst, steht gleich darauf auf der Karte. Benennst du die Notiz um, zieht die Leinwand mit."
+      },
+      {
+        "title": "Schreiben direkt auf der Karte",
+        "where": "Auf der Leinwand: Doppelklick auf eine freie Stelle oder auf eine Textkarte",
+        "body": "Textkarten bearbeitest du an Ort und Stelle mit demselben Editor wie Notizen. Auswahlleiste und Slash-Menü bleiben in normaler Größe, gleich wie weit du gezoomt bist."
+      },
+      {
+        "title": "Ordnen mit Einrasten",
+        "where": "Auf der Leinwand Karten ziehen; der Magnet oben rechts schaltet es ab",
+        "body": "Kanten und Mitten rasten an anderen Karten ein, Leitlinien zeigen es; mit Alt beim Ziehen nicht. Gruppen nehmen mit, was in ihnen liegt, und Pfeile ziehst du von Rand zu Rand und beschriftest sie."
+      },
+      {
+        "title": "Pfeile finden ihren Weg",
+        "where": "Auf der Leinwand: von einem Punkt am Rand einer Karte zu einer anderen ziehen",
+        "body": "Pfeile laufen eckig um die Karten herum, die im Weg liegen, und knicken in der Mitte zwischen zwei Karten. Ihre Beschriftung bleibt lesbar, gleich wie weit du herauszoomst. In der Datei stehen nur die beiden Seiten; andere Programme zeichnen denselben Pfeil auf ihre Weise."
+      },
+      {
+        "title": "Karten aus anderen Bereichen",
+        "where": "Eine Notiz aus einem anderen Bereich aus der Seitenleiste hineinziehen, oder unten Notiz",
+        "body": "Eine Karte darf aus jedem Bereich kommen, den du lesen darfst; ihr Bereich steht im Kopf der Karte, und In der Seitenleiste zeigen springt zu ihr. Wer jenen Bereich nicht lesen darf, sieht die Karte gesperrt und nichts von ihrem Inhalt."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Vor dem Löschen nennt der Dialog die Leinwände, auf denen etwas liegt. Die Karte bleibt dort und zeigt es wieder, sobald du es aus dem Papierkorb holst.",
+      "Die Seitenleiste ziehst du am rechten Rand breiter oder schmaler, und jede Zeile zeigt beim Überfahren ihren ganzen Namen. Leinwände und Ansichten stehen in den Favoriten mit Namen und eigenem Symbol.",
+      "KI in Notizen meldete bei gültigem Schlüssel, der Dienst sei nicht erreichbar. nexlore liest jetzt auch die gepackten Antworten, mit denen manche Dienste längere Listen schicken.",
+      "Ein Leerzeichen am Zeilenanfang erschien beim Lesen als Tag „#x20“.",
+      "Eine Notiz nennt in ihren Rückverweisen die Leinwände, auf denen sie liegt.",
+      "Leinwände haben Versionen wie Notizen; eine ältere holst du oben über Versionen zurück.",
+      "Weit herausgezoomt zeigen Karten nur ihren Titel.",
+      "Auf dem Handy liest du Leinwände, bearbeitest Textkarten und öffnest Notizen."
+    ]
   }
 }

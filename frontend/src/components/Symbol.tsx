@@ -6,7 +6,7 @@ export type { SymbolName }
 
 export function Symbol({ name, className = 'h-4 w-4' }: { name: SymbolName; className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" focusable="false">
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" focusable="false" data-symbol={name}>
       {(SYMBOLS[name] as Path[]).map((path, index) => (
         <path
           key={index}

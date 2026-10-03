@@ -23,6 +23,7 @@ This space is a guide and an example at once. Every note here uses what it expla
 11. [[11 AI]]
 12. [[12 Backups and moving in]]
 13. [[13 Shortcuts]]
+14. [[14 The canvas]]
 
 ## The main thing in three sentences
 

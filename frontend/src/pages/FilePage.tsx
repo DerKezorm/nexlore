@@ -3,7 +3,7 @@
  * downloaded. The notes that link it are listed, and it can go to the trash. What the browser gets is decided by the
  * server by the file's content (a PDF or an SVG is always a download).
  */
-import { useCallback, useEffect, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 
@@ -13,13 +13,29 @@ import { Sidebar } from '../components/Sidebar'
 import { BaseView } from '../components/BaseView'
 import { Symbol } from '../components/Symbol'
 import { errorText } from '../lib/errors'
-import { fileKind } from '../lib/files'
+import { fileKind, isCanvasPath } from '../lib/files'
+import { fileRoute } from '../lib/markdown'
 import { folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
+
+/** A canvas has a page of its own, loaded only when one is opened (React Flow and the editor come with it). */
+const CanvasPage = lazy(() => import('../canvas/CanvasPage'))
 
 export function FilePage() {
   // Already decoded by the router.
   const path = useParams()['*'] ?? ''
+  const { t } = useTranslation()
+  if (isCanvasPath(path)) {
+    return (
+      <Suspense fallback={<p className="m-auto text-sm text-mist-500">{t('common.loading')}</p>}>
+        <CanvasPage key={path} path={path} />
+      </Suspense>
+    )
+  }
+  return <FileDetails path={path} />
+}
+
+function FileDetails({ path }: { path: string }) {
   const { t } = useTranslation()
   const { reload } = useStore()
   const navigate = useNavigate()
@@ -109,7 +125,7 @@ export function FilePage() {
             <ul>
               {links?.backlinks.map((item) => (
                 <li key={item.path + item.line}>
-                  <button type="button" onClick={() => navigate(noteUrl(item.path))} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-ink-850">
+                  <button type="button" onClick={() => navigate(isCanvasPath(item.path) ? fileRoute(item.path) : noteUrl(item.path))} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-ink-850">
                     <span className="block text-sm font-medium text-mist-200">{item.title}</span>
                     <span className="block truncate text-xs text-mist-500">{folderOf(item.path)}</span>
                   </button>

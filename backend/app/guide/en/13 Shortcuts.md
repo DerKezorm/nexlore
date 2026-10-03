@@ -43,4 +43,4 @@ Keys of your own for any command: in the command palette, the keyboard symbol be
 | `0` | show everything |
 | `Tab` | from bubble to bubble, `Enter` flies in or opens the note |
 
-That was the guide. Enjoy your notes. Back to [[00 Welcome|Welcome]].
+The canvas has its keys in its own chapter. On to [[14 The canvas]].

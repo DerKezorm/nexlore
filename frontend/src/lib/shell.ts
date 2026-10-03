@@ -61,6 +61,7 @@ export function hasSidebar(): boolean {
 
 /** Shows a folder in the sidebar: it and the folders on its way open, scrolled to and focused (on a phone in the
  * sheet). A sidebar that mounts only after the next navigation finds the wish waiting. */
+/** A folder, or a note or file (a card on a canvas), opened in the sidebar and scrolled to. */
 export function askFolder(path: string): void {
   pendingFolder = path
   window.dispatchEvent(new CustomEvent(FOLDER_EVENT))

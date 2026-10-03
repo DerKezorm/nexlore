@@ -432,6 +432,33 @@ export const vaultApi = {
   },
 }
 
+/** A canvas (`.canvas`, JSON Canvas) with its state. `readonly`: shown, never saved (`problem` says why). */
+export type CanvasData = {
+  path: string
+  content: string
+  hash: string
+  size: number
+  modified: number
+  readonly: boolean
+  problem: string | null
+  lock: Lock | null
+  /** Where each card's path leads for whoever asks, from the vault's top; null: nowhere, or not for them. */
+  cards: Record<string, string | null>
+  /** Cards in a space whoever asks may not read: shown locked. */
+  locked: string[]
+}
+
+export const canvasApi = {
+  read: (path: string) => api<CanvasData>('/api/canvas', { query: { path } }),
+  state: (path: string) => api<{ hash: string; modified: number; lock: Lock | null }>('/api/canvas/state', { query: { path } }),
+  save: (path: string, content: string, baseHash: string, keepalive = false) =>
+    api<Saved>('/api/canvas', { method: 'PUT', body: { path, content, base_hash: baseHash }, keepalive: keepalive && content.length < 60_000 }),
+  /** The canvases a note, file or folder lies on (those the asker may read), for the warning before the trash. */
+  lyingOn: (path: string) => api<{ count: number; paths: string[] }>('/api/canvases/on', { query: { path } }),
+  /** `name` without `.canvas`; a name taken already gets a number. */
+  create: (folder: string, name: string) => api<CanvasData>('/api/canvases', { method: 'POST', body: { folder, name } }),
+}
+
 // --- Accounts, rights, invitations -----------------------------------------------------------------------------------
 
 export type Account = {

@@ -13,7 +13,7 @@ import zlib
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import mdparse, paths, pdftext
+from . import canvas, mdparse, paths, pdftext
 from . import tasks as tasks_service
 
 #: A note larger than this is kept and versioned, but not read for links, tags and search.
@@ -72,8 +72,15 @@ def is_pdf(rel: str) -> bool:
 
 
 def is_read_whole(rel: str) -> bool:
-    """Notes and PDFs are read for their text; every other file only hashed, piece by piece."""
-    return paths.is_note(rel) or is_pdf(rel)
+    """Notes and PDFs are read for their text, canvases for their versions; every other file only hashed, piece by
+    piece."""
+    return paths.is_note(rel) or is_pdf(rel) or paths.is_canvas(rel)
+
+
+def versioned(rel: str, size: int) -> bool:
+    """Whether a file keeps versions of its text: every note, and a canvas up to the size of a note. A larger canvas
+    is only hashed, as any other file (it is never read into memory whole)."""
+    return paths.is_note(rel) or (paths.is_canvas(rel) and size <= MAX_NOTE_BYTES)
 
 
 def analyse(rel: str, data: bytes) -> Analysis:
@@ -81,6 +88,8 @@ def analyse(rel: str, data: bytes) -> Analysis:
     if is_pdf(rel):
         result.body, result.features = pdftext.extract(data)
         return result
+    if paths.is_canvas(rel):
+        return _analyse_canvas(result, data)
     if not paths.is_note(rel):
         return result
     if len(data) > MAX_NOTE_BYTES:
@@ -108,6 +117,25 @@ def analyse(rel: str, data: bytes) -> Analysis:
     return result
 
 
+def _analyse_canvas(result: Analysis, data: bytes) -> Analysis:
+    """The files a canvas names, as links of their own kind: so a note shows the canvases it lies on, and a move
+    rewrites the path in the canvas. Line 0: the line of a card is JSON, nothing to show as context."""
+    if len(data) > MAX_NOTE_BYTES:
+        result.features = {"too_large": 1}
+        return result
+    content = decode(data)
+    try:
+        canvas.parse(content)
+    except canvas.CanvasError:
+        result.features = {"bad_canvas": 1}
+        return result
+    result.links = [
+        (canvas.KIND, ref.target[:1024], ref.subpath[:1024], target_key(ref.target)[:255], 0)
+        for ref in canvas.references(content)
+    ]
+    return result
+
+
 @dataclass(slots=True)
 class Prepared:
     rel: str
@@ -115,7 +143,7 @@ class Prepared:
     mtime_ns: int
     hash: str
     analysis: Analysis
-    #: The content as a version stores it, for notes.
+    #: The content as a version stores it, for notes and canvases (``versioned``).
     compressed: bytes | None
 
 
@@ -137,8 +165,13 @@ def prepare(root: str, rel: str) -> Prepared | None:
     """Read and take apart one file. None when it cannot be read (gone in between, no permission)."""
     full = os.path.join(root, *rel.split("/"))
     try:
-        # A PDF too large to be searched is only hashed: it is never read into memory whole.
-        if not is_read_whole(rel) or (is_pdf(rel) and os.stat(full).st_size > pdftext.MAX_BYTES):
+        # A PDF too large to be searched, or a canvas too large to be kept as text, is only hashed: it is never read
+        # into memory whole.
+        if (
+            not is_read_whole(rel)
+            or (is_pdf(rel) and os.stat(full).st_size > pdftext.MAX_BYTES)
+            or (paths.is_canvas(rel) and os.stat(full).st_size > MAX_NOTE_BYTES)
+        ):
             hashed, stat = hash_file(full)
             features = {"pdf_too_large": 1} if is_pdf(rel) else None
             return Prepared(rel=rel, size=stat.st_size, mtime_ns=stat.st_mtime_ns, hash=hashed,
@@ -148,8 +181,7 @@ def prepare(root: str, rel: str) -> Prepared | None:
             stat = os.fstat(handle.fileno())
     except OSError:
         return None
-    note = paths.is_note(rel)
     return Prepared(
         rel=rel, size=stat.st_size, mtime_ns=stat.st_mtime_ns, hash=digest(data), analysis=analyse(rel, data),
-        compressed=zlib.compress(data, 6) if note else None,
+        compressed=zlib.compress(data, 6) if versioned(rel, len(data)) else None,
     )

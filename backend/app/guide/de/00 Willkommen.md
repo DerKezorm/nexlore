@@ -23,6 +23,7 @@ Dieser Bereich ist Anleitung und Beispiel zugleich. Jede Notiz hier benutzt, was
 11. [[11 KI]]
 12. [[12 Sicherung und Umzug]]
 13. [[13 Tastenkürzel]]
+14. [[14 Die Leinwand]]
 
 ## Das Wichtigste in drei Sätzen
 

@@ -46,7 +46,7 @@ from ..models import (
     Version,
     utcnow,
 )
-from . import favorites, index, looks, mdparse, midword, paths, settings_service
+from . import canvas, favorites, index, looks, mdparse, midword, paths, settings_service
 
 logger = logging.getLogger("nexlore.vault")
 
@@ -270,8 +270,8 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str | N
     _not_too_large(data)
     rel = _parse(rel)
     source = actor.writes_as(source)
-    if not paths.is_note(rel):
-        raise VaultError("not_a_note", "only notes are saved this way")
+    if not paths.is_note(rel) and not paths.is_canvas(rel):
+        raise VaultError("not_a_note", "only notes and canvases are saved this way")
     full = _full(rel)
     with index.guard, SessionLocal() as db:
         file = _file(db, rel)
@@ -341,6 +341,31 @@ def create_note(folder: str, title: str, data: bytes, *, actor: Actor, source: s
         db.refresh(file)
         db.expunge(file)
     logger.info("Note created file_id=%s", file.id)
+    return file
+
+
+def create_canvas(folder: str, name: str, *, actor: Actor, source: str | None = None) -> File:
+    """A new, empty canvas in ``folder``, written the way Obsidian writes an empty one. The name is made safe and
+    gets ``.canvas`` (once); a name taken already gets a number, as a note's does."""
+    folder = _parse(folder) if "/" in folder else _parse_space(folder)
+    directory = _full(folder)
+    if not directory.is_dir():
+        raise VaultError("not_found", "no such folder", 404)
+    stem = _CONTROL.sub(" ", name).strip()
+    if stem.lower().endswith(paths.CANVAS_SUFFIX):
+        stem = stem[: -len(paths.CANVAS_SUFFIX)]
+    data = canvas.EMPTY.encode("utf-8")
+    with index.guard, SessionLocal() as db:
+        file_name = paths.unique_name(directory, paths.safe_name(stem, paths.CANVAS_SUFFIX))
+        rel = f"{folder}/{file_name}"
+        stat = atomic_write(directory / file_name, data)
+        file = index.record(db, rel, data, stat, source=actor.writes_as(source), author=actor.name,
+                            session=actor.client)
+        index.reresolve(db, file.space_id, [file.name_key])
+        db.commit()
+        db.refresh(file)
+        db.expunge(file)
+    logger.info("Canvas created file_id=%s", file.id)
     return file
 
 
@@ -421,10 +446,10 @@ def _move(source: Path, target: Path) -> None:
 
 
 def _keep_current(db: Session, file: File, full: Path) -> bool:
-    """Make sure what is on disk right now is kept: the newest version for a note; any other file moves into the
-    trash folder whole, however large (a video is never read into memory for this). True when the file was moved
-    away already."""
-    if file.is_note:
+    """Make sure what is on disk right now is kept: the newest version for a note or a canvas; any other file moves
+    into the trash folder whole, however large (a video is never read into memory for this). True when the file was
+    moved away already."""
+    if index.versioned(file.path, file.size):
         try:
             data = full.read_bytes()
         except FileNotFoundError:
@@ -583,8 +608,8 @@ def trash_path(entry_id: str) -> str:
 
 
 def _newest_content(db: Session, file: File) -> bytes | None:
-    """What a trashed note, or a small file kept in the database before M3, holds."""
-    if file.is_note:
+    """What a trashed note or canvas, or a small file kept in the database before M3, holds."""
+    if index.versioned(file.path, file.size):
         version = db.scalar(
             select(Version).where(Version.file_id == file.id).order_by(Version.updated_at.desc(), Version.id.desc())
         )
@@ -603,8 +628,12 @@ def restore_trash(entry_id: str, *, actor: Actor) -> list[str]:
             waiting = trash_file(file.id)
             # A note comes back from its newest version, never from a file in the trash folder: one left there by a
             # file gone for good (Windows held it) can carry the same id, and would come back as this note.
-            from_file = not file.is_note and waiting.is_file()
+            keeps = index.versioned(file.path, file.size)
+            from_file = not keeps and waiting.is_file()
             data = None if from_file else _newest_content(db, file)
+            if data is None and keeps and not file.is_note and waiting.is_file():
+                # A canvas sent to the trash before canvases had versions lies there as a file.
+                from_file = True
             if data is None and not from_file:
                 logger.warning("Trash entry without content, skipped file_id=%s", file.id)
                 continue
@@ -884,6 +913,8 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
     is_folder = full_source.is_dir()
     if not is_folder and paths.is_note(source) != paths.is_note(destination):
         raise VaultError("path_invalid", "a note stays a note: keep the .md ending")
+    if not is_folder and paths.is_canvas(source) != paths.is_canvas(destination):
+        raise VaultError("path_invalid", "a canvas stays a canvas: keep the .canvas ending")
 
     with index.guard, SessionLocal() as db:
         files = below(db, source) if is_folder else [_file(db, source)]
@@ -1261,6 +1292,8 @@ def _follow_note(db: Session, row: MoveJobNote, names: index.Names, author: str 
     """Rewrite the links of one note that pointed at a moved file, as the note reads now: someone may have changed it
     since the move, and a link is found again by how it was written. Returns the note's space when it was rewritten."""
     note = db.get(File, row.note_id)
+    if note is not None and note.deleted_at is None and paths.is_canvas(note.path):
+        return _follow_canvas(db, row, note, names, author)
     if note is None or note.deleted_at is not None or not note.is_note:
         return None
     note_full = paths.vault_root().joinpath(*note.path.split("/"))
@@ -1298,6 +1331,53 @@ def _follow_note(db: Session, row: MoveJobNote, names: index.Names, author: str 
     # a server stopped after writing it, before its part was committed.
     if row.moved or index.digest(data) != note.hash:
         index.record(db, note.path, data, note_full.stat(), source=index.RENAME, author=author, file=note, names=names)
+    return None
+
+
+def _follow_canvas(db: Session, row: MoveJobNote, board: File, names: index.Names, author: str | None) -> int | None:
+    """``_follow_note`` for a canvas: each card's path to a moved file gets the file's new path from the top of the
+    space, written where the old one stood; every other byte stays (``canvas.references``). A path written with the
+    space's name in front (Obsidian on the whole vault) keeps it, and a card from another space always has its
+    space's name in front. Compared exactly, not as Windows compares: Obsidian reads a canvas's paths letter for
+    letter, so a name that changed only its case is written anew too."""
+    full = paths.vault_root().joinpath(*board.path.split("/"))
+    try:
+        data = full.read_bytes()
+    except OSError:
+        return None
+    wanted = {(kind, target): target_id for kind, target, target_id in row.links}
+    content = index.decode(data)
+    space = paths.space_of(board.path)
+    pieces: list[str] = []
+    position = 0
+    try:
+        canvas.parse(content)
+        found = canvas.references(content)
+    except canvas.CanvasError:
+        found = []
+    for ref in found:
+        target_id = wanted.get((canvas.KIND, ref.target[:TARGET_CHARS]))
+        target = db.get(File, target_id) if target_id is not None else None
+        if target is None:
+            continue
+        rest = target.path.partition("/")[2]
+        named = paths.fold(ref.target.lstrip("/")).startswith(paths.fold(space) + "/")
+        new = target.path if paths.space_of(target.path) != space else f"{space}/{rest}" if named else rest
+        if ref.target == new:
+            continue
+        pieces.append(content[position : ref.start])
+        pieces.append(canvas.written(new))
+        position = ref.end
+    if pieces:
+        pieces.append(content[position:])
+        new_data = "".join(pieces).encode("utf-8")
+        if data.startswith(b"\xef\xbb\xbf"):
+            new_data = b"\xef\xbb\xbf" + new_data
+        stat = atomic_write(full, new_data)
+        index.record(db, board.path, new_data, stat, source=index.RENAME, author=author, file=board, names=names)
+        return board.space_id
+    if row.moved or index.digest(data) != board.hash:
+        index.record(db, board.path, data, full.stat(), source=index.RENAME, author=author, file=board, names=names)
     return None
 
 

@@ -1,0 +1,313 @@
+/*
+ * The canvas: React Flow in nexlore's colours, light and dark through the same variables as the rest of the app.
+ * In the components layer, so a utility class on the same element still wins (Tailwind 4).
+ */
+@layer components {
+  .nl-canvas {
+    /* The six colours JSON Canvas names (red, orange, yellow, green, cyan, purple); how they look is ours. */
+    --canvas-color-1: #fb7185;
+    --canvas-color-2: #fb923c;
+    --canvas-color-3: #facc15;
+    --canvas-color-4: #4ade80;
+    --canvas-color-5: #22d3ee;
+    --canvas-color-6: #a78bfa;
+    --xy-background-color: var(--color-ink-950);
+    --xy-background-pattern-color: var(--color-ink-700);
+    --xy-edge-stroke: var(--color-mist-500);
+    --xy-edge-stroke-width: 2;
+    --xy-edge-stroke-selected: var(--color-accent-400);
+    --xy-connectionline-stroke: var(--color-accent-400);
+    --xy-selection-background-color: color-mix(in srgb, var(--color-accent-500) 10%, transparent);
+    --xy-selection-border: 1px dashed var(--color-accent-500);
+    --xy-node-border-radius: 10px;
+    --xy-handle-background-color: var(--color-accent-500);
+    --xy-handle-border-color: var(--color-ink-950);
+    --xy-resize-background-color: var(--color-accent-500);
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .nl-canvas .react-flow__node {
+    border-radius: 10px;
+  }
+  .nl-canvas .react-flow__node.selected > .nl-card,
+  .nl-canvas .react-flow__node:focus-visible > .nl-card {
+    outline: 2px solid var(--color-accent-500);
+    outline-offset: 2px;
+  }
+
+  .nl-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border: 1.5px solid var(--color-ink-600);
+    border-radius: 10px;
+    background: var(--color-ink-900);
+    color: var(--color-mist-200);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .nl-card[data-color] {
+    border-color: var(--card-color);
+    background: color-mix(in srgb, var(--card-color) 9%, var(--color-ink-900));
+  }
+  .nl-card-head {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-bottom: 1px solid var(--color-ink-700);
+    background: var(--color-ink-850);
+    font-size: 12px;
+    color: var(--color-mist-500);
+  }
+  /* The space a card comes from, where it is not the canvas's own. */
+  .nl-card-space {
+    flex: none;
+    max-width: 40%;
+    overflow: hidden;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--color-ink-700);
+    color: var(--color-mist-400);
+    font-size: 11px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .nl-card-space-over {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    background: color-mix(in srgb, var(--color-ink-950) 80%, transparent);
+  }
+  /* A card on its way is see-through: what lies under it shows while aiming; laid down, it covers again. */
+  .nl-canvas .react-flow__node.dragging {
+    opacity: 0.55;
+  }
+  .nl-card-head b {
+    overflow: hidden;
+    color: var(--color-mist-300);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .nl-card-body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 10px 14px;
+  }
+  .react-flow__node.selected .nl-card-body,
+  .nl-card.nl-editing .nl-card-body {
+    overflow: auto;
+  }
+  .nl-card-body > :first-child {
+    margin-top: 0;
+  }
+  .nl-card.nl-missing {
+    border-style: dashed;
+    opacity: 0.8;
+  }
+  .nl-card.nl-missing .nl-card-body {
+    color: var(--color-mist-500);
+    font-style: italic;
+  }
+  .nl-card.nl-editing {
+    border-color: var(--color-accent-500);
+    cursor: text;
+  }
+  .nl-card.nl-picture .nl-card-body {
+    position: relative;
+    display: grid;
+    place-items: center;
+    padding: 0;
+  }
+  .nl-card.nl-picture img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  .nl-card.nl-link .nl-card-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  /* A group: a frame with its name above; what lies in it shows through. */
+  .nl-group {
+    width: 100%;
+    height: 100%;
+    border: 1.5px solid var(--color-ink-600);
+    border-radius: 12px;
+    background-color: color-mix(in srgb, var(--card-color, var(--color-mist-100)) 4%, transparent);
+    background-position: center;
+  }
+  .nl-group[data-color] {
+    border-color: var(--card-color);
+  }
+  .nl-group-label {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 6px);
+    max-width: 100%;
+    overflow: hidden;
+    padding: 1px 8px;
+    border: 1px solid var(--color-ink-600);
+    border-radius: 6px;
+    background: var(--color-ink-850);
+    color: var(--color-mist-300);
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Far out: a card shows its title only, the same size on the screen whatever the zoom (as on the map). */
+  .nl-canvas.nl-far .nl-card > * {
+    visibility: hidden;
+  }
+  .nl-canvas.nl-far .nl-card::after {
+    content: attr(data-title);
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    padding: 6px;
+    color: var(--color-mist-100);
+    font-size: calc(13px / var(--nl-zoom, 1));
+    font-weight: 600;
+    line-height: 1.15;
+    text-align: center;
+    hyphens: auto;
+  }
+  .nl-canvas.nl-far .react-flow__edge-text,
+  .nl-canvas.nl-far .nl-edge-label {
+    display: none;
+  }
+
+  /* A point to draw a line from: 24 px to hit, a 12 px dot to see (6 px were hard to hit). */
+  .nl-canvas .react-flow__handle {
+    width: 24px;
+    height: 24px;
+    min-width: 0;
+    min-height: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .nl-canvas .react-flow__handle::after {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border: 2px solid var(--color-ink-950);
+    border-radius: 50%;
+    background: var(--color-accent-500);
+    transition: transform 0.1s;
+  }
+  .nl-canvas .react-flow__handle:hover::after,
+  .nl-canvas .react-flow__handle.connectingto::after {
+    transform: scale(1.35);
+  }
+  .nl-canvas .react-flow__node:hover .react-flow__handle,
+  .nl-canvas .react-flow__node.selected .react-flow__handle,
+  .nl-canvas.nl-connecting .react-flow__handle {
+    opacity: 1;
+  }
+  /* Hidden, never taken away: React Flow measures where they are, and the lines start there. */
+  .nl-canvas.nl-readonly .react-flow__handle,
+  .nl-canvas .nl-editing ~ .react-flow__handle {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+
+  /* Guides while snapping, in screen pixels over the canvas. */
+  .nl-guide {
+    position: absolute;
+    z-index: 5;
+    background: var(--color-accent-400);
+    pointer-events: none;
+  }
+  .nl-guide.nl-v {
+    top: 0;
+    bottom: 0;
+    width: 1px;
+  }
+  .nl-guide.nl-h {
+    left: 0;
+    right: 0;
+    height: 1px;
+  }
+
+  /* The editor's menus of a text card: outside the zoomed canvas, so they keep their size. */
+  .nl-canvas-menus {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    pointer-events: none;
+  }
+  .nl-canvas-menus > .milkdown {
+    position: absolute;
+    inset: 0;
+  }
+  .nl-canvas-menus .milkdown > * {
+    pointer-events: auto;
+  }
+  .nl-canvas-menus .milkdown .milkdown-slash-menu .menu-groups {
+    max-height: min(420px, 38vh);
+  }
+
+  @media (pointer: coarse) {
+    .nl-canvas .react-flow__handle {
+      visibility: hidden;
+      pointer-events: none;
+    }
+  }
+}
+
+/*
+ * The editor in a text card, outside the layer: Crepe's own rules have none, and a rule in a layer loses to every
+ * rule without one (its 60 px of padding left a card a column of a few letters).
+ */
+/*
+ * The editor fills the whole card: a click anywhere in it sets the caret. Only one line high, a click below the first
+ * line hit the card instead, React Flow focused the card, and the keys went nowhere (found on a test server).
+ */
+.nl-card.nl-editing .nl-card-body {
+  padding: 0;
+}
+.nl-card .nl-card-editor,
+.nl-card .nl-card-editor > div,
+.nl-card .nl-card-editor .milkdown {
+  height: 100%;
+}
+.nl-card .nl-card-editor .milkdown {
+  background: transparent;
+}
+.nl-card .nl-card-editor .milkdown .ProseMirror {
+  box-sizing: border-box;
+  min-height: 100%;
+  max-width: none;
+  padding: 10px 14px;
+  /* React Flow makes its cards unselectable, and the editor inherited it. */
+  user-select: text;
+}
+
+/*
+ * A chosen line shows it whatever its colour: wider, with a glow in the accent (a coloured line kept its colour and
+ * looked as before). Outside the layer: React Flow's own width has none.
+ */
+.nl-canvas .react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3.5;
+  filter: drop-shadow(0 0 3px var(--color-accent-400)) drop-shadow(0 0 1px var(--color-accent-400));
+}

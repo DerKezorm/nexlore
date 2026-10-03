@@ -22,6 +22,7 @@ from pathlib import Path, PurePosixPath
 from ..config import get_settings
 
 NOTE_SUFFIX = ".md"
+CANVAS_SUFFIX = ".canvas"
 #: Longest name of one part, in bytes of UTF-8. Most file systems stop at 255.
 MAX_PART_BYTES = 255
 #: Longest relative path, in characters.
@@ -192,6 +193,11 @@ def space_of(rel: str) -> str:
 
 def is_note(rel: str) -> bool:
     return rel.lower().endswith(NOTE_SUFFIX)
+
+
+def is_canvas(rel: str) -> bool:
+    """A canvas in the JSON Canvas format: kept as text with versions, like a note, but no note."""
+    return rel.lower().endswith(CANVAS_SUFFIX)
 
 
 def stem(rel: str) -> str:

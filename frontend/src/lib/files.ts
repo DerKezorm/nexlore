@@ -18,6 +18,11 @@ export function fileKind(path: string): FileKind {
 
 export const isNotePath = (path: string) => /\.md$/i.test(path)
 
+export const isCanvasPath = (path: string) => /\.canvas$/i.test(path)
+
+/** What a path dragged out of the sidebar travels as (into a folder, onto a canvas). */
+export const PATH_DRAG_TYPE = 'application/x-nexlore-path'
+
 /** Endings of files that sit beside notes. Any other `.x` is part of a note's name (`[[Release 2.5]]`, `[[v1.2]]`). */
 const FILE_ENDINGS = new Set(
   (

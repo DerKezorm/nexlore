@@ -46,7 +46,7 @@ from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import FTS_TABLE, File, Link, Lock, Setting, Space, Tag, Task, Version, utcnow
-from . import mdparse, midword, paths
+from . import canvas, mdparse, midword, paths
 from . import tasks as tasks_service
 from .prepare import (
     MAX_NOTE_BYTES,
@@ -58,9 +58,10 @@ from .prepare import (
     name_key,
     prepare,
     target_key,
+    versioned,
 )
 
-__all__ = ["MAX_NOTE_BYTES", "decode", "digest", "name_key", "target_key"]
+__all__ = ["MAX_NOTE_BYTES", "decode", "digest", "name_key", "target_key", "versioned"]
 
 logger = logging.getLogger("nexlore.index")
 
@@ -336,7 +337,12 @@ def crossing(kind: str, target: str, source: str) -> tuple[str, str] | None:
 
     Wiki links name the space in front (``[[Team/Folder/Note]]``). Markdown links do so from the top of the vault
     (``/Team/Note.md``, ``Team/Note.md``, the way Obsidian writes them on a whole vault), or climb out of their space
-    (``../../Team/Note.md``)."""
+    (``../../Team/Note.md``). A canvas's cards are paths from the top: of their own space, or of the whole vault with
+    another space's name in front (``Team/Note.md``, the way Obsidian writes them on the whole vault)."""
+    if kind == canvas.KIND:
+        first, slash, rest = target.strip().lstrip("/").partition("/")
+        rest = rest.strip("/")
+        return (paths.fold(first), rest) if slash and rest and first not in (".", "..") else None
     text_target = target.strip()
     rooted = text_target.startswith("/")
     text_target = text_target.lstrip("/")
@@ -383,7 +389,7 @@ def resolve_full(kind: str, target: str, source: str, names: Names) -> tuple[int
         return None, None
     rest = across[1]
     joined = inside(folder, f"{folder}/{rest}")
-    if kind in (mdparse.MARKDOWN, mdparse.MARKDOWN_EMBED):
+    if kind in (mdparse.MARKDOWN, mdparse.MARKDOWN_EMBED, canvas.KIND):
         # A path, read strictly: the way other programs read it.
         found = by_path(other, joined)
     else:
@@ -415,6 +421,9 @@ def _within(kind: str, target: str, source: str, names: Names) -> int | None:
         if paths.fold(text_target).startswith(paths.fold(space) + "/")
         else None
     )
+    if kind == canvas.KIND:
+        # A path from the top of the space, read strictly, as Obsidian writes it from the top of its vault.
+        return by_path(names, inside(space, f"{space}/{text_target}")) or with_space
     if kind in (mdparse.MARKDOWN, mdparse.MARKDOWN_EMBED):
         found = None if rooted else by_path(names, inside(space, f"{folder}/{text_target}"))
         found = found or by_path(names, inside(space, f"{space}/{text_target}")) or with_space
@@ -662,19 +671,25 @@ def record(
         names = Names(db, space.id, preload=False)
     analysis = prepared.analysis if prepared is not None else None
     _index_content(db, file, data, names if resolve_links else None, fresh=fresh, analysis=analysis)
-    if file.is_note:
+    # The text a version keeps: handed over, or read already (a canvas the scan read whole).
+    if prepared is None:
+        content: bytes | None = data
+    else:
+        content = zlib.decompress(prepared.compressed) if prepared.compressed is not None else None
+    if content is not None and versioned(rel, len(content)):
         if fresh:
             now = utcnow()
             db.connection().execute(
                 insert(Version),
                 [{
                     "file_id": file.id, "path": rel, "created_at": now, "updated_at": now, "source": source,
-                    "author": author, "session": session, "hash": file.hash, "size": len(data),
-                    "content": zlib.compress(data, 6),
+                    "author": author, "session": session, "hash": file.hash, "size": len(content),
+                    "content": zlib.compress(content, 6),
                 }],
             )
         else:
-            add_version(db, file, data, source=source, author=author, session=session, bundle_seconds=bundle_seconds)
+            add_version(db, file, content, source=source, author=author, session=session,
+                        bundle_seconds=bundle_seconds)
     return file
 
 

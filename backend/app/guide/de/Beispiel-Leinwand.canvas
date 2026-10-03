@@ -1,0 +1,13 @@
+{
+	"nodes":[
+		{"id":"a6f1c2d3e4b50601","type":"group","x":-60,"y":-80,"width":1100,"height":520,"label":"Erste Schritte","color":"5"},
+		{"id":"a6f1c2d3e4b50602","type":"text","text":"**Hallo!** Das ist eine Textkarte.\n\nDoppelklick, um sie zu bearbeiten.","x":-20,"y":-20,"width":300,"height":150,"color":"3"},
+		{"id":"a6f1c2d3e4b50603","type":"file","file":"00 Willkommen.md","x":340,"y":-20,"width":360,"height":420},
+		{"id":"a6f1c2d3e4b50604","type":"file","file":"05 Die Karte.md","x":740,"y":-20,"width":260,"height":300},
+		{"id":"a6f1c2d3e4b50605","type":"text","text":"Zieh eine Notiz aus der Seitenleiste hierher, oder unten **Notiz**.","x":-20,"y":200,"width":300,"height":120}
+	],
+	"edges":[
+		{"id":"a6f1c2d3e4b50611","fromNode":"a6f1c2d3e4b50602","fromSide":"right","toNode":"a6f1c2d3e4b50603","toSide":"left","label":"zuerst"},
+		{"id":"a6f1c2d3e4b50612","fromNode":"a6f1c2d3e4b50603","fromSide":"right","toNode":"a6f1c2d3e4b50604","toSide":"left"}
+	]
+}

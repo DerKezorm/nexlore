@@ -134,5 +134,51 @@
       "The README has a checklist for running nexlore on the internet.",
       "The language picked in the account menu holds the first time; on a slow server it used to switch back."
     ]
+  },
+  "1.1.0": {
+    "lead": "nexlore 1.1 brings the canvas: a surface without edges for notes, thoughts, pictures and links, joined by arrows. It lies as a .canvas file beside your notes, in the open format JSON Canvas, and Obsidian opens it just the same.",
+    "sections": [
+      {
+        "title": "Making a canvas",
+        "where": "Sidebar, right-click a folder or a space, New canvas …",
+        "body": "A new canvas is empty and lies in the folder you make it in. The guide has chapter 14 on it and an example canvas to try things on."
+      },
+      {
+        "title": "Notes as cards",
+        "where": "On the canvas, Note at the bottom, or drag a note in from the sidebar",
+        "body": "A note card shows the note, or only one of its sections. A double click opens it beside the canvas in the editor you know; what you write there shows on the card right after. Rename the note and the canvas follows."
+      },
+      {
+        "title": "Writing right on the card",
+        "where": "On the canvas: double-click an empty spot or a text card",
+        "body": "Text cards are edited in place with the same editor as notes. The bar over chosen words and the slash menu keep their size, however far you zoom."
+      },
+      {
+        "title": "Arranging with snapping",
+        "where": "On the canvas, drag cards; the magnet at the top right turns it off",
+        "body": "Edges and middles snap to other cards and guides show it; not with Alt held while dragging. Groups take along what lies in them, and arrows run from edge to edge with a label if you like."
+      },
+      {
+        "title": "Arrows find their way",
+        "where": "On the canvas: drag from a point on the edge of one card to another",
+        "body": "Arrows run around the cards in their way at right angles and turn halfway between two cards. Their label stays readable however far you zoom out. The file keeps only the two sides; other programs draw the same arrow their own way."
+      },
+      {
+        "title": "Cards from other spaces",
+        "where": "Drag a note from another space in from the sidebar, or Note at the bottom",
+        "body": "A card may come from any space you may read; its space stands in the head of the card, and Show in the sidebar takes you to it. Whoever may not read that space sees the card locked and nothing of what it holds."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "Before deleting, the dialog names the canvases something lies on. The card stays there and shows it again as soon as you bring it back from the trash.",
+      "Drag the right edge of the sidebar to make it wider or narrower, and every row shows its whole name under the pointer. Canvases and views stand among the favourites with their name and their own symbol.",
+      "AI in notes said the service could not be reached although the key was valid. nexlore now also reads the packed answers some services send longer lists in.",
+      "A space at the start of a line showed as a tag “#x20” when reading.",
+      "A note names the canvases it lies on among its backlinks.",
+      "Canvases have versions like notes; bring an older one back from Versions at the top.",
+      "Far out, cards show only their title.",
+      "On a phone you read canvases, edit text cards and open notes."
+    ]
   }
 }
