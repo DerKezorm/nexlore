@@ -274,6 +274,12 @@ def test_a_key_for_some_spaces_sees_no_other_even_where_its_account_may(world: W
     assert sorted(path.name for path in (world.vault / "Kitchen").iterdir()) == ["Recipe.md"]
     with SessionLocal() as db:
         assert db.scalars(select(Draft.id)).all() == []
+        kitchen = db.scalar(select(Version.id).join(File, File.id == Version.file_id).where(File.path == "Kitchen/Recipe.md"))
+    # A version is named by its number alone, no path: it answers by the space of its note all the same.
+    assert kitchen is not None
+    for tool in ("read_version", "restore_version"):
+        assert failure(call(token, tool, version=kitchen)) == failure(call(token, tool, version=987654)) == "Not found.", tool
+    assert "zucchini" in json.dumps(value(call(everything, "read_version", version=kitchen)))
     # The account itself, in the interface, still sees both.
     assert world.anna.get("/api/note", params={"path": "Kitchen/Recipe.md"}).status_code == 200
     # A space made later: the key for all sees it, the chosen one does not.
