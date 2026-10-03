@@ -1,6 +1,6 @@
 /**
  * The files behind the notes: how far the index is, the attachments with how often each is used, the trash, and
- * bringing in an Obsidian vault.
+ * importing a ZIP as a space (one downloaded from nexlore, or an Obsidian vault).
  */
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'

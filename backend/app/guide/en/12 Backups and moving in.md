@@ -9,6 +9,10 @@ Under Settings → Server → Backups the operator sets how often nexlore backs 
 > [!warning] A backup on the same server is no backup
 > Download backups, or copy the data folder somewhere else as well.
 
+## Moving a space
+
+To take a single space to another nexlore, right-click it in the sidebar, **Download as ZIP**, and bring it in there under **Files → Import a ZIP as a space**. It becomes a new space you manage. Every file in it comes along; versions, comments, members, public pages and the space's settings stay behind.
+
 ## Beside Obsidian
 
 nexlore and Obsidian get along on the same folder:
@@ -18,6 +22,6 @@ nexlore and Obsidian get along on the same folder:
 - The `.obsidian` folder is left alone.
 - If Obsidian changes a file while it is open in nexlore, nexlore loads it quietly; changes at the same time give a conflict copy.
 
-Bring in an existing Obsidian vault as a ZIP on the **Files** page; nexlore then shows a report of what it found.
+Bring in an existing Obsidian vault the same way, as a ZIP under **Files → Import a ZIP as a space**; nexlore then shows a report of what it found.
 
 Next: [[13 Shortcuts]].

@@ -526,7 +526,7 @@
     "hint": "Scrollen zoomt · Ordner anklicken öffnet ihn · Doppelklick öffnet eine Notiz · Strg K sucht",
     "closeHint": "Hinweis schließen",
     "empty": "Noch kein Bereich. Ein Bereich ist ein Ordner für deine Notizen; andere lädst du später dazu ein.",
-    "importHint": "Einen Obsidian-Tresor holst du unter Dateien herein.",
+    "importHint": "Einen Bereich als ZIP, auch einen Obsidian-Tresor, importierst du unter Dateien.",
     "noWebgl": "Der Graph braucht WebGL 2, das dieser Browser nicht bietet (oder abgeschaltet hat).",
     "clouds": "Gruppieren nach",
     "cloud": {
@@ -872,12 +872,12 @@
       "purgeText": "Das lässt sich nicht rückgängig machen: Die Datei und ihr Verlauf sind weg."
     },
     "import": {
-      "title": "Obsidian-Tresor hereinholen",
-      "text": "Ein ZIP des Tresors wird ein neuer Bereich. .obsidian und Plugin-Syntax kommen unverändert mit; der Bericht sagt, was nexlore als Code zeigt, statt es auszuführen.",
+      "title": "ZIP als Bereich importieren",
+      "text": "Ein ZIP wird ein neuer Bereich: ein Bereich, den du aus nexlore heruntergeladen hast, oder ein Obsidian-Tresor. Mit kommen die Dateien; Versionen, Kommentare, Mitglieder und die Einstellungen eines Bereichs stehen nicht im ZIP. .obsidian und Plugin-Syntax kommen unverändert mit; der Bericht sagt, was nexlore als Code zeigt, statt es auszuführen.",
       "file": "ZIP-Datei",
       "name": "Name des neuen Bereichs",
-      "start": "Hereinholen",
-      "busy": "Holt herein …"
+      "start": "Importieren",
+      "busy": "Importiert …"
     },
     "report": {
       "summary": "„{{space}}“: {{notes}} Notizen, {{files}} andere Dateien, {{links}} Links.",

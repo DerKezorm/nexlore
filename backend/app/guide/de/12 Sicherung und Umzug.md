@@ -9,6 +9,10 @@ Der Betreiber stellt unter Einstellungen → Server → Sicherung ein, wie oft n
 > [!warning] Eine Sicherung auf demselben Server ist keine Sicherung
 > Lade Sicherungen herunter oder sichere den Datenordner zusätzlich woanders hin.
 
+## Einen Bereich umziehen
+
+Einen einzelnen Bereich bringst du auf ein anderes nexlore, indem du in der Seitenleiste per Rechtsklick auf ihn **Als ZIP herunterladen** wählst und ihn dort unter **Dateien → ZIP als Bereich importieren** hereinholst. Er wird ein neuer Bereich, den du verwaltest. Mit kommen alle Dateien darin; Versionen, Kommentare, Mitglieder, öffentliche Seiten und die Einstellungen des Bereichs bleiben zurück.
+
 ## Neben Obsidian
 
 nexlore und Obsidian vertragen sich auf demselben Ordner:
@@ -18,6 +22,6 @@ nexlore und Obsidian vertragen sich auf demselben Ordner:
 - Den Ordner `.obsidian` lässt nexlore in Ruhe.
 - Ändert Obsidian eine Datei, während sie in nexlore offen ist, lädt nexlore sie still nach; bei gleichzeitigen Änderungen entsteht eine Konfliktkopie.
 
-Einen vorhandenen Obsidian-Tresor holst du als ZIP über die Seite **Dateien** herein; nexlore zeigt danach einen Bericht, was es erkannt hat.
+Einen vorhandenen Obsidian-Tresor holst du genauso herein, als ZIP unter **Dateien → ZIP als Bereich importieren**; nexlore zeigt danach einen Bericht, was es erkannt hat.
 
 Weiter mit [[13 Tastenkürzel]].

@@ -1,4 +1,5 @@
-"""Importing an Obsidian vault: the archive is checked before anything is written, and the report says what is in it."""
+"""Importing a ZIP as a space (one downloaded from nexlore, or an Obsidian vault): the archive is checked before anything
+is written, and the report says what is in it."""
 
 from __future__ import annotations
 
@@ -137,3 +138,31 @@ def test_a_member_imports_a_space_of_its_own(client: TestClient, account: str, v
     sign_in(client, make_account("boss", "operator"))
     # It has a member now: the operator does not read it.
     assert client.get("/api/note", params={"path": "Theirs/a.md"}).status_code == 404
+
+
+def test_a_space_downloaded_as_a_zip_comes_in_again_as_a_new_space_file_for_file(
+    client: TestClient, account: str, vault: Path
+) -> None:
+    """Moving a space to another nexlore: its ZIP (sidebar, Download as ZIP) imported as a new space, every byte kept."""
+    assert client.post("/api/spaces", json={"name": "Garden"}).status_code == 201
+    files: dict[str, bytes] = {
+        "Plan.md": b"# Plan\n\n- [ ] dig\n[[Beds/North]]\n",
+        "Beds/North.md": b"# North\r\n",
+        "Attachments/bed.png": b"\x89PNG\r\n\x1a\nnot really",
+        "Board.canvas": b'{\n\t"nodes":[\n\t\t{"id":"a","type":"file","file":"Plan.md","x":0,"y":0,"width":1,"height":1}\n\t],\n\t"edges":[]\n}',
+    }
+    for rel, content in files.items():
+        path = vault / "Garden" / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    index.scan()
+    packed = client.get("/api/spaces/Garden/zip")
+    assert packed.status_code == 200, packed.text
+    response = upload(client, packed.content, "Garden moved")
+    assert response.status_code == 201, response.text
+    for rel, content in files.items():
+        assert (vault / "Garden moved" / rel).read_bytes() == content, rel
+    # Its links and cards lead within the new space.
+    assert client.get("/api/canvas", params={"path": "Garden moved/Board.canvas"}).json()["cards"] == {
+        "Plan.md": "Garden moved/Plan.md"
+    }

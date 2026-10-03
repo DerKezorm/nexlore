@@ -97,7 +97,7 @@ from one space into another that only resolve for people who may read both.*
 - **Plugins**, locked up in the browser: installed from the checked catalog that comes with nexlore (contents and
   reading time, queries, Kanban boards, rediscover old notes), let out by the operator, switched on by each person.
   See [docs/plugins.md](docs/plugins.md).
-- **Import** of an Obsidian vault as a ZIP, with a report of what is special in it.
+- **Import** of a ZIP as a new space (a space downloaded from another nexlore, or an Obsidian vault), with a report of what is special in it.
 - **A guide to start with**: a new installation gets the space "nexlore", a guide in German or English whose notes
   use what they explain (links, tasks, callouts, a Kanban board, a template), with pictures of the interface.
 - English and German; another language is one JSON file, uploaded by the operator.

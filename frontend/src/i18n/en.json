@@ -526,7 +526,7 @@
     "hint": "Scroll to zoom · click a folder to open it · double click opens a note · Ctrl K searches",
     "closeHint": "Close hint",
     "empty": "No space yet. A space is a folder for your notes; you can invite others later.",
-    "importHint": "An Obsidian vault comes in under Files.",
+    "importHint": "A space as a ZIP, an Obsidian vault too, is imported under Files.",
     "noWebgl": "The graph needs WebGL 2, which this browser does not offer (or has switched off).",
     "clouds": "Group by",
     "cloud": {
@@ -872,8 +872,8 @@
       "purgeText": "This cannot be undone: the file and its history are gone."
     },
     "import": {
-      "title": "Import an Obsidian vault",
-      "text": "A ZIP of the vault becomes a new space. .obsidian and plugin syntax come along untouched; the report says what nexlore shows as code instead of running it.",
+      "title": "Import a ZIP as a space",
+      "text": "A ZIP becomes a new space: a space downloaded from nexlore, or an Obsidian vault. The files come along; versions, comments, members and a space's settings are not in the ZIP. .obsidian and plugin syntax come along untouched; the report says what nexlore shows as code instead of running it.",
       "file": "ZIP file",
       "name": "Name of the new space",
       "start": "Import",
