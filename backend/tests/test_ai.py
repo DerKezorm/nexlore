@@ -3,6 +3,7 @@ of what went out. Always against a stand-in service (``httpx.MockTransport``), n
 
 from __future__ import annotations
 
+import gzip
 import json
 import logging
 from collections.abc import Callable, Iterator
@@ -200,6 +201,23 @@ def test_the_answer_comes_back_without_a_fence_and_from_a_list_of_parts(anna: Te
     assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).json()["text"] == "One two"
     service.answer = lambda request: httpx.Response(200, json={"choices": [{"message": {"content": "  "}}]})
     assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).json()["detail"]["code"] == "ai_empty"
+
+
+def test_a_packed_answer_is_unpacked_once(anna: TestClient, service: Service) -> None:
+    """Services pack larger answers (``Content-Encoding: gzip``): the model list with a real key came packed and was
+    unpacked twice, a "DecodingError" shown as "the server cannot reach the service". Small answers come unpacked."""
+    def packed(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/models"):
+            words: dict[str, Any] = {"data": [{"id": "model-a"}, {"id": "model-b"}]}
+        else:
+            words = {"choices": [{"message": {"content": "Packed and read."}}]}
+        return httpx.Response(
+            200, headers={"content-type": "application/json", "content-encoding": "gzip"}, content=gzip.compress(json.dumps(words).encode())
+        )
+
+    service.answer = packed
+    assert [m["id"] for m in anna.post("/api/ai/models", json={}).json()] == ["model-a", "model-b"]
+    assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).json()["text"] == "Packed and read."
 
 
 def test_a_model_that_sets_its_own_temperature_is_asked_once_more_without(anna: TestClient, service: Service) -> None:

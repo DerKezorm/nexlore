@@ -172,7 +172,11 @@ def _send(client: httpx.Client, method: str, place: Target, headers: dict[str, s
             body += chunk
             if len(body) > MAX_ANSWER:
                 raise AiError("ai_unreadable", 502)
-        return httpx.Response(answer.status_code, headers=answer.headers, content=body, request=answer.request)
+        # ``iter_bytes`` unpacked it already: the new answer must not say it is packed, or it is unpacked a second
+        # time (a packed model list failed as "DecodingError", shown as "the server cannot reach the service").
+        unpacked = [(name, value) for name, value in answer.headers.multi_items()
+                    if name.lower() not in ("content-encoding", "content-length", "transfer-encoding")]
+        return httpx.Response(answer.status_code, headers=unpacked, content=body, request=answer.request)
 
 
 def check_address(url: str) -> str:
