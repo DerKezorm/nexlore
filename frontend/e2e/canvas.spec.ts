@@ -7,7 +7,7 @@
  */
 import { type APIRequestContext, type Page } from '@playwright/test'
 import { expect, test } from './fixtures'
-import { clickRow } from './tree'
+import { shownRow } from './tree'
 
 const TAB = { 'X-Nexlore-Client': 'tab-e2e-canvas00' }
 
@@ -398,8 +398,21 @@ test('a note from another space lies on the canvas with that space in front, and
   const space = await makeSpace(page.request)
   const other = await makeSpace(page.request)
   await open(page, space)
-  const note = page.getByTestId('sidebar-tree').locator(`li[data-path="${other}/Material.md"] > button`)
-  if (!(await note.isVisible())) await clickRow(page, other)
+  // The tree draws only rows near the view, and other tests add spaces: whether the space is open is asked of its own
+  // row (a row not drawn is not a folded space), then the tree is scrolled to the note.
+  const tree = page.getByTestId('sidebar-tree')
+  const note = tree.locator(`li[data-path="${other}/Material.md"] > button`)
+  const fold = async (open: boolean) => {
+    await tree.evaluate((element) => element.scrollTo(0, 0))
+    const button = await shownRow(page, other)
+    if ((await button.getAttribute('aria-expanded')) !== String(open)) await button.click()
+    await expect(button).toHaveAttribute('aria-expanded', String(open))
+  }
+  await fold(true)
+  for (let step = 0; step < 40 && !(await note.isVisible()); step++) {
+    await tree.evaluate((element) => element.scrollBy(0, element.clientHeight / 3))
+    await page.waitForTimeout(50)
+  }
   await expect(note).toBeVisible()
   const pane = (await page.locator('.react-flow__pane').boundingBox())!
   await note.dragTo(page.locator('.react-flow__pane'), { targetPosition: { x: 160, y: pane.height - 120 } })
@@ -429,7 +442,7 @@ test('a note from another space lies on the canvas with that space in front, and
   await expect(picker.getByRole('option').filter({ hasText: other })).toHaveCount(1)
   await page.keyboard.press('Escape')
   // Shown in the sidebar from the card: its space folded first, then opened down to it, the row in view and focused.
-  if (await note.isVisible()) await clickRow(page, other)
+  await fold(false)
   await expect(note).toHaveCount(0)
   await card.locator('.nl-card-head').click()
   await page.getByRole('toolbar', { name: 'Chosen cards' }).getByRole('button', { name: 'Show in the sidebar' }).click()
