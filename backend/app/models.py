@@ -274,6 +274,8 @@ class GraphState(Base):
     built_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     #: The last change that placed or removed notes without a new layout; the night orders the map again after one.
     changed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: Notes placed one by one since the last full layout; many of them together ask for a new one.
+    placed_since: Mapped[int] = mapped_column(Integer, default=0)
 
 
 class MoveJob(Base):

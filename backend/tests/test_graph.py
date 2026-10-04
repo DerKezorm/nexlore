@@ -707,3 +707,82 @@ def test_a_restored_note_never_takes_a_stray_file_of_the_trash_folder(client: Te
     entry = next(e for e in client.get("/api/trash").json() if e["path"] == "Garden/Beds/Tomatoes.md")
     assert client.post(f"/api/trash/{entry['id']}/restore").status_code == 200
     assert "Tomatoes like [[Basil]]" in (garden / "Garden" / "Beds" / "Tomatoes.md").read_text(encoding="utf-8")
+
+
+def lies_apart_and_inside(cloud: str = "folders") -> None:
+    """Every group inside its parent and clear of its siblings, every note inside its group and clear of the others."""
+    stored = groups(cloud)
+    by_id = {g.id: g for g in stored.values()}
+    for group in stored.values():
+        if group.parent_id is None:
+            continue
+        parent = by_id[group.parent_id]
+        assert math.hypot(group.x - parent.x, group.y - parent.y) + group.r <= parent.r + 0.5, group.key
+        for other in stored.values():
+            if other.parent_id == group.parent_id and other.id < group.id:
+                assert math.hypot(group.x - other.x, group.y - other.y) >= group.r + other.r - 0.5, (
+                    group.key, other.key)
+    placed = list(nodes(cloud).values())
+    for note in placed:
+        home = by_id[note.group_id]
+        assert math.hypot(note.x - home.x, note.y - home.y) + note.r <= home.r + 0.5, note.file_id
+        for other in placed:
+            if other.group_id == note.group_id and other.file_id < note.file_id:
+                assert math.hypot(note.x - other.x, note.y - other.y) >= note.r + other.r - 0.5, (
+                    note.file_id, other.file_id)
+
+
+def test_a_space_filled_note_by_note_grows_with_its_notes(client: TestClient, vault: Path, account: object) -> None:
+    """A space laid out while nearly empty and then filled one note at a time (as a helper writing through MCP
+    does) used to keep its first tiny circle: new folders piled up at its edge, notes spiralled in its middle,
+    and only the night put them in order. Now a new group or note that finds no room lays the map out anew."""
+    put(vault, "Lab/Start.md", "start")
+    index.scan()
+    client.get("/api/graph/overview", params={"space": "Lab"})
+    for n in range(24):
+        put(vault, f"Lab/{['Net', 'Hosts', 'Apps', 'Apps/Media', 'Backup', 'Plans'][n % 6]}/Note {n}.md", f"note {n}")
+        index.scan()
+        client.get("/api/graph/overview", params={"space": "Lab"})
+        lies_apart_and_inside()
+    grown = groups()["space"].r
+    graphstore.build(space_id("Lab"), "folders")
+    assert grown >= 0.8 * groups()["space"].r, "the circle of the space grew with its notes"
+
+
+def test_notes_placed_bit_by_bit_add_up_to_a_new_layout(
+    client: TestClient, garden: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A big space does not lay itself out for every crowded spot, but the notes placed one by one since the last
+    layout add up: past the share, the next pass lays it out anew and starts counting again."""
+    monkeypatch.setattr(graphstore, "CROWDED_RELAYOUT_UPTO", 0)
+    monkeypatch.setattr(graphstore, "RELAYOUT_MIN", 3)
+    client.get("/api/graph/overview", params={"space": "Garden"})
+
+    def state() -> GraphState:
+        with SessionLocal() as db:
+            found = db.get(GraphState, (space_id("Garden"), "folders"))
+            assert found is not None
+            db.expunge(found)
+        return found
+
+    built = state().built_at
+    for n in range(3):
+        put(garden, f"Garden/Shed {n}/Rake {n}.md", f"rake {n}")
+        index.scan()
+        client.get("/api/graph/overview", params={"space": "Garden"})
+        assert state().built_at == built and state().placed_since == n + 1, "crowded, but too big to lay out now"
+    put(garden, "Garden/Beds/Chives.md", "chives")
+    index.scan()
+    client.get("/api/graph/overview", params={"space": "Garden"})
+    after = state()
+    assert after.built_at is not None and built is not None and after.built_at > built
+    assert after.placed_since == 0 and after.changed_at is None
+    lies_apart_and_inside()
+
+
+def test_a_spot_counts_as_room_only_inside_its_circle_and_clear_of_the_rest() -> None:
+    parent = graphstore._G(1, "space", None, "space", 0.0, 0.0, 100.0)
+    assert graphstore._fits(parent, [], 50.0, 0.0, 40.0)
+    assert not graphstore._fits(parent, [], 70.0, 0.0, 40.0), "over the edge"
+    assert not graphstore._fits(parent, [(0.0, 0.0, 20.0)], 50.0, 0.0, 40.0), "on top of another"
+    assert graphstore._fits(parent, [(-40.0, 0.0, 10.0)], 50.0, 0.0, 40.0)

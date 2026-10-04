@@ -5,8 +5,9 @@ For each space and each cloud (``folders``, ``tags``, ``topics``) the notes are 
 the circles of a space once and the notes only for the part of the map it shows (``tiles``).
 
 The map stays calm. A new, moved or deleted note changes only its own place: it takes a free spot in its group,
-without moving anything else (``refresh``). A full layout runs the first time, when much changed at once, and at
-night after a day with changes; it starts from the old positions, so the map stays recognisable (``build``).
+without moving anything else (``refresh``). A full layout runs the first time, when much changed at once or bit by bit
+since the last one, when a new note or group finds no room (in spaces small enough to lay out at once), and at night
+after a day with changes; it starts from the old positions, so the map stays recognisable (``build``).
 
 Changes are noticed where notes are written: every note added, changed, moved or deleted through the ORM marks its
 space (``_after_flush``), and the index's bulk insert marks the spaces it filled (``touch``). Only the clouds of a
@@ -49,6 +50,12 @@ INLINE_NOTES = 3000
 #: More new or moved notes than this share of the space at once: a new layout instead of finding spots one by one.
 RELAYOUT_SHARE = 0.05
 RELAYOUT_MIN = 40
+#: More notes placed one by one since the last layout than this share of the space: a new layout as well. A space
+#: filled a note at a time (a helper writing through MCP) otherwise keeps the circle it had when nearly empty.
+GROWN_SHARE = 0.25
+#: Up to this many notes, a new group or note that finds no room lays the space out anew; bigger spaces wait for the
+#: share above or the night.
+CROWDED_RELAYOUT_UPTO = INLINE_NOTES
 #: Radius of a group made for a single new note.
 NEW_GROUP_R = 40.0
 NIGHT_HOUR = 3
@@ -267,6 +274,7 @@ def build(space_id: int, cloud: str, *, topics: Any = None) -> None:
         state.version += 1
         state.built_at = utcnow()
         state.changed_at = None
+        state.placed_since = 0
         db.merge(state)
         db.commit()
         logger.info(
@@ -400,7 +408,10 @@ def refresh(space_id: int, cloud: str) -> bool:
         titles_changed = False
         if not gone and not moved and not new:
             return titles_changed
-        if len(new) + len(moved) > max(RELAYOUT_MIN, RELAYOUT_SHARE * len(notes.ids)):
+        placed = len(new) + len(moved)
+        if placed > max(RELAYOUT_MIN, RELAYOUT_SHARE * len(notes.ids)) or (
+            (state.placed_since or 0) + placed > max(RELAYOUT_MIN, GROWN_SHARE * len(notes.ids))
+        ):
             db.close()
             build(space_id, cloud)
             return True
@@ -412,10 +423,19 @@ def refresh(space_id: int, cloud: str) -> bool:
         for a, b in links:
             linked[a].add(b)
             linked[b].add(a)
+        crowded = False
         for file_id in sorted(new + moved):
-            _place(db, space_id, cloud, groups, by_key, notes, file_id, linked[file_id])
+            crowded |= not _place(db, space_id, cloud, groups, by_key, notes, file_id, linked[file_id])
+        if crowded and len(notes.ids) <= CROWDED_RELAYOUT_UPTO:
+            # A laid-out circle is packed tight: a new group, or a note that finds no room, would lie on top of others
+            # or over the edge. A space this small is laid out anew in a moment.
+            db.rollback()
+            db.close()
+            build(space_id, cloud)
+            return True
         state.version += 1
         state.changed_at = utcnow()
+        state.placed_since = (state.placed_since or 0) + placed
         db.commit()
         logger.debug("Graph updated space=%s cloud=%s new=%s moved=%s gone=%s", space_id, cloud, len(new),
                      len(moved), len(gone))
@@ -478,9 +498,10 @@ def _depth(groups: dict[int, _G], group_id: int) -> int:
 
 
 def _obstacles(db: Session, groups: dict[int, _G], group: _G, cloud: str) -> list[tuple[float, float, float]]:
+    """What lies in a group already, as drawn: first its groups, then its notes."""
     taken = [(groups[c].x, groups[c].y, groups[c].r) for c in group.children if c in groups]
     taken += [
-        (x, y, r + 12)
+        (x, y, r)
         for x, y, r in db.execute(
             select(GraphNode.x, GraphNode.y, GraphNode.r).where(
                 GraphNode.cloud == cloud, GraphNode.group_id == group.id
@@ -490,11 +511,30 @@ def _obstacles(db: Session, groups: dict[int, _G], group: _G, cloud: str) -> lis
     return taken
 
 
+def _with_room(groups: dict[int, _G], group: _G, taken: list[tuple[float, float, float]]
+               ) -> list[tuple[float, float, float]]:
+    """The obstacles as ``free_spot`` takes them: room around every note, none around groups."""
+    count = sum(1 for c in group.children if c in groups)
+    return taken[:count] + [(x, y, r + 12) for x, y, r in taken[count:]]
+
+
+def _fits(parent: _G, taken: list[tuple[float, float, float]], x: float, y: float, r: float) -> bool:
+    """Whether a circle at this spot lies inside its parent and on top of nothing there. ``free_spot`` keeps room
+    around notes that a laid-out circle never has; what counts here is a real overlap."""
+    if math.hypot(x - parent.x, y - parent.y) + r > parent.r + 0.5:
+        return False
+    return all(math.hypot(x - ox, y - oy) >= other + r - 0.5 for ox, oy, other in taken)
+
+
 def _make_group(db: Session, space_id: int, cloud: str, groups: dict[int, _G], by_key: dict[str, _G], key: str,
-                kind: str, name: str, parent: _G) -> _G:
-    """A group that did not exist yet, as a small circle at a free spot of its parent."""
+                kind: str, name: str, parent: _G, room: list[bool]) -> _G:
+    """A group that did not exist yet, as a small circle at a free spot of its parent. ``room`` learns whether the
+    spot was really free."""
     taken = _obstacles(db, groups, parent, cloud)
-    x, y = gl.free_spot((parent.x, parent.y), parent.r, taken, NEW_GROUP_R, None, gl.stable_seed(key))
+    x, y = gl.free_spot((parent.x, parent.y), parent.r, _with_room(groups, parent, taken), NEW_GROUP_R, None,
+                        gl.stable_seed(key))
+    if not _fits(parent, taken, x, y, NEW_GROUP_R):
+        room[0] = False
     colour = db.scalar(select(GraphGroup.color).where(GraphGroup.id == parent.id))
     if parent.kind == "space":
         colour = -1 if kind in ("untagged", "recent") else _colour(key)
@@ -510,7 +550,9 @@ def _make_group(db: Session, space_id: int, cloud: str, groups: dict[int, _G], b
 
 
 def _place(db: Session, space_id: int, cloud: str, groups: dict[int, _G], by_key: dict[str, _G], notes: Notes,
-           file_id: int, linked: set[int]) -> None:
+           file_id: int, linked: set[int]) -> bool:
+    """Put a note at a free spot of its group, making the groups it needs. Returns whether everything found room."""
+    room = [True]
     key = placement(cloud, notes, file_id)
     target = by_key.get(key)
     if target is None:
@@ -529,7 +571,7 @@ def _place(db: Session, space_id: int, cloud: str, groups: dict[int, _G], by_key
         parent = root
         for chain_key, kind, name in chain:
             parent = by_key.get(chain_key) or _make_group(db, space_id, cloud, groups, by_key, chain_key, kind, name,
-                                                          parent)
+                                                          parent, room)
         target = parent
     # A crowded group that was split: into the bucket its links point to, else among the unlinked.
     buckets = [groups[c] for c in target.children if groups[c].kind in ("bucket", "unlinked")]
@@ -544,7 +586,7 @@ def _place(db: Session, space_id: int, cloud: str, groups: dict[int, _G], by_key
         if choice is None:
             unlinked = [b for b in buckets if b.kind == "unlinked"]
             choice = unlinked[0] if unlinked else _make_group(
-                db, space_id, cloud, groups, by_key, f"{target.key}|u0", "unlinked", "", target
+                db, space_id, cloud, groups, by_key, f"{target.key}|u0", "unlinked", "", target, room
             )
         target = choice
     near = None
@@ -557,8 +599,11 @@ def _place(db: Session, space_id: int, cloud: str, groups: dict[int, _G], by_key
         if rows:
             near = (sum(r[0] for r in rows) / len(rows), sum(r[1] for r in rows) / len(rows))
     radius = gl.note_radius(len(linked))
-    x, y = gl.free_spot((target.x, target.y), target.r, _obstacles(db, groups, target, cloud), radius + 12, near,
+    taken = _obstacles(db, groups, target, cloud)
+    x, y = gl.free_spot((target.x, target.y), target.r, _with_room(groups, target, taken), radius + 12, near,
                         gl.stable_seed(f"{cloud}:{file_id}"))
+    if not _fits(target, taken, x, y, radius):
+        room[0] = False
     daily = file_id in notes.daily
     db.execute(insert(GraphNode).values(
         cloud=cloud, file_id=file_id, space_id=space_id, group_id=target.id, x=x, y=y, r=radius,
@@ -566,6 +611,7 @@ def _place(db: Session, space_id: int, cloud: str, groups: dict[int, _G], by_key
         if cloud != "topics" else "recent", daily=daily,
     ))
     _count(db, groups, target.id, 1, 1 if daily else 0)
+    return room[0]
 
 
 # --- Asking ----------------------------------------------------------------------------------------------------------
