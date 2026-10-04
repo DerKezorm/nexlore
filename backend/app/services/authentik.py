@@ -4,7 +4,9 @@ The operator hands over the address of authentik and a one-time API token. nexlo
 authentik API v3 what one would otherwise click together in a dozen forms: a signing key, a scope mapping that
 vouches for the email address, the provider, the application, and finally its own settings. Every step reports
 whether it succeeded and, if not, what authentik answered. The first failure stops the run; what came before
-stays, and running the button again updates instead of duplicating.
+stays, and running the button again updates instead of duplicating. A second nexlore at the same authentik finds the
+plain names taken by a provider that sends people elsewhere and takes names of its own (``nexlore (host)``), so
+the first one's sign-in stays as it was.
 
 The token is used for these calls only. It is never stored and never logged; the answer to the operator names
 HTTP status and response text of a failure, never the token.
@@ -24,8 +26,10 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 from sqlalchemy.orm import Session
@@ -205,11 +209,37 @@ async def _flow(api: _Api, designation: str, preferred: str) -> Any:
     return _pk(results[0], "flow")
 
 
-async def _provider(api: _Api, redirect_uri: str, signing_key: Any, mappings: list[Any]) -> tuple[Any, str, str, str]:
+def _instance_names(redirect_uri: str) -> tuple[str, str]:
+    """Name and slug of this instance when another nexlore at the same authentik holds the plain names already."""
+    host = urlsplit(redirect_uri).netloc.lower()
+    suffix = re.sub(r"[^a-z0-9]+", "-", host).strip("-")[:40] or "instance"
+    return f"{NAME} ({host})", f"{SLUG}-{suffix}"
+
+
+async def _names(db: Session, api: _Api, redirect_uri: str) -> tuple[str, str]:
+    """The plain names, unless a provider of that name sends people back to another address and is not the one
+    this nexlore signs in with: then a second instance is at work here, and taking the plain names would break the
+    first one's sign-in. A provider whose client id this nexlore has stored is its own, even under a new address
+    (the operator moved nexlore and runs the button again)."""
+    existing = await api.find_one("/providers/oauth2/", {"name": NAME}, "name", NAME)
+    if existing is None:
+        return NAME, SLUG
+    urls = {str(entry.get("url", "")) for entry in existing.get("redirect_uris") or [] if isinstance(entry, dict)}
+    if not urls or redirect_uri in urls:
+        return NAME, SLUG
+    own_client = str(settings_service.get(db, "oidc_client_id") or "")
+    if own_client and own_client == str(existing.get("client_id") or ""):
+        return NAME, SLUG
+    return _instance_names(redirect_uri)
+
+
+async def _provider(
+    api: _Api, redirect_uri: str, signing_key: Any, mappings: list[Any], name: str = NAME
+) -> tuple[Any, str, str, str]:
     authorization = await _flow(api, "authorization", PREFERRED_AUTHORIZATION_FLOW)
     invalidation = await _flow(api, "invalidation", PREFERRED_INVALIDATION_FLOW)
     body = {
-        "name": NAME,
+        "name": name,
         "authorization_flow": authorization,
         "invalidation_flow": invalidation,
         "client_type": "confidential",
@@ -220,13 +250,13 @@ async def _provider(api: _Api, redirect_uri: str, signing_key: Any, mappings: li
         "property_mappings": mappings,
         "include_claims_in_id_token": True,
     }
-    existing = await api.find_one("/providers/oauth2/", {"name": NAME}, "name", NAME)
+    existing = await api.find_one("/providers/oauth2/", {"name": name}, "name", name)
     if existing is None:
         answer = await api.call("POST", "/providers/oauth2/", body=body)
-        note = f"created the provider {NAME!r}"
+        note = f"created the provider {name!r}"
     else:
         answer = await api.call("PATCH", f"/providers/oauth2/{_pk(existing, 'provider')}/", body=body)
-        note = f"updated the existing provider {NAME!r}"
+        note = f"updated the existing provider {name!r}"
     if not isinstance(answer, dict):
         raise StepFailed("the provider call answered without an object")
     client_id = str(answer.get("client_id") or "")
@@ -236,18 +266,18 @@ async def _provider(api: _Api, redirect_uri: str, signing_key: Any, mappings: li
     return _pk(answer, "provider"), client_id, client_secret, note
 
 
-async def _application(api: _Api, provider_pk: Any) -> str:
-    body = {"name": NAME, "slug": SLUG, "provider": provider_pk}
-    existing = await api.find_one("/core/applications/", {"slug": SLUG}, "slug", SLUG)
+async def _application(api: _Api, provider_pk: Any, name: str = NAME, slug: str = SLUG) -> str:
+    body = {"name": name, "slug": slug, "provider": provider_pk}
+    existing = await api.find_one("/core/applications/", {"slug": slug}, "slug", slug)
     if existing is None:
         await api.call("POST", "/core/applications/", body=body)
-        return f"created the application {SLUG!r}"
-    await api.call("PATCH", f"/core/applications/{SLUG}/", body=body)
-    return f"updated the existing application {SLUG!r}"
+        return f"created the application {slug!r}"
+    await api.call("PATCH", f"/core/applications/{slug}/", body=body)
+    return f"updated the existing application {slug!r}"
 
 
-def issuer_for(base_url: str) -> str:
-    return f"{base_url.rstrip('/')}/application/o/{SLUG}/"
+def issuer_for(base_url: str, slug: str = SLUG) -> str:
+    return f"{base_url.rstrip('/')}/application/o/{slug}/"
 
 
 async def setup(db: Session, base_url: str, token: str, redirect_uri: str) -> SetupResult:
@@ -258,6 +288,7 @@ async def setup(db: Session, base_url: str, token: str, redirect_uri: str) -> Se
     mappings: list[Any] = []
     provider_pk: Any = None
     client_id = client_secret = ""
+    name, slug = NAME, SLUG
     try:
         for key in STEP_KEYS:
             try:
@@ -268,12 +299,14 @@ async def setup(db: Session, base_url: str, token: str, redirect_uri: str) -> Se
                 elif key == "mapping":
                     mappings, detail = await _mappings(api)
                 elif key == "provider":
+                    name, slug = await _names(db, api, redirect_uri)
+                    result.issuer = issuer_for(base_url, slug)
                     provider_pk, client_id, client_secret, detail = await _provider(
-                        api, redirect_uri, signing_key, mappings
+                        api, redirect_uri, signing_key, mappings, name
                     )
                     result.client_id = client_id
                 elif key == "application":
-                    detail = await _application(api, provider_pk)
+                    detail = await _application(api, provider_pk, name, slug)
                 else:
                     detail = await _fill(db, result.issuer, client_id, client_secret)
             except StepFailed as error:

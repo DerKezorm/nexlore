@@ -55,6 +55,9 @@ class FakeAuthentik:
     existing: set[str] = field(default_factory=set)
     fail: tuple[str, str, int] | None = None
     discovery_ok: bool = True
+    #: The address the existing provider "nexlore" sends people back to, and the client id it carries.
+    provider_redirect: str = ""
+    provider_client: str = "generated-client-id"
     calls: list[Recorded] = field(default_factory=list)
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
@@ -66,16 +69,17 @@ class FakeAuthentik:
         self.calls.append(Recorded(method, path, query, request.headers.get("authorization", ""), body))
         if self.fail and (method, path) == self.fail[:2]:
             return httpx.Response(self.fail[2], text="<html>authentik error page</html>")
-        if path == "/application/o/nexlore/.well-known/openid-configuration":
+        if path.startswith("/application/o/nexlore") and path.endswith("/.well-known/openid-configuration"):
             if not self.discovery_ok:
                 return httpx.Response(404, text="not found")
+            issuer = f"{URL}{path.removesuffix('.well-known/openid-configuration')}"
             return httpx.Response(
                 200,
                 json={
-                    "issuer": ISSUER,
-                    "authorization_endpoint": f"{ISSUER}authorize/",
+                    "issuer": issuer,
+                    "authorization_endpoint": f"{issuer}authorize/",
                     "token_endpoint": f"{URL}/application/o/token/",
-                    "jwks_uri": f"{ISSUER}jwks/",
+                    "jwks_uri": f"{issuer}jwks/",
                 },
             )
         if not path.startswith("/api/v3/"):
@@ -117,7 +121,11 @@ class FakeAuthentik:
                 rows = [{"pk": "flow-invalidation", "slug": "default-provider-invalidation-flow"}]
             return httpx.Response(200, json={"results": rows})
         if (method, path) == ("GET", "/providers/oauth2/"):
-            rows = [{"pk": 7, "name": "nexlore"}] if "provider" in self.existing else []
+            rows = [{"pk": 7, "name": "nexlore", "client_id": self.provider_client}] if "provider" in self.existing else []
+            if rows and self.provider_redirect:
+                rows[0]["redirect_uris"] = [{"matching_mode": "strict", "url": self.provider_redirect}]
+            if "name" in query:
+                rows = [row for row in rows if row["name"] == query["name"]]
             return httpx.Response(200, json={"results": rows})
         if (method, path) in (("POST", "/providers/oauth2/"), ("PATCH", "/providers/oauth2/7/")):
             status = 201 if method == "POST" else 200
@@ -326,3 +334,38 @@ def test_blueprint_download_creates_the_same_objects(client: TestClient, operato
     assert ("KeyOf", "nexlore-email-verified") in attrs["property_mappings"]
     assert application["identifiers"] == {"slug": "nexlore"}
     assert application["attrs"]["provider"] == ("KeyOf", "nexlore-provider")
+
+
+def test_a_second_instance_takes_names_of_its_own(client: TestClient, operator: Account, fake: FakeAuthentik) -> None:
+    """Another nexlore at the same authentik holds the plain names; taking them would send its people back here.
+    The first one stays untouched, this one gets a provider, an application and an issuer of its own."""
+    fake.existing = {"cert", "mapping", "provider", "application"}
+    fake.provider_redirect = "https://first.example.com/api/oidc/callback"
+    fake.provider_client = "the-first-instance"
+    result = run_setup(client)
+    assert steps(result) == [(key, True) for key in authentik.STEP_KEYS]
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/providers/oauth2/7/") not in methods, "the first instance's provider stays"
+    assert ("PATCH", "/api/v3/core/applications/nexlore/") not in methods
+    provider = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/providers/oauth2/"))
+    assert provider.body["name"] == "nexlore (testserver)"
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/core/applications/"))
+    assert made.body["slug"] == "nexlore-testserver" and made.body["name"] == "nexlore (testserver)"
+    assert result["issuer"] == f"{URL}/application/o/nexlore-testserver/"
+    assert stored()["oidc_issuer"] == f"{URL}/application/o/nexlore-testserver/"
+
+
+def test_its_own_provider_keeps_the_plain_names(client: TestClient, operator: Account, fake: FakeAuthentik) -> None:
+    """The plain provider is this nexlore's own when it already sends people here, and also when it carries the
+    client id stored here: the operator moved nexlore to a new address and runs the button again. Both update."""
+    fake.existing = {"cert", "mapping", "provider", "application"}
+    fake.provider_redirect = REDIRECT
+    run_setup(client)
+    assert ("PATCH", "/api/v3/providers/oauth2/7/") in [(call.method, call.path) for call in fake.calls]
+    fake.provider_redirect = "https://old-address.example.com/api/oidc/callback"
+    fake.calls.clear()
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/providers/oauth2/7/") in methods, "moved, still its own: updated"
+    assert ("PATCH", "/api/v3/core/applications/nexlore/") in methods
+    assert result["issuer"] == ISSUER
