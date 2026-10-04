@@ -7,9 +7,11 @@ import { graphApi, vaultApi, type Cloud, type Links } from '../api/client'
 import { Sidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { GraphView, type GraphHandle, type Hover } from '../graph/GraphView'
+import { spaceColor } from '../graph/palette'
 import type { SceneGroup } from '../graph/scene'
 import { useGraph } from '../graph/useGraph'
 import { homeSpace } from '../lib/everyday'
+import { lookOf } from '../lib/looks'
 import { formatDate } from '../lib/markdown'
 import { askNewNote } from '../lib/newNote'
 import { askVaultAction } from '../lib/vaultActions'
@@ -43,7 +45,7 @@ type Chosen = { id: number; path: string; title: string }
 
 export function GraphPage() {
   const { t } = useTranslation()
-  const { me } = useAuth()
+  const { me, setAppearance } = useAuth()
   const { spaces, generation, status, scan, looks } = useStore()
   const home = homeSpace(spaces, me?.appearance?.home_space)
   const navigate = useNavigate()
@@ -57,8 +59,46 @@ export function GraphPage() {
   const [hover, setHover] = useState<Hover | null>(null)
   const [hintOpen, setHintOpen] = useState(true)
   const [sheet, setSheet] = useState(false)
-  const data = useGraph(spaces, cloud, generation, looks)
+  // The spaces left out of the map, with the account. Every one left out (chosen elsewhere, or the last one shown is
+  // gone): the map shows them all rather than nothing.
+  const hiddenIds = me?.appearance?.graph_hidden
+  const hidden = useMemo(() => {
+    const ids = new Set(hiddenIds ?? [])
+    return spaces.some((space) => !ids.has(space.id)) ? ids : new Set<number>()
+  }, [hiddenIds, spaces])
+  const data = useGraph(spaces, cloud, generation, looks, hidden)
   const { scene, revision, overviews } = data
+  const refit = useRef(false)
+
+  const chooseHidden = useCallback(
+    (ids: Set<number>) => {
+      refit.current = true
+      void setAppearance({ graph_hidden: spaces.filter((space) => ids.has(space.id)).map((space) => space.id) }).catch(() => undefined)
+    },
+    [setAppearance, spaces],
+  )
+  /** A space asked for on the map (a note or folder from the sidebar, a search) comes back onto it. */
+  const reveal = useCallback(
+    (name: string) => {
+      const space = spaces.find((item) => item.name === name)
+      if (!space || !hidden.has(space.id)) return
+      const next = new Set(hidden)
+      next.delete(space.id)
+      chooseHidden(next)
+    },
+    [spaces, hidden, chooseHidden],
+  )
+
+  // After a new choice of spaces, the map fits them all once they are there.
+  useEffect(() => {
+    if (!refit.current) return
+    const wanted = spaces.filter((space) => !hidden.has(space.id)).map((space) => space.name)
+    const shown = scene.spaces.map((space) => space.name)
+    if (shown.length === wanted.length && wanted.every((name) => shown.includes(name))) {
+      refit.current = false
+      graph.current?.fitAll()
+    }
+  }, [revision, scene, spaces, hidden])
 
   const setCloud = (next: Cloud) => {
     setCloudState(next)
@@ -117,6 +157,7 @@ export function GraphPage() {
   const focusPath = useCallback(
     async (path: string, title?: string) => {
       if (!scene.space(path.split('/')[0])) {
+        reveal(path.split('/')[0])
         setWaiting({ path, title })
         return
       }
@@ -131,7 +172,7 @@ export function GraphPage() {
         // A note the graph does not know (yet): nothing to fly to.
       }
     },
-    [cloud, scene],
+    [cloud, scene, reveal],
   )
 
   // Search from the header lands here with ?focus=<note>, once the map is there.
@@ -151,21 +192,28 @@ export function GraphPage() {
   const flyToFolder = useCallback(
     (path: string) => {
       const parts = path.split('/')
+      if (!scene.space(parts[0])) {
+        // Left out of the map: back onto it, and flown to once it is there.
+        reveal(parts[0])
+        setParams({ folder: path }, { replace: true })
+        return
+      }
       const key = parts.length === 1 ? 'space' : 'f:' + parts.slice(1).join('/')
       for (const group of scene.groups.values()) {
         if (group.space === parts[0] && group.key === key) return graph.current?.flyToGroup(group.id)
       }
     },
-    [scene],
+    [scene, reveal, setParams],
   )
 
   // "Show in the graph" from the sidebar of another page lands here with ?folder=<folder>, once its space is there.
   const folderParam = params.get('folder')
   useEffect(() => {
-    if (!folderParam || !scene.space(folderParam.split('/')[0])) return
+    if (!folderParam) return
+    if (!scene.space(folderParam.split('/')[0])) return reveal(folderParam.split('/')[0])
     flyToFolder(folderParam)
     setParams({}, { replace: true })
-  }, [folderParam, scene, revision, flyToFolder, setParams])
+  }, [folderParam, scene, revision, flyToFolder, setParams, reveal])
 
   const crumbs = useMemo(() => {
     const chain: SceneGroup[] = []
@@ -173,17 +221,27 @@ export function GraphPage() {
     return chain
   }, [centre, scene])
 
+  // Every space the account may read, shown on the map or not; one left out keeps its colour and the count of its notes.
   const spaceRows = useMemo(
     () =>
-      scene.spaces.map((space) => {
-        const root = scene.groups.get(space.root)
-        return { name: space.name, id: space.root, color: root?.color ?? '#9a9aa8', total: root?.total ?? 0 }
+      spaces.map((space, index) => {
+        const placed = scene.space(space.name)
+        const root = placed ? scene.groups.get(placed.root) : undefined
+        return {
+          name: space.name,
+          space: space.id,
+          root: root?.id ?? null,
+          shown: !hidden.has(space.id),
+          color: root?.color ?? lookOf(looks, space.name).color ?? spaceColor(index),
+          total: root?.total ?? (hidden.has(space.id) ? space.notes : 0),
+        }
       }),
     // The scene changes in place; the revision says when.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [scene, revision],
+    [scene, revision, spaces, hidden, looks],
   )
-  const total = spaceRows.reduce((sum, row) => sum + row.total, 0)
+  const total = spaceRows.reduce((sum, row) => sum + (row.shown ? row.total : 0), 0)
+  const shownCount = spaceRows.filter((row) => row.shown).length
   const manageable = Object.entries(overviews).filter(([, overview]) => overview.manage).map(([name]) => name)
   const topicsBuilt = Object.values(overviews)
     .map((overview) => overview.built)
@@ -256,25 +314,66 @@ export function GraphPage() {
     </label>
   )
 
+  // Each space with a box: shown on the map or left out (with the account). The name flies there, and brings a space
+  // left out back; "Only this one" leaves out all the others.
   const spaceList = (
-    <ul className="space-y-1.5">
-      {spaceRows.map((space) => (
-        <li key={space.name}>
-          <button
-            type="button"
-            onClick={() => {
-              setSheet(false)
-              graph.current?.flyToGroup(space.id)
-            }}
-            className="flex w-full items-center gap-2 text-left text-mist-300 hover:text-mist-100"
-          >
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: space.color }} />
-            <span className="flex-1 truncate">{space.name}</span>
-            <span className="text-[11px] text-mist-600 tabular-nums">{space.total}</span>
-          </button>
-        </li>
-      ))}
+    <ul className="space-y-1.5" data-testid="graph-spaces">
+      {spaceRows.map((space) => {
+        const last = space.shown && shownCount === 1
+        return (
+          <li key={space.name} className="group flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={space.shown}
+              disabled={last}
+              title={last ? t('graph.lastSpace') : undefined}
+              aria-label={t('graph.showSpace', { name: space.name })}
+              onChange={() => {
+                const next = new Set(hidden)
+                if (space.shown) next.add(space.space)
+                else next.delete(space.space)
+                chooseHidden(next)
+              }}
+              className="h-3.5 w-3.5 shrink-0 accent-accent-500 disabled:opacity-50"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setSheet(false)
+                if (!space.shown) return reveal(space.name)
+                if (space.root !== null) graph.current?.flyToGroup(space.root)
+              }}
+              className={'flex min-w-0 flex-1 items-center gap-2 text-left hover:text-mist-100 ' + (space.shown ? 'text-mist-300' : 'text-mist-600')}
+            >
+              <span className={'h-2.5 w-2.5 shrink-0 rounded-full' + (space.shown ? '' : ' opacity-40')} style={{ background: space.color }} />
+              <span className="flex-1 truncate">{space.name}</span>
+            </button>
+            {spaceRows.length > 1 && (
+              <button
+                type="button"
+                onClick={() => chooseHidden(new Set(spaceRows.filter((row) => row.space !== space.space).map((row) => row.space)))}
+                title={t('graph.onlySpaceTitle', { name: space.name })}
+                aria-label={t('graph.onlySpaceTitle', { name: space.name })}
+                className="hidden rounded px-1 text-[11px] text-mist-500 group-focus-within:inline group-hover:inline hover:text-accent-400 pointer-coarse:inline"
+              >
+                {t('graph.onlySpace')}
+              </button>
+            )}
+            <span className="text-[11px] text-mist-600 tabular-nums group-focus-within:hidden group-hover:hidden pointer-coarse:hidden">{space.total}</span>
+          </li>
+        )
+      })}
     </ul>
+  )
+  const spacesHead = (
+    <div className="mb-2 flex items-center justify-between gap-2">
+      <span className="text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('graph.spaces')}</span>
+      {hidden.size > 0 && (
+        <button type="button" onClick={() => chooseHidden(new Set())} className="text-[11px] text-accent-400 hover:underline">
+          {t('graph.allSpaces')}
+        </button>
+      )}
+    </div>
   )
 
   return (
@@ -319,7 +418,7 @@ export function GraphPage() {
 
         <div className="absolute top-3 left-1/2 hidden -translate-x-1/2 sm:block">{cloudSwitch}</div>
 
-        {/* Phone: cloud and filters in a sheet from below. */}
+        {/* Phone: cloud and filters in a sheet from below; with many spaces it scrolls in itself, its top stays on screen. */}
         <button
           type="button"
           onClick={() => setSheet(true)}
@@ -329,8 +428,8 @@ export function GraphPage() {
           <Symbol name="graph" className="h-4 w-4" /> {t(`graph.cloud.${cloud}`)}
         </button>
 
-        <div className="absolute top-3 right-3 hidden w-60 rounded-2xl border border-ink-700 bg-ink-900/85 p-3 text-sm backdrop-blur lg:block" data-testid="graph-filters">
-          <div className="mb-2 text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('graph.spaces')}</div>
+        <div className="absolute top-3 right-3 hidden max-h-[calc(100%-11rem)] w-60 overflow-y-auto rounded-2xl border border-ink-700 bg-ink-900/85 p-3 text-sm backdrop-blur lg:block" data-testid="graph-filters">
+          {spacesHead}
           {spaceList}
           <div className="mt-3 border-t border-ink-700 pt-3">{dailyToggle}</div>
           {cloudInfo && <div className="mt-3 border-t border-ink-700 pt-3">{cloudInfo}</div>}
@@ -415,7 +514,7 @@ export function GraphPage() {
           </div>
         )}
 
-        {status === 'ready' && data.building.length === 0 && Object.keys(overviews).length === spaces.length && total === 0 && (
+        {status === 'ready' && data.building.length === 0 && hidden.size === 0 && Object.keys(overviews).length === spaces.length && total === 0 && (
           <div className="absolute inset-0 flex items-center justify-center p-6">
             <div className="flex max-w-md flex-col items-center gap-3 rounded-2xl border border-ink-700 bg-ink-900/90 px-5 py-4 text-center text-sm text-mist-400" data-testid="graph-empty">
               {scan.running ? (
@@ -454,7 +553,7 @@ export function GraphPage() {
 
         {sheet && (
           <div className="absolute inset-0 z-20 flex items-end bg-scrim/60 sm:hidden" onClick={() => setSheet(false)}>
-            <div className="w-full rounded-t-2xl border-t border-ink-700 bg-ink-900 p-4 text-sm" onClick={(event) => event.stopPropagation()} role="dialog" aria-label={t('graph.clouds')}>
+            <div className="max-h-[85%] w-full overflow-y-auto rounded-t-2xl border-t border-ink-700 bg-ink-900 p-4 text-sm" onClick={(event) => event.stopPropagation()} role="dialog" aria-label={t('graph.clouds')}>
               <div className="mb-2 flex items-start">
                 <div className="mx-auto h-1 w-10 rounded-full bg-ink-700" />
                 <button type="button" onClick={() => setSheet(false)} aria-label={t('common.close')} className="-mt-1 -mr-1 rounded-full p-1.5 text-mist-500 hover:bg-ink-850 hover:text-mist-100">
@@ -464,7 +563,7 @@ export function GraphPage() {
               <div className="mb-2 text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('graph.clouds')}</div>
               {cloudSwitch}
               {cloudInfo && <div className="mt-3">{cloudInfo}</div>}
-              <div className="mt-4 mb-2 text-[11px] font-semibold tracking-wider text-mist-600 uppercase">{t('graph.spaces')}</div>
+              <div className="mt-4">{spacesHead}</div>
               {spaceList}
               <div className="mt-4 border-t border-ink-700 pt-3">{dailyToggle}</div>
             </div>

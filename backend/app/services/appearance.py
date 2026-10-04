@@ -25,6 +25,8 @@ SIDEBARS = ("open", "rail")
 #: names it ("Ctrl+Alt+Shift+Meta+Key") and the command's name to show in the list.
 KEYS_MAX = 60
 LABEL_MAX = 80
+#: Spaces left out of the map, by id (a renamed space stays left out): at most this many.
+HIDDEN_MAX = 500
 _COMMAND = re.compile(r"^[a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9:_-]+){1,3}$")
 _COMBO = re.compile(
     r"^(?:Ctrl\+)?(?:Alt\+)?(?:Shift\+)?(?:Meta\+)?"
@@ -57,6 +59,8 @@ DEFAULTS: dict[str, Any] = {
     "week_start": "monday",
     #: Own keys: command id -> {"combo", "label"}.
     "keys": {},
+    #: The spaces the map leaves out, by id; empty: it shows every space the account may read.
+    "graph_hidden": [],
 }
 
 
@@ -117,6 +121,12 @@ def _checked(changes: dict[str, Any]) -> dict[str, Any]:
             out[key] = value
         elif key == "keys":
             out[key] = _keys(value)
+        elif key == "graph_hidden":
+            if not isinstance(value, list) or len(value) > HIDDEN_MAX:
+                raise AppearanceError(key)
+            if any(isinstance(item, bool) or not isinstance(item, int) or item < 1 for item in value):
+                raise AppearanceError(key)
+            out[key] = sorted(set(value))
         elif key == "theme":
             if not isinstance(value, str) or not themes.ref_ok(value):
                 raise AppearanceError(key)

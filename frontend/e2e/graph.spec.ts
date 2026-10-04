@@ -26,9 +26,9 @@ test.beforeEach(async ({ page }) => {
   })
 })
 
-// The tab beside the note is kept with the account, and the tests share one: back to the links after each.
+// The tab beside the note and the spaces on the map are kept with the account, and the tests share one: back after each.
 test.afterEach(async ({ page }) => {
-  await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links' }, headers: { 'X-Nexlore-Client': 'tab-e2e-panel' } })
+  await page.request.put('/api/me/appearance', { data: { panel: true, panel_tab: 'links', graph_hidden: [] }, headers: { 'X-Nexlore-Client': 'tab-e2e-panel' } })
 })
 
 test('the map lists every space, and the chosen cloud stays after a reload', async ({ page }) => {
@@ -148,6 +148,23 @@ test('on a phone the clouds sit in a sheet, and nothing is wider than the screen
   await expect(page.getByTestId('note-panel')).toHaveCount(0)
 })
 
+test('on a low phone screen the sheet scrolls in itself, its clouds stay within reach', async ({ page }) => {
+  // Many spaces made the sheet taller than the screen: its top, with the clouds, lay above it and could not be tapped.
+  await page.setViewportSize({ width: 560, height: 360 })
+  await page.goto('/')
+  await expect(page.getByRole('img', { name: 'Graph' })).toBeVisible()
+  await page.getByRole('button', { name: 'Folders' }).click()
+  const sheet = page.getByRole('dialog', { name: 'Group by' })
+  await expect(sheet.getByTestId('graph-spaces').getByRole('checkbox').nth(5)).toBeAttached()
+  const box = await sheet.boundingBox()
+  expect(box && box.y).toBeGreaterThanOrEqual(0)
+  await sheet.getByRole('radio', { name: 'Tags' }).click()
+  await expect(sheet).toBeHidden()
+  await page.getByRole('button', { name: 'Tags' }).click()
+  await sheet.getByRole('radio', { name: 'Folders' }).click()
+  await expect(sheet).toBeHidden()
+})
+
 test('two fingers zoom the map on a phone, one finger moves it', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 })
   await page.goto('/')
@@ -229,4 +246,53 @@ test('the map moves and zooms with the keyboard', async ({ page }) => {
   await page.keyboard.press('ArrowRight')
   await page.keyboard.press('0')
   await expect.poll(async () => Number(await canvas.getAttribute('data-zoom'))).toBeCloseTo(fitted, 3)
+})
+
+test('the map shows only the spaces chosen, kept with the account, and a note from another brings its space back', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.goto('/')
+  const canvas = page.getByTestId('graph-canvas')
+  const shown = async () => ((await page.locator('canvas[data-colours]').getAttribute('data-colours')) ?? '').split(' ').filter(Boolean)
+  await expect(canvas).toBeVisible()
+  const card = page.getByTestId('graph-filters')
+  const boxes = card.getByTestId('graph-spaces').getByRole('checkbox')
+  await expect(boxes.first()).toBeVisible()
+  // Every space listed and on the map (the list comes before the last overview).
+  await expect.poll(async () => (await shown()).length > 2 && (await shown()).length === (await boxes.count())).toBe(true)
+  const names = await boxes.evaluateAll((list) => list.map((box) => box.getAttribute('aria-label')))
+  const all = names.length
+  const work = card.getByRole('checkbox', { name: 'Show Work on the map' })
+  await expect(work).toBeChecked()
+  const workColour = (await shown())[names.indexOf('Show Work on the map')]
+
+  // Only this one: the rest is left out, Work keeps its colour, nothing else is asked for.
+  const asked: string[] = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.pathname === '/api/graph/overview') asked.push(url.searchParams.get('space') ?? '')
+  })
+  await card.getByRole('listitem').filter({ hasText: 'Work' }).first().hover()
+  await card.getByRole('button', { name: 'Show only Work' }).click()
+  await expect.poll(shown).toEqual([workColour])
+  await expect(work).toBeChecked()
+  await expect(work).toBeDisabled()
+  await expect(card.getByRole('checkbox', { name: 'Show Home on the map' })).not.toBeChecked()
+  await page.waitForTimeout(300)
+  expect(new Set(asked)).toEqual(new Set(['Work']))
+
+  // Kept with the account: the same after a reload.
+  await page.reload()
+  await expect.poll(shown).toEqual([workColour])
+
+  // A note of a space left out, chosen in the sidebar: its space comes back and the note is shown.
+  await (await treeNote(page, 'Shopping')).click()
+  await expect(page.getByTestId('graph-card').getByRole('heading', { name: 'Shopping' })).toBeVisible({ timeout: 15_000 })
+  await expect(card.getByRole('checkbox', { name: 'Show Home on the map' })).toBeChecked()
+  await expect.poll(async () => (await shown()).length).toBe(2)
+
+  // Show all.
+  await card.getByRole('button', { name: 'Show all' }).click()
+  await expect.poll(async () => (await shown()).length).toBe(all)
+  await expect(card.getByRole('button', { name: 'Show all' })).toHaveCount(0)
+  expect(problems).toEqual([])
 })

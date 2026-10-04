@@ -39,6 +39,11 @@ def test_the_defaults_come_with_me_and_a_change_keeps_the_rest(client: TestClien
         {"panel": "no"},
         {"panel_tab": "chat"},
         {"sidebar": "hidden"},
+        {"graph_hidden": "3"},
+        {"graph_hidden": [0]},
+        {"graph_hidden": [True]},
+        {"graph_hidden": ["Work"]},
+        {"graph_hidden": list(range(1, appearance.HIDDEN_MAX + 2))},
     ],
 )
 def test_only_values_on_the_lists_are_taken(client: TestClient, account: object, bad: dict) -> None:
@@ -46,6 +51,15 @@ def test_only_values_on_the_lists_are_taken(client: TestClient, account: object,
     assert answer.status_code == 422
     assert answer.json()["detail"]["code"] == "bad_appearance"
     assert client.get("/api/auth/me").json()["appearance"] == appearance.DEFAULTS
+
+
+def test_the_spaces_left_out_of_the_map_are_kept_by_id(client: TestClient, account: object) -> None:
+    """The map shows a choice of spaces; the choice goes with the account, each id once, in order."""
+    answer = client.put("/api/me/appearance", json={"graph_hidden": [7, 3, 7]})
+    assert answer.status_code == 200, answer.text
+    assert answer.json()["graph_hidden"] == [3, 7]
+    assert client.get("/api/auth/me").json()["appearance"]["graph_hidden"] == [3, 7]
+    assert client.put("/api/me/appearance", json={"graph_hidden": []}).json()["graph_hidden"] == []
 
 
 def test_a_stored_value_no_longer_offered_falls_back_to_the_default() -> None:

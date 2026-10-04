@@ -1,5 +1,6 @@
 import type { GroupRow, Overview, Tiles } from '../api/client'
 import { BAND_STRIDE, LINE_STRIDE, POINT_STRIDE } from './gl'
+import { spaceColor } from './palette'
 import { MANY_LINES, MID, Scene, pack } from './scene'
 
 /** A space as the server would lay it out: root 1000 wide, two folders, one of them with a subfolder. */
@@ -48,6 +49,16 @@ describe('the scene of the graph', () => {
     expect(plans.depth).toBe(2)
     expect(scene.groups.get(4)!.depth).toBe(3)
     expect(scene.groups.get(1)!.children).toEqual([2, 3, 5])
+  })
+
+  it('colours a space by its place in the whole list, also when the spaces before it are left out', () => {
+    const alone = new Scene()
+    alone.setOverviews([{ name: 'Work', overview: overview(), index: 1 }])
+    expect(alone.spaceColours()).toEqual([spaceColor(1)])
+    expect(spaceColor(1)).not.toBe(spaceColor(0))
+    const first = new Scene()
+    first.setOverviews([{ name: 'Work', overview: overview() }])
+    expect(first.spaceColours()).toEqual([spaceColor(0)])
   })
 
   it('knows which groups are closed at a zoom, and the outermost closed one around a group', () => {

@@ -39,11 +39,14 @@ export type Appearance = {
   week_start: 'monday' | 'sunday'
   /** Own keys for commands (`lib/shortcuts.ts`). */
   keys: OwnKeys
+  /** The spaces the map leaves out, by id; empty: every space. */
+  graph_hidden: number[]
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
   mode: 'dark', theme: 'nexlore', space_themes: true, font_ui: 'inter', font_text: 'inter', font_code: 'jetbrains', size: 16, width: 'normal',
   start: 'graph', start_note: '', home_space: '', panel: true, panel_tab: 'links', sidebar: 'open', week_start: 'monday', keys: {},
+  graph_hidden: [],
 }
 
 type Font = { label: string; family: string; load?: () => Promise<unknown> }

@@ -35,7 +35,12 @@ export type GraphData = {
 /** One empty object for "no looks": a new one on every render would count as a change every time. */
 const NO_LOOKS: Looks = {}
 
-export function useGraph(spaces: Space[], cloud: Cloud, generation: number, looks: Looks = NO_LOOKS): GraphData {
+/** No space left out of the map. */
+const NONE: ReadonlySet<number> = new Set()
+
+export function useGraph(
+  spaces: Space[], cloud: Cloud, generation: number, looks: Looks = NO_LOOKS, hidden: ReadonlySet<number> = NONE,
+): GraphData {
   // A new scene for every cloud: the same notes stand elsewhere in each.
   const scene = useMemo(() => new Scene(), [cloud]) // eslint-disable-line react-hooks/exhaustive-deps
   const [revision, setRevision] = useState(0)
@@ -49,7 +54,10 @@ export function useGraph(spaces: Space[], cloud: Cloud, generation: number, look
   const timer = useRef(0)
   const tileSize = useRef(512)
   const again = useRef<() => void>(() => undefined)
-  const names = spaces.map((space) => space.name).join('\n')
+  // The spaces shown, each with its place in the whole list (its colour); the ones left out are not even asked for.
+  const names = spaces
+    .flatMap((space, index) => (hidden.has(space.id) ? [] : [`${index}\t${space.name}`]))
+    .join('\n')
 
   // Symbols and colours chosen by hand: on the scene as it stands, and on every overview that comes later. A Lucide
   // symbol draws once its data is there: loaded when a look has one, and drawn again then.
@@ -78,7 +86,10 @@ export function useGraph(spaces: Space[], cloud: Cloud, generation: number, look
           names
             .split('\n')
             .filter(Boolean)
-            .map(async (name) => ({ name, overview: await graphApi.overview(name, cloud) })),
+            .map(async (line) => {
+              const [index, name] = line.split('\t')
+              return { name, index: Number(index), overview: await graphApi.overview(name, cloud) }
+            }),
         )
         if (!alive) return
         const ready = list.filter((item) => item.overview.status === 'ready')

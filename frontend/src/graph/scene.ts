@@ -165,12 +165,13 @@ export class Scene {
     group.icon = shown?.icon ?? null
   }
 
-  /** The overviews of every space shown, in the order of the space list. */
-  setOverviews(list: { name: string; overview: Overview }[]) {
+  /** The overviews of every space shown, in the order of the space list. ``index`` is the space's place in the whole
+   * list, which its colour follows: a space left out of the map or still being laid out does not recolour the rest. */
+  setOverviews(list: { name: string; overview: Overview; index?: number }[]) {
     const previous = new Map(this.spaces.map((s) => [s.name, s]))
     this.groups.clear()
     this.spaces = []
-    for (const [index, { name, overview }] of list.entries()) {
+    for (const [position, { name, overview, index = position }] of list.entries()) {
       const rows = overview.groups
       const root = rows.find((row) => row[1] === null)
       if (!root) continue
