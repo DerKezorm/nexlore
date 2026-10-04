@@ -181,5 +181,26 @@
       "Weit herausgezoomt zeigen Karten nur ihren Titel.",
       "Auf dem Handy liest du Leinwände, bearbeitest Textkarten und öffnest Notizen."
     ]
+  },
+  "1.2.0": {
+    "lead": "In nexlore 1.2 geht es um die Karte. Du wählst, welche Bereiche sie zeigt, und ein Bereich, den du Notiz für Notiz füllst, wächst jetzt auf der Karte mit.",
+    "sections": [
+      {
+        "title": "Nur die Bereiche, die du sehen willst",
+        "where": "Karte, die Liste der Bereiche oben rechts (am Handy hinter dem Knopf oben rechts)",
+        "body": "Jeder Bereich hat ein Kästchen: Nimmst du den Haken weg, lässt die Karte ihn aus. Nur diesen, neben einem Namen, zeigt den Bereich allein; Alle zeigen holt alle zurück. Die Auswahl gehört zu deinem Konto, gilt also auf jedem Gerät, und jeder Bereich behält seine Farbe. Wählst du in der Seitenleiste oder in der Suche eine Notiz aus einem ausgeblendeten Bereich, kommt ihr Bereich zurück auf die Karte."
+      },
+      {
+        "title": "Ein Bereich, der nach und nach wächst, bleibt in Form",
+        "where": "Karte",
+        "body": "Ein Bereich, der beim ersten Zeichnen der Karte fast leer war und dann Notiz für Notiz gefüllt wurde (von Hand oder von einem KI-Helfer über MCP), blieb eine winzige Blase: Seine Ordner stapelten sich am Rand, seine Notizen lagen als Spirale in der Mitte, bis die Nacht aufräumte. Jetzt ordnet die Karte so einen Bereich neu, sobald ein neuer Ordner oder eine neue Notiz darin keinen Platz mehr findet, und nach vielen einzeln hinzugekommenen Notizen."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Bei vielen Bereichen scrollt das Blatt mit Wolken und Bereichen am Handy in sich; auf einem niedrigen Bildschirm lag sein oberer Teil vorher außer Reichweite.",
+      "Ein zweites nexlore, das mit dem authentik-Knopf am selben authentik eingerichtet wird, nimmt eigene Namen (nexlore (Adresse)), statt den Provider des ersten zu übernehmen und dessen Anmeldung zu brechen.",
+      "Die Vorschau eines Kommentars schließt nicht mehr, wenn die Seitenleiste von selbst nachrückt, sondern nur, wenn seine Wörter wegscrollen."
+    ]
   }
 }

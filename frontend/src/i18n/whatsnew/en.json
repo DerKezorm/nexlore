@@ -181,5 +181,26 @@
       "Far out, cards show only their title.",
       "On a phone you read canvases, edit text cards and open notes."
     ]
+  },
+  "1.2.0": {
+    "lead": "nexlore 1.2 is about the map. Choose which spaces it shows, and a space you fill one note at a time now grows on the map as it fills.",
+    "sections": [
+      {
+        "title": "Only the spaces you want on the map",
+        "where": "Map, the list of spaces at the top right (on a phone behind the button at the top right)",
+        "body": "Each space has a box: untick it and the map leaves the space out. Only this one, next to a name, shows that space alone; Show all brings every space back. The choice is kept with your account, so it is the same on every device, and each space keeps its colour. Pick a note of a space left out in the sidebar or a search, and its space comes back onto the map."
+      },
+      {
+        "title": "A space filled bit by bit keeps its shape",
+        "where": "Map",
+        "body": "A space that was nearly empty when the map first laid it out, and then got its notes one at a time (by hand or by an AI helper through MCP), stayed a tiny bubble: its folders piled up at the edge and its notes lay in a spiral in the middle until the night put them in order. Now the map lays such a space out anew as soon as a new folder or note finds no room in it, and after many notes added one by one."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "With many spaces, the sheet with clouds and spaces on a phone scrolls in itself; on a low screen its top used to lie out of reach.",
+      "A second nexlore set up with the authentik button on the same authentik takes names of its own (nexlore (address)) instead of taking over the first one's provider, which broke the first one's sign-in.",
+      "The preview of a comment no longer closes when the sidebar moves by itself, only when its words scroll away."
+    ]
   }
 }
