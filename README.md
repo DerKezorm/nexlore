@@ -60,7 +60,8 @@ from one space into another that only resolve for people who may read both.*
   stopped half way carries on at its next start.
 - **The graph**, drawn with WebGL: folders are bubbles that open as you zoom in (semantic zoom), grouped by folder,
   by tag or by topics worked out from the notes themselves. 100,000 notes stay fluid; the layout is computed on the
-  server and loaded in tiles. Every note also shows its local graph.
+  server and loaded in tiles. It shows every space you may read or only the ones you pick, and every note also
+  shows its local graph.
 - **Canvases** in the open JSON Canvas format (`.canvas`, as Obsidian writes them): lay notes, text, pictures and
   links on a surface without edges, group them and join them with arrows. Notes show on their cards and open beside
   the canvas for editing, text cards are edited in place with the same editor, cards snap to each other while you
