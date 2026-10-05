@@ -221,5 +221,36 @@
     "small": [
       "Die Anleitung erklärt im Kapitel Sicherung und Umzug, wie du einen ganzen Server umziehst."
     ]
+  },
+  "1.4.0": {
+    "lead": "nexlore 1.4 bringt Frag Lore: Fragen zu deinen Notizen, beantwortet aus ihnen, mit den Quellen. Wer in Markdown schreibt, hat eine eigene Ansicht, und die Karte hat einen neuen Look, der sich bewegt.",
+    "sections": [
+      {
+        "title": "Frag Lore",
+        "where": "Die Spinne unten rechts auf jeder Seite, oder Frag Lore in der Kopfleiste",
+        "body": "Frag in einem Chatfenster nach deinen Notizen, etwa „Wann war der letzte Restore-Test?“. Lore sucht in den Bereichen, die du lesen darfst, antwortet daraus, während sie schreibt, und setzt hinter jede Aussage eine kleine Zahl: Ein Klick zeigt die Quelle, ein weiterer öffnet die Notiz an der Stelle. Was in deinen Notizen nicht steht, sagt Lore offen. Auf einer Notiz spricht das Fenster über diese Notiz und kann eine Änderung als Vorschlag an sie legen, den du vergleichst und übernimmst oder liegen lässt. Eine Antwort kann eine eigene Notiz werden. Deine Gespräche siehst nur du."
+      },
+      {
+        "title": "Ein KI-Dienst für alle",
+        "where": "Einstellungen, Server, KI, API und Plugins, KI in Notizen",
+        "body": "Der Betreiber schaltet Frag Lore ein und legt fest, ob jedes Konto einen eigenen KI-Dienst mitbringt oder einer für alle dient, etwa Ollama zu Hause. Mit einem für alle und einem Modell für Bedeutung findet Lore auch Notizen, die deine Frage mit anderen Worten sagen, und der Reiter Links neben einer Notiz zeigt die ähnlichsten Notizen."
+      },
+      {
+        "title": "Die Markdown-Ansicht",
+        "where": "Beim Bearbeiten der Umschalter Visuell | Markdown in der Werkzeugleiste; Einstellungen, Allgemein, Editor",
+        "body": "Die Markdown-Ansicht steht auf der Seite wie der visuelle Editor und behält die ganze Werkzeugleiste: Fett, Listen, Überschriften und Links setzen die Zeichen für dich in den Text, Rückgängig nimmt sie zurück. Ein Klick auf Visuell und du bist zurück. Unter Einstellungen, Allgemein wählst du, in welcher Ansicht deine Notizen aufgehen."
+      },
+      {
+        "title": "Die Karte, neu",
+        "where": "Graph",
+        "body": "Fahr über eine Notiz: Sie und ihre Nachbarn bleiben hell, alles andere tritt zurück, ihre Links leuchten. Je mehr Links eine Notiz hat, desto größer ihr Punkt. Verlinkte Notizen rücken in ihrem Ordner zusammen, Ordner liegen als dezenter Kreis hinter ihren Notizen, und das Mausrad gleitet. Zieh eine Notiz mit der Maus, ihre Nachbarn schwimmen mit; sie bleibt, wo du sie loslässt, bis du die Seite neu lädst."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Linien verschwinden nicht mehr, wenn man in einen Bereich mit vielen Links hineinzoomt.",
+      "Der weiche Schein um die Punkte der Karte lässt sich unter Einstellungen, Aussehen abschalten, für ältere Rechner.",
+      "Die Anleitung erklärt Frag Lore, die Markdown-Ansicht und die neue Karte."
+    ]
   }
 }

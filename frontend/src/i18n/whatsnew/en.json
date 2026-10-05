@@ -221,5 +221,36 @@
     "small": [
       "The guide's chapter on backups and moving in explains how to move a whole server."
     ]
+  },
+  "1.4.0": {
+    "lead": "nexlore 1.4 brings Ask Lore: questions about your notes, answered from them with their sources. Writing in Markdown has a view of its own, and the map has a new look that moves.",
+    "sections": [
+      {
+        "title": "Ask Lore",
+        "where": "The spider at the bottom right of every page, or Ask Lore in the header",
+        "body": "Ask about your notes in a chat window, such as \"When was the last restore test?\". Lore looks in the spaces you may read, answers from them as she writes, and puts a small number after every statement: a click shows the source, another opens the note there. What your notes do not say, Lore says plainly. On a note the window talks about that note and can leave a change on it as a proposal, which you compare and take over or leave. An answer can become a note of its own. Your conversations are yours only."
+      },
+      {
+        "title": "One AI service for everybody",
+        "where": "Settings, Server, AI, API and plugins, AI in notes",
+        "body": "The operator switches Ask Lore on and chooses whether every account brings its own AI service or one service serves all, such as Ollama at home. With one for all and a model for meaning, Lore also finds notes that say your question in other words, and the tab Links beside a note shows the notes most like it."
+      },
+      {
+        "title": "The Markdown view",
+        "where": "While editing, the switch Visual | Markdown in the toolbar; Settings, General, Editor",
+        "body": "The Markdown view stands on the page like the visual editor and keeps the whole toolbar: bold, lists, headings and links put the signs into the text for you, and undo takes them back. One click on Visual and you are back. Under Settings, General you choose which view your notes open in."
+      },
+      {
+        "title": "The map, new",
+        "where": "Graph",
+        "body": "Move over a note: it and its neighbours stay bright, the rest steps back, its links light up. The more links a note has, the bigger its dot. Linked notes draw together inside their folder, folders lie as a faint circle behind their notes, and the wheel glides. Drag a note with the mouse and its neighbours swim along; it stays where you let go until you reload the page."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "Lines no longer disappear when you zoom into a space with many links.",
+      "The soft glow around the dots of the map can be switched off under Settings, Looks, for older computers.",
+      "The guide explains Ask Lore, the Markdown view and the new map."
+    ]
   }
 }
