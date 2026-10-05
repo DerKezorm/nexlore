@@ -1,6 +1,6 @@
 /**
- * A backup can be carried away from the settings, against the operator's password once more; a wrong one gives
- * nothing.
+ * Backups in the settings, laid out as in nexcanvas: a backup is carried away only against the operator's password
+ * once more (a wrong one gives nothing), and a downloaded one goes up again and joins the list, to be checked there.
  */
 import { expect, test } from './fixtures'
 import fs from 'node:fs'
@@ -9,25 +9,37 @@ import { OPERATOR } from './global-setup'
 
 test.skip(!!process.env.E2E_BASE_URL, 'makes a backup; not against a running instance')
 
-test('a backup is downloaded only with the password once more', async ({ page }) => {
+test('a backup is downloaded only with the password once more, and uploaded again it joins the list', async ({ page }) => {
   await page.goto('/settings?tab=server&sub=backups')
   const card = page.locator('#backups')
-  await card.getByLabel('Note for this backup').fill('to carry away')
+  const rows = card.locator('li')
   await card.getByRole('button', { name: 'Back up now' }).click()
-  const row = card.locator('li', { hasText: 'to carry away' })
+  await expect(card.getByText('Backup made.')).toBeVisible()
+  const row = rows.filter({ hasText: 'by hand' }).first()
   await expect(row).toBeVisible()
 
+  // Download: a window of its own asks for the password; a wrong one gives nothing.
   await row.getByRole('button', { name: 'Download' }).click()
-  await expect(row.getByText('The archive is not encrypted')).toBeVisible()
-  await row.getByLabel('Your password').fill('not the password at all')
-  await row.getByRole('button', { name: 'Download' }).last().click()
-  await expect(card.getByText('The password is wrong.')).toBeVisible()
-
-  await row.getByLabel('Your password').fill(OPERATOR.password)
-  const [download] = await Promise.all([page.waitForEvent('download'), row.getByRole('button', { name: 'Download' }).last().click()])
+  const dialog = page.getByRole('dialog', { name: 'Download this backup?' })
+  await expect(dialog.getByText('It is not encrypted.')).toBeVisible()
+  await dialog.getByLabel('Your password').fill('not the password at all')
+  await dialog.getByRole('button', { name: 'Download' }).click()
+  await expect(dialog.getByText('The password is wrong.')).toBeVisible()
+  await dialog.getByLabel('Your password').fill(OPERATOR.password)
+  const [download] = await Promise.all([page.waitForEvent('download'), dialog.getByRole('button', { name: 'Download' }).click()])
   expect(download.suggestedFilename()).toMatch(/\.zip$/)
   const saved = await download.path()
   expect(fs.readFileSync(saved).subarray(0, 2).toString()).toBe('PK')
-  // Done: the password field is gone again.
-  await expect(row.getByLabel('Your password')).toHaveCount(0)
+  await expect(dialog).toBeHidden()
+
+  // Upload: the same archive comes back in, against the password, and is listed as uploaded.
+  await card.getByTestId('backup-upload').setInputFiles({ name: 'moved.zip', mimeType: 'application/zip', buffer: fs.readFileSync(saved) })
+  const upload = page.getByRole('dialog', { name: 'Upload a backup?' })
+  await upload.getByLabel('Your password').fill(OPERATOR.password)
+  await upload.getByRole('button', { name: 'Upload' }).click()
+  await expect(card.getByText('Uploaded. It is in the list now')).toBeVisible()
+  const uploaded = rows.filter({ hasText: 'uploaded' }).first()
+  await expect(uploaded).toBeVisible()
+  await uploaded.getByRole('button', { name: 'Check' }).click()
+  await expect(card.getByText('The archive is complete and readable.')).toBeVisible()
 })

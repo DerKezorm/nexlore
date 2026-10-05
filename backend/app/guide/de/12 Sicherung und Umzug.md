@@ -9,6 +9,10 @@ Der Betreiber stellt unter Einstellungen → Server → Sicherung ein, wie oft n
 > [!warning] Eine Sicherung auf demselben Server ist keine Sicherung
 > Lade Sicherungen herunter oder sichere den Datenordner zusätzlich woanders hin.
 
+## Den ganzen Server umziehen
+
+Auf einen neuen Server ziehst du mit einer Sicherung um: auf dem alten unter Einstellungen → Server → Sicherung eine Sicherung **Herunterladen**, auf dem neuen nexlore einrichten und dort mit **Sicherung hochladen** das ZIP wählen. Es steht dann als „hochgeladen“ in der Liste; **Prüfen**, dann **Wiederherstellen**. Nach dem Neustart meldest du dich mit deinem alten Konto an, und alle Bereiche, Notizen, Anhänge und Konten sind da.
+
 ## Einen Bereich umziehen
 
 Einen einzelnen Bereich bringst du auf ein anderes nexlore, indem du in der Seitenleiste per Rechtsklick auf ihn **Als ZIP herunterladen** wählst und ihn dort unter **Dateien → ZIP als Bereich importieren** hereinholst. Er wird ein neuer Bereich, den du verwaltest. Mit kommen alle Dateien darin; Versionen, Kommentare, Mitglieder, öffentliche Seiten und die Einstellungen des Bereichs bleiben zurück.

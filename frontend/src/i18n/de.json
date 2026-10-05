@@ -1299,7 +1299,6 @@
         "weekly": "jede Woche"
       },
       "keep": "Aufbewahren",
-      "note": "Notiz zu dieser Sicherung",
       "make": "Jetzt sichern",
       "made": "Sicherung erstellt.",
       "notes_one": "{{count}} Notiz",
@@ -1312,7 +1311,6 @@
       "check": "Prüfen",
       "restore": "Wiederherstellen",
       "download": "Herunterladen",
-      "downloadText": "Das Archiv ist nicht verschlüsselt: Es enthält alle Notizen und den Schlüssel des Servers. Gib dein Passwort noch einmal ein.",
       "password": "Dein Passwort",
       "downloaded": "Die Sicherung wird gespeichert.",
       "delete": "Löschen",
@@ -1320,11 +1318,33 @@
       "usable": "Das Archiv ist vollständig und lesbar.",
       "damaged": "Das Archiv ist beschädigt. Es lässt sich nicht wiederherstellen.",
       "would": "Eine Wiederherstellung würde {{add}} Dateien hinzufügen, {{change}} ändern und {{remove}} entfernen.",
-      "restoreTitle": "Diese Sicherung wiederherstellen?",
-      "restoreText": "Der jetzige Stand wird vorher gesichert. Danach startet nexlore neu, und alle melden sich neu an.",
       "restarting": "nexlore startet mit der Sicherung neu. Gleich neu anmelden.",
       "restartingWait": "Die Seite wartet und führt zur Anmeldung, sobald nexlore wieder da ist.",
-      "deleteText": "Eine Sicherung zu löschen fragt dein Passwort noch einmal: Eine gestohlene Sitzung soll nicht jede Kopie wegwerfen können."
+      "upload": "Sicherung hochladen",
+      "uploaded": "hochgeladen",
+      "uploadedHint": "Hochgeladen. Sie steht jetzt in der Liste: erst prüfen, dann wiederherstellen.",
+      "confirm": {
+        "restore": {
+          "title": "Diese Sicherung wiederherstellen?",
+          "text": "Der jetzige Stand wird vorher gesichert. Danach startet nexlore neu, und alle melden sich neu an.",
+          "button": "Wiederherstellen"
+        },
+        "download": {
+          "title": "Diese Sicherung herunterladen?",
+          "text": "Sie enthält alle Notizen, Dateien und Konten und den Schlüssel des Servers. Sie ist nicht verschlüsselt.",
+          "button": "Herunterladen"
+        },
+        "delete": {
+          "title": "Diese Sicherung löschen?",
+          "text": "Sie lässt sich nicht zurückholen.",
+          "button": "Löschen"
+        },
+        "upload": {
+          "title": "Sicherung hochladen?",
+          "text": "Die Datei kommt in die Liste der Sicherungen. Wiederhergestellt wird erst, wenn du es dort bestätigst.",
+          "button": "Hochladen"
+        }
+      }
     },
     "languages": {
       "title": "Sprachen",

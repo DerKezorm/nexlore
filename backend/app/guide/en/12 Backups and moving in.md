@@ -9,6 +9,10 @@ Under Settings → Server → Backups the operator sets how often nexlore backs 
 > [!warning] A backup on the same server is no backup
 > Download backups, or copy the data folder somewhere else as well.
 
+## Moving the whole server
+
+You move to a new server with a backup: on the old one, under Settings → Server → Backups, **Download** a backup; set up nexlore on the new one and choose the ZIP there with **Upload a backup**. It then appears in the list as "uploaded"; **Check**, then **Restore**. After the restart you sign in with your old account, and every space, note, attachment and account is there.
+
 ## Moving a space
 
 To take a single space to another nexlore, right-click it in the sidebar, **Download as ZIP**, and bring it in there under **Files → Import a ZIP as a space**. It becomes a new space you manage. Every file in it comes along; versions, comments, members, public pages and the space's settings stay behind.

@@ -628,7 +628,14 @@ export type OidcConfig = {
 }
 export type OidcChange = { issuer: string; client_id: string; client_secret: string; provider_name: string; auto_create: boolean }
 export type AuthentikResult = { steps: { key: string; ok: boolean; detail: string }[]; client_id: string; issuer: string }
-export type Backup = { name: string; size: number; created: string; kind: string; note: string; notes: number; files: number; version: string }
+export type Backup = { name: string; size: number; created: string; kind: string; note: string; notes: number; files: number; version: string; uploaded?: boolean }
+
+/** The password for an upload rides in a header, as base64 of its UTF-8: a header carries no umlauts. */
+export function passwordHeader(password: string): string {
+  let bytes = ''
+  for (const byte of new TextEncoder().encode(password)) bytes += String.fromCharCode(byte)
+  return btoa(bytes)
+}
 export type BackupCheck = {
   name: string
   usable: boolean
@@ -845,6 +852,17 @@ export const adminApi = {
   /** The archive itself; the password is asked again (empty for an account that signs in through the provider). */
   downloadBackup: (name: string, password: string) =>
     api<Blob>(`/api/backups/${encodeURIComponent(name)}/download`, { method: 'POST', body: { password }, blob: true }),
+  /** A backup from elsewhere (a move to a new server): the ZIP as the body, the password once more in a header. */
+  uploadBackup: async (file: Blob, password: string): Promise<{ name: string }> => {
+    const response = await fetch('/api/backups/upload', {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/zip', 'X-Nexlore-Client': tabId(), 'X-Nexlore-Password': passwordHeader(password) },
+      body: file,
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) throw new ApiError(response.status, typeof data?.detail?.code === 'string' ? data.detail.code : 'internal_error')
+    return data as { name: string }
+  },
   /** The JSON file itself as the body. */
   uploadLanguage: async (code: string, file: Blob): Promise<AddedLanguage> => {
     const response = await fetch(`/api/locales/${encodeURIComponent(code)}`, {

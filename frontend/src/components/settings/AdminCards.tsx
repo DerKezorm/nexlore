@@ -2,7 +2,7 @@
  * The operator's part of the settings: accounts and invitations, every space (rights only, never contents),
  * sign-in and the provider, public pages, mail, files, backups, languages.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
@@ -32,6 +32,7 @@ import { useAuth } from '../../state/auth'
 import { useStore } from '../../state/store'
 import { noteUrl } from '../../lib/vault'
 import { ConfirmDialog } from '../ConfirmDialog'
+import { Symbol } from '../Symbol'
 import { MembersDialog } from '../MembersDialog'
 import { Button, Card, CopyLink, Feedback, Input, Select, Toggle } from './ui'
 import { useAction } from './useAction'
@@ -886,7 +887,8 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
   const { t } = useTranslation()
   const [backups, setBackups] = useState<Backup[]>([])
   const [checked, setChecked] = useState<BackupCheck | null>(null)
-  const [restoring, setRestoring] = useState<string | null>(null)
+  const [keep, setKeep] = useState<string | null>(null)
+  const [uploaded, setUploaded] = useState(false)
   // Restoring restarts the server and ends every session: the page waits for it and goes to the sign-in (P7.5).
   const [restarting, setRestarting] = useState(false)
   useEffect(() => {
@@ -906,143 +908,143 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
     }, 1500)
     return () => window.clearInterval(timer)
   }, [restarting])
-  // The archive holds everything, so it is handed out only against the password once more; deleting one or going
-  // back to it ask too (a stolen session must not throw every copy away or bring back old keys).
+  // As in nexcanvas: carrying a copy away, bringing one in, going back to one and deleting one ask for the password
+  // once more in a window of their own (a stolen session must not throw every copy away or bring back old keys).
   const { me } = useAuth()
-  const [asking, setAsking] = useState<{ name: string; action: 'download' | 'delete' | 'restore'; password: string } | null>(null)
   const ownPassword = me?.sign_in === 'password'
-  const [note, setNote] = useState('')
+  const [asking, setAsking] = useState<{ action: 'download' | 'delete' | 'restore' | 'upload'; name: string; file?: File } | null>(null)
+  const [password, setPassword] = useState('')
+  const picker = useRef<HTMLInputElement>(null)
   const { busy, problem, done, run } = useAction()
+  const confirming = useAction()
   const load = useCallback(async () => setBackups(await adminApi.backups()), [])
-  const download = (name: string, password: string) =>
-    void run(async () => {
-      const archive = await adminApi.downloadBackup(name, password)
-      const url = URL.createObjectURL(archive)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = name
-      link.click()
-      setTimeout(() => URL.revokeObjectURL(url), 60_000)
-      setAsking(null)
-    }, t('admin.backups.downloaded'))
-  const remove = (name: string, password: string) =>
-    void run(async () => {
-      await adminApi.deleteBackup(name, password)
-      setAsking(null)
-      await load()
-    })
-  const restore = (name: string, password: string) =>
-    void run(async () => {
-      await adminApi.restoreBackup(name, password)
-      setAsking(null)
-      setRestoring(null)
-      setRestarting(true)
-    }, t('admin.backups.restarting'))
   useEffect(() => {
     void run(load)
   }, [run, load])
+  const ask = (action: 'download' | 'delete' | 'restore' | 'upload', name: string, file?: File) => {
+    setPassword('')
+    setAsking({ action, name, file })
+  }
+  const confirm = () =>
+    void confirming.run(async () => {
+      if (!asking) return
+      if (asking.action === 'download') {
+        const archive = await adminApi.downloadBackup(asking.name, password)
+        const url = URL.createObjectURL(archive)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = asking.name
+        link.click()
+        setTimeout(() => URL.revokeObjectURL(url), 60_000)
+      }
+      if (asking.action === 'delete') {
+        await adminApi.deleteBackup(asking.name, password)
+        await load()
+      }
+      if (asking.action === 'upload' && asking.file) {
+        await adminApi.uploadBackup(asking.file, password)
+        await load()
+        setUploaded(true)
+      }
+      if (asking.action === 'restore') {
+        await adminApi.restoreBackup(asking.name, password)
+        setRestarting(true)
+      }
+      setAsking(null)
+    })
+  const icon = 'rounded-lg p-1.5 text-mist-500 hover:bg-ink-800 hover:text-mist-100'
 
   return (
     <Card id="backups" symbol="history" title={t('admin.backups.title')} text={t('admin.backups.text')}>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="flex flex-wrap items-end gap-2">
         <Select
           label={t('admin.backups.schedule')}
           value={settings.backup_schedule}
           options={(['off', 'daily', 'weekly'] as const).map((value) => ({ value, label: t(`admin.backups.every.${value}`) }))}
           onChange={(backup_schedule) => void run(async () => onChange(await adminApi.saveSettings({ backup_schedule })))}
+          className="w-48"
         />
-        <Select
-          label={t('admin.backups.keep')}
-          value={String(settings.backup_keep)}
-          options={['3', '7', '14', '30'].map((value) => ({ value, label: value }))}
-          onChange={(value) => void run(async () => onChange(await adminApi.saveSettings({ backup_keep: Number(value) })))}
-        />
+        <form
+          className="flex items-end gap-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const backup_keep = Math.max(1, Math.min(365, Number(keep ?? settings.backup_keep) || 7))
+            void run(async () => {
+              onChange(await adminApi.saveSettings({ backup_keep }))
+              setKeep(null)
+            }, t('common.saved'))
+          }}
+        >
+          <Input label={t('admin.backups.keep')} type="number" value={keep ?? String(settings.backup_keep)} onChange={setKeep} className="w-28" />
+          <Button type="submit" busy={busy}>
+            {t('common.save')}
+          </Button>
+        </form>
+        <span className="ml-auto flex flex-wrap gap-2">
+          <input
+            ref={picker}
+            type="file"
+            accept=".zip,application/zip"
+            className="hidden"
+            data-testid="backup-upload"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              if (file) ask('upload', file.name, file)
+            }}
+          />
+          <Button onClick={() => picker.current?.click()}>
+            <Symbol name="upload" />
+            {t('admin.backups.upload')}
+          </Button>
+          <Button
+            primary
+            busy={busy}
+            onClick={() =>
+              void run(async () => {
+                await adminApi.makeBackup('')
+                await load()
+              }, t('admin.backups.made'))
+            }
+          >
+            {t('admin.backups.make')}
+          </Button>
+        </span>
       </div>
-      <form
-        className="mt-3 flex flex-wrap items-end gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void run(async () => {
-            await adminApi.makeBackup(note.trim())
-            setNote('')
-            await load()
-          }, t('admin.backups.made'))
-        }}
-      >
-        <Input label={t('admin.backups.note')} value={note} onChange={setNote} className="min-w-60 flex-1" />
-        <Button type="submit" primary busy={busy}>
-          {t('admin.backups.make')}
-        </Button>
-      </form>
       <ul className="mt-3 divide-y divide-ink-700 rounded-xl border border-ink-700 text-sm">
+        {backups.length === 0 && <li className="px-4 py-3 text-mist-500">{t('admin.backups.none')}</li>}
         {backups.map((backup) => (
           <li key={backup.name} className="flex flex-wrap items-center gap-2 px-4 py-2.5">
-            <span className="min-w-0 flex-1">
-              <span className="font-medium">{formatDate(backup.created)}</span>
-              <span className="ml-2 text-xs text-mist-500">
-                {t(`admin.backups.kind.${backup.kind}`, { defaultValue: backup.kind })} · {t('admin.backups.notes', { count: backup.notes })} · {size(backup.size)}
+            <div className="min-w-0 flex-1">
+              <div className="text-mist-100">{formatDate(backup.created)}</div>
+              <div className="text-xs text-mist-500">
+                {backup.uploaded ? t('admin.backups.uploaded') : t(`admin.backups.kind.${backup.kind}`, { defaultValue: backup.kind })} · {t('admin.backups.notes', { count: backup.notes })} · {size(backup.size)} · {backup.version}
                 {backup.note && ` · ${backup.note}`}
-              </span>
-            </span>
-            <Button small busy={busy} onClick={() => void run(async () => setChecked(await adminApi.checkBackup(backup.name)))}>
-              {t('admin.backups.check')}
-            </Button>
-            <Button
-              small
-              busy={busy}
-              onClick={() => (ownPassword ? setAsking({ name: backup.name, action: 'download', password: '' }) : download(backup.name, ''))}
-            >
-              {t('admin.backups.download')}
-            </Button>
-            <Button small onClick={() => (ownPassword ? setAsking({ name: backup.name, action: 'restore', password: '' }) : setRestoring(backup.name))}>
-              {t('admin.backups.restore')}
-            </Button>
-            <Button small danger busy={busy} onClick={() => (ownPassword ? setAsking({ name: backup.name, action: 'delete', password: '' }) : remove(backup.name, ''))}>
-              {t('admin.backups.delete')}
-            </Button>
-            {asking?.name === backup.name && (
-              <form
-                className="flex w-full flex-wrap items-end gap-2 pt-1"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  const act = { download, delete: remove, restore }[asking.action]
-                  act(backup.name, asking.password)
-                }}
-              >
-                <p className="w-full text-xs text-mist-400">{t(`admin.backups.${asking.action}Text`)}</p>
-                <Input
-                  label={t('admin.backups.password')}
-                  value={asking.password}
-                  onChange={(password) => setAsking({ ...asking, password })}
-                  type="password"
-                  autoComplete="current-password"
-                  className="min-w-52 flex-1"
-                />
-                <Button type="submit" primary={asking.action === 'download'} danger={asking.action !== 'download'} busy={busy}>
-                  {t(`admin.backups.${asking.action}`)}
-                </Button>
-                <Button onClick={() => setAsking(null)}>{t('common.cancel')}</Button>
-                {problem && (
-                  <p role="alert" className="w-full text-xs text-bad-500">
-                    {problem}
-                  </p>
-                )}
-              </form>
-            )}
+              </div>
+            </div>
+            <button type="button" className={icon} title={t('admin.backups.check')} aria-label={t('admin.backups.check')} onClick={() => void run(async () => setChecked(await adminApi.checkBackup(backup.name)))}>
+              <Symbol name="shield" />
+            </button>
+            <button type="button" className={icon} title={t('admin.backups.download')} aria-label={t('admin.backups.download')} onClick={() => ask('download', backup.name)}>
+              <Symbol name="download" />
+            </button>
+            <button type="button" className={icon} title={t('admin.backups.restore')} aria-label={t('admin.backups.restore')} onClick={() => ask('restore', backup.name)}>
+              <Symbol name="restore" />
+            </button>
+            <button type="button" className="rounded-lg p-1.5 text-mist-500 hover:bg-ink-800 hover:text-bad-500" title={t('admin.backups.delete')} aria-label={t('admin.backups.delete')} onClick={() => ask('delete', backup.name)}>
+              <Symbol name="trash" />
+            </button>
           </li>
         ))}
-        {backups.length === 0 && <li className="px-4 py-3 text-sm text-mist-500">{t('admin.backups.none')}</li>}
       </ul>
       {checked && (
-        <div className="mt-3 rounded-xl border border-ink-700 bg-ink-850 p-3 text-xs">
-          <p className={checked.usable ? 'text-ok-500' : 'text-bad-500'}>{checked.usable ? t('admin.backups.usable') : t('admin.backups.damaged')}</p>
-          <p className="mt-1 text-mist-400">
-            {t('admin.backups.would', { add: checked.would_add, change: checked.would_change, remove: checked.would_remove })}
-          </p>
+        <div className={'mt-3 rounded-xl border px-4 py-3 text-sm ' + (checked.usable ? 'border-ok-500/40 bg-ok-500/10 text-mist-200' : 'border-bad-500/40 bg-bad-500/10 text-bad-500')}>
+          {checked.usable ? t('admin.backups.usable') : t('admin.backups.damaged')}{' '}
+          {checked.usable && t('admin.backups.would', { add: checked.would_add, change: checked.would_change, remove: checked.would_remove })}
         </div>
       )}
-      {/* While a download asks for the password, its message stands by the field, not twice. */}
-      <Feedback problem={asking ? null : problem} done={done} />
+      {uploaded && <p className="mt-3 rounded-xl border border-ok-500/40 bg-ok-500/10 px-4 py-3 text-sm text-mist-200">{t('admin.backups.uploadedHint')}</p>}
+      <Feedback problem={problem} done={done} />
       {restarting && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-scrim p-4" role="alertdialog" aria-labelledby="restarting-title" data-testid="restarting">
           <div className="max-w-sm rounded-2xl border border-ink-700 bg-ink-900 p-5 text-sm shadow-2xl">
@@ -1054,15 +1056,23 @@ export function BackupsCard({ settings, onChange }: { settings: ServerSettings; 
         </div>
       )}
       <ConfirmDialog
-        open={restoring !== null}
-        title={t('admin.backups.restoreTitle')}
-        confirm={t('admin.backups.restore')}
-        danger
-        busy={busy}
-        onCancel={() => setRestoring(null)}
-        onConfirm={() => restore(restoring!, '')}
+        open={asking !== null}
+        title={asking ? t(`admin.backups.confirm.${asking.action}.title`) : ''}
+        confirm={asking ? t(`admin.backups.confirm.${asking.action}.button`) : ''}
+        danger={asking?.action !== 'download'}
+        busy={confirming.busy}
+        onCancel={() => setAsking(null)}
+        onConfirm={confirm}
       >
-        {t('admin.backups.restoreText')}
+        <p>{asking && t(`admin.backups.confirm.${asking.action}.text`)}</p>
+        {ownPassword && (
+          <Input label={t('admin.backups.password')} value={password} onChange={setPassword} type="password" autoComplete="current-password" className="mt-3" />
+        )}
+        {confirming.problem && (
+          <p role="alert" className="mt-2 text-xs text-bad-500">
+            {confirming.problem}
+          </p>
+        )}
       </ConfirmDialog>
     </Card>
   )

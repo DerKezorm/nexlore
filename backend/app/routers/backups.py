@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import logging
 from dataclasses import asdict
 from typing import Annotated, Any
 
+import anyio
 from fastapi import APIRouter, Request
 from fastapi import Path as PathParam
 from fastapi.responses import FileResponse
@@ -38,6 +41,45 @@ def listing(_operator: OperatorAccount) -> list[dict[str, Any]]:
 @router.post("", status_code=201)
 def create(body: CreateIn, _operator: OperatorAccount) -> dict[str, str]:
     return {"name": backups.create(kind=backups.MANUAL, note=body.note).name}
+
+
+#: The password for an upload: the body is the archive itself, so the password comes in a header, as base64 of its
+#: UTF-8 (a header carries no umlauts).
+PASSWORD_HEADER = "x-nexlore-password"
+
+
+def _header_password(request: Request) -> str:
+    raw = request.headers.get(PASSWORD_HEADER, "")
+    try:
+        return base64.b64decode(raw, validate=True).decode("utf-8")[:200] if raw else ""
+    except (binascii.Error, UnicodeDecodeError):
+        return ""
+
+
+@router.post("/upload", status_code=201, summary="Bring in an archive from elsewhere (the body is the ZIP); needs "
+             "the password again")
+async def upload(request: Request, operator: OperatorAccount) -> dict[str, str]:
+    """For a move to a new server: the archive joins the list, to be checked and restored like any other. Asks for the
+    password first: a restore of it brings back other passwords and keys, and a stolen session must not lay one out."""
+    with SessionLocal() as db:
+        confirm_operator(request, db, operator, _header_password(request))
+    received = backups.temporary_upload()
+    size = 0
+    try:
+        async with await anyio.open_file(received, "wb") as handle:
+            async for chunk in request.stream():
+                size += len(chunk)
+                await handle.write(chunk)
+        if not size:
+            raise error("empty", "The file is empty.")
+        try:
+            name = await anyio.to_thread.run_sync(backups.receive, received)
+        except backups.BackupError as exc:
+            raise _fail(exc) from exc
+    finally:
+        received.unlink(missing_ok=True)
+    logger.warning("Backup uploaded name=%s by=%s bytes=%s", name, operator.name, size)
+    return {"name": name}
 
 
 @router.post("/{name}/check")

@@ -1299,7 +1299,6 @@
         "weekly": "every week"
       },
       "keep": "Keep",
-      "note": "Note for this backup",
       "make": "Back up now",
       "made": "Backup made.",
       "notes_one": "{{count}} note",
@@ -1312,7 +1311,6 @@
       "check": "Check",
       "restore": "Restore",
       "download": "Download",
-      "downloadText": "The archive is not encrypted: it holds every note and the key of the server. Enter your password once more.",
       "password": "Your password",
       "downloaded": "The backup is being saved.",
       "delete": "Delete",
@@ -1320,11 +1318,33 @@
       "usable": "The archive is complete and readable.",
       "damaged": "The archive is damaged. It cannot be restored.",
       "would": "A restore would add {{add}}, change {{change}} and remove {{remove}} files.",
-      "restoreTitle": "Restore this backup?",
-      "restoreText": "The current state is backed up first. nexlore then restarts, and everybody signs in again.",
       "restarting": "nexlore restarts with the backup. Sign in again in a moment.",
       "restartingWait": "This page waits and goes to the sign-in as soon as nexlore is back.",
-      "deleteText": "Deleting a backup asks for your password once more: a stolen session must not throw every copy away."
+      "upload": "Upload a backup",
+      "uploaded": "uploaded",
+      "uploadedHint": "Uploaded. It is in the list now: check it first, then restore.",
+      "confirm": {
+        "restore": {
+          "title": "Restore this backup?",
+          "text": "The current state is backed up first. nexlore then restarts, and everybody signs in again.",
+          "button": "Restore"
+        },
+        "download": {
+          "title": "Download this backup?",
+          "text": "It holds every note, file and account and the key of the server. It is not encrypted.",
+          "button": "Download"
+        },
+        "delete": {
+          "title": "Delete this backup?",
+          "text": "It cannot be brought back.",
+          "button": "Delete"
+        },
+        "upload": {
+          "title": "Upload a backup?",
+          "text": "The file joins the list of backups. Nothing is restored until you confirm it there.",
+          "button": "Upload"
+        }
+      }
     },
     "languages": {
       "title": "Languages",

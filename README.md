@@ -82,7 +82,7 @@ from one space into another that only resolve for people who may read both.*
 - **Versions and trash**: every save is a version (bundled per session, thinned out over time), deleted files wait
   30 days in the trash.
 - **Backups** of the database and every file on a schedule, with a check that shows what a restore would change,
-  and a download (the password is asked again) to keep a copy somewhere else.
+  a download (the password is asked again) to keep a copy somewhere else, and an upload to move to a new server.
 - **AI in notes** (off by default, each account brings its own service: any address that speaks the usual chat
   interface, in the cloud or at home): correct spelling, rewrite in one of nine tones, translate, summarize, or write
   from a request with the note as material. The result always stands next to the text first and changes nothing until
@@ -207,6 +207,9 @@ operator resets them.
 
 A backup archive is a plain ZIP: the database, every note and file, and `secret.key`. Whoever has it has everything,
 so keep downloaded copies as carefully as the data directory itself.
+
+Moving to a new server: download a backup, set up nexlore there, upload the backup under Settings, Server,
+Backups, check it and restore it. Afterwards the new server has the old accounts, spaces, notes and files.
 
 ## Updating
 

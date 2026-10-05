@@ -11,7 +11,8 @@ Built after nextrmnl's backup service:
   attachments; notes wait in the database's versions).
 * **The manifest lists every file with its size and sha256**, so the check before a restore can tell a damaged
   archive from a good one, and say what a restore would change.
-* **Only automatic copies are pruned** (``scheduled`` and ``update``); one made by hand stays until deleted.
+* **Only automatic copies are pruned** (``scheduled`` and ``update``); one made by hand stays until deleted, and so
+  does one brought in from elsewhere (``receive``, named ``…-upload.zip``), whatever kind its manifest names.
 * **A restore happens at the next start.** ``stage_restore`` checks the archive, makes an ``update`` copy of the
   current state (the way back), unpacks into ``backups/restore-pending/`` and ends the process; Docker starts it
   again and ``apply_pending`` swaps the files before anything opens the database. A pending folder without its
@@ -66,7 +67,9 @@ INTERVALS = {"daily": 1, "weekly": 7}
 NIGHT = range(3, 6)
 CATCH_UP_DAYS = 1
 INTERVAL_SECONDS = 3600
-NAME = re.compile(r"^nexlore-\d{4}-\d{2}-\d{2}-\d{6}(-\d+)?\.zip$")
+NAME = re.compile(r"^nexlore-\d{4}-\d{2}-\d{2}-\d{6}(-\d+)?(-upload)?\.zip$")
+#: The end of the name of an archive brought in from elsewhere: listed as uploaded and never pruned.
+UPLOADED = "-upload.zip"
 SQLITE_HEADER = b"SQLite format 3\x00"
 _CHUNK = 1024 * 1024
 _lock = threading.Lock()
@@ -104,6 +107,7 @@ class Entry:
     notes: int
     files: int
     version: str
+    uploaded: bool = False
 
 
 @dataclass
@@ -290,7 +294,7 @@ def entries() -> list[Entry]:
             continue
         found.append(
             Entry(path.name, path.stat().st_size, manifest.created, manifest.kind, manifest.note, manifest.notes,
-                  manifest.files, manifest.version)
+                  manifest.files, manifest.version, path.name.endswith(UPLOADED))
         )
     return sorted(found, key=lambda entry: entry.created, reverse=True)
 
@@ -301,7 +305,7 @@ def remove(name: str) -> None:
 
 
 def prune(keep: int) -> int:
-    automatic = [entry for entry in entries() if entry.kind in AUTOMATIC_KINDS]
+    automatic = [entry for entry in entries() if entry.kind in AUTOMATIC_KINDS and not entry.uploaded]
     removed = 0
     for entry in automatic[max(keep, 1) :]:
         (folder() / entry.name).unlink(missing_ok=True)
@@ -309,6 +313,45 @@ def prune(keep: int) -> int:
     if removed:
         logger.info("Old automatic backups removed count=%s", removed)
     return removed
+
+
+def temporary_upload() -> Path:
+    """Where an upload lands while it arrives: in the backups folder, only the owner's, under a name no listing
+    takes for a backup."""
+    base = folder()
+    base.mkdir(parents=True, exist_ok=True)
+    private.tighten(base)
+    path = base / f".upload-{os.getpid()}-{time.time_ns()}.part"
+    private.new_file(path)
+    return path
+
+
+def receive(received: Path) -> str:
+    """An archive brought in from elsewhere, for a move to a new server: if it is one of ours (a ZIP with a manifest
+    and a database), it joins the list under a name of its own and waits there to be checked and restored like any
+    other. Nothing is unpacked here; the full check is the trial run before a restore."""
+    try:
+        with zipfile.ZipFile(received) as archive:
+            manifest = _manifest(archive)
+            if DATABASE_ENTRY not in archive.namelist():
+                raise BackupError("backup_invalid", "the archive holds no database")
+    except zipfile.BadZipFile as exc:
+        raise BackupError("backup_invalid", "not a ZIP archive") from exc
+    try:
+        moment = datetime.fromisoformat(manifest.created)
+    except (TypeError, ValueError) as exc:
+        raise BackupError("backup_invalid", "the archive has no readable date") from exc
+    base = folder()
+    stamp = _stamp(moment)
+    name = f"nexlore-{stamp}{UPLOADED}"
+    number = 2
+    while (base / name).exists():
+        name = f"nexlore-{stamp}-{number}{UPLOADED}"
+        number += 1
+    os.replace(received, base / name)
+    logger.info("Backup received name=%s version=%s notes=%s files=%s", name, manifest.version, manifest.notes,
+                manifest.files)
+    return name
 
 
 # --- Checking and restoring -----------------------------------------------------------------------------------------
