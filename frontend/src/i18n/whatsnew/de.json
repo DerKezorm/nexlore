@@ -202,5 +202,24 @@
       "Ein zweites nexlore, das mit dem authentik-Knopf am selben authentik eingerichtet wird, nimmt eigene Namen (nexlore (Adresse)), statt den Provider des ersten zu übernehmen und dessen Anmeldung zu brechen.",
       "Die Vorschau eines Kommentars schließt nicht mehr, wenn die Seitenleiste von selbst nachrückt, sondern nur, wenn seine Wörter wegscrollen."
     ]
+  },
+  "1.3.0": {
+    "lead": "In nexlore 1.3 geht es um Sicherungen. Eine heruntergeladene Sicherung kommt wieder hinein, so ziehst du in der Oberfläche auf einen neuen Server um, und die Sicherungskarte ist aufgeräumt.",
+    "sections": [
+      {
+        "title": "Sicherung hochladen, auf einen neuen Server umziehen",
+        "where": "Einstellungen, Server, Sicherung, „Sicherung hochladen“",
+        "body": "Auf dem alten Server eine Sicherung herunterladen, auf dem neuen nexlore einrichten und dort die ZIP-Datei hochladen: Sie steht dann als „hochgeladen“ in der Liste, du prüfst sie und stellst sie wieder her. Nach dem Neustart meldest du dich mit deinem alten Konto an, alle Bereiche, Notizen, Anhänge und Konten sind da. Hochladen fragt wie Herunterladen nach deinem Passwort, und das automatische Aufräumen lässt hochgeladene Sicherungen stehen."
+      },
+      {
+        "title": "Die Sicherungskarte, neu aufgeräumt",
+        "where": "Einstellungen, Server, Sicherung",
+        "body": "Zeitplan, wie viele Sicherungen bleiben, Hochladen und „Jetzt sichern“ stehen in einer Zeile. Jede Sicherung hat kleine Knöpfe zum Prüfen, Herunterladen, Wiederherstellen und Löschen; nach dem Passwort fragt ein eigenes Fenster. Aufbewahren lassen sich jetzt bis zu 365 Sicherungen. Eine Notiz zu einer neuen Sicherung gibt es nicht mehr, die Notizen alter Sicherungen stehen weiter in der Liste."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Die Anleitung erklärt im Kapitel Sicherung und Umzug, wie du einen ganzen Server umziehst."
+    ]
   }
 }

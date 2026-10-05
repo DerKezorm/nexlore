@@ -202,5 +202,24 @@
       "A second nexlore set up with the authentik button on the same authentik takes names of its own (nexlore (address)) instead of taking over the first one's provider, which broke the first one's sign-in.",
       "The preview of a comment no longer closes when the sidebar moves by itself, only when its words scroll away."
     ]
+  },
+  "1.3.0": {
+    "lead": "nexlore 1.3 is about backups. A downloaded backup goes back in, so you move to a new server in the interface, and the backups card is tidied up.",
+    "sections": [
+      {
+        "title": "Upload a backup, move to a new server",
+        "where": "Settings, Server, Backups, \"Upload a backup\"",
+        "body": "Download a backup on the old server, set up nexlore on the new one and upload the ZIP there: it appears in the list as \"uploaded\", you check it and restore it. After the restart you sign in with your old account, and every space, note, attachment and account is there. Uploading asks for your password like downloading, and the automatic clean-up leaves uploaded backups alone."
+      },
+      {
+        "title": "The backups card, tidied up",
+        "where": "Settings, Server, Backups",
+        "body": "The schedule, how many backups stay, uploading and \"Back up now\" share one row. Every backup has small buttons to check, download, restore and delete it; a window of its own asks for the password. Up to 365 backups can be kept now. A note for a new backup is gone; the notes of older backups still show in the list."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "The guide's chapter on backups and moving in explains how to move a whole server."
+    ]
   }
 }
