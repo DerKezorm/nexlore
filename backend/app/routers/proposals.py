@@ -56,6 +56,8 @@ class ProposalOut(BaseModel):
     decided_by: str | None = None
     #: The proposed text; only in the answers about one note.
     content: str | None = None
+    #: Written by Lore for the person who asked.
+    lore: bool = False
 
 
 def _out(db: Session, row: Proposal, with_content: bool = False) -> ProposalOut | None:
@@ -66,7 +68,7 @@ def _out(db: Session, row: Proposal, with_content: bool = False) -> ProposalOut 
     return ProposalOut(
         id=row.id, path=file.path, title=file.title, by=by, message=row.message, status=row.status,
         created_at=row.created_at, decided_at=row.decided_at, decided_by=row.decided_by,
-        content=row.content.decode("utf-8") if with_content else None,
+        content=row.content.decode("utf-8") if with_content else None, lore=bool(row.lore),
     )
 
 

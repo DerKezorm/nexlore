@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import type { PanelTab } from '../lib/appearance'
 import { Symbol } from './Symbol'
 
-export type PanelPart = { id: PanelTab; label: string; count?: number | null; content: () => ReactNode }
+export type PanelPart = { id: PanelTab; label: string; icon?: ReactNode; count?: number | null; content: () => ReactNode }
 export type PanelPlace = 'column' | 'sheet' | 'bottom'
 
 type Props = {
@@ -61,6 +61,7 @@ export function NotePanel({ parts, tab, onTab, place, onClose }: Props) {
                 (part.id === current.id ? 'border-accent-500 font-semibold text-mist-100' : 'border-transparent text-mist-500 hover:text-mist-200')
               }
             >
+              {part.icon}
               {part.label}
               {part.count ? <span className="text-[11px] font-normal text-mist-600 tabular-nums">{part.count}</span> : null}
             </button>

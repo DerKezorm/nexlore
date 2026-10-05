@@ -93,7 +93,7 @@ test('the toolbar hides, stays hidden in this browser, comes back, and leads to 
   await expect(bar).toHaveCount(0)
   await page.getByRole('button', { name: 'Show the toolbar' }).click()
   await expect(bar).toBeVisible()
-  await bar.getByRole('button', { name: 'Markdown source' }).click()
+  await bar.getByRole('button', { name: 'Markdown', exact: true }).click()
   await expect(page.getByLabel('Markdown source of the note')).toHaveValue(/# Toolbar hide/)
 })
 
@@ -200,7 +200,7 @@ test('the line numbers of the file stand beside the text, follow typing, and are
   await edit(page, 'Zoo/Lines.md')
   await expect(page.getByTestId('editor-toolbar').getByRole('button', { name: 'Line numbers of the file' })).toHaveAttribute('aria-pressed', 'true')
   await expect(numbers).toHaveText(['4', '6', '9', '10', '11', '13', '15', '17', '19'])
-  await page.getByTestId('editor-toolbar').getByRole('button', { name: 'Markdown source' }).click()
+  await page.getByTestId('editor-toolbar').getByRole('button', { name: 'Markdown', exact: true }).click()
   const column = page.getByTestId('source-lines')
   await expect(column).toContainText('19')
   expect((await column.innerText()).trim().split('\n')).toHaveLength(onDisk('Zoo/Lines.md').split('\n').length)

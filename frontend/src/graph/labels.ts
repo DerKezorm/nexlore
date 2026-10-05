@@ -51,14 +51,14 @@ export function font(size: number, weight: number): string {
 
 /** Lines of at most `maxWidth`, broken at " · " (the words of a topic) or else at spaces; a single long word stays. */
 export function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-  if (ctx.measureText(text).width <= maxWidth) return [text]
+  if (measured(ctx, text) <= maxWidth) return [text]
   const parts = text.includes(' · ') ? text.split(' · ') : text.split(' ')
   const glue = text.includes(' · ') ? ' · ' : ' '
   const lines: string[] = []
   let line = ''
   for (const part of parts) {
     const next = line ? line + glue + part : part
-    if (line && ctx.measureText(next).width > maxWidth) {
+    if (line && measured(ctx, next) > maxWidth) {
       lines.push(line)
       line = part
     } else line = next
@@ -74,6 +74,32 @@ function iconPaths(name: string): { d: string; fill?: boolean }[] | undefined {
 }
 
 /** Draws the labels that fit and returns how many were drawn. */
+/** Widths of texts by font: measured once (measuring every label in every frame cost a sixth of a frame with
+ * 40,000 notes loaded, 05.10.2026). Emptied when it grows large. */
+const widths = new Map<string, Map<string, number>>()
+let measuredCount = 0
+/** The font last set through `setFont` (reading `ctx.font` back costs more than the measuring it saves). */
+let currentFont = ''
+function setFont(ctx: CanvasRenderingContext2D, value: string): void {
+  ctx.font = value
+  currentFont = value
+}
+function measured(ctx: CanvasRenderingContext2D, text: string): number {
+  let byText = widths.get(currentFont)
+  if (!byText) widths.set(currentFont, (byText = new Map()))
+  let width = byText.get(text)
+  if (width === undefined) {
+    if (++measuredCount > 20000) {
+      widths.clear()
+      measuredCount = 0
+      widths.set(ctx.font, (byText = new Map()))
+    }
+    width = ctx.measureText(text).width
+    byText.set(text, width)
+  }
+  return width
+}
+
 export function drawLabels(ctx: CanvasRenderingContext2D, items: LabelItem[], background: string, width: number, height: number): number {
   const grid = new Map<number, Box[]>()
   const cells = (box: Box) => {
@@ -86,15 +112,15 @@ export function drawLabels(ctx: CanvasRenderingContext2D, items: LabelItem[], ba
   items.sort((a, b) => b.priority - a.priority)
   for (const item of items) {
     if (item.alpha < 0.03 || !item.text) continue
-    ctx.font = font(item.size, item.weight)
+    setFont(ctx, font(item.size, item.weight))
     const lines = item.maxWidth ? wrap(ctx, item.text, item.maxWidth) : [item.text]
-    const w = Math.max(...lines.map((line) => ctx.measureText(line).width))
+    const w = Math.max(...lines.map((line) => measured(ctx, line)))
     const extra = (lines.length - 1) * item.size * 1.15
     const subSize = Math.max(10, item.size * 0.62)
     let subW = 0
     if (item.sub) {
-      ctx.font = font(subSize, 500)
-      subW = ctx.measureText(item.sub).width
+      setFont(ctx, font(subSize, 500))
+      subW = measured(ctx, item.sub)
     }
     const h = item.size * (item.sub ? 2.2 : 1.35) + extra
     const top = item.baseline === 'top' ? item.y : item.y - (item.sub ? item.size * 0.95 : item.size * 0.6) - extra / 2
@@ -131,7 +157,7 @@ export function drawLabels(ctx: CanvasRenderingContext2D, items: LabelItem[], ba
       ctx.restore()
     }
     ctx.textAlign = 'center'
-    ctx.font = font(item.size, item.weight)
+    setFont(ctx, font(item.size, item.weight))
     const lineY = (item.baseline === 'top' ? item.y : item.sub ? item.y - item.size * 0.35 : item.y) - (item.baseline === 'top' ? 0 : extra / 2)
     ctx.textBaseline = item.baseline
     lines.forEach((line, index) => {
@@ -145,7 +171,7 @@ export function drawLabels(ctx: CanvasRenderingContext2D, items: LabelItem[], ba
       ctx.fillText(line, item.x, y)
     })
     if (item.sub) {
-      ctx.font = font(subSize, 500)
+      setFont(ctx, font(subSize, 500))
       ctx.fillStyle = item.subColor ?? item.color
       ctx.textBaseline = 'middle'
       ctx.fillText(item.sub, item.x, item.y + item.size * 0.75 + extra / 2)

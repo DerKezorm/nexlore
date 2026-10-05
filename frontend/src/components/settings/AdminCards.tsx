@@ -8,11 +8,15 @@ import { Link } from 'react-router-dom'
 
 import {
   adminApi,
+  aiApi,
   apiTokensApi,
   authApi,
   mcpApi,
   type AdminAccount,
   type AdminSpace,
+  type AiMode,
+  type AiModel,
+  type AiShared,
   type AnyApiToken,
   type AuthentikResult,
   type Backup,
@@ -27,6 +31,7 @@ import {
   shareApi,
 } from '../../api/client'
 import { resetAddedLanguages, languageOptions, type LanguageOption } from '../../i18n'
+import { AI_PROVIDERS } from '../../lib/aiProviders'
 import { formatDate, formatDay } from '../../lib/markdown'
 import { useAuth } from '../../state/auth'
 import { useStore } from '../../state/store'
@@ -664,10 +669,54 @@ export function AiCard({ settings, onChange }: { settings: ServerSettings; onCha
       setHosts(saved.ai_private_hosts.split('\n').filter(Boolean).join(', '))
     }, t('common.saved'))
   }
+  const choose = (mode: AiMode) => {
+    onChange({ ...settings, ai_mode: mode })
+    void run(async () => {
+      onChange(await adminApi.saveSettings({ ai_mode: mode }))
+      await refresh()
+    }).then((ok) => ok || onChange(settings))
+  }
+  const saveLore = (value: boolean) => {
+    onChange({ ...settings, lore_allowed: value })
+    void run(async () => {
+      onChange(await adminApi.saveSettings({ lore_allowed: value }))
+      // The header and the corner read it from the own account.
+      await refresh()
+    }).then((ok) => ok || onChange(settings))
+  }
+  const pace = (value: string) => {
+    void run(async () => onChange(await adminApi.saveSettings({ ai_per_minute: Number(value) })), t('common.saved'))
+  }
+  const shared = settings.ai_mode === 'shared'
   return (
     <Card id="ai" symbol="sparkle" title={t('admin.ai.title')} text={t('admin.ai.text')}>
       <Toggle label={t('admin.ai.allow')} hint={t('admin.ai.allowHint')} checked={settings.ai_allowed} onChange={save} />
       {settings.ai_allowed && (
+        <div className="mt-2">
+          <Toggle label={t('admin.ai.loreAllow')} hint={t('admin.ai.loreAllowHint')} checked={settings.lore_allowed} onChange={saveLore} />
+        </div>
+      )}
+      {settings.ai_allowed && (
+        <fieldset className="mt-4" data-testid="ai-mode">
+          <legend className="text-sm font-medium text-mist-200">{t('admin.ai.mode')}</legend>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {(['own', 'shared'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                aria-pressed={settings.ai_mode === mode}
+                onClick={() => settings.ai_mode !== mode && choose(mode)}
+                className={'rounded-xl border px-3 py-2.5 text-left ' + (settings.ai_mode === mode ? 'border-accent-500/70 bg-accent-500/10' : 'border-ink-700 bg-ink-850 hover:border-ink-600')}
+              >
+                <span className={'block text-sm font-semibold ' + (settings.ai_mode === mode ? 'text-accent-400' : 'text-mist-100')}>{t(`admin.ai.modes.${mode}`)}</span>
+                <span className="block text-xs text-mist-500">{t(`admin.ai.modes.${mode}Text`)}</span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      {settings.ai_allowed && shared && <SharedService />}
+      {settings.ai_allowed && !shared && (
         <form
           className="mt-3 flex flex-wrap items-end gap-2"
           onSubmit={(event) => {
@@ -681,14 +730,151 @@ export function AiCard({ settings, onChange }: { settings: ServerSettings; onCha
           </Button>
         </form>
       )}
-      <p className="mt-3 text-sm text-mist-400" data-testid="ai-where-access">
-        {t('admin.ai.where')}{' '}
-        <Link to="/account#ai" className="text-accent-400 hover:underline">
-          {t('admin.ai.whereLink')}
-        </Link>
-      </p>
+      {settings.ai_allowed && (
+        <Select
+          label={t('admin.ai.perMinute')}
+          value={String(settings.ai_per_minute)}
+          options={[...new Set([10, 20, 60, settings.ai_per_minute])].sort((a, b) => a - b).map((count) => ({ value: String(count), label: t('admin.ai.perMinuteValue', { count }) }))}
+          onChange={pace}
+          className="mt-3 max-w-60"
+        />
+      )}
+      {!shared && (
+        <p className="mt-3 text-sm text-mist-400" data-testid="ai-where-access">
+          {t('admin.ai.where')}{' '}
+          <Link to="/account#ai" className="text-accent-400 hover:underline">
+            {t('admin.ai.whereLink')}
+          </Link>
+        </p>
+      )}
       <Feedback problem={problem} done={done} />
     </Card>
+  )
+}
+
+/** The operator's one service for every account: like an account's own access, the key typed once and never shown
+ * again, the model list as the test that address and key are right. Its address may lie in the own network. */
+function SharedService() {
+  const { t } = useTranslation()
+  const { refresh } = useAuth()
+  const { busy, problem, done, run } = useAction()
+  const [saved, setSaved] = useState<AiShared | null>(null)
+  const [url, setUrl] = useState('')
+  const [key, setKey] = useState('')
+  const [model, setModel] = useState('')
+  const [models, setModels] = useState<AiModel[] | null>(null)
+  const [embed, setEmbed] = useState('')
+  const take = (next: AiShared) => {
+    setSaved(next)
+    setUrl(next.url)
+    setModel(next.model)
+    setEmbed(next.embed_model)
+    setKey('')
+  }
+  useEffect(() => {
+    aiApi.shared().then(take, () => setSaved(null))
+  }, [])
+  if (!saved) return null
+  return (
+    <form
+      className="mt-3 grid gap-3 rounded-xl border border-ink-700 bg-ink-850 p-3 sm:grid-cols-2"
+      data-testid="ai-shared"
+      onSubmit={(event) => {
+        event.preventDefault()
+        void run(async () => {
+          const change: Parameters<typeof aiApi.saveShared>[0] = { url: url.trim(), model: model.trim(), embed_model: embed.trim() }
+          if (key.trim()) change.key = key.trim()
+          take(await aiApi.saveShared(change))
+          await refresh()
+        }, t('common.saved'))
+      }}
+    >
+      {/* The same tiles as an account's own access: they fill in the address, any other is just as good. */}
+      <div className="flex flex-wrap gap-2 sm:col-span-2" role="group" aria-label={t('ai.tiles')}>
+        {AI_PROVIDERS.map((provider) => (
+          <button
+            key={provider.name}
+            type="button"
+            aria-pressed={url === provider.url}
+            onClick={() => {
+              setUrl(provider.url)
+              setModels(null)
+            }}
+            className={'rounded-full border px-3 py-1 text-sm ' + (url === provider.url ? 'border-accent-500/60 bg-accent-500/10 text-mist-100' : 'border-ink-700 text-mist-300 hover:bg-ink-900')}
+          >
+            {provider.name}
+          </button>
+        ))}
+      </div>
+      {AI_PROVIDERS.filter((provider) => provider.url === url && provider.keys).map((provider) => (
+        <p key={provider.name} className="-mt-1 text-xs sm:col-span-2">
+          <a href={provider.keys!} target="_blank" rel="noreferrer noopener" className="text-accent-400 hover:underline">
+            {t('ai.getKey', { name: provider.name })}
+          </a>
+        </p>
+      ))}
+      <Input label={t('ai.address')} value={url} onChange={setUrl} placeholder="http://ollama.lan:11434/v1" hint={t('admin.ai.sharedAddressHint')} className="sm:col-span-2" />
+      <Input label={t('ai.key')} type="password" value={key} onChange={setKey} placeholder={saved.key_set ? t('ai.keyKept') : t('ai.keyNone')} />
+      <label className="block text-sm">
+        <span className="text-xs font-medium text-mist-400">{t('ai.model')}</span>
+        <input
+          value={model}
+          onChange={(event) => setModel(event.target.value)}
+          list="ai-shared-models"
+          maxLength={200}
+          className="mt-1 h-9 w-full rounded-lg border border-ink-700 bg-ink-850 px-2 text-sm outline-none focus:border-accent-500"
+        />
+      </label>
+      <label className="block text-sm sm:col-span-2">
+        <span className="text-xs font-medium text-mist-400">{t('admin.ai.embedModel')}</span>
+        <input
+          value={embed}
+          onChange={(event) => setEmbed(event.target.value)}
+          list="ai-shared-models"
+          maxLength={200}
+          placeholder={t('admin.ai.embedNone')}
+          className="mt-1 h-9 w-full rounded-lg border border-ink-700 bg-ink-850 px-2 text-sm outline-none focus:border-accent-500"
+        />
+        <span className="mt-1 block text-xs text-mist-500">{t('admin.ai.embedHint')}</span>
+        {AI_PROVIDERS.some((provider) => provider.url === url && !provider.embeddings) && (
+          <span className="mt-1 block text-xs text-warn-500" data-testid="ai-embed-none">{t('admin.ai.embedNotHere')}</span>
+        )}
+        {saved.meaning_on && (
+          <span className="mt-1 block text-xs text-accent-400" data-testid="ai-meaning-progress">
+            {t('admin.ai.embedProgress', { done: saved.meaning.done, total: saved.meaning.total })}
+          </span>
+        )}
+      </label>
+      <datalist id="ai-shared-models">
+        {(models ?? []).map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.name || item.id}
+          </option>
+        ))}
+      </datalist>
+      <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+        <Button
+          busy={busy}
+          onClick={() =>
+            void run(async () => {
+              const found = await aiApi.sharedModels(url.trim(), key.trim() || undefined)
+              setModels(found)
+              if (!model.trim() && found[0]) setModel(found[0].id)
+            }, null)
+          }
+        >
+          {t('ai.loadModels')}
+        </Button>
+        <Button primary type="submit" busy={busy}>
+          {t('common.save')}
+        </Button>
+        {models && <span className="text-xs text-mist-500" data-testid="ai-shared-models-count">{t('ai.modelsFound', { count: models.length })}</span>}
+        {!saved.complete && <span className="text-xs text-warn-500">{t('admin.ai.sharedIncomplete')}</span>}
+      </div>
+      <div className="sm:col-span-2">
+        <Feedback problem={problem} done={done} />
+      </div>
+    </form>
   )
 }
 

@@ -19,7 +19,7 @@ SIZE_MIN, SIZE_MAX = 14, 20
 #: Where nexlore opens (Obsidian's Homepage plugin): the map, today's daily note, the note opened last, one note.
 STARTS = ("graph", "daily", "last", "note")
 #: The tabs of the column beside a note, and the sidebar folded to a strip of symbols or open.
-PANEL_TABS = ("outline", "links", "comments", "graph", "versions", "plugins")
+PANEL_TABS = ("outline", "links", "comments", "lore", "graph", "versions", "plugins")
 SIDEBARS = ("open", "rail")
 #: Own keys for commands (the command palette): at most this many, each a combination written as the browser
 #: names it ("Ctrl+Alt+Shift+Meta+Key") and the command's name to show in the list.
@@ -40,6 +40,8 @@ DEFAULTS: dict[str, Any] = {
     "theme": "nexlore",
     #: Take the theme a space sets for its notes.
     "space_themes": True,
+    #: The soft glow around the dots of the map; off for computers its graphics strain (05.10.2026).
+    "graph_glow": True,
     "font_ui": "inter",
     "font_text": "inter",
     "font_code": "jetbrains",
@@ -57,10 +59,14 @@ DEFAULTS: dict[str, Any] = {
     "sidebar": "open",
     #: The first day of the calendar's week (P5.24).
     "week_start": "monday",
+    #: The view a note opens in for editing: the visual editor or the Markdown text (05.10.2026).
+    "editor": "visual",
     #: Own keys: command id -> {"combo", "label"}.
     "keys": {},
     #: The spaces the map leaves out, by id; empty: it shows every space the account may read.
     "graph_hidden": [],
+    #: The spaces Lore leaves out when it looks things up, by id; empty: every space the account may read.
+    "lore_hidden": [],
 }
 
 
@@ -86,6 +92,7 @@ def _checked(changes: dict[str, Any]) -> dict[str, Any]:
     allowed = {
         "mode": MODES, "font_ui": FONTS_UI, "font_text": FONTS_TEXT, "font_code": FONTS_CODE, "width": WIDTHS,
         "start": STARTS, "panel_tab": PANEL_TABS, "sidebar": SIDEBARS, "week_start": ("monday", "sunday"),
+        "editor": ("visual", "source"),
     }
     out: dict[str, Any] = {}
     for key, value in changes.items():
@@ -97,7 +104,7 @@ def _checked(changes: dict[str, Any]) -> dict[str, Any]:
             if isinstance(value, bool) or not isinstance(value, int) or not SIZE_MIN <= value <= SIZE_MAX:
                 raise AppearanceError(key)
             out[key] = value
-        elif key in ("space_themes", "panel"):
+        elif key in ("space_themes", "panel", "graph_glow"):
             if not isinstance(value, bool):
                 raise AppearanceError(key)
             out[key] = value
@@ -121,7 +128,7 @@ def _checked(changes: dict[str, Any]) -> dict[str, Any]:
             out[key] = value
         elif key == "keys":
             out[key] = _keys(value)
-        elif key == "graph_hidden":
+        elif key in ("graph_hidden", "lore_hidden"):
             if not isinstance(value, list) or len(value) > HIDDEN_MAX:
                 raise AppearanceError(key)
             if any(isinstance(item, bool) or not isinstance(item, int) or item < 1 for item in value):

@@ -67,6 +67,21 @@ DEFAULTS: dict[str, Any] = {
     #: Hosts in the own network (or this machine) members may use as AI service, one per line: "192.168.1.20",
     #: "ollama.lan:11434". Everything else in the own network is refused; public addresses are always allowed.
     "ai_private_hosts": "",
+    #: Who brings the AI service (Frag Lore, design answer 05.10.2026): "own", each account its own; "shared", the
+    #: operator's one service for every account, whose own accesses rest meanwhile.
+    "ai_mode": "own",
+    "ai_shared_url": "",
+    "ai_shared_model": "",
+    "ai_shared_key_enc": "",
+    #: Frag Lore (questions about the notes): a switch of its own above AI in notes, off from the start.
+    "lore_allowed": False,
+    #: Requests per account and minute, for the editor and for Lore together.
+    "ai_per_minute": 20,
+    #: The model of the operator's service that turns notes into vectors, to find them by their meaning (only with
+    #: one service for all); empty: by their words only.
+    "ai_embed_model": "",
+    #: Days a conversation with Lore stays after its last question; 0 keeps it until the account removes it.
+    "lore_keep_days": 90,
     # Own CSS of the accounts (snippets): closed from the start, CSS can change how every page of the account looks.
     "custom_css_allowed": False,
     #: Ask GitHub once a day whether a newer nexlore is out (services/updates). Only the question goes out, so on.

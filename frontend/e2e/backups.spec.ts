@@ -14,7 +14,8 @@ test('a backup is downloaded only with the password once more, and uploaded agai
   const card = page.locator('#backups')
   const rows = card.locator('li')
   await card.getByRole('button', { name: 'Back up now' }).click()
-  await expect(card.getByText('Backup made.')).toBeVisible()
+  // Late in a full run the vault holds some 750 files; making the backup took 7 to 8 s once (05.10.2026).
+  await expect(card.getByText('Backup made.')).toBeVisible({ timeout: 30_000 })
   const row = rows.filter({ hasText: 'by hand' }).first()
   await expect(row).toBeVisible()
 

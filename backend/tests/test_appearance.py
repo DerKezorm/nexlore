@@ -127,3 +127,18 @@ def test_own_keys_take_only_known_shapes_and_each_combination_once(client: TestC
     assert answer.status_code == 422
     assert answer.json()["detail"]["code"] == "bad_appearance"
     assert client.get("/api/auth/me").json()["appearance"]["keys"] == {}
+
+
+def test_the_view_a_note_opens_in_for_editing_is_kept_with_the_account(client: TestClient, account: object) -> None:
+    assert client.get("/api/auth/me").json()["appearance"]["editor"] == "visual"
+    assert client.put("/api/me/appearance", json={"editor": "source"}).status_code == 200
+    assert client.get("/api/auth/me").json()["appearance"]["editor"] == "source"
+    assert client.put("/api/me/appearance", json={"editor": "wysiwyg"}).status_code == 422
+    assert client.get("/api/auth/me").json()["appearance"]["editor"] == "source"
+
+
+def test_the_glow_of_the_map_can_be_switched_off_for_the_account(client: TestClient, account: object) -> None:
+    assert client.get("/api/auth/me").json()["appearance"]["graph_glow"] is True
+    assert client.put("/api/me/appearance", json={"graph_glow": False}).status_code == 200
+    assert client.get("/api/auth/me").json()["appearance"]["graph_glow"] is False
+    assert client.put("/api/me/appearance", json={"graph_glow": "off"}).status_code == 422

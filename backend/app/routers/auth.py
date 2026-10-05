@@ -43,7 +43,7 @@ from ..security import (
     session_account,
     start_session,
 )
-from ..services import accounts, ai, appearance, avatars, guide, locales, mailer, settings_service, totp
+from ..services import accounts, ai, appearance, avatars, guide, locales, lore, mailer, settings_service, totp
 from ..services.accounts import AccountError
 from . import themes as theme_routes
 
@@ -298,6 +298,11 @@ def me(account: Account, db: DbSession) -> dict[str, Any]:
         "second_factor_setup_required": totp.setup_required(db, account),
         # The editor offers AI only when the operator allows it and the account switched its own service on.
         "ai_ready": ai.ready(db, account),
+        # Frag Lore shows in the header whenever the operator allows AI; without a service it says what is missing.
+        "ai_allowed": ai.allowed(db),
+        # Frag Lore shows only where the operator switched it on and an AI service is ready for this account.
+        "lore_allowed": lore.allowed(db),
+        "lore": lore.ready(db, account),
         # Pasted links get the page's title when the operator allows asking the pages (services/linktitle).
         "link_titles": bool(settings_service.get(db, "link_titles_allowed")),
         "appearance": appearance.of(account.appearance),

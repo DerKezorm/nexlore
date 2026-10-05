@@ -30,13 +30,15 @@ import { NewNoteDialog } from './NewNoteDialog'
 import { ScanNotice } from './ScanNotice'
 import { WhatsNewBanner } from './WhatsNew'
 import { SearchDialog } from './SearchDialog'
+import { LoreOverlay } from './LoreOverlay'
+import { LoreSpider } from './LoreSpider'
 import { Symbol, type SymbolName } from './Symbol'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
 type NavItem = {
   to: string
-  label: 'nav.graph' | 'nav.notes' | 'nav.calendar' | 'nav.tasks' | 'nav.files'
-  symbol: SymbolName
+  label: 'nav.graph' | 'nav.notes' | 'nav.calendar' | 'nav.tasks' | 'nav.files' | 'nav.lore'
+  symbol: SymbolName | 'lore'
   end: boolean
   /** Below `sm` the item is in the account menu: a phone has room for the four daily places only. */
   wide?: boolean
@@ -49,6 +51,9 @@ const ITEMS: NavItem[] = [
   { to: '/calendar', label: 'nav.calendar', symbol: 'calendar', end: false },
   { to: '/tasks', label: 'nav.tasks', symbol: 'tasks', end: false },
   { to: '/files', label: 'nav.files', symbol: 'files', end: false, wide: true },
+  // Frag Lore (design answer 05.10.2026): an entry of its own with the spider; only where the operator switched Lore
+  // on and an AI service is ready.
+  { to: '/lore', label: 'nav.lore', symbol: 'lore', end: false },
 ]
 
 function navClass(isActive: boolean, wide = false): string {
@@ -297,7 +302,7 @@ export function AppShell() {
             <Logo withWordmark />
           </NavLink>
           <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto" aria-label={t('app.mainMenu')}>
-            {ITEMS.map((item) => (
+            {ITEMS.filter((item) => item.to !== '/lore' || me?.lore).map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
@@ -312,7 +317,7 @@ export function AppShell() {
                   askNoteList()
                 }}
               >
-                <Symbol name={item.symbol} />
+                {item.symbol === 'lore' ? <LoreSpider className="h-[18px] w-5" /> : <Symbol name={item.symbol} />}
                 <span className="hidden xl:inline">{t(item.label)}</span>
               </NavLink>
             ))}
@@ -415,6 +420,7 @@ export function AppShell() {
       )}
       {capturing !== null && <CaptureDialog key={capturing} text={capturing} onClose={() => setCapturing(null)} />}
       <InstallPrompt />
+      <LoreOverlay />
     </div>
   )
 }

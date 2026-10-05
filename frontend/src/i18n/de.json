@@ -16,7 +16,8 @@
     "files": "Dateien",
     "settings": "Einstellungen",
     "calendar": "Kalender",
-    "tasks": "Aufgaben"
+    "tasks": "Aufgaben",
+    "lore": "Frag Lore"
   },
   "search": {
     "create": "Notiz „{{title}}“ anlegen",
@@ -182,7 +183,9 @@
     },
     "wideHint": "Eine einzelne Notiz wird breit mit cssclasses: wide in ihren Eigenschaften.",
     "sampleTitle": "Brotteig",
-    "sampleText": "Mehl, Wasser, Salz. Über Nacht gehen lassen, dann in den Ofen auf 250 Grad. Eine Schale Wasser im Ofen macht die Kruste besser; Zeilen um siebzig Zeichen lesen sich am ruhigsten."
+    "sampleText": "Mehl, Wasser, Salz. Über Nacht gehen lassen, dann in den Ofen auf 250 Grad. Eine Schale Wasser im Ofen macht die Kruste besser; Zeilen um siebzig Zeichen lesen sich am ruhigsten.",
+    "graphGlow": "Schein auf der Karte",
+    "graphGlowHint": "Ein weiches Leuchten um die Punkte der Karte. Aus, zeichnet die Karte auf älteren Rechnern schneller."
   },
   "themes": {
     "title": "Themes",
@@ -660,7 +663,10 @@
     "linksFromThere_other": "verlinkt {{count}}-mal hierher",
     "lockedOwnTitle": "Du bearbeitest diese Notiz gerade in einem anderen Tab oder Fenster",
     "lockedOwnBanner": "Du bearbeitest diese Notiz gerade in einem anderen Tab oder Fenster. Hier kannst du lesen; bearbeiten geht, sobald du dort fertig bist oder den Tab schließt.",
-    "versionsWhileEditing": "Während du bearbeitest, lässt sich keine Fassung zurückholen."
+    "versionsWhileEditing": "Während du bearbeitest, lässt sich keine Fassung zurückholen.",
+    "modeVisual": "Visuell",
+    "modeMarkdown": "Markdown",
+    "editorMode": "Ansicht des Editors"
   },
   "settings": {
     "title": "Einstellungen",
@@ -845,7 +851,15 @@
       "ai_address_refused": "An diese Adresse schickt nexlore nichts.",
       "ai_hosts_invalid": "Ein Host je Eintrag, etwa 192.168.1.20 oder ollama.lan:11434.",
       "bad_canvas": "Das ist keine Leinwand, die nexlore behalten kann (JSON Canvas).",
-      "not_a_canvas": "Diese Datei ist keine Leinwand."
+      "not_a_canvas": "Diese Datei ist keine Leinwand.",
+      "ai_shared_incomplete": "Der Betreiber hat den KI-Dienst für alle noch nicht fertig eingerichtet.",
+      "lore_question_empty": "Stell erst eine Frage.",
+      "lore_nowhere": "Es gibt keinen Bereich, in dem du die Notiz anlegen darfst.",
+      "lore_nothing_to_change": "Lore hat an der Notiz nichts zu ändern gefunden.",
+      "lore_conversation_full": "Dieses Gespräch ist voll. Fang ein neues an.",
+      "lore_not_about_a_note": "Nur ein Gespräch zu einer Notiz kann eine Änderung für sie vorschlagen.",
+      "too_many_proposals": "Zu viele Vorschläge warten auf eine Antwort.",
+      "lore_off": "Frag Lore ist auf diesem Server nicht eingeschaltet."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
@@ -1400,14 +1414,33 @@
       "enabledMine": "Für dich an"
     },
     "ai": {
-      "title": "KI in Notizen",
-      "text": "Jedes Konto darf seinen eigenen KI-Dienst anbinden und im Editor nutzen. Der Text, den jemand wählt, verlässt dabei den Server in Richtung dieses Dienstes.",
+      "title": "KI in Notizen und Frag Lore",
+      "text": "Die KI korrigiert und schreibt im Editor, und Lore beantwortet Fragen zu den Notizen. Text, den jemand wählt oder nach dem jemand fragt, verlässt dabei den Server in Richtung des KI-Dienstes.",
       "allow": "KI in Notizen erlauben",
       "allowHint": "Aus: Nichts geht hinaus, und der Editor bietet keine KI an. Die Konten behalten ihren Zugang für später.",
       "where": "Jedes Konto richtet seinen Dienst unter Mein Konto → Verbindungen → KI in Notizen ein.",
       "whereLink": "Zu meinem Zugang",
       "hosts": "Dienste im eigenen Netz",
-      "hostsHint": "Hosts, die Mitglieder als KI-Dienst nutzen dürfen, obwohl sie im eigenen Netz oder auf diesem Rechner stehen, durch Komma getrennt: 192.168.1.20, ollama.lan:11434. Jede andere Adresse im eigenen Netz wird abgelehnt; öffentliche Adressen gehen immer."
+      "hostsHint": "Hosts, die Mitglieder als KI-Dienst nutzen dürfen, obwohl sie im eigenen Netz oder auf diesem Rechner stehen, durch Komma getrennt: 192.168.1.20, ollama.lan:11434. Jede andere Adresse im eigenen Netz wird abgelehnt; öffentliche Adressen gehen immer.",
+      "mode": "Wer bringt den KI-Dienst mit?",
+      "modes": {
+        "own": "Jeder für sich",
+        "ownText": "Jedes Konto trägt unter Mein Konto seinen eigenen Dienst ein. Wer keinen hat, kann Lore nicht fragen.",
+        "shared": "Einer für alle",
+        "sharedText": "Du trägst hier einen Dienst ein, alle Konten nutzen ihn. Eigene Zugänge der Konten ruhen."
+      },
+      "sharedAddressHint": "Darf im eigenen Netz stehen, etwa Ollama zu Hause; dafür braucht es keinen Eintrag in der Liste der Dienste im eigenen Netz.",
+      "sharedIncomplete": "Adresse und Modell speichern, dann können alle Konten ihn nutzen.",
+      "perMinute": "Anfragen je Konto",
+      "perMinuteValue_one": "{{count}} je Minute",
+      "perMinuteValue_other": "{{count}} je Minute",
+      "embedModel": "Modell für die Suche nach Bedeutung (freiwillig)",
+      "embedNone": "keins: Lore findet Notizen über ihre Wörter",
+      "embedHint": "Ein Modell desselben Dienstes, das Text in Vektoren umsetzt, etwa nomic-embed-text. Dann findet Lore auch Notizen, die die Frage mit anderen Worten meinen, und jede Notiz zeigt ähnliche. Dafür geht der Anfang jeder Notiz einmal an den Dienst, und wieder, wenn sie sich ändert.",
+      "embedProgress": "{{done}} von {{total}} Notizen eingelesen",
+      "embedNotHere": "Dieser Dienst bietet keine Modelle für Vektoren: Für die Suche nach Bedeutung braucht es einen anderen, etwa Ollama oder OpenAI.",
+      "loreAllow": "Frag Lore erlauben",
+      "loreAllowHint": "Aus: keine Spinne in der Ecke und kein Frag Lore in der Kopfleiste. An, kann jeder, dessen KI-Dienst bereitsteht, Lore zu den Notizen fragen, die er lesen darf."
     },
     "guide": {
       "title": "Die Anleitung",
@@ -2166,7 +2199,9 @@
     "untouched": "Die Notiz ist unverändert. Der Vorschlag ersetzt die Markierung erst, wenn du ihn übernimmst.",
     "taken": "Übernommen. Rückgängig holt den alten Text zurück.",
     "madeNote": "Notiz „{{title}}“ angelegt.",
-    "untouchedNote": "Die Notiz ist unverändert. Der Vorschlag ersetzt ihren Text erst, wenn du ihn übernimmst."
+    "untouchedNote": "Die Notiz ist unverändert. Der Vorschlag ersetzt ihren Text erst, wenn du ihn übernimmst.",
+    "sharedInfo": "Dein Betreiber stellt den KI-Dienst für alle: {{model}}. Du musst nichts eintragen.",
+    "sharedIncomplete": "Dein Betreiber stellt den KI-Dienst für alle, hat ihn aber noch nicht fertig eingerichtet."
   },
   "tabs": {
     "label": "Offene Notizen",
@@ -2391,5 +2426,104 @@
     "offOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins.",
     "whatItDoes": "Was die API kann",
     "whatItDoesText": "Jede Anfrage trägt das Token in der Kopfzeile Authorization: Bearer, die Antworten sind JSON. Schreiben braucht die Stufe Schreiben und das Recht im Bereich."
+  },
+  "lore": {
+    "title": "Frag Lore",
+    "conversations": "Gespräche",
+    "newChat": "Neues Gespräch",
+    "noneYet": "Noch keine Gespräche.",
+    "days": {
+      "today": "Heute",
+      "yesterday": "Gestern",
+      "week": "Diese Woche",
+      "earlier": "Früher"
+    },
+    "kept_one": "Nur du siehst deine Gespräche. Sie bleiben {{count}} Tag nach der letzten Frage.",
+    "kept_other": "Nur du siehst deine Gespräche. Sie bleiben {{count}} Tage nach der letzten Frage.",
+    "kept_zero": "Nur du siehst deine Gespräche. Sie bleiben, bis du sie löschst.",
+    "remove": "Gespräch {{title}} löschen",
+    "removeShort": "Löschen",
+    "removeTitle": "Gespräch löschen?",
+    "removeText": "„{{title}}“ ist danach endgültig weg. Die Notizen bleiben, wie sie sind.",
+    "removeAll": "Alle Gespräche löschen",
+    "removeAllTitle": "Alle Gespräche löschen?",
+    "removeAllText": "Jedes Gespräch mit Lore ist danach endgültig weg. Die Notizen bleiben, wie sie sind.",
+    "modelShared": "{{model}} · vom Betreiber",
+    "placeholder": "Frag Lore etwas über deine Notizen …",
+    "send": "Senden",
+    "enterHint": "Enter sendet, Umschalt+Enter neue Zeile",
+    "sees": "Lore sieht nur, was du lesen darfst",
+    "traceWords": "gesucht nach:",
+    "traceSpaces": "in:",
+    "traceRead": "gelesen:",
+    "missing": "Dazu steht nichts in deinen Notizen:",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "looksIn": "Sucht in:",
+    "emptyTitle": "Was möchtest du wissen?",
+    "emptyText": "Lore sucht in deinen Notizen und sagt dir, wo es steht. Was dort nicht steht, sagt sie auch.",
+    "suggest": {
+      "week": "Was habe ich diese Woche aufgeschrieben?",
+      "overdue": "Welche Aufgaben sind überfällig, und warum?",
+      "decided": "Was haben wir bisher entschieden?",
+      "clash": "Widersprechen sich Notizen von mir?"
+    },
+    "noThreadTitle": "Lore hat gerade keinen Faden",
+    "noThread": {
+      "off": "Dein Betreiber hat KI auf diesem Server nicht eingeschaltet.",
+      "shared": "Dein Betreiber stellt den KI-Dienst für alle, hat ihn aber noch nicht fertig eingerichtet.",
+      "own": "Für Frag Lore braucht nexlore einen KI-Dienst. Dein Betreiber lässt jedes Konto seinen eigenen eintragen.",
+      "loreOff": "Dein Betreiber hat Frag Lore auf diesem Server nicht eingeschaltet."
+    },
+    "setUp": "KI-Dienst eintragen",
+    "toSettings": "Zu den KI-Einstellungen",
+    "quick": {
+      "sum": "Fasse zusammen",
+      "gap": "Was fehlt hier?",
+      "clash": "Widerspricht das anderen Notizen?",
+      "rel": "Was hängt damit zusammen?"
+    },
+    "saveNote": "Als Notiz speichern",
+    "saved": "Gespeichert als",
+    "propose": "Als Vorschlag in die Notiz",
+    "proposing": "Lore schreibt den Vorschlag …",
+    "proposed": "Der Vorschlag liegt an der Notiz: dort vergleichen und übernehmen.",
+    "proposalBanner": "Lore schlägt eine Änderung vor: {{message}}",
+    "traceIn_one": "In einem Bereich gesucht",
+    "traceIn_other": "In {{count}} Bereichen gesucht",
+    "traceNotes_one": "eine Notiz gelesen",
+    "traceNotes_other": "{{count}} Notizen gelesen",
+    "proposalTitle": "Vorschlag von Lore",
+    "traceThen": "dann:",
+    "stepSearch_one": "nach „{{words}}“ gesucht, eine neue Quelle",
+    "stepSearch_other": "nach „{{words}}“ gesucht, {{count}} neue Quellen",
+    "stepRead": "Quelle {{n}} ganz gelesen",
+    "searchingFor": "Lore sucht nach „{{words}}“ …",
+    "traceMeant": "nach Bedeutung gefunden:",
+    "similar": "Ähnliche Notizen",
+    "close": "Lore schließen",
+    "allConversations": "Alle Gespräche",
+    "bigger": "Größer",
+    "smaller": "Kleiner",
+    "about": "Zu: {{note}}",
+    "aboutThis": "Zu „{{note}}“:",
+    "withoutNote": "Ohne diese Notiz fragen",
+    "inSpaces_one": "in einem Bereich",
+    "inSpaces_other": "in {{count}} Bereichen",
+    "placeholderShort": "Frag weiter …",
+    "emptyShort": "Lore sucht in deinen Notizen und sagt dir, wo es steht.",
+    "sourcesCount_one": "eine Quelle",
+    "sourcesCount_other": "{{count}} Quellen",
+    "way": "Suchweg",
+    "searchingIn_one": "Lore sucht in einem Bereich …",
+    "searchingIn_other": "Lore sucht in {{count}} Bereichen …"
+  },
+  "editorView": {
+    "title": "Editor",
+    "text": "In welcher Ansicht eine Notiz zum Bearbeiten aufgeht. Der Umschalter in der Werkzeugleiste ändert sie für die Notiz, an der du gerade schreibst.",
+    "visual": "Visuell",
+    "visualHint": "Du siehst den Text, wie er sich liest: Überschriften, Fett, Listen, Links. Keine Markdown-Zeichen.",
+    "source": "Markdown",
+    "sourceHint": "Du siehst den Text mit allen Markdown-Zeichen, in Festbreitenschrift. Die Werkzeugleiste setzt die Zeichen für dich."
   }
 }

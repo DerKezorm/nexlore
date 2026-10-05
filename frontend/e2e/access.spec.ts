@@ -107,7 +107,9 @@ test('the map can be walked by Tab and a note opened with Enter; it has a headin
   await year.focus()
   await page.keyboard.press('Enter')
   const note = page.getByTestId('graph-places').locator('button[data-place="note"]').first()
-  await expect(note).toBeAttached({ timeout: 10_000 })
+  // Late in a full run (some 650 notes, a busy machine, no graphics card) the map swung in for up to 14 s, and the
+  // places follow only a map that stands still (measured 06.10.2026).
+  await expect(note).toBeAttached({ timeout: 30_000 })
   await note.focus()
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL(/\/note\//)

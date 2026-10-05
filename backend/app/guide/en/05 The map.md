@@ -11,6 +11,9 @@ The **Graph** tab shows every space as a map. Folders are bubbles, notes are dot
 - **Scroll** or use two fingers to zoom. A bubble opens once it is large enough and shows what is inside.
 - **A click on a bubble** flies into it, **a double click on a dot** opens the note.
 - The top left says where you are; a click there flies back.
+- **Move over a dot**: it and its neighbours stay bright, everything else steps back, its links light up turquoise.
+- The more links a note has, the bigger its dot. Linked notes draw together into bunches inside their folder.
+- **Drag a dot with the mouse**: its neighbours swim along, and it stays where you let go until you reload the page. Nothing of it is saved.
 
 ## Three views
 

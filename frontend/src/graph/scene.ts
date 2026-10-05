@@ -14,7 +14,7 @@
 import type { Looks } from '../api/client'
 import { lookOf } from '../lib/looks'
 import type { GroupKind, GroupRow, Overview, TileNote, Tiles } from '../api/client'
-import { BAND_STRIDE, BUBBLE_STRIDE, LINE_STRIDE, MAX_DOT, MIN_DOT, OPEN_FROM, OPEN_TO, POINT_STRIDE, type Camera } from './gl'
+import { BAND_STRIDE, BUBBLE_STRIDE, LINE_STRIDE, OPEN_FROM, OPEN_TO, POINT_STRIDE, dotRadius, type Camera } from './gl'
 import { slotColor, spaceColor } from './palette'
 
 /** Half open: from here on a group counts as open, its notes are drawn and lines end at them. */
@@ -22,8 +22,9 @@ export const MID = (OPEN_FROM + OPEN_TO) / 2
 /** Tiles loaded at most; the ones out of sight longest go first. */
 const MAX_TILES = 1500
 const SPACE_GAP = 80
-/** More lines from notes than this, and only the focus keeps its own: the map stays readable. */
-export const MANY_LINES = 300
+/** More lines from notes than this in view, and only the focus keeps its own. Since the lines are faint (05.10.2026)
+ * a screen carries thousands; at 300 a vault with many links lost every line as soon as one zoomed in. */
+export const MANY_LINES = 3000
 
 export type SceneGroup = {
   id: number
@@ -50,6 +51,20 @@ export type SceneGroup = {
   depth: number
   children: number[]
   parentR: number
+  /** The radius the group opens by (`openRadius`): larger than `r` when it holds few items, so it opens early. */
+  or: number
+  /** The same of its parent. */
+  opr: number
+}
+
+/** The lines of a view, and where each note's coordinates stand in them (float offsets of x; y follows). */
+export type LineBuffers = {
+  lines: ArrayBuffer
+  lineCount: number
+  bands: ArrayBuffer
+  bandCount: number
+  lineEnds: Map<number, number[]>
+  bandEnds: Map<number, number[]>
 }
 
 export type SceneNote = {
@@ -75,6 +90,17 @@ function ease(a: number, b: number, v: number): number {
   return t * t * (3 - 2 * t)
 }
 export const openness = (r: number, k: number) => (r <= 0 ? 1 : ease(OPEN_FROM, OPEN_TO, r * k))
+
+/**
+ * A group opens once its items would have room on screen, not at one size for all (design answer 05.10.2026: the
+ * folders lie behind their notes, faint, as in the attrappe): a few notes show from afar, a group of hundreds only
+ * closer, so that a vault of 100,000 notes still draws no more than a screen holds. The answer is a radius the
+ * rules of `openness` take in place of the real one (drawing keeps the real one).
+ */
+export function openRadius(r: number, items: number): number {
+  const needs = Math.min(OPEN_FROM, Math.max(OPEN_FROM * 0.45, 9 * Math.sqrt(items + 1)))
+  return (r * OPEN_FROM) / needs
+}
 export const shell = (o: number) => 1 - ease(0.15, 0.75, o)
 export const ring = (o: number) => ease(0.1, 0.5, o)
 export const inner = (o: number) => ease(0.1, 0.6, o)
@@ -192,7 +218,7 @@ export class Scene {
       group.y += space.oy
     }
     for (const note of this.notes.values()) this.place(note)
-    this.byRadius = [...this.groups.values()].sort((a, b) => a.r - b.r)
+    this.byRadius = [...this.groups.values()].sort((a, b) => a.or - b.or)
   }
 
   private addGroups(space: string, index: number, rows: GroupRow[]) {
@@ -208,7 +234,7 @@ export class Scene {
       this.groups.set(id, {
         id, space, parent, kind, name, key, total, daily, own: total, x, y, r, level,
         color: kind === 'space' ? spaceColor(index) : slotColor(slot), auto: kind === 'space' ? spaceColor(index) : slotColor(slot), slot, icon: null,
-        depth: depthOf(row), children: [], parentR: parentRow ? parentRow[8] : 0,
+        depth: depthOf(row), children: [], parentR: parentRow ? parentRow[8] : 0, or: r, opr: 0,
       })
       this.look(this.groups.get(id)!)
     }
@@ -221,6 +247,14 @@ export class Scene {
           parent.own -= group.total
         }
       }
+    }
+    for (const row of rows) {
+      const group = this.groups.get(row[0])!
+      group.or = openRadius(group.r, Math.max(0, group.own) + group.children.length)
+    }
+    for (const row of rows) {
+      const group = this.groups.get(row[0])!
+      group.opr = group.parent !== null ? (this.groups.get(group.parent)?.or ?? 0) : 0
     }
   }
 
@@ -318,7 +352,7 @@ export class Scene {
     for (const group of this.groups.values()) {
       if (group.own <= 0) continue
       // A little before the group starts to open, so the dots are there when they fade in.
-      if (group.r * camera.k < OPEN_FROM * 0.8) continue
+      if (group.or * camera.k < OPEN_FROM * 0.8) continue
       if (this.hidden(group)) continue
       const gx0 = Math.max(x0, group.x - group.r)
       const gx1 = Math.min(x1, group.x + group.r)
@@ -355,7 +389,7 @@ export class Scene {
     let high = this.byRadius.length
     while (low < high) {
       const mid = (low + high) >> 1
-      if (this.byRadius[mid].r < limit) low = mid + 1
+      if (this.byRadius[mid].or < limit) low = mid + 1
       else high = mid
     }
     return low
@@ -369,7 +403,7 @@ export class Scene {
     for (let g = this.groups.get(groupId); g; g = g.parent !== null ? this.groups.get(g.parent) : undefined) chain.push(g)
     let found = -1
     for (let i = chain.length - 1; i >= 0; i--) {
-      if (chain[i].r * k < MID) {
+      if (chain[i].or * k < MID) {
         found = chain[i].id
         break
       }
@@ -397,7 +431,7 @@ export class Scene {
       f32[i * perVertex] = note.x
       f32[i * perVertex + 1] = note.y
       f32[i * perVertex + 2] = note.r
-      f32[i * perVertex + 3] = home ? home.r : 0
+      f32[i * perVertex + 3] = home ? home.or : 0
       const [r, g, b] = rgba(home?.color ?? slotColor(-1))
       u8[i * POINT_STRIDE + 16] = r
       u8[i * POINT_STRIDE + 17] = g
@@ -437,7 +471,8 @@ export class Scene {
         f32[at + 2] = group.x
         f32[at + 3] = group.y
         f32[at + 4] = group.r
-        f32[at + 5] = group.parentR
+        f32[at + 5] = group.opr
+        f32[at + 7] = group.or
         const byte = (i * 6 + v) * BUBBLE_STRIDE + 24
         u8[byte] = r
         u8[byte + 1] = g
@@ -459,38 +494,51 @@ export class Scene {
     return flags
   }
 
-  private end(kind: 'note' | 'group', id: number): { x: number; y: number; kind: number; r: number; rp: number } | null {
+  /** An end of a line: where, a note (0) or circle (1), the radii it opens by (`r`, `rp`) and the circle's real one. */
+  private end(kind: 'note' | 'group', id: number): { x: number; y: number; kind: number; r: number; rp: number; reach: number } | null {
     if (kind === 'group') {
       const g = this.groups.get(id)
-      return g ? { x: g.x, y: g.y, kind: 1, r: g.r, rp: g.parentR } : null
+      return g ? { x: g.x, y: g.y, kind: 1, r: g.or, rp: g.opr, reach: g.r } : null
     }
     const note = this.notes.get(id)
-    if (note) return { x: note.x, y: note.y, kind: 0, r: this.groups.get(note.group)?.r ?? 0, rp: 0 }
+    if (note) return { x: note.x, y: note.y, kind: 0, r: this.groups.get(note.group)?.or ?? 0, rp: 0, reach: 0 }
     return null
   }
 
   /**
    * Lines at zoom `k`: thin ones between two visible notes, bands from a note to a closed group and between closed
    * groups (one per pair, wider for more links), and the links of the focus drawn hot. With more than `MANY_LINES`
-   * lines from notes, only the focus's are drawn; the bundles between closed groups stay.
+   * lines from notes, only the focus's are drawn; the bundles between closed groups stay. With `view` (the part of the
+   * map around the screen) only the lines that reach into it count: zoomed in, the few notes in sight keep their lines
+   * even when the space as a whole has thousands (05.10.2026: zoomed in, every line was gone).
    */
-  lineBuffers(k: number, focus: number | null): { lines: ArrayBuffer; lineCount: number; bands: ArrayBuffer; bandCount: number } {
+  lineBuffers(k: number, focus: number | null, view?: { x0: number; y0: number; x1: number; y1: number }): LineBuffers {
     const memo = new Map<number, number>()
-    const bundles = new Map<string, { a: [string, number]; b: [string, number]; count: number; hot: boolean }>()
-    const thin: [number, number][] = []
+    const bundles = new Map<string, { a: number; b: number; count: number; hot: boolean }>()
     const hiddenGroup = (id: number) => {
       const group = this.groups.get(id)
       return !group || this.hidden(group)
     }
-    const add = (a: [string, number], b: [string, number], count: number, hot: boolean) => {
-      const ka = a[0] + a[1]
-      const kb = b[0] + b[1]
-      const key = ka < kb ? ka + '|' + kb : kb + '|' + ka
-      const bundle = bundles.get(key) ?? { a, b, count: 0, hot: false }
-      bundle.count += count
-      bundle.hot ||= hot
-      bundles.set(key, bundle)
+    // An end as one number, so that 150,000 links make no garbage (measured 05.10.2026: 42 to 65 ms a build with
+    // 50,000 notes, run in every frame of a motion): a note's id, a closed group as -(id + 1), NaN for none.
+    const endOf = (id: number): number => {
+      const note = this.notes.get(id)
+      const group = note?.group ?? this.others.get(id)?.group
+      if (group === undefined || hiddenGroup(group) || (note && this.hideDaily && note.daily)) return NaN
+      const rep = this.representative(group, k, memo)
+      if (rep >= 0) return -(rep + 1)
+      return note ? id : NaN
     }
+    const add = (a: number, b: number, count: number, hot: boolean) => {
+      const key = a < b ? a + '|' + b : b + '|' + a
+      const bundle = bundles.get(key)
+      if (bundle) {
+        bundle.count += count
+        bundle.hot ||= hot
+      } else bundles.set(key, { a, b, count, hot })
+    }
+    const xOf = (end: number) => (end < 0 ? this.groups.get(-end - 1)!.x : this.notes.get(end)!.x)
+    const yOf = (end: number) => (end < 0 ? this.groups.get(-end - 1)!.y : this.notes.get(end)!.y)
     // Between closed groups: from the counts of the overviews, and between spaces from the counts across them.
     for (const pairs of [...this.spaces.map((space) => space.pairs), this.across]) {
       for (const [ga, gb, count] of pairs) {
@@ -498,48 +546,60 @@ export class Scene {
         const ra = this.representative(ga, k, memo)
         const rb = this.representative(gb, k, memo)
         if (ra < 0 || rb < 0 || ra === rb) continue
-        add(['g', ra], ['g', rb], count, false)
+        add(-(ra + 1), -(rb + 1), count, false)
       }
     }
-    // From visible notes: to another visible note, or to the closed group the other end is in.
-    const calm: { a: number; b: number; ea: [string, number]; eb: [string, number] }[] = []
+    // From visible notes: to another visible note, or to the closed group the other end is in. Those that reach into
+    // the view are kept apart: with more than MANY_LINES of all, only they are drawn.
+    const calm: number[] = []
+    const seen: number[] = []
+    let count = 0
     for (const [a, b] of this.links.values()) {
-      const ends: ([string, number] | null)[] = [a, b].map((id) => {
-        const note = this.notes.get(id)
-        const group = note?.group ?? this.others.get(id)?.group
-        if (group === undefined || hiddenGroup(group) || (note && this.hideDaily && note.daily)) return null
-        const rep = this.representative(group, k, memo)
-        if (rep >= 0) return ['g', rep]
-        return note ? ['n', id] : null
-      })
-      const [ea, eb] = ends
-      if (!ea || !eb) continue
-      if (ea[0] === 'g' && eb[0] === 'g') continue // counted between the groups above
-      if (ea[0] === eb[0] && ea[1] === eb[1]) continue
-      const hot = focus !== null && (a === focus || b === focus)
-      if (hot) add(ea, eb, 1, true)
-      else calm.push({ a, b, ea, eb })
+      const ea = endOf(a)
+      const eb = endOf(b)
+      if (Number.isNaN(ea) || Number.isNaN(eb)) continue
+      if (ea < 0 && eb < 0) continue // counted between the groups above
+      if (ea === eb) continue
+      if (focus !== null && (a === focus || b === focus)) {
+        add(ea, eb, 1, true)
+        continue
+      }
+      count++
+      calm.push(ea, eb)
+      if (view) {
+        const ax = xOf(ea), bx = xOf(eb), ay = yOf(ea), by = yOf(eb)
+        if (Math.max(ax, bx) >= view.x0 && Math.min(ax, bx) <= view.x1 && Math.max(ay, by) >= view.y0 && Math.min(ay, by) <= view.y1) seen.push(ea, eb)
+      }
     }
-    if (calm.length <= MANY_LINES) {
-      for (const { a, b, ea, eb } of calm) {
-        if (ea[0] === 'n' && eb[0] === 'n') thin.push([a, b])
-        else add(ea, eb, 1, false)
+    const drawn = count > MANY_LINES && view ? seen : calm
+    const thin: number[] = []
+    if (drawn.length / 2 <= MANY_LINES) {
+      for (let i = 0; i < drawn.length; i += 2) {
+        if (drawn[i] >= 0 && drawn[i + 1] >= 0) thin.push(drawn[i], drawn[i + 1])
+        else add(drawn[i], drawn[i + 1], 1, false)
       }
     }
 
-    const lines = new ArrayBuffer(thin.length * 2 * LINE_STRIDE)
+    // Where each note's coordinates stand in the buffers, so that a moving note only writes its own numbers.
+    const lineEnds = new Map<number, number[]>()
+    const bandEnds = new Map<number, number[]>()
+    const mark = (ends: Map<number, number[]>, id: number, at: number) => {
+      const list = ends.get(id)
+      if (list) list.push(at)
+      else ends.set(id, [at])
+    }
+    const lines = new ArrayBuffer((thin.length / 2) * 2 * LINE_STRIDE)
     const lf = new Float32Array(lines)
     let n = 0
-    for (const [a, b] of thin) {
-      const ea = this.end('note', a)!
-      const eb = this.end('note', b)!
-      for (const [self, other] of [
-        [ea, eb],
-        [eb, ea],
-      ]) {
-        lf.set([self.x, self.y, self.kind, self.r, self.rp, other.kind, other.r, other.rp], n * 8)
-        n++
-      }
+    for (let i = 0; i < thin.length; i += 2) {
+      const ea = this.end('note', thin[i])!
+      const eb = this.end('note', thin[i + 1])!
+      lf.set([ea.x, ea.y, ea.kind, ea.r, ea.rp, eb.kind, eb.r, eb.rp], n * 8)
+      mark(lineEnds, thin[i], n * 8)
+      n++
+      lf.set([eb.x, eb.y, eb.kind, eb.r, eb.rp, ea.kind, ea.r, ea.rp], n * 8)
+      mark(lineEnds, thin[i + 1], n * 8)
+      n++
     }
 
     const list = [...bundles.values()]
@@ -548,19 +608,20 @@ export class Scene {
     const corners = [0, -1, 1, -1, 0, 1, 0, 1, 1, -1, 1, 1]
     let m = 0
     for (const bundle of list) {
-      const ea = this.end(bundle.a[0] === 'g' ? 'group' : 'note', bundle.a[1])
-      const eb = this.end(bundle.b[0] === 'g' ? 'group' : 'note', bundle.b[1])
+      const ea = bundle.a < 0 ? this.end('group', -bundle.a - 1) : this.end('note', bundle.a)
+      const eb = bundle.b < 0 ? this.end('group', -bundle.b - 1) : this.end('note', bundle.b)
       if (!ea || !eb) continue
-      const width = bundle.hot ? 1.8 : Math.min(7, 1 + Math.log2(bundle.count) * 1.3)
+      // The focus's lines fine, as in the attrappe of 05.10.2026; bundles wider for more links.
+      const width = bundle.hot ? 0.9 : Math.min(7, 1 + Math.log2(bundle.count) * 1.3)
       for (let v = 0; v < 6; v++) {
-        bf.set(
-          [corners[v * 2], corners[v * 2 + 1], ea.x, ea.y, eb.x, eb.y, ea.kind, ea.r, ea.rp, eb.kind, eb.r, eb.rp, width, bundle.hot ? 1 : 0],
-          m * (BAND_STRIDE / 4),
-        )
+        const at = m * (BAND_STRIDE / 4)
+        bf.set([corners[v * 2], corners[v * 2 + 1], ea.x, ea.y, eb.x, eb.y, ea.kind, ea.r, ea.rp, eb.kind, eb.r, eb.rp, width, bundle.hot ? 1 : 0, ea.reach, eb.reach], at)
+        if (bundle.a >= 0) mark(bandEnds, bundle.a, at + 2)
+        if (bundle.b >= 0) mark(bandEnds, bundle.b, at + 4)
         m++
       }
     }
-    return { lines, lineCount: n, bands, bandCount: m }
+    return { lines, lineCount: n, bands, bandCount: m, lineEnds, bandEnds }
   }
 
   // --- Focus --------------------------------------------------------------------------------------------------------
@@ -592,13 +653,13 @@ export class Scene {
   noteAlpha(note: SceneNote, k: number): number {
     const home = this.groups.get(note.group)
     if (!home || this.hidden(home) || (this.hideDaily && note.daily)) return 0
-    return inner(openness(home.r, k))
+    return inner(openness(home.or, k))
   }
 
   groupAlpha(group: SceneGroup, k: number): { closed: number; open: number } {
     if (this.hidden(group)) return { closed: 0, open: 0 }
-    const o = openness(group.r, k)
-    const vis = inner(openness(group.parentR, k))
+    const o = openness(group.or, k)
+    const vis = inner(openness(group.opr, k))
     return { closed: shell(o) * vis, open: ring(o) * vis }
   }
 
@@ -610,7 +671,7 @@ export class Scene {
     let bestDistance = Infinity
     for (const note of this.notes.values()) {
       if (this.noteAlpha(note, camera.k) < 0.35) continue
-      const dot = Math.min(MAX_DOT, Math.max(MIN_DOT, note.r * camera.k))
+      const dot = dotRadius(note.r, camera.k, this.groups.get(note.group)?.or ?? 0)
       const d = Math.hypot(note.x - wx, note.y - wy) * camera.k
       if (d < Math.max(dot, 6) + 4 && d < bestDistance) {
         bestDistance = d
@@ -630,7 +691,7 @@ export class Scene {
   centre(camera: Camera): SceneGroup | null {
     let found: SceneGroup | null = null
     for (const group of this.groups.values()) {
-      if (openness(group.r, camera.k) < 0.5) continue
+      if (openness(group.or, camera.k) < 0.5) continue
       if (Math.hypot(group.x - camera.x, group.y - camera.y) >= group.r) continue
       if (!found || group.depth > found.depth) found = group
     }

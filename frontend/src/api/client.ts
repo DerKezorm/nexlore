@@ -488,6 +488,12 @@ export type Me = Account & {
   second_factor_setup_required: boolean
   /** The editor offers AI: the operator allows it and the account switched its own service on. */
   ai_ready?: boolean
+  /** The operator allows AI at all: Frag Lore stands in the header, and says what is missing when not ready. */
+  ai_allowed?: boolean
+  /** The operator switched Frag Lore on (above AI in notes). */
+  lore_allowed?: boolean
+  /** Frag Lore shows: switched on, and an AI service ready for this account. */
+  lore?: boolean
   /** Pasted links get the page's title (the operator allows asking the pages). */
   link_titles?: boolean
   appearance?: Appearance
@@ -612,6 +618,9 @@ export type ServerSettings = {
   plugin_upload_allowed: boolean
   ai_allowed: boolean
   ai_private_hosts: string
+  ai_mode: AiMode
+  ai_per_minute: number
+  lore_allowed: boolean
   custom_css_allowed: boolean
   calendar_feed_allowed: boolean
   link_titles_allowed: boolean
@@ -676,6 +685,8 @@ export type NewsMention = { thread: number; path: string; title: string; author:
 export type Proposal = {
   id: number; path: string; title: string; by: string; message: string; status: 'open' | 'taken' | 'declined' | 'copied'
   created_at: string; decided_at: string | null; decided_by: string | null; content: string | null
+  /** Written by Lore for the person who asked (`routers/lore.py`). */
+  lore?: boolean
 }
 
 /** An invitation into a space by name, or a change the operator made in a space (routers/members.py). */
@@ -792,7 +803,29 @@ export const recentApi = {
 
 export type AiTask = 'spelling' | 'rewrite' | 'translate' | 'summarize' | 'write'
 export type AiAccess = { active: boolean; url: string; model: string; key_set: boolean }
-export type AiState = { allowed: boolean; ready: boolean; access: AiAccess; tones: string[] }
+/** Who brings the service: each account its own, or the operator one for all (Frag Lore, 05.10.2026). */
+export type AiMode = 'own' | 'shared'
+export type AiState = {
+  allowed: boolean
+  ready: boolean
+  mode: AiMode
+  access: AiAccess
+  /** The operator's service as a member sees it: its model, never its address or key. */
+  shared: { model: string; complete: boolean }
+  tones: string[]
+  /** How long conversations with Lore stay after their last question; 0: until removed. */
+  keep_days: number
+}
+export type AiShared = {
+  url: string
+  model: string
+  key_set: boolean
+  complete: boolean
+  /** The model that turns notes into vectors (finding them by meaning); empty: by their words only. */
+  embed_model: string
+  meaning: { done: number; total: number }
+  meaning_on: boolean
+}
 export type AiModel = { id: string; name: string }
 export type AiEvent = {
   id: number
@@ -814,7 +847,60 @@ export const aiApi = {
   run: (task: AiTask, text: string, target = '', instruction = '') =>
     api<{ text: string }>('/api/ai/run', { method: 'POST', body: { task, text, target, instruction } }),
   events: () => api<AiEvent[]>('/api/ai/events'),
+  /** The operator's service for all (operator only). */
+  shared: () => api<AiShared>('/api/ai/shared'),
+  saveShared: (change: Partial<{ url: string; model: string; key: string; embed_model: string }>) => api<AiShared>('/api/ai/shared', { method: 'PUT', body: change }),
+  sharedModels: (url?: string, key?: string) => api<AiModel[]>('/api/ai/shared/models', { method: 'POST', body: { url, key } }),
   clear: () => api<{ removed: number }>('/api/ai/events', { method: 'DELETE' }),
+}
+
+// --- Frag Lore (services/lore.py): questions about the own notes, answered from them --------------------------------
+
+export type LoreSource = { n: number; path: string; title: string; heading: string; excerpt: string }
+/** How Lore searched: in how many spaces (and which), for which words, which notes it read. */
+export type LoreStep = { tool: 'search'; words: string; found: number } | { tool: 'read'; n: number }
+export type LoreTrace = {
+  spaces: number
+  space_names: string[]
+  words: string[]
+  read: string[]
+  steps?: LoreStep[]
+  /** Found by their meaning, not their words (one service for all with a model for it). */
+  meant?: string[]
+}
+export type SimilarNote = { path: string; title: string; score: number }
+export type LoreMessage = {
+  id: number
+  role: 'user' | 'assistant'
+  at: string
+  text: string
+  sources: LoreSource[]
+  trace: LoreTrace | null
+  error: string
+}
+export type LoreConversation = { id: number; title: string; note: string | null; messages: LoreMessage[] }
+export type LoreListed = { id: number; title: string; updated_at: string; note: boolean }
+export type LoreAsk = { question: string; conversation?: number; spaces?: number[]; note?: string }
+export type LoreEvent =
+  | { name: 'start'; data: { conversation: number; sources: LoreSource[]; trace: LoreTrace } }
+  | { name: 'delta'; data: { t: string } }
+  /** Lore looked further (a model with tools): the sources as they are now, and the way it went. */
+  | { name: 'sources'; data: { sources: LoreSource[]; trace: LoreTrace } }
+  | { name: 'done'; data: { conversation: number; message: number } }
+  | { name: 'error'; data: { code: string; values: Record<string, unknown> } }
+
+export const loreApi = {
+  /** The own conversations, newest first; with a note: those about it. */
+  list: (note?: string) => api<LoreListed[]>('/api/lore/conversations', { query: { note } }),
+  get: (id: number) => api<LoreConversation>(`/api/lore/conversations/${id}`),
+  remove: (id: number) => api<{ removed: number }>(`/api/lore/conversations/${id}`, { method: 'DELETE' }),
+  removeAll: () => api<{ removed: number }>('/api/lore/conversations', { method: 'DELETE' }),
+  /** The notes nearest in meaning to a note; `on` false while finding by meaning is off. */
+  similar: (path: string) => api<{ on: boolean; notes: SimilarNote[] }>('/api/lore/similar', { query: { path } }),
+  /** An answer as a note of its own, with its sources as links; where the first source lies, if one may write there. */
+  saveNote: (id: number, message: number) => api<{ path: string }>(`/api/lore/conversations/${id}/note`, { method: 'POST', body: { message } }),
+  /** What an answer about a note says, as a proposal for that note: it waits there to be compared and taken over. */
+  propose: (id: number, message: number, note?: string) => api<{ proposal: number; path: string }>(`/api/lore/conversations/${id}/propose`, { method: 'POST', body: { message, note } }),
 }
 
 export const adminApi = {

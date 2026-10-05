@@ -16,7 +16,8 @@
     "files": "Files",
     "settings": "Settings",
     "calendar": "Calendar",
-    "tasks": "Tasks"
+    "tasks": "Tasks",
+    "lore": "Ask Lore"
   },
   "search": {
     "create": "Make the note “{{title}}”",
@@ -182,7 +183,9 @@
     },
     "wideHint": "A single note goes wide with cssclasses: wide among its properties.",
     "sampleTitle": "Bread dough",
-    "sampleText": "Flour, water, salt. Leave it overnight, then into the oven at 250 degrees. A bowl of water in the oven makes the crust better; lines of about seventy characters read most calmly."
+    "sampleText": "Flour, water, salt. Leave it overnight, then into the oven at 250 degrees. A bowl of water in the oven makes the crust better; lines of about seventy characters read most calmly.",
+    "graphGlow": "Glow on the map",
+    "graphGlowHint": "A soft light around the dots of the map. Off, the map draws faster on older computers."
   },
   "themes": {
     "title": "Themes",
@@ -660,7 +663,10 @@
     "linksFromThere_other": "links here {{count}} times",
     "lockedOwnTitle": "You are editing this note in another tab or window",
     "lockedOwnBanner": "You are editing this note in another tab or window. You can read it here; editing works once you are done there or close that tab.",
-    "versionsWhileEditing": "While you edit, no version can be brought back."
+    "versionsWhileEditing": "While you edit, no version can be brought back.",
+    "modeVisual": "Visual",
+    "modeMarkdown": "Markdown",
+    "editorMode": "View of the editor"
   },
   "settings": {
     "title": "Settings",
@@ -845,7 +851,15 @@
       "ai_address_refused": "nexlore does not send to this address.",
       "ai_hosts_invalid": "One host per entry, like 192.168.1.20 or ollama.lan:11434.",
       "bad_canvas": "This is no canvas nexlore can keep (JSON Canvas).",
-      "not_a_canvas": "This file is no canvas."
+      "not_a_canvas": "This file is no canvas.",
+      "ai_shared_incomplete": "The operator has not finished setting up the AI service for everyone.",
+      "lore_question_empty": "Ask a question first.",
+      "lore_nowhere": "There is no space you may write in for the note.",
+      "lore_nothing_to_change": "Lore found nothing to change in the note.",
+      "lore_conversation_full": "This conversation is full. Start a new one.",
+      "lore_not_about_a_note": "Only a conversation about a note can propose a change for it.",
+      "too_many_proposals": "Too many proposals wait for an answer.",
+      "lore_off": "Ask Lore is not switched on on this server."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
@@ -1400,14 +1414,33 @@
       "enabledMine": "On for you"
     },
     "ai": {
-      "title": "AI in notes",
-      "text": "Every account may connect its own AI service and use it in the editor. The text a person chooses leaves the server for that service.",
+      "title": "AI in notes and Ask Lore",
+      "text": "AI corrects and writes in the editor, and Lore answers questions about the notes. Text that is chosen or asked about leaves the server for the AI service.",
       "allow": "Allow AI in notes",
       "allowHint": "Off: nothing goes out, and the editor offers no AI. Accounts keep their access for later.",
       "where": "Each account sets up its service under My account → Connections → AI in notes.",
       "whereLink": "Go to my access",
       "hosts": "Services in your own network",
-      "hostsHint": "Hosts members may use as AI service although they are in your network or on this machine, separated by commas: 192.168.1.20, ollama.lan:11434. Every other address in your network is refused; public addresses always work."
+      "hostsHint": "Hosts members may use as AI service although they are in your network or on this machine, separated by commas: 192.168.1.20, ollama.lan:11434. Every other address in your network is refused; public addresses always work.",
+      "mode": "Who brings the AI service?",
+      "modes": {
+        "own": "Each on their own",
+        "ownText": "Every account puts in its own service under My account. Without one, it cannot ask Lore.",
+        "shared": "One for all",
+        "sharedText": "You put in one service here and every account uses it. The accounts' own accesses rest."
+      },
+      "sharedAddressHint": "May be in your own network, such as Ollama at home; it needs no entry in the list of services in your network.",
+      "sharedIncomplete": "Save an address and a model, then every account can use it.",
+      "perMinute": "Requests per account",
+      "perMinuteValue_one": "{{count}} per minute",
+      "perMinuteValue_other": "{{count}} per minute",
+      "embedModel": "Model for finding notes by meaning (optional)",
+      "embedNone": "none: Lore finds notes by their words",
+      "embedHint": "A model of the same service that turns text into vectors, such as nomic-embed-text. Then Lore also finds notes that mean the question in other words, and every note shows similar ones. For this the first part of every note goes to the service once, and again when it changes.",
+      "embedProgress": "{{done}} of {{total}} notes read in",
+      "embedNotHere": "This service offers no models for vectors: finding by meaning needs another one, such as Ollama or OpenAI.",
+      "loreAllow": "Allow Ask Lore",
+      "loreAllowHint": "Off: no spider in the corner and no Ask Lore in the header. On, everybody whose AI service is ready can ask Lore about the notes they may read."
     },
     "guide": {
       "title": "The guide",
@@ -2166,7 +2199,9 @@
     "untouched": "The note is unchanged. The proposal replaces the selection only when you take it over.",
     "taken": "Taken over. Undo brings the old text back.",
     "madeNote": "Made the note “{{title}}”.",
-    "untouchedNote": "The note is unchanged. The proposal replaces its text only when you take it over."
+    "untouchedNote": "The note is unchanged. The proposal replaces its text only when you take it over.",
+    "sharedInfo": "The operator provides the AI service for everyone: {{model}}. You do not need to fill anything in.",
+    "sharedIncomplete": "The operator provides the AI service for everyone, but has not finished setting it up yet."
   },
   "tabs": {
     "label": "Open notes",
@@ -2391,5 +2426,104 @@
     "offOperator": "Switch them on under Settings → Server → AI, API and plugins.",
     "whatItDoes": "What the API does",
     "whatItDoesText": "Every request carries the token in the header Authorization: Bearer, the answers are JSON. Writing needs the level Write and the right in the space."
+  },
+  "lore": {
+    "title": "Ask Lore",
+    "conversations": "Conversations",
+    "newChat": "New conversation",
+    "noneYet": "No conversations yet.",
+    "days": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "week": "This week",
+      "earlier": "Earlier"
+    },
+    "kept_one": "Only you see your conversations. They stay for {{count}} day after the last question.",
+    "kept_other": "Only you see your conversations. They stay for {{count}} days after the last question.",
+    "kept_zero": "Only you see your conversations. They stay until you remove them.",
+    "remove": "Remove the conversation {{title}}",
+    "removeShort": "Remove",
+    "removeTitle": "Remove the conversation?",
+    "removeText": "“{{title}}” goes for good. The notes stay as they are.",
+    "removeAll": "Remove all conversations",
+    "removeAllTitle": "Remove all conversations?",
+    "removeAllText": "Every conversation with Lore goes for good. The notes stay as they are.",
+    "modelShared": "{{model}} · from the operator",
+    "placeholder": "Ask Lore something about your notes …",
+    "send": "Send",
+    "enterHint": "Enter sends, Shift+Enter starts a new line",
+    "sees": "Lore sees only what you may read",
+    "traceWords": "searched for:",
+    "traceSpaces": "in:",
+    "traceRead": "read:",
+    "missing": "Not in your notes:",
+    "copy": "Copy",
+    "copied": "Copied",
+    "looksIn": "Looks in:",
+    "emptyTitle": "What would you like to know?",
+    "emptyText": "Lore looks in your notes and tells you where it says so. What is not there, she says too.",
+    "suggest": {
+      "week": "What did I write down this week?",
+      "overdue": "Which tasks are overdue, and why?",
+      "decided": "What have we decided so far?",
+      "clash": "Do any of my notes contradict each other?"
+    },
+    "noThreadTitle": "Lore has no thread right now",
+    "noThread": {
+      "off": "Your operator has not switched on AI on this server.",
+      "shared": "Your operator provides the AI service for everyone, but has not finished setting it up yet.",
+      "own": "For Ask Lore, nexlore needs an AI service. Your operator lets each account bring its own.",
+      "loreOff": "Your operator has not switched on Ask Lore on this server."
+    },
+    "setUp": "Set up an AI service",
+    "toSettings": "To the AI settings",
+    "quick": {
+      "sum": "Sum it up",
+      "gap": "What is missing here?",
+      "clash": "Does this contradict other notes?",
+      "rel": "What is connected to this?"
+    },
+    "saveNote": "Save as a note",
+    "saved": "Saved as",
+    "propose": "Propose for the note",
+    "proposing": "Lore writes the proposal …",
+    "proposed": "The proposal waits on the note: compare it there and take it over.",
+    "proposalBanner": "Lore proposes a change: {{message}}",
+    "traceIn_one": "Searched one space",
+    "traceIn_other": "Searched {{count}} spaces",
+    "traceNotes_one": "read one note",
+    "traceNotes_other": "read {{count}} notes",
+    "proposalTitle": "Lore's proposal",
+    "traceThen": "then:",
+    "stepSearch_one": "looked for “{{words}}”, one new source",
+    "stepSearch_other": "looked for “{{words}}”, {{count}} new sources",
+    "stepRead": "read source {{n}} whole",
+    "searchingFor": "Lore looks for “{{words}}” …",
+    "traceMeant": "found by meaning:",
+    "similar": "Similar notes",
+    "close": "Close Lore",
+    "allConversations": "All conversations",
+    "bigger": "Larger",
+    "smaller": "Smaller",
+    "about": "About: {{note}}",
+    "aboutThis": "About “{{note}}”:",
+    "withoutNote": "Ask without this note",
+    "inSpaces_one": "in one space",
+    "inSpaces_other": "in {{count}} spaces",
+    "placeholderShort": "Ask on …",
+    "emptyShort": "Lore looks in your notes and tells you where it says so.",
+    "sourcesCount_one": "one source",
+    "sourcesCount_other": "{{count}} sources",
+    "way": "How Lore searched",
+    "searchingIn_one": "Lore looks in one space …",
+    "searchingIn_other": "Lore looks in {{count}} spaces …"
+  },
+  "editorView": {
+    "title": "Editor",
+    "text": "The view a note opens in when you edit it. The switch in the toolbar changes it for the note at hand.",
+    "visual": "Visual",
+    "visualHint": "You see the text as it reads: headings, bold, lists, links. No Markdown signs.",
+    "source": "Markdown",
+    "sourceHint": "You see the text with all its Markdown signs, in a fixed-width font. The toolbar writes the signs for you."
   }
 }

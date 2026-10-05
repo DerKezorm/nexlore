@@ -2,7 +2,7 @@
  * The WebGL drawing in a real browser, read back pixel by pixel: what the shaders make of the zoom. A group is a red
  * circle of radius 50 around the middle, a blue note sits on its middle.
  */
-import { BUBBLE_STRIDE, GraphGL, OPEN_FROM, OPEN_TO, POINT_STRIDE, type Colors } from './gl'
+import { BUBBLE_STRIDE, GraphGL, OPEN_FROM, OPEN_TO, POINT_STRIDE, dotRadius, type Colors } from './gl'
 
 const SIZE = 200
 const COLORS: Colors = { text: '#ffffff', dim: '#888888', bg: '#000000', edge: [0.5, 0.5, 0.5], accent: [0, 1, 0], light: false }
@@ -22,6 +22,8 @@ function setup() {
   const corners = [-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]
   for (let v = 0; v < 6; v++) {
     bf.set([corners[v * 2], corners[v * 2 + 1], 0, 0, 50, 0], (v * BUBBLE_STRIDE) / 4)
+    // It opens by its own radius here (a group with many items).
+    bf[(v * BUBBLE_STRIDE) / 4 + 7] = 50
     bu.set([255, 0, 0, 255], v * BUBBLE_STRIDE + 24)
   }
   gl.bubbles.upload(bubble, 6, new Uint8Array(24))
@@ -34,10 +36,10 @@ function setup() {
 }
 
 /** The colour in the middle of the drawing, right after drawing (before the browser puts it on screen). */
-function middle(gl: GraphGL, k: number): [number, number, number, number] {
-  gl.render({ x: 0, y: 0, k }, SIZE, SIZE, 1, COLORS, false)
+function middle(gl: GraphGL, k: number, right = 0): [number, number, number, number] {
+  gl.render({ x: 0, y: 0, k }, SIZE, SIZE, 1, COLORS, 0)
   const pixel = new Uint8Array(4)
-  gl.gl.readPixels(SIZE / 2, SIZE / 2, 1, 1, gl.gl.RGBA, gl.gl.UNSIGNED_BYTE, pixel)
+  gl.gl.readPixels(SIZE / 2 + right, SIZE / 2, 1, 1, gl.gl.RGBA, gl.gl.UNSIGNED_BYTE, pixel)
   return [pixel[0], pixel[1], pixel[2], pixel[3]]
 }
 
@@ -71,11 +73,15 @@ describe('the graph in WebGL', () => {
     gl.points.setFlags(new Uint8Array([0, 0, 255, 0]))
     const [, , b] = middle(gl, 4)
     expect(b).toBeLessThan(40)
+    // The focus keeps its colour and gets a ring in the accent around it (the dot, 6 at zoom 4, ends at dotRadius).
     gl.points.setFlags(new Uint8Array([0, 255, 0, 0]))
-    const [r, g, b2] = middle(gl, 4)
-    expect(g).toBeGreaterThan(200)
+    const [, , inside] = middle(gl, 4)
+    expect(inside).toBeGreaterThan(200)
+    // A pixel is read at its middle, half a pixel further out than its index.
+    const [r, g, b2] = middle(gl, 4, Math.round(dotRadius(6, 4, 50) + 3.5 - 0.5))
+    expect(g).toBeGreaterThan(150)
     expect(r).toBeLessThan(40)
-    expect(b2).toBeLessThan(40)
+    expect(b2).toBeLessThan(90)
     gl.destroy()
     canvas.remove()
   })
@@ -89,6 +95,7 @@ describe('the graph in WebGL', () => {
     for (let v = 0; v < 6; v++) {
       // Parent radius 60: at zoom 1 the parent is 60 wide on screen, closed, so this child is not to be seen.
       bf.set([corners[v * 2], corners[v * 2 + 1], 0, 0, 50, 60], (v * BUBBLE_STRIDE) / 4)
+      bf[(v * BUBBLE_STRIDE) / 4 + 7] = 50
       bu.set([255, 0, 0, 255], v * BUBBLE_STRIDE + 24)
     }
     gl.bubbles.upload(bubble, 6)

@@ -1,6 +1,8 @@
 /**
  * The editor of a note: the properties (front matter) on top, the text below in Milkdown Crepe with the Obsidian
- * layer, and a plain Markdown view for those who want it (menu of the note page).
+ * layer, and a plain Markdown view for those who want it (the switch in the toolbar, or the default of the account).
+ * The Markdown view stands on the page like the visual editor, without a frame, growing with the text, and keeps the
+ * whole toolbar: its commands write the signs into the text, so that the browser's undo takes them back.
  *
  * The page asks for the text to save with `text()`: the head (untouched unless a property changed) plus the body
  * through the block layer, so only what was changed differs from the file. The editor itself only says that
@@ -45,7 +47,8 @@ import { CommentPeek } from './CommentPeek'
 import { ImageViewer } from './ImageViewer'
 import { picturesIn, type Picture } from '../lib/pictures'
 import { AiDialog } from './AiDialog'
-import { EditorToolbar, ShowToolbar } from './EditorToolbar'
+import { EditorToolbar, ShowToolbar, type ToolbarTarget } from './EditorToolbar'
+import { sourceEdit, sourceStatus, type SourceEdit } from '../lib/sourceTools'
 import { FindBar } from './FindBar'
 import { Properties } from './Properties'
 
@@ -71,8 +74,8 @@ type Props = {
   onChange: () => void
   onLeave: (text: string) => void
   onOpenLink: (target: string, newTab: boolean) => void
-  /** The toolbar's way to the plain Markdown view. */
-  onSource?: () => void
+  /** The toolbar's switch between the visual editor and the Markdown view. */
+  onMode?: (mode: EditorMode) => void
   /** A line for the page's notice (an AI result taken over, a note made from it). */
   onNotice?: (text: string) => void
   onFileRefused?: () => void
@@ -106,7 +109,7 @@ function startCaret(view: EditorView): void {
 }
 
 export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
-  { path, content, links, mode, readOnly = false, onChange, onLeave, onOpenLink, onSource, onNotice, onFileRefused, onUploaded, onUploadFailed, onComment, threads, onShowThread },
+  { path, content, links, mode, readOnly = false, onChange, onLeave, onOpenLink, onMode, onNotice, onFileRefused, onUploaded, onUploadFailed, onComment, threads, onShowThread },
   ref,
 ) {
   const { spaces } = useStore()
@@ -173,6 +176,10 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
   const body = useRef(initial.body)
   const [source, setSource] = useState('')
   const sourceRef = useRef('')
+  // The Markdown view's field, and who listens for its caret (the toolbar).
+  const sourceField = useRef<HTMLTextAreaElement>(null)
+  const sourceListeners = useRef(new Set<() => void>())
+  const sourceMoved = () => sourceListeners.current.forEach((listener) => listener())
   const [problem, setProblem] = useState<string | null>(null)
   const menu = useContextMenu()
   // Find and replace: open or not, the row for replacing, and each ask to focus a field (Ctrl+F, Ctrl+H).
@@ -322,6 +329,81 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     // Made once per mode; the page gives the editor a new key for another note.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, readOnly])
+
+  // The Markdown view's commands: on the field's text, written so that undo takes them back.
+  const sourceTarget = useMemo<ToolbarTarget>(
+    () => ({
+      run: (command, option) => {
+        const field = sourceField.current
+        if (!field || readOnly) return
+        field.focus()
+        if (command === 'undo' || command === 'redo') {
+          document.execCommand(command)
+          return sourceMoved()
+        }
+        if (command === 'attachment') return void attachInSource(field)
+        const change = sourceEdit(command, field.value, field.selectionStart, field.selectionEnd, option)
+        if (change) writeSource(field, change)
+        sourceMoved()
+      },
+      status: () => {
+        const field = sourceField.current
+        return sourceStatus(field?.value ?? '', field?.selectionStart ?? 0, field?.selectionEnd ?? 0)
+      },
+      subscribe: (listener) => {
+        sourceListeners.current.add(listener)
+        return () => void sourceListeners.current.delete(listener)
+      },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the upload reads the path when it runs
+    [readOnly],
+  )
+  /** Files chosen in the Markdown view: uploaded for this note, their links at the caret. */
+  const attachInSource = async (field: HTMLTextAreaElement) => {
+    const chosen = await new Promise<File[]>((resolve) => {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.multiple = true
+      input.addEventListener('change', () => resolve([...(input.files ?? [])]))
+      input.addEventListener('cancel', () => resolve([]))
+      input.click()
+    })
+    if (!chosen.length) return
+    const done = (
+      await Promise.all(
+        chosen.map((file) =>
+          uploadFile(file, { note: path, pasted: false }).catch((error: unknown) => {
+            latest.current.onUploadFailed?.(error instanceof ApiError ? error.code : 'internal_error')
+            return null
+          }),
+        ),
+      )
+    ).filter((item): item is Uploaded => item !== null)
+    if (!done.length) return
+    latest.current.onUploaded?.(done)
+    const words = done.map((item) => (fileKind(item.path) === 'image' ? `![](${item.link})` : `[${baseName(item.path)}](${item.link})`)).join(' ')
+    field.focus()
+    const at = field.selectionEnd
+    writeSource(field, { from: at, to: at, insert: words, select: [at + words.length, at + words.length] })
+  }
+  useEffect(() => {
+    if (mode !== 'source') return
+    const moved = () => document.activeElement === sourceField.current && sourceMoved()
+    document.addEventListener('selectionchange', moved)
+    return () => document.removeEventListener('selectionchange', moved)
+  }, [mode])
+  // The field grows with the text: the page scrolls, as with the visual editor.
+  useLayoutEffect(() => {
+    const field = sourceField.current
+    if (mode !== 'source' || !field) return
+    const fit = () => {
+      field.style.height = '0px'
+      field.style.height = field.scrollHeight + 'px'
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+  }, [mode, source, lines])
 
   // Switching to the Markdown view: the whole note as text.
   useEffect(() => {
@@ -621,9 +703,10 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
 
   if (problem) return <p className="text-sm text-bad-500">{t('note.editorFailed')}</p>
 
-  const toolbar = mode === 'visual' && !readOnly
+  const toolbar = !readOnly
+  const target: ToolbarTarget | null = mode === 'visual' ? ready : sourceTarget
   const findBar =
-    toolbar && finding && ready ? (
+    toolbar && mode === 'visual' && finding && ready ? (
       <FindBar
         key={path}
         editor={ready}
@@ -649,18 +732,20 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
               onShow={() => {
                 rememberToolbar(false)
                 setToolbarOff(false)
-                engine.current?.view.focus()
+                if (mode === 'source') sourceField.current?.focus()
+                else engine.current?.view.focus()
               }}
             />
             {findBar && <div className="sticky top-0 z-20 -mx-1 mb-3 rounded-xl border border-ink-700 bg-ink-900/95 px-1.5 backdrop-blur">{findBar}</div>}
           </>
         ) : (
           <EditorToolbar
-            editor={ready}
+            editor={target}
             findBar={findBar}
-            onFind={() => askFind(false)}
-            ai={aiReady ? () => aiMenu(t, setAiAsk) : undefined}
-            onSource={() => onSource?.()}
+            onFind={mode === 'visual' ? () => askFind(false) : undefined}
+            ai={aiReady && mode === 'visual' ? () => aiMenu(t, setAiAsk) : undefined}
+            mode={mode}
+            onMode={(next) => onMode?.(next)}
             onHide={() => {
               rememberToolbar(true)
               setToolbarOff(true)
@@ -688,6 +773,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       {mode === 'source' ? (
         <SourceLines lines={lines} text={source}>
         <textarea
+          ref={sourceField}
           value={source}
           readOnly={readOnly}
           spellCheck={false}
@@ -696,11 +782,20 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
             sourceRef.current = event.target.value
             setSource(event.target.value)
             latest.current.onChange()
+            sourceMoved()
+          }}
+          onKeyDown={(event) => {
+            // The keys of the visual editor for bold and italic.
+            if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || readOnly) return
+            const command = ({ b: 'bold', i: 'italic' } as const)[event.key.toLowerCase() as 'b' | 'i']
+            if (!command) return
+            event.preventDefault()
+            sourceTarget.run(command)
           }}
           wrap={lines ? 'off' : undefined}
           className={
-            'nx-source min-h-[60vh] w-full resize-y rounded-xl border border-ink-700 bg-ink-900 p-4 font-mono text-[13px] leading-6 text-mist-200 outline-none focus:border-accent-500' +
-            (lines ? ' pl-14' : '')
+            'nx-source block min-h-[40vh] w-full resize-none overflow-y-hidden bg-transparent font-mono text-[13px] leading-6 text-mist-200 outline-none' +
+            (lines ? ' overflow-x-auto pl-14' : '')
           }
         />
         </SourceLines>
@@ -760,11 +855,26 @@ function SourceLines({ lines, text, children }: { lines: boolean; text: string; 
       }}
     >
       {children}
-      <div aria-hidden="true" className="pointer-events-none absolute top-px bottom-px left-px w-11 overflow-hidden rounded-l-xl" data-testid="source-lines">
-        <div ref={column} className="pt-4 pr-2 text-right font-mono text-[11px] leading-6 whitespace-pre text-mist-600">
+      <div aria-hidden="true" className="pointer-events-none absolute top-0 bottom-0 left-0 w-11 overflow-hidden" data-testid="source-lines">
+        <div ref={column} className="pr-2 text-right font-mono text-[11px] leading-6 whitespace-pre text-mist-600">
           {numbers}
         </div>
       </div>
     </div>
   )
+}
+
+/**
+ * One change into the Markdown view's field. `insertText` goes through the browser's own editing, so that its undo
+ * takes the change back like something typed; where a browser refuses it, the text is set and the change announced.
+ */
+function writeSource(field: HTMLTextAreaElement, change: SourceEdit): void {
+  field.setSelectionRange(change.from, change.to)
+  if (change.insert !== field.value.slice(change.from, change.to)) {
+    if (!document.execCommand('insertText', false, change.insert)) {
+      field.setRangeText(change.insert, change.from, change.to, 'end')
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+  }
+  field.setSelectionRange(change.select[0], change.select[1])
 }

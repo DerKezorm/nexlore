@@ -170,6 +170,50 @@ test('the Markdown view edits the text itself', async ({ page }) => {
   await expect(page.locator('.ProseMirror strong')).toHaveText('text')
 })
 
+test('the Markdown view stands on the page with the whole toolbar, writes the signs, and goes back with the switch', async ({ page }) => {
+  await edit(page, 'Zyx/Source view.md')
+  const bar = page.getByTestId('editor-toolbar')
+  await bar.getByRole('button', { name: 'Markdown', exact: true }).click()
+  const source = page.getByRole('textbox', { name: 'Markdown source of the note' })
+  await expect(source).toHaveValue('# Source view\n\nOne line.\n')
+  await expect(bar.getByRole('button', { name: 'Markdown', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  // No frame of its own: it grows with the text instead of scrolling inside.
+  expect(await source.evaluate((field) => getComputedStyle(field).borderTopWidth)).toBe('0px')
+  await source.fill('# Source view\n\n' + Array.from({ length: 60 }, (_, n) => 'Line ' + n).join('\n') + '\n')
+  expect(await source.evaluate((field) => field.scrollHeight <= field.clientHeight + 1)).toBe(true)
+  await source.fill('# Source view\n\nOne line.\n')
+  // The toolbar writes the Markdown signs around the words chosen; undo takes them back.
+  await source.evaluate((field: HTMLTextAreaElement) => field.setSelectionRange(15, 18))
+  await bar.getByRole('button', { name: 'Bold' }).click()
+  await expect(source).toHaveValue('# Source view\n\n**One** line.\n')
+  await expect(bar.getByRole('button', { name: 'Bold' })).toHaveAttribute('aria-pressed', 'true')
+  await bar.getByRole('button', { name: 'Undo' }).click()
+  await expect(source).toHaveValue('# Source view\n\nOne line.\n')
+  await bar.getByRole('button', { name: 'Bullet list' }).click()
+  await expect(source).toHaveValue('# Source view\n\n- One line.\n')
+  await saved(page)
+  expect(onDisk('Zyx/Source view.md')).toBe('# Source view\n\n- One line.\n')
+  // Back with one click, the list is a list.
+  await bar.getByRole('button', { name: 'Visual', exact: true }).click()
+  await expect(page.locator('.ProseMirror li')).toHaveText('One line.')
+})
+
+test('an account that writes Markdown opens its notes in the Markdown view', async ({ page }) => {
+  await page.goto('/settings?tab=general')
+  const card = page.locator('#editor')
+  await card.getByRole('radio', { name: /^Markdown/ }).check()
+  await expect.poll(async () => (await (await page.request.get('/api/auth/me')).json()).appearance.editor).toBe('source')
+  try {
+    // A note of its own: the test before keeps the lock of Writing/Source.md for a moment, Edit would wait for it.
+    await page.goto('/note/Zyx/Opens%20as%20text.md')
+    await page.getByRole('button', { name: 'Edit', exact: true }).click()
+    await expect(page.getByRole('textbox', { name: 'Markdown source of the note' })).toBeVisible()
+    await expect(page.locator('.ProseMirror')).toHaveCount(0)
+  } finally {
+    await page.request.put('/api/me/appearance', { headers: { 'X-Nexlore-Client': 'tab-e2e-editorview' }, data: { editor: 'visual' } })
+  }
+})
+
 test('a conflict copy is compared, a part taken over, and the copy goes to the trash', async ({ page }) => {
   await edit(page, 'Writing/Compare.md')
   fs.writeFileSync(file('Writing/Compare.md'), '# Compare\n\nKept line.\n\nChanged in Obsidian.\n')

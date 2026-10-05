@@ -138,6 +138,9 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Zoo/Tidy/Old/Gone.md': '# Gone\n',
   'Zoo/Embedded.md':'# Embedded\n\n## Part one\n\nNot in the embed.\n\n## Part two\n\nIn the embed, with a link to [[Across target]].\n\n![[Reading]]\n',
   // The palette and the quick switcher (palette.spec.ts), in a space of its own after all others (nothing moves).
+  // Frag Lore (lore.spec.ts): notes with a word nothing else has, at the end of the tree.
+  'Zyx/Lore/Glasswing backups.md': '# Glasswing backups\n\nThe glasswing backups run every hour, kept for two days.\n',
+  'Zyx/Lore/Glasswing drill.md': '# Glasswing drill\n\nThe last glasswing restore took 38 minutes.\n',
   'Zyx/Palette.md': `---\naliases: [Command deck]\n---\n# Palette\n\n## First part\n\n${'A line to scroll past.\n\n'.repeat(40)}## Far down\n\nThe end.\n`,
   'Zyx/Tagged.md': '---\ntags: [pal]\n---\n# Tagged\n\nOne #pal/one here, and #palette stays.\n',
   'Zyx/Rich.md': [
@@ -169,6 +172,8 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   'Writing/Linking.md': '# Linking\n\nStart.\n',
   'Writing/Target note.md': '# Target note\n',
   'Writing/Source.md': '# Source\n\nPlain text.\n',
+  'Zyx/Source view.md': '# Source view\n\nOne line.\n',
+  'Zyx/Opens as text.md': '# Opens as text\n\nPlain.\n',
   'Writing/Compare.md': '# Compare\n\nKept line.\n\nOld ending.\n',
   // Attachments (attachments.spec.ts).
   'Media/Paste here.md': '# Paste here\n\nStart.\n',

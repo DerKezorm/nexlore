@@ -8,15 +8,51 @@
  * rendering is fifty times slower with instancing), circles and thick lines are quads, thin lines are GL lines.
  *
  * The same rules as in the attrappe (`OPEN_FROM`, `OPEN_TO`, shell, ring, inner) and as the server's `OPEN_FROM`.
+ *
+ * The look of 05.10.2026 (attrappe `tools/graph-attrappe/`): a note's size says how linked it is, also deep in (the
+ * largest stop later), every dot has a soft glow, lines are faint far away and clearer close up, and a focus dims
+ * the rest by degrees: `focusOn` is not on or off but how far the fade has come (0 to 1).
  */
 
 export const OPEN_FROM = 80
 export const OPEN_TO = 170
-/** Dots stop growing at this radius on screen, otherwise deep zoom turns them into discs. */
+/** Dots stop growing at this radius on screen, otherwise deep zoom turns them into discs (the most linked later). */
 export const MAX_DOT = 15
 export const MIN_DOT = 2
 
+/**
+ * The rules of the attrappe (tools/graph-attrappe, 05.10.2026), the same here as there. Its zoom `k` is how far one
+ * has come into a group: the group's radius on screen over `OPEN_TO` (1 just open, more when closer).
+ */
+export function zoomIn(groupRadius: number, k: number): number {
+  return groupRadius > 0 ? (groupRadius * k) / OPEN_TO : k
+}
+
+/** A dot's radius on screen: by its links as in the attrappe (4.5 to 14), growing with the root of the zoom. The
+ * server's size (`note_radius`: 5 + √links · 1.6, at most 12) gives back the number of links. */
+export function dotRadius(rad: number, k: number, groupRadius = 0): number {
+  const links = Math.pow(Math.max(0, rad - 5) / 1.6, 2)
+  const base = Math.min(14, Math.max(4.5, 2.25 * Math.sqrt(links + 1)))
+  return base * Math.min(2, Math.max(0.5, Math.sqrt(zoomIn(groupRadius, k))))
+}
+
 export type Camera = { x: number; y: number; k: number }
+
+/** Lines share this much ink: up to so many on screen each is drawn as in the attrappe, beyond it each one fainter
+ * (and bundles narrower), so that thousands make a veil rather than a grey surface (50,000 notes, 05.10.2026). */
+export const INK = 600
+
+/** The glow is for a screen of dots, not for tens of thousands: it costs the graphics card ten times the dot's area,
+ * and with 40,000 notes in view frames took seconds (05.10.2026). Full up to `GLOW_FULL` dots on screen, gone
+ * from `GLOW_NONE`. */
+export const GLOW_FULL = 600
+export const GLOW_NONE = 1500
+export function glowFor(dots: number): number {
+  return Math.min(1, Math.max(0, (GLOW_NONE - dots) / (GLOW_NONE - GLOW_FULL)))
+}
+export function inkFor(lines: number): number {
+  return Math.min(1, Math.max(0.05, INK / Math.max(1, lines)))
+}
 
 /** Colours of the page, read from the theme: `[r, g, b]` from 0 to 1. */
 export type Colors = { text: string; dim: string; bg: string; edge: [number, number, number]; accent: [number, number, number]; light: boolean }
@@ -32,6 +68,8 @@ float ring(float o) { return ease(0.1, 0.5, o); }
 float inner(float o) { return ease(0.1, 0.6, o); }
 vec2 toScreen(vec2 p) { return (p - cam.xy) * cam.z + size * 0.5; }
 vec4 toClip(vec2 s) { return vec4(s / size * 2.0 - 1.0, 0.0, 1.0) * vec4(1.0, -1.0, 1.0, 1.0); }
+// The attrappe's zoom: how far into a group (its radius on screen over OPEN_TO).
+float zoomIn(float r) { return r > 0.0 ? r * cam.z / ${OPEN_TO.toFixed(1)} : cam.z; }
 // How visible an end of a line is: a note (kind 0) with its group's radius, or a closed circle (kind 1).
 float endAlpha(float kind, float r, float rp) {
   return kind < 0.5 ? inner(openness(r)) : shell(openness(r)) * inner(openness(rp));
@@ -41,16 +79,18 @@ float endAlpha(float kind, float r, float rp) {
 const POINT_VS = `#version 300 es
 in vec2 pos; in float rad; in float home; in vec4 col; in vec4 flag;
 ${COMMON}
-uniform float focusOn; uniform float maxPoint;
+uniform float focusOn; uniform float maxPoint; uniform float glow;
 out vec4 vColor; out float vPix; out float vOuter; out float vRing;
 void main() {
   float a = inner(openness(home)) * col.a;
   if (flag.z > 0.5) a = 0.0;                       // hidden (daily notes switched off)
-  if (focusOn > 0.5 && flag.w < 0.5 && flag.y < 0.5) a *= 0.25;   // not the focus and not next to it
-  float r = clamp(rad * cam.z, ${MIN_DOT.toFixed(1)}, ${MAX_DOT.toFixed(1)});
+  if (flag.w < 0.5 && flag.y < 0.5) a *= mix(1.0, 0.18, focusOn);   // not the focus and not next to it
+  float links = pow(max(0.0, rad - 5.0) / 1.6, 2.0);
+  float r = clamp(2.25 * sqrt(links + 1.0), 4.5, 14.0) * clamp(sqrt(zoomIn(home)), 0.5, 2.0);
   vRing = flag.y > 0.5 ? 1.0 : 0.0;
   vColor = vec4(col.rgb, a);
-  float outer = r + (vRing > 0.5 ? 6.0 : 1.0);
+  // The glow reaches three times the dot (as in the attrappe), and there is room for the ring of the focus.
+  float outer = max(r * (1.0 + 2.2 * glow), r + 7.0);
   // The device draws points only up to a size: smaller then, but dot and ring in the same proportion.
   float size = min(2.0 * outer * dpr, maxPoint);
   float scale = size / (2.0 * outer * dpr);
@@ -64,16 +104,19 @@ void main() {
 const POINT_FS = `#version 300 es
 precision mediump float;
 in vec4 vColor; in float vPix; in float vOuter; in float vRing;
-uniform vec3 accent; uniform float dpr;
+uniform vec3 accent; uniform float dpr; uniform float light; uniform highp float glow;
 out vec4 o;
 void main() {
   float d = length(gl_PointCoord * 2.0 - 1.0) * vOuter;    // CSS pixels from the middle
   float fill = clamp(vPix - d + 0.5, 0.0, 1.0);
-  vec3 c = vRing > 0.5 ? accent : vColor.rgb;
-  float a = fill;
+  // The glow of the attrappe: its colour at a third from the middle, fading evenly to nothing at 3.2 radii.
+  float halo = (1.0 - clamp(d / (vPix * 3.2), 0.0, 1.0)) * (light > 0.5 ? 0.19 : 0.33) * (1.0 - fill) * glow;
+  vec3 c = vColor.rgb;
+  float a = max(fill, halo);
   if (vRing > 0.5) {
-    float band = clamp(1.2 - abs(d - (vPix + (vOuter - vPix) * 0.58)), 0.0, 1.0);
-    a = max(fill, band);
+    float band = clamp(1.4 - abs(d - (vPix + 3.5)), 0.0, 1.0);
+    c = mix(c, accent, band);
+    a = max(a, band);
   }
   a *= vColor.a;
   if (a <= 0.003) discard;
@@ -81,12 +124,12 @@ void main() {
 }`
 
 const BUBBLE_VS = `#version 300 es
-in vec2 corner; in vec3 circle; in float parentR; in vec4 col; in vec4 flag;
+in vec2 corner; in vec3 circle; in float parentR; in vec4 col; in vec4 flag; in float openR;
 ${COMMON}
 uniform float focusOn;
 out vec2 vLocal; out float vR; out float vShell; out float vRing; out vec4 vColor; out vec4 vFlag;
 void main() {
-  float o = openness(circle.z);
+  float o = openness(openR);
   float vis = inner(openness(parentR));
   vShell = shell(o) * vis;
   vRing = ring(o) * vis;
@@ -111,7 +154,7 @@ void main() {
   float hover = vFlag.x;
   float marked = vFlag.y;
   float dashed = vFlag.z;
-  float dim = (focusOn > 0.5 && marked < 0.5) ? 0.5 : 1.0;
+  float dim = marked < 0.5 ? mix(1.0, 0.5, focusOn) : 1.0;
   // Closed: a filled bubble with a border. Open: a faint area with a thin (for folders below a space: dashed) border.
   float fillA = vShell * (hover > 0.5 ? 0.3 : 0.18) * dim + vRing * (light > 0.5 ? 0.05 : 0.035);
   float edgeWidth = marked > 0.5 && focusOn > 0.5 ? 2.5 : 1.5;
@@ -134,10 +177,13 @@ void main() {
 const LINE_VS = `#version 300 es
 in vec2 pos; in vec3 self; in vec3 other;   // kind, radius, parent radius of this end and of the other
 ${COMMON}
-uniform float focusOn;
+uniform float focusOn; uniform float ink;
 out float vA;
 void main() {
-  vA = min(endAlpha(self.x, self.y, self.z), endAlpha(other.x, other.y, other.z)) * (focusOn > 0.5 ? 0.08 : 0.22);
+  // As in the attrappe: faint far away (0.05), clearer as one comes into the groups (up to 0.55).
+  float k = min(zoomIn(self.y), zoomIn(other.y));
+  float far = clamp((k - 0.35) * 0.55, 0.05, 0.55);
+  vA = min(endAlpha(self.x, self.y, self.z), endAlpha(other.x, other.y, other.z)) * mix(far, 0.04, focusOn) * ink;
   gl_Position = toClip(toScreen(pos));
 }`
 
@@ -148,25 +194,26 @@ void main() { if (vA <= 0.003) discard; o = vec4(edge * vA, vA); }`
 
 // Thick lines: bundles between closed circles, and the lines of the focused note. From edge to edge of the circles.
 const BAND_VS = `#version 300 es
-in vec2 corner; in vec4 ends; in vec3 aEnd; in vec3 bEnd; in vec2 style;   // style: width, hot
+in vec2 corner; in vec4 ends; in vec3 aEnd; in vec3 bEnd; in vec2 style; in vec2 reach;   // style: width, hot; reach: real radii
 ${COMMON}
-uniform float focusOn;
+uniform float focusOn; uniform float ink;
 out float vA; out float vHot; out float vAcross;
 void main() {
   vec2 a = toScreen(ends.xy);
   vec2 b = toScreen(ends.zw);
-  float ra = aEnd.x < 0.5 ? 0.0 : aEnd.y * cam.z;
-  float rb = bEnd.x < 0.5 ? 0.0 : bEnd.y * cam.z;
+  float ra = aEnd.x < 0.5 ? 0.0 : reach.x * cam.z;
+  float rb = bEnd.x < 0.5 ? 0.0 : reach.y * cam.z;
   vec2 d = b - a;
   float len = length(d);
   vHot = style.y;
   float base = min(endAlpha(aEnd.x, aEnd.y, aEnd.z), endAlpha(bEnd.x, bEnd.y, bEnd.z));
-  vA = base * (vHot > 0.5 ? 0.9 : (focusOn > 0.5 ? 0.1 : 0.28));
+  vA = base * (vHot > 0.5 ? 0.95 * max(focusOn, 0.35) : mix(0.28, 0.08, focusOn) * ink);
   vAcross = corner.y;
   if (len < ra + rb + 1.0) { vA = 0.0; gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
   vec2 u = d / len;
   vec2 n = vec2(-u.y, u.x);
-  vec2 p = mix(a + u * ra, b - u * rb, corner.x) + n * corner.y * (style.x * 0.5 + 0.75);
+  float wide = vHot > 0.5 ? style.x : style.x * max(ink, 0.35);
+  vec2 p = mix(a + u * ra, b - u * rb, corner.x) + n * corner.y * (wide * 0.5 + 0.75);
   gl_Position = toClip(p);
 }`
 
@@ -241,6 +288,15 @@ class Layer {
     gl.bindVertexArray(null)
   }
 
+  /** Floats `from` to `to` of `data` again (the rest of the buffer is as it was): moving notes rewrite only their
+   * own numbers. */
+  update(data: Float32Array, from: number, to: number) {
+    if (to <= from) return
+    const gl = this.gl
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer)
+    gl.bufferSubData(gl.ARRAY_BUFFER, from * 4, data, from, to - from)
+  }
+
   upload(data: ArrayBuffer, count: number, flags?: Uint8Array) {
     const gl = this.gl
     gl.bindBuffer(gl.ARRAY_BUFFER, this.buffer)
@@ -265,9 +321,9 @@ class Layer {
 
 /** Bytes per vertex of each layer; `scene.ts` fills buffers in exactly this layout. */
 export const POINT_STRIDE = 24 // x, y, r, home (f32) + rgba (u8)
-export const BUBBLE_STRIDE = 32 // corner x, y, circle x, y, r, parent r (f32) + rgba (u8) + 4 spare bytes
+export const BUBBLE_STRIDE = 32 // corner x, y, circle x, y, r, parent's open r (f32) + rgba (u8) + own open r (f32)
 export const LINE_STRIDE = 32 // x, y, self kind, r, rp, other kind, r, rp (f32)
-export const BAND_STRIDE = 64 // corner x, y, a x, y, b x, y, a kind, r, rp, b kind, r, rp, width, hot (f32) + 8 spare
+export const BAND_STRIDE = 64 // corner x, y, a x, y, b x, y, a kind, r, rp, b kind, r, rp, width, hot, a reach, b reach (f32)
 
 export class GraphGL {
   readonly gl: WebGL2RenderingContext
@@ -301,6 +357,7 @@ export class GraphGL {
       { name: 'circle', size: 3, type: F, offset: 8 },
       { name: 'parentR', size: 1, type: F, offset: 20 },
       { name: 'col', size: 4, type: U, offset: 24, normalized: true },
+      { name: 'openR', size: 1, type: F, offset: 28 },
     ], 'flag')
     this.lines = new Layer(gl, lines, LINE_STRIDE, [
       { name: 'pos', size: 2, type: F, offset: 0 },
@@ -313,6 +370,7 @@ export class GraphGL {
       { name: 'aEnd', size: 3, type: F, offset: 24 },
       { name: 'bEnd', size: 3, type: F, offset: 36 },
       { name: 'style', size: 2, type: F, offset: 48 },
+      { name: 'reach', size: 2, type: F, offset: 56 },
     ])
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
@@ -329,7 +387,8 @@ export class GraphGL {
 
   /** The largest point the device draws (device pixels): dots are made smaller than that, never cut. */
   private readonly pointLimit: number
-  render(camera: Camera, width: number, height: number, dpr: number, colors: Colors, focusOn: boolean) {
+  /** `focusOn`: how far the fade around a focus has come, from 0 (none) to 1; `ink`: `inkFor` the lines drawn. */
+  render(camera: Camera, width: number, height: number, dpr: number, colors: Colors, focusOn: number, ink = 1, glow = 1) {
     const gl = this.gl
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight)
     gl.clearColor(0, 0, 0, 0)
@@ -341,7 +400,9 @@ export class GraphGL {
       gl.uniform3f(u('cam'), camera.x, camera.y, camera.k)
       gl.uniform2f(u('size'), width, height)
       gl.uniform1f(u('dpr'), dpr)
-      gl.uniform1f(u('focusOn'), focusOn ? 1 : 0)
+      gl.uniform1f(u('focusOn'), focusOn)
+      gl.uniform1f(u('ink'), ink)
+      gl.uniform1f(u('glow'), glow)
       gl.uniform1f(u('maxPoint'), this.pointLimit)
       gl.uniform1f(u('light'), colors.light ? 1 : 0)
       gl.uniform3f(u('edge'), ...colors.edge)

@@ -168,10 +168,12 @@ def test_signing_in_and_saving_answer_quickly_while_a_big_scan_runs(
     put(vault, "Work/Diary.md", "day one\n")
     index.scan()
     # A fast machine (the CI's Linux) read the 3,000 notes before three rounds were measured: each part waits a little.
+    # 0.03 s was not enough on Windows either from 05.10.2026 (two rounds, on the released code as well): every round
+    # starts a fresh app, and that waits for the scan too.
     add = index.bulk_add
 
     def slower(*args: Any, **kwargs: Any) -> Any:
-        time.sleep(0.03)
+        time.sleep(0.1)
         return add(*args, **kwargs)
 
     monkeypatch.setattr(index, "bulk_add", slower)

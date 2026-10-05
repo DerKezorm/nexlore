@@ -11,6 +11,9 @@ Der Reiter **Graph** zeigt alle Bereiche als Karte. Ordner sind Blasen, Notizen 
 - **Scrollen** oder zwei Finger zoomen. Eine Blase öffnet sich, wenn sie groß genug ist, und zeigt, was darin liegt.
 - **Klick auf eine Blase** fliegt hinein, **Doppelklick auf einen Punkt** öffnet die Notiz.
 - Oben links steht, wo du gerade bist; ein Klick darauf fliegt zurück.
+- **Fährst du über einen Punkt**, bleiben er und seine Nachbarn hell, alles andere tritt zurück, seine Links leuchten türkis.
+- Je mehr Links eine Notiz hat, desto größer ist ihr Punkt. Verlinkte Notizen rücken in ihrem Ordner zu Gruppen zusammen.
+- **Zieh einen Punkt mit der Maus**: seine Nachbarn schwimmen mit, und er bleibt, wo du ihn loslässt, bis du die Seite neu lädst. Gespeichert wird dabei nichts.
 
 ## Drei Sichten
 

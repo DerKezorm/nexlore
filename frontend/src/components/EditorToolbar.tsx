@@ -4,11 +4,15 @@
  *
  * On a phone it is one narrow row above the on-screen keyboard (`visualViewport` says where that is), swiped sideways.
  * Its buttons never take the focus from the text, so the keyboard stays and the command works where the caret was.
+ *
+ * The same toolbar serves the Markdown view (design answer 05.10.2026): there its commands write the Markdown signs
+ * into the text (`lib/sourceTools.ts`). A switch "Visual | Markdown" at the end says which view is open.
  */
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { EditorCommand, EditorStatus, NoteEditor } from '../editor/editor'
+import type { EditorMode } from './NoteEditor'
 import type { MenuItem } from '../lib/menu'
 import { CALLOUTS } from '../lib/toolbar'
 import type { SymbolName } from '../lib/symbols'
@@ -51,11 +55,16 @@ function useKeyboardInset(on: boolean): number {
   return inset
 }
 
+/** What the toolbar works on: the visual editor, or the Markdown view with the same three things. */
+export type ToolbarTarget = Pick<NoteEditor, 'run' | 'status' | 'subscribe'>
+
 type Props = {
-  editor: NoteEditor | null
+  editor: ToolbarTarget | null
   /** The AI's menu, when the account has AI switched on. */
   ai?: () => MenuItem[]
-  onSource: () => void
+  /** The view open, and the way to the other one. */
+  mode: EditorMode
+  onMode: (mode: EditorMode) => void
   onHide: () => void
   /** The file's line numbers beside the text, and the switch for them. */
   lines: boolean
@@ -66,7 +75,7 @@ type Props = {
   findBar?: ReactNode
 }
 
-export function EditorToolbar({ editor, ai, onSource, onHide, lines, onLines, openMenu, onFind, findBar }: Props) {
+export function EditorToolbar({ editor, ai, mode, onMode, onHide, lines, onLines, openMenu, onFind, findBar }: Props) {
   const { t } = useTranslation()
   const [status, setStatus] = useState<EditorStatus>(NONE)
   const phone = usePhone()
@@ -198,7 +207,21 @@ export function EditorToolbar({ editor, ai, onSource, onHide, lines, onLines, op
   const end = [
     ...(onFind ? [button('find', t('find.command') + ' (' + t('find.keyFind') + ')', 'search', onFind)] : []),
     button('lines', t('toolbar.lineNumbers'), 'lineNumbers', onLines, { active: lines }),
-    button('source', t('note.sourceMode'), null, onSource, { text: 'MD' }),
+    <span key="modes" role="group" aria-label={t('note.editorMode')} className="inline-flex h-8 shrink-0 items-center rounded-lg border border-ink-700 p-0.5">
+      {(['visual', 'source'] as const).map((each) => (
+        <button
+          key={each}
+          type="button"
+          data-tool={'mode-' + each}
+          aria-pressed={mode === each}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => mode !== each && onMode(each)}
+          className={'h-6 rounded-md px-2 text-xs font-semibold whitespace-nowrap ' + (mode === each ? 'bg-accent-500/15 text-accent-400' : 'text-mist-400 hover:text-mist-100')}
+        >
+          {each === 'visual' ? t('note.modeVisual') : t('note.modeMarkdown')}
+        </button>
+      ))}
+    </span>,
     button('hide', t('toolbar.hide'), 'eyeOff', onHide),
   ]
 

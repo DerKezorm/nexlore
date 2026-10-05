@@ -50,6 +50,6 @@ In the editor, above the text, is the part called **Properties**. They are short
 
 ## Only what you change changes
 
-When saving, nexlore writes anew only the paragraphs you edited. The rest of the file stays as it was, character for character. If you prefer the plain text: **MD** in the toolbar shows the Markdown view.
+When saving, nexlore writes anew only the paragraphs you edited. The rest of the file stays as it was, character for character. If you prefer the plain text: the switch **Visual | Markdown** at the right of the toolbar shows the Markdown view. There the text stands with all its signs, and the toolbar writes them for you (bold, lists, headings, links). Under **Settings → General → Editor** you choose which view your notes open in.
 
 Next: [[03 Links and backlinks]].

@@ -5,7 +5,9 @@ Taken over from nexmail, where it was measured and argued out in use:
 * **One interface, not four.** ``POST …/chat/completions`` and ``GET …/models`` are the shape nearly every service
   speaks, in the cloud or at home (Ollama). The server knows **no provider**, only three values: address, key,
   model. The tiles that fill in an address live in the interface; any other address is just as good.
-* **Per account.** The access belongs to the person, like a mailbox: each pays for their own key.
+* **Per account, or one for all.** The access belongs to the person, like a mailbox: each pays for their own key.
+  The operator may instead put in one service for everybody (``ai_mode`` "shared", Frag Lore, design answer
+  05.10.2026); the accounts' own accesses then rest, unchanged, until the operator switches back.
 * **Two locks.** The operator's (``ai_allowed``, closed from the start: this is where note text leaves the house) and
   the account's own switch, which only goes on with a complete access.
 * **A task from a list, not a free text.** The promise "changes no fact" holds only when nobody can tell the model
@@ -24,10 +26,13 @@ import ipaddress
 import json
 import logging
 import re
+import ssl
 import threading
 import time
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import timedelta
+from functools import cache
 from typing import Any
 from urllib.parse import urljoin, urlparse, urlsplit
 
@@ -44,6 +49,13 @@ logger = logging.getLogger("nexlore.ai")
 
 #: For the tests: an ``httpx`` transport that stands in for the service. Never a real key in a test.
 transport: httpx.BaseTransport | None = None
+
+
+@cache
+def tls() -> ssl.SSLContext:
+    """The certificates to check a service against, loaded once: a new client loads them again each time, and that
+    alone took 0.9 s under Windows (measured 05.10.2026), for every question to Lore and every batch of vectors."""
+    return httpx.create_ssl_context(trust_env=False)
 
 #: A model list that takes longer is a broken access, and the person should hear so soon.
 LIST_SECONDS = 10.0
@@ -120,7 +132,7 @@ class Target:
     public: bool
 
 
-def checked_target(db: Session, url: str) -> Target:
+def checked_target(db: Session, url: str, *, trusted: bool = False) -> Target:
     """The service's address, resolved and checked once (review before 1.0.0: any member reached the router, the NAS
     and 169.254.169.254, and read their answers). Public addresses go; this machine and the own network only when
     the operator listed the host; link-local never. The connection then goes to exactly the address checked."""
@@ -148,7 +160,7 @@ def checked_target(db: Session, url: str) -> Target:
             ip = ip.ipv4_mapped
         if ip.is_link_local or ip.is_multicast or ip.is_unspecified:
             raise AiError("ai_address_refused", 422)
-        if not linktitle.public(str(ip)) and not ({host, f"{host}:{port}", str(ip), f"{ip}:{port}"} & listed):
+        if not (trusted or linktitle.public(str(ip)) or {host, f"{host}:{port}", str(ip), f"{ip}:{port}"} & listed):
             raise AiError("ai_address_private", 422)
     first = addresses[0]
     netloc = f"[{first}]:{port}" if ":" in first else f"{first}:{port}"
@@ -236,11 +248,13 @@ def _said(answer: httpx.Response) -> str:
     return " ".join("".join(c if c.isprintable() else " " for c in found).split())[:SAID_CHARS]
 
 
-def list_models(db: Session, url: str, key: str) -> list[dict[str, str]]:
-    """The models this access offers; coming back at all is the test that address and key are right."""
-    place = checked_target(db, urljoin(check_address(url), "models"))
+def list_models(db: Session, url: str, key: str, *, trusted: bool = False) -> list[dict[str, str]]:
+    """The models this access offers; coming back at all is the test that address and key are right. ``trusted``: the
+    operator's own address, which may lie in the own network without being listed."""
+    place = checked_target(db, urljoin(check_address(url), "models"), trusted=trusted)
     try:
-        with httpx.Client(timeout=LIST_SECONDS, follow_redirects=False, transport=transport, trust_env=False) as client:
+        with httpx.Client(timeout=LIST_SECONDS, follow_redirects=False, transport=transport, trust_env=False,
+                          verify=tls()) as client:
             answer = _send(client, "GET", place, _headers(key))
     except httpx.ReadTimeout as exc:
         raise AiError("ai_timeout", 504, seconds=int(LIST_SECONDS)) from exc
@@ -274,14 +288,101 @@ def allowed(db: Session) -> bool:
     return bool(settings_service.get(db, "ai_allowed"))
 
 
+MODES = ("own", "shared")
+
+
+def mode(db: Session) -> str:
+    found = str(settings_service.get(db, "ai_mode") or "own")
+    return found if found in MODES else "own"
+
+
+@dataclass(frozen=True)
+class Access:
+    """What a request goes out with: the account's own service or the operator's one for all."""
+
+    url: str
+    model: str
+    key: str
+    shared: bool
+
+
+#: The operator's key has a context of its own: it could not be passed off as an account's, nor the other way round.
+SHARED_KEY_CONTEXT = "operator:ai-key"
+
+
+def shared_key(db: Session) -> str:
+    return decrypt_secret(str(settings_service.get(db, "ai_shared_key_enc") or ""), SHARED_KEY_CONTEXT)
+
+
+def access(db: Session, row: AccountRow) -> Access | None:
+    """The access this account uses now, or None when there is none to use. The operator's lock is not looked at
+    here: ``ready`` and ``usable`` do that, so that the reason can be told apart."""
+    if mode(db) == "shared":
+        url = str(settings_service.get(db, "ai_shared_url") or "")
+        model = str(settings_service.get(db, "ai_shared_model") or "")
+        return Access(url, model, shared_key(db), True) if url and model else None
+    if row.ai_active and row.ai_url and row.ai_model:
+        return Access(row.ai_url, row.ai_model, key_of(row), False)
+    return None
+
+
+def usable(db: Session, row: AccountRow) -> Access:
+    """The access, or the reason there is none, in the order the person can do something about it."""
+    if not allowed(db):
+        raise AiError("ai_off", 403)
+    found = access(db, row)
+    if found is not None:
+        return found
+    if mode(db) == "shared":
+        raise AiError("ai_shared_incomplete", 409)
+    if not row.ai_active:
+        raise AiError("ai_not_on", 409)
+    raise AiError("ai_incomplete", 409)
+
+
 def ready(db: Session, row: AccountRow) -> bool:
-    """Whether the editor offers AI to this account now."""
-    return allowed(db) and row.ai_active and bool(row.ai_url and row.ai_model)
+    """Whether the editor and Lore offer AI to this account now."""
+    return allowed(db) and access(db, row) is not None
 
 
 def view(row: AccountRow) -> dict[str, Any]:
     """What the interface may see. The key never goes back, not even to its owner: only that there is one."""
     return {"active": row.ai_active, "url": row.ai_url, "model": row.ai_model, "key_set": bool(row.ai_key_enc)}
+
+
+def shared_view(db: Session, *, operator: bool) -> dict[str, Any]:
+    """The operator's service. A member sees only that there is one and its model: the address may name a host in the
+    own network, which is not the member's to know."""
+    url = str(settings_service.get(db, "ai_shared_url") or "")
+    model = str(settings_service.get(db, "ai_shared_model") or "")
+    if not operator:
+        return {"model": model, "complete": bool(url and model)}
+    return {
+        "url": url,
+        "model": model,
+        "key_set": bool(settings_service.get(db, "ai_shared_key_enc")),
+        "complete": bool(url and model),
+        "embed_model": str(settings_service.get(db, "ai_embed_model") or ""),
+    }
+
+
+def save_shared(
+    db: Session, *, url: str | None = None, model: str | None = None, key: str | None = None,
+    embed_model: str | None = None,
+) -> dict[str, Any]:
+    """The operator's service for all; left out stays, empty means gone, like an account's own."""
+    changes: dict[str, Any] = {}
+    if embed_model is not None:
+        changes["ai_embed_model"] = embed_model.strip()[:200]
+    if url is not None:
+        changes["ai_shared_url"] = check_address(url) if url.strip() else ""
+    if model is not None:
+        changes["ai_shared_model"] = model.strip()[:200]
+    if key is not None:
+        changes["ai_shared_key_enc"] = encrypt_secret(key.strip(), SHARED_KEY_CONTEXT) if key.strip() else ""
+    settings_service.save(db, changes)
+    logger.info("The operator changed the AI service for all (%s)", ",".join(sorted(changes)) or "nothing")
+    return shared_view(db, operator=True)
 
 
 def key_of(row: AccountRow) -> str:
@@ -402,7 +503,7 @@ TONES = {
 _FENCE = re.compile(r"\A`{3}(?:markdown|md)?[ \t]*\n(.*?)\n?`{3}\Z", re.DOTALL | re.IGNORECASE)
 
 
-def _unfence(text: str) -> str:
+def unfence(text: str) -> str:
     # Models like to put their answer into a code fence; in the note the fence would stand around the text.
     found = _FENCE.match(text)
     return found.group(1) if found else text
@@ -440,11 +541,11 @@ class _Pace:
         self._lock = threading.Lock()
         self._seen: dict[int, list[float]] = {}
 
-    def take(self, account_id: int) -> bool:
+    def take(self, account_id: int, limit: int = PER_MINUTE) -> bool:
         now = time.monotonic()
         with self._lock:
             recent = [at for at in self._seen.get(account_id, []) if now - at < 60]
-            if len(recent) >= PER_MINUTE:
+            if len(recent) >= limit:
                 self._seen[account_id] = recent
                 return False
             recent.append(now)
@@ -459,16 +560,19 @@ class _Pace:
 pace = _Pace()
 
 
+def per_minute(db: Session) -> int:
+    try:
+        value = int(settings_service.get(db, "ai_per_minute") or PER_MINUTE)
+    except (TypeError, ValueError):
+        value = PER_MINUTE
+    return max(1, min(value, 600))
+
+
 def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "", instruction: str = "") -> str:
     """Sends the text to the account's service and gives back what it wrote. Every check is here, not only in the
     interface: this is the one place where note text leaves the house."""
     # The operator's lock first: it stands above the account's own choice.
-    if not allowed(db):
-        raise AiError("ai_off", 403)
-    if not row.ai_active:
-        raise AiError("ai_not_on", 409)
-    if not (row.ai_url and row.ai_model):
-        raise AiError("ai_incomplete", 409)
+    using = usable(db, row)
     text = (text or "").strip()
     if task != "write":
         if not text:
@@ -478,12 +582,12 @@ def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "",
     if len(text) > MAX_CHARS:
         raise AiError("ai_text_too_long", max=MAX_CHARS)
     instruction_text, kept_target, temperature = _task(task, target, instruction)
-    if not pace.take(row.id):
+    if not pace.take(row.id, per_minute(db)):
         raise AiError("ai_too_often", 429)
 
     rules = RULES_WRITE if task == "write" else RULES
     body = {
-        "model": row.ai_model,
+        "model": using.model,
         "max_tokens": MAX_OUT_TOKENS,
         "temperature": temperature,
         "messages": [
@@ -495,18 +599,20 @@ def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "",
     # From here on the text is on its way: whatever happens now, it is kept in the list, a failure too.
     def keep(tokens_in: int = 0, tokens_out: int = 0, failed: str = "") -> None:
         _keep(
-            db, row, task=task, target=kept_target, body=body, tokens_in=tokens_in, tokens_out=tokens_out, failed=failed
+            db, row, model=using.model, task=task, target=kept_target, body=body, tokens_in=tokens_in,
+            tokens_out=tokens_out, failed=failed,
         )
 
-    place = checked_target(db, urljoin(check_address(row.ai_url), "chat/completions"))
+    place = checked_target(db, urljoin(check_address(using.url), "chat/completions"), trusted=using.shared)
     try:
-        with httpx.Client(timeout=TEXT_SECONDS, follow_redirects=False, transport=transport, trust_env=False) as client:
-            answer = _send(client, "POST", place, _headers(key_of(row)), json=body)
+        with httpx.Client(timeout=TEXT_SECONDS, follow_redirects=False, transport=transport, trust_env=False,
+                          verify=tls()) as client:
+            answer = _send(client, "POST", place, _headers(using.key), json=body)
             # Newer models choose it themselves and turn down a request that sets it ("`temperature` is deprecated
             # for this model"): once more without, which older models and other services still take.
             if answer.status_code == 400 and "temperature" in _said(answer).lower():
                 del body["temperature"]
-                answer = _send(client, "POST", place, _headers(key_of(row)), json=body)
+                answer = _send(client, "POST", place, _headers(using.key), json=body)
     except httpx.ReadTimeout as exc:
         # Only a read timeout: the connection stood and the service wrote too slowly. Not connecting is "unreachable".
         keep(failed="ai_timeout")
@@ -532,7 +638,7 @@ def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "",
     if not isinstance(content, str) or not content.strip():
         keep(failed="ai_empty")
         raise AiError("ai_empty", 502)
-    written = _unfence(content.strip())[:MAX_OUT_CHARS]
+    written = unfence(content.strip())[:MAX_OUT_CHARS]
     usage = data.get("usage") if isinstance(data, dict) else None
     usage = usage if isinstance(usage, dict) else {}
     keep(tokens_in=int(usage.get("prompt_tokens") or 0), tokens_out=int(usage.get("completion_tokens") or 0))
@@ -546,13 +652,232 @@ def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "",
     return written
 
 
+# --- A conversation whose answer flows (Frag Lore) ------------------------------------------------------------------
+
+
+@dataclass
+class Call:
+    """A tool the model asks for: its name and its arguments as the model wrote them (JSON, unchecked)."""
+
+    id: str
+    name: str
+    arguments: str
+
+
+@dataclass
+class Spoken:
+    """What came back from a conversation: the whole text, the tools asked for, and what the service counted."""
+
+    text: str
+    tokens_in: int = 0
+    tokens_out: int = 0
+    calls: list[Call] = field(default_factory=list)
+
+
+#: How many tools one answer may ask for at once; more are left out.
+MAX_CALLS = 4
+#: Whether a service and model took tools, by (address, model), with when it was found out: asked once an hour.
+_takes_tools: dict[tuple[str, str], tuple[bool, float]] = {}
+TOOLS_MEMORY_SECONDS = 3600
+
+
+def takes_tools(using: Access) -> bool | None:
+    known = _takes_tools.get((using.url, using.model))
+    if known is None or time.monotonic() - known[1] > TOOLS_MEMORY_SECONDS:
+        return None
+    return known[0]
+
+
+def _calls_of(raw: Any) -> list[Call]:
+    calls: list[Call] = []
+    for item in raw if isinstance(raw, list) else []:
+        function = item.get("function") if isinstance(item, dict) else None
+        if not isinstance(function, dict) or not isinstance(function.get("name"), str):
+            continue
+        arguments = function.get("arguments")
+        calls.append(Call(str(item.get("id") or f"call-{len(calls)}"), function["name"][:64],
+                          arguments if isinstance(arguments, str) else json.dumps(arguments or {})))
+    return calls[:MAX_CALLS]
+
+
+def _flow(answer: httpx.Response, heard: Callable[[str], None]) -> Spoken:
+    """Reads a flowing answer (``text/event-stream`` lines ``data: {...}``, ending with ``data: [DONE]``) or, from a
+    service that does not flow, the whole answer at once; either way at most MAX_ANSWER."""
+    if "text/event-stream" not in answer.headers.get("content-type", ""):
+        body = b""
+        for chunk in answer.iter_bytes():
+            body += chunk
+            if len(body) > MAX_ANSWER:
+                raise AiError("ai_unreadable", 502)
+        try:
+            data = json.loads(body)
+            content = data["choices"][0]["message"]["content"]
+        except (ValueError, KeyError, IndexError, TypeError) as exc:
+            raise AiError("ai_unreadable", 502) from exc
+        if isinstance(content, list):
+            content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
+        calls = _calls_of(data["choices"][0]["message"].get("tool_calls"))
+        if content is None and calls:
+            content = ""
+        if not isinstance(content, str):
+            raise AiError("ai_unreadable", 502)
+        if content:
+            heard(content)
+        usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
+        return Spoken(content, int(usage.get("prompt_tokens") or 0), int(usage.get("completion_tokens") or 0),
+                      calls)
+    parts: list[str] = []
+    weight = 0
+    spoken = Spoken("")
+    # Tool calls come in pieces too: by their index, the name once, the arguments bit by bit.
+    asked: dict[int, dict[str, str]] = {}
+    for line in answer.iter_lines():
+        weight += len(line)
+        if weight > MAX_ANSWER:
+            raise AiError("ai_unreadable", 502)
+        if not line.startswith("data:"):
+            continue
+        payload = line[5:].strip()
+        if payload == "[DONE]":
+            break
+        try:
+            data = json.loads(payload)
+        except ValueError:
+            continue
+        if not isinstance(data, dict):
+            continue
+        usage = data.get("usage")
+        if isinstance(usage, dict):
+            spoken.tokens_in = int(usage.get("prompt_tokens") or 0)
+            spoken.tokens_out = int(usage.get("completion_tokens") or 0)
+        choices = data.get("choices")
+        if not isinstance(choices, list) or not choices or not isinstance(choices[0], dict):
+            continue
+        delta = choices[0].get("delta")
+        piece = delta.get("content") if isinstance(delta, dict) else None
+        if isinstance(piece, str) and piece:
+            parts.append(piece)
+            heard(piece)
+        for item in (delta.get("tool_calls") if isinstance(delta, dict) else None) or []:
+            if not isinstance(item, dict) or not isinstance(item.get("index", 0), int):
+                continue
+            call = asked.setdefault(int(item.get("index", 0)), {"id": "", "name": "", "arguments": ""})
+            function = item.get("function") if isinstance(item.get("function"), dict) else {}
+            call["id"] = str(item.get("id") or call["id"])
+            call["name"] += str(function.get("name") or "")
+            call["arguments"] += str(function.get("arguments") or "")
+    spoken.text = "".join(parts)
+    spoken.calls = _calls_of([{"id": call["id"], "function": {"name": call["name"], "arguments": call["arguments"]}}
+                              for _index, call in sorted(asked.items())])
+    return spoken
+
+
+def converse(
+    db: Session,
+    row: AccountRow,
+    *,
+    messages: list[dict[str, Any]],
+    temperature: float,
+    heard: Callable[[str], None],
+    task: str = "lore",
+    target: str = "",
+    tools: list[dict[str, Any]] | None = None,
+    paced: bool = True,
+) -> Spoken:
+    """One turn of a conversation with the service this account uses: the answer is handed to ``heard`` piece by
+    piece as it comes. What went out is kept like every other request, a failure too.
+
+    With ``tools`` the model may ask for them instead of answering (``Spoken.calls``). A service that turns tools
+    down (400 naming them) is remembered for an hour, and this turn is asked once more without. ``paced``: counted
+    against the account's requests per minute; the further rounds of one question are not.
+    """
+    using = usable(db, row)
+    if sum(len(str(message.get("content") or "")) for message in messages) > MAX_CHARS * 3:
+        raise AiError("ai_text_too_long", max=MAX_CHARS * 3)
+    if paced and not pace.take(row.id, per_minute(db)):
+        raise AiError("ai_too_often", 429)
+    if tools and takes_tools(using) is False:
+        tools = None
+    body: dict[str, Any] = {
+        "model": using.model,
+        "max_tokens": MAX_OUT_TOKENS,
+        "temperature": temperature,
+        "stream": True,
+        "messages": messages,
+    }
+    if tools:
+        body["tools"] = tools
+
+    def keep(spoken: Spoken | None = None, failed: str = "") -> None:
+        _keep(
+            db, row, model=using.model, task=task, target=target, body=body,
+            tokens_in=spoken.tokens_in if spoken else 0, tokens_out=spoken.tokens_out if spoken else 0, failed=failed,
+        )
+
+    place = checked_target(db, urljoin(check_address(using.url), "chat/completions"), trusted=using.shared)
+    extensions = {"sni_hostname": place.host} if place.scheme == "https" else {}
+    headers = {**_headers(using.key), "Host": place.named, "accept": "text/event-stream"}
+    try:
+        with httpx.Client(timeout=TEXT_SECONDS, follow_redirects=False, transport=transport, trust_env=False,
+                          verify=tls()) as client:
+            for _attempt in range(3):
+                with client.stream("POST", place.url, headers=headers, extensions=extensions, json=body) as answer:
+                    if answer.status_code == 200:
+                        spoken = _flow(answer, heard)
+                        if "tools" in body:
+                            _takes_tools[(using.url, using.model)] = (True, time.monotonic())
+                        break
+                    whole = httpx.Response(answer.status_code, content=answer.read()[:MAX_ANSWER])
+                said = _said(whole).lower()
+                if whole.status_code == 400 and "temperature" in body and "temperature" in said:
+                    del body["temperature"]
+                    continue
+                if whole.status_code == 400 and "tools" in body and ("tool" in said or "function" in said):
+                    # A model without tools: Lore answers from what was looked up before, as with every model.
+                    _takes_tools[(using.url, using.model)] = (False, time.monotonic())
+                    del body["tools"]
+                    continue
+                _judge(whole, place.public)
+            else:
+                _judge(whole, place.public)
+    except httpx.ReadTimeout as exc:
+        keep(failed="ai_timeout")
+        raise AiError("ai_timeout", 504, seconds=int(TEXT_SECONDS)) from exc
+    except httpx.HTTPError as exc:
+        logger.info("The AI service was unreachable: %s", type(exc).__name__)
+        keep(failed="ai_unreachable")
+        raise AiError("ai_unreachable", 502) from exc
+    except AiError as exc:
+        keep(failed=exc.code)
+        raise
+    if not spoken.text.strip() and not spoken.calls:
+        keep(spoken, failed="ai_empty")
+        raise AiError("ai_empty", 502)
+    spoken.text = spoken.text[:MAX_OUT_CHARS]
+    keep(spoken)
+    logger.info("The AI service answered a conversation (in %s, out %s, tools %s)", spoken.tokens_in,
+                spoken.tokens_out, len(spoken.calls))
+    return spoken
+
+
 # --- What went out ---------------------------------------------------------------------------------------------------
+
+
+def headers_for(key: str) -> dict[str, str]:
+    """The headers for a request with ``key``, for other parts of nexlore that ask the same service."""
+    return _headers(key)
+
+
+def keep_event(db: Session, row: AccountRow, **values: Any) -> None:
+    """Keeps a request of another part (Lore's question as a vector) in the account's list."""
+    _keep(db, row, **values)
 
 
 def _keep(
     db: Session,
     row: AccountRow,
     *,
+    model: str,
     task: str,
     target: str,
     body: dict[str, Any],
@@ -565,7 +890,7 @@ def _keep(
         db.add(
             AiEvent(
                 account_id=row.id,
-                model=row.ai_model,
+                model=model,
                 task=task,
                 target=target,
                 body_enc=encrypt_secret(json.dumps(body, ensure_ascii=False), _event_context(row.id)),

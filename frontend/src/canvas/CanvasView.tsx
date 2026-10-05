@@ -612,7 +612,8 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
           <ZoomBar undo={undo} redo={redo} canUndo={canUndo} canRedo={canRedo} snapping={snapping} setSnapping={setSnapping} />
         </Panel>
         {editable && (
-          <Panel position="bottom-center">
+          // On a phone the dock reaches into the corner of Lore's spider: it stands above it there.
+          <Panel position="bottom-center" className="max-sm:!mb-[var(--lore-corner,15px)]">
             <Dock
               touch={cards.touch}
               add={(kind) => {

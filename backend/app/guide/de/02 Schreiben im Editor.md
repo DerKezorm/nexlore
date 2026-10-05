@@ -50,6 +50,6 @@ Im Editor steht über dem Text der Bereich **Eigenschaften**. Das sind kurze, fe
 
 ## Nur was du änderst, ändert sich
 
-nexlore schreibt beim Speichern nur die Absätze neu, die du bearbeitet hast. Der Rest der Datei bleibt Zeichen für Zeichen, wie er war. Wer lieber den reinen Text sieht: **MD** in der Werkzeugleiste zeigt die Markdown-Ansicht.
+nexlore schreibt beim Speichern nur die Absätze neu, die du bearbeitet hast. Der Rest der Datei bleibt Zeichen für Zeichen, wie er war. Wer lieber den reinen Text sieht: Der Umschalter **Visuell | Markdown** rechts in der Werkzeugleiste zeigt die Markdown-Ansicht. Dort steht der Text mit allen Zeichen, und die Werkzeugleiste setzt sie für dich (Fett, Listen, Überschriften, Links). Unter **Einstellungen → Allgemein → Editor** legst du fest, in welcher Ansicht deine Notizen aufgehen.
 
 Weiter mit [[03 Links und Rückverweise]].

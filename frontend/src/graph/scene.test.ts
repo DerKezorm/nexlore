@@ -1,7 +1,7 @@
 import type { GroupRow, Overview, Tiles } from '../api/client'
 import { BAND_STRIDE, LINE_STRIDE, POINT_STRIDE } from './gl'
 import { spaceColor } from './palette'
-import { MANY_LINES, MID, Scene, pack } from './scene'
+import { MANY_LINES, MID, Scene, openRadius, pack } from './scene'
 
 /** A space as the server would lay it out: root 1000 wide, two folders, one of them with a subfolder. */
 function overview(version = 1, links: [number, number, number][] = [[2, 3, 4]]): Overview {
@@ -27,6 +27,13 @@ function tiles(): Tiles {
     others: [[20, 3]],
   }
 }
+
+/** The radius a group of the scene opens by (`openRadius`: small groups open early). */
+const opens = (scene: Scene, id: number) => scene.groups.get(id)!.or
+/** A zoom at which every group of the scene is open, and one between two groups' opening. */
+const allOpen = (scene: Scene) => (MID / Math.min(...[...scene.groups.values()].map((group) => group.or))) * 2
+const between = (scene: Scene, closed: number[], open: number[]) =>
+  MID / ((Math.max(...closed.map((id) => opens(scene, id))) + Math.min(...open.map((id) => opens(scene, id)))) / 2)
 
 describe('the scene of the graph', () => {
   it('packs circles without overlap, biggest in the middle, the same every time', () => {
@@ -65,17 +72,18 @@ describe('the scene of the graph', () => {
     const scene = new Scene()
     scene.setOverviews([{ name: 'Work', overview: overview() }])
     // Everything closed: the space itself.
-    expect(scene.representative(4, MID / 2000)).toBe(1)
-    // The space open, Plans (300) still closed.
-    const k = MID / 500
+    expect(scene.representative(4, MID / opens(scene, 1) / 2)).toBe(1)
+    // The space open, Plans and Daily still closed.
+    const k = between(scene, [2, 3], [1])
     expect(scene.representative(4, k)).toBe(2)
     expect(scene.representative(3, k)).toBe(3)
     // All open.
-    expect(scene.representative(4, MID / 50)).toBe(-1)
+    expect(scene.representative(4, allOpen(scene))).toBe(-1)
     // The count of closed groups changes exactly when one crosses the middle.
-    expect(scene.band(MID / 99)).toBe(0)
-    expect(scene.band(MID / 101)).toBe(1)
-    expect(scene.band(MID / 2000)).toBe(5)
+    const least = Math.min(...[...scene.groups.values()].map((group) => group.or))
+    expect(scene.band(MID / (least * 0.99))).toBe(0)
+    expect(scene.band(MID / (least * 1.01))).toBe(1)
+    expect(scene.band(MID / opens(scene, 1) / 2)).toBe(5)
   })
 
   it('bundles links between groups of two spaces from the counts across them', () => {
@@ -91,7 +99,7 @@ describe('the scene of the graph', () => {
       { name: 'Work', overview: overview(1, []) },
       { name: 'Homelab', overview: other },
     ])
-    const k = MID / 500 // Plans (300) and Storage (200) closed, the spaces open
+    const k = between(scene, [2, 102], [1, 101]) // Plans and Storage closed, the spaces open
     expect(scene.lineBuffers(k, null).bandCount).toBe(0)
     scene.across = [[2, 102, 3]]
     const drawn = scene.lineBuffers(k, null)
@@ -112,7 +120,7 @@ describe('the scene of the graph', () => {
     scene.setOverviews([{ name: 'Work', overview: overview() }])
     scene.addTiles('Work', 1, [scene.tileKey('Work', -2, -2, -1)], tiles())
     // Plans and Daily closed: one bundle from the overview's count, nothing thin.
-    const closed = scene.lineBuffers(MID / 500, null)
+    const closed = scene.lineBuffers(between(scene, [2, 3], [1]), null)
     expect(closed.lineCount).toBe(0)
     expect(closed.bandCount).toBe(6)
     const band = new Float32Array(closed.bands)
@@ -120,13 +128,13 @@ describe('the scene of the graph', () => {
     expect(band[12]).toBeCloseTo(1 + Math.log2(4) * 1.3)
     expect(band.length).toBe((6 * BAND_STRIDE) / 4)
     // All open: a thin line between the two plans; the link to Daily ends at a note that is not loaded.
-    const open = scene.lineBuffers(MID / 50, null)
+    const open = scene.lineBuffers(allOpen(scene), null)
     expect(open.lineCount).toBe(2)
     expect(new Float32Array(open.lines).length).toBe((2 * LINE_STRIDE) / 4)
     // The note outside the tiles is not drawn as a dot; its end is known, but there is no note to end at.
     expect(open.bandCount).toBe(0)
     // Hot: the focus's links become bands.
-    const hot = scene.lineBuffers(MID / 50, 10)
+    const hot = scene.lineBuffers(allOpen(scene), 10)
     expect(hot.lineCount).toBe(0)
     expect(hot.bandCount).toBe(6)
   })
@@ -142,11 +150,19 @@ describe('the scene of the graph', () => {
     }
     scene.addTiles('Work', 1, [], { tiles: [{ level: -2, x: 0, y: 0, notes }], links, others: [] })
     // All open: more than the limit, so nothing thin; the focus keeps its lines as hot bands.
-    expect(scene.lineBuffers(MID / 50, null).lineCount).toBe(0)
-    expect(scene.lineBuffers(MID / 50, 100).bandCount).toBe((MANY_LINES + 1) * 6)
-    expect(scene.lineBuffers(MID / 50, 101).bandCount).toBe(6)
+    expect(scene.lineBuffers(allOpen(scene), null).lineCount).toBe(0)
+    expect(scene.lineBuffers(allOpen(scene), 100).bandCount).toBe((MANY_LINES + 1) * 6)
+    expect(scene.lineBuffers(allOpen(scene), 101).bandCount).toBe(6)
     // The bundles between closed groups do not count and stay.
-    expect(scene.lineBuffers(MID / 500, null).bandCount).toBe(6)
+    expect(scene.lineBuffers(between(scene, [2, 3], [1]), null).bandCount).toBe(6)
+    // Zoomed in on a few of them: only the lines that reach into the view count, and those are drawn.
+    const all = scene.lineBuffers(allOpen(scene), null, { x0: -1e9, y0: -1e9, x1: 1e9, y1: 1e9 })
+    expect(all.lineCount).toBe(0)
+    const ends = [...scene.notes.values()].filter((note) => note.id >= 100)
+    const far = ends.reduce((best, note) => (note.y > best.y ? note : best), ends[0])
+    const near = scene.lineBuffers(allOpen(scene), null, { x0: far.x - 0.5, y0: far.y - 0.5, x1: far.x + 0.5, y1: far.y + 0.5 })
+    expect(near.lineCount).toBeGreaterThan(0)
+    expect(near.lineCount).toBeLessThanOrEqual(MANY_LINES)
   })
 
   it('puts notes where their space is and hides daily notes on request', () => {
@@ -156,7 +172,9 @@ describe('the scene of the graph', () => {
     const points = scene.pointBuffer()
     expect(points.ids).toEqual([10, 11])
     expect(new Float32Array(points.data).length).toBe((2 * POINT_STRIDE) / 4)
-    expect(new Float32Array(points.data)[3]).toBe(300) // the radius of the note's group
+    // The radius the note's group opens by (larger than its 300: it holds few items).
+    expect(new Float32Array(points.data)[3]).toBeCloseTo(opens(scene, 2), 2)
+    expect(opens(scene, 2)).toBeGreaterThan(300)
     scene.hideDaily = true
     expect(scene.hidden(scene.groups.get(3)!)).toBe(true)
     expect(scene.hidden(scene.groups.get(1)!)).toBe(false)
@@ -175,8 +193,8 @@ describe('the scene of the graph', () => {
   it('asks only for the tiles of open groups in view, at their level', () => {
     const scene = new Scene()
     scene.setOverviews([{ name: 'Work', overview: overview() }])
-    // Zoom where Plans (300) starts to open, looking at its middle.
-    const k = 80 / 300
+    // Zoom where Plans starts to open, looking at its middle.
+    const k = 80 / opens(scene, 2)
     const wanted = scene.wanted({ x: -400, y: 0, k }, 400, 300, 512)
     const keys = (wanted.get('Work') ?? []).map((item) => item.tile)
     expect(keys.length).toBeGreaterThan(0)
@@ -237,5 +255,16 @@ describe('symbols and colours chosen by hand', () => {
     scene.applyLooks({ Work: { '': { icon: null, color: chosen } } })
     expect(byKey('space').color).toBe(chosen)
     expect(byKey('f:Daily').color).toBe(own.daily)
+  })
+
+  it('opens a group early when its items have room on screen, a large one only closer', () => {
+    // As the folder of the attrappe: a few notes are seen from afar, a group of hundreds keeps its bubble longer.
+    expect(openRadius(100, 3)).toBeCloseTo((100 * 80) / 36)
+    expect(openRadius(100, 26)).toBeCloseTo((100 * 80) / (9 * Math.sqrt(27)))
+    expect(openRadius(100, 500)).toBe(100)
+    const scene = new Scene()
+    scene.setOverviews([{ name: 'Work', overview: overview() }])
+    // Its children open by their own size and items; the parent's opening travels along.
+    expect(scene.groups.get(4)!.opr).toBe(opens(scene, 2))
   })
 })

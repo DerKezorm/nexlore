@@ -710,6 +710,8 @@ class Proposal(Base):
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     decided_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     decided_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    #: Written by Lore for the person who asked (``services/lore.py``): a writer compares and takes it over like any.
+    lore: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class RecentNote(Base):
@@ -745,6 +747,51 @@ class AiEvent(Base):
     tokens_out: Mapped[int] = mapped_column(Integer, default=0)
     #: The error code when it failed after sending; empty when it worked.
     error: Mapped[str] = mapped_column(String(64), default="")
+
+
+class LoreConversation(Base):
+    """A conversation with Lore (``services/lore.py``): only its account sees it, kept as long as the operator says.
+    The title is the first question, encrypted like the messages."""
+
+    __tablename__ = "lore_conversations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    title_enc: Mapped[str] = mapped_column(Text, default="")
+    #: The note it was asked about (the tab beside a note); follows a rename, empty for the page.
+    note_id: Mapped[int | None] = mapped_column(ForeignKey("files.id", ondelete="SET NULL"), nullable=True,
+                                                index=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow, index=True)
+
+
+class LoreVector(Base):
+    """A note's vector for finding it by its meaning (``services/meaning.py``): made by the operator's service from
+    the note as it was (``source_hash``), with ``model``; ``vector`` is ``dims`` float32, normalised."""
+
+    __tablename__ = "lore_vectors"
+
+    file_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), primary_key=True)
+    model: Mapped[str] = mapped_column(String(200), default="")
+    source_hash: Mapped[str] = mapped_column(String(64), default="")
+    text_hash: Mapped[str] = mapped_column(String(64), default="")
+    dims: Mapped[int] = mapped_column(Integer, default=0)
+    vector: Mapped[bytes] = mapped_column(LargeBinary)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class LoreMessage(Base):
+    """One turn: the question, or Lore's answer with its sources and the way it searched, as encrypted JSON."""
+
+    __tablename__ = "lore_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("lore_conversations.id", ondelete="CASCADE"),
+                                                 index=True)
+    #: ``user`` or ``assistant``.
+    role: Mapped[str] = mapped_column(String(16))
+    body_enc: Mapped[str] = mapped_column(Text, default="")
+    at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
 
 
 class Draft(Base):

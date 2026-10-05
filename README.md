@@ -9,7 +9,7 @@ work on the same folder at the same time.
 nexlore is one of the nex apps and looks like them: turquoise, dark and light. What it can do, the full guide and
 answers to common questions are on the project site, **[www.nexlore.de](https://www.nexlore.de)**.
 
-![Zoomed into a folder of the graph, with the notes and their links](docs/screenshots/graph.png)
+![The graph: folders as faint circles behind their notes, one note chosen and its links lit](docs/screenshots/graph.png)
 
 *The graph. Folders are bubbles; zoom in and they open to show their notes and the links between them. It is drawn
 with WebGL and stays smooth with 100,000 notes. Folders, tags or topics found in the text, at the switch on top.*
@@ -87,6 +87,15 @@ from one space into another that only resolve for people who may read both.*
   interface, in the cloud or at home): correct spelling, rewrite in one of nine tones, translate, summarize, or write
   from a request with the note as material. The result always stands next to the text first and changes nothing until
   it is taken over; what went out is listed word for word for 14 days.
+- **Ask Lore** (with AI in notes and Ask Lore switched on): ask about your own notes and get an answer from them, as it is
+  written, with a numbered source for every statement and a plain word where the notes say nothing. Lore looks only
+  in the spaces you may read (and of those the ones you leave in), on a page of its own with your conversations, or
+  in a chat window in the corner of every page, which takes the open note along and can turn an answer into
+  a proposal for it. Conversations are encrypted, only
+  yours, and kept as long as the operator says. The operator chooses whether every account brings its own service
+  or one service serves all, such as Ollama at home. With one for all and a model for vectors, Lore also finds
+  notes that mean the question in other words, and every note shows the ones most like it. A model that can call
+  tools lets Lore look further by herself.
 - **AI from outside over MCP** (off by default): everything the interface can do as a tool, with keys or as a
   connector that signs in (OAuth), at three levels (read, drafts, write), each optionally limited to some spaces.
   Rights per tool (allow, ask, deny): asked calls wait for your approval in nexlore, drafts wait on the note. See

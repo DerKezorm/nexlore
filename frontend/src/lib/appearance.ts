@@ -16,7 +16,7 @@ export type Width = 'narrow' | 'normal' | 'wide' | 'full'
 export type Start = 'graph' | 'daily' | 'last' | 'note'
 
 /** The tabs of the column beside a note. */
-export type PanelTab = 'outline' | 'links' | 'comments' | 'graph' | 'versions' | 'plugins'
+export type PanelTab = 'outline' | 'links' | 'comments' | 'lore' | 'graph' | 'versions' | 'plugins'
 
 export type Appearance = {
   mode: Mode
@@ -37,16 +37,23 @@ export type Appearance = {
   sidebar: 'open' | 'rail'
   /** The first day of the calendar's week. */
   week_start: 'monday' | 'sunday'
+  /** The soft glow around the dots of the map (off on computers whose graphics it strains). */
+  graph_glow: boolean
+  /** The view a note opens in for editing: the visual editor or the Markdown text. */
+  editor: 'visual' | 'source'
   /** Own keys for commands (`lib/shortcuts.ts`). */
   keys: OwnKeys
   /** The spaces the map leaves out, by id; empty: every space. */
   graph_hidden: number[]
+  /** The spaces Lore leaves out when it looks things up, by id; empty: every space. */
+  lore_hidden: number[]
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
   mode: 'dark', theme: 'nexlore', space_themes: true, font_ui: 'inter', font_text: 'inter', font_code: 'jetbrains', size: 16, width: 'normal',
-  start: 'graph', start_note: '', home_space: '', panel: true, panel_tab: 'links', sidebar: 'open', week_start: 'monday', keys: {},
+  start: 'graph', start_note: '', home_space: '', panel: true, panel_tab: 'links', sidebar: 'open', week_start: 'monday', editor: 'visual', graph_glow: true, keys: {},
   graph_hidden: [],
+  lore_hidden: [],
 }
 
 type Font = { label: string; family: string; load?: () => Promise<unknown> }

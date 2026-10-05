@@ -4,7 +4,8 @@
  * are right, and the switch goes on only with a complete access. Below, what went out, word for word: the proof of
  * what left, shown as text and never rendered (hidden text in a note would stay hidden otherwise).
  *
- * When the operator has not allowed AI in notes, it says so, and the operator gets the way to the switch.
+ * When the operator has not allowed AI in notes, it says so, and the operator gets the way to the switch. When the
+ * operator brings one service for all, it says that instead: nothing to fill in, the own access rests meanwhile.
  */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -25,7 +26,6 @@ export function AiAccess() {
   const [key, setKey] = useState('')
   const [model, setModel] = useState('')
   const [models, setModels] = useState<AiModel[] | null>(null)
-  const [events, setEvents] = useState<AiEvent[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [said, setSaid] = useState('')
@@ -70,6 +70,20 @@ export function AiAccess() {
             </Link>
           )}
         </p>
+      </section>
+    )
+
+  if (state.mode === 'shared')
+    return (
+      <section id="ai" className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="ai-title">
+        <h2 id="ai-title" className="mb-1 flex items-center gap-2 font-semibold">
+          <Symbol name="sparkle" className="h-4 w-4 text-accent-400" /> {t('ai.title')}
+        </h2>
+        <p className="rounded-xl border border-accent-500/30 bg-accent-500/10 px-3 py-2 text-sm text-mist-200" data-testid="ai-shared-info">
+          {state.shared.complete ? t('ai.sharedInfo', { model: state.shared.model }) : t('ai.sharedIncomplete')}
+        </p>
+        <p className="mt-3 text-xs text-mist-500">{t('ai.whereItGoes')}</p>
+        <AiEvents />
       </section>
     )
 
@@ -205,7 +219,18 @@ export function AiAccess() {
 
       {problem && <p role="alert" className="mt-3 rounded-lg border border-bad-500/30 bg-bad-500/10 px-3 py-2 text-sm text-bad-500">{errorText(problem)}{said}</p>}
       {done && <p role="status" className="mt-3 text-sm text-accent-400">{done}</p>}
+      <AiEvents />
+    </section>
+  )
+}
 
+/** What went out, word for word, from either access: the proof of what left. */
+function AiEvents() {
+  const { t } = useTranslation()
+  const [events, setEvents] = useState<AiEvent[] | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
+  return (
+    <>
       <details
         className="mt-4 rounded-xl border border-ink-700 px-3 py-2 text-sm"
         onToggle={(event) => {
@@ -234,16 +259,19 @@ export function AiAccess() {
         {events && events.length > 0 && (
           <button
             type="button"
-            onClick={() => void act(async () => {
-              await aiApi.clear()
-              setEvents([])
-            })}
+            onClick={() =>
+              void aiApi.clear().then(
+                () => setEvents([]),
+                (error) => setProblem(error instanceof ApiError ? error.code : 'internal_error'),
+              )
+            }
             className="mt-2 text-xs text-bad-500 hover:underline"
           >
             {t('ai.clear')}
           </button>
         )}
       </details>
-    </section>
+      {problem && <p role="alert" className="mt-2 text-xs text-bad-500">{errorText(problem)}</p>}
+    </>
   )
 }

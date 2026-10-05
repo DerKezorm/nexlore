@@ -34,7 +34,8 @@ def _database_busy(exc: BaseException) -> bool:
 QUIET_PATHS = ("/api/health", "/api/logs")
 SLOW_MS = 3000
 #: What takes long by nature: backups grow with the vault.
-SLOW_EXPECTED = ("/api/backups",)
+#: Lore writes its answer while the request stands open (``routers/lore.py``).
+SLOW_EXPECTED = ("/api/backups", "/api/lore/ask")
 
 #: The editor and the graph set inline styles, hence 'unsafe-inline' for styles only. Scripts stay strict.
 #: ``blob:`` for images: a pasted picture is shown before it is uploaded.

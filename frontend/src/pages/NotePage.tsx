@@ -24,6 +24,8 @@ import { DraftCompare } from '../components/DraftCompare'
 import type { EditorHandle, EditorMode } from '../components/NoteEditor'
 import { Sidebar } from '../components/Sidebar'
 import { Symbol, type SymbolName } from '../components/Symbol'
+import { SimilarNotes } from '../components/SimilarNotes'
+import { PROPOSALS_EVENT } from '../lib/lore'
 import { NotePanel, type PanelPart } from '../components/NotePanel'
 import { ImageViewer } from '../components/ImageViewer'
 import { Presence } from '../components/Presence'
@@ -355,6 +357,15 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const [comparing2, setComparing2] = useState<{ kind: 'news'; left: string } | { kind: 'proposal'; proposal: Proposal } | null>(null)
   const [proposing, setProposing] = useState(false)
   const [proposalProblem, setProposalProblem] = useState<string | null>(null)
+  // Lore left a proposal on this note from the tab beside it: it shows without opening the note again.
+  useEffect(() => {
+    const heard = (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== path) return
+      proposalsApi.forNote(path).then(setProposals, () => {})
+    }
+    window.addEventListener(PROPOSALS_EVENT, heard)
+    return () => window.removeEventListener(PROPOSALS_EVENT, heard)
+  }, [path])
   const load = useCallback(async (target: string) => {
     try {
       const [data, found] = await Promise.all([vaultApi.note(target), vaultApi.links(target)])
@@ -489,9 +500,10 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     setLockHolder(null)
     setConflict(null)
     setSaveState('idle')
-    setMode('visual')
+    // Each account opens notes in its own view (Settings → General); the switch in the toolbar changes it for this note.
+    setMode(me?.appearance?.editor === 'source' ? 'source' : 'visual')
     setEditingPath(path)
-  }, [note, path])
+  }, [note, path, me?.appearance?.editor])
 
   /** True when editing has ended; false when the last save failed and the text is still only in the editor. */
   const stopEditing = useCallback(async (): Promise<boolean> => {
@@ -1089,6 +1101,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
               vaultApi.links(at).then((found) => current.current === at && setLinks(found), () => {})
             }}
           />
+          <SimilarNotes path={note.path} onOpen={open} />
           <Section symbol="link" title={t('note.outgoing')} count={outgoing.length}>
             {outgoing.map(({ link: item, count }, index) => {
               const times = count > 1 && <span className="ml-auto shrink-0 text-xs text-mist-600 tabular-nums" aria-label={t('note.linkedTimes', { count })}>×{count}</span>
@@ -1292,7 +1305,12 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
           )}
           {side === 'left' &&
             proposals.slice(0, 3).map((proposal) =>
-              proposal.by === me?.name ? (
+              // Lore's proposal for the person who asked: compared and taken over like any, when one may write.
+              proposal.lore && proposal.by === me?.name && mayWrite ? (
+                <Banner key={proposal.id} tone="info" symbol="info" action={<button type="button" className="rounded-full border border-accent-500/40 px-3 py-0.5 hover:bg-accent-500/10" onClick={() => setComparing2({ kind: 'proposal', proposal })}>{t('proposals.compare')}</button>}>
+                  {t('lore.proposalBanner', { message: proposal.message.replace(/^Lore: /, '') })}
+                </Banner>
+              ) : proposal.by === me?.name ? (
                 <Banner key={proposal.id} tone="info" symbol="info" action={<button type="button" className="rounded-full border border-accent-500/40 px-3 py-0.5 hover:bg-accent-500/10" onClick={() => void proposalsApi.withdraw(proposal.id).then(() => setProposals((list) => list.filter((item) => item.id !== proposal.id)))}>{t('proposals.withdraw')}</button>}>
                   {t('proposals.waitingOwn')}
                 </Banner>
@@ -1418,7 +1436,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                     draft.current = text
                   }}
                   onOpenLink={(target, newTab) => void openLink(target, newTab)}
-                  onSource={() => setMode('source')}
+                  onMode={setMode}
                   onNotice={setNotice}
                   onFileRefused={() => setNotice(t('note.fileRefused'))}
                   onUploaded={uploaded}
@@ -1539,7 +1557,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       )}
       {comparing2?.kind === 'proposal' && (
         <CompareDialog
-          title={t('proposals.compareTitle', { name: comparing2.proposal.by })}
+          title={comparing2.proposal.lore ? t('lore.proposalTitle') : t('proposals.compareTitle', { name: comparing2.proposal.by })}
           note={comparing2.proposal.message || undefined}
           left={{ label: t('drafts.now'), text: note.content }}
           right={{ label: t('proposals.proposed'), text: comparing2.proposal.content ?? '' }}

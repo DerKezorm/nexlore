@@ -16,7 +16,7 @@ from ..deps import DbSession, OperatorAccount
 from ..errors import error
 from ..models import SIGN_IN_PASSWORD
 from ..security import encrypt_secret
-from ..services import accounts, ai, guide, mailer, settings_service
+from ..services import accounts, ai, guide, lore, mailer, settings_service
 
 logger = logging.getLogger("nexlore.settings")
 
@@ -45,6 +45,10 @@ class SettingsOut(BaseModel):
     plugin_upload_allowed: bool
     ai_allowed: bool
     ai_private_hosts: str
+    ai_mode: str
+    ai_per_minute: int
+    lore_allowed: bool
+    lore_keep_days: int
     custom_css_allowed: bool
 
 
@@ -71,6 +75,11 @@ class SettingsIn(BaseModel):
     plugin_upload_allowed: bool | None = None
     ai_allowed: bool | None = None
     ai_private_hosts: str | None = Field(default=None, max_length=2000)
+    ai_mode: Literal["own", "shared"] | None = None
+    lore_allowed: bool | None = None
+    ai_per_minute: int | None = Field(default=None, ge=1, le=600)
+    #: 0 keeps conversations until the account removes them.
+    lore_keep_days: int | None = Field(default=None, ge=0, le=3650)
     custom_css_allowed: bool | None = None
 
 
@@ -102,6 +111,10 @@ def _view(db: DbSession) -> SettingsOut:
         plugin_upload_allowed=bool(values["plugin_upload_allowed"]),
         ai_allowed=bool(values["ai_allowed"]),
         ai_private_hosts=str(values["ai_private_hosts"] or ""),
+        ai_mode=ai.mode(db),
+        lore_allowed=bool(values["lore_allowed"]),
+        ai_per_minute=ai.per_minute(db),
+        lore_keep_days=lore.keep_days(db),
         custom_css_allowed=bool(values["custom_css_allowed"]),
     )
 

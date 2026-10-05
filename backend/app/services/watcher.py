@@ -35,6 +35,24 @@ def _purge_ai_events() -> None:
 
     with SessionLocal() as db:
         ai.purge_events(db)
+
+
+def _read_in_meaning() -> None:
+    """Notes get their vectors from the operator's service, a little on every pass (``services/meaning.py``)."""
+    from ..db import SessionLocal
+    from . import meaning
+
+    with SessionLocal() as db:
+        meaning.catch_up(db)
+
+
+def _purge_lore() -> None:
+    """Conversations with Lore stay as long as the operator says (``services/lore.py``)."""
+    from ..db import SessionLocal
+    from . import lore
+
+    with SessionLocal() as db:
+        lore.purge(db)
 #: How long the watcher collects events before it hands them over, in milliseconds.
 DEBOUNCE_MS = 1500
 RETRY_SECONDS = 30
@@ -98,9 +116,11 @@ async def scan_forever(stop: asyncio.Event) -> None:
             logger.exception("Carrying on with an unfinished move failed")
         try:
             await asyncio.to_thread(index.scan)
+            await asyncio.to_thread(_read_in_meaning)
             if time.monotonic() - last_housekeeping >= HOUSEKEEPING_SECONDS or last_housekeeping == 0.0:
                 await asyncio.to_thread(vault.purge_expired)
                 await asyncio.to_thread(_purge_ai_events)
+                await asyncio.to_thread(_purge_lore)
                 await asyncio.to_thread(vault.thin_all)
                 last_housekeeping = time.monotonic()
         except Exception:

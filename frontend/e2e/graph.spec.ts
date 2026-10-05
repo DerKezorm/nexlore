@@ -86,7 +86,8 @@ test('a note chosen before the map has come is shown once it has', async ({ page
 
 test('a search hit flies to the note on the map', async ({ page }) => {
   await page.goto('/?focus=' + encodeURIComponent('Work/Ideas/Garden.md'))
-  await expect(page.getByTestId('graph-card').getByRole('heading', { name: 'Garden' })).toBeVisible()
+  // Late in a full run the map page was so busy that the card took longer than 5 s (06.10.2026).
+  await expect(page.getByTestId('graph-card').getByRole('heading', { name: 'Garden' })).toBeVisible({ timeout: 15_000 })
   await expect(page).toHaveURL(/\/$/)
 })
 
@@ -115,6 +116,92 @@ test('the note page shows the neighbourhood, one to three links deep, and leads 
   await page.getByTestId('local-graph').getByRole('button', { name: 'Show in the big graph' }).click()
   await expect(page.getByTestId('graph-card').getByRole('heading', { name: 'Plan' })).toBeVisible()
   expect(problems).toEqual([])
+})
+
+test('the focus fades the rest in by degrees, the wheel glides, and a note dragged stays where it is dropped', async ({ page }) => {
+  const problems = collectProblems(page)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  const canvas = page.getByTestId('graph-canvas')
+  // From the first frame on: every value the fade takes, to see that it goes by degrees.
+  await page.addInitScript(() => {
+    const seen: string[] = []
+    ;(window as unknown as { fades: string[] }).fades = seen
+    const look = () => {
+      const value = document.querySelector('[data-testid="graph-canvas"]')?.getAttribute('data-fade')
+      if (value && seen[seen.length - 1] !== value) seen.push(value)
+      requestAnimationFrame(look)
+    }
+    requestAnimationFrame(look)
+  })
+  await page.goto('/?focus=' + encodeURIComponent('Work/Ideas/Garden.md'))
+  await expect(page.getByTestId('graph-card').getByRole('heading', { name: 'Garden' })).toBeVisible()
+  await expect(canvas).toHaveAttribute('data-fade', '1.00')
+  const fades = await page.evaluate(() => (window as unknown as { fades: string[] }).fades.map(Number))
+  expect(fades.some((value) => value > 0.05 && value < 0.95)).toBe(true)
+  await expect(canvas).toHaveAttribute('data-moving', 'no', { timeout: 10_000 })
+
+  // The wheel: the zoom comes over several frames, not in one jump.
+  const box = (await canvas.boundingBox())!
+  await page.mouse.move(box.x + 40, box.y + 40)
+  const zooms = await page.evaluate(async () => {
+    const element = document.querySelector('[data-testid="graph-canvas"]')!
+    element.dispatchEvent(new WheelEvent('wheel', { deltaY: -300, clientX: 60, clientY: 120, bubbles: true, cancelable: true }))
+    const seen: string[] = []
+    for (let frame = 0; frame < 30; frame++) {
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+      const value = element.getAttribute('data-zoom')!
+      if (seen[seen.length - 1] !== value) seen.push(value)
+    }
+    return seen
+  })
+  expect(zooms.length).toBeGreaterThan(3)
+  await page.keyboard.press('Escape')
+
+  // Dragged with the mouse: the note goes along, then stays where it was dropped.
+  await page.goto('/?focus=' + encodeURIComponent('Work/Ideas/Garden.md'))
+  await expect(page.getByTestId('graph-card').getByRole('heading', { name: 'Garden' })).toBeVisible()
+  await expect(canvas).toHaveAttribute('data-moving', 'no', { timeout: 10_000 })
+  const place = page.getByTestId('graph-places').locator('button[data-place="note"]', { hasText: /^Garden$/ })
+  // The list of places follows only a map that stands still; a tile arriving late lets it swing in once more
+  // (two rounds in ten, up to some seconds, measured 05.10.2026).
+  await expect(place).toHaveCount(1, { timeout: 20_000 })
+  await expect(canvas).toHaveAttribute('data-moving', 'no', { timeout: 10_000 })
+  const where = async () => place.evaluate((button: HTMLElement) => [parseFloat(button.style.left), parseFloat(button.style.top)])
+  const [x, y] = await where()
+  // The map itself stays: a mouse that held nothing would move the whole map, Garden with it (a mutation passed so).
+  const folder = page.getByTestId('graph-places').locator('button[data-place="group"]').first()
+  await expect(folder).toHaveCount(1)
+  const folderAt = async () => folder.evaluate((button: HTMLElement) => [parseFloat(button.style.left), parseFloat(button.style.top)])
+  const [fx, fy] = await folderAt()
+  await page.mouse.move(box.x + x, box.y + y)
+  await page.mouse.down()
+  for (let step = 1; step <= 10; step++) await page.mouse.move(box.x + x + step * 4, box.y + y + step * 2)
+  await expect(canvas).toHaveAttribute('data-moving', 'yes')
+  await page.mouse.up()
+  await expect(canvas).toHaveAttribute('data-moving', 'no', { timeout: 10_000 })
+  // Where the mouse let go (a pixel either way: the grip is where the dot was hit, not its exact middle).
+  await expect.poll(async () => {
+    const [nx, ny] = await where()
+    return Math.abs(nx - x - 40) <= 2 && Math.abs(ny - y - 20) <= 2
+  }).toBe(true)
+  const [gx, gy] = await folderAt()
+  expect(Math.abs(gx - fx) + Math.abs(gy - fy)).toBeLessThan(1)
+  expect(problems).toEqual([])
+})
+
+test('the glow of the map is switched off in the settings, for the own account', async ({ page }) => {
+  const canvas = page.getByTestId('graph-canvas')
+  await page.goto('/')
+  await expect(canvas).toHaveAttribute('data-glow', '1.00')
+  await page.goto('/settings?tab=looks')
+  await page.getByRole('checkbox', { name: /Glow on the map/ }).uncheck()
+  await expect.poll(async () => (await (await page.request.get('/api/auth/me')).json()).appearance.graph_glow).toBe(false)
+  try {
+    await page.goto('/')
+    await expect(canvas).toHaveAttribute('data-glow', '0.00')
+  } finally {
+    await page.request.put('/api/me/appearance', { data: { graph_glow: true }, headers: { 'X-Nexlore-Client': 'tab-e2e-glow' } })
+  }
 })
 
 test('a note without links says so in its local graph', async ({ page }) => {

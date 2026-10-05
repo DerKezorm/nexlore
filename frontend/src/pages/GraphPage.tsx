@@ -382,6 +382,7 @@ export function GraphPage() {
       <main className="relative min-w-0 flex-1 overflow-hidden">
         <h1 className="sr-only">{t('graph.heading')}</h1>
         <GraphView
+          glow={me?.appearance?.graph_glow !== false}
           ref={graph}
           scene={scene}
           revision={revision}
@@ -435,8 +436,8 @@ export function GraphPage() {
           {cloudInfo && <div className="mt-3 border-t border-ink-700 pt-3">{cloudInfo}</div>}
         </div>
 
-        {/* Zoom controls. */}
-        <div className="absolute right-3 bottom-3 flex flex-col overflow-hidden rounded-xl border border-ink-700 bg-ink-900/85 backdrop-blur">
+        {/* Zoom controls, above the spider of Lore when it sits in the corner. */}
+        <div className="absolute right-3 bottom-[calc(0.75rem+var(--lore-corner,0px))] flex flex-col overflow-hidden rounded-xl border border-ink-700 bg-ink-900/85 backdrop-blur">
           <button type="button" onClick={() => graph.current?.zoomBy(1.6)} className="p-2.5 text-mist-400 hover:bg-ink-800 hover:text-mist-100" title={t('graph.zoomIn')} aria-label={t('graph.zoomIn')}>
             <Symbol name="plus" />
           </button>

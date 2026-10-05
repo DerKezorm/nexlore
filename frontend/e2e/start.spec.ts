@@ -28,7 +28,8 @@ test('a note as the start page opens once per tab, the map stays one click away'
     // A new tab opens on it; the map is still there to go to, and stays.
     const other = await context.newPage()
     await other.goto('/')
-    await expect(other).toHaveURL(/\/note\/Zyx\/Palette\.md$/)
+    // The map of a big vault starts loading first; late in a full run that took longer than 5 s (06.10.2026).
+    await expect(other).toHaveURL(/\/note\/Zyx\/Palette\.md$/, { timeout: 15_000 })
     await other.getByRole('link', { name: 'Graph' }).click()
     await expect(other).toHaveURL(/\/$/)
     await other.reload()

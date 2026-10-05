@@ -22,6 +22,7 @@ import { PublicPage } from './pages/PublicPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SetupPage } from './pages/SetupPage'
 import { TasksPage } from './pages/TasksPage'
+import { LorePage } from './pages/LorePage'
 import { SearchPage } from './pages/SearchPage'
 import { useAuth } from './state/auth'
 import { StoreProvider } from './state/store'
@@ -88,6 +89,8 @@ export default function App() {
         <Route path="calendar" element={<CalendarPage />} />
         <Route path="tasks" element={<TasksPage />} />
         <Route path="search" element={<SearchPage />} />
+        <Route path="lore" element={<LorePage />} />
+        <Route path="lore/:id" element={<LorePage />} />
         <Route path="files" element={<FilesPage />} />
         <Route path="files/cleanup" element={<CleanupPage />} />
         <Route path="capture" element={<CaptureRoute />} />

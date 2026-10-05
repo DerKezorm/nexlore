@@ -150,6 +150,8 @@ MCP = "mcp"
 API = "api"
 #: Written by a plugin in the browser (M7), with the account of the person using it.
 PLUGIN = "plugin"
+#: An answer of Frag Lore saved as a note (``services/lore.py``).
+LORE = "lore"
 
 
 @dataclass

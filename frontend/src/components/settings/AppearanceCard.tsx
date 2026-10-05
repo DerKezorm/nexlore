@@ -110,6 +110,14 @@ export function AppearanceCard() {
         </span>
       </label>
 
+      <label className="flex items-start gap-3 text-sm text-mist-300">
+        <input type="checkbox" checked={look.graph_glow !== false} onChange={(event) => void change({ graph_glow: event.target.checked })} className="mt-1 accent-accent-500" />
+        <span>
+          {t('looks2.graphGlow')}
+          <span className="block text-xs text-mist-500">{t('looks2.graphGlowHint')}</span>
+        </span>
+      </label>
+
       <div className="rounded-xl border border-ink-700 bg-ink-900 p-4">
         <div className="nn-prose mx-auto" style={{ maxWidth: 'var(--nn-width)' }} data-testid="appearance-sample">
           <h3>{t('looks2.sampleTitle')}</h3>
