@@ -49,6 +49,8 @@ self.addEventListener('fetch', (event) => {
   if (!kept(request)) return
   const url = new URL(request.url)
   if (request.mode === 'navigate') {
+    // A frame (the PDF frame) is not the app's page: never kept, never answered with the page kept.
+    if (request.destination !== 'document') return
     event.respondWith(
       fetch(request)
         .then((response) => {

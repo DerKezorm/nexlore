@@ -87,3 +87,21 @@ def test_the_service_worker_is_always_fetched_anew_and_the_manifest_has_its_type
     manifest = client.get("/manifest.webmanifest")
     assert manifest.headers["content-type"].startswith("application/manifest+json")
     assert manifest.json() == {"name": "nexlore"}
+
+
+def test_the_pdf_frame_has_its_own_strict_policy_and_only_the_assets_open_to_it(tmp_path: Path) -> None:
+    client = _built(tmp_path)
+    (tmp_path / "dist" / "pdfview.html").write_bytes(b"<!doctype html><title>PDF</title>")
+    frame = client.get("/pdfview.html")
+    policy = frame.headers["content-security-policy"]
+    # A sandbox without an origin of its own, no network, scripts only from nexlore and its own blobs.
+    for part in ("sandbox allow-scripts", "connect-src 'none'", "default-src 'none'", "frame-ancestors 'self'",
+                 "form-action 'none'"):
+        assert part in policy, part
+    assert "allow-same-origin" not in policy
+    assert frame.headers["x-frame-options"] == "SAMEORIGIN"
+    # Its module scripts are fetched with CORS from an origin "null": the app's files say anyone may read them.
+    assert client.get("/assets/app.js").headers["access-control-allow-origin"] == "*"
+    # Nothing else is opened that way: not the start page, not the API.
+    assert "access-control-allow-origin" not in client.get("/notes/x").headers
+    assert "content-security-policy" not in client.get("/notes/x").headers

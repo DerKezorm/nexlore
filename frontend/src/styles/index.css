@@ -402,6 +402,10 @@
   .nn-prose .nn-embed-note {
     @apply block;
   }
+  /* A PDF embedded in a note: a small reader, filled in by PdfEmbeds. */
+  .nn-prose .nn-embed-pdf {
+    @apply my-3 block;
+  }
   .nn-prose .nn-embedded {
     @apply my-3 block rounded-xl border border-ink-700 bg-ink-900/40 px-4 py-2;
   }

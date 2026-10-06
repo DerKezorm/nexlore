@@ -62,6 +62,11 @@ export type Targets = {
    * Left out (public pages, and inside an embedded note: one level deep), the embed is a link to the note.
    */
   embedNote?: (path: string, section: string, text: string) => string
+  /**
+   * An embedded PDF (`![[Doc.pdf#page=3&height=400]]`): in the app a holder the note page fills with a reader
+   * (`PdfEmbeds`). Left out, the embed is a link to the PDF.
+   */
+  embedPdf?: (path: string, section: string, text: string) => string
 }
 
 /** Marks a Markdown link that is shown as its text; the mark never survives into the page. */
@@ -90,6 +95,10 @@ export function appTargets(notePath: string | null, embeds = true): Targets {
     embedNote: embeds
       ? (path, section, text) =>
           `<span class="nn-embed-note" data-embed="${escape(path)}" data-section="${escape(section)}"><a class="nn-wikilink" ${noteAttributes(path, section)}>${text}</a></span>`
+      : undefined,
+    embedPdf: embeds
+      ? (path, section, text) =>
+          `<span class="nn-embed-pdf" data-pdf="${escape(path)}" data-section="${escape(section)}">${fileLink(path, text, { fileHref: fileRoute }, section)}</span>`
       : undefined,
   }
 }
@@ -163,9 +172,16 @@ function wikiLink(embed: boolean, inner: string, resolve: (target: string) => st
   // Without a label, a link to a heading or block names it too (`Note › Heading`), as the editor shows it; a part of
   // the same note only by its own name.
   const part = section.replace(/^\^/, '')
-  const shown = section && !embed ? (target ? `${target} › ${part}` : part) : target
+  // A PDF's page reads as words: `Doc.pdf, page 4`, not `Doc.pdf › page=4`.
+  const pdfPage = /\.pdf$/i.test(target) ? /(?:^|&)page=(\d{1,6})/.exec(section)?.[1] : undefined
+  const shown = pdfPage
+    ? `${target}, ${i18n.t('pdf.pageLabel', { page: pdfPage }) || `page ${pdfPage}`}`
+    : section && !embed ? (target ? `${target} › ${part}` : part) : target
   const text = escape((width || label === undefined ? shown : label).trim() || target)
-  if (path && !isNotePath(path)) return embed ? embedded(path, text, width, targets) : fileLink(path, text, targets)
+  if (path && !isNotePath(path)) {
+    if (embed && fileKind(path) === 'pdf' && targets.embedPdf) return targets.embedPdf(path, section, text)
+    return embed ? embedded(path, text, width, targets) : fileLink(path, text, targets, section)
+  }
   if (path && embed && targets.embedNote) return targets.embedNote(path, section, text)
   return path
     ? `<a class="nn-wikilink" ${targets.noteAttributes(path, section)}>${text}</a>`
@@ -550,8 +566,11 @@ export function withoutFrontMatter(body: string): string {
   return match ? body.slice(match[0].length) : body
 }
 
-function fileLink(path: string, text: string, targets: Targets): string {
-  return `<a class="nn-wikilink nn-filelink" data-file="${escape(path)}" href="${escape(targets.fileHref(path))}">${text}</a>`
+/** A link to a file's page; for a PDF the page (`#page=3`) goes along, and the PDF opens there. */
+function fileLink(path: string, text: string, targets: Pick<Targets, 'fileHref'>, section = ''): string {
+  const page = fileKind(path) === 'pdf' ? /(?:^|&)page=(\d{1,6})/.exec(section)?.[1] : undefined
+  const href = targets.fileHref(path) + (page ? `#page=${page}` : '')
+  return `<a class="nn-wikilink nn-filelink" data-file="${escape(path)}"${page ? ` data-page="${page}"` : ''} href="${escape(href)}">${text}</a>`
 }
 
 /** An embedded file where the embed stands: a picture, a video, a sound, or a link to its page. */

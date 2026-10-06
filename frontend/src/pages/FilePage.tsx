@@ -1,7 +1,8 @@
 /**
  * The page of a file that is not a note: a picture, a video or a sound shows itself, anything else can be
- * downloaded. The notes that link it are listed, and it can go to the trash. What the browser gets is decided by the
- * server by the file's content (a PDF or an SVG is always a download).
+ * downloaded; a PDF opens in nexlore's reader (`PdfFile`). The notes that link it are listed, and it can go to the
+ * trash. What the browser gets is decided by the server by the file's content (a PDF or an SVG is always a download;
+ * the reader fetches the bytes and draws them in a frame of its own).
  */
 import { Suspense, lazy, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,6 +12,7 @@ import { ApiError, fileUrl, vaultApi, type Links } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Sidebar } from '../components/Sidebar'
 import { BaseView } from '../components/BaseView'
+import { PdfFile } from '../components/PdfFile'
 import { Symbol } from '../components/Symbol'
 import { errorText } from '../lib/errors'
 import { fileKind, isCanvasPath } from '../lib/files'
@@ -32,6 +34,7 @@ export function FilePage() {
       </Suspense>
     )
   }
+  if (fileKind(path) === 'pdf') return <PdfFile key={path} path={path} />
   return <FileDetails path={path} />
 }
 

@@ -563,6 +563,8 @@ class Backlink(BaseModel):
     kind: str
     #: The line the link stands in, as text without Markdown; only for the first ``CONTEXT_NOTES`` notes.
     context: str | None = None
+    #: What follows ``#`` in the link: a heading, a block, or for a PDF ``page=3``.
+    subpath: str = ""
 
 
 #: Backlinks from this many notes get the line they stand in (each file is read once); the rest only title and line.
@@ -626,9 +628,9 @@ def links(path: PathQuery, account: Account) -> LinksOut:
                 Outgoing(kind=kind, target=target, subpath=subpath, line=line, path=target_path, title=target_title)
             )
         backlinks = [
-            Backlink(path=source_path, title=title, line=line, kind=kind)
-            for source_path, title, line, kind in db.execute(
-                select(File.path, File.title, Link.line, Link.kind)
+            Backlink(path=source_path, title=title, line=line, kind=kind, subpath=subpath or "")
+            for source_path, title, line, kind, subpath in db.execute(
+                select(File.path, File.title, Link.line, Link.kind, Link.subpath)
                 .join(File, File.id == Link.source_id)
                 .where(Link.target_id == file.id, File.deleted_at.is_(None), Link.source_id != file.id,
                        File.space_id.in_(readable))

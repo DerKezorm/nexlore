@@ -165,6 +165,19 @@ describe("Obsidian's own writing in the reading view", () => {
     expect(inside).toContain('<a class="nn-wikilink" data-note="S/Plan.md">Plan</a>')
   })
 
+  it('embeds a PDF as a reader at its page and height, and a link to a PDF page leads to that page', () => {
+    const pdf = (target: string) => (target.split('#')[0] === 'Doc.pdf' ? 'S/Files/Doc.pdf' : null)
+    const html = renderMarkdown('![[Doc.pdf#page=3&height=400]]\n\nSee [[Doc.pdf#page=4]] and [[Doc.pdf#page=5|there]].', pdf, 'S/Home.md')
+    expect(html).toContain('<span class="nn-embed-pdf" data-pdf="S/Files/Doc.pdf" data-section="page=3&amp;height=400">')
+    expect(html).toContain('href="/file/S/Files/Doc.pdf#page=4"')
+    expect(html).toMatch(/data-page="4" href="[^"]+">Doc\.pdf, \S+ 4<\/a>/)
+    expect(html).toContain('href="/file/S/Files/Doc.pdf#page=5">there</a>')
+    // Inside an embedded note, or on a public page, a PDF stays a link.
+    const inside = renderMarkdown('![[Doc.pdf]]', pdf, 'S/Home.md', appTargets('S/Home.md', false))
+    expect(inside).not.toContain('nn-embed-pdf')
+    expect(inside).toContain('class="nn-wikilink nn-filelink" data-file="S/Files/Doc.pdf"')
+  })
+
   it('a link to a heading carries it, for the page to scroll to; one to a heading of the same note leads here', () => {
     const html = renderMarkdown('[[Plan#Next steps]] and [[#Here]]', plan, 'S/Home.md')
     expect(html).toContain('<a class="nn-wikilink" data-note="S/Plan.md" data-section="Next steps">Plan › Next steps</a>')

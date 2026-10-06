@@ -8,6 +8,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exception_handlers import http_exception_handler
@@ -191,14 +192,35 @@ for module in ROUTERS:
     app.include_router(module.router)
 
 
+#: The PDF frame (``frontend/pdfview.html``): a sandbox without an origin of its own, scripts only from nexlore itself
+#: (and its worker from a blob), WebAssembly for pdf.js's image decoders, and no network at all. The page hands it
+#: the PDF; a PDF can carry code (fonts, forms), and whatever pdf.js does with it stays in here.
+PDF_FRAME_POLICY = (
+    "sandbox allow-scripts; default-src 'none'; script-src 'self' 'wasm-unsafe-eval' blob:; worker-src blob:; "
+    "style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; font-src 'self' blob: data:; connect-src 'none'; "
+    "frame-ancestors 'self'; base-uri 'none'; form-action 'none'"
+)
+
+
+class _AppFiles(StaticFiles):
+    """The app's scripts and styles. They name their content and hold nothing private, so a frame without an origin
+    (the PDF frame) may load them: module scripts are always fetched with CORS, and its origin is "null"."""
+
+    def file_response(self, *args: Any, **kwargs: Any) -> Any:
+        response = super().file_response(*args, **kwargs)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        return response
+
+
 def _mount_frontend(target: FastAPI, dist: Path) -> None:
     index = dist / "index.html"
     if not index.exists():
         return
     if (dist / "assets").is_dir():
-        target.mount("/assets", StaticFiles(directory=dist / "assets"), name="assets")
+        target.mount("/assets", _AppFiles(directory=dist / "assets"), name="assets")
     root = dist.resolve()
     start_page = index.resolve()
+    pdf_frame = (dist / "pdfview.html").resolve()
 
     @target.get("/{path:path}", include_in_schema=False, response_model=None)
     def spa(path: str) -> FileResponse | JSONResponse:
@@ -211,6 +233,11 @@ def _mount_frontend(target: FastAPI, dist: Path) -> None:
                 return FileResponse(candidate, media_type="text/javascript", headers={"Cache-Control": "no-cache"})
             if path.endswith(".webmanifest"):
                 return FileResponse(candidate, media_type="application/manifest+json")
+            if candidate == pdf_frame:
+                return FileResponse(candidate, media_type="text/html", headers={
+                    "Content-Security-Policy": PDF_FRAME_POLICY, "X-Frame-Options": "SAMEORIGIN",
+                    "Cache-Control": "no-cache",
+                })
             return FileResponse(candidate)
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
 

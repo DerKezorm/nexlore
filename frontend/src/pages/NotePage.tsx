@@ -53,7 +53,7 @@ import { TabBar } from '../components/TabBar'
 import { openInTab } from '../lib/tabs'
 import { copiesOf, originalOf } from '../lib/compare'
 import { errorText } from '../lib/errors'
-import { isCanvasPath, isFileTarget, isNotePath } from '../lib/files'
+import { fileKind as kindOfFile, isCanvasPath, isFileTarget, isNotePath } from '../lib/files'
 import { distinctOutgoing, LinkIndex, linkedSpace, linkName } from '../lib/links'
 import { fileRoute, formatDate, renderMarkdown, withoutFrontMatter } from '../lib/markdown'
 import { baseName, decodedOrNull, folderOf, noteUrl } from '../lib/vault'
@@ -67,6 +67,9 @@ import { useStore } from '../state/store'
 import { LocalGraph } from '../components/LocalGraph'
 import { NoteEmbeds } from '../components/NoteEmbeds'
 import { ShareDialog } from '../components/ShareDialog'
+import { PdfEmbeds } from '../components/PdfEmbeds'
+import { PdfView } from '../components/PdfView'
+import { pageOf } from '../lib/pdfFrame'
 import { askExport, type ExportMode } from '../lib/exportPdf'
 import { folderColor } from '../graph/palette'
 import { PluginFrame } from '../plugins/host'
@@ -143,8 +146,42 @@ export function NotePage() {
       ) : (
         <NoteStart onNote={open} />
       )}
-      {right && <NotePane path={right} side="right" right={right} mirror={right === path} />}
+      {right && kindOfFile(right) === 'pdf' ? (
+        <PdfPane path={right} page={Number(params.get('rpage')) || 1} />
+      ) : (
+        right && <NotePane path={right} side="right" right={right} mirror={right === path} />
+      )}
     </>
+  )
+}
+
+/** A PDF beside the note (`?right=Doc.pdf`, `&rpage=3` for its page): read on the right, write on the left. */
+function PdfPane({ path, page }: { path: string; page: number }) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const location = useLocation()
+  return (
+    <main className="hidden min-w-0 flex-1 border-l border-ink-700/80 lg:flex" data-pane="right" data-testid="pdf-pane">
+      <div className="min-w-0 flex-1">
+        <PdfView
+          key={path}
+          path={path}
+          page={page}
+          side={false}
+          tools={
+            <button
+              type="button"
+              onClick={() => navigate({ pathname: location.pathname, search: '' })}
+              aria-label={t('common.close')}
+              title={t('common.close')}
+              className="inline-grid h-8 w-8 shrink-0 place-items-center rounded-lg text-mist-300 hover:bg-ink-850 hover:text-accent-300"
+            >
+              <Symbol name="close" className="h-4 w-4" />
+            </button>
+          }
+        />
+      </div>
+    </main>
   )
 }
 
@@ -1500,17 +1537,20 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                     // A link to a note not written yet makes it, as in the editor (it did nothing here, P1.2).
                     const missing = (e.target as HTMLElement).closest('a[data-missing]')
                     if (missing) void openLink(missing.getAttribute('data-missing')!, e.ctrlKey || e.metaKey)
-                    // A file's page inside the app, not a full page load.
+                    // A file's page inside the app, not a full page load; the PDF open beside turns to the page asked.
                     const file = (e.target as HTMLElement).closest('a[data-file], a[href^="/file/"]')
                     if (file && !e.ctrlKey && !e.metaKey) {
                       e.preventDefault()
-                      navigate(file.getAttribute('href')!)
+                      const beside = right && file.getAttribute('data-file') === right && kindOfFile(right) === 'pdf'
+                      if (beside) navigate({ pathname: location.pathname, search: `?right=${encodeURIComponent(right)}&rpage=${pageOf(`page=${file.getAttribute('data-page') ?? '1'}`)}` })
+                      else navigate(file.getAttribute('href')!)
                     }
                   }}
                   dangerouslySetInnerHTML={{ __html: html }}
                 />
                 <PluginBlocks plugins={plugins} article={article} html={html} note={note} onOpen={open} onWritten={pluginWrote} />
                 <NoteEmbeds article={article} html={html} onOpen={open} />
+                <PdfEmbeds article={article} html={html} />
                 <BaseBlocks article={article} html={html} note={note.path} />
                 <FoldLayer article={article} html={html} path={note.path} />
                 <CommentLayer

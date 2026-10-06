@@ -286,3 +286,12 @@ def test_the_notes_of_a_folder_come_in_the_order_of_the_pdf(world: World) -> Non
         "Wissen/Homelab/Backup-Strategie.md", "Wissen/Homelab/ZFS-Pool.md", "Wissen/Oben.md",
     ]
     assert world.bob.get("/api/export/notes", params={"folder": "Privat"}).status_code == 404
+
+
+def test_a_pdf_knows_the_pages_its_notes_link(world: World) -> None:
+    data = pdf(world.anna, path="Wissen/Homelab/ZFS-Pool.md")
+    note(world.anna, "Wissen", "Lesen", "Siehe [[Handbuch.pdf#page=3]] und ![[Handbuch.pdf#page=5&height=300]] und [[Handbuch.pdf]].\n")
+    up = world.anna.post("/api/attachments", params={"note": "Wissen/Lesen.md", "name": "Handbuch.pdf"}, content=data)
+    assert up.status_code in (200, 201), up.text
+    links = world.anna.get("/api/links", params={"path": up.json()["path"]}).json()
+    assert sorted(link["subpath"] for link in links["backlinks"]) == ["", "page=3", "page=5&height=300"]

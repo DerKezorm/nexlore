@@ -15,3 +15,5 @@ __pycache__/
 data/
 data-*/
 .env
+# pdf.js files copied from the package on every build (scripts/pdfjs-assets.mjs)
+frontend/public/pdfjs/

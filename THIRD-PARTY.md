@@ -12,6 +12,7 @@ These files travel inside the container image, so their notices travel with them
 | Fonts Inter, Atkinson Hyperlegible Next, Literata, Source Serif 4, IBM Plex Sans, JetBrains Mono (via Fontsource) | their authors, see the notice | OFL-1.1 | `/licenses/fonts.txt` |
 | The same fonts as TTF for PDFs, plus Noto Emoji (from Google Fonts) | their authors, see the notices | OFL-1.1 | `backend/app/fonts/OFL-*.txt` |
 | mitex 0.2.6, LaTeX formulas in PDFs (a Typst package) | Myriad-Dreamin, OrangeX4, Enter-tainer | Apache-2.0 | `backend/app/typst/packages/preview/mitex/0.2.6/LICENSE` |
+| pdf.js 6.4.299, the PDF reader, with its character maps, standard fonts and image decoders (OpenJPEG, PDFium's JBIG2, qcms) | Mozilla and contributors; the decoders' authors | Apache-2.0; decoders BSD-2-Clause, BSD-3-Clause, MIT | `/pdfjs/LICENSE`, `/pdfjs/wasm/LICENSE_*` |
 | Lucide icons (partly from Feather) | Lucide Icons and Contributors; Cole Bemis | ISC, MIT | `/licenses/lucide.txt` |
 
 nexlore loads no font, icon or script from another host.
