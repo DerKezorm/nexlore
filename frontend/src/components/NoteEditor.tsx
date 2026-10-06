@@ -51,6 +51,7 @@ import { EditorToolbar, ShowToolbar, type ToolbarTarget } from './EditorToolbar'
 import { sourceEdit, sourceStatus, type SourceEdit } from '../lib/sourceTools'
 import { FindBar } from './FindBar'
 import { Properties } from './Properties'
+import { PdfWidgets } from '../editor/pdfWidgets'
 
 export type EditorMode = 'visual' | 'source'
 
@@ -251,6 +252,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         const found = lookup(target)
         if (found === null || found === undefined) return found
         const kind = fileKind(found)
+        if (kind === 'pdf') return { url: found, kind }
         return kind === 'image' || kind === 'video' || kind === 'audio' ? { url: fileUrl(found), kind } : null
       },
     }
@@ -818,6 +820,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         />
       )}
       {menu.element}
+      {mode !== 'source' && <PdfWidgets host={host} />}
       {viewing && (
         <ImageViewer pictures={viewing.pictures} start={viewing.start} archive={baseName(path).replace(/\.md$/i, '')} onClose={() => setViewing(null)} />
       )}

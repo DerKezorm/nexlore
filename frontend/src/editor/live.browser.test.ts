@@ -86,6 +86,21 @@ it('shows an embedded picture, video or sound itself, and the text again where t
   expect(open.text()).toBe('Start.\n\n![[photo.png|120]] and ![[clip.mp4]] and ![[later.png]] and ![[doc.pdf]]\n')
 })
 
+it('leaves a holder for an embedded PDF with its page and height, and reads a link to a PDF page as words', async () => {
+  const embeds: Record<string, EmbedShown | null> = { 'Doc.pdf#page=3&height=300': { url: 'S/Files/Doc.pdf', kind: 'pdf' } }
+  const source = 'Start.\n\n![[Doc.pdf#page=3&height=300]]\n\nSee [[Doc.pdf#page=4]] there.\n'
+  open = await openEditor(source, { links: { embed: (target) => embeds[target] ?? null } })
+  const holder = open.root.querySelector('.nx-embed-pdf') as HTMLElement
+  expect([holder.dataset.pdf, holder.dataset.section, holder.getAttribute('contenteditable')]).toEqual(['S/Files/Doc.pdf', 'page=3&height=300', 'false'])
+  // `Doc.pdf#page=4` reads `Doc.pdf, page 4`; the file keeps what was written.
+  expect(shown(open.root, '.nx-subpath').map((text) => text.trim())).toEqual([', page'])
+  expect(shown(open.root, '.nx-hide')).toContain('#page=')
+  expect(open.text()).toBe(source)
+  // In the link, the reader goes and the text comes back.
+  cursorAfter(open, '![[Doc')
+  expect(open.root.querySelector('.nx-embed-pdf')).toBeNull()
+})
+
 it('shows the name of an embed, not its size', async () => {
   open = await openEditor('Start.\n\n![[photo.png|300]] and ![[Other note|a caption]]\n')
   expect(shown(open.root, '.nx-embed')).toEqual(['photo.png', 'a caption'])

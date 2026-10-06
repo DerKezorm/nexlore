@@ -2609,6 +2609,7 @@
     "newNote": "Notiz zu diesem PDF",
     "newNoteHint": "Legt neben dem PDF eine Notiz an, die oben darauf verlinkt, und öffnet sie neben dem PDF.",
     "beside": "Neben einer Notiz öffnen",
-    "panel": "Die Spalte rechts"
+    "panel": "Die Spalte rechts",
+    "pageWord": "Seite"
   }
 }

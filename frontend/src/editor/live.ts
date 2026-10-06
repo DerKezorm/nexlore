@@ -20,21 +20,37 @@ import type { Node as ProseNode } from '@milkdown/kit/prose/model'
 import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from '@milkdown/kit/prose/state'
 import { Decoration, DecorationSet, type EditorView } from '@milkdown/kit/prose/view'
 
-/** What an embedded file shows in place of its link. */
-export type EmbedShown = { url: string; kind: 'image' | 'video' | 'audio' }
+import i18n from '../i18n'
+
+/**
+ * What an embedded file shows in place of its link. For a PDF `url` is its path in the vault: the editor's page fills
+ * the holder with a reader (`editor/pdfWidgets.tsx`), at the page and the height the link names.
+ */
+export type EmbedShown = { url: string; kind: 'image' | 'video' | 'audio' | 'pdf' }
 
 export type LinkHelpers = {
   /** Does a wiki link target (`Name`, `Folder/Name`, `Name#Heading`) point at an existing note or file? */
   exists: (target: string) => boolean
   open: (target: string, newTab: boolean) => void
   /**
-   * What `![[target]]` shows: a picture, a video or a sound; null for a chip (a note, a PDF, nothing found);
+   * What `![[target]]` shows: a picture, a video, a sound or a PDF's reader; null for a chip (a note, nothing found);
    * undefined while it is not known yet (the helper asks, and the page redraws with `refresh` when it knows).
    */
   embed?: (target: string) => EmbedShown | null | undefined
 }
 
+/** The holder of an embedded PDF; its reader comes from the page, the editor never looks inside. */
+function pdfHolder(shown: EmbedShown, target: string): HTMLElement {
+  const element = document.createElement('div')
+  element.className = 'nx-embed-pdf'
+  element.setAttribute('data-pdf', shown.url)
+  element.setAttribute('data-section', target.includes('#') ? target.slice(target.indexOf('#') + 1) : '')
+  element.setAttribute('contenteditable', 'false')
+  return element
+}
+
 function mediaElement(shown: EmbedShown, width: string, target: string): HTMLElement {
+  if (shown.kind === 'pdf') return pdfHolder(shown, target)
   const element = document.createElement(shown.kind === 'image' ? 'img' : shown.kind)
   element.className = 'nx-embed-media'
   element.setAttribute('src', shown.url)
@@ -136,7 +152,12 @@ function decorateBlock(state: EditorState, block: ProseNode, start: number, help
       if (media) {
         hide(from, to)
         const width = sized ? label.trim().split('x')[0] : ''
-        decorations.push(Decoration.widget(to, () => mediaElement(media, width, target), { side: -1, key: `embed:${media.url}:${width}` }))
+        decorations.push(
+          media.kind === 'pdf'
+            ? // A reader keeps its own clicks and keys (its page field, its buttons): none of them edits the note.
+              Decoration.widget(to, () => mediaElement(media, width, target), { side: -1, key: `pdf:${media.url}:${target}`, stopEvent: () => true, ignoreSelection: true })
+            : Decoration.widget(to, () => mediaElement(media, width, target), { side: -1, key: `embed:${media.url}:${width}` }),
+        )
         continue
       }
       const labelFrom = aliasAt && !sized ? open + aliasAt : open
@@ -148,7 +169,21 @@ function decorateBlock(state: EditorState, block: ProseNode, start: number, help
       if (!aliasAt || sized) {
         const inner = match[2].slice(0, sized ? aliasAt - 1 : undefined)
         const hash = inner.indexOf('#')
-        if (hash >= 0) {
+        // A PDF's page reads `Doc.pdf, page 4`, as in the reading view; the rest (`&height=…`) is not shown.
+        const pdfPage = hash > 0 && /\.pdf$/i.test(inner.slice(0, hash)) ? /^page=(\d{1,6})/.exec(inner.slice(hash + 1)) : null
+        if (pdfPage) {
+          hide(open + hash, open + hash + 1 + 'page='.length)
+          const after = open + hash + 1 + pdfPage[0].length
+          if (after < open + inner.length) hide(after, open + inner.length)
+          decorations.push(
+            Decoration.widget(open + hash, () => {
+              const word = document.createElement('span')
+              word.className = 'nx-wiki nx-subpath'
+              word.textContent = `, ${i18n.t('pdf.pageWord') || 'page'} `
+              return word
+            }, { side: 1, key: 'pdf-page' }),
+          )
+        } else if (hash >= 0) {
           const mark = inner[hash + 1] === '^' ? 2 : 1
           hide(open + hash, open + hash + mark)
           if (hash > 0) {
