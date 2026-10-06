@@ -4,6 +4,8 @@
  */
 
 import { SHIPPED } from './index'
+import whatsNewDe from './whatsnew/de.json'
+import whatsNewEn from './whatsnew/en.json'
 
 const files = import.meta.glob('./*.json', { eager: true, import: 'default' }) as Record<string, Record<string, unknown>>
 
@@ -77,6 +79,46 @@ describe('shipped translations', () => {
       for (const [index, language] of languages.entries()) {
         expect(placeholders(language.get(key)), `${key} in ${names[index]}`).toEqual(expected)
       }
+    }
+  })
+})
+
+/** Every text in a tree of entries, however deep, arrays included. */
+function strings(tree: unknown): string[] {
+  if (typeof tree === 'string') return [tree]
+  if (tree && typeof tree === 'object') return Object.values(tree).flatMap(strings)
+  return []
+}
+
+/**
+ * The program version in German, as a phrase: "Fassung 1.2", "Fassung von nexcanvas", "eine neue Fassung", "die erste
+ * Fassung", "je Fassung", "Alle Fassungen und was sich geändert hat". What belongs to content may keep the word: "eine
+ * neue Fassung einer Notiz", "Welche Fassung bleibt".
+ */
+const PROGRAM_FASSUNG =
+  /Fassung\s+(?:\d|von\s+nex)|\b(?:neue|neuen|neuere|neueren|neueste|neuesten|erste|ersten|diese|dieser|jede|jeder|je|nächste|nächsten)\s+Fassung(?!en)(?!\s+(?:einer|eines|der|des|deiner|deines)\b)|Fassungen\s+und\s+was/
+
+describe('what is new', () => {
+  const german = strings(whatsNewDe)
+  const english = strings(whatsNewEn)
+
+  it('call the program version Version in German, in released entries too (decided 06.10.2026)', () => {
+    expect(german.filter((text) => PROGRAM_FASSUNG.test(text))).toEqual([])
+    // Floor: the entries are read at all.
+    expect(german.length).toBeGreaterThan(20)
+  })
+
+  it('say trash in English (decided 06.10.2026)', () => {
+    expect(english.filter((text) => /\bbins?\b/i.test(text))).toEqual([])
+    expect(english.length).toBeGreaterThan(20)
+  })
+
+  it('know the program version when they see it, and leave the versions of content alone', () => {
+    for (const text of ['Fassung 1.4.0 ist da.', 'eine neuere Fassung von nexlore', 'Die erste Fassung von nexcanvas:', 'kommt einmal je Fassung', 'Vor dieser Fassung ging es', 'Alle Fassungen und was sich geändert hat']) {
+      expect(PROGRAM_FASSUNG.test(text), text).toBe(true)
+    }
+    for (const text of ['Jede gespeicherte Fassung einer Notiz', 'eine neue Fassung einer Notiz', 'Welche Fassung bleibt', 'bekommen eine WebP-Fassung']) {
+      expect(PROGRAM_FASSUNG.test(text), text).toBe(false)
     }
   })
 })

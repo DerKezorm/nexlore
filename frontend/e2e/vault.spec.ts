@@ -168,7 +168,7 @@ test('Escape closes the name field and leaves the name as it was; F2 and the men
 test('a deleted note waits in the trash and comes back', async ({ page }) => {
   await page.goto('/note/Work/Delete me.md')
   await page.locator('summary[aria-label="More"]').click()
-  await page.getByTestId('note-menu').getByRole('button', { name: /Move to the trash/ }).click()
+  await page.getByTestId('note-menu').getByRole('button', { name: /Move to trash/ }).click()
   // nexlore's own question, not the browser's; cancelling keeps the note.
   const question = page.getByRole('dialog', { name: /Move .Delete me. to the trash/ })
   await expect(question).toContainText('30 days')
@@ -181,8 +181,8 @@ test('a deleted note waits in the trash and comes back', async ({ page }) => {
     if (response.status() === 404 && response.url().includes('/api/')) gone.push(response.url())
   })
   await page.locator('summary[aria-label="More"]').click()
-  await page.getByTestId('note-menu').getByRole('button', { name: /Move to the trash/ }).click()
-  await question.getByRole('button', { name: 'Move to the trash' }).click()
+  await page.getByTestId('note-menu').getByRole('button', { name: /Move to trash/ }).click()
+  await question.getByRole('button', { name: 'Move to trash' }).click()
   await expect(page).toHaveURL(/\/$/)
   await page.waitForLoadState('networkidle')
   expect(gone).toEqual([])
