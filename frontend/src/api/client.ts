@@ -471,7 +471,14 @@ export type Account = {
   whats_new_seen: string
   role: 'operator' | 'member'
   sign_in: 'password' | 'oidc'
+  /** The address that counts (mailed, and bridging a first sign-in through the provider). */
   email: string
+  /** Where it came from; empty without one. */
+  email_source: '' | 'own' | 'operator' | 'invite' | 'provider'
+  /** An address entered in the profile that waits for its link to be opened; empty when none waits. */
+  email_pending: string
+  /** The provider's verified address, offered when it differs from the own one (linked accounts with a password). */
+  provider_email: string
   language: string
   oidc_linked: boolean
   two_factor: boolean
@@ -485,6 +492,8 @@ export type Account = {
 export type Me = Account & {
   shares_allowed: boolean
   mail: boolean
+  /** Why the profile cannot send a confirmation now (`mail_off`, `public_url_missing`), empty when it can. */
+  email_confirm?: string
   second_factor_setup_required: boolean
   /** The editor offers AI: the operator allows it and the account switched its own service on. */
   ai_ready?: boolean
@@ -545,6 +554,15 @@ export const authApi = {
   setLanguage: (language: string) => api<Account>('/api/me/language', { method: 'PUT', body: { language } }),
   whatsNewSeen: () => api<Account>('/api/me/whats-new/seen', { method: 'POST' }),
   setProfile: (displayName: string) => api<Account>('/api/me/profile', { method: 'PUT', body: { display_name: displayName } }),
+  /** The own address: a link goes to it, and it counts once that is opened (`sent` false: it was the address already). */
+  setEmail: (address: string) => api<Account & { sent: boolean }>('/api/me/email', { method: 'PUT', body: { address } }),
+  resendEmail: () => api<Account>('/api/me/email/resend', { method: 'POST' }),
+  cancelEmail: () => api<Account>('/api/me/email/pending', { method: 'DELETE' }),
+  removeEmail: () => api<Account>('/api/me/email', { method: 'DELETE' }),
+  takeProviderEmail: () => api<Account>('/api/me/email/provider', { method: 'POST' }),
+  declineProviderEmail: () => api<Account>('/api/me/email/provider', { method: 'DELETE' }),
+  /** The link from the mail; works without being signed in. */
+  confirmEmail: (token: string) => api<{ email: string; name: string }>('/api/email/confirm', { method: 'POST', body: { token } }),
   setAppearance: (changes: Partial<Appearance>) => api<Appearance>('/api/me/appearance', { method: 'PUT', body: changes }),
   linkStart: (password: string) => api<{ url: string }>('/api/oidc/link/start', { method: 'POST', body: { password } }),
   unlink: () => api<void>('/api/oidc/link', { method: 'DELETE' }),
@@ -692,7 +710,7 @@ export type Proposal = {
 /** An invitation into a space by name, or a change the operator made in a space (routers/members.py). */
 export type SpaceNotice = {
   id: number
-  kind: 'invite' | 'operator_added' | 'operator_role' | 'operator_removed'
+  kind: 'invite' | 'operator_added' | 'operator_role' | 'operator_removed' | 'operator_email' | 'operator_email_removed'
   space: string
   role: string
   actor: string
@@ -922,6 +940,9 @@ export const adminApi = {
     api<Account>(`/api/accounts/${id}/role`, { method: 'PUT', body: { role, current_password } }),
   setPassword: (id: number, password: string, current_password: string) =>
     api<void>(`/api/accounts/${id}/password`, { method: 'PUT', body: { password, current_password } }),
+  /** Counts at once; empty removes it. The account is told under "New". */
+  setEmail: (id: number, address: string, current_password: string) =>
+    api<Account>(`/api/accounts/${id}/email`, { method: 'PUT', body: { address, current_password } }),
   spaces: () => api<AdminSpace[]>('/api/admin/spaces'),
   shares: () => api<ShareInfo[]>('/api/admin/shares'),
   oidc: () => api<OidcConfig>('/api/oidc/config'),

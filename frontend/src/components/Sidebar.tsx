@@ -989,7 +989,12 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
                       <button type="button" onClick={() => void answerNotice(notice.id, false)} className="rounded-md px-2 py-0.5 text-xs text-mist-400 hover:bg-ink-850">{t('notices.decline')}</button>
                     </>
                   ) : (
-                    <button type="button" onClick={() => void answerNotice(notice.id, false).then(() => reload())} className="rounded-md px-2 py-0.5 text-xs text-mist-400 hover:bg-ink-850">{t('notices.seen')}</button>
+                    <>
+                      <button type="button" onClick={() => void answerNotice(notice.id, false).then(() => reload())} className="rounded-md px-2 py-0.5 text-xs text-mist-400 hover:bg-ink-850">{t('notices.seen')}</button>
+                      {notice.kind.startsWith('operator_email') && (
+                        <Link to="/account#mail" className="rounded-md px-2 py-0.5 text-xs text-accent-300 hover:bg-ink-850">{t('notices.toProfile')}</Link>
+                      )}
+                    </>
                   )}
                 </div>
               </li>

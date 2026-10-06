@@ -40,12 +40,12 @@ import { downloadTemplate, languageOptions, type LanguageOption } from '../i18n'
 import { useAuth } from '../state/auth'
 
 type Top = 'general' | 'looks' | 'spaces' | 'server'
-type Part = 'accounts' | 'signin' | 'shares' | 'extensions' | 'files' | 'backups' | 'languages' | 'log'
+type Part = 'accounts' | 'signin' | 'mail' | 'shares' | 'extensions' | 'files' | 'backups' | 'languages' | 'log'
 const TOPS: Top[] = ['general', 'looks', 'spaces', 'server']
-const PARTS: Part[] = ['accounts', 'signin', 'shares', 'extensions', 'files', 'backups', 'languages', 'log']
+const PARTS: Part[] = ['accounts', 'signin', 'mail', 'shares', 'extensions', 'files', 'backups', 'languages', 'log']
 const TOP_SYMBOL: Record<Top, SymbolName> = { general: 'globe', looks: 'eye', spaces: 'space', server: 'shield' }
 const PART_SYMBOL: Record<Part, SymbolName> = {
-  accounts: 'users', signin: 'key', shares: 'globe', extensions: 'plug', files: 'files', backups: 'history', languages: 'globe', log: 'info',
+  accounts: 'users', signin: 'key', mail: 'mail', shares: 'globe', extensions: 'plug', files: 'files', backups: 'history', languages: 'globe', log: 'info',
 }
 
 export function SettingsPage() {
@@ -101,9 +101,11 @@ function ServerPart({ part }: { part: Part }) {
         <>
           <AccountsCard />
           <AllSpacesCard />
-          {settings && <MailCard settings={settings} onChange={setSettings} />}
         </>
       )
+    case 'mail':
+      // Its own part since issue #13: it carries invitations, notifications and the links confirming an address.
+      return settings && <MailCard settings={settings} onChange={setSettings} />
     case 'signin':
       return settings && <SignInCard settings={settings} onChange={setSettings} />
     case 'shares':

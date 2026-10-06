@@ -82,7 +82,9 @@ from one space into another that only resolve for people who may read both.*
   manage. Links may lead into another space (`[[Team/Note]]`) and resolve only for whoever may read it. What
   somebody may not read does not show up anywhere, not in search, graph, backlinks or tasks, not even its title.
 - **Sign-in** with a password and optionally a second factor (codes from an authenticator app, recovery codes), or
-  through OpenID Connect (with a one-button setup for authentik). Invitations by link or by mail.
+  through OpenID Connect (with a one-button setup for authentik). Invitations by link or by mail. Every account
+  has a mail address: entered in the profile it counts once the link mailed to it is opened, the operator can set
+  one at once, and an account through the provider follows the provider's.
 - **Public pages**: share a note or a folder as a reading page, with an expiry and a password if you like. Off until
   the operator opens it.
 - **Versions and trash**: every save is a version (bundled per session, thinned out over time), deleted files wait
@@ -240,7 +242,7 @@ nothing needs doing by hand. Make a backup before a big jump anyway (Settings, B
 | `NEXLORE_VAULT_DIR` | `<data>/vault` | The notes, as Markdown files |
 | `NEXLORE_LOCALES_DIR` | `<data>/locales` | Extra languages, one JSON file each |
 | `NEXLORE_SECRET_KEY` | created on first start | Protects server-side secrets; when set, it wins over `secret.key` |
-| `NEXLORE_PUBLIC_URL` | from the request | The address people use to reach nexlore, for invitation links, public pages and the OIDC redirect. The setting under Settings, Sign-in wins when set |
+| `NEXLORE_PUBLIC_URL` | from the request | The address people use to reach nexlore, for invitation links, the links confirming a mail address, public pages and the OIDC redirect. The setting under Settings, Sign-in wins when set |
 | `NEXLORE_TRUSTED_PROXIES` | none | Addresses or networks of reverse proxies whose `X-Forwarded-For` is believed, comma separated. Without it every request counts as coming from its peer |
 | `NEXLORE_SETUP_TOKEN` | made at start | The code the first account needs; without it nexlore makes one at every start until set up and writes it to the log |
 | `NEXLORE_OPERATOR_NETWORKS` | none | Networks the operator's settings may be changed from, comma separated (`192.168.0.0/16`); everything else stays reachable from anywhere |
@@ -291,8 +293,8 @@ macOS and Linux (a title with other characters goes into the front matter as `ti
 - Requests nexlore makes on its own go to the address checked once (no way into the own network by a name that
   answers differently later), follow no redirects, and read answers only up to a limit.
 - The key, the database, the backups and the log are readable for nexlore's own user only.
-- The log never contains note contents, passwords, keys or tokens, nor the tokens in invitation, share or sign-in
-  addresses; a test scans the code for the obvious mistakes.
+- The log never contains note contents, passwords, keys or tokens, nor the tokens in invitation, share, sign-in or
+  address-confirmation links; a test scans the code for the obvious mistakes.
 
 ## Development
 

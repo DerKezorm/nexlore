@@ -15,6 +15,7 @@ import { CaptureRoute } from './pages/CaptureRoute'
 import { FilePage } from './pages/FilePage'
 import { FilesPage } from './pages/FilesPage'
 import { GraphPage } from './pages/GraphPage'
+import { ConfirmEmailPage } from './pages/ConfirmEmailPage'
 import { InvitePage } from './pages/InvitePage'
 import { LoginPage } from './pages/LoginPage'
 import { NotePage } from './pages/NotePage'
@@ -66,6 +67,7 @@ export default function App() {
       <Route path="login" element={<LoginPage />} />
       <Route path="setup" element={<SetupPage />} />
       <Route path="invite/:token" element={<InvitePage />} />
+      <Route path="confirm-email/:token" element={<ConfirmEmailPage />} />
       <Route path="s/:token/*" element={<PublicPage />} />
       {/* A connector signing in for MCP (block Y): the account first, then this page, without the app around it. */}
       <Route

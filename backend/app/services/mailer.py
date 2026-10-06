@@ -1,7 +1,7 @@
-"""Invitation mail through the operator's SMTP server.
+"""Mail through the operator's SMTP server: invitations, notifications, the links that confirm an address.
 
-Off until the operator enters a server: the link to copy is always enough. Nothing else is ever mailed. The mail
-is English like everything nexlore sends out; it names who invites and into which space, and carries the link.
+Off until the operator enters a server: the link of an invitation to copy is always enough. The mail is English like
+everything nexlore sends out.
 """
 
 from __future__ import annotations
@@ -72,6 +72,21 @@ def send_invite(db: Session, to: str, link: str, *, by: str, space: str | None) 
         f"{by} invites you{where} on nexlore, a place for notes.\n\n"
         f"Open this link to accept:\n{link}\n\n"
         "The link works once and runs out after a while. If you did not expect this mail, ignore it.\n"
+    )
+    _send(db, message)
+
+
+def send_confirm(db: Session, to: str, link: str, *, name: str) -> None:
+    """The link that makes an address entered in the profile count (services/emailaddr)."""
+    message = EmailMessage()
+    message["To"] = to
+    message["Subject"] = "Confirm your mail address for nexlore"
+    message.set_content(
+        f"Hello {name},\n\n"
+        "this address was entered for your account on nexlore. Open this link and it counts:\n"
+        f"{link}\n\n"
+        "The link works once and for 24 hours. If that was not you, ignore this mail: without the link nothing "
+        "changes.\n"
     )
     _send(db, message)
 

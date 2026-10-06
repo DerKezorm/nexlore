@@ -12,6 +12,7 @@ import { Field, Problem } from '../components/AuthFrame'
 import { AiAccess } from '../components/AiAccess'
 import { ApiTokens } from '../components/ApiTokens'
 import { Avatar } from '../components/Avatar'
+import { MailAddress } from '../components/MailAddress'
 import { McpKeys } from '../components/McpKeys'
 import { NotifySettings } from '../components/NotifySettings'
 import { CalendarFeed } from '../components/settings/CalendarFeed'
@@ -171,17 +172,14 @@ export function AccountPage() {
                 {t('account.profile.displaySave')}
               </button>
             </form>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+            <div id="mail" className="mt-6">
+              <MailAddress me={me} run={run} busy={busy} provider={methods?.oidc_name ?? ''} />
+            </div>
+            <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
               <dt className="text-mist-500">{t('account.profile.name')}</dt>
               <dd className="text-mist-100">{me.name}</dd>
               <dt className="text-mist-500">{t('account.profile.role')}</dt>
               <dd className="text-mist-100">{t(`account.role.${me.role}`)}</dd>
-              {me.email && (
-                <>
-                  <dt className="text-mist-500">{t('account.profile.email')}</dt>
-                  <dd className="text-mist-100">{me.email}</dd>
-                </>
-              )}
             </dl>
           </Section>
         )}

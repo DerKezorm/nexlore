@@ -256,5 +256,13 @@ export default defineConfig({
         timeout: 20_000,
         env: { FAKE_AI_PORT: '8478' },
       },
+      // A stand-in mail server and sign-in provider (email.spec.ts): keeps the mails, signs in whoever it is told.
+      {
+        command: 'node e2e/fake-postbox.mjs',
+        url: 'http://127.0.0.1:8476/health',
+        reuseExistingServer: false,
+        timeout: 20_000,
+        env: { FAKE_POSTBOX_PORT: '8476', FAKE_SMTP_PORT: '2525' },
+      },
     ],
 })

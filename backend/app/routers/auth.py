@@ -43,7 +43,19 @@ from ..security import (
     session_account,
     start_session,
 )
-from ..services import accounts, ai, appearance, avatars, guide, locales, lore, mailer, settings_service, totp
+from ..services import (
+    accounts,
+    ai,
+    appearance,
+    avatars,
+    emailaddr,
+    guide,
+    locales,
+    lore,
+    mailer,
+    settings_service,
+    totp,
+)
 from ..services.accounts import AccountError
 from . import themes as theme_routes
 
@@ -150,7 +162,7 @@ def account_view(account: AccountRow) -> dict[str, Any]:
         "whats_new_seen": account.whats_new_seen,
         "role": account.role,
         "sign_in": account.sign_in,
-        "email": account.email,
+        **emailaddr.view(account),
         "language": account.language,
         "oidc_linked": bool(account.oidc_subject),
         "two_factor": bool(account.totp_secret_enc),
@@ -295,6 +307,8 @@ def me(account: Account, db: DbSession) -> dict[str, Any]:
         **account_view(account),
         "shares_allowed": bool(settings_service.get(db, "shares_allowed")),
         "mail": mailer.configured(db),
+        # Why the profile cannot send a confirmation now (empty: it can): no mail server, or no public address.
+        "email_confirm": emailaddr.cannot_mail(db),
         "second_factor_setup_required": totp.setup_required(db, account),
         # The editor offers AI only when the operator allows it and the account switched its own service on.
         "ai_ready": ai.ready(db, account),
@@ -342,6 +356,87 @@ def set_profile(payload: ProfileIn, account: Account, db: DbSession) -> dict[str
     row.display_name = shown
     db.commit()
     return account_view(row)
+
+
+class EmailIn(BaseModel):
+    address: str = Field(default="", max_length=400)
+
+
+def _address_error(exc: emailaddr.AddressError) -> HTTPException:
+    return error(exc.code, exc.message, exc.status)
+
+
+@router.put("/me/email", summary="Enter the own mail address; it counts once the link mailed to it is opened")
+def set_own_email(payload: EmailIn, account: Account, db: DbSession) -> dict[str, Any]:
+    row = db.get(AccountRow, account.id)
+    assert row is not None
+    try:
+        sent = emailaddr.request(db, row, payload.address)
+    except emailaddr.AddressError as exc:
+        raise _address_error(exc) from exc
+    return {**account_view(row), "sent": sent}
+
+
+@router.post("/me/email/resend", summary="Mail the link for the waiting address once more")
+def resend_own_email(account: Account, db: DbSession) -> dict[str, Any]:
+    row = db.get(AccountRow, account.id)
+    assert row is not None
+    try:
+        emailaddr.resend(db, row)
+    except emailaddr.AddressError as exc:
+        raise _address_error(exc) from exc
+    return account_view(row)
+
+
+@router.delete("/me/email/pending", summary="Forget the address that waits for its confirmation")
+def cancel_own_email(account: Account, db: DbSession) -> dict[str, Any]:
+    row = db.get(AccountRow, account.id)
+    assert row is not None
+    emailaddr.cancel(db, row)
+    return account_view(row)
+
+
+@router.delete("/me/email", summary="Remove the own mail address")
+def remove_own_email(account: Account, db: DbSession) -> dict[str, Any]:
+    row = db.get(AccountRow, account.id)
+    assert row is not None
+    try:
+        emailaddr.remove(db, row)
+    except emailaddr.AddressError as exc:
+        raise _address_error(exc) from exc
+    return account_view(row)
+
+
+@router.post("/me/email/provider", summary="Take the address the sign-in provider reports instead of the own one")
+def take_provider_email(account: Account, db: DbSession) -> dict[str, Any]:
+    row = db.get(AccountRow, account.id)
+    assert row is not None
+    try:
+        emailaddr.take_offer(db, row)
+    except emailaddr.AddressError as exc:
+        raise _address_error(exc) from exc
+    return account_view(row)
+
+
+@router.delete("/me/email/provider", summary="Keep the own address and stop offering the provider's one")
+def decline_provider_email(account: Account, db: DbSession) -> dict[str, Any]:
+    row = db.get(AccountRow, account.id)
+    assert row is not None
+    emailaddr.decline_offer(db, row)
+    return account_view(row)
+
+
+class EmailConfirmIn(BaseModel):
+    token: str = Field(min_length=1, max_length=200)
+
+
+@router.post("/email/confirm", summary="The link from the mail: the waiting address counts (no sign-in needed)")
+def confirm_email(payload: EmailConfirmIn, db: DbSession) -> dict[str, str]:
+    try:
+        row = emailaddr.confirm(db, payload.token)
+    except emailaddr.AddressError as exc:
+        raise _address_error(exc) from exc
+    return {"email": row.email, "name": row.name}
 
 
 def _taken_by_another(db: DbSession, own_id: int, shown: str) -> bool:
@@ -474,6 +569,26 @@ def set_role(
     row.role = payload.role
     db.commit()
     logger.warning("Role changed name=%s role=%s by=%s", row.name, payload.role, operator.name)
+    return account_view(row)
+
+
+class AccountEmailIn(BaseModel):
+    address: str = Field(default="", max_length=400)
+    current_password: str = Field(default="", max_length=200)
+
+
+@router.put("/accounts/{account_id}/email", summary="Give an account a mail address (counts at once); empty removes it")
+def set_account_email(
+    account_id: int, payload: AccountEmailIn, request: Request, operator: OperatorAccount, db: DbSession,
+) -> dict[str, Any]:
+    confirm_operator(request, db, operator, payload.current_password)
+    row = _row(db, account_id)
+    me_row = db.get(AccountRow, operator.id)
+    assert me_row is not None
+    try:
+        emailaddr.set_by_operator(db, row, payload.address, me_row)
+    except emailaddr.AddressError as exc:
+        raise _address_error(exc) from exc
     return account_view(row)
 
 

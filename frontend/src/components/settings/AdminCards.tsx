@@ -53,7 +53,12 @@ function size(bytes: number): string {
 
 export function AccountsCard() {
   const { t } = useTranslation()
-  const { me } = useAuth()
+  const { me, refresh } = useAuth()
+  // The provider's own name for "from authentik" beside an address; a generic word without one.
+  const [providerName, setProviderName] = useState('')
+  useEffect(() => {
+    void authApi.methods().then((methods) => setProviderName(methods.oidc_name), () => setProviderName(''))
+  }, [])
   const [accounts, setAccounts] = useState<AdminAccount[]>([])
   const [invites, setInvites] = useState<Invite[]>([])
   const [days, setDays] = useState<(typeof DAYS)[number]>('7')
@@ -61,6 +66,8 @@ export function AccountsCard() {
   const [send, setSend] = useState(false)
   const [made, setMade] = useState<NewInvite | null>(null)
   const [password, setPassword] = useState<{ id: number; value: string } | null>(null)
+  // The address field of one account (issue #13): what the operator enters counts at once.
+  const [mailFor, setMailFor] = useState<{ id: number; value: string } | null>(null)
   const [removing, setRemoving] = useState<AdminAccount | null>(null)
   const [resetting, setResetting] = useState<AdminAccount | null>(null)
   const [promoting, setPromoting] = useState<AdminAccount | null>(null)
@@ -102,9 +109,35 @@ export function AccountsCard() {
                 {account.two_factor && ` · ${t('admin.accounts.twoFactor')}`}
                 {account.locked && ` · ${t('admin.accounts.locked')}`}
               </span>
+              <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-mist-400" data-testid="account-mail">
+                {account.email ? (
+                  <>
+                    {account.email}
+                    <span className="rounded-full bg-ok-500/10 px-2 text-ok-500">{t('admin.accounts.emailConfirmed')}</span>
+                    {account.email_source && (
+                      <span className="rounded-full bg-ink-850 px-2 text-mist-300">
+                        {t(`account.profile.emailSource.${account.email_source}`, { provider: providerName || t('account.profile.providerFallback') })}
+                      </span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-mist-500">{t('admin.accounts.noAddress')}</span>
+                )}
+                {account.email_pending && (
+                  <span className="rounded-full bg-warn-500/10 px-2 text-warn-500">
+                    {t('admin.accounts.emailWaits', { address: account.email_pending })}
+                  </span>
+                )}
+              </span>
             </span>
-            {account.id !== me?.id && (
-              <span className="flex flex-wrap gap-1.5">
+            <span className="flex flex-wrap gap-1.5">
+              {account.sign_in !== 'oidc' && (
+                <Button small onClick={() => ask(() => setMailFor({ id: account.id, value: account.email }))}>
+                  {t('admin.accounts.email')}
+                </Button>
+              )}
+              {account.id !== me?.id && (
+              <>
                 <Button small onClick={() => ask(() => setPromoting(account))}>
                   {account.role === 'operator' ? t('admin.accounts.makeMember') : t('admin.accounts.makeOperator')}
                 </Button>
@@ -122,7 +155,45 @@ export function AccountsCard() {
                 <Button small danger onClick={() => ask(() => setRemoving(account))}>
                   {t('admin.accounts.delete')}
                 </Button>
-              </span>
+              </>
+              )}
+            </span>
+            {mailFor?.id === account.id && (
+              <form
+                className="flex w-full flex-wrap items-end gap-2 pt-2"
+                data-testid="account-mail-form"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  void run(async () => {
+                    await adminApi.setEmail(account.id, mailFor.value.trim(), own)
+                    setMailFor(null)
+                    setOwn('')
+                    await load()
+                    if (account.id === me?.id) await refresh()
+                  }, t('admin.accounts.emailSaved'))
+                }}
+              >
+                <Input
+                  label={t('admin.accounts.emailFor', { name: account.display_name || account.name })}
+                  value={mailFor.value}
+                  onChange={(value) => setMailFor({ id: account.id, value })}
+                  type="email"
+                  autoComplete="off"
+                  className="min-w-56 flex-1"
+                />
+                {asks && (
+                  <Input label={t('admin.accounts.yourPassword')} value={own} onChange={setOwn} type="password" autoComplete="current-password" className="min-w-48 flex-1" />
+                )}
+                <Button type="submit" primary busy={busy}>
+                  {t('admin.accounts.emailSave')}
+                </Button>
+                <Button onClick={() => setMailFor(null)}>{t('admin.accounts.emailCancel')}</Button>
+                <p className="w-full text-xs text-mist-500">
+                  {account.id === me?.id
+                    ? t('admin.accounts.emailOwnHint')
+                    : t('admin.accounts.emailHint', { name: account.display_name || account.name })}
+                </p>
+              </form>
             )}
             {password?.id === account.id && (
               <form
@@ -959,7 +1030,7 @@ export function SharesCard({ settings, onChange }: { settings: ServerSettings; o
 
 export function MailCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
   const { t } = useTranslation()
-  const { refresh } = useAuth()
+  const { me, refresh } = useAuth()
   const [form, setForm] = useState({
     smtp_host: settings.smtp_host,
     smtp_port: String(settings.smtp_port),
@@ -968,11 +1039,30 @@ export function MailCard({ settings, onChange }: { settings: ServerSettings; onC
     smtp_password: '',
     smtp_from: settings.smtp_from,
   })
-  const [to, setTo] = useState('')
+  // The own address, when there is one: a test usually goes to oneself.
+  const [to, setTo] = useState(me?.email ?? '')
   const { busy, problem, done, run } = useAction()
 
   return (
-    <Card id="mail" symbol="link" title={t('admin.mail.title')} text={t('admin.mail.text')}>
+    <Card id="mail" symbol="mail" title={t('admin.mail.title')} text={t('admin.mail.text')}>
+      {/* What it is for: invitations alone was all it once said, and the notifications and confirmations it also
+          carries went unseen (issue #13). */}
+      <ul className="mb-4 space-y-1 text-sm text-mist-300" data-testid="mail-uses">
+        {(['usesInvites', 'usesNotify', 'usesConfirm'] as const).map((key) => (
+          <li key={key} className="flex gap-2">
+            <Symbol name="check" className="mt-0.5 h-4 w-4 shrink-0 text-accent-400" />
+            {t(`admin.mail.${key}`)}
+          </li>
+        ))}
+      </ul>
+      {!settings.public_url && (
+        <p className="mb-4 text-xs text-mist-500" data-testid="mail-public-url">
+          {t('admin.mail.publicUrlMissing')}{' '}
+          <Link to="/settings?tab=server&sub=signin" className="text-accent-400 underline underline-offset-2">
+            {t('admin.mail.publicUrlSet')}
+          </Link>
+        </p>
+      )}
       <form
         className="grid gap-2 sm:grid-cols-2"
         onSubmit={(event) => {

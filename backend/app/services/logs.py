@@ -107,9 +107,9 @@ def _one_line(text: str) -> str:
 
 
 #: The key of a calendar subscription travels in its address (a calendar app sends no header): never in the log.
-_FEED_KEY = re.compile(r"(nx[aclr]_)[A-Za-z0-9_-]+")
+_FEED_KEY = re.compile(r"(nx[aclre]_)[A-Za-z0-9_-]+")
 #: Tokens that stand in an address without a prefix of their own: invitations, public pages, sign-in returns.
-_PATH_TOKEN = re.compile(r"(/(?:api/)?(?:invite|public|s|oauth/authorize)/)[A-Za-z0-9_-]{12,}")
+_PATH_TOKEN = re.compile(r"(/(?:api/)?(?:invite|public|s|oauth/authorize|confirm-email)/)[A-Za-z0-9_-]{12,}")
 _QUERY_TOKEN = re.compile(r"([?&](?:access_token|token|key|code|state|code_challenge|code_verifier)=)[^&\s\"']+")
 
 

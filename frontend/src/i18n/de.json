@@ -706,7 +706,8 @@
       "files": "Dateien",
       "backups": "Sicherung",
       "languages": "Sprachen",
-      "log": "Log"
+      "log": "Log",
+      "mail": "Mailserver"
     }
   },
   "errors": {
@@ -863,7 +864,14 @@
       "typeset_failed": "Das PDF konnte nicht gesetzt werden.",
       "too_many_notes": "Ein PDF fasst höchstens 300 Notizen. Nimm ein paar Häkchen weg.",
       "nothing_to_export": "Es gibt keine Notiz für das PDF.",
-      "too_long": "Die Notizen sind zu lang für ein PDF."
+      "too_long": "Die Notizen sind zu lang für ein PDF.",
+      "email_invalid": "Das ist keine Mailadresse.",
+      "email_taken": "Diese Adresse gehört schon zu einem anderen Konto.",
+      "email_too_many": "Zu viele Mails in einer Stunde; versuch es später noch einmal.",
+      "email_link_invalid": "Dieser Link gilt nicht mehr. Trag die Adresse im Profil noch einmal ein, dann kommt ein neuer.",
+      "email_from_provider": "Die Adresse kommt vom Anmeldedienst; ändern lässt sie sich nur dort.",
+      "email_nothing_waits": "Es wartet keine Adresse auf Bestätigung.",
+      "email_no_offer": "Der Anmeldedienst meldet keine andere Adresse."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
@@ -1098,7 +1106,38 @@
       "remove": "Entfernen",
       "saved": "Bild gespeichert.",
       "removed": "Bild entfernt.",
-      "hint": "Ein Foto vom Handy oder von der Kamera. Es wird quadratisch zugeschnitten, und von der Datei bleibt nur das Bild: kein Ort, kein Gerät."
+      "hint": "Ein Foto vom Handy oder von der Kamera. Es wird quadratisch zugeschnitten, und von der Datei bleibt nur das Bild: kein Ort, kein Gerät.",
+      "emailTitle": "Mailadresse",
+      "emailHint": "Für Einladungen und Benachrichtigungen per Mail. Andere sehen sie nicht. Sie gilt, sobald du den Link in der Mail öffnest, die wir dir schicken.",
+      "emailConfirm": "Bestätigen",
+      "emailRemove": "Entfernen",
+      "emailSent": "Mail an {{address}} geschickt. Öffne den Link darin.",
+      "emailSame": "Diese Adresse hast du schon.",
+      "emailRemoved": "Mailadresse entfernt.",
+      "emailConfirmed": "Bestätigt",
+      "emailSource": {
+        "own": "selbst eingetragen",
+        "operator": "vom Betreiber eingetragen",
+        "invite": "aus der Einladung",
+        "provider": "von {{provider}}"
+      },
+      "emailWaitTitle": "Wartet auf Bestätigung.",
+      "emailWait": "Wir haben einen Link an {{address}} geschickt. Er gilt 24 Stunden. Keine Mail da? Sieh im Spam nach.",
+      "emailResend": "Noch einmal schicken",
+      "emailResent": "Noch einmal geschickt.",
+      "emailCancel": "Abbrechen",
+      "emailCancelled": "Die Adresse wartet nicht mehr.",
+      "emailOffer": "{{provider}} kennt dich als {{address}}. Soll nexlore diese Adresse nehmen?",
+      "emailTake": "Übernehmen",
+      "emailTaken": "Adresse übernommen.",
+      "emailDecline": "Nicht mehr fragen",
+      "emailDeclined": "nexlore fragt nicht mehr nach dieser Adresse.",
+      "emailProviderOnly": "Kommt von {{provider}} und folgt ihm bei jeder Anmeldung. Ändern kannst du sie dort.",
+      "emailNoServer": "Der Betreiber hat keinen Mailserver eingetragen, darum kann nexlore keine Bestätigung schicken. Bis dahin kann nur der Betreiber dir eine Adresse eintragen.",
+      "emailNoPublicUrl": "Der Betreiber hat die öffentliche Adresse von nexlore nicht eingetragen, darum kann nexlore keine Bestätigung schicken. Bis dahin kann nur der Betreiber dir eine Adresse eintragen.",
+      "emailSetServer": "Mailserver eintragen",
+      "emailSetPublicUrl": "Öffentliche Adresse eintragen",
+      "providerFallback": "dem Anmeldedienst"
     },
     "menu": "Konto von {{name}}",
     "role": {
@@ -1234,7 +1273,17 @@
       "resetFactor": "Zweiten Faktor zurücksetzen",
       "resetTitle": "Den zweiten Faktor von {{name}} zurücksetzen?",
       "resetText": "Für ein verlorenes Handy. Das Konto wird überall abgemeldet und meldet sich mit dem Passwort allein an, bis es einen neuen einrichtet.",
-      "resetDone": "Zweiter Faktor zurückgesetzt. Das Konto wurde überall abgemeldet."
+      "resetDone": "Zweiter Faktor zurückgesetzt. Das Konto wurde überall abgemeldet.",
+      "email": "Mailadresse",
+      "emailFor": "Mailadresse für {{name}}",
+      "emailHint": "Gilt sofort, ohne Bestätigung. {{name}} sieht unter Neuigkeiten, dass du sie gesetzt hast. Leer lassen und speichern entfernt sie.",
+      "emailOwnHint": "Gilt sofort, ohne Bestätigung. Leer lassen und speichern entfernt sie.",
+      "emailSave": "Speichern",
+      "emailCancel": "Abbrechen",
+      "emailSaved": "Mailadresse gespeichert.",
+      "noAddress": "Keine Mailadresse",
+      "emailWaits": "wartet auf Bestätigung: {{address}}",
+      "emailConfirmed": "bestätigt"
     },
     "spaces": {
       "title": "Alle Bereiche",
@@ -1284,8 +1333,8 @@
       "none": "Keine öffentlichen Seiten."
     },
     "mail": {
-      "title": "Einladungsmail",
-      "text": "Ohne Server wird nichts verschickt; der Link zum Kopieren reicht.",
+      "title": "Mailserver",
+      "text": "Darüber verschickt nexlore Mails. Ohne Server geht keine hinaus.",
       "host": "Server",
       "port": "Port",
       "security": "Verschlüsselung",
@@ -1295,7 +1344,12 @@
       "from": "Absenderadresse",
       "testTo": "Testmail schicken an",
       "test": "Test schicken",
-      "testSent": "Testmail verschickt."
+      "testSent": "Testmail verschickt.",
+      "usesInvites": "Einladungen per Mail (ohne Server: der Link zum Kopieren)",
+      "usesNotify": "Benachrichtigungen per Mail, für Konten, die das eingeschaltet haben",
+      "usesConfirm": "Die Links, mit denen jemand seine Mailadresse bestätigt",
+      "publicUrlMissing": "Links in Mails brauchen die öffentliche Adresse von nexlore. Sie fehlt noch:",
+      "publicUrlSet": "unter Anmeldung eintragen"
     },
     "files": {
       "title": "Dateien",
@@ -2243,7 +2297,10 @@
     "operator_removed": "Der Betreiber {{actor}} hat {{subject}} aus „{{space}}“ genommen",
     "accept": "Annehmen",
     "decline": "Ablehnen",
-    "seen": "Gesehen"
+    "seen": "Gesehen",
+    "operator_email": "Der Betreiber {{actor}} hat deine Mailadresse auf {{subject}} gesetzt",
+    "operator_email_removed": "Der Betreiber {{actor}} hat deine Mailadresse entfernt",
+    "toProfile": "Zum Profil"
   },
   "homeSpace": {
     "title": "Hauptbereich",
@@ -2391,7 +2448,9 @@
       "operator": "Für Betreiber: eine Sicherung ist gescheitert, eine neuere Version ist da, die Platte läuft voll.",
       "tokens": "Sieben Tage bevor eines deiner API-Token abläuft, einmal je Token."
     },
-    "tasksTime": "Uhrzeit für die Aufgaben des Tages"
+    "tasksTime": "Uhrzeit für die Aufgaben des Tages",
+    "emailNoAddressLink": "Im Profil eintragen",
+    "emailNoServerLink": "Mailserver eintragen"
   },
   "apiTokens": {
     "title": "API-Token",
@@ -2611,5 +2670,12 @@
     "beside": "Neben einer Notiz öffnen",
     "panel": "Die Spalte rechts",
     "pageWord": "Seite"
+  },
+  "confirmEmail": {
+    "busy": "Wird bestätigt …",
+    "title": "Adresse bestätigt",
+    "text": "{{email}} gilt jetzt für dein Konto {{name}}. Einladungen und Benachrichtigungen per Mail gehen ab jetzt dorthin.",
+    "failed": "Nicht bestätigt",
+    "toApp": "Zu nexlore"
   }
 }

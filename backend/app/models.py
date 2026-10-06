@@ -398,7 +398,19 @@ class Account(Base):
     sign_in: Mapped[str] = mapped_column(String(16), default=SIGN_IN_PASSWORD)
     #: Argon2id. Empty for accounts that sign in through OIDC only.
     password_hash: Mapped[str] = mapped_column(String(255), default="")
+    #: The address that counts: confirmed by its owner, set by the operator, from an invitation or from the provider.
+    #: Only this one is mailed, and only this one bridges a first sign-in through the provider to the account.
     email: Mapped[str] = mapped_column(String(255), default="")
+    #: Where ``email`` came from (``own``, ``operator``, ``invite``, ``provider``); empty for addresses from before.
+    email_source: Mapped[str] = mapped_column(String(16), default="")
+    #: An address entered in the profile that waits for its link to be opened; it counts for nothing until then.
+    email_pending: Mapped[str] = mapped_column(String(255), default="")
+    email_pending_hash: Mapped[str] = mapped_column(String(64), default="")
+    email_pending_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: The verified address the provider reported at the last sign-in or link, and the one the account no longer
+    #: wants to be asked about: when it differs from ``email``, the profile offers to take it.
+    provider_email: Mapped[str] = mapped_column(String(255), default="")
+    provider_email_off: Mapped[str] = mapped_column(String(255), default="")
     oidc_subject: Mapped[str] = mapped_column(String(255), default="")
     #: The interface language chosen in the account menu; empty: the browser's.
     language: Mapped[str] = mapped_column(String(16), default="")
@@ -492,7 +504,8 @@ class SpaceNotice(Base):
     space_id: Mapped[int | None] = mapped_column(ForeignKey("spaces.id", ondelete="CASCADE"), nullable=True)
     #: The space's name when it happened (kept for the text).
     space_name: Mapped[str] = mapped_column(String(255), default="")
-    #: ``invite``, or what the operator did: ``operator_added``, ``operator_role``, ``operator_removed``.
+    #: ``invite``, or what the operator did: ``operator_added``, ``operator_role``, ``operator_removed``; and, without
+    #: a space, ``operator_email`` / ``operator_email_removed`` (the address it gave the account, services/emailaddr).
     kind: Mapped[str] = mapped_column(String(24))
     role: Mapped[str] = mapped_column(String(16), default="")
     #: Who did it (a name, kept when the account goes), and whom it concerns.

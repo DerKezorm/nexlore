@@ -706,7 +706,8 @@
       "files": "Files",
       "backups": "Backups",
       "languages": "Languages",
-      "log": "Log"
+      "log": "Log",
+      "mail": "Mail server"
     }
   },
   "errors": {
@@ -863,7 +864,14 @@
       "typeset_failed": "The PDF could not be set.",
       "too_many_notes": "A PDF holds at most 300 notes. Untick some.",
       "nothing_to_export": "There is no note to put in the PDF.",
-      "too_long": "The notes are too long for one PDF."
+      "too_long": "The notes are too long for one PDF.",
+      "email_invalid": "This is not a mail address.",
+      "email_taken": "Another account has this address already.",
+      "email_too_many": "Too many mails in an hour; try again later.",
+      "email_link_invalid": "This link does not work any more. Enter the address in the profile again and a new one comes.",
+      "email_from_provider": "The address comes from the sign-in service; it can only be changed there.",
+      "email_nothing_waits": "No address is waiting for confirmation.",
+      "email_no_offer": "The sign-in service reports no other address."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
@@ -1098,7 +1106,38 @@
       "remove": "Remove",
       "saved": "Picture saved.",
       "removed": "Picture removed.",
-      "hint": "A photo from your phone or camera. It is cut to a square, and nothing of the file but the picture is kept: no place, no device."
+      "hint": "A photo from your phone or camera. It is cut to a square, and nothing of the file but the picture is kept: no place, no device.",
+      "emailTitle": "Mail address",
+      "emailHint": "For invitations and notifications by mail. Nobody else sees it. It counts once you open the link in the mail we send you.",
+      "emailConfirm": "Confirm",
+      "emailRemove": "Remove",
+      "emailSent": "Mail sent to {{address}}. Open the link in it.",
+      "emailSame": "You have this address already.",
+      "emailRemoved": "Mail address removed.",
+      "emailConfirmed": "Confirmed",
+      "emailSource": {
+        "own": "entered by you",
+        "operator": "entered by the operator",
+        "invite": "from the invitation",
+        "provider": "from {{provider}}"
+      },
+      "emailWaitTitle": "Waiting for confirmation.",
+      "emailWait": "We sent a link to {{address}}. It works for 24 hours. No mail? Look in the spam folder.",
+      "emailResend": "Send again",
+      "emailResent": "Sent again.",
+      "emailCancel": "Cancel",
+      "emailCancelled": "The address no longer waits.",
+      "emailOffer": "{{provider}} knows you as {{address}}. Should nexlore take this address?",
+      "emailTake": "Take it",
+      "emailTaken": "Address taken.",
+      "emailDecline": "Don't ask again",
+      "emailDeclined": "nexlore no longer asks about this address.",
+      "emailProviderOnly": "Comes from {{provider}} and follows it at every sign-in. You change it there.",
+      "emailNoServer": "The operator has not set up a mail server, so nexlore cannot send a confirmation. Until then only the operator can enter an address for you.",
+      "emailNoPublicUrl": "The operator has not entered nexlore's public address, so nexlore cannot send a confirmation. Until then only the operator can enter an address for you.",
+      "emailSetServer": "Set up a mail server",
+      "emailSetPublicUrl": "Enter the public address",
+      "providerFallback": "the sign-in service"
     },
     "menu": "Account of {{name}}",
     "role": {
@@ -1234,7 +1273,17 @@
       "resetFactor": "Reset second factor",
       "resetTitle": "Reset the second factor of {{name}}?",
       "resetText": "For a lost phone. The account is signed out everywhere and signs in with its password alone until it sets up a new one.",
-      "resetDone": "Second factor reset. The account was signed out everywhere."
+      "resetDone": "Second factor reset. The account was signed out everywhere.",
+      "email": "Mail address",
+      "emailFor": "Mail address for {{name}}",
+      "emailHint": "Counts at once, without confirmation. {{name}} sees under New that you set it. Leave it empty and save to remove it.",
+      "emailOwnHint": "Counts at once, without confirmation. Leave it empty and save to remove it.",
+      "emailSave": "Save",
+      "emailCancel": "Cancel",
+      "emailSaved": "Mail address saved.",
+      "noAddress": "No mail address",
+      "emailWaits": "waiting for confirmation: {{address}}",
+      "emailConfirmed": "confirmed"
     },
     "spaces": {
       "title": "All spaces",
@@ -1284,8 +1333,8 @@
       "none": "No public pages."
     },
     "mail": {
-      "title": "Invitation mail",
-      "text": "Without a server nothing is sent; the link to copy is enough.",
+      "title": "Mail server",
+      "text": "nexlore sends its mail through it. Without a server nothing goes out.",
       "host": "Server",
       "port": "Port",
       "security": "Encryption",
@@ -1295,7 +1344,12 @@
       "from": "Sender address",
       "testTo": "Send a test mail to",
       "test": "Send test",
-      "testSent": "Test mail sent."
+      "testSent": "Test mail sent.",
+      "usesInvites": "Invitations by mail (without a server: the link to copy)",
+      "usesNotify": "Notifications by mail, for accounts that switched them on",
+      "usesConfirm": "The links with which someone confirms their mail address",
+      "publicUrlMissing": "Links in mails need nexlore's public address. It is still missing:",
+      "publicUrlSet": "enter it under Sign-in"
     },
     "files": {
       "title": "Files",
@@ -2243,7 +2297,10 @@
     "operator_removed": "The operator {{actor}} took {{subject}} out of “{{space}}”",
     "accept": "Accept",
     "decline": "Decline",
-    "seen": "Seen"
+    "seen": "Seen",
+    "operator_email": "The operator {{actor}} set your mail address to {{subject}}",
+    "operator_email_removed": "The operator {{actor}} removed your mail address",
+    "toProfile": "To the profile"
   },
   "homeSpace": {
     "title": "Main space",
@@ -2391,7 +2448,9 @@
       "operator": "For operators: a backup failed, a newer version is out, the disk runs full.",
       "tokens": "Seven days before one of your API tokens runs out, once per token."
     },
-    "tasksTime": "Time for the tasks of the day"
+    "tasksTime": "Time for the tasks of the day",
+    "emailNoAddressLink": "Enter it in the profile",
+    "emailNoServerLink": "Set up a mail server"
   },
   "apiTokens": {
     "title": "API tokens",
@@ -2611,5 +2670,12 @@
     "beside": "Open beside a note",
     "panel": "The column on the right",
     "pageWord": "page"
+  },
+  "confirmEmail": {
+    "busy": "Confirming …",
+    "title": "Address confirmed",
+    "text": "{{email}} now counts for your account {{name}}. Invitations and notifications by mail go there from now on.",
+    "failed": "Not confirmed",
+    "toApp": "To nexlore"
   }
 }

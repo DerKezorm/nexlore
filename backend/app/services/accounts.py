@@ -138,6 +138,8 @@ def create_oidc(db: Session, name: str, subject: str, email: str) -> Account:
         sign_in=SIGN_IN_OIDC,
         oidc_subject=subject,
         email=email,
+        email_source="provider" if email else "",
+        provider_email=email,
         whats_new_seen=__version__,
     )
     db.add(account)
@@ -334,8 +336,13 @@ def accept_invite(db: Session, token: str, name: str, password: str) -> Account:
     except AccountError:
         db.rollback()
         raise
+    # The invitation went to this address, so it reached its owner; unless another account holds it already.
     if invite.email and not account.email:
-        account.email = invite.email
+        from .emailaddr import INVITE, taken
+
+        if not taken(db, invite.email, account.id or -1):
+            account.email = invite.email
+            account.email_source = INVITE
     redeem(db, invite, account, consumed=True)
     return account
 

@@ -33,7 +33,7 @@ from ..errors import error
 from ..models import SIGN_IN_OIDC, SIGN_IN_PASSWORD
 from ..models import Account as AccountRow
 from ..security import SESSION_COOKIE, brake, decrypt_secret, encrypt_secret, session_account, start_session
-from ..services import accounts, authentik, logs, oidc, settings_service
+from ..services import accounts, authentik, emailaddr, logs, oidc, settings_service
 from .auth import _set_cookie, secure_cookie
 
 router = APIRouter(prefix="/api/oidc", tags=["oidc"])
@@ -370,8 +370,8 @@ def _finish_link(
     if other is not None:
         return refuse("oidc_subject_taken", f"this identity already belongs to account {other.name!r}")
     current.oidc_subject = identity.subject
-    if identity.email and identity.email_verified and not current.email:
-        current.email = identity.email
+    # Its address only when it has none; a different one is offered in the profile (services/emailaddr).
+    emailaddr.from_provider(db, current, identity.email, identity.email_verified)
     db.commit()
     logs.set_actor(current.name)
     logger.info("Account %s linked to its OIDC identity by its owner", current.name)
@@ -386,10 +386,10 @@ def unlink(account: Account, db: DbSession) -> None:
     assert row is not None
     if row.sign_in == SIGN_IN_OIDC:
         raise error("oidc_only_account", "This account has no password; it signs in through the provider only.", 409)
-    # The address goes with the link: it came from the provider, and left in place it would let the next
-    # sign-in there re-link the account through the verified-address bridge as if nothing had been undone.
+    # An address from the provider goes with the link: left in place it would let the next sign-in there re-link
+    # the account through the verified-address bridge as if nothing had been undone. An own one stays.
     row.oidc_subject = ""
-    row.email = ""
+    emailaddr.unlinked(row)
     db.commit()
     logger.info("Account %s unlinked from its OIDC identity", row.name)
 
@@ -409,6 +409,9 @@ def _resolve(db: DbSession, identity: oidc.Identity, auto_create: bool, *, invit
         return "oidc_token_invalid"
     existing = db.scalar(select(AccountRow).where(AccountRow.oidc_subject == identity.subject))
     if existing is not None:
+        # An account through the provider only follows its address; a linked one with a password is offered it.
+        emailaddr.from_provider(db, existing, identity.email, identity.email_verified)
+        db.commit()
         return existing
     verified = bool(identity.email and identity.email_verified)
     if verified:
@@ -422,6 +425,7 @@ def _resolve(db: DbSession, identity: oidc.Identity, auto_create: bool, *, invit
                 )
                 return "oidc_email_taken"
             by_email.oidc_subject = identity.subject
+            emailaddr.from_provider(db, by_email, identity.email, identity.email_verified)
             db.commit()
             logger.info("Account %s linked to its OIDC identity by verified address", by_email.name)
             return by_email

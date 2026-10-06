@@ -5,9 +5,11 @@
  */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 import { ApiError, notifyApi, type NotifyChoices, type NotifyView } from '../api/client'
 import { errorText } from '../lib/errors'
+import { useAuth } from '../state/auth'
 import { Button, Card, Feedback, Toggle } from './settings/ui'
 
 const OCCASIONS = ['mention', 'invite', 'approval', 'tokens', 'tasks'] as const
@@ -18,6 +20,7 @@ function code(error: unknown): string {
 
 export function NotifySettings() {
   const { t } = useTranslation()
+  const { me } = useAuth()
   const [view, setView] = useState<NotifyView | null>(null)
   const [address, setAddress] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
@@ -90,6 +93,16 @@ export function NotifySettings() {
             disabled={!view.email.possible}
             onChange={(on) => choose('email', on)}
           />
+          {/* Locked, it says where that is changed: the address in the profile, the server with the operator. */}
+          {!view.email.possible && (view.email.server || me?.role === 'operator') && (
+            <Link
+              to={view.email.server ? '/account#mail' : '/settings?tab=server&sub=mail'}
+              className="-mt-2 block text-xs text-accent-400 underline underline-offset-2"
+              data-testid="notify-mail-fix"
+            >
+              {t(view.email.server ? 'notify.emailNoAddressLink' : 'notify.emailNoServerLink')}
+            </Link>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <Button
               busy={busy}
