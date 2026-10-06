@@ -43,7 +43,8 @@ SLOW_EXPECTED = ("/api/backups", "/api/lore/ask")
 #: another host may be framed, so a plugin's frame still cannot load itself elsewhere.
 CSP = (
     b"default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; "
-    b"connect-src 'self'; frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    b"connect-src 'self'; frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; "
+    b"object-src 'none'"
 )
 SECURITY_HEADERS: tuple[tuple[bytes, bytes], ...] = (
     (b"content-security-policy", CSP),
