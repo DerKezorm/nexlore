@@ -89,10 +89,11 @@ test('a dropped PDF becomes a link to it, and the link leads to its page', async
   await page.getByRole('button', { name: 'Read', exact: true }).click()
   await page.locator('article a', { hasText: 'Price list.pdf' }).click()
   await expect(page).toHaveURL(/\/file\/Media\/Attachments\/Price%20list\.pdf$/)
-  await expect(page.getByRole('heading', { name: 'Price list.pdf' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Download' })).toHaveAttribute('href', /download=1/)
-  const usedIn = page.locator('section', { has: page.getByRole('heading', { name: 'Used in' }) })
-  await expect(usedIn.getByRole('button', { name: /Drop here/ })).toBeVisible()
+  // Since 1.5 a PDF opens in nexlore's reader; its page still downloads it and names the notes that use it.
+  const reader = page.getByTestId('pdf-view')
+  await expect(reader.getByText('Price list.pdf', { exact: true })).toBeVisible()
+  await expect(reader.getByRole('link', { name: 'Download' })).toHaveAttribute('href', /download=1/)
+  await expect(page.getByTestId('pdf-panel').getByRole('button', { name: /Drop here/ })).toBeVisible()
 })
 
 test('embedded pictures show in the editor and when reading; a click brings the text back', async ({ page }) => {
