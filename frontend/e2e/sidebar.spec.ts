@@ -63,9 +63,9 @@ test('the context menu makes a folder, moves a note into it, renames the folder 
   expect(fs.existsSync(onDisk('Zoo/Tidy/Cupboard/Move me.md'))).toBe(true)
 
   await row(page, 'Old').click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Move to the trash' }).click()
+  await page.getByRole('menuitem', { name: 'Move to trash' }).click()
   const question = page.getByRole('dialog', { name: /Move the folder .Old. to the trash/ })
-  await question.getByRole('button', { name: 'Move to the trash' }).click()
+  await question.getByRole('button', { name: 'Move to trash' }).click()
   await expect(row(page, 'Old')).toHaveCount(0)
   expect(fs.existsSync(onDisk('Zoo/Tidy/Old'))).toBe(false)
   // The note shown all along is still there, and nothing asked after a path that was gone.

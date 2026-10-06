@@ -38,7 +38,7 @@ test('the operator language is offered, falls back to English where it has no te
     const problems = collectProblems(page)
     await page.goto('/settings')
     const select = page.getByLabel('Language of the interface')
-    await expect(select.locator('option')).toHaveText(['English', 'Deutsch', 'Español (added by the operator)'])
+    await expect(select.locator('option')).toHaveText(['Deutsch', 'English', 'Español (added by the operator)'])
     // The interface speaks it at once, the account keeps it after: the reload below must not cut that off.
     const kept = page.waitForResponse((answer) => answer.url().endsWith('/api/me/language') && answer.request().method() === 'PUT')
     await select.selectOption('es')

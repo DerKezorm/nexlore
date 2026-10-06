@@ -95,12 +95,20 @@ async function loadTexts(code: string): Promise<boolean> {
   return found
 }
 
+/**
+ * Languages in the order of their names, the same everywhere in the family: Deutsch, English, and every added one
+ * in its place among them, never simply at the end.
+ */
+export function byName(a: { name: string }, b: { name: string }): number {
+  return a.name.localeCompare(b.name)
+}
+
 export async function languageOptions(): Promise<LanguageOption[]> {
   const options: LanguageOption[] = Object.entries(SHIPPED).map(([code, entry]) => ({ code, name: entry.name, added: false }))
   for (const entry of await addedLanguages()) {
     if (!isShipped(entry.code)) options.push({ code: entry.code, name: entry.name || entry.code, added: true })
   }
-  return options
+  return options.sort(byName)
 }
 
 function storedLanguage(): string | null {

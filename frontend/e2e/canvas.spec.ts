@@ -456,7 +456,7 @@ test('before a note goes to the trash, its dialogs name the canvases it lies on'
   // From the sidebar.
   await open(page, space)
   await page.getByTestId('sidebar-tree').locator(`li[data-path="${space}/Material.md"] > button`).click({ button: 'right' })
-  await page.getByRole('menuitem', { name: 'Move to the trash' }).click()
+  await page.getByRole('menuitem', { name: 'Move to trash' }).click()
   const dialog = page.getByRole('dialog', { name: /to the trash/ })
   await expect(dialog.getByTestId('canvas-warning')).toContainText('„Shed“')
   await dialog.getByRole('button', { name: 'Cancel' }).click()
@@ -464,7 +464,7 @@ test('before a note goes to the trash, its dialogs name the canvases it lies on'
   await page.goto(`/note/${encodeURIComponent(space)}/Material.md`)
   await expect(page.locator('article')).toContainText('Timber and screws.')
   await page.locator('summary[aria-label="More"]').click()
-  await page.getByTestId('note-menu').getByRole('button', { name: /Move to the trash/ }).click()
+  await page.getByTestId('note-menu').getByRole('button', { name: /Move to trash/ }).click()
   await expect(page.getByRole('dialog', { name: /to the trash/ }).getByTestId('canvas-warning')).toContainText('„Shed“')
   expect(problems).toEqual([])
 })

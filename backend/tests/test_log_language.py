@@ -94,3 +94,110 @@ def test_the_scan_sees_calls_on_named_loggers_and_on_getlogger() -> None:
     )
     calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and is_log_call(node)]
     assert [message_texts(call) for call in calls] == [["a"], ["b"], ["c"], ["d"]]
+
+
+# --- The family's English words in what the server says (decided 06.10.2026) ------------------------------------------
+#
+# The trash is "trash", never "bin"; a rule "applies", it never "Holds". Checked wherever the server speaks to people:
+# log lines, the API's own documentation (summary=, description=), refusals (detail=, error(), detail() and the typed
+# errors, whose second argument is the sentence) and mails. Docstrings and comments are not read; neither are paths,
+# routes or names such as "/bin", ".venv/bin" or "clients_bin", nor the word as a key on its own ("bin").
+
+AVOIDED = (
+    ("bin", re.compile(r"(?<![\w/.-])bins?(?![\w/-])(?!\.\w)", re.IGNORECASE)),
+    ("Holds", re.compile(r"(?<![\w/.-])Holds?(?![\w/-])(?!\.\w)")),
+)
+SPOKEN_KEYWORDS = {"summary", "description", "detail"}
+MAIL_FILES = {"mailer.py", "email_change.py", "notify.py"}
+#: The app speaks in at least this many places; fewer means the scan looked in the wrong place.
+SPOKEN_FLOOR = 1000
+
+
+def texts_of(node: ast.AST) -> list[str]:
+    """The fixed text of a string, of an f-string (its constant parts) or of both branches of ``a if b else c``."""
+    if isinstance(node, ast.IfExp):
+        return texts_of(node.body) + texts_of(node.orelse)
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return [node.value]
+    if isinstance(node, ast.JoinedStr):
+        return ["".join(p.value for p in node.values if isinstance(p, ast.Constant) and isinstance(p.value, str))]
+    return []
+
+
+def _docstrings(tree: ast.AST) -> set[int]:
+    found: set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and node.body:
+            first = node.body[0]
+            if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
+                found.add(id(first.value))
+    return found
+
+
+def spoken_in(tree: ast.AST, mail: bool = False) -> list[tuple[int, str]]:
+    """What a module says to people: log lines, API documentation, refusals and, in a mail module, every text."""
+    found: list[tuple[int, str]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if is_log_call(node):
+            found += [(node.lineno, text) for text in message_texts(node)]
+        for keyword in node.keywords:
+            if keyword.arg in SPOKEN_KEYWORDS:
+                found += [(node.lineno, text) for text in texts_of(keyword.value)]
+        name = getattr(node.func, "id", "") or getattr(node.func, "attr", "")
+        if name in {"error", "detail"} or name.endswith("Error") or name == "HTTPException":
+            for argument in node.args[1:]:
+                found += [(node.lineno, text) for text in texts_of(argument)]
+    if mail:
+        skip = _docstrings(tree)
+        # The constant parts of an f-string are read with the f-string, not a second time on their own.
+        skip |= {id(part) for node in ast.walk(tree) if isinstance(node, ast.JoinedStr) for part in ast.walk(node)
+                 if part is not node}
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Constant, ast.JoinedStr)) and id(node) not in skip:
+                found += [(getattr(node, "lineno", 0), text) for text in texts_of(node)]
+    return found
+
+
+def spoken() -> list[tuple[str, int, str]]:
+    found: list[tuple[str, int, str]] = []
+    for path in sorted(APP.rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for line, text in spoken_in(tree, mail=path.name in MAIL_FILES):
+            found.append((str(path.relative_to(APP.parent)), line, text))
+    return found
+
+
+def avoided(text: str) -> str | None:
+    for word, pattern in AVOIDED:
+        if pattern.search(text):
+            return word
+    return None
+
+
+def test_what_the_server_says_uses_the_family_words() -> None:
+    found = spoken()
+    assert len(found) >= SPOKEN_FLOOR, f"only {len(found)} texts found; is the scan looking at the app?"
+    bad = [f"{path}:{line}: {word!r} in {text!r}" for path, line, text in found if (word := avoided(text))]
+    assert not bad, "Words the family does not use:\n" + "\n".join(bad)
+
+
+def test_the_word_scan_finds_what_it_should_and_leaves_names_alone() -> None:
+    tree = ast.parse(
+        'logger.info(f"Space {space.id} moved to the bin by {who}")\n'
+        '@router.get("/bin", summary="Spaces in the BIN")\n'
+        'def bin(): pass\n'
+        'raise error("code", "Holds in every app.")\n'
+        'raise SpaceError("code", f"{name} is in the bins")\n'
+        'thing(description="Moved to trash", detail="Gone for good")\n'
+        'logger.info("Wrote .venv/bin, bin.exe, clients_bin and /bin")\n'
+        'logger.info(f"Mail to {host}: it went to the bin.")\n'
+        'data = {"bin": [], "clients_bin": []}\n'
+    )
+    texts = [text for _line, text in spoken_in(tree)]
+    assert [avoided(text) for text in texts] == ["bin", "bin", "Holds", "bin", None, None, None, "bin"]
+    mail = ast.parse('"""A docstring about the bin may stay."""\nbody = f"Hello {name}, it is in the bin now."\n')
+    assert [avoided(text) for _line, text in spoken_in(mail, mail=True)] == ["bin"]
