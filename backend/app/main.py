@@ -30,6 +30,7 @@ from .routers import bases as bases_router
 from .routers import canvas as canvas_router
 from .routers import cleanup as cleanup_router
 from .routers import comments as comments_router
+from .routers import export as export_router
 from .routers import favorites as favorites_router
 from .routers import feed as feed_router
 from .routers import inbox as inbox_router
@@ -63,6 +64,7 @@ ROUTERS = [
     ai_router, favorites_router, avatars_router, recent_router, themes_router, search_router, news_router,
     proposals_router, bases_router, canvas_router, cleanup_router, inbox_router, feed_router, comments_router,
     presence_router, linktitle_router, oauth_router, notify_router, apitokens_router, v1_router, lore_router,
+    export_router,
 ]
 
 

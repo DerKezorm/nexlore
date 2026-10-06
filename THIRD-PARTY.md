@@ -10,6 +10,8 @@ These files travel inside the container image, so their notices travel with them
 | What | Copyright | Licence | Notice in the app |
 |---|---|---|---|
 | Fonts Inter, Atkinson Hyperlegible Next, Literata, Source Serif 4, IBM Plex Sans, JetBrains Mono (via Fontsource) | their authors, see the notice | OFL-1.1 | `/licenses/fonts.txt` |
+| The same fonts as TTF for PDFs, plus Noto Emoji (from Google Fonts) | their authors, see the notices | OFL-1.1 | `backend/app/fonts/OFL-*.txt` |
+| mitex 0.2.6, LaTeX formulas in PDFs (a Typst package) | Myriad-Dreamin, OrangeX4, Enter-tainer | Apache-2.0 | `backend/app/typst/packages/preview/mitex/0.2.6/LICENSE` |
 | Lucide icons (partly from Feather) | Lucide Icons and Contributors; Cole Bemis | ISC, MIT | `/licenses/lucide.txt` |
 
 nexlore loads no font, icon or script from another host.
@@ -42,11 +44,11 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 
 | Package | Licence |
 |---|---|
-| FastAPI, SQLAlchemy, pydantic, pydantic-settings, markdown-it-py, PyYAML, watchfiles, argon2-cffi, PyJWT | MIT |
+| FastAPI, SQLAlchemy, pydantic, pydantic-settings, markdown-it-py, mdit-py-plugins, PyYAML, watchfiles, argon2-cffi, PyJWT | MIT |
 | uvicorn, httpx, pypdf, segno, tinycss2 | BSD-3-Clause |
 | numpy | BSD-3-Clause (with small parts under 0BSD, MIT, Zlib, CC0-1.0) |
 | Pillow | MIT-CMU |
-| python-multipart | Apache-2.0 |
+| python-multipart, typst (Python binding of Typst, which it bundles) | Apache-2.0 |
 | cryptography | Apache-2.0 **or** BSD-3-Clause |
 | pillow-heif | BSD-3-Clause for its own code; the binary wheels are **GPLv2** as a whole, see below |
 
