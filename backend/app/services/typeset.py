@@ -791,8 +791,9 @@ def _tree_order(path: str, base: str) -> tuple[Any, ...]:
 
 
 def collect(db: Session, account: Account, *, note: str | None, folder: str | None,
-            only: list[str] | None = None) -> tuple[list[File], str, str]:
-    """The notes of the PDF (rights checked by the route), its title and the line in its header."""
+            only: list[str] | None = None, limit: bool = True) -> tuple[list[File], str, str]:
+    """The notes of the PDF (rights checked by the route), its title and the line in its header. ``limit``: refuse
+    more than ``MAX_NOTES`` (a list to tick from may hold more, the dialog says so)."""
     if note is not None:
         row = db.scalar(select(File).where(File.path == note, File.deleted_at.is_(None)))
         if row is None or not row.is_note:
@@ -814,7 +815,7 @@ def collect(db: Session, account: Account, *, note: str | None, folder: str | No
         crumb = " › ".join(PurePosixPath(folder).parts)
     if not files:
         raise ExportError("nothing_to_export", "There is no note to put in the PDF.")
-    if len(files) > MAX_NOTES:
+    if limit and len(files) > MAX_NOTES:
         raise ExportError("too_many_notes", f"A PDF holds at most {MAX_NOTES} notes.", 413)
     return files, title, crumb
 

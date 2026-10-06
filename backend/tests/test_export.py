@@ -277,3 +277,12 @@ def test_a_folder_pdf_has_a_bare_cover_and_no_title_twice(world: World) -> None:
 def test_a_footnote_of_one_paragraph_stands_next_to_its_number(world: World) -> None:
     text = text_of(pdf(world.anna, path="Wissen/Homelab/Backup-Strategie.md"))
     assert any(line.strip().endswith("Steht unten.") and len(line.strip()) > len("Steht unten.") for line in text.splitlines())
+
+
+def test_the_notes_of_a_folder_come_in_the_order_of_the_pdf(world: World) -> None:
+    note(world.anna, "Wissen", "Oben", "x")
+    answer = world.anna.get("/api/export/notes", params={"folder": "Wissen"})
+    assert answer.json()["notes"] == [
+        "Wissen/Homelab/Backup-Strategie.md", "Wissen/Homelab/ZFS-Pool.md", "Wissen/Oben.md",
+    ]
+    assert world.bob.get("/api/export/notes", params={"folder": "Privat"}).status_code == 404

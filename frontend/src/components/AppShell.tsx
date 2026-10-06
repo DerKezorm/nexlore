@@ -19,6 +19,7 @@ import { refreshNews } from '../lib/news'
 import { startTaken, startWish } from '../lib/start'
 import { CommandPalette } from './CommandPalette'
 import { LinkPreview } from './LinkPreview'
+import { ExportHost } from './ExportDialog'
 import { VaultActions } from './VaultActions'
 import { folderOf, notePathOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
@@ -407,6 +408,7 @@ export function AppShell() {
       {commanding && <CommandPalette onClose={() => setCommanding(false)} />}
       <LinkPreview />
       <VaultActions />
+      <ExportHost />
       {creating && (
         <NewNoteDialog
           folder={creating}

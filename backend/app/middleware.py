@@ -39,9 +39,11 @@ SLOW_EXPECTED = ("/api/backups", "/api/lore/ask")
 
 #: The editor and the graph set inline styles, hence 'unsafe-inline' for styles only. Scripts stay strict.
 #: ``blob:`` for images: a pasted picture is shown before it is uploaded.
+#: ``blob:`` for frames: a PDF the page set itself goes to the printer through a hidden frame. Nothing from
+#: another host may be framed, so a plugin's frame still cannot load itself elsewhere.
 CSP = (
     b"default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; "
-    b"connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    b"connect-src 'self'; frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 )
 SECURITY_HEADERS: tuple[tuple[bytes, bytes], ...] = (
     (b"content-security-policy", CSP),

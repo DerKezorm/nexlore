@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import base64
 import logging
-from typing import Literal
+from typing import Annotated, Literal
 from urllib.parse import quote
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, model_validator
 
+from ..db import SessionLocal
 from ..deps import Account, need
 from ..errors import error
 from ..services import paths, rights, typeset
@@ -77,6 +78,26 @@ def _run(body: ExportIn, account: Account, fmt: Literal["pdf", "png"]) -> tuple[
         if exc.code == "typeset_failed":
             LOG.warning("A PDF could not be set: %s", exc.__cause__)
         raise error(exc.code, exc.text, exc.status) from exc
+
+
+class FolderNotesOut(BaseModel):
+    #: The notes of the folder in the order the PDF has them.
+    notes: list[str]
+
+
+@router.get("/notes", response_model=FolderNotesOut)
+def folder_notes(folder: Annotated[str, Query(min_length=1, max_length=paths.MAX_PATH_CHARS)],
+                 account: Account) -> FolderNotesOut:
+    """What a folder's PDF would hold: the dialog lists it to tick."""
+    clean = need(account, folder, rights.READ)
+    with SessionLocal() as db:
+        try:
+            files, _title, _crumb = typeset.collect(db, account, note=None, folder=clean, limit=False)
+        except typeset.ExportError as exc:
+            if exc.code == "nothing_to_export":
+                return FolderNotesOut(notes=[])
+            raise error(exc.code, exc.text, exc.status) from exc
+    return FolderNotesOut(notes=[row.path for row in files])
 
 
 @router.post("/pdf")

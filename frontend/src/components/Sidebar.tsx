@@ -33,6 +33,7 @@ import { TagTree } from './TagTree'
 import { useThemeVersion } from '../lib/theme'
 import { Symbol, type SymbolName } from './Symbol'
 import { NameDialog } from './NameDialog'
+import { askExport } from '../lib/exportPdf'
 
 const FAVORITE_SYMBOLS: Record<Favorite['kind'], SymbolName> = { note: 'note', folder: 'folder', file: 'file', heading: 'heading', search: 'search' }
 
@@ -602,6 +603,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     }
     items.push({ label: t('menu.showInGraph'), symbol: 'graph', onSelect: () => (onFolder ? onFolder(row.path) : navigate('/?folder=' + encodeURIComponent(row.path))) })
     items.push(favoriteItem(row.path))
+    items.push({ label: t('export.folderMenu'), symbol: 'print', onSelect: () => askExport({ folder: row.path }, 'pdf') })
     // Everything of a space in one file, for whoever may read it.
     if (row.space) items.push({ label: t('menu.zip'), symbol: 'download', onSelect: () => download(spaceZipUrl(row.path)) })
     if (manage) items.push({ label: t('menu.spaceSettings'), symbol: 'users', onSelect: () => navigate('/settings?tab=spaces') })

@@ -67,6 +67,7 @@ import { useStore } from '../state/store'
 import { LocalGraph } from '../components/LocalGraph'
 import { NoteEmbeds } from '../components/NoteEmbeds'
 import { ShareDialog } from '../components/ShareDialog'
+import { askExport, type ExportMode } from '../lib/exportPdf'
 import { folderColor } from '../graph/palette'
 import { PluginFrame } from '../plugins/host'
 import { PluginBlocks, PluginPanels, ViewSwitch } from '../plugins/NotePlugins'
@@ -912,6 +913,13 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     setComparing({ note: notePath, copy: copyPath })
   }
 
+  // Paper and PDF come from what is saved: an edit in progress is saved and ended first.
+  const exportNote = async (how: ExportMode) => {
+    if (!note) return
+    if (editing && !(await stopEditing())) return
+    askExport({ path: note.path }, how)
+  }
+
   // The palette's commands for the note in front (the left one; the right one is only beside it).
   useCommands((): Command[] => {
     if (!note || side !== 'left' || mirror) return []
@@ -937,6 +945,8 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
       if (!locked) list.push({ id: 'note.delete', label: t('note.trash'), group, symbol: 'trash', run: () => void askToDelete() })
     }
     if (role === 'manage' && me?.shares_allowed && !editing) list.push({ id: 'note.share', label: t('share.button'), group, symbol: 'globe', run: () => setSharing(true) })
+    list.push({ id: 'note.print', label: t('export.printMenu'), group, symbol: 'print', run: () => void exportNote('print') })
+    list.push({ id: 'note.pdf', label: t('export.pdfMenu'), group, symbol: 'download', run: () => void exportNote('pdf') })
     list.push({ id: 'note.panel', label: t('panel.toggle'), group, symbol: 'panel', keys: 'Alt+R', run: togglePanel })
     list.push({ id: 'note.foldAll', label: t('folds.foldAll'), group, symbol: 'chevronRight', run: () => askFoldAll(note.path, true) })
     list.push({ id: 'note.unfoldAll', label: t('folds.unfoldAll'), group, symbol: 'chevronDown', run: () => askFoldAll(note.path, false) })
@@ -1041,6 +1051,9 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     ...(role === 'manage' && me?.shares_allowed && !editing ? [{ label: t('share.button'), symbol: 'globe' as const, run: () => setSharing(true) }] : []),
     { label: t('note.versions'), symbol: 'history', run: () => showPanel('versions') },
     ...(editing ? [{ label: mode === 'visual' ? t('note.sourceMode') : t('note.visualMode'), symbol: 'code' as const, run: () => setMode(mode === 'visual' ? 'source' : 'visual') }] : []),
+    'separator',
+    { label: t('export.printMenu'), symbol: 'print', run: () => void exportNote('print') },
+    { label: t('export.pdfMenu'), symbol: 'download', run: () => void exportNote('pdf') },
   ]
   if (mayWrite && !editing && !mirror) {
     menuItems.push(
