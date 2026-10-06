@@ -35,6 +35,13 @@ test('the outline lists the headings and scrolls to one, lighting the heading in
 
 test('the tags as a tree: a click shows the notes, and a rename changes the text of the notes', async ({ page }) => {
   const problems = collectProblems(page)
+  // The rename below stays in the note: a second attempt (the CI's retry) found no "pal" left and failed for that
+  // alone (06.10.2026). Back first, so every attempt starts from the same tags.
+  const back = await page.request.post('/api/tags/rename', {
+    data: { old: 'board', new: 'pal' },
+    headers: { 'X-Nexlore-Client': 'tab-e2e-tags' },
+  })
+  expect(back.ok(), `renaming "board" back: ${back.status()}`).toBe(true)
   await page.goto('/note/Zyx/Palette.md')
   await page.getByRole('tab', { name: 'Tags' }).click()
   const tags = page.getByTestId('tag-tree')
@@ -53,7 +60,11 @@ test('the tags as a tree: a click shows the notes, and a rename changes the text
   await page.getByRole('menuitem', { name: 'Rename tag …' }).click()
   const dialog = page.getByTestId('name-dialog')
   await dialog.getByRole('textbox').fill('board')
+  // The rename writes the notes; on a slow disk that once took the CI 5 s, as long as an expect waits. The answer is
+  // awaited first, then the message it brings.
+  const renamed = page.waitForResponse((answer) => answer.url().endsWith('/api/tags/rename'))
   await dialog.getByRole('button', { name: 'Rename' }).click()
+  expect((await renamed).ok()).toBe(true)
   await expect(page.getByText('Renamed in 1 note.')).toBeVisible()
   await expect(tags.getByRole('button', { name: /^# board \d+$/ })).toBeVisible()
   await expect(tags.getByRole('button', { name: /^# pal \d+$/ })).toHaveCount(0)
