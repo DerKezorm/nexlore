@@ -2276,12 +2276,12 @@
   "about": {
     "menu": "Über nexlore",
     "subtitle": "Notizen als Markdown-Dateien, mit einer Karte zum Hineinzoomen.",
-    "version": "Fassung",
-    "newer": "Fassung {{version}} ist erschienen",
+    "version": "Version",
+    "newer": "Version {{version}} ist erschienen",
     "licence": "Lizenz",
     "source": "Quelltext",
     "releases": "Veröffentlichungen",
-    "releasesLink": "Alle Fassungen und was sich geändert hat",
+    "releasesLink": "Alle Versionen und was sich geändert hat",
     "project": "Projektseite",
     "report": "Einen Fehler gefunden?",
     "reportLink": "Auf GitHub melden",
@@ -2290,11 +2290,11 @@
     "fontsText": "nexlore bringt seine Schriften mit, damit beim Öffnen einer Notiz kein anderer Server gefragt wird. Ihre Lizenzen stehen unter /licenses/fonts.txt.",
     "updates": {
       "title": "Aktualisierungen",
-      "text": "Ob es eine neuere Fassung von nexlore gibt.",
+      "text": "Ob es eine neuere Version von nexlore gibt.",
       "daily": "Einmal am Tag nachsehen",
       "dailyHint": "Fragt GitHub nach der neuesten Veröffentlichung. Aus: nur, wenn du den Knopf drückst.",
       "now": "Jetzt nachsehen",
-      "current": "Das ist die neueste Fassung.",
+      "current": "Das ist die neueste Version.",
       "none": "Noch keine Veröffentlichung gefunden.",
       "notYet": "Noch nicht nachgesehen.",
       "off": "Das tägliche Nachsehen ist aus.",
@@ -2384,7 +2384,7 @@
       "invite": "Eine Einladung in einen Bereich wartet auf deine Antwort.",
       "approval": "Ein KI-Programm wartet auf dein Ja.",
       "tasks": "Einmal am Tag zur Uhrzeit unten: was heute fällig oder überfällig ist.",
-      "operator": "Für Betreiber: eine Sicherung ist gescheitert, eine neuere Fassung ist da, die Platte läuft voll.",
+      "operator": "Für Betreiber: eine Sicherung ist gescheitert, eine neuere Version ist da, die Platte läuft voll.",
       "tokens": "Sieben Tage bevor eines deiner API-Token abläuft, einmal je Token."
     },
     "tasksTime": "Uhrzeit für die Aufgaben des Tages"

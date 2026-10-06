@@ -55,6 +55,21 @@ describe('shipped translations', () => {
     expect(marked).toEqual([])
   })
 
+  it('say trash in English, never bin (decided 06.10.2026)', () => {
+    const said = [...english].map(([key, value]) => [key, String(value)] as const)
+    expect(said.filter(([, text]) => /\bbins?\b/i.test(text)).map(([key, text]) => `${key}: ${text}`)).toEqual([])
+    // Floor: the trash is still spoken of, so the check above has something to look at.
+    expect(said.filter(([, text]) => /\btrash\b/i.test(text)).length).toBeGreaterThan(5)
+  })
+
+  it('call the program version Version in German; Fassung is left for the versions of a note (decided 06.10.2026)', () => {
+    const german = flatten(files['./de.json'])
+    const about = [...german].filter(([key]) => key.startsWith('about.') || key === 'notify.occasionHint.operator')
+    expect(about.filter(([, text]) => /Fassung/.test(String(text))).map(([key, text]) => `${key}: ${String(text)}`)).toEqual([])
+    expect(german.get('about.version')).toBe('Version')
+    expect(german.get('about.updates.current')).toBe('Das ist die neueste Version.')
+  })
+
   it('keep the same placeholders in every language', () => {
     const placeholders = (text: unknown) => [...String(text).matchAll(/\{\{(\w+)\}\}/g)].map((match) => match[1]).sort()
     for (const key of english.keys()) {

@@ -1,6 +1,6 @@
 {
   "0.2.0": {
-    "lead": "KI-Programme können jetzt alles, was du in nexlore kannst, und du bestimmst je Werkzeug, was sie von sich aus dürfen. Bereiche lassen sich umbenennen, Menschen erscheinen unter einem selbst gewählten Namen, und nexlore sagt Bescheid, wenn eine neuere Fassung erschienen ist.",
+    "lead": "KI-Programme können jetzt alles, was du in nexlore kannst, und du bestimmst je Werkzeug, was sie von sich aus dürfen. Bereiche lassen sich umbenennen, Menschen erscheinen unter einem selbst gewählten Namen, und nexlore sagt Bescheid, wenn eine neuere Version erschienen ist.",
     "sections": [
       {
         "title": "KI von außen kann alles, mit Rechten je Werkzeug",
@@ -30,13 +30,13 @@
       {
         "title": "Über nexlore, mit Prüfung auf Aktualisierungen",
         "where": "Kontomenü, Über nexlore",
-        "body": "Fassung, Lizenz, Quelltext und Veröffentlichungen. Einmal am Tag fragt nexlore bei GitHub nach, ob es eine neuere Fassung gibt; hinaus geht nur diese Frage. Der Betreiber schaltet das dort ab und kann von Hand nachsehen."
+        "body": "Version, Lizenz, Quelltext und Veröffentlichungen. Einmal am Tag fragt nexlore bei GitHub nach, ob es eine neuere Version gibt; hinaus geht nur diese Frage. Der Betreiber schaltet das dort ab und kann von Hand nachsehen."
       }
     ],
     "smallTitle": "Außerdem",
     "small": [
       "Die Einstellungen sind ins Kontomenü gewandert, wie bei Nexview; die Kopfleiste behält die Orte, an denen du arbeitest.",
-      "Dieses Fenster kommt einmal je Fassung mit Neuigkeiten, für jedes Konto."
+      "Dieses Fenster kommt einmal je Version mit Neuigkeiten, für jedes Konto."
     ]
   },
   "0.3.0": {
@@ -50,7 +50,7 @@
       {
         "title": "Ärger mit dem Server erreicht den Betreiber",
         "where": "Kontomenü, Mein Konto, Benachrichtigungen, Ärger mit dem Server",
-        "body": "Betreiber hören, wenn eine geplante Sicherung gescheitert ist, wenn eine neuere Fassung von nexlore erschienen ist und wenn die Platte, auf der nexlore seine Daten hält, voll läuft. Jedes davon kommt einmal, nicht jede Minute."
+        "body": "Betreiber hören, wenn eine geplante Sicherung gescheitert ist, wenn eine neuere Version von nexlore erschienen ist und wenn die Platte, auf der nexlore seine Daten hält, voll läuft. Jedes davon kommt einmal, nicht jede Minute."
       }
     ],
     "smallTitle": "Außerdem",
@@ -96,7 +96,7 @@
     ]
   },
   "1.0.0": {
-    "lead": "nexlore 1.0. Vor dieser Fassung ging es durch eine große Sicherheitsprüfung mit einer Frage: Was passiert, wenn du nexlore ins Internet stellst? Das Ergebnis steckt hier drin: ein frischer Server, den kein Fremder übernehmen kann, eine Anmeldung, mit der dich niemand aussperrt, und kein Weg über nexlore in dein Heimnetz.",
+    "lead": "nexlore 1.0. Vor dieser Version ging es durch eine große Sicherheitsprüfung mit einer Frage: Was passiert, wenn du nexlore ins Internet stellst? Das Ergebnis steckt hier drin: ein frischer Server, den kein Fremder übernehmen kann, eine Anmeldung, mit der dich niemand aussperrt, und kein Weg über nexlore in dein Heimnetz.",
     "sections": [
       {
         "title": "Der erste Start fragt nach einem Code",

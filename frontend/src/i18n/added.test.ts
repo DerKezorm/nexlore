@@ -46,10 +46,21 @@ describe('added languages', () => {
   it('are offered next to the shipped ones, with their own name', async () => {
     serve({ '/api/locales': [{ code: 'es', name: 'Español', keys: 2 }] })
     expect(await languageOptions()).toEqual([
-      { code: 'en', name: 'English', added: false },
       { code: 'de', name: 'Deutsch', added: false },
+      { code: 'en', name: 'English', added: false },
       { code: 'es', name: 'Español', added: true },
     ])
+  })
+
+  it('take their place by name among the shipped ones, not at the end (decided 06.10.2026)', async () => {
+    serve({
+      '/api/locales': [
+        { code: 'fr', name: 'Français', keys: 1 },
+        { code: 'af', name: 'Afrikaans', keys: 1 },
+        { code: 'es', name: 'Español', keys: 1 },
+      ],
+    })
+    expect((await languageOptions()).map((option) => option.name)).toEqual(['Afrikaans', 'Deutsch', 'English', 'Español', 'Français'])
   })
 
   it('fall back to English for every key they leave out', async () => {
@@ -107,12 +118,12 @@ describe('added languages', () => {
     serve({ '/api/locales': new TypeError('Failed to fetch') })
     await startI18n()
     expect(i18n.t('nav.notes')).toBe(en.nav.notes)
-    expect((await languageOptions()).map((option) => option.code)).toEqual(['en', 'de'])
+    expect((await languageOptions()).map((option) => option.code)).toEqual(['de', 'en'])
   })
 
   it('codes that are not language codes are ignored, and never asked for', async () => {
     const fetchMock = serve({ '/api/locales': [{ code: '../secret', name: 'x', keys: 1 }, { code: 'es', name: 'Español', keys: 1 }] })
-    expect((await languageOptions()).map((option) => option.code)).toEqual(['en', 'de', 'es'])
+    expect((await languageOptions()).map((option) => option.code)).toEqual(['de', 'en', 'es'])
     await changeLanguage('../secret')
     expect(fetchMock.mock.calls.map(([url]) => String(url))).not.toContain('/api/locales/../secret')
   })
