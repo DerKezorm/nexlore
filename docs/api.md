@@ -132,6 +132,14 @@ Keep `hash` to change the note later. `readonly`: the file is not UTF-8; it is s
 
 An outgoing link with `path: null` leads to no note (or to one the token may not see).
 
+### `GET /api/v1/note/pdf?path=Garden/Plan.md` and `GET /api/v1/folder/pdf?path=Garden`
+
+A note, or every note of a folder (with a cover and contents), as a PDF, set on the server exactly as the app's
+"Save as PDF" does. The answer is `application/pdf`. Optional: `paper=a4|letter`, `language=de|en` (the words nexlore
+adds, such as page numbers; left out, the account's), `links=footnote|text` (web addresses as footnotes or not),
+`properties=false`, `embeds=false`. Embedded notes and pictures follow the token's rights like everything else; at
+most 300 notes go into one PDF (`413 too_many_notes`).
+
 ### `GET /api/v1/search?q=...&limit=30&offset=0`
 
 The search of the search page, with its operators: words (each must occur, also in the middle of a word),

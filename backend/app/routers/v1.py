@@ -21,9 +21,10 @@ import re
 import secrets
 import zlib
 from datetime import UTC, date, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import Integer, cast, func, select
 
@@ -36,6 +37,7 @@ from ..services import apitokens, appearance, everyday, inbox, index, logs, path
 from ..services.apitokens import Caller
 from ..services.vault import Actor, VaultError
 from . import everyday as everyday_routes
+from . import export as export_routes
 from . import search as search_routes
 from . import vault as vault_routes
 
@@ -235,6 +237,40 @@ def note(found: Reader, path: PathQuery) -> NoteOut:
     read = vault_routes.note(path, found.account, _actor(found))
     return NoteOut(path=read.path, title=read.title, content=read.content, hash=read.hash, tags=read.tags,
                    front=read.front, modified=_modified(read.modified * 1_000_000), readonly=read.readonly)
+
+
+def _pdf(found: Caller, *, note: str | None, folder: str | None, paper: str, language: str | None, links: str,
+         properties: bool, embeds: bool) -> Response:
+    options = export_routes.OptionsIn(
+        paper=paper, language=language, links=links, properties=properties, embeds=embeds,  # type: ignore[arg-type]
+    )
+    return export_routes.export_pdf(export_routes.ExportIn(path=note, folder=folder, options=options), found.account)
+
+
+@router.get("/note/pdf", response_class=Response, summary="A note as PDF, set as the app sets it",
+            responses={200: {"content": {"application/pdf": {}}}})
+def note_pdf(
+    found: Reader, path: PathQuery,
+    paper: Annotated[Literal["a4", "letter"], Query()] = "a4",
+    language: Annotated[Literal["de", "en"] | None, Query()] = None,
+    links: Annotated[Literal["footnote", "text"], Query()] = "footnote",
+    properties: bool = True, embeds: bool = True,
+) -> Response:
+    return _pdf(found, note=path, folder=None, paper=paper, language=language, links=links, properties=properties,
+                embeds=embeds)
+
+
+@router.get("/folder/pdf", response_class=Response, summary="Every note of a folder as one PDF, with contents",
+            responses={200: {"content": {"application/pdf": {}}}})
+def folder_pdf(
+    found: Reader, path: PathQuery,
+    paper: Annotated[Literal["a4", "letter"], Query()] = "a4",
+    language: Annotated[Literal["de", "en"] | None, Query()] = None,
+    links: Annotated[Literal["footnote", "text"], Query()] = "footnote",
+    properties: bool = True, embeds: bool = True,
+) -> Response:
+    return _pdf(found, note=None, folder=path, paper=paper, language=language, links=links, properties=properties,
+                embeds=embeds)
 
 
 class LinkOut(BaseModel):

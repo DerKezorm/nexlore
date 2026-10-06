@@ -71,7 +71,13 @@ from one space into another that only resolve for people who may read both.*
   across all spaces (due, scheduled, recurring, done), installable on a phone as an app.
 - **Attachments** next to the note in an `Attachments` folder, pasted pictures named after the note. Place and
   device are removed from photos and videos on upload (on by default), HEIC gets a WebP copy, duplicates are found
-  by content, PDFs are searched. SVG, HTML and PDF are always downloaded, never run.
+  by content, PDFs are searched. SVG and HTML are always downloaded, never run.
+- **PDFs** open in nexlore's own reader: pages with their text to select and find, pictures of the pages, the PDF's
+  contents, zoom and a link to any page. `![[Manual.pdf#page=3&height=400]]` embeds a reader in a note,
+  `[[Manual.pdf#page=3]]` opens that page, and a PDF opens beside a note to read and write at the same time. The
+  file's page lists the notes that link the PDF, with their pages.
+- **Print and PDF**: a note, or a whole folder with contents and page numbers, as a PDF set on the server (Typst),
+  with a preview of the pages and the choices that matter on paper. Also through the API.
 - **Spaces, accounts and rights**: a space is a folder at the top of the vault with members who read, write or
   manage. Links may lead into another space (`[[Team/Note]]`) and resolve only for whoever may read it. What
   somebody may not read does not show up anywhere, not in search, graph, backlinks or tasks, not even its title.
@@ -273,7 +279,10 @@ macOS and Linux (a title with other characters goes into the front matter as `ti
   password in nexlore and is not asked.
 - Every changing request needs the header `X-Nexlore-Client`, which a page on another site cannot send.
 - A space somebody may not read answers exactly like one that does not exist, in every route.
-- Uploaded files are served with their own sandboxing policy; SVG, HTML and PDF only as downloads.
+- Uploaded files are served with their own sandboxing policy; SVG, HTML and PDF only as downloads. PDFs are drawn
+  by pdf.js in a sandboxed frame without an origin and without any network; the page hands it the bytes.
+- PDFs made by nexlore are set by Typst in a process of its own with a time limit, from a folder holding nothing
+  but the source and the pictures the reader may see; every word of a note reaches Typst as a string, never as code.
 - Plugins run in sandboxed frames without an origin, without cookies and without network, and may only ask the page
   for what their manifest lists.
 - MCP keys and API tokens are shown once and stored as hashes, work only as a Bearer header, never from a web page,

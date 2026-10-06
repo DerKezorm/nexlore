@@ -252,5 +252,30 @@
       "Der weiche Schein um die Punkte der Karte lässt sich unter Einstellungen, Aussehen abschalten, für ältere Rechner.",
       "Die Anleitung erklärt Frag Lore, die Markdown-Ansicht und die neue Karte."
     ]
+  },
+  "1.5.0": {
+    "lead": "nexlore 1.5 liest PDFs selbst und gibt Notizen auf Papier weiter: ein PDF öffnet sich in nexlore statt als Download, und jede Notiz oder ein ganzer Ordner wird ein sauber gesetztes PDF.",
+    "sections": [
+      {
+        "title": "PDFs in nexlore lesen",
+        "where": "Ein Klick auf ein PDF in der Seitenleiste oder auf einen Link zu einem PDF",
+        "body": "Das PDF öffnet sich mit Bildern der Seiten und seinem Inhaltsverzeichnis links, du blätterst, zoomst und suchst im Text. Das Kettenglied kopiert einen Link auf die Seite, etwa [[Handbuch.pdf#page=3]], und ein Klick darauf öffnet das PDF genau dort. Rechts steht, welche Notizen auf das PDF verlinken und auf welche Seiten, und Notiz zu diesem PDF legt eine Notiz an, die neben dem PDF aufgeht."
+      },
+      {
+        "title": "PDFs in der Notiz",
+        "where": "In einer Notiz ![[Handbuch.pdf#page=3]], beim Lesen und beim Bearbeiten",
+        "body": "Ein eingebettetes PDF zeigt sich als kleiner Leser zum Blättern, mit #height=400 in der Höhe, die du willst. Ein PDF lässt sich auch neben einer Notiz öffnen: Du liest rechts und schreibst links, und ein Seitenlink in der Notiz blättert das PDF dorthin."
+      },
+      {
+        "title": "Drucken und als PDF speichern",
+        "where": "Menü ⋯ einer Notiz, Drucken … oder Als PDF speichern …; für einen Ordner sein Menü in der Seitenleiste",
+        "body": "Das Fenster zeigt die Seiten so, wie sie aufs Papier kommen, und jede Wahl sofort: Papier, Eigenschaften, eingebettete Notizen, Webadressen als Fußnote, Kopf und Fuß, Schrift. Ein Ordner wird ein PDF mit Deckblatt und Inhaltsverzeichnis, in dem sich Links zwischen den Notizen anklicken lassen. Gedruckt wird immer hell."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Über die API holen Programme eine Notiz oder einen Ordner als PDF (/api/v1/note/pdf, /api/v1/folder/pdf).",
+      "Ein PDF läuft in einem abgeschotteten Rahmen ohne eigenen Ursprung und ohne Netz; die Seite reicht ihm die Datei."
+    ]
   }
 }

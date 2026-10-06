@@ -28,6 +28,8 @@ export type FromFrame =
   | { type: 'link'; href: string }
   | { type: 'data'; id: number; kind: DataKind; name: string }
   | { type: 'failed'; reason: 'password' | 'broken' }
+  /** Ctrl+F inside the frame: the page opens its find bar (the browser's own would search the frame only). */
+  | { type: 'findKey' }
 
 /** The kinds of file pdf.js may ask for, and the folder they lie in under `/pdfjs/`. */
 export type DataKind = 'cMapUrl' | 'standardFontDataUrl' | 'wasmUrl'

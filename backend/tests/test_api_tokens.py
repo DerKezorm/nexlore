@@ -473,3 +473,26 @@ def test_the_warning_can_be_switched_off(world: World, sent: Sent) -> None:
     assert notify.tokens_expiring() == 1
     assert sent.posts == []
     assert ok(world.anna.get("/api/me/notify"))["choices"]["tokens"] is False
+
+
+def test_a_note_or_a_folder_as_pdf_with_the_token_s_rights(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    import io
+
+    from pypdf import PdfReader
+
+    from app.services import typeset
+
+    monkeypatch.setattr(typeset, "INLINE", True)
+    token = world.token()
+    answer = api(token, "GET", "/api/v1/note/pdf", params={"path": "Garden/Plan.md", "language": "en"})
+    assert answer.status_code == 200 and answer.headers["content-type"] == "application/pdf"
+    text = " ".join(page.extract_text() for page in PdfReader(io.BytesIO(answer.content)).pages)
+    assert "Water the beans" in text and "Page 1 of" in text
+    folder = api(token, "GET", "/api/v1/folder/pdf", params={"path": "Garden"})
+    assert folder.status_code == 200 and folder.content.startswith(b"%PDF")
+    # Bob's diary is as if there were none, for anna's token as for anna.
+    assert code(api(token, "GET", "/api/v1/note/pdf", params={"path": "Secret/Diary.md"})) == (404, "not_found")
+    assert code(api(token, "GET", "/api/v1/folder/pdf", params={"path": "Secret"})) == (404, "not_found")
+    # A token limited to one space sees nothing of another, though its account could.
+    garden_only = world.token(spaces=[world.space_id("Garden")])
+    assert code(api(garden_only, "GET", "/api/v1/note/pdf", params={"path": "Shared/Rules.md"})) == (404, "not_found")

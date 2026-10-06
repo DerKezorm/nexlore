@@ -126,6 +126,12 @@ export function PdfView({ path, page = 1, compact = false, height, onPage, tools
         case 'failed':
           setFailed(message.reason)
           break
+        case 'findKey':
+          if (!compact) {
+            setFinding(true)
+            setTimeout(() => findField.current?.focus(), 0)
+          }
+          break
         case 'data': {
           const folder = DATA_FOLDERS[message.kind]
           if (!folder || !plainName(message.name)) {

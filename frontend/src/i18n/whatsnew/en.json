@@ -252,5 +252,30 @@
       "The soft glow around the dots of the map can be switched off under Settings, Looks, for older computers.",
       "The guide explains Ask Lore, the Markdown view and the new map."
     ]
+  },
+  "1.5.0": {
+    "lead": "nexlore 1.5 reads PDFs itself and puts notes on paper: a PDF opens in nexlore instead of downloading, and any note, or a whole folder, becomes a neatly set PDF.",
+    "sections": [
+      {
+        "title": "Read PDFs in nexlore",
+        "where": "A click on a PDF in the sidebar, or on a link to a PDF",
+        "body": "The PDF opens with pictures of its pages and its own contents on the left; you turn pages, zoom and find text. The chain link copies a link to the page, such as [[Manual.pdf#page=3]], and a click on it opens the PDF right there. On the right you see which notes link the PDF, and to which pages, and Note on this PDF makes a note that opens beside it."
+      },
+      {
+        "title": "PDFs in a note",
+        "where": "In a note ![[Manual.pdf#page=3]], when reading and when editing",
+        "body": "An embedded PDF shows as a small reader to page through, as tall as you like with #height=400. A PDF also opens beside a note: you read on the right and write on the left, and a page link in the note turns the PDF there."
+      },
+      {
+        "title": "Print and save as PDF",
+        "where": "The ⋯ menu of a note, Print … or Save as PDF …; for a folder, its menu in the sidebar",
+        "body": "The window shows the pages as they come on paper, and every choice at once: paper, properties, embedded notes, web addresses as footnotes, header and footer, font. A folder becomes one PDF with a cover and contents, where links between its notes can be clicked. Paper is always light."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "Programs fetch a note or a folder as PDF through the API (/api/v1/note/pdf, /api/v1/folder/pdf).",
+      "A PDF runs in a sandboxed frame without an origin of its own and without any network; the page hands it the file."
+    ]
   }
 }

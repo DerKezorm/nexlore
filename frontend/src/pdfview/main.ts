@@ -312,4 +312,11 @@ window.addEventListener('message', (event: MessageEvent<ToFrame>) => {
   }
 })
 
+window.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+    event.preventDefault()
+    tell({ type: 'findKey' })
+  }
+})
+
 tell({ type: 'ready' })
