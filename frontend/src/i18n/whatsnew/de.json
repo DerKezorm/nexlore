@@ -277,5 +277,36 @@
       "Über die API holen Programme eine Notiz oder einen Ordner als PDF (/api/v1/note/pdf, /api/v1/folder/pdf).",
       "Ein PDF läuft in einem abgeschotteten Rahmen ohne eigenen Ursprung und ohne Netz; die Seite reicht ihm die Datei."
     ]
+  },
+  "1.5.1": {
+    "lead": "Jedes Konto hat jetzt eine eigene Mailadresse, und der Mailserver hat in den Einstellungen einen eigenen Platz.",
+    "sections": [
+      {
+        "title": "Deine Mailadresse",
+        "where": "Mein Konto, Profil",
+        "body": "Trag deine Adresse ein und drück Bestätigen: nexlore schickt dir einen Link, und die Adresse gilt, sobald du ihn öffnest. Bis dahin bleibt eine früher bestätigte Adresse gültig. Einladungen und Benachrichtigungen per Mail gehen an sie."
+      },
+      {
+        "title": "Vom Betreiber eingetragen",
+        "where": "Einstellungen, Server, Konten, Mailadresse neben einem Konto",
+        "body": "Der Betreiber trägt einem Konto eine Adresse ein; sie gilt sofort, und das Konto sieht es unter Neu seit deinem letzten Besuch. Jedes Konto in der Liste zeigt seine Adresse und woher sie kommt."
+      },
+      {
+        "title": "Mit einem Anmeldedienst",
+        "where": "Mein Konto, Profil, für Konten, die sich über authentik oder einen anderen Dienst anmelden",
+        "body": "Ein Konto, das sich nur über den Dienst anmeldet, folgt bei jeder Anmeldung dessen Adresse. Ein verknüpftes Konto mit Passwort behält seine eigene Adresse; kennt der Dienst eine andere, bietet das Profil an, sie zu übernehmen."
+      },
+      {
+        "title": "Der Mailserver",
+        "where": "Einstellungen, Server, Mailserver",
+        "body": "Der Mailserver steckt nicht mehr als Einladungsmail unter Konten. Sein eigener Teil sagt, wofür er da ist: Einladungen, Benachrichtigungen und die Links, mit denen jemand seine Adresse bestätigt. Und er sagt, wenn die öffentliche Adresse von nexlore noch fehlt."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Eine eingetragene, aber nie bestätigte Adresse verbindet nie eine Anmeldung über den Anmeldedienst mit einem Konto.",
+      "Keine Adresse gehört zwei Konten.",
+      "Ohne Mailserver sagt das Adressfeld, warum es gesperrt ist, und die Benachrichtigungen zeigen, wo man das ändert."
+    ]
   }
 }

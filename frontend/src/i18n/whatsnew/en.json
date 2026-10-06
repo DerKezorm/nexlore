@@ -277,5 +277,36 @@
       "Programs fetch a note or a folder as PDF through the API (/api/v1/note/pdf, /api/v1/folder/pdf).",
       "A PDF runs in a sandboxed frame without an origin of its own and without any network; the page hands it the file."
     ]
+  },
+  "1.5.1": {
+    "lead": "Every account now has a mail address of its own, and the mail server has a place of its own in the settings.",
+    "sections": [
+      {
+        "title": "Your mail address",
+        "where": "My account, Profile",
+        "body": "Enter your address and press Confirm: nexlore mails you a link, and the address counts once you open it. Until then an address you confirmed before stays in force. Invitations and notifications by mail go to it."
+      },
+      {
+        "title": "Set by the operator",
+        "where": "Settings, Server, Accounts, Mail address beside an account",
+        "body": "The operator enters an address for an account; it counts at once, and the account sees it under New since your last visit. Every account in the list shows its address and where it came from."
+      },
+      {
+        "title": "With a sign-in service",
+        "where": "My account, Profile, for accounts that sign in through authentik or another service",
+        "body": "An account that signs in only through the service follows the service's address at every sign-in. A linked account with a password keeps its own address; when the service knows a different one, the profile offers to take it."
+      },
+      {
+        "title": "The mail server",
+        "where": "Settings, Server, Mail server",
+        "body": "The mail server is no longer tucked away under Accounts as Invitation mail. Its part says what it carries: invitations, notifications and the links that confirm an address, and it tells you when nexlore's public address is still missing."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "An address that was entered but never confirmed never links a sign-in through the provider to an account.",
+      "No two accounts hold the same address.",
+      "Without a mail server the address field says why it is locked, and Notifications shows where that is changed."
+    ]
   }
 }
