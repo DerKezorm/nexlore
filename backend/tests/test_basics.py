@@ -23,6 +23,10 @@ def test_every_answer_carries_the_security_headers(client: TestClient) -> None:
         csp = headers["content-security-policy"]
         assert "script-src" not in csp or "'unsafe-inline'" not in csp.split("script-src", 1)[1].split(";", 1)[0]
         assert "default-src 'self'" in csp and "frame-ancestors 'none'" in csp and "object-src 'none'" in csp
+        # Frames from nexlore and from the page's own blobs (the PDF to print), from nowhere else: a plugin's frame
+        # must not be able to load itself from another host with something in the address.
+        frames = next(part.strip() for part in csp.split(";") if part.strip().startswith("frame-src"))
+        assert frames == "frame-src 'self' blob:"
         assert headers["x-content-type-options"] == "nosniff"
         assert headers["x-frame-options"] == "DENY"
         assert headers["referrer-policy"] == "same-origin"

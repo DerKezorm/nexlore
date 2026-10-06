@@ -295,3 +295,13 @@ def test_a_pdf_knows_the_pages_its_notes_link(world: World) -> None:
     assert up.status_code in (200, 201), up.text
     links = world.anna.get("/api/links", params={"path": up.json()["path"]}).json()
     assert sorted(link["subpath"] for link in links["backlinks"]) == ["", "page=3", "page=5&height=300"]
+
+
+def test_an_embedded_note_shows_its_own_embeds_only_as_names(world: World) -> None:
+    note(world.anna, "Wissen", "Mitte", "Die Mitte.\n\n![[Tief]]\n")
+    note(world.anna, "Wissen", "Tief", "Ganz unten steht Tiefseetext.\n")
+    note(world.anna, "Wissen", "Oben", "Oben.\n\n![[Mitte]]\n")
+    text = flat(text_of(pdf(world.anna, path="Wissen/Oben.md")))
+    assert "Die Mitte." in text
+    # One level deep, like the reading view: the embed inside the embed stays its name.
+    assert "Tiefseetext" not in text and "Tief" in text
