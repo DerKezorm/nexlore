@@ -84,9 +84,14 @@ test('an address pasted onto chosen words makes them a link, in the app as it ru
   await page.goto('/note/Heath/Pasted.md')
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   const editor = page.locator('.ProseMirror')
-  await editor.getByText('Start.').click()
-  await page.keyboard.press('Home')
-  for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowRight')
+  // The editor settles its caret a moment after it opens; a key pressed before that can get lost (the CI once chose
+  // "Star" and linked it, 06.10.2026). The choice is made again until it holds the whole word.
+  await expect(async () => {
+    await editor.getByText('Start.').click()
+    await page.keyboard.press('Home')
+    for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowRight')
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe('Start')
+  }).toPass({ timeout: 10_000 })
   const written = page.waitForResponse((response) => response.url().includes('/api/note') && response.request().method() === 'PUT')
   await editor.evaluate((element) => {
     const data = new DataTransfer()

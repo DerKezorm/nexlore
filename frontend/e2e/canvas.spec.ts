@@ -118,7 +118,9 @@ test('a canvas shows its cards, far out only their titles', async ({ page }) => 
   expect((await looks()).glow).toContain('drop-shadow')
   await page.keyboard.press('Escape')
   const sizes: number[] = []
-  for (let step = 0; step < 12 && !(await page.locator('.nl-canvas.nl-far').count()); step++) {
+  // Up to 30 steps: on a slow machine a click still cuts the last step's animation short, and twelve short steps once
+  // did not reach far out (CI, 06.10.2026).
+  for (let step = 0; step < 30 && !(await page.locator('.nl-canvas.nl-far').count()); step++) {
     const size = await labelPixels()
     if (size !== null) sizes.push(size)
     const before = await shown.textContent()
