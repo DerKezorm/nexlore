@@ -141,6 +141,10 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   // Frag Lore (lore.spec.ts): notes with a word nothing else has, at the end of the tree.
   'Zyx/Lore/Glasswing backups.md': '# Glasswing backups\n\nThe glasswing backups run every hour, kept for two days.\n',
   'Zyx/Lore/Glasswing drill.md': '# Glasswing drill\n\nThe last glasswing restore took 38 minutes.\n',
+  // Paper and PDFs (pdf.spec.ts): a folder to print, and a note that embeds the PDF made of it.
+  'Zyx/Prints/One.md': '# One\n\nThe first note on paper. See [[Two]].\n',
+  'Zyx/Prints/Two.md': '# Two\n\nThe second note, with a word to find: marmalade.\n',
+  'Zyx/Prints/Reading list.md': 'Read [[Prints.pdf#page=4|the fourth page]].\n\n![[Prints.pdf#page=2&height=320]]\n',
   'Zyx/Palette.md': `---\naliases: [Command deck]\n---\n# Palette\n\n## First part\n\n${'A line to scroll past.\n\n'.repeat(40)}## Far down\n\nThe end.\n`,
   'Zyx/Tagged.md': '---\ntags: [pal]\n---\n# Tagged\n\nOne #pal/one here, and #palette stays.\n',
   'Zyx/Rich.md': [
