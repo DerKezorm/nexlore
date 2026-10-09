@@ -82,7 +82,7 @@ async def write_config(payload: ConfigIn, operator: OperatorAccount, request: Re
         code = "issuer_unreachable" if exc.code == "oidc_provider_unreachable" else "issuer_invalid"
         raise error(code, exc.message, 422, reason=exc.code) from exc
     previous = str(settings_service.get(db, "oidc_issuer") or "")
-    if previous and previous != issuer:
+    if previous and not same_provider(previous, issuer):
         forget_subjects(db, previous, issuer)
     values: dict[str, Any] = {
         "oidc_issuer": issuer,
@@ -111,6 +111,12 @@ def delete_config(operator: OperatorAccount, db: DbSession) -> None:
 def state(db: DbSession) -> dict[str, Any]:
     # Public: the sign-in page asks before anybody is signed in. It reveals only whether the button exists.
     return {"enabled": _configured(db), "provider_name": _provider_name(db)}
+
+
+def same_provider(previous: str, issuer: str) -> bool:
+    """Whether two stored issuers name the same provider. A slash at the end makes no other provider: the form stores
+    the issuer without it, the authentik button with it (as authentik writes it), and discovery takes either."""
+    return previous.rstrip("/") == issuer.rstrip("/")
 
 
 def forget_subjects(db: DbSession, previous: str, issuer: str) -> None:

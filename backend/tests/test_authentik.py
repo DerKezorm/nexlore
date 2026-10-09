@@ -817,3 +817,57 @@ def test_a_slug_from_a_name_with_umlauts_spells_them_out(client: TestClient, ope
     made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/core/applications/"))
     assert made.body["slug"] == "tafel-ue-buero-strasse-cafe"
     assert result["issuer"] == f"{URL}/application/o/tafel-ue-buero-strasse-cafe/"
+
+
+def test_a_slug_for_a_long_name_stays_within_what_authentik_takes(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """authentik keeps a slug to 50 characters. With the provider's number added to a long name, the name gives way;
+    otherwise the application call fails after the provider was already changed."""
+    own_without_application(fake)
+    fake.others[0]["name"] = "Whiteboards of the marketing department in building B"
+    fake.apps = [{"slug": "whiteboards-of-the-marketing-department-in-buildin", "name": "x", "provider": 7}]
+    configured_as(ISSUER, "own-client")
+    run_setup(client)
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/core/applications/"))
+    assert made.body["slug"] == "whiteboards-of-the-marketing-department-in-build-8"
+    assert len(made.body["slug"]) <= authentik.SLUG_MAX
+
+
+def test_saving_the_form_unchanged_after_the_button_keeps_the_links(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """The button stores the issuer with the slash at the end, the form without it: the same provider, so nobody's
+    sign-in is dropped."""
+    member = configured_as(ISSUER, "own-client")
+    shown = client.get("/api/oidc/config").json()
+    assert shown["issuer"] == ISSUER
+    response = client.put(
+        "/api/oidc/config",
+        json={"issuer": shown["issuer"], "client_id": shown["client_id"], "client_secret": "",
+              "provider_name": "authentik", "auto_create": False},
+        headers=UI,
+    )
+    assert response.status_code == 200, response.text
+    with SessionLocal() as db:
+        assert db.get(Account, member).oidc_subject == "subject-1"  # type: ignore[union-attr]
+
+
+def test_the_button_after_an_issuer_typed_by_hand_keeps_the_links(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    fake.existing = {"cert", "mapping", "provider", "application"}
+    fake.provider_client = "own-client"
+    member = configured_as(ISSUER.rstrip("/"), "own-client")
+    result = run_setup(client)
+    assert result["issuer"] == ISSUER
+    with SessionLocal() as db:
+        assert db.get(Account, member).oidc_subject == "subject-1"  # type: ignore[union-attr]
+
+
+def test_another_provider_still_drops_the_links(client: TestClient, operator: Account, fake: FakeAuthentik) -> None:
+    """Only the slash is forgiven: a different issuer is a different provider, and its subjects mean someone else."""
+    member = configured_as(f"{URL}/application/o/other/", "own-client")
+    run_setup(client)
+    with SessionLocal() as db:
+        assert db.get(Account, member).oidc_subject == ""  # type: ignore[union-attr]

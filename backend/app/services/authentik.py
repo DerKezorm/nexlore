@@ -224,6 +224,8 @@ def _instance_names(redirect_uri: str) -> tuple[str, str]:
 
 #: How many slugs the button tries for a new application of its own provider before it gives up.
 SLUG_TRIES = 10
+#: The longest slug authentik takes for an application (a Django SlugField).
+SLUG_MAX = 50
 
 
 async def _application_by_slug(api: _Api, slug: str) -> dict[str, Any] | None:
@@ -244,8 +246,10 @@ async def _free_slug(api: _Api, name: str, pk: str) -> str:
     """A slug for a new application of the own provider: from its name, then with the provider's number added, then
     counted on. A slug is free when no application has it or the one there has no provider or this one; an
     application of another provider is never taken."""
-    base = re.sub(r"[^a-z0-9]+", "-", _ascii(name.lower())).strip("-")[:50] or SLUG
-    tries = [base, f"{base}-{pk}"] + [f"{base}-{pk}-{number}" for number in range(2, SLUG_TRIES)]
+    base = re.sub(r"[^a-z0-9]+", "-", _ascii(name.lower())).strip("-") or SLUG
+    suffixes = ["", f"-{pk}"] + [f"-{pk}-{number}" for number in range(2, SLUG_TRIES)]
+    # authentik keeps a slug to SLUG_MAX characters; the suffix must fit, so the name gives way.
+    tries = [f"{base[: SLUG_MAX - len(suffix)].rstrip('-')}{suffix}" for suffix in suffixes]
     for candidate in tries:
         taken = await _application_by_slug(api, candidate)
         if taken is None or str(taken.get("provider") or "") in ("", pk):
@@ -406,10 +410,10 @@ async def _fill(db: Session, issuer: str, client_id: str, client_secret: str) ->
     cannot reach authentik under this address, which the operator fixes at the network or with a corrected
     address. The stored configuration can be removed with DELETE /api/oidc/config at any time.
     """
-    previous = str(settings_service.get(db, "oidc_issuer") or "")
-    if previous and previous != issuer:
-        from ..routers.oidc import forget_subjects
+    from ..routers.oidc import forget_subjects, same_provider
 
+    previous = str(settings_service.get(db, "oidc_issuer") or "")
+    if previous and not same_provider(previous, issuer):
         forget_subjects(db, previous, issuer)
     settings_service.save(
         db,

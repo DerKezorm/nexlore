@@ -7,6 +7,7 @@ fake answers discovery, keys and the token endpoint like Entra, under Entra's ad
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import time
 from collections.abc import Iterator
@@ -244,3 +245,33 @@ def test_a_single_tenant_issuer_works_as_before(client: TestClient, operator: Ac
 )
 def test_the_username_is_the_part_before_the_at(claims: dict, name: str) -> None:
     assert oidc.username_from(claims) == name
+
+
+def _verify(published: str, **claims) -> dict:
+    """``_verify_token`` straight, for the claims the browser run cannot vary on its own."""
+    now = int(time.time())
+    token = jwt.encode(
+        {"sub": "s", "aud": CLIENT_ID, "exp": now + 300, "iat": now, **claims}, _KEY_PEM, algorithm="RS256",
+        headers={"kid": KID},
+    )
+    description = {"issuer": published, "jwks_uri": f"{BASE}/common/discovery/v2.0/keys"}
+    return asyncio.run(oidc._verify_token(description, CLIENT_ID, token, purpose="test", required=("exp", "iss", "aud", "sub")))
+
+
+def test_any_tenant_the_registration_lets_in_is_taken_when_iss_and_tid_agree(entra: FakeEntra) -> None:
+    """Which tenants get in is the app registration's business at Entra; nexlore only insists that the token's issuer is
+    the tenant it names."""
+    assert _verify(PUBLISHED, iss=f"{BASE}/{OTHER_TENANT}/v2.0", tid=OTHER_TENANT)["tid"] == OTHER_TENANT
+
+
+@pytest.mark.parametrize("tid", [[TENANT], {"id": TENANT}, f" {TENANT}", TENANT + chr(10)])
+def test_a_tid_that_is_not_plainly_a_tenant_id_fills_in_nothing(entra: FakeEntra, tid: object) -> None:
+    with pytest.raises(oidc.OidcError):
+        _verify(PUBLISHED, iss=f"{BASE}/{TENANT}/v2.0", tid=tid)
+
+
+def test_an_issuer_with_a_slash_at_the_end_is_still_compared_as_it_is(entra: FakeEntra) -> None:
+    issuer = "https://auth.example.com/application/o/nexlore/"
+    assert _verify(issuer, iss=issuer)["iss"] == issuer
+    with pytest.raises(oidc.OidcError):
+        _verify(issuer, iss=issuer.rstrip("/"))
