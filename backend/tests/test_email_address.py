@@ -1,6 +1,6 @@
 """A mail address for each account (issue #13): entered in the profile and confirmed by its link, set by the operator,
 from an invitation, or from the provider. The mail server is a stand-in that keeps what it is given; the provider is
-the fake from the OIDC tests. Nothing leaves the machine.
+the fake of the shared sign-in tests (``tests/oidc_helpers``). Nothing leaves the machine.
 """
 
 from __future__ import annotations
@@ -9,26 +9,24 @@ import logging
 import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.db import SessionLocal
-from app.models import SIGN_IN_OIDC, Account, SpaceNotice
+from app.models import SIGN_IN_OIDC, Account, OidcLink, SpaceNotice
 from app.services import accounts, emailaddr, mailer
 
-from . import test_oidc
 from .conftest import PASSWORD, make_account
+from .oidc_helpers import UI, FakeProvider, add_provider, error_in, fresh_browser, location, sign_in_via_oidc
+from .oidc_helpers import link as link_via
 from .test_mcp import switch
-from .test_oidc import UI, FakeProvider, come_back, configure, fresh_browser, sign_in_via_oidc
 from .test_profile import person
 
-# The fake provider of the OIDC tests, as a fixture of this file too.
-fake_provider = pytest.fixture(name="provider")(test_oidc.provider.__wrapped__)
-
-PUBLIC = "https://notes.example.com"
-LINK = re.compile(r"https://notes\.example\.com/confirm-email/(nxe_[A-Za-z0-9_-]+)")
+# http: the test browsers talk to the app over http, and behind an https address the attempt cookie of a sign-in
+# through the provider is Secure (as it must be), which such a browser would not send back.
+PUBLIC = "http://notes.example.com"
+LINK = re.compile(r"http://notes\.example\.com/confirm-email/(nxe_[A-Za-z0-9_-]+)")
 
 
 class Postbox:
@@ -263,57 +261,60 @@ def test_the_log_has_the_address_masked_and_never_the_link(
     assert "an***@example.com" in caplog.text
 
 
-# --- The bridge to the provider ----------------------------------------------------------------------------------------
+# --- No bridge to the provider ------------------------------------------------------------------------------------------
 
 
-def test_an_unconfirmed_address_never_catches_somebody_elses_first_sign_in(
+def links_of(name: str) -> list[str]:
+    with SessionLocal() as db:
+        found = db.query(Account).filter_by(name=name).one()
+        return [entry.subject for entry in db.query(OidcLink).filter_by(account_id=found.id)]
+
+
+def test_an_address_typed_in_never_catches_somebody_elses_first_sign_in(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
-    """The reason for the confirmation: mallory types the address of a person who never signed in here. When that
-    person signs in through the provider the first time, nexlore must not hand them mallory's account."""
+    """mallory types the address of a person who never signed in here. When that person signs in through the provider
+    the first time, nexlore must not hand them mallory's account."""
     mail_ready()
-    configure(client, auto_create=True)
+    add_provider(client, provider, auto_create=True)
     mallory = person("mallory")
     mallory.put("/api/me/email", json={"address": "victim@example.com"})
     victim = fresh_browser(client)
     sign_in_via_oidc(victim, provider, sub="victim-1", email="victim@example.com", preferred_username="victim")
-    assert victim.get("/api/auth/me").json()["name"] != "mallory"
-    assert row("mallory").oidc_subject == ""
+    assert victim.get("/api/auth/me").json()["name"] == "victim"
+    assert links_of("mallory") == []
 
 
-def test_a_confirmed_own_address_bridges_its_owners_first_sign_in(
+def test_even_a_confirmed_own_address_never_links_a_first_sign_in(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
+    """The shared blueprint: accounts are never found by their address, not even with ``email_verified: true``. anna
+    links herself in the profile instead."""
     mail_ready()
-    configure(client, auto_create=False)
+    add_provider(client, provider, auto_create=False)
     anna = person("anna")
     anna.put("/api/me/email", json={"address": "anna@example.com"})
     confirm(postbox.link("anna@example.com"))
     browser = fresh_browser(client)
-    sign_in_via_oidc(browser, provider, sub="anna-1", email="anna@example.com")
-    assert browser.get("/api/auth/me").json()["name"] == "anna"
-    assert row("anna").oidc_subject == "anna-1"
+    back = sign_in_via_oidc(browser, provider, sub="anna-1", email="anna@example.com", email_verified=True)
+    assert error_in(back) == "oidc_no_account" and browser.get("/api/auth/me").status_code == 401
+    assert links_of("anna") == []
 
 
 def link(member: TestClient, provider: FakeProvider, sub: str, **claims: Any) -> None:
-    response = member.post("/api/oidc/link/start", json={"password": PASSWORD}, headers=UI)
-    assert response.status_code == 200, response.text
-    values = {k: v[0] for k, v in parse_qs(urlsplit(response.json()["url"]).query).items()}
-    provider.challenge = values["code_challenge"]
-    provider.claims = {"nonce": values["nonce"], "sub": sub, **claims}
-    back = come_back(member, values["state"])
-    assert back.headers["location"] == "/account?linked=1", back.headers["location"]
+    back = link_via(member, provider, PASSWORD, sub=sub, **claims)
+    assert location(back) == "/account?linked=sso", location(back)
 
 
 def test_linking_an_account_without_an_address_takes_the_providers_and_unlinking_takes_it_back(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
-    configure(client, auto_create=False)
+    add_provider(client, provider, auto_create=False)
     anna = person("anna")
     link(anna, provider, "anna-1", email="anna.sso@example.com")
     me = anna.get("/api/auth/me").json()
     assert (me["email"], me["email_source"], me["provider_email"]) == ("anna.sso@example.com", "provider", "")
-    assert anna.delete("/api/oidc/link", headers=UI).status_code == 204
+    assert anna.delete("/api/oidc/sso/link", headers=UI).status_code == 204
     me = anna.get("/api/auth/me").json()
     assert me["email"] == "" and me["email_source"] == ""
 
@@ -322,7 +323,7 @@ def test_a_different_address_at_the_provider_is_offered_never_taken_unasked(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
     mail_ready()
-    configure(client, auto_create=False)
+    add_provider(client, provider, auto_create=False)
     anna = person("anna")
     anna.put("/api/me/email", json={"address": "anna@example.com"})
     confirm(postbox.link("anna@example.com"))
@@ -343,7 +344,7 @@ def test_a_different_address_at_the_provider_is_offered_never_taken_unasked(
     assert (taken.json()["email"], taken.json()["email_source"]) == ("anna.work@example.com", "provider")
     assert taken.json()["provider_email"] == ""
     # Unlinking now takes the provider's address with it; the own one is not coming back by itself.
-    anna.delete("/api/oidc/link", headers=UI)
+    anna.delete("/api/oidc/sso/link", headers=UI)
     assert anna.get("/api/auth/me").json()["email"] == ""
 
 
@@ -351,41 +352,41 @@ def test_unlinking_keeps_an_own_address(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
     mail_ready()
-    configure(client, auto_create=False)
+    add_provider(client, provider, auto_create=False)
     anna = person("anna")
     anna.put("/api/me/email", json={"address": "anna@example.com"})
     confirm(postbox.link("anna@example.com"))
     link(anna, provider, "anna-1", email="anna@example.com")
-    assert anna.delete("/api/oidc/link", headers=UI).status_code == 204
+    assert anna.delete("/api/oidc/sso/link", headers=UI).status_code == 204
     me = anna.get("/api/auth/me").json()
     assert me["email"] == "anna@example.com" and me["email_source"] == "own" and me["provider_email"] == ""
 
 
-def test_an_unverified_provider_address_is_neither_taken_nor_offered(
+def test_email_verified_is_never_read_an_address_marked_unconfirmed_counts_like_any_other(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
-    configure(client, auto_create=False)
+    """The address finds nobody any more, so whether the provider vouches for it decides nothing (the blueprint)."""
+    add_provider(client, provider, auto_create=False)
     anna = person("anna")
     link(anna, provider, "anna-1", email="anna.sso@example.com", email_verified=False)
     me = anna.get("/api/auth/me").json()
-    assert me["email"] == "" and me["provider_email"] == ""
+    assert (me["email"], me["email_source"]) == ("anna.sso@example.com", "provider")
 
 
 def test_an_account_through_the_provider_only_follows_it_and_cannot_change_it_here(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
     mail_ready()
-    configure(client, auto_create=True)
+    add_provider(client, provider, auto_create=True)
     browser = fresh_browser(client)
     sign_in_via_oidc(browser, provider, sub="clara-1", email="clara@example.com", preferred_username="clara")
     me = browser.get("/api/auth/me").json()
     assert me["sign_in"] == SIGN_IN_OIDC and me["email"] == "clara@example.com" and me["email_source"] == "provider"
-    # The provider changed it: the next sign-in follows.
+    # The provider changed it: the next sign-in follows, whatever email_verified says.
     sign_in_via_oidc(fresh_browser(client), provider, sub="clara-1", email="clara.new@example.com")
     assert row("clara").email == "clara.new@example.com"
-    # An unverified one is not followed.
     sign_in_via_oidc(fresh_browser(client), provider, sub="clara-1", email="clara.x@example.com", email_verified=False)
-    assert row("clara").email == "clara.new@example.com"
+    assert row("clara").email == "clara.x@example.com"
     for refused in (
         browser.put("/api/me/email", json={"address": "clara.own@example.com"}),
         browser.delete("/api/me/email"),
@@ -398,7 +399,7 @@ def test_an_account_through_the_provider_only_follows_it_and_cannot_change_it_he
 def test_a_provider_address_another_account_holds_is_not_followed(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
-    configure(client, auto_create=True)
+    add_provider(client, provider, auto_create=True)
     browser = fresh_browser(client)
     sign_in_via_oidc(browser, provider, sub="clara-1", email="clara@example.com", preferred_username="clara")
     client.put(f"/api/accounts/{make_account('ben').id}/email",
@@ -526,7 +527,7 @@ def test_the_providers_address_is_not_taken_when_another_account_holds_it(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
     mail_ready()
-    configure(client, auto_create=False)
+    add_provider(client, provider, auto_create=False)
     ben_id = make_account("ben").id
     anna = person("anna")
     anna.put("/api/me/email", json={"address": "anna@example.com"})

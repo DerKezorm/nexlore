@@ -1,7 +1,11 @@
 /**
- * Signing in: name and password, or the provider's button when the operator set one up. An account with a second
- * factor gives the code from its app (or a recovery code) in a second step; too many wrong codes or too long a wait
- * start over with the password.
+ * Signing in: name and password, and below the line "or" a button per active sign-in provider, in the order of the
+ * operator's list. With the password sign-in turned off only the buttons show, and small at the bottom the operator's
+ * way in with the password. An account with a second factor gives the code from its app (or a recovery code) in a
+ * second step; too many wrong codes or too long a wait start over. The second step comes after a provider, too, when
+ * that provider is not trusted with the second factor (`?step=code`, the server parked the sign-in).
+ *
+ * An error from the address (`?error=`) is shown only as one of the fixed sign-in codes, never as it stands there.
  */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,9 +13,11 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { ApiError, authApi, totpApi, type Methods } from '../api/client'
 import { AuthFrame, Field, PrimaryButton, Problem } from '../components/AuthFrame'
+import { ProviderButtons } from '../components/ProviderButtons'
 import { safeNext } from '../lib/auth'
 import { errorText } from '../lib/errors'
 import { useAuth } from '../state/auth'
+import { oidcErrorKey } from '../vendor/nexoidc/oidc'
 
 export function LoginPage() {
   const { t } = useTranslation()
@@ -21,14 +27,18 @@ export function LoginPage() {
   const [methods, setMethods] = useState<Methods | null>(null)
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
-  const [step, setStep] = useState<'password' | 'code'>('password')
+  const [step, setStep] = useState<'password' | 'code'>(params.get('step') === 'code' ? 'code' : 'password')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
-  const [problem, setProblem] = useState<string | null>(params.get('error'))
+  const [problem, setProblem] = useState<string | null>(null)
+  // What the provider's way back said: only a known code becomes a sentence.
+  const [fromAddress, setFromAddress] = useState<string | null>(oidcErrorKey(params.get('error')))
+  // Password sign-in off: the form waits behind "Sign in as the operator with a password".
+  const [operatorWay, setOperatorWay] = useState(false)
   const next = safeNext(params.get('next'))
 
   useEffect(() => {
-    void authApi.methods().then(setMethods, () => setMethods({ password: true, oidc: false, oidc_name: '' }))
+    void authApi.methods().then(setMethods, () => setMethods({ password: true, providers: [] }))
   }, [])
 
   if (status === 'loading') return null
@@ -41,6 +51,7 @@ export function LoginPage() {
     if (step !== 'code' && !password) return setProblem('password_missing')
     setBusy(true)
     setProblem(null)
+    setFromAddress(null)
     try {
       if (step === 'code') {
         await totpApi.code(code.trim())
@@ -77,7 +88,7 @@ export function LoginPage() {
             if (code.trim()) void submit()
           }}
         >
-          <Problem text={problem ? errorText(problem) : null} />
+          <Problem text={problem ? errorText(problem) : fromAddress ? t(fromAddress) : null} />
           <Field label={t('twofactor.code')} value={code} onChange={setCode} autoComplete="one-time-code" autoFocus hint={t('twofactor.codeHint')} />
           <PrimaryButton busy={busy}>{t('auth.login.submit')}</PrimaryButton>
           <button
@@ -97,35 +108,35 @@ export function LoginPage() {
     )
   }
 
+  const providers = methods?.providers ?? []
+  const passwordShown = !methods || methods.password || providers.length === 0 || operatorWay
   return (
     <AuthFrame title={t('auth.login.title')} text={t('auth.login.text')}>
-      <form
-        className="space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void submit()
-        }}
-      >
-        <Problem text={problem ? errorText(problem) : null} />
-        <Field label={t('auth.name')} value={name} onChange={setName} autoComplete="username" autoFocus />
-        <Field label={t('auth.password')} value={password} onChange={setPassword} type="password" autoComplete="current-password" />
-        <PrimaryButton busy={busy}>{t('auth.login.submit')}</PrimaryButton>
-        {methods && !methods.password && <p className="text-xs text-mist-500">{t('auth.login.passwordOff')}</p>}
-      </form>
-      {methods?.oidc && (
-        <>
-          <div className="my-4 flex items-center gap-3 text-xs text-mist-600">
-            <span className="h-px flex-1 bg-ink-700" />
-            {t('auth.or')}
-            <span className="h-px flex-1 bg-ink-700" />
-          </div>
-          <a
-            href="/api/oidc/start"
-            className="flex h-10 w-full items-center justify-center rounded-full border border-ink-700 text-sm font-medium hover:bg-ink-850"
-          >
-            {t('auth.login.oidc', { name: methods.oidc_name || 'OpenID Connect' })}
-          </a>
-        </>
+      {passwordShown ? (
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void submit()
+          }}
+        >
+          <Problem text={problem ? errorText(problem) : fromAddress ? t(fromAddress) : null} />
+          <Field label={t('auth.name')} value={name} onChange={setName} autoComplete="username" autoFocus />
+          <Field label={t('auth.password')} value={password} onChange={setPassword} type="password" autoComplete="current-password" />
+          <PrimaryButton busy={busy}>{t('auth.login.submit')}</PrimaryButton>
+        </form>
+      ) : (
+        <Problem text={fromAddress ? t(fromAddress) : null} />
+      )}
+      <ProviderButtons providers={providers} withOr={passwordShown} />
+      {!passwordShown && (
+        <button
+          type="button"
+          className="mt-4 w-full text-center text-xs text-mist-500 hover:text-mist-300"
+          onClick={() => setOperatorWay(true)}
+        >
+          {t('oidc.login.operator')}
+        </button>
       )}
     </AuthFrame>
   )

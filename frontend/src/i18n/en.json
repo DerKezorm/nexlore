@@ -773,17 +773,6 @@
       "cannot_demote_self": "You cannot take the operator role from yourself.",
       "wrong_password": "The password is wrong.",
       "oidc_account": "This account signs in through the provider.",
-      "oidc_only_account": "This account signs in through the provider only.",
-      "oidc_not_configured": "No sign-in provider is set up.",
-      "oidc_no_account": "There is no account for you here. Ask for an invitation.",
-      "oidc_email_unverified": "The provider did not confirm your mail address.",
-      "oidc_email_taken": "Your mail address belongs to another account.",
-      "oidc_state_mismatch": "The sign-in ran out or came from elsewhere. Try again.",
-      "oidc_token_invalid": "The provider's answer was not valid.",
-      "oidc_denied": "The provider did not let you in.",
-      "oidc_link_mismatch": "This link belongs to another account.",
-      "oidc_subject_taken": "This identity is linked to another account already.",
-      "oidc_provider_unreachable": "The provider cannot be reached.",
       "issuer_invalid": "This is not an OpenID Connect provider.",
       "issuer_unreachable": "The provider cannot be reached at this address.",
       "secret_required": "Enter the client secret.",
@@ -1055,13 +1044,10 @@
     "passwordHint_one": "At least {{count}} character.",
     "passwordHint_other": "At least {{count}} characters.",
     "mismatch": "The two passwords are not the same.",
-    "or": "or",
     "login": {
       "title": "Sign in",
       "text": "Welcome back to nexlore.",
-      "submit": "Sign in",
-      "passwordOff": "Signing in with a password is turned off here. Only the operator still can.",
-      "oidc": "Sign in with {{name}}"
+      "submit": "Sign in"
     },
     "setup": {
       "title": "Set up nexlore",
@@ -1080,7 +1066,6 @@
       "join": "Join as {{name}}",
       "haveAccount": "You are signed in as {{name}} and have an account already.",
       "create": "Create account",
-      "oidc": "Continue with {{name}}",
       "already": "Have an account already?",
       "signIn": "Sign in first"
     }
@@ -1148,7 +1133,7 @@
     "page": "My account",
     "signOut": "Sign out",
     "title": "My account",
-    "linked": "Your account is linked to the provider.",
+    "linked": "Your account is linked to {{name}}.",
     "password": {
       "title": "Password",
       "current": "Current password",
@@ -1156,21 +1141,13 @@
       "submit": "Change password",
       "done": "Password changed. Other browsers have to sign in again."
     },
-    "oidc": {
-      "title": "Sign-in provider",
-      "only": "This account signs in through the provider.",
-      "linked": "Linked: you can sign in with the provider as well as with your password.",
-      "unlink": "Unlink",
-      "unlinked": "No longer linked.",
-      "text": "Link your account to the provider, then you can sign in with either. Your password confirms it is you.",
-      "link": "Link with the provider"
-    },
     "sessions": {
       "title": "Other browsers",
       "text": "Signs you out everywhere except here, for example after losing a phone.",
       "submit": "Sign out everywhere else",
       "done": "Every other browser is signed out."
-    }
+    },
+    "unlinked": "No longer linked to {{name}}."
   },
   "members": {
     "title": "Members of {{space}}",
@@ -1283,7 +1260,12 @@
       "emailSaved": "Mail address saved.",
       "noAddress": "No mail address",
       "emailWaits": "waiting for confirmation: {{address}}",
-      "emailConfirmed": "confirmed"
+      "emailConfirmed": "confirmed",
+      "unlink": "Unlink",
+      "unlinkFrom": "Unlink from {{name}}",
+      "unlinkTitle": "Unlink {{name}} from {{provider}}?",
+      "unlinkText": "The account can no longer sign in through {{provider}} until it links itself again in its profile.",
+      "unlinked": "Unlinked."
     },
     "spaces": {
       "title": "All spaces",
@@ -1294,37 +1276,8 @@
       "rights": "Rights"
     },
     "signIn": {
-      "title": "Sign-in",
-      "text": "How people get in.",
-      "password": "Sign-in with a password",
-      "passwordHint": "Off, only the provider lets members in. You as the operator can always use your password.",
-      "address": "Public address",
-      "addressHint": "The address people use to reach nexlore. Invitation links, public pages and the provider use it.",
       "twoFactor": "Require a second factor",
       "twoFactorHint": "Every account that signs in with a password must set one up before it gets any further. Accounts from the provider bring its own."
-    },
-    "oidc": {
-      "title": "OpenID Connect",
-      "on": "Set up with {{issuer}}.",
-      "off": "Not set up.",
-      "redirect": "Redirect address for the provider:",
-      "issuer": "Issuer",
-      "issuerHint": "authentik: https://auth.example.com/application/o/nexlore/. Microsoft Entra ID: https://login.microsoftonline.com/TENANT-ID/v2.0, or common or organizations for several tenants. Entra takes only https redirect addresses (localhost aside) and sends the email address only as the optional claim email, never as confirmed: people from Entra come in by invitation or link their account under My account, Security.",
-      "clientId": "Client ID",
-      "secret": "Client secret",
-      "secretKept": "stored, leave empty to keep it",
-      "name": "Name on the button",
-      "autoCreate": "New people get an account",
-      "autoCreateHint": "Off: only invited or linked accounts come in through the provider.",
-      "remove": "Remove"
-    },
-    "authentik": {
-      "title": "authentik in one step",
-      "text": "With an API token that may create applications, nexlore sets up provider and application in authentik itself.",
-      "url": "Address of authentik",
-      "token": "API token",
-      "run": "Set up",
-      "blueprint": "Download blueprint instead"
     },
     "shares": {
       "title": "Public pages",
@@ -1350,7 +1303,8 @@
       "usesNotify": "Notifications by mail, for accounts that switched them on",
       "usesConfirm": "The links with which someone confirms their mail address",
       "publicUrlMissing": "Links in mails need nexlore's public address. It is still missing:",
-      "publicUrlSet": "enter it under Sign-in"
+      "publicUrlSet": "enter it under Sign-in",
+      "passwordKept": "stored, leave empty to keep it"
     },
     "files": {
       "title": "Files",
@@ -1528,6 +1482,12 @@
       "blockTitle": "Block the token “{{name}}” of {{account}}?",
       "blockText": "The token then answers like none, for good. The account sees it as “blocked by the operator” and may make a new one while API tokens are on.",
       "offHint": "Switch API tokens off and every token answers 401. The tokens stay and work again when you switch them on."
+    },
+    "providers": {
+      "order": "Move {{name}}: drag, or the arrow keys",
+      "coupled": "through the coupling",
+      "copy": "Copy",
+      "more": "More"
     }
   },
   "today": {

@@ -10,12 +10,26 @@
  *
  * Texts are rendered as text by React. No translation is ever put into the page as HTML, because an added file
  * comes from outside the code.
+ *
+ * The texts of sign-in through providers (`oidc.…`) come with the shared module `vendor/nexoidc`, the same words in
+ * every nex app; they are merged in here, `{{app}}` says "nexlore".
  */
 
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
-import en from './en.json'
+import oidcEn from '../vendor/nexoidc/oidc.en.json'
+import ownEn from './en.json'
+
+/** nexlore's own English texts with the shared sign-in texts. */
+export const en: Texts = { ...ownEn, ...oidcEn }
+/** What `{{app}}` stands for in the shared texts. */
+export const APP_NAME = 'nexlore'
+
+async function german(): Promise<{ default: Texts }> {
+  const [own, oidc] = await Promise.all([import('./de.json'), import('../vendor/nexoidc/oidc.de.json')])
+  return { default: { ...own.default, ...oidc.default } }
+}
 
 type Texts = Record<string, unknown>
 
@@ -27,7 +41,7 @@ interface Shipped {
 
 export const SHIPPED = {
   en: { name: 'English', load: () => Promise.resolve({ default: en }) },
-  de: { name: 'Deutsch', load: () => import('./de.json') },
+  de: { name: 'Deutsch', load: german },
 } as const satisfies Record<string, Shipped>
 
 export type LanguageOption = { code: string; name: string; added: boolean }
@@ -134,7 +148,7 @@ export async function startI18n(): Promise<void> {
     resources: { en: { translation: en } },
     lng: FALLBACK,
     fallbackLng: FALLBACK,
-    interpolation: { escapeValue: false },
+    interpolation: { escapeValue: false, defaultVariables: { app: APP_NAME } },
     returnNull: false,
   })
   const wanted = storedLanguage() ?? browserLanguage()

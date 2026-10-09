@@ -55,7 +55,7 @@ from .routers import totp as totp_router
 from .routers import v1 as v1_router
 from .routers import vault as vault_router
 from .security import HashingBusy, purge_sessions
-from .services import accounts, backups, graphstore, locales, logs, notify, settings_service, totp, watcher
+from .services import accounts, backups, graphstore, locales, logs, notify, oidc_store, settings_service, totp, watcher
 
 logger = logging.getLogger("nexlore")
 
@@ -103,6 +103,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     logs.setup()
     backups.apply_pending()
     init_db()
+    # The single sign-in provider of the settings becomes the entry "oidc" of the list, once (backup first).
+    oidc_store.migrate_settings()
     private.tighten_all()
     logs.attach_store(_read_log_mode, _write_log_mode)
     logs.apply_stored_mode()
@@ -190,6 +192,9 @@ app.add_exception_handler(Exception, unhandled_error)
 
 for module in ROUTERS:
     app.include_router(module.router)
+
+# The shared sign-in module learns who it runs in before the first request (vendor/nexoidc).
+oidc_store.configure()
 
 
 #: The PDF frame (``frontend/pdfview.html``): a sandbox without an origin of its own, scripts only from nexlore itself

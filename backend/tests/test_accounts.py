@@ -139,7 +139,7 @@ def test_password_sign_in_off_keeps_the_operator_in(client: TestClient) -> None:
     refused = client.post("/api/auth/login", json={"name": "anna", "password": PASSWORD})
     assert refused.status_code == 403 and refused.json()["detail"]["code"] == "password_login_off"
     assert client.post("/api/auth/login", json={"name": "boss", "password": PASSWORD}).status_code == 200
-    assert client.get("/api/auth/methods").json() == {"password": False, "oidc": False, "oidc_name": ""}
+    assert client.get("/api/auth/methods").json() == {"password": False, "providers": []}
 
 
 def test_changing_the_password_ends_the_other_sessions(client: TestClient) -> None:

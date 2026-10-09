@@ -169,3 +169,7 @@ def client() -> Iterator[TestClient]:
 def operator(client: TestClient) -> Account:
     """The signed-in operator; the same account as ``account``."""
     return _operator(client)
+
+
+# The fake sign-in provider of nexlore's own tests around OIDC (the shared contract tests bring their own).
+from .oidc_helpers import provider  # noqa: E402, F401

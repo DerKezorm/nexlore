@@ -129,8 +129,8 @@ test('the sign-in page follows a light system before anybody chose (P8.20)', asy
 
 test('without a sign-in provider the account offers none to link (P7.14)', async ({ page }) => {
   const methods = await (await page.request.get('/api/auth/methods')).json()
-  test.skip(methods.oidc, 'this server has a provider')
+  test.skip(methods.providers.length > 0, 'this server has a provider')
   await page.goto('/account?tab=security')
   await expect(page.getByText('Second factor', { exact: true }).first()).toBeVisible()
-  await expect(page.getByText('Sign-in provider', { exact: true })).toHaveCount(0)
+  await expect(page.getByText('Sign-in providers', { exact: true })).toHaveCount(0)
 })

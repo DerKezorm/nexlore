@@ -463,6 +463,57 @@ class AuthSession(Base):
     user_agent: Mapped[str] = mapped_column(String(255), default="")
 
 
+class OidcProvider(Base):
+    """A sign-in provider (OpenID Connect), one row each; the columns as the shared blueprint names them. Read and
+    written only through ``services/oidc_store.py`` for the shared module ``vendor/nexoidc``."""
+
+    __tablename__ = "oidc_providers"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    #: Part of the callback address ``/api/oidc/<slug>/callback``; fixed once made.
+    slug: Mapped[str] = mapped_column(String(40), unique=True)
+    #: The name on the sign-in button.
+    label: Mapped[str] = mapped_column(String(64))
+    #: Stored without blanks and without a slash at the end.
+    issuer: Mapped[str] = mapped_column(String(500))
+    client_id: Mapped[str] = mapped_column(String(255))
+    #: Encrypted with the server secret under the context ``oidc-provider:<id>``; empty for a public client.
+    client_secret_enc: Mapped[str] = mapped_column(Text, default="")
+    scopes: Mapped[str] = mapped_column(String(500), default="openid profile email")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    #: "New people get an account": off from the start.
+    auto_create: Mapped[bool] = mapped_column(Boolean, default=False)
+    #: "The provider checks the second factor itself": on from the start.
+    trusts_second_factor: Mapped[bool] = mapped_column(Boolean, default=True)
+    #: "" by hand, "authentik" made by the authentik button, "nexsuite" from a coupling.
+    managed: Mapped[str] = mapped_column(String(20), default="")
+    position: Mapped[int] = mapped_column(Integer, default=0)
+    #: A callback path the provider knew before (a migration or a coupling sets it); "" is the standard one.
+    redirect_path: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class OidcLink(Base):
+    """One identity at one provider, bound to one account. Found only by ``(provider_id, subject)``, never by an
+    address: ``email`` is for display."""
+
+    __tablename__ = "oidc_links"
+    __table_args__ = (
+        UniqueConstraint("provider_id", "subject"),
+        UniqueConstraint("provider_id", "account_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    provider_id: Mapped[int] = mapped_column(ForeignKey("oidc_providers.id", ondelete="CASCADE"), index=True)
+    subject: Mapped[str] = mapped_column(String(255))
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    #: The ``iss`` of the token that made the link (with Entra ``common`` the real tenant).
+    issuer: Mapped[str] = mapped_column(String(500))
+    email: Mapped[str | None] = mapped_column(String(320), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    last_used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
 class Membership(Base):
     """An account's right in a space. A space without any member belongs to the operator (it came from the disk)."""
 

@@ -2,7 +2,8 @@
  * The mail address of an account (issue #13), in the app as it runs: the mail server as a part of its own, an address
  * entered in the profile and confirmed by the link in a real mail, a locked field without a server, an address the
  * operator gives, and the sign-in provider: an account only through it follows it, a linked one keeps its own and is
- * offered the provider's, and an address nobody confirmed never catches somebody else's first sign-in.
+ * offered the provider's, and an address never catches somebody else's first sign-in (no account is ever found by
+ * its address).
  * The mail server and the provider are the stand-ins of e2e/fake-postbox.mjs; nothing leaves the machine.
  */
 import { request, type Browser, type BrowserContext, type Page } from '@playwright/test'
@@ -14,6 +15,8 @@ const TAB = { 'X-Nexlore-Client': 'tab-e2e-mail0' }
 const PASSWORD = 'e2e mail address password'
 const POSTBOX = 'http://127.0.0.1:8476'
 const ISSUER = `${POSTBOX}/oidc`
+/** The stand-in's entry in the provider list. */
+const SLUG = 'standin'
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault and the stand-ins')
 
@@ -34,7 +37,9 @@ test.afterAll(async ({ request: api }) => {
   const keys = ['smtp_host', 'smtp_port', 'smtp_security', 'smtp_user', 'smtp_from', 'public_url'] as const
   const back = Object.fromEntries(keys.map((key) => [key, before[key]]))
   expect((await api.put('/api/settings', { data: back, headers: TAB })).ok()).toBe(true)
-  await api.delete('/api/oidc/config', { headers: TAB })
+  for (const entry of (await (await api.get('/api/oidc/admin/providers')).json()) as { id: number; slug: string }[]) {
+    if (entry.slug === SLUG) await api.delete(`/api/oidc/admin/providers/${entry.id}`, { headers: TAB })
+  }
 })
 
 function collectProblems(page: Page): string[] {
@@ -88,8 +93,10 @@ async function signIn(browser: Browser, name: string): Promise<Page> {
 }
 
 async function provider(page: Page): Promise<void> {
-  const answer = await page.request.put('/api/oidc/config', {
-    data: { issuer: ISSUER, client_id: 'e2e-client', client_secret: 'e2e-client-secret', provider_name: 'Stand-in SSO', auto_create: true },
+  const listed = (await (await page.request.get('/api/oidc/admin/providers')).json()) as { slug: string }[]
+  if (listed.some((entry) => entry.slug === SLUG)) return
+  const answer = await page.request.post('/api/oidc/admin/providers', {
+    data: { label: 'Stand-in SSO', slug: SLUG, issuer: ISSUER, client_id: 'e2e-client', client_secret: `e2e-${Date.now()}`, auto_create: true },
     headers: TAB,
   })
   expect(answer.ok(), await answer.text()).toBe(true)
@@ -104,7 +111,7 @@ async function viaProvider(browser: Browser, claims: Record<string, unknown>): P
   await next(claims)
   const { page } = await signedOut(browser)
   await page.goto('/login')
-  await page.getByRole('link', { name: 'Sign in with Stand-in SSO' }).click()
+  await page.getByRole('button', { name: 'Sign in with Stand-in SSO' }).click()
   await expect(page).toHaveURL(/\/$/)
   return page
 }
@@ -281,10 +288,10 @@ test('a linked account keeps its own address and is offered the provider\'s; unl
   await confirmFrom(browser, 'linda@example.com')
   // Linking runs through the provider in this very browser.
   await next({ sub: 'linda-1', email: 'linda.sso@example.com', preferred_username: 'linda' })
-  const started = await own.request.post('/api/oidc/link/start', { data: { password: PASSWORD }, headers: TAB })
+  const started = await own.request.post(`/api/oidc/${SLUG}/link`, { data: { password: PASSWORD }, headers: TAB })
   expect(started.ok()).toBe(true)
   await own.goto((await started.json()).url)
-  await expect(own).toHaveURL(/\/account\?linked=1/)
+  await expect(own).toHaveURL(/\/account\?linked=standin/)
   await own.goto('/account')
   await expect(own.getByTestId('mail-status')).toContainText('Confirmed: linda@example.com')
   const offer = own.getByTestId('mail-offer')
@@ -303,17 +310,17 @@ test('a linked account keeps its own address and is offered the provider\'s; unl
   await expect(own.getByTestId('mail-status')).toContainText('Confirmed: linda.work@example.com')
   await expect(own.getByTestId('mail-status')).toContainText('from Stand-in SSO')
   // Unlinked, an address from the provider goes along with the link.
-  expect((await own.request.delete('/api/oidc/link', { headers: TAB })).ok()).toBe(true)
+  expect((await own.request.delete(`/api/oidc/${SLUG}/link`, { headers: TAB })).ok()).toBe(true)
   await own.reload()
   await expect(own.getByTestId('mail-address').getByLabel('Mail address')).toHaveValue('')
   await expect(own.getByTestId('mail-status')).toHaveCount(0)
   // An own one stays: entered and confirmed again, linked and unlinked, it is still there.
   await enter(own, 'linda@example.com')
   await confirmFrom(browser, 'linda@example.com')
-  const again = await own.request.post('/api/oidc/link/start', { data: { password: PASSWORD }, headers: TAB })
+  const again = await own.request.post(`/api/oidc/${SLUG}/link`, { data: { password: PASSWORD }, headers: TAB })
   await own.goto((await again.json()).url)
-  await expect(own).toHaveURL(/\/account\?linked=1/)
-  expect((await own.request.delete('/api/oidc/link', { headers: TAB })).ok()).toBe(true)
+  await expect(own).toHaveURL(/\/account\?linked=standin/)
+  expect((await own.request.delete(`/api/oidc/${SLUG}/link`, { headers: TAB })).ok()).toBe(true)
   await own.goto('/account')
   await expect(own.getByTestId('mail-status')).toContainText('Confirmed: linda@example.com')
   expect(problems).toEqual([])

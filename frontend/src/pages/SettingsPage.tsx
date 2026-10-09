@@ -19,7 +19,6 @@ import {
   McpCard,
   ApiTokensCard,
   SharesCard,
-  SignInCard,
   CssCard,
 } from '../components/settings/AdminCards'
 import { AdminPluginsCard } from '../plugins/PluginSettings'
@@ -34,6 +33,7 @@ import { SpacesCard } from '../components/settings/SpacesCard'
 import { CalendarFeedSwitch } from '../components/settings/CalendarFeed'
 import { LinkTitleSwitch } from '../components/settings/LinkTitleSwitch'
 import { LogCard } from '../components/settings/LogCard'
+import { SignInPart } from '../components/settings/SignInCards'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { TabRow, type Tab } from '../components/TabRow'
 import { downloadTemplate, languageOptions, type LanguageOption } from '../i18n'
@@ -107,7 +107,7 @@ function ServerPart({ part }: { part: Part }) {
       // Its own part since issue #13: it carries invitations, notifications and the links confirming an address.
       return settings && <MailCard settings={settings} onChange={setSettings} />
     case 'signin':
-      return settings && <SignInCard settings={settings} onChange={setSettings} />
+      return settings && <SignInPart settings={settings} onChange={setSettings} />
     case 'shares':
       return settings && <SharesCard settings={settings} onChange={setSettings} />
     case 'extensions':

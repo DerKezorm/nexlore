@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from app.db import SessionLocal
 from app.main import app
 from app.models import Account
-from app.services import index, settings_service
+from app.services import index
 
 from .conftest import join, make_account, sign_in
 from .test_mcp import World, call, failure, world  # noqa: F401  (the fixture is used by name)
@@ -94,10 +94,25 @@ def test_a_public_page_needs_a_real_password(site: TestClient) -> None:  # noqa:
 
 
 def test_password_sign_in_stays_on_until_there_is_a_provider(client: TestClient, account: Account) -> None:
+    from app.services.oidc_store import SqlStore
+    from app.vendor.nexoidc import ProviderValues
+
+    refused = client.put("/api/settings", json={"password_login": False})
+    assert (refused.status_code, refused.json()["detail"]["code"]) == (409, "provider_first")
+    values = ProviderValues(slug="sso", label="SSO", issuer="https://id.example.com", client_id="nexlore",
+                            client_secret="", scopes="openid", enabled=False, auto_create=False,
+                            trusts_second_factor=True, managed="", position=0)
+    with SessionLocal() as db:
+        store = SqlStore(db)
+        entry = store.insert_provider(values)
+        store.commit()
+    # A provider that is switched off lets nobody in either.
     refused = client.put("/api/settings", json={"password_login": False})
     assert (refused.status_code, refused.json()["detail"]["code"]) == (409, "provider_first")
     with SessionLocal() as db:
-        settings_service.save(db, {"oidc_issuer": "https://id.example.com", "oidc_client_id": "nexlore"})
+        store = SqlStore(db)
+        store.update_provider(entry.id, ProviderValues(**{**values.__dict__, "enabled": True}))
+        store.commit()
     assert client.put("/api/settings", json={"password_login": False}).status_code == 200
 
 

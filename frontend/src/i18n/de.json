@@ -773,17 +773,6 @@
       "cannot_demote_self": "Die Betreiberrolle kannst du dir nicht selbst nehmen.",
       "wrong_password": "Das Passwort stimmt nicht.",
       "oidc_account": "Dieses Konto meldet sich über den Anbieter an.",
-      "oidc_only_account": "Dieses Konto meldet sich nur über den Anbieter an.",
-      "oidc_not_configured": "Es ist kein Anmeldeanbieter eingerichtet.",
-      "oidc_no_account": "Für dich gibt es hier kein Konto. Bitte um eine Einladung.",
-      "oidc_email_unverified": "Der Anbieter hat deine Mailadresse nicht bestätigt.",
-      "oidc_email_taken": "Deine Mailadresse gehört zu einem anderen Konto.",
-      "oidc_state_mismatch": "Die Anmeldung ist abgelaufen oder kam von woanders. Noch einmal versuchen.",
-      "oidc_token_invalid": "Die Antwort des Anbieters war ungültig.",
-      "oidc_denied": "Der Anbieter hat dich nicht hereingelassen.",
-      "oidc_link_mismatch": "Diese Verknüpfung gehört zu einem anderen Konto.",
-      "oidc_subject_taken": "Diese Identität ist schon mit einem anderen Konto verknüpft.",
-      "oidc_provider_unreachable": "Der Anbieter ist nicht erreichbar.",
       "issuer_invalid": "Das ist kein OpenID-Connect-Anbieter.",
       "issuer_unreachable": "Unter dieser Adresse ist der Anbieter nicht erreichbar.",
       "secret_required": "Bitte das Client-Geheimnis eintragen.",
@@ -1055,13 +1044,10 @@
     "passwordHint_one": "Mindestens {{count}} Zeichen.",
     "passwordHint_other": "Mindestens {{count}} Zeichen.",
     "mismatch": "Die beiden Passwörter sind nicht gleich.",
-    "or": "oder",
     "login": {
       "title": "Anmelden",
       "text": "Willkommen zurück bei nexlore.",
-      "submit": "Anmelden",
-      "passwordOff": "Die Anmeldung mit Passwort ist hier abgeschaltet. Nur der Betreiber kann es noch.",
-      "oidc": "Mit {{name}} anmelden"
+      "submit": "Anmelden"
     },
     "setup": {
       "title": "nexlore einrichten",
@@ -1080,7 +1066,6 @@
       "join": "Als {{name}} beitreten",
       "haveAccount": "Du bist als {{name}} angemeldet und hast schon ein Konto.",
       "create": "Konto anlegen",
-      "oidc": "Weiter mit {{name}}",
       "already": "Schon ein Konto?",
       "signIn": "Erst anmelden"
     }
@@ -1148,7 +1133,7 @@
     "page": "Mein Konto",
     "signOut": "Abmelden",
     "title": "Mein Konto",
-    "linked": "Dein Konto ist mit dem Anbieter verknüpft.",
+    "linked": "Dein Konto ist mit {{name}} verknüpft.",
     "password": {
       "title": "Passwort",
       "current": "Jetziges Passwort",
@@ -1156,21 +1141,13 @@
       "submit": "Passwort ändern",
       "done": "Passwort geändert. Andere Browser müssen sich neu anmelden."
     },
-    "oidc": {
-      "title": "Anmeldeanbieter",
-      "only": "Dieses Konto meldet sich über den Anbieter an.",
-      "linked": "Verknüpft: Du kannst dich über den Anbieter und mit deinem Passwort anmelden.",
-      "unlink": "Verknüpfung lösen",
-      "unlinked": "Nicht mehr verknüpft.",
-      "text": "Verknüpfe dein Konto mit dem Anbieter, dann geht beides. Dein Passwort bestätigt, dass du es bist.",
-      "link": "Mit dem Anbieter verknüpfen"
-    },
     "sessions": {
       "title": "Andere Browser",
       "text": "Meldet dich überall ab außer hier, etwa nach einem verlorenen Handy.",
       "submit": "Überall sonst abmelden",
       "done": "Alle anderen Browser sind abgemeldet."
-    }
+    },
+    "unlinked": "Nicht mehr mit {{name}} verknüpft."
   },
   "members": {
     "title": "Mitglieder von {{space}}",
@@ -1283,7 +1260,12 @@
       "emailSaved": "Mailadresse gespeichert.",
       "noAddress": "Keine Mailadresse",
       "emailWaits": "wartet auf Bestätigung: {{address}}",
-      "emailConfirmed": "bestätigt"
+      "emailConfirmed": "bestätigt",
+      "unlink": "Verknüpfung lösen",
+      "unlinkFrom": "Verknüpfung mit {{name}} lösen",
+      "unlinkTitle": "Verknüpfung von {{name}} mit {{provider}} lösen?",
+      "unlinkText": "Das Konto kann sich dann nicht mehr über {{provider}} anmelden, bis es sich in seinem Profil wieder verknüpft.",
+      "unlinked": "Verknüpfung gelöst."
     },
     "spaces": {
       "title": "Alle Bereiche",
@@ -1294,37 +1276,8 @@
       "rights": "Rechte"
     },
     "signIn": {
-      "title": "Anmeldung",
-      "text": "Wie man hereinkommt.",
-      "password": "Anmeldung mit Passwort",
-      "passwordHint": "Aus: Mitglieder kommen nur über den Anbieter herein. Du als Betreiber kannst dein Passwort immer nutzen.",
-      "address": "Öffentliche Adresse",
-      "addressHint": "Die Adresse, unter der man nexlore erreicht. Einladungen, öffentliche Seiten und der Anbieter nutzen sie.",
       "twoFactor": "Zweiten Faktor verlangen",
       "twoFactorHint": "Jedes Konto, das sich mit Passwort anmeldet, muss ihn einrichten, bevor es weiterkommt. Konten vom Anbieter bringen dessen eigenen mit."
-    },
-    "oidc": {
-      "title": "OpenID Connect",
-      "on": "Eingerichtet mit {{issuer}}.",
-      "off": "Nicht eingerichtet.",
-      "redirect": "Weiterleitungsadresse für den Anbieter:",
-      "issuer": "Aussteller (Issuer)",
-      "issuerHint": "authentik: https://auth.example.com/application/o/nexlore/. Microsoft Entra ID: https://login.microsoftonline.com/MANDANTEN-ID/v2.0, für mehrere Mandanten common oder organizations. Entra nimmt als Rückleitadresse nur https an (außer localhost) und schickt die Mailadresse nur als optionalen Claim email, nie als bestätigt: Wer über Entra kommt, kommt per Einladung herein oder verknüpft sein Konto unter Mein Konto, Sicherheit.",
-      "clientId": "Client-ID",
-      "secret": "Client-Geheimnis",
-      "secretKept": "gespeichert, leer lassen zum Behalten",
-      "name": "Name auf dem Knopf",
-      "autoCreate": "Neue Personen bekommen ein Konto",
-      "autoCreateHint": "Aus: Nur eingeladene oder verknüpfte Konten kommen über den Anbieter herein.",
-      "remove": "Entfernen"
-    },
-    "authentik": {
-      "title": "authentik in einem Schritt",
-      "text": "Mit einem API-Token, das Anwendungen anlegen darf, richtet nexlore Anbieter und Anwendung in authentik selbst ein.",
-      "url": "Adresse von authentik",
-      "token": "API-Token",
-      "run": "Einrichten",
-      "blueprint": "Stattdessen Blueprint herunterladen"
     },
     "shares": {
       "title": "Öffentliche Seiten",
@@ -1350,7 +1303,8 @@
       "usesNotify": "Benachrichtigungen per Mail, für Konten, die das eingeschaltet haben",
       "usesConfirm": "Die Links, mit denen jemand seine Mailadresse bestätigt",
       "publicUrlMissing": "Links in Mails brauchen die öffentliche Adresse von nexlore. Sie fehlt noch:",
-      "publicUrlSet": "unter Anmeldung eintragen"
+      "publicUrlSet": "unter Anmeldung eintragen",
+      "passwordKept": "gespeichert, leer lassen zum Behalten"
     },
     "files": {
       "title": "Dateien",
@@ -1528,6 +1482,12 @@
       "blockTitle": "Token „{{name}}“ von {{account}} sperren?",
       "blockText": "Das Token antwortet danach wie keines, für immer. Das Konto sieht es als „vom Betreiber gesperrt“ und kann ein neues anlegen, solange API-Token eingeschaltet sind.",
       "offHint": "Schaltest du API-Token ab, antwortet jedes Token mit 401. Die Token bleiben stehen und gehen wieder, wenn du einschaltest."
+    },
+    "providers": {
+      "order": "{{name}} verschieben: ziehen oder die Pfeiltasten",
+      "coupled": "über die Kopplung",
+      "copy": "Kopieren",
+      "more": "Mehr"
     }
   },
   "today": {

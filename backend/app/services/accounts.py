@@ -28,7 +28,6 @@ from ..models import (
     MEMBER,
     OPERATOR,
     ROLES,
-    SIGN_IN_OIDC,
     SIGN_IN_PASSWORD,
     SPACE_ROLES,
     Account,
@@ -123,29 +122,6 @@ def create_operator(db: Session, name: str, password: str, code: str) -> Account
         if not secrets.compare_digest(code.strip().upper().encode(), setup_code().upper().encode()):
             raise AccountError("setup_code_wrong", "The setup code is wrong. It is in the server's log.", 403)
         return create_with_password(db, name, password, OPERATOR)
-
-
-def create_oidc(db: Session, name: str, subject: str, email: str) -> Account:
-    base = re.sub(r"[^a-z0-9._-]", "-", name.strip().lower()).strip("-._") or "user"
-    candidate = base[:60]
-    suffix = 1
-    while by_name(db, candidate) is not None or not NAME_PATTERN.match(candidate):
-        suffix += 1
-        candidate = f"{base[:57]}-{suffix}"
-    account = Account(
-        name=candidate,
-        role=MEMBER,
-        sign_in=SIGN_IN_OIDC,
-        oidc_subject=subject,
-        email=email,
-        email_source="provider" if email else "",
-        provider_email=email,
-        whats_new_seen=__version__,
-    )
-    db.add(account)
-    db.commit()
-    logger.info("Account created name=%s role=%s sign_in=oidc", account.name, MEMBER)
-    return account
 
 
 @lru_cache(maxsize=1)
@@ -304,7 +280,7 @@ def grant(db: Session, account: Account, space_id: int, role: str) -> None:
         membership.role = role
 
 
-def redeem(db: Session, invite: Invite, account: Account, *, consumed: bool = False) -> None:
+def redeem(db: Session, invite: Invite, account: Account, *, consumed: bool = False, commit: bool = True) -> None:
     """The invitation is used: it goes first (``consume``), then its right goes to the account. Into a space without
     members (the operator's, from the disk) the one who invited comes along as manager: with a first member the
     space would otherwise stop being theirs at the very moment they share it."""
@@ -317,7 +293,8 @@ def redeem(db: Session, invite: Invite, account: Account, *, consumed: bool = Fa
         if not members and inviter is not None and inviter.id != account.id:
             grant(db, inviter, invite.space_id, MANAGE)
         grant(db, account, invite.space_id, invite.space_role)
-    db.commit()
+    if commit:
+        db.commit()
     logger.info("Invite used name=%s space_id=%s", account.name, invite.space_id)
 
 

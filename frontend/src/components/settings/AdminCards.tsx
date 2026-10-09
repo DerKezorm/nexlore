@@ -13,19 +13,18 @@ import {
   authApi,
   mcpApi,
   type AdminAccount,
+  type LinkedProvider,
   type AdminSpace,
   type AiMode,
   type AiModel,
   type AiShared,
   type AnyApiToken,
-  type AuthentikResult,
   type Backup,
   type BackupCheck,
   type FileSettings,
   type Invite,
   type McpTools,
   type NewInvite,
-  type OidcConfig,
   type ServerSettings,
   type ShareInfo,
   shareApi,
@@ -54,11 +53,6 @@ function size(bytes: number): string {
 export function AccountsCard() {
   const { t } = useTranslation()
   const { me, refresh } = useAuth()
-  // The provider's own name for "from authentik" beside an address; a generic word without one.
-  const [providerName, setProviderName] = useState('')
-  useEffect(() => {
-    void authApi.methods().then((methods) => setProviderName(methods.oidc_name), () => setProviderName(''))
-  }, [])
   const [accounts, setAccounts] = useState<AdminAccount[]>([])
   const [invites, setInvites] = useState<Invite[]>([])
   const [days, setDays] = useState<(typeof DAYS)[number]>('7')
@@ -71,6 +65,9 @@ export function AccountsCard() {
   const [removing, setRemoving] = useState<AdminAccount | null>(null)
   const [resetting, setResetting] = useState<AdminAccount | null>(null)
   const [promoting, setPromoting] = useState<AdminAccount | null>(null)
+  // "Unlink": an account's link to one provider, taken with the operator's own password (the account is told nothing
+  // it has to answer; it links again in its profile).
+  const [unlinking, setUnlinking] = useState<{ account: AdminAccount; provider: LinkedProvider } | null>(null)
   // Acting on another account asks for the operator's own password once more; one signing in through the provider
   // has none here and is not asked.
   const [own, setOwn] = useState('')
@@ -116,7 +113,9 @@ export function AccountsCard() {
                     <span className="rounded-full bg-ok-500/10 px-2 text-ok-500">{t('admin.accounts.emailConfirmed')}</span>
                     {account.email_source && (
                       <span className="rounded-full bg-ink-850 px-2 text-mist-300">
-                        {t(`account.profile.emailSource.${account.email_source}`, { provider: providerName || t('account.profile.providerFallback') })}
+                        {t(`account.profile.emailSource.${account.email_source}`, {
+                          provider: account.providers.map((entry) => entry.label).join(', ') || t('account.profile.providerFallback'),
+                        })}
                       </span>
                     )}
                   </>
@@ -129,6 +128,15 @@ export function AccountsCard() {
                   </span>
                 )}
               </span>
+              {account.providers.length > 0 && (
+                <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs" data-testid="account-providers">
+                  {account.providers.map((entry) => (
+                    <span key={entry.id} className="rounded-full border border-accent-500/40 px-2 text-accent-400">
+                      {entry.label}
+                    </span>
+                  ))}
+                </span>
+              )}
             </span>
             <span className="flex flex-wrap gap-1.5">
               {account.sign_in !== 'oidc' && (
@@ -152,6 +160,14 @@ export function AccountsCard() {
                     {t('admin.accounts.resetFactor')}
                   </Button>
                 )}
+                {/* The last link of an account without a password stays: it would lock the account out. */}
+                {!(account.sign_in === 'oidc' && account.providers.length === 1) && account.providers.map((entry) => (
+                  <Button key={entry.id} small onClick={() => ask(() => setUnlinking({ account, provider: entry }))}>
+                    {account.providers.length > 1
+                      ? t('admin.accounts.unlinkFrom', { name: entry.label })
+                      : t('admin.accounts.unlink')}
+                  </Button>
+                ))}
                 <Button small danger onClick={() => ask(() => setRemoving(account))}>
                   {t('admin.accounts.delete')}
                 </Button>
@@ -322,6 +338,22 @@ export function AccountsCard() {
         {t(promoting?.role === 'operator' ? 'admin.accounts.memberText' : 'admin.accounts.operatorText')}
         {ownField}
       </ConfirmDialog>
+      <ConfirmDialog
+        open={unlinking !== null}
+        title={t('admin.accounts.unlinkTitle', { name: unlinking?.account.name ?? '', provider: unlinking?.provider.label ?? '' })}
+        confirm={t('admin.accounts.unlink')}
+        danger
+        busy={busy}
+        onCancel={() => setUnlinking(null)}
+        onConfirm={() => void run(async () => {
+          await adminApi.unlinkAccount(unlinking!.account.id, unlinking!.provider.id, own)
+          setUnlinking(null)
+          await load()
+        }, t('admin.accounts.unlinked'))}
+      >
+        {t('admin.accounts.unlinkText', { provider: unlinking?.provider.label ?? '' })}
+        {ownField}
+      </ConfirmDialog>
     </Card>
   )
 }
@@ -368,137 +400,6 @@ export function AllSpacesCard() {
           }}
         />
       )}
-    </Card>
-  )
-}
-
-// --- Sign-in and the provider ---------------------------------------------------------------------------------------
-
-export function SignInCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
-  const { t } = useTranslation()
-  const [address, setAddress] = useState(settings.public_url)
-  const [oidc, setOidc] = useState<OidcConfig | null>(null)
-  const [form, setForm] = useState({ issuer: '', client_id: '', client_secret: '', provider_name: '', auto_create: false })
-  const [authentik, setAuthentik] = useState({ url: '', token: '' })
-  const [steps, setSteps] = useState<AuthentikResult | null>(null)
-  const { busy, problem, done, run } = useAction()
-
-  const loadOidc = useCallback(async () => {
-    const config = await adminApi.oidc()
-    setOidc(config)
-    setForm({ issuer: config.issuer, client_id: config.client_id, client_secret: '', provider_name: config.provider_name, auto_create: config.auto_create })
-  }, [])
-  useEffect(() => {
-    void run(loadOidc)
-  }, [run, loadOidc])
-
-  // The switch moves at once; the server's answer confirms it, a refusal puts it back.
-  const save = (change: Partial<ServerSettings>) => {
-    onChange({ ...settings, ...change })
-    void run(async () => onChange(await adminApi.saveSettings(change)), t('common.saved')).then((ok) => ok || onChange(settings))
-  }
-
-  return (
-    <Card id="sign-in" symbol="shield" title={t('admin.signIn.title')} text={t('admin.signIn.text')}>
-      <div className="space-y-3">
-        <Toggle label={t('admin.signIn.password')} hint={t('admin.signIn.passwordHint')} checked={settings.password_login} onChange={(value) => save({ password_login: value })} />
-        <Toggle
-          label={t('admin.signIn.twoFactor')}
-          hint={t('admin.signIn.twoFactorHint')}
-          checked={settings.two_factor_required}
-          onChange={(value) => save({ two_factor_required: value })}
-        />
-        <form
-          className="flex flex-wrap items-end gap-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            save({ public_url: address })
-          }}
-        >
-          <Input label={t('admin.signIn.address')} value={address} onChange={setAddress} placeholder="https://notes.example.com" hint={t('admin.signIn.addressHint')} className="min-w-60 flex-1" />
-          <Button type="submit" busy={busy}>
-            {t('common.save')}
-          </Button>
-        </form>
-      </div>
-
-      <h3 className="mt-6 text-sm font-semibold">{t('admin.oidc.title')}</h3>
-      <p className="text-xs text-mist-500">
-        {oidc?.configured ? t('admin.oidc.on', { issuer: oidc.issuer }) : t('admin.oidc.off')} · {t('admin.oidc.redirect')}{' '}
-        <code className="font-mono">{oidc?.redirect_uri}</code>
-      </p>
-      <form
-        className="mt-3 grid gap-2 sm:grid-cols-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void run(async () => {
-            setOidc(await adminApi.saveOidc(form))
-            setForm((current) => ({ ...current, client_secret: '' }))
-          }, t('common.saved'))
-        }}
-      >
-        <Input label={t('admin.oidc.issuer')} value={form.issuer} onChange={(issuer) => setForm({ ...form, issuer })} placeholder="https://auth.example.com/application/o/nexlore/" hint={t('admin.oidc.issuerHint')} className="sm:col-span-2" />
-        <Input label={t('admin.oidc.clientId')} value={form.client_id} onChange={(client_id) => setForm({ ...form, client_id })} />
-        <Input
-          label={t('admin.oidc.secret')}
-          value={form.client_secret}
-          onChange={(client_secret) => setForm({ ...form, client_secret })}
-          type="password"
-          placeholder={oidc?.configured ? t('admin.oidc.secretKept') : ''}
-        />
-        <Input label={t('admin.oidc.name')} value={form.provider_name} onChange={(provider_name) => setForm({ ...form, provider_name })} placeholder="authentik" />
-        <div className="sm:col-span-2">
-          <Toggle label={t('admin.oidc.autoCreate')} hint={t('admin.oidc.autoCreateHint')} checked={form.auto_create} onChange={(auto_create) => setForm({ ...form, auto_create })} />
-        </div>
-        <div className="flex gap-2 sm:col-span-2">
-          <Button type="submit" primary busy={busy}>
-            {t('common.save')}
-          </Button>
-          {oidc?.configured && (
-            <Button danger busy={busy} onClick={() => void run(async () => {
-              await adminApi.removeOidc()
-              await loadOidc()
-            })}>
-              {t('admin.oidc.remove')}
-            </Button>
-          )}
-        </div>
-      </form>
-
-      <h3 className="mt-6 text-sm font-semibold">{t('admin.authentik.title')}</h3>
-      <p className="text-xs text-mist-500">{t('admin.authentik.text')}</p>
-      <form
-        className="mt-3 grid gap-2 sm:grid-cols-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void run(async () => {
-            setSteps(await adminApi.authentik(authentik.url, authentik.token))
-            setAuthentik({ ...authentik, token: '' })
-            await loadOidc()
-          })
-        }}
-      >
-        <Input label={t('admin.authentik.url')} value={authentik.url} onChange={(url) => setAuthentik({ ...authentik, url })} placeholder="https://auth.example.com" />
-        <Input label={t('admin.authentik.token')} value={authentik.token} onChange={(token) => setAuthentik({ ...authentik, token })} type="password" />
-        <div className="flex flex-wrap gap-2 sm:col-span-2">
-          <Button type="submit" busy={busy}>
-            {t('admin.authentik.run')}
-          </Button>
-          <a href="/api/oidc/authentik/blueprint" className="inline-flex items-center rounded-full border border-ink-700 px-3.5 py-1.5 text-sm text-mist-300 hover:bg-ink-850">
-            {t('admin.authentik.blueprint')}
-          </a>
-        </div>
-      </form>
-      {steps && (
-        <ol className="mt-3 space-y-1 text-xs">
-          {steps.steps.map((step) => (
-            <li key={step.key} className={step.ok ? 'text-ok-500' : 'text-bad-500'}>
-              {step.ok ? '✓' : '✗'} {step.detail}
-            </li>
-          ))}
-        </ol>
-      )}
-      <Feedback problem={problem} done={done} />
     </Card>
   )
 }
@@ -1095,7 +996,7 @@ export function MailCard({ settings, onChange }: { settings: ServerSettings; onC
           value={form.smtp_password}
           onChange={(smtp_password) => setForm({ ...form, smtp_password })}
           type="password"
-          placeholder={settings.smtp_password_set ? t('admin.oidc.secretKept') : ''}
+          placeholder={settings.smtp_password_set ? t('admin.mail.passwordKept') : ''}
         />
         <Input label={t('admin.mail.from')} value={form.smtp_from} onChange={(smtp_from) => setForm({ ...form, smtp_from })} placeholder="notes@example.com" className="sm:col-span-2" />
         <div className="sm:col-span-2">

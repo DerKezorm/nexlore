@@ -82,10 +82,13 @@ from one space into another that only resolve for people who may read both.*
   manage. Links may lead into another space (`[[Team/Note]]`) and resolve only for whoever may read it. What
   somebody may not read does not show up anywhere, not in search, graph, backlinks or tasks, not even its title.
 - **Sign-in** with a password and optionally a second factor (codes from an authenticator app, recovery codes), or
-  through OpenID Connect (with a one-button setup for authentik; Microsoft Entra ID also with `common` or
-  `organizations` as the issuer). Invitations by link or by mail. Every account
-  has a mail address: entered in the profile it counts once the link mailed to it is opened, the operator can set
-  one at once, and an account through the provider follows the provider's.
+  through one or more OpenID Connect providers side by side, each with its own button (a one-button setup for
+  authentik, or a blueprint to import; Microsoft Entra ID also with `common` or `organizations` as the issuer).
+  An identity at a provider belongs to an account only once that account linked itself in its profile, came in by
+  invitation, or the operator lets new people in through that provider; an account is never found by its mail
+  address. Per provider the operator decides whether it checks the second factor itself. Invitations by link or by
+  mail. Every account has a mail address: entered in the profile it counts once the link mailed to it is opened, the
+  operator can set one at once, and an account through a provider only follows the provider's.
 - **Public pages**: share a note or a folder as a reading page, with an expiry and a password if you like. Off until
   the operator opens it.
 - **Versions and trash**: every save is a version (bundled per session, thinned out over time), deleted files wait
@@ -171,7 +174,8 @@ nexlore is made to be reachable from outside, for yourself on the road or for a 
    proxy's address or network; without it every sign-in seems to come from the proxy and the brake against guessing
    cannot tell people apart; the log says so), and `NEXLORE_COOKIE_SECURE: "on"`.
 4. **A second factor**: set up your own under My account, then Settings, Sign-in, "Require a second factor". Or sign
-   in through your OpenID Connect provider.
+   in through your OpenID Connect provider (and leave "The provider checks the second factor itself" on only for
+   one that does).
 5. **Leave the switches closed you do not need**: MCP and connectors, API tokens, public pages, calendar feeds, AI in
    notes, page titles for pasted links, uploaded plugins, own CSS. Each is off until you open it.
 6. **Optionally keep the operator's settings at home**: `NEXLORE_OPERATOR_NETWORKS: "192.168.0.0/16"` refuses them

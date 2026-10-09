@@ -1,7 +1,8 @@
 /** Languages the operator adds on the server: offered, loaded, incomplete ones fall back to English. */
 
 import i18n, { changeLanguage, languageOptions, resetAddedLanguages, startI18n, templateFile } from './index'
-import en from './en.json'
+import { en } from './index'
+import ownEn from './en.json'
 
 type Routes = Record<string, unknown>
 
@@ -72,7 +73,7 @@ describe('added languages', () => {
     await changeLanguage('es')
     expect(i18n.language).toBe('es')
     expect(i18n.t('nav.graph')).toBe('Grafo')
-    expect(i18n.t('nav.notes')).toBe(en.nav.notes)
+    expect(i18n.t('nav.notes')).toBe(ownEn.nav.notes)
     expect(document.documentElement.lang).toBe('es')
     expect(localStorage.getItem('nexlore.language')).toBe('es')
   })
@@ -111,13 +112,13 @@ describe('added languages', () => {
     localStorage.setItem('nexlore.language', 'fr')
     await startI18n()
     expect(i18n.language).toBe('en')
-    expect(i18n.t('nav.notes')).toBe(en.nav.notes)
+    expect(i18n.t('nav.notes')).toBe(ownEn.nav.notes)
   })
 
   it('without a server the app still starts, with the shipped languages', async () => {
     serve({ '/api/locales': new TypeError('Failed to fetch') })
     await startI18n()
-    expect(i18n.t('nav.notes')).toBe(en.nav.notes)
+    expect(i18n.t('nav.notes')).toBe(ownEn.nav.notes)
     expect((await languageOptions()).map((option) => option.code)).toEqual(['de', 'en'])
   })
 

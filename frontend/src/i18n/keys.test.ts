@@ -1,6 +1,6 @@
 /** Every key the code asks for exists in English, the language every other one falls back to. */
 
-import en from './en.json'
+import { en } from './index'
 
 const sources = import.meta.glob('../**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true }) as Record<string, string>
 

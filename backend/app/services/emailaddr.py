@@ -1,15 +1,14 @@
 """A mail address for each account (issue #13): entered in the profile, set by the operator, or from the provider.
 
-The address that counts (``Account.email``) is mailed and bridges a first sign-in through the provider to the account
-(``routers/oidc._resolve``: a verified address there links an account with the same address). So an address an account
-enters for itself counts only once its link was opened: otherwise anybody could write somebody else's address into
-their own account and catch that person's first sign-in through the provider. Until then it waits in
+The address that counts (``Account.email``) is mailed. It never finds an account at a sign-in through a provider:
+only the identity there does (``oidc_links``, the shared sign-in blueprint). An address an account enters for itself
+still counts only once its link was opened, so that mail goes only where its owner reads it. Until then it waits in
 ``email_pending``; an address confirmed before stays in force meanwhile.
 
 The operator's address counts at once (the operator can set passwords anyway); the account is told under "New". An
 account that signs in through the provider only follows the provider at every sign-in and cannot change it here. An
 account with a password that is linked keeps its own address; a different one at the provider is offered in the
-profile, never taken unasked. No two accounts hold the same address: the bridge must point to one.
+profile, never taken unasked. No two accounts hold the same address.
 """
 
 from __future__ import annotations
@@ -24,9 +23,9 @@ from collections import deque
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
-from ..models import SIGN_IN_OIDC, Account, SpaceNotice
+from ..models import SIGN_IN_OIDC, Account, OidcLink, SpaceNotice
 from . import mailer, settings_service
 
 logger = logging.getLogger("nexlore.email")
@@ -73,6 +72,14 @@ def same(one: str, other: str) -> bool:
     return bool(one) and one.casefold() == other.casefold()
 
 
+def linked(account: Account, db: Session | None = None) -> bool:
+    """The account is linked to at least one sign-in provider."""
+    db = db or object_session(account)
+    if db is None or account.id is None:
+        return False
+    return db.scalar(select(OidcLink.id).where(OidcLink.account_id == account.id).limit(1)) is not None
+
+
 def source_of(account: Account) -> str:
     """Where the address came from; addresses from before the source was kept came from the provider (linked or
     provider only) or from an invitation, the only two ways there were."""
@@ -80,7 +87,7 @@ def source_of(account: Account) -> str:
         return ""
     if account.email_source:
         return account.email_source
-    return PROVIDER if account.oidc_subject or account.sign_in == SIGN_IN_OIDC else INVITE
+    return PROVIDER if account.sign_in == SIGN_IN_OIDC or linked(account) or account.oidc_subject else INVITE
 
 
 def taken(db: Session, address: str, but: int) -> bool:
@@ -109,14 +116,14 @@ def pending_of(account: Account, now: datetime | None = None) -> str:
     return account.email_pending if until > (now or datetime.now(UTC)) else ""
 
 
-def offer_of(account: Account) -> str:
+def offer_of(account: Account, db: Session | None = None) -> str:
     """The provider's address, offered in the profile: only for a linked account with a password whose own address
     differs, and not when the account said no to exactly this one."""
     offered = account.provider_email
     if (
         not offered
-        or not account.oidc_subject
         or account.sign_in == SIGN_IN_OIDC
+        or not linked(account, db)
         or same(offered, account.email)
         or same(offered, account.provider_email_off)
     ):
@@ -124,12 +131,12 @@ def offer_of(account: Account) -> str:
     return offered
 
 
-def view(account: Account) -> dict[str, str]:
+def view(account: Account, db: Session | None = None) -> dict[str, str]:
     return {
         "email": account.email,
         "email_source": source_of(account),
         "email_pending": pending_of(account),
-        "provider_email": offer_of(account),
+        "provider_email": offer_of(account, db),
     }
 
 
@@ -236,7 +243,7 @@ def remove(db: Session, account: Account) -> None:
 
 
 def take_offer(db: Session, account: Account) -> None:
-    """The provider's address instead of the own one (the provider confirmed it, so no mail)."""
+    """The provider's address instead of the own one: the account signs in there, so no mail."""
     offered = offer_of(account)
     if not offered:
         raise AddressError("email_no_offer", "The provider reports no other address.", 404)
@@ -275,11 +282,12 @@ def set_by_operator(db: Session, target: Account, address: str, operator: Accoun
                    operator.name)
 
 
-def from_provider(db: Session, account: Account, address: str, verified: bool) -> None:
-    """What the provider says at a sign-in or a link (the caller commits). Only a verified address counts: an
-    account through the provider only follows it; a linked account with a password takes it only when it has none,
-    otherwise it is offered in the profile."""
-    if not (address and verified):
+def from_provider(db: Session, account: Account, address: str) -> None:
+    """What the provider says at a sign-in or a link (the caller commits). ``email_verified`` is never read (the
+    shared blueprint): the address finds nobody, it is only what the account is mailed at. An account through the
+    provider only follows it; a linked account with a password takes it only when it has none, otherwise it is
+    offered in the profile."""
+    if not address:
         return
     try:
         address = clean(address)
@@ -299,9 +307,7 @@ def from_provider(db: Session, account: Account, address: str, verified: bool) -
 
 
 def unlinked(account: Account) -> None:
-    """The link to the provider is gone: so is an address that came from there (left in place it would bridge the
-    next sign-in there back into the account as if nothing had been undone). An own address stays: its owner
-    confirmed it, and linking again by it would be their own doing."""
+    """The last link to a provider is gone: so is an address that came from there. An own address stays."""
     if source_of(account) == PROVIDER:
         account.email = ""
         account.email_source = ""

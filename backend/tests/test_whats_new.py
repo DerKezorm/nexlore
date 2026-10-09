@@ -18,7 +18,11 @@ def test_a_new_account_starts_with_its_version_read(client: TestClient, account:
     with SessionLocal() as db:
         made = accounts.create_with_password(db, "anna", PASSWORD)
         db.expunge(made)
-        assert accounts.create_oidc(db, "Bob", "subject-bob", "bob@example.com").whats_new_seen == __version__
+        from app.models import Account as AccountRow
+        from app.services.oidc_store import SqlStore
+
+        made_id = SqlStore(db).create_account("bob", invite=None, email="bob@example.com")
+        assert db.get(AccountRow, made_id).whats_new_seen == __version__
     anna = TestClient(client.app, base_url="http://testserver", headers={"X-Nexlore-Client": "tab-anna0000"})
     sign_in(anna, made)
     me = anna.get("/api/auth/me").json()

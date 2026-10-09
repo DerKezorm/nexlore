@@ -1,7 +1,7 @@
 /**
  * The own mail address in the profile (issue #13). Entered here it counts only once the link mailed to it is opened
- * (the address bridges a first sign-in through the provider, so nobody may claim somebody else's). An account that
- * signs in through the provider only shows the provider's address, read only. Without a mail server or a public
+ * (mail goes only where its owner reads it; an address never finds an account at a sign-in through a provider). An
+ * account that signs in through a provider only shows the provider's address, read only. Without a mail server or a public
  * address no confirmation can go out: the field is locked and says why (the operator can still set one).
  */
 import { useEffect, useId, useState } from 'react'

@@ -1,7 +1,7 @@
 """The operator's settings: address, sign-in, public pages, invitation mail, backups.
 
 Secrets (the mail password) are written encrypted and never read back: the answer only says whether one is set.
-The files settings live in ``routers/attachments.py``, the OIDC ones in ``routers/oidc.py``.
+The files settings live in ``routers/attachments.py``, the sign-in providers in ``routers/oidc.py``.
 """
 
 from __future__ import annotations
@@ -17,6 +17,8 @@ from ..errors import error
 from ..models import SIGN_IN_PASSWORD
 from ..security import encrypt_secret
 from ..services import accounts, ai, guide, lore, mailer, settings_service
+from ..services.oidc_store import SqlStore
+from ..vendor.nexoidc import providers
 
 logger = logging.getLogger("nexlore.settings")
 
@@ -145,8 +147,7 @@ def save(payload: SettingsIn, operator: OperatorAccount, db: DbSession) -> Setti
             # Else the operator would be the first one sent to the account page, with nothing else in reach.
             raise error("own_second_factor_first", "Set up your own second factor first.", 409)
         elif key == "password_login" and not value:
-            current = settings_service.get_all(db)
-            if not (current["oidc_issuer"] and current["oidc_client_id"]):
+            if not providers.public_list(SqlStore(db)):
                 # Without a provider nobody but the operator could sign in any more, and invitations would fail.
                 raise error("provider_first", "Set up a sign-in provider first.", 409)
         elif key == "ai_private_hosts":

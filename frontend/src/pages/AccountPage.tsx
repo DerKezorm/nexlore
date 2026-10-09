@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useSearchParams } from 'react-router-dom'
 
-import { ApiError, authApi, type Methods } from '../api/client'
+import { ApiError, authApi, type MyProvider } from '../api/client'
 import { Field, Problem } from '../components/AuthFrame'
 import { AiAccess } from '../components/AiAccess'
 import { ApiTokens } from '../components/ApiTokens'
@@ -23,6 +23,7 @@ import { TabRow, type Tab } from '../components/TabRow'
 import { errorText } from '../lib/errors'
 import { rememberName } from '../lib/people'
 import { useAuth } from '../state/auth'
+import { oidcErrorKey } from '../vendor/nexoidc/oidc'
 import { MIN_PASSWORD } from './SetupPage'
 
 type Part = 'profile' | 'security' | 'notify' | 'ai' | 'plugins'
@@ -37,10 +38,11 @@ export function AccountPage() {
   const { t } = useTranslation()
   const { me, refresh } = useAuth()
   const [shownAs, setShownAs] = useState(me?.display_name ?? '')
-  // Whether a sign-in provider is set up at all: without one there is nothing to link (P7.14).
-  const [methods, setMethods] = useState<Methods | null>(null)
+  // The active sign-in providers and whether this account is linked to each: without one there is nothing to link.
+  const [providers, setProviders] = useState<MyProvider[]>([])
+  const loadProviders = () => authApi.myProviders().then(setProviders, () => setProviders([]))
   useEffect(() => {
-    void authApi.methods().then(setMethods, () => setMethods(null))
+    void loadProviders()
   }, [])
   const [params, setParams] = useSearchParams()
   const { hash } = useLocation()
@@ -52,8 +54,15 @@ export function AccountPage() {
   const [next, setNext] = useState('')
   const [again, setAgain] = useState('')
   const [linkPassword, setLinkPassword] = useState('')
-  const [done, setDone] = useState<string | null>(params.get('linked') ? t('account.linked') : null)
-  const [problem, setProblem] = useState<string | null>(params.get('error') ? errorText(params.get('error')!) : null)
+  // The provider whose "Link" was pressed: its row asks for the password.
+  const [linking, setLinking] = useState<string | null>(null)
+  const linkedSlug = params.get('linked')
+  const [done, setDone] = useState<string | null>(linkedSlug ? t('account.linked', { name: linkedSlug }) : null)
+  // Back from the provider with a refusal: only a known sign-in code becomes a sentence.
+  const addressError = params.get('error')
+  const [problem, setProblem] = useState<string | null>(
+    addressError ? (oidcErrorKey(addressError) ? t(oidcErrorKey(addressError)!) : errorText(addressError)) : null,
+  )
   const [busy, setBusy] = useState(false)
   const picker = useRef<HTMLInputElement>(null)
 
@@ -173,7 +182,12 @@ export function AccountPage() {
               </button>
             </form>
             <div id="mail" className="mt-6">
-              <MailAddress me={me} run={run} busy={busy} provider={methods?.oidc_name ?? ''} />
+              <MailAddress
+                me={me}
+                run={run}
+                busy={busy}
+                provider={providers.filter((entry) => entry.linked).map((entry) => entry.label).join(', ')}
+              />
             </div>
             <dl className="mt-6 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
               <dt className="text-mist-500">{t('account.profile.name')}</dt>
@@ -224,46 +238,80 @@ export function AccountPage() {
               <SecondFactor me={me} />
             </Section>
 
-            {(methods?.oidc || me.sign_in === 'oidc' || me.oidc_linked) && (
-            <Section symbol="shield" title={t('account.oidc.title')}>
-              {me.sign_in === 'oidc' ? (
-                <p className="text-sm text-mist-400">{t('account.oidc.only')}</p>
-              ) : me.oidc_linked ? (
-                <div className="flex flex-wrap items-center gap-3 text-sm">
-                  <span className="text-mist-400">{t('account.oidc.linked')}</span>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void run(() => authApi.unlink(), t('account.oidc.unlinked'))}
-                    className="rounded-full border border-ink-700 px-3 py-1 text-xs hover:bg-ink-850"
-                  >
-                    {t('account.oidc.unlink')}
-                  </button>
-                </div>
-              ) : (
-                <form
-                  className="space-y-3"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    setBusy(true)
-                    setProblem(null)
-                    authApi.linkStart(linkPassword).then(
-                      ({ url }) => window.location.assign(url),
-                      (error) => {
-                        setProblem(errorText(code(error)))
-                        setBusy(false)
-                      },
+            {(providers.length > 0 || me.sign_in === 'oidc') && (
+              <Section symbol="shield" title={t('oidc.account.title')}>
+                <p className="mb-3 text-sm text-mist-400">{t('oidc.account.text')}</p>
+                <ul className="divide-y divide-ink-800 rounded-xl border border-ink-800" data-testid="my-providers">
+                  {providers.map((provider) => {
+                    const lastLink = me.sign_in === 'oidc' && provider.linked && providers.filter((entry) => entry.linked).length === 1
+                    return (
+                      <li key={provider.slug} className="px-3 py-2.5 text-sm">
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="min-w-0 flex-1 truncate font-medium">{provider.label}</span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs ${provider.linked ? 'bg-ok-500/10 text-ok-500' : 'border border-ink-700 text-mist-400'}`}
+                          >
+                            {provider.linked ? t('oidc.account.linked') : t('oidc.account.notLinked')}
+                          </span>
+                          {provider.linked && !lastLink && (
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() =>
+                                void run(async () => {
+                                  await authApi.unlink(provider.slug)
+                                  await loadProviders()
+                                }, t('account.unlinked', { name: provider.label }))
+                              }
+                              className="rounded-full border border-ink-700 px-3 py-1 text-xs hover:bg-ink-850 disabled:opacity-50"
+                            >
+                              {t('oidc.account.unlink')}
+                            </button>
+                          )}
+                          {!provider.linked && me.sign_in === 'password' && linking !== provider.slug && (
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => {
+                                setLinking(provider.slug)
+                                setLinkPassword('')
+                              }}
+                              className="rounded-full border border-ink-700 px-3 py-1 text-xs hover:bg-ink-850 disabled:opacity-50"
+                            >
+                              {t('oidc.account.link')}
+                            </button>
+                          )}
+                        </div>
+                        {lastLink && <p className="mt-1 text-xs text-mist-500">{t('oidc.account.only', { name: provider.label })}</p>}
+                        {linking === provider.slug && (
+                          <form
+                            className="mt-3 flex flex-wrap items-end gap-2"
+                            onSubmit={(event) => {
+                              event.preventDefault()
+                              setBusy(true)
+                              setProblem(null)
+                              authApi.linkStart(provider.slug, linkPassword).then(
+                                ({ url }) => window.location.assign(url),
+                                (error) => {
+                                  setProblem(errorText(code(error)))
+                                  setBusy(false)
+                                },
+                              )
+                            }}
+                          >
+                            <div className="min-w-48 flex-1">
+                              <Field label={t('auth.password')} value={linkPassword} onChange={setLinkPassword} type="password" autoComplete="current-password" autoFocus />
+                            </div>
+                            <button type="submit" disabled={busy} className="h-10 rounded-full bg-accent-500 px-4 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-50">
+                              {t('oidc.account.link')}
+                            </button>
+                          </form>
+                        )}
+                      </li>
                     )
-                  }}
-                >
-                  <p className="text-sm text-mist-400">{t('account.oidc.text')}</p>
-                  <Field label={t('auth.password')} value={linkPassword} onChange={setLinkPassword} type="password" autoComplete="current-password" />
-                  <button type="submit" disabled={busy} className="rounded-full border border-ink-700 px-4 py-1.5 text-sm hover:bg-ink-850 disabled:opacity-50">
-                    {t('account.oidc.link')}
-                  </button>
-                </form>
-              )}
-            </Section>
+                  })}
+                </ul>
+              </Section>
             )}
 
             <Section symbol="lock" title={t('account.sessions.title')}>

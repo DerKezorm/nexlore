@@ -34,7 +34,9 @@ Unter **Mein Konto → Profil** gibst du dir einen **Anzeigenamen**, etwa mit Vo
 
 Unter **Mein Konto → Profil** trägst du deine **Mailadresse** ein und drückst **Bestätigen**. nexlore schickt dir einen Link; erst wenn du ihn öffnest, gilt die Adresse. Bis dahin bleibt eine früher bestätigte Adresse gültig. Einladungen und Benachrichtigungen per Mail gehen an diese Adresse, sehen kann sie niemand außer dir und dem Betreiber.
 
-Der Betreiber kann dir unter **Einstellungen → Server → Konten** auch selbst eine Adresse eintragen; sie gilt sofort, und du siehst es unter **Neu seit deinem letzten Besuch**. Meldest du dich nur über einen Anmeldedienst wie authentik an, kommt die Adresse von dort und lässt sich auch nur dort ändern. Ist dein Konto mit einem Passwort und zusätzlich mit dem Anmeldedienst verbunden, behältst du deine eigene Adresse; kennt der Dienst eine andere, bietet dir das Profil an, sie zu übernehmen.
+Der Betreiber kann dir unter **Einstellungen → Server → Konten** auch selbst eine Adresse eintragen; sie gilt sofort, und du siehst es unter **Neu seit deinem letzten Besuch**. Meldest du dich nur über einen Anmeldedienst wie authentik an, kommt die Adresse von dort und lässt sich auch nur dort ändern. Ist dein Konto mit einem Passwort und zusätzlich mit einem Anmeldedienst verbunden, behältst du deine eigene Adresse; kennt der Dienst eine andere, bietet dir das Profil an, sie zu übernehmen.
+
+Unter **Mein Konto → Sicherheit → Anmeldeanbieter** hat jeder Anmeldedienst, den der Betreiber eingerichtet hat, eine Zeile: **Verknüpfen** fragt noch einmal nach deinem Passwort und führt dich dorthin, danach führt sein Knopf auf der Anmeldeseite in dein Konto; **Lösen** nimmt die Verknüpfung wieder weg. nexlore findet dein Konto nie über deine Mailadresse: Wer bei einem Anmeldedienst dieselbe Adresse hat, ist hier erst du, wenn du dich verknüpft hast.
 
 Damit Mails hinausgehen, trägt der Betreiber unter **Einstellungen → Server → Mailserver** einen Server ein. Ohne ihn ist das Feld im Profil gesperrt und sagt warum.
 

@@ -1,5 +1,6 @@
 /** The sentence for an error code from the server, in the page's language; an unknown code gets the general one. */
 import i18n from '../i18n'
+import { oidcErrorKey } from '../vendor/nexoidc/oidc'
 
 /** Why the last name was refused (`reason`, `char`, `word`): pages keep only the code, the sentence still says
  * which character or rule (P1.24). */
@@ -20,7 +21,10 @@ export function errorText(code: string, values: Record<string, unknown> = {}): s
     return i18n.t('errors.waitMinutes', { count: Math.ceil(values.retry_after / 60) })
   }
   const key = `errors.byCode.${code}`
-  return i18n.exists(key) ? i18n.t(key, values) : i18n.t('errors.byCode.internal_error')
+  if (i18n.exists(key)) return i18n.t(key, values)
+  // The fixed codes of sign-in through a provider bring their sentences with the shared module (`oidc.error.*`).
+  const signIn = oidcErrorKey(code)
+  return signIn ? i18n.t(signIn) : i18n.t('errors.byCode.internal_error')
 }
 
 /** What a service outside (the AI service) answered with its error, to stand after the sentence: " (400: …)". */

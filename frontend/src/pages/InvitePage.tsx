@@ -1,6 +1,7 @@
 /**
  * Following an invitation: with an account already (signed in), it only adds the right; without one, it makes one,
- * with a password or through the provider.
+ * with a password or, below the line "or", through one of the sign-in providers ("Continue with …" takes the
+ * invitation along to the provider).
  */
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,6 +9,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { ApiError, authApi, type InviteOffer, type Methods } from '../api/client'
 import { AuthFrame, Field, PrimaryButton, Problem } from '../components/AuthFrame'
+import { ProviderButtons } from '../components/ProviderButtons'
 import { errorText } from '../lib/errors'
 import { useAuth } from '../state/auth'
 import { MIN_PASSWORD } from './SetupPage'
@@ -114,14 +116,7 @@ export function InvitePage() {
           </>
         )}
       </form>
-      {methods?.oidc && (
-        <a
-          href={`/api/oidc/start?invite=${encodeURIComponent(token)}`}
-          className="mt-4 flex h-10 w-full items-center justify-center rounded-full border border-ink-700 text-sm font-medium hover:bg-ink-850"
-        >
-          {t('auth.invite.oidc', { name: methods.oidc_name || 'OpenID Connect' })}
-        </a>
-      )}
+      <ProviderButtons providers={methods?.providers ?? []} invite={token} withOr={methods?.password !== false} />
       <p className="mt-4 text-xs text-mist-500">
         {t('auth.invite.already')}{' '}
         <Link to={`/login?next=${encodeURIComponent(`/invite/${token}`)}`} className="text-accent-400 hover:underline">

@@ -12,6 +12,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from .. import __version__
 from ..config import get_settings
@@ -27,7 +28,7 @@ from ..deps import (
     reauth_succeeded,
 )
 from ..errors import detail, error
-from ..models import OPERATOR, ROLES, SIGN_IN_PASSWORD, Membership
+from ..models import OPERATOR, ROLES, SIGN_IN_PASSWORD, Membership, OidcLink, OidcProvider
 from ..models import Account as AccountRow
 from ..security import (
     DEVICE_COOKIE,
@@ -57,6 +58,8 @@ from ..services import (
     totp,
 )
 from ..services.accounts import AccountError
+from ..services.oidc_store import SqlStore
+from ..vendor.nexoidc import providers
 from . import themes as theme_routes
 
 logger = logging.getLogger("nexlore.auth")
@@ -152,7 +155,7 @@ def check_language(language: str) -> str:
     return language
 
 
-def account_view(account: AccountRow) -> dict[str, Any]:
+def account_view(account: AccountRow, db: Session | None = None) -> dict[str, Any]:
     return {
         "id": account.id,
         "name": account.name,
@@ -162,9 +165,8 @@ def account_view(account: AccountRow) -> dict[str, Any]:
         "whats_new_seen": account.whats_new_seen,
         "role": account.role,
         "sign_in": account.sign_in,
-        **emailaddr.view(account),
+        **emailaddr.view(account, db),
         "language": account.language,
-        "oidc_linked": bool(account.oidc_subject),
         "two_factor": bool(account.totp_secret_enc),
         "two_factor_recovery_left": len(totp.load_recovery(account.totp_recovery)) if account.totp_secret_enc else 0,
         "created_at": account.created_at.isoformat(),
@@ -226,12 +228,10 @@ def setup(payload: SetupIn, request: Request, response: Response, db: DbSession)
 
 @router.get("/auth/methods", summary="How one can sign in here (no sign-in needed)")
 def methods(db: DbSession) -> dict[str, Any]:
-    values = settings_service.get_all(db)
-    oidc = bool(values["oidc_issuer"] and values["oidc_client_id"])
+    # The buttons of the sign-in page: slug and label of each active provider, nothing else (vendor/nexoidc).
     return {
-        "password": bool(values["password_login"]),
-        "oidc": oidc,
-        "oidc_name": values["oidc_provider_name"] if oidc else "",
+        "password": bool(settings_service.get(db, "password_login")),
+        "providers": providers.public_list(SqlStore(db)),
     }
 
 
@@ -304,7 +304,7 @@ def logout_everywhere(request: Request, account: Account, db: DbSession) -> None
 @router.get("/auth/me", summary="The signed-in account, and what this server offers it")
 def me(account: Account, db: DbSession) -> dict[str, Any]:
     return {
-        **account_view(account),
+        **account_view(account, db),
         "shares_allowed": bool(settings_service.get(db, "shares_allowed")),
         "mail": mailer.configured(db),
         # Why the profile cannot send a confirmation now (empty: it can): no mail server, or no public address.
@@ -526,8 +526,16 @@ def list_accounts(_operator: OperatorAccount, db: DbSession) -> list[dict[str, A
     spaces: dict[int, int] = {}
     for account_id in db.scalars(select(Membership.account_id)):
         spaces[account_id] = spaces.get(account_id, 0) + 1
+    # The providers each account is linked to, as marks in the operator's list (the shared sign-in blueprint 04).
+    linked: dict[int, list[dict[str, Any]]] = {}
+    for link, entry in db.execute(
+        select(OidcLink, OidcProvider).join(OidcProvider, OidcProvider.id == OidcLink.provider_id)
+        .order_by(OidcProvider.position, OidcProvider.id)
+    ):
+        linked.setdefault(link.account_id, []).append({"id": entry.id, "slug": entry.slug, "label": entry.label})
     return [
-        {**account_view(row), "spaces": spaces.get(row.id, 0), "locked": accounts.is_locked(row)}
+        {**account_view(row), "spaces": spaces.get(row.id, 0), "locked": accounts.is_locked(row),
+         "providers": linked.get(row.id, [])}
         for row in db.scalars(select(AccountRow).order_by(AccountRow.created_at))
     ]
 
