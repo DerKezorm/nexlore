@@ -362,6 +362,22 @@ def test_unlinking_keeps_an_own_address(
     assert me["email"] == "anna@example.com" and me["email_source"] == "own" and me["provider_email"] == ""
 
 
+def test_the_providers_address_is_no_longer_offered_once_the_provider_is_gone(
+    client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
+) -> None:
+    mail_ready()
+    entry = add_provider(client, provider, auto_create=False)
+    anna = person("anna")
+    anna.put("/api/me/email", json={"address": "anna@example.com"})
+    confirm(postbox.link("anna@example.com"))
+    link(anna, provider, "anna-1", email="anna.sso@example.com")
+    assert anna.get("/api/auth/me").json()["provider_email"] == "anna.sso@example.com"
+    # The operator removes the provider with its links: nothing is left to take the address from.
+    assert client.delete(f"/api/oidc/admin/providers/{entry['id']}", headers=UI).status_code == 200
+    me = anna.get("/api/auth/me").json()
+    assert me["provider_email"] == "" and me["email"] == "anna@example.com"
+
+
 def test_email_verified_is_never_read_an_address_marked_unconfirmed_counts_like_any_other(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:

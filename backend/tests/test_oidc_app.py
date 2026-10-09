@@ -111,6 +111,13 @@ def test_the_button_of_1_5_becomes_an_entry_the_button_looks_after_and_keeps_its
     _legacy(provider, label="authentik")
     oidc_store.migrate_settings(backup=False)
     assert _entries()[0].managed == ""
+    # An issuer of authentik's form under another name was typed by hand: the button never wrote that name.
+    with SessionLocal() as db:
+        db.query(OidcProvider).delete()
+        db.commit()
+    _legacy(provider, label="Company", issuer=AUTHENTIK_ISSUER)
+    oidc_store.migrate_settings(backup=False)
+    assert _entries()[0].managed == ""
 
 
 def test_without_a_provider_in_the_settings_nothing_is_made(client: TestClient, operator: Account) -> None:
