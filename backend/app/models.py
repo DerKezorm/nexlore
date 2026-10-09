@@ -556,7 +556,8 @@ class SpaceNotice(Base):
     #: The space's name when it happened (kept for the text).
     space_name: Mapped[str] = mapped_column(String(255), default="")
     #: ``invite``, or what the operator did: ``operator_added``, ``operator_role``, ``operator_removed``; and, without
-    #: a space, ``operator_email`` / ``operator_email_removed`` (the address it gave the account, services/emailaddr).
+    #: a space, ``operator_email`` / ``operator_email_removed`` (the address it gave the account, services/emailaddr),
+    #: ``operator_unlinked`` (it took the account's link to the provider named in ``subject``, routers/oidc).
     kind: Mapped[str] = mapped_column(String(24))
     role: Mapped[str] = mapped_column(String(16), default="")
     #: Who did it (a name, kept when the account goes), and whom it concerns.

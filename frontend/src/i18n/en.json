@@ -2261,7 +2261,9 @@
     "seen": "Seen",
     "operator_email": "The operator {{actor}} set your mail address to {{subject}}",
     "operator_email_removed": "The operator {{actor}} removed your mail address",
-    "toProfile": "To the profile"
+    "toProfile": "To the profile",
+    "operator_unlinked": "The operator {{actor}} unlinked your account from {{subject}}",
+    "toSecurity": "To sign-in providers"
   },
   "homeSpace": {
     "title": "Main space",

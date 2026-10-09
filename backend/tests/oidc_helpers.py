@@ -32,6 +32,8 @@ def provider() -> Iterator[fakes.FakeProvider]:
     """A fake provider on a fake network for the whole test."""
     network = fakes.Network()
     fake = network.add(fakes.FakeProvider())
+    # A test that needs a second provider adds it to the same network.
+    fake.network = network  # type: ignore[attr-defined]
     nexoidc.use_transport(network.transport())
     protocol.clear_caches()
     attempt.forget_used_states()

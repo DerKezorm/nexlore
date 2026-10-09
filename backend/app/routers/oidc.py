@@ -50,7 +50,7 @@ from ..deps import (
     reauth_succeeded,
 )
 from ..errors import error
-from ..models import SIGN_IN_PASSWORD
+from ..models import SIGN_IN_PASSWORD, SpaceNotice
 from ..models import Account as AccountRow
 from ..security import SESSION_COOKIE, brake, session_account
 from ..services import accounts, logs, totp
@@ -65,6 +65,8 @@ logger = logging.getLogger("nexlore.oidc")
 
 #: Where the sign-in page asks for the code of nexlore's own second factor after a provider that is not trusted.
 CODE_STEP = "/login?step=code"
+#: The notice an account gets under "New" when the operator unlinked it from a provider.
+NOTICE_UNLINKED = "operator_unlinked"
 #: Codes that cost nothing to produce (a forged return, a braked sender): they do not count against the sender.
 FREE_REFUSALS = ("oidc_state_mismatch", "too_many_attempts", "oidc_not_configured")
 
@@ -333,7 +335,8 @@ def operator_unlink(
 ) -> None:
     with store() as s:
         confirm_operator(request, s.db, operator, payload.current_password)
-        if s.db.get(AccountRow, account_id) is None or s.get_provider(provider_id) is None:
+        entry = s.get_provider(provider_id)
+        if s.db.get(AccountRow, account_id) is None or entry is None:
             raise error("not_found", "Not found.", 404)
         try:
             removed = oidc_accounts.unlink(s, account_id, provider_id)
@@ -341,6 +344,11 @@ def operator_unlink(
             raise error(exc.code, exc.message, 409) from exc
         if not removed:
             raise error("not_found", "Not found.", 404)
+        if account_id != operator.id:
+            # Never unseen (blueprint 01): the account finds it under "New", with the provider's name.
+            s.db.add(SpaceNotice(account_id=account_id, space_id=None, space_name="", kind=NOTICE_UNLINKED,
+                                 actor=operator.name, actor_id=operator.id, subject=entry.label))
+            s.db.commit()
     logger.warning("Operator unlinked account %s from provider %s by=%s", account_id, provider_id, operator.name)
 
 

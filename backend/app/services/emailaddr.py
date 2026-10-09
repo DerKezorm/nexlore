@@ -118,7 +118,7 @@ def pending_of(account: Account, now: datetime | None = None) -> str:
 
 def offer_of(account: Account, db: Session | None = None) -> str:
     """The provider's address, offered in the profile: only for a linked account with a password whose own address
-    differs, and not when the account said no to exactly this one."""
+    differs (or that has none), and not when the account said no to exactly this one."""
     offered = account.provider_email
     if (
         not offered
@@ -285,8 +285,8 @@ def set_by_operator(db: Session, target: Account, address: str, operator: Accoun
 def from_provider(db: Session, account: Account, address: str) -> None:
     """What the provider says at a sign-in or a link (the caller commits). ``email_verified`` is never read (the
     shared blueprint): the address finds nobody, it is only what the account is mailed at. An account through the
-    provider only follows it; a linked account with a password takes it only when it has none, otherwise it is
-    offered in the profile."""
+    provider only follows it; every other account is offered it in the profile, also one without an address of its
+    own, and takes it only when it says so (blueprint 01, "Wer ist das?", last paragraph)."""
     if not address:
         return
     try:
@@ -296,7 +296,7 @@ def from_provider(db: Session, account: Account, address: str) -> None:
     account.provider_email = address
     if same(address, account.email):
         return
-    if account.sign_in != SIGN_IN_OIDC and account.email:
+    if account.sign_in != SIGN_IN_OIDC:
         return
     if taken(db, address, account.id):
         logger.warning("Provider address not taken, another account has it name=%s address=%s",

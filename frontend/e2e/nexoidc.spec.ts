@@ -64,6 +64,8 @@ test('33: sign-in through the provider button ends in a session', async ({ page,
   await row.getByLabel('Password').fill(PASSWORD)
   await row.getByRole('button', { name: 'Link' }).click()
   await expect(ossie).toHaveURL(/\/account\?linked=standin33/)
+  // The provider by the name on its button, not by the short name in the address.
+  await expect(ossie.getByText('Your account is linked to Stand-in 33.')).toBeVisible()
   await expect(ossie.getByTestId('my-providers').locator('li').filter({ hasText: 'Stand-in 33' })).toContainText('Linked')
   await own.close()
 

@@ -170,7 +170,7 @@ export function ProvidersCard({
                     if (event.key === 'ArrowDown') move(index, index + 1)
                   }}
                 >
-                  <Symbol name="move" className="h-4 w-4" />
+                  <Symbol name="grip" className="h-4 w-4" />
                 </button>
               )}
               <span className="min-w-0 flex-1">

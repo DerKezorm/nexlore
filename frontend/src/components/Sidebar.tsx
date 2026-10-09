@@ -994,6 +994,9 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
                       {notice.kind.startsWith('operator_email') && (
                         <Link to="/account#mail" className="rounded-md px-2 py-0.5 text-xs text-accent-300 hover:bg-ink-850">{t('notices.toProfile')}</Link>
                       )}
+                      {notice.kind === 'operator_unlinked' && (
+                        <Link to="/account?tab=security" className="rounded-md px-2 py-0.5 text-xs text-accent-300 hover:bg-ink-850">{t('notices.toSecurity')}</Link>
+                      )}
                     </>
                   )}
                 </div>

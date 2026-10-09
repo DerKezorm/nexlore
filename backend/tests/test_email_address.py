@@ -306,17 +306,69 @@ def link(member: TestClient, provider: FakeProvider, sub: str, **claims: Any) ->
     assert location(back) == "/account?linked=sso", location(back)
 
 
-def test_linking_an_account_without_an_address_takes_the_providers_and_unlinking_takes_it_back(
+def test_an_account_with_a_password_and_no_address_is_offered_the_providers_never_given_it(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
+    """Blueprint 01: only accounts through the provider alone follow its address; every other one is offered it,
+    also one that has none of its own yet."""
     add_provider(client, provider, auto_create=False)
     anna = person("anna")
     link(anna, provider, "anna-1", email="anna.sso@example.com")
     me = anna.get("/api/auth/me").json()
-    assert (me["email"], me["email_source"], me["provider_email"]) == ("anna.sso@example.com", "provider", "")
+    assert (me["email"], me["email_source"], me["provider_email"]) == ("", "", "anna.sso@example.com")
+    # Signing in there again gives nothing either.
+    sign_in_via_oidc(fresh_browser(client), provider, sub="anna-1", email="anna.sso@example.com")
+    assert row("anna").email == ""
+    taken = anna.post("/api/me/email/provider")
+    assert (taken.json()["email"], taken.json()["email_source"]) == ("anna.sso@example.com", "provider")
+    # Unlinked, an address taken from the provider goes along with the link.
     assert anna.delete("/api/oidc/sso/link", headers=UI).status_code == 204
     me = anna.get("/api/auth/me").json()
     assert me["email"] == "" and me["email_source"] == ""
+
+
+def test_an_offered_address_another_account_holds_is_never_taken(
+    client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
+) -> None:
+    add_provider(client, provider, auto_create=False)
+    ben_id = make_account("ben").id
+    client.put(f"/api/accounts/{ben_id}/email", json={"address": "shared@example.com", "current_password": PASSWORD})
+    anna = person("anna")
+    link(anna, provider, "anna-1", email="shared@example.com")
+    assert anna.get("/api/auth/me").json()["provider_email"] == "shared@example.com"
+    refused = anna.post("/api/me/email/provider")
+    assert refused.status_code == 409 and code_of(refused) == "email_taken"
+    assert row("anna").email == "" and row("ben").email == "shared@example.com"
+
+
+def test_removing_the_provider_or_changing_its_issuer_takes_an_address_that_came_from_it(
+    client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
+) -> None:
+    """The links go as if each account had unlinked itself: with the last one, an address from the provider."""
+    from .oidc_helpers import fakes
+
+    entry = add_provider(client, provider, auto_create=True)
+    anna = person("anna")
+    link(anna, provider, "anna-1", email="anna.sso@example.com")
+    anna.post("/api/me/email/provider")
+    sign_in_via_oidc(fresh_browser(client), provider, sub="clara-1", email="clara@example.com",
+                     preferred_username="clara")
+    assert (row("anna").email, row("clara").email) == ("anna.sso@example.com", "clara@example.com")
+    # Another issuer is another provider: its links go, and with them the addresses that came from there.
+    moved = provider.network.add(fakes.FakeProvider("https://moved.example.com", client_id=provider.client_id,
+                                                     client_secret=provider.client_secret))
+    body = {key: entry[key] for key in ("label", "client_id", "scopes", "enabled", "auto_create",
+                                         "trusts_second_factor")}
+    saved = client.put(f"/api/oidc/admin/providers/{entry['id']}", json={**body, "issuer": moved.issuer},
+                       headers=UI)
+    assert saved.status_code == 200 and saved.json()["dropped"] == 2
+    assert (row("anna").email, row("clara").email) == ("", "")
+    # Removing the provider does the same.
+    sign_in_via_oidc(fresh_browser(client), moved, sub="clara-1", email="clara@example.com",
+                     preferred_username="clara")
+    assert row("clara-2").email == "clara@example.com"
+    assert client.delete(f"/api/oidc/admin/providers/{entry['id']}", headers=UI).status_code == 200
+    assert row("clara-2").email == ""
 
 
 def test_a_different_address_at_the_provider_is_offered_never_taken_unasked(
@@ -385,8 +437,7 @@ def test_email_verified_is_never_read_an_address_marked_unconfirmed_counts_like_
     add_provider(client, provider, auto_create=False)
     anna = person("anna")
     link(anna, provider, "anna-1", email="anna.sso@example.com", email_verified=False)
-    me = anna.get("/api/auth/me").json()
-    assert (me["email"], me["email_source"]) == ("anna.sso@example.com", "provider")
+    assert anna.get("/api/auth/me").json()["provider_email"] == "anna.sso@example.com"
 
 
 def test_an_account_through_the_provider_only_follows_it_and_cannot_change_it_here(

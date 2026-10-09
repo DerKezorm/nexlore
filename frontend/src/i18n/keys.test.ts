@@ -52,6 +52,8 @@ describe('translation keys used in the code', () => {
       ...['read', 'write'].flatMap((level) => [`apiTokens.level.${level}`, `apiTokens.levelText.${level}`]),
       ...['30', '90', '365'].map((days) => `apiTokens.lifetimeDays.${days}`),
       ...['mention', 'invite', 'approval', 'tokens', 'tasks', 'operator'].flatMap((occasion) => [`notify.occasion.${occasion}`, `notify.occasionHint.${occasion}`]),
+      // The notices under "New", as the server names their kinds (services/notices, emailaddr, routers/oidc).
+      ...['invite', 'operator_added', 'operator_role', 'operator_removed', 'operator_email', 'operator_email_removed', 'operator_unlinked'].map((kind) => `notices.${kind}`),
       // The server's error codes, which the UI turns into sentences.
       ...[
         'not_found', 'invalid_input', 'sign_in_required', 'locale_unusable', 'internal_error', 'path_invalid',

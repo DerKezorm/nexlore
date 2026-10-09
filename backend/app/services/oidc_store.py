@@ -160,7 +160,7 @@ class SqlStore:
 
     def delete_provider(self, provider_id: int) -> None:
         # Foreign keys are on (db.py), the links would go anyway; said here so that nothing depends on a pragma.
-        self.db.execute(delete(OidcLink).where(OidcLink.provider_id == provider_id))
+        self.drop_links(provider_id)
         self.db.execute(delete(OidcProvider).where(OidcProvider.id == provider_id))
 
     # --- Links -----------------------------------------------------------------------------------------------------
@@ -193,16 +193,23 @@ class SqlStore:
             delete(OidcLink).where(OidcLink.provider_id == provider_id, OidcLink.account_id == account_id)
         )
         removed = bool(result.rowcount)  # type: ignore[attr-defined]
-        if removed and not has_links(self.db, account_id):
-            account = self.db.get(Account, account_id)
-            if account is not None:
-                # No provider left: an address that came from one goes too, an own one stays.
-                emailaddr.unlinked(account)
+        if removed:
+            self._forget_provider_address(account_id)
         return removed
 
     def drop_links(self, provider_id: int) -> int:
+        holders = set(self.db.scalars(select(OidcLink.account_id).where(OidcLink.provider_id == provider_id)))
         result = self.db.execute(delete(OidcLink).where(OidcLink.provider_id == provider_id))
+        for account_id in holders:
+            self._forget_provider_address(account_id)
         return int(result.rowcount or 0)  # type: ignore[attr-defined]
+
+    def _forget_provider_address(self, account_id: int) -> None:
+        """No provider left for the account: an address that came from one goes too, an own one stays."""
+        if not has_links(self.db, account_id):
+            account = self.db.get(Account, account_id)
+            if account is not None:
+                emailaddr.unlinked(account)
 
     def touch_link(self, provider_id: int, subject: str, email: str | None) -> None:
         self.db.execute(

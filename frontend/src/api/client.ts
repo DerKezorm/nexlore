@@ -748,7 +748,14 @@ export type Proposal = {
 /** An invitation into a space by name, or a change the operator made in a space (routers/members.py). */
 export type SpaceNotice = {
   id: number
-  kind: 'invite' | 'operator_added' | 'operator_role' | 'operator_removed' | 'operator_email' | 'operator_email_removed'
+  kind:
+    | 'invite'
+    | 'operator_added'
+    | 'operator_role'
+    | 'operator_removed'
+    | 'operator_email'
+    | 'operator_email_removed'
+    | 'operator_unlinked'
   space: string
   role: string
   actor: string

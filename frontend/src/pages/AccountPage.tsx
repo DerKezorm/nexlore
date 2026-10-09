@@ -57,7 +57,10 @@ export function AccountPage() {
   // The provider whose "Link" was pressed: its row asks for the password.
   const [linking, setLinking] = useState<string | null>(null)
   const linkedSlug = params.get('linked')
-  const [done, setDone] = useState<string | null>(linkedSlug ? t('account.linked', { name: linkedSlug }) : null)
+  // Back from linking: the provider by the name on its button, once the list is there (the address has its slug).
+  const [linkedShown, setLinkedShown] = useState(!!linkedSlug)
+  const linkedLabel = providers.find((entry) => entry.slug === linkedSlug)?.label
+  const [done, setDone] = useState<string | null>(null)
   // Back from the provider with a refusal: only a known sign-in code becomes a sentence.
   const addressError = params.get('error')
   const [problem, setProblem] = useState<string | null>(
@@ -80,6 +83,7 @@ export function AccountPage() {
     setBusy(true)
     setProblem(null)
     setDone(null)
+    setLinkedShown(false)
     try {
       await action()
       setDone(success)
@@ -109,7 +113,11 @@ export function AccountPage() {
         />
         <div aria-live="polite">
           <Problem text={problem} />
-          {done && <p className="rounded-lg border border-ok-500/30 bg-ok-500/10 px-3 py-2 text-sm text-ok-500">{done}</p>}
+          {(done ?? (linkedShown && linkedLabel ? t('account.linked', { name: linkedLabel }) : null)) && (
+            <p className="rounded-lg border border-ok-500/30 bg-ok-500/10 px-3 py-2 text-sm text-ok-500">
+              {done ?? t('account.linked', { name: linkedLabel })}
+            </p>
+          )}
         </div>
 
         {part === 'profile' && (

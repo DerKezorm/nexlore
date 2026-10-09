@@ -2261,7 +2261,9 @@
     "seen": "Gesehen",
     "operator_email": "Der Betreiber {{actor}} hat deine Mailadresse auf {{subject}} gesetzt",
     "operator_email_removed": "Der Betreiber {{actor}} hat deine Mailadresse entfernt",
-    "toProfile": "Zum Profil"
+    "toProfile": "Zum Profil",
+    "operator_unlinked": "Der Betreiber {{actor}} hat die Verknüpfung deines Kontos mit {{subject}} gelöst",
+    "toSecurity": "Zu den Anmeldeanbietern"
   },
   "homeSpace": {
     "title": "Hauptbereich",

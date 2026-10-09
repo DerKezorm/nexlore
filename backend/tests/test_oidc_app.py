@@ -188,6 +188,9 @@ def test_the_account_list_shows_each_accounts_providers_and_the_operator_unlinks
     assert wrong.status_code == 401
     assert client.request("DELETE", address, json={"current_password": PASSWORD}, headers=UI).status_code == 204
     assert client.get("/api/accounts").json()[1]["providers"] == []
+    # Never unseen: anna finds it under "New", with the provider's name and who did it.
+    told = [(item["kind"], item["actor"], item["subject"]) for item in member.get("/api/notices").json()]
+    assert told == [("operator_unlinked", "tester", "SSO")]
     gone = client.request("DELETE", address, json={"current_password": PASSWORD}, headers=UI)
     assert gone.status_code == 404
 
