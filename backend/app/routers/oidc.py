@@ -294,6 +294,10 @@ async def link_start(
     with store() as s:
         row = s.db.get(AccountRow, account.id)
         assert row is not None
+        # The same brake as before start and return (blueprint 02, "Ablauf" 4): a braked sender links nothing.
+        wait = brake.wait_seconds(_brake_key(request))
+        if wait:
+            raise error("too_many_attempts", "Too many attempts. Try again later.", 429, retry_after=wait)
         if row.sign_in != SIGN_IN_PASSWORD:
             raise error("oidc_only_account", "This account has no password; it signs in through a provider.", 409)
         reauth_guard(request, row)

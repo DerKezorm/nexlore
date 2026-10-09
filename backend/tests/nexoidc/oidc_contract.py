@@ -35,6 +35,12 @@ class StandardAdapter:
     #: Callback paths the app's providers knew before the module, with ``{slug}`` (nexbeat
     #: ``/api/auth/oidc/{slug}/callback``); the app routes them to the same return. Empty: none.
     old_callback_paths: tuple[str, ...] = ()
+    #: The account the operator signs in with (its password: ``self.password_for(operator_name)``).
+    operator_name = "operator"
+    #: How the app refuses an operator route: without a session, and to a signed-in member. Override when the app
+    #: answers otherwise (some say 404 to hide a route).
+    anonymous_status: tuple[int, ...] = (401,)
+    member_status: tuple[int, ...] = (403,)
     #: Where a successful sign-in ends, a refused one, and a second factor that is asked.
     home = "/"
     login_page = "/login"
@@ -91,6 +97,11 @@ class StandardAdapter:
         """APP: the app's ``Store`` for one transaction (a context manager)."""
         raise NotImplementedError
 
+    def trip_throttle(self, client: Any) -> None:
+        """APP: make the app's brake hold this browser back (Bauplan 02, "Ablauf" 4), as many failed attempts from
+        its sender would: the next start and the next return are refused with ``too_many_attempts``."""
+        raise NotImplementedError
+
     def set_public_url(self, url: str) -> None:
         """APP: the public address of the app (setting)."""
         raise NotImplementedError
@@ -124,6 +135,8 @@ class StandardAdapter:
             "link": f"{api}/oidc/{values.get('slug')}/link",
             "setup": f"{api}/oidc/authentik/setup",
             "blueprint": f"{api}/oidc/authentik/blueprint",
+            "order": f"{api}/oidc/admin/providers/order",
+            "operator_unlink": f"{api}/oidc/admin/accounts/{values.get('account')}/links/{values.get('provider')}",
         }
         return paths[name]
 
@@ -172,6 +185,34 @@ class StandardAdapter:
 
     def blueprint(self) -> httpx.Response:
         return self.operator().get(self.path("blueprint"))
+
+    def member(self) -> Any:
+        """A browser signed in as a plain member (a new account each time)."""
+        name = f"member{secrets.token_hex(3)}"
+        self.make_account(name)
+        browser = self.browser()
+        self.sign_in_with_password(browser, name)
+        return browser
+
+    def operator_unlink(self, client: Any, account_id: int, provider_id: int, password: str) -> httpx.Response:
+        """The operator removes an account's link, with the operator's own password (Bauplan 01)."""
+        path = self.path("operator_unlink", account=account_id, provider=provider_id)
+        return client.request("DELETE", path, json={"password": password})
+
+    def operator_routes(self, provider_id: int, account_id: int) -> list[tuple[str, str, Any]]:
+        """Every operator route of the module: (method, path, JSON body)."""
+        form = {"label": "x", "issuer": "https://x.example.com", "client_id": "x"}
+        return [
+            ("GET", self.path("providers"), None),
+            ("POST", self.path("providers"), {**form, "slug": "intruder"}),
+            ("PUT", self.path("provider", id=provider_id), form),
+            ("DELETE", self.path("provider", id=provider_id), None),
+            ("GET", self.path("impact", id=provider_id), None),
+            ("PUT", self.path("order"), {"ids": [provider_id]}),
+            ("POST", self.path("setup"), {"url": "https://auth.example.com", "token": "t"}),
+            ("GET", self.path("blueprint"), None),
+            ("DELETE", self.path("operator_unlink", account=account_id, provider=provider_id), {"password": "x"}),
+        ]
 
 
 # --- helpers the tests share ---

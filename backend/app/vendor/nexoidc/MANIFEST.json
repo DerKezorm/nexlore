@@ -1,6 +1,6 @@
 {
   "files": {
-    "backend/app/vendor/nexoidc/__init__.py": "sha256-PUS6ukN/0JmoVcvsvZp2tp7wQVWJn90E25vB0C+l+sI=",
+    "backend/app/vendor/nexoidc/__init__.py": "sha256-x6/N7wfj1shtR29UrvFpt8UGMN20QZalZ4xT2rHLOAY=",
     "backend/app/vendor/nexoidc/accounts.py": "sha256-NsXBEu/gvfumF0ATTjLBFjNoGdeO2o07TguhMVioZbI=",
     "backend/app/vendor/nexoidc/attempt.py": "sha256-+6/Q1D/bqkSv/bsbMS3r4nrV41cre04CSyerq6iynaA=",
     "backend/app/vendor/nexoidc/authentik.py": "sha256-r/zEJ9AHm/xQA3nmLr95w8bEiuoXg062xY/00wdnshU=",
@@ -13,10 +13,11 @@
     "backend/app/vendor/nexoidc/protocol.py": "sha256-TWwGdavG07LbwuLgBwMat5Q766Tq3m+UlZalL9l2Dsw=",
     "backend/app/vendor/nexoidc/providers.py": "sha256-0YexfCU5qllWihaFsQrd1IAULk6ij3cJupjBqLOmQhg=",
     "backend/tests/nexoidc/conftest.py": "sha256-mIgfLrl12RYsWgewrqBIXRct1l0TQwByLm3wINTOA/o=",
-    "backend/tests/nexoidc/oidc_contract.py": "sha256-m+9yn7muBmcunxq+7H53AIQdvJb/Ki2F3zvzSAIvTtI=",
+    "backend/tests/nexoidc/oidc_contract.py": "sha256-y9B0lLZ13PzNN5CHmPra+dtiv5YhjV6H3/hP6sZ7Xjw=",
     "backend/tests/nexoidc/oidc_fakes.py": "sha256-lbo7g/eZzWuWHSqAafTLY8P7JxPzCecEWjNFkzBy59U=",
     "backend/tests/nexoidc/test_nexoidc_accounts.py": "sha256-3f6PyMAAkYinjk37mAoh55imzraZXgJGzJdYTrF4qlU=",
     "backend/tests/nexoidc/test_nexoidc_authentik.py": "sha256-3Pl5FxbmAxOCfT5f+eby7HzYGFYclYtwpg+TOpRAd5k=",
+    "backend/tests/nexoidc/test_nexoidc_duties.py": "sha256-n7dVo76pd9UrutQXC/oXtdZJpKJQe767Nav5aXlgXcI=",
     "backend/tests/nexoidc/test_nexoidc_entra.py": "sha256-Raa/JmWZOlXy3026PUD2PbSaGHV0vPBKasQwi3i2hO4=",
     "backend/tests/nexoidc/test_nexoidc_flow.py": "sha256-nbtkj585+roXrwIUPkOJiY/HLjQIC9IrwP/5OVwqW2Y=",
     "backend/tests/nexoidc/test_nexoidc_paths.py": "sha256-qsdk87kvM5IT3f0Tq4wGoEDSCpPCqBsdS4KARtcY6hU=",
@@ -31,5 +32,5 @@
     "pyjwt": "2.15.1"
   },
   "vendor_path": "backend/app/vendor/nexoidc",
-  "version": "1.0.3"
+  "version": "1.0.4"
 }

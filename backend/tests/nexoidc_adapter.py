@@ -21,10 +21,11 @@ from oidc_contract import StandardAdapter
 from sqlalchemy import select
 
 from app.db import SessionLocal
+from app.deps import normal_address
 from app.main import app
 from app.models import OPERATOR, SIGN_IN_PASSWORD, WRITE, Account, Membership, Space
 from app.routers.auth import PENDING_COOKIE
-from app.security import encrypt_secret, hash_password
+from app.security import Brake, brake, encrypt_secret, hash_password
 from app.services import accounts, oidc_store, settings_service, totp, vault
 
 OPERATOR_NAME = "operator"
@@ -40,6 +41,7 @@ class Adapter(StandardAdapter):
     has_second_factor = True
     legacy_model = "single"
     old_callback_paths: tuple[str, ...] = ()
+    operator_name = OPERATOR_NAME
 
     def start(self) -> None:
         # tests/conftest.py emptied the database and the vault before this test.
@@ -174,3 +176,15 @@ class Adapter(StandardAdapter):
 
     def run_migration(self) -> None:
         oidc_store.migrate_settings(backup=False)
+
+    def trip_throttle(self, client: Any) -> None:
+        # As many failed runs at the provider from this sender as the brake lets pass (every TestClient is the
+        # sender "testclient"): the next start, return and linking wait.
+        key = "oidc:" + normal_address("testclient")
+        for _ in range(Brake.FREE + 1):
+            brake.failed(key)
+
+    def operator_unlink(self, client: Any, account_id: int, provider_id: int, password: str) -> httpx.Response:
+        # nexlore's acts on another account carry the operator's password as ``current_password``.
+        path = self.path("operator_unlink", account=account_id, provider=provider_id)
+        return client.request("DELETE", path, json={"current_password": password})
