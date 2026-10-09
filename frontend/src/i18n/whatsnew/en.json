@@ -308,5 +308,27 @@
       "No two accounts hold the same address.",
       "Without a mail server the address field says why it is locked, and Notifications shows where that is changed."
     ]
+  },
+  "1.5.2": {
+    "lead": "Sign in with Microsoft Entra ID across tenants, and the authentik button keeps a second nexlore's sign-in when it moves.",
+    "sections": [
+      {
+        "title": "Microsoft Entra ID with common",
+        "where": "Settings, Server, Sign-in, OpenID Connect",
+        "body": "nexlore now takes https://login.microsoftonline.com/common/v2.0 or organizations as the issuer. Every token is checked against the tenant it names; a token whose issuer is another tenant, or one without a tenant, is refused. A new account is named after the part of the Microsoft user name before the @. Entra never confirms a mail address, so people from Entra come in by invitation or link their account under My account, Security."
+      },
+      {
+        "title": "The authentik button after a move",
+        "where": "Settings, Server, Sign-in, authentik in one step",
+        "body": "A nexlore that shares its authentik with another one and moved to a new address finds its own provider again by the client ID it stored, whatever it is called there. Provider, application and issuer stay, and every account linked to them keeps its sign-in. Before, the button made a third provider and dropped every link."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "Saving the sign-in settings after the authentik button no longer signs out every account linked to the provider.",
+      "In German the account menu shows the key for commands as Strg P.",
+      "A provider renamed in authentik keeps its new name when the button runs again.",
+      "An application for nexlore's own provider never takes the slug of another provider's application."
+    ]
   }
 }

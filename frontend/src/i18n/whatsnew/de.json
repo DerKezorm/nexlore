@@ -308,5 +308,27 @@
       "Keine Adresse gehört zwei Konten.",
       "Ohne Mailserver sagt das Adressfeld, warum es gesperrt ist, und die Benachrichtigungen zeigen, wo man das ändert."
     ]
+  },
+  "1.5.2": {
+    "lead": "Anmelden mit Microsoft Entra ID über Mandanten hinweg, und der authentik-Knopf erhält einer zweiten nexlore nach dem Umzug ihre Anmeldung.",
+    "sections": [
+      {
+        "title": "Microsoft Entra ID mit common",
+        "where": "Einstellungen, Server, Anmeldung, OpenID Connect",
+        "body": "nexlore nimmt jetzt https://login.microsoftonline.com/common/v2.0 oder organizations als Aussteller. Jedes Token wird gegen den Mandanten geprüft, den es selbst nennt; ein Token, dessen Aussteller ein anderer Mandant ist, oder eines ohne Mandanten wird abgelehnt. Ein neues Konto heißt nach dem Teil des Microsoft-Benutzernamens vor dem @. Entra bestätigt nie eine Mailadresse, also kommt herein, wer eingeladen ist oder sein Konto unter Mein Konto, Sicherheit verknüpft."
+      },
+      {
+        "title": "Der authentik-Knopf nach einem Umzug",
+        "where": "Einstellungen, Server, Anmeldung, authentik in einem Schritt",
+        "body": "Eine nexlore, die sich ihr authentik mit einer zweiten teilt und auf eine neue Adresse umgezogen ist, findet ihren eigenen Provider über die gespeicherte Client-ID wieder, egal wie er dort heißt. Provider, Anwendung und Aussteller bleiben, und jedes verknüpfte Konto behält seine Anmeldung. Vorher legte der Knopf einen dritten Provider an und löste alle Verknüpfungen."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Speichern der Anmeldeeinstellungen nach dem authentik-Knopf löst nicht mehr alle mit dem Anbieter verknüpften Konten.",
+      "Das Kontomenü zeigt die Taste für Befehle auf Deutsch als Strg P.",
+      "Ein in authentik umbenannter Provider behält seinen neuen Namen, wenn der Knopf noch einmal läuft.",
+      "Eine Anwendung für nexlores eigenen Provider nimmt nie den Slug der Anwendung eines anderen Providers."
+    ]
   }
 }
