@@ -317,6 +317,8 @@ function update(tr: Transaction, previous: DecorationSet, old: EditorState, stat
 }
 
 export function livePreview(helpers: () => LinkHelpers) {
+  // The link a press came down on, until its click.
+  let pressed: Element | null = null
   return new Plugin<DecorationSet>({
     key: liveKey,
     state: {
@@ -336,11 +338,32 @@ export function livePreview(helpers: () => LinkHelpers) {
           view.focus()
           return true
         }
-        const link = (event.target as HTMLElement | null)?.closest?.('.nx-wiki[data-target]:not(.nx-wiki-editing)')
-        if (!link || !view.dom.contains(link)) return false
-        event.preventDefault()
-        helpers().open(link.getAttribute('data-target') ?? '', event.ctrlKey || event.metaKey)
-        return true
+        return false
+      },
+      handleDOMEvents: {
+        // A link is decided on the press, not on the release. The press would put the cursor into the link, the
+        // link would turn into text to edit while the button is still down, and the release would find no link to
+        // open: a hand holds a click about 100 ms, enough for that (CI saw it, a mouse held 150 ms showed it).
+        mousedown: (view, event) => {
+          pressed = null
+          if (event.button !== 0) return false
+          const link = (event.target as HTMLElement | null)?.closest?.('.nx-wiki[data-target]:not(.nx-wiki-editing)')
+          if (!link || !view.dom.contains(link)) return false
+          pressed = link
+          event.preventDefault()
+          return true
+        },
+        click: (_view, event) => {
+          const link = pressed
+          pressed = null
+          // Released somewhere else: no click on the link.
+          if (!link || event.button !== 0 || (event.target as HTMLElement | null)?.closest?.('.nx-wiki[data-target]') !== link) {
+            return false
+          }
+          event.preventDefault()
+          helpers().open(link.getAttribute('data-target') ?? '', event.ctrlKey || event.metaKey)
+          return true
+        },
       },
     },
   })

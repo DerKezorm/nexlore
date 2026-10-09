@@ -247,3 +247,17 @@ test('the properties of a note without any fold shut and open again', async ({ p
   await toggle.click()
   await expect(properties.getByRole('button', { name: /Add a property/ })).toBeVisible()
 })
+
+test('a click on a link in the editor opens it, also when the button is held as a hand holds it', async ({ page }) => {
+  // The release used to find the link already turned into text to edit (the press had put the cursor into it), so a
+  // click held 100 ms or more only moved the cursor. Playwright's own click lets go at once and never saw it.
+  await edit(page, 'Work/Ideas/Garden.md')
+  const link = page.locator('.ProseMirror .nx-wiki', { hasText: 'Plan' })
+  await expect(link).toBeVisible()
+  const box = (await link.boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.waitForTimeout(150)
+  await page.mouse.up()
+  await expect(page).toHaveURL(/\/note\/Work\/Plan\.md/)
+})
