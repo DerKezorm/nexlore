@@ -118,7 +118,12 @@ test('the note page shows the neighbourhood, one to three links deep, and leads 
   expect(problems).toEqual([])
 })
 
+// How long the map may take to come to rest. Without a graphics card, under the load of the whole run, it took 8 to 14 s
+// (measured 05.10.2026); the CI for 1.5.2 still saw it moving after 10.
+const SETTLES = 20_000
+
 test('the focus fades the rest in by degrees, the wheel glides, and a note dragged stays where it is dropped', async ({ page }) => {
+  test.slow()
   const problems = collectProblems(page)
   await page.setViewportSize({ width: 1280, height: 800 })
   const canvas = page.getByTestId('graph-canvas')
@@ -138,7 +143,7 @@ test('the focus fades the rest in by degrees, the wheel glides, and a note dragg
   await expect(canvas).toHaveAttribute('data-fade', '1.00')
   const fades = await page.evaluate(() => (window as unknown as { fades: string[] }).fades.map(Number))
   expect(fades.some((value) => value > 0.05 && value < 0.95)).toBe(true)
-  await expect(canvas).toHaveAttribute('data-moving', 'no', { timeout: 10_000 })
+  await expect(canvas).toHaveAttribute('data-moving', 'no', { timeout: SETTLES })
 
   // The wheel: the zoom comes over several frames, not in one jump.
   const box = (await canvas.boundingBox())!
@@ -160,12 +165,12 @@ test('the focus fades the rest in by degrees, the wheel glides, and a note dragg
   // Dragged with the mouse: the note goes along, then stays where it was dropped.
   await page.goto('/?focus=' + encodeURIComponent('Work/Ideas/Garden.md'))
   await expect(page.getByTestId('graph-card').getByRole('heading', { name: 'Garden' })).toBeVisible()
-  await expect(canvas).toHaveAttribute('data-moving', 'no', { timeout: 10_000 })
+  await expect(canvas).toHaveAttribute('data-moving', 'no', { timeout: SETTLES })
   const place = page.getByTestId('graph-places').locator('button[data-place="note"]', { hasText: /^Garden$/ })
   // The list of places follows only a map that stands still; a tile arriving late lets it swing in once more
   // (two rounds in ten, up to some seconds, measured 05.10.2026).
   await expect(place).toHaveCount(1, { timeout: 20_000 })
-  await expect(canvas).toHaveAttribute('data-moving', 'no', { timeout: 10_000 })
+  await expect(canvas).toHaveAttribute('data-moving', 'no', { timeout: SETTLES })
   const where = async () => place.evaluate((button: HTMLElement) => [parseFloat(button.style.left), parseFloat(button.style.top)])
   const [x, y] = await where()
   // The map itself stays: a mouse that held nothing would move the whole map, Garden with it (a mutation passed so).
@@ -178,7 +183,7 @@ test('the focus fades the rest in by degrees, the wheel glides, and a note dragg
   for (let step = 1; step <= 10; step++) await page.mouse.move(box.x + x + step * 4, box.y + y + step * 2)
   await expect(canvas).toHaveAttribute('data-moving', 'yes')
   await page.mouse.up()
-  await expect(canvas).toHaveAttribute('data-moving', 'no', { timeout: 10_000 })
+  await expect(canvas).toHaveAttribute('data-moving', 'no', { timeout: SETTLES })
   // Where the mouse let go (a pixel either way: the grip is where the dot was hit, not its exact middle).
   await expect.poll(async () => {
     const [nx, ny] = await where()
