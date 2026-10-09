@@ -327,6 +327,26 @@ def test_an_account_with_a_password_and_no_address_is_offered_the_providers_neve
     assert me["email"] == "" and me["email_source"] == ""
 
 
+def test_an_address_from_a_provider_stays_while_another_link_holds(
+    client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
+) -> None:
+    from .oidc_helpers import fakes
+
+    add_provider(client, provider, auto_create=False)
+    second = provider.network.add(fakes.FakeProvider("https://second.example.com"))
+    add_provider(client, second, slug="second", label="Second")
+    anna = person("anna")
+    link(anna, provider, "anna-1", email="anna.sso@example.com")
+    assert location(link_via(anna, second, PASSWORD, slug="second", sub="anna-2")) == "/account?linked=second"
+    anna.post("/api/me/email/provider")
+    assert row("anna").email == "anna.sso@example.com"
+    # One link goes, another holds: the address stays; with the last one it goes too.
+    assert anna.delete("/api/oidc/second/link", headers=UI).status_code == 204
+    assert row("anna").email == "anna.sso@example.com"
+    assert anna.delete("/api/oidc/sso/link", headers=UI).status_code == 204
+    assert row("anna").email == ""
+
+
 def test_an_offered_address_another_account_holds_is_never_taken(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
