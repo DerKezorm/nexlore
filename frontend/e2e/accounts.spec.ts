@@ -55,10 +55,10 @@ test('without a session the app sends to the sign-in and back', async ({ browser
   await expect(page).toHaveURL(/\/login\?next=%2Ffiles$/)
   await page.getByLabel('Name').fill(OPERATOR.name)
   await page.getByLabel('Password').fill('a wrong password here')
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page.getByRole('alert')).toHaveText('Name or password is wrong.')
   await page.getByLabel('Password').fill(OPERATOR.password)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page).toHaveURL(/\/files$/)
   // The setup is done: its page leads to the app.
   await page.goto('/setup')

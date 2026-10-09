@@ -63,7 +63,7 @@ async function signIn(page: Page, name: string): Promise<void> {
   await page.goto('/login')
   await page.getByLabel('Name').fill(name)
   await page.getByLabel('Password').fill(PASSWORD)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
 }
 
 test('an account sets up its second factor and signs in with it', async ({ page, browser, baseURL }) => {
@@ -96,10 +96,10 @@ test('an account sets up its second factor and signs in with it', async ({ page,
   await signIn(own, 'factor')
   await expect(own.getByRole('heading', { name: 'Second factor' })).toBeVisible()
   await own.getByLabel('Code from the app').fill('000000')
-  await own.getByRole('button', { name: 'Sign in' }).click()
+  await own.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(own.getByRole('alert')).toContainText('The code is not right.')
   await own.getByLabel('Code from the app').fill(codes[0])
-  await own.getByRole('button', { name: 'Sign in' }).click()
+  await own.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(own).toHaveURL(/\/$/)
   await own.goto('/account?tab=security')
   await expect(own.getByTestId('second-factor')).toContainText('On. 7 recovery codes left.')
@@ -192,7 +192,7 @@ test('too many wrong codes lead back to the password', async ({ page, browser, b
   await signIn(own, 'guessed')
   for (let attempt = 0; attempt < 5; attempt++) {
     await own.getByLabel('Code from the app').fill('000000')
-    await own.getByRole('button', { name: 'Sign in' }).click()
+    await own.getByRole('button', { name: 'Sign in', exact: true }).click()
     await expect(own.getByRole('alert')).toBeVisible()
   }
   await expect(own.getByRole('alert')).toContainText('Too many wrong codes, or too long a wait.')

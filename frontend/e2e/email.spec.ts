@@ -87,7 +87,7 @@ async function signIn(browser: Browser, name: string): Promise<Page> {
   await page.goto('/login')
   await page.getByLabel('Name').fill(name)
   await page.getByLabel('Password').fill(PASSWORD)
-  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page).toHaveURL(/\/$/)
   return page
 }
