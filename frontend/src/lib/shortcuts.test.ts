@@ -53,3 +53,26 @@ describe('own keys', () => {
     expect(shownCombo('Alt+Shift+N', false, 'de')).toBe('Alt + Umschalt + N')
   })
 })
+
+describe('keys shown in the interface', () => {
+  // Every component's source, to find keys written out by hand: "Ctrl P" in the account menu stayed English in the
+  // German interface, where the family writes "Strg P".
+  const sources = import.meta.glob('../**/*.tsx', { eager: true, query: '?raw', import: 'default' }) as Record<string, string>
+
+  it('reads the components at all', () => {
+    expect(Object.keys(sources).length).toBeGreaterThan(50)
+  })
+
+  it('writes no Ctrl by hand into a kbd, it goes through shownCombo or the language files', () => {
+    const fixed = Object.entries(sources)
+      .filter(([file]) => !file.includes('.test.'))
+      .flatMap(([file, text]) => [...text.matchAll(/<kbd\b[^>]*>\s*(Ctrl|Strg|Control)\b/g)].map(() => file))
+    expect(fixed).toEqual([])
+  })
+
+  it('writes Ctrl as Strg in German and keeps the rest of the combination', () => {
+    expect(shownCombo('Ctrl P', false, 'de')).toBe('Strg P')
+    expect(shownCombo('Ctrl P', false, 'en')).toBe('Ctrl P')
+    expect(shownCombo('Ctrl Shift F', false, 'de')).toBe('Strg Umschalt F')
+  })
+})

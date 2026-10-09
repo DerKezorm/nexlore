@@ -82,7 +82,8 @@ from one space into another that only resolve for people who may read both.*
   manage. Links may lead into another space (`[[Team/Note]]`) and resolve only for whoever may read it. What
   somebody may not read does not show up anywhere, not in search, graph, backlinks or tasks, not even its title.
 - **Sign-in** with a password and optionally a second factor (codes from an authenticator app, recovery codes), or
-  through OpenID Connect (with a one-button setup for authentik). Invitations by link or by mail. Every account
+  through OpenID Connect (with a one-button setup for authentik; Microsoft Entra ID also with `common` or
+  `organizations` as the issuer). Invitations by link or by mail. Every account
   has a mail address: entered in the profile it counts once the link mailed to it is opened, the operator can set
   one at once, and an account through the provider follows the provider's.
 - **Public pages**: share a note or a folder as a reading page, with an expiry and a password if you like. Off until

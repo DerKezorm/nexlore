@@ -1309,6 +1309,7 @@
       "off": "Nicht eingerichtet.",
       "redirect": "Weiterleitungsadresse für den Anbieter:",
       "issuer": "Aussteller (Issuer)",
+      "issuerHint": "authentik: https://auth.example.com/application/o/nexlore/. Microsoft Entra ID: https://login.microsoftonline.com/MANDANTEN-ID/v2.0, für mehrere Mandanten common oder organizations. Entra nimmt als Rückleitadresse nur https an (außer localhost) und schickt die Mailadresse nur als optionalen Claim email, nie als bestätigt: Wer über Entra kommt, kommt per Einladung herein oder verknüpft sein Konto unter Mein Konto, Sicherheit.",
       "clientId": "Client-ID",
       "secret": "Client-Geheimnis",
       "secretKept": "gespeichert, leer lassen zum Behalten",

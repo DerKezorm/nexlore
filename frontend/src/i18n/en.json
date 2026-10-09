@@ -1309,6 +1309,7 @@
       "off": "Not set up.",
       "redirect": "Redirect address for the provider:",
       "issuer": "Issuer",
+      "issuerHint": "authentik: https://auth.example.com/application/o/nexlore/. Microsoft Entra ID: https://login.microsoftonline.com/TENANT-ID/v2.0, or common or organizations for several tenants. Entra takes only https redirect addresses (localhost aside) and sends the email address only as the optional claim email, never as confirmed: people from Entra come in by invitation or link their account under My account, Security.",
       "clientId": "Client ID",
       "secret": "Client secret",
       "secretKept": "stored, leave empty to keep it",

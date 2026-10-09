@@ -27,6 +27,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urlsplit
@@ -209,6 +210,11 @@ async def _flow(api: _Api, designation: str, preferred: str) -> Any:
     return _pk(results[0], "flow")
 
 
+#: The slug in an issuer this button stored: ``<authentik>/application/o/<slug>/``.
+#: Letters of either case, digits, dashes and underscores: what authentik allows in a slug.
+_ISSUER_SLUG = re.compile(r"/application/o/([-A-Za-z0-9_]+)/?$")
+
+
 def _instance_names(redirect_uri: str) -> tuple[str, str]:
     """Name and slug of this instance when another nexlore at the same authentik holds the plain names already."""
     host = urlsplit(redirect_uri).netloc.lower()
@@ -216,19 +222,92 @@ def _instance_names(redirect_uri: str) -> tuple[str, str]:
     return f"{NAME} ({host})", f"{SLUG}-{suffix}"
 
 
+#: How many slugs the button tries for a new application of its own provider before it gives up.
+SLUG_TRIES = 10
+
+
+async def _application_by_slug(api: _Api, slug: str) -> dict[str, Any] | None:
+    """The application with this slug. Asked for the full list: otherwise authentik shows only the applications the
+    token's user may open, and one of them would look missing."""
+    return await api.find_one("/core/applications/", {"slug": slug, "superuser_full_list": "true"}, "slug", slug)
+
+
+#: German letters written out as German does; everything else loses its accents (NFKD) on the way to a slug.
+_SPELLED_OUT = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"})
+
+
+def _ascii(text: str) -> str:
+    return unicodedata.normalize("NFKD", text.translate(_SPELLED_OUT)).encode("ascii", "ignore").decode("ascii")
+
+
+async def _free_slug(api: _Api, name: str, pk: str) -> str:
+    """A slug for a new application of the own provider: from its name, then with the provider's number added, then
+    counted on. A slug is free when no application has it or the one there has no provider or this one; an
+    application of another provider is never taken."""
+    base = re.sub(r"[^a-z0-9]+", "-", _ascii(name.lower())).strip("-")[:50] or SLUG
+    tries = [base, f"{base}-{pk}"] + [f"{base}-{pk}-{number}" for number in range(2, SLUG_TRIES)]
+    for candidate in tries:
+        taken = await _application_by_slug(api, candidate)
+        if taken is None or str(taken.get("provider") or "") in ("", pk):
+            return candidate
+    raise StepFailed(f"every slug from {base!r} to {tries[-1]!r} belongs to an application of another provider")
+
+
+async def _own_names(db: Session, api: _Api) -> tuple[str, str] | None:
+    """Name and slug of what this nexlore signed in with so far, or None when authentik holds nothing of it.
+
+    The provider is its own when it carries the client id stored here: it keeps the name authentik has for it, and the
+    slug of its application, so the issuer stays. The slug in the stored issuer counts only for an application of that
+    very provider; an application that belongs to another one is somebody else's, even when the issuer names it. An own
+    provider without an application keeps its name and gets one back, never a second provider beside it. When
+    the own provider is gone but the application the issuer names is still there without one, the provider is made
+    again for it under the application's name: the issuer stays too."""
+    found = _ISSUER_SLUG.search(str(settings_service.get(db, "oidc_issuer") or ""))
+    slug = found.group(1) if found else ""
+    named = await _application_by_slug(api, slug) if slug else None
+    own_client = str(settings_service.get(db, "oidc_client_id") or "")
+    own = None
+    if own_client:
+        own = await api.find_one("/providers/oauth2/", {"client_id": own_client}, "client_id", own_client)
+    if own is not None:
+        pk, name = str(own.get("pk") or ""), str(own.get("name") or NAME)
+        # authentik names the application a provider is assigned to in the provider's own answer; its application
+        # list cannot be filtered by provider, and a search through it would see the first page only.
+        assigned = str(own.get("assigned_application_slug") or "")
+        if assigned:
+            return name, assigned
+        # The own provider has no application: never a second provider. The application comes back under the slug
+        # the issuer names when that one is free (none there, or there without a provider), so the issuer stays;
+        # otherwise under a slug of the provider's own name.
+        if slug and (named is None or not named.get("provider")):
+            return name, slug
+        return name, await _free_slug(api, name, pk)
+    if named is not None and not named.get("provider"):
+        name = str(named.get("name") or NAME)
+        # A provider of that name is another instance's: the own one is gone, and taking it would bend that one.
+        if await api.find_one("/providers/oauth2/", {"name": name}, "name", name) is None:
+            return name, slug
+    return None
+
+
 async def _names(db: Session, api: _Api, redirect_uri: str) -> tuple[str, str]:
-    """The plain names, unless a provider of that name sends people back to another address and is not the one
-    this nexlore signs in with: then a second instance is at work here, and taking the plain names would break the
-    first one's sign-in. A provider whose client id this nexlore has stored is its own, even under a new address
-    (the operator moved nexlore and runs the button again)."""
+    """The names of the provider and application to make or update.
+
+    First what this nexlore signed in with so far (``_own_names``): its provider and application, whatever their
+    names and wherever they send people back to (the operator moved nexlore and runs the button again). Their names
+    stay, so the issuer stays; a new provider would change it and loosen every account bound to the old one. This holds
+    for the plain names and for those of a second instance (``nexlore (old host)``).
+
+    Without them: the plain names, unless a provider of that name sends people back to another address. Then a second
+    instance of the app is at work here, and taking the plain names would break the first one's sign-in."""
+    names = await _own_names(db, api)
+    if names is not None:
+        return names
     existing = await api.find_one("/providers/oauth2/", {"name": NAME}, "name", NAME)
     if existing is None:
         return NAME, SLUG
     urls = {str(entry.get("url", "")) for entry in existing.get("redirect_uris") or [] if isinstance(entry, dict)}
     if not urls or redirect_uri in urls:
-        return NAME, SLUG
-    own_client = str(settings_service.get(db, "oidc_client_id") or "")
-    if own_client and own_client == str(existing.get("client_id") or ""):
         return NAME, SLUG
     return _instance_names(redirect_uri)
 
@@ -268,7 +347,7 @@ async def _provider(
 
 async def _application(api: _Api, provider_pk: Any, name: str = NAME, slug: str = SLUG) -> str:
     body = {"name": name, "slug": slug, "provider": provider_pk}
-    existing = await api.find_one("/core/applications/", {"slug": slug}, "slug", slug)
+    existing = await _application_by_slug(api, slug)
     if existing is None:
         await api.call("POST", "/core/applications/", body=body)
         return f"created the application {slug!r}"

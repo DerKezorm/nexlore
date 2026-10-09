@@ -437,7 +437,7 @@ export function SignInCard({ settings, onChange }: { settings: ServerSettings; o
           }, t('common.saved'))
         }}
       >
-        <Input label={t('admin.oidc.issuer')} value={form.issuer} onChange={(issuer) => setForm({ ...form, issuer })} placeholder="https://auth.example.com/application/o/nexlore/" className="sm:col-span-2" />
+        <Input label={t('admin.oidc.issuer')} value={form.issuer} onChange={(issuer) => setForm({ ...form, issuer })} placeholder="https://auth.example.com/application/o/nexlore/" hint={t('admin.oidc.issuerHint')} className="sm:col-span-2" />
         <Input label={t('admin.oidc.clientId')} value={form.client_id} onChange={(client_id) => setForm({ ...form, client_id })} />
         <Input
           label={t('admin.oidc.secret')}

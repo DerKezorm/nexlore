@@ -7,6 +7,7 @@ import { draftsApi, mcpApi, proposalsApi, type DraftInfo, type Proposal } from '
 import { REQUESTS_EVENT } from '../lib/mcpRequests'
 import { languageOptions, type LanguageOption } from '../i18n'
 import { askPalette } from '../lib/commands'
+import { shownCombo } from '../lib/shortcuts'
 import { usePeople } from '../lib/people'
 import { noteUrl } from '../lib/vault'
 import { useAuth } from '../state/auth'
@@ -214,7 +215,7 @@ export function AccountMenu() {
           </Link>
           <button type="button" onClick={() => { setOpen(false); askPalette() }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-mist-300 hover:bg-ink-850 hover:text-mist-100">
             <Symbol name="command" /> {t('palette.menu')}
-            <kbd className="ml-auto hidden rounded border border-ink-700 px-1.5 text-[11px] text-mist-500 sm:inline">Ctrl P</kbd>
+            <kbd className="ml-auto hidden rounded border border-ink-700 px-1.5 text-[11px] text-mist-500 sm:inline">{shownCombo('Ctrl P', undefined, i18n.language)}</kbd>
           </button>
           {/* On a phone the header keeps the four daily places; the files live here. */}
           <Link to="/files" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-mist-300 hover:bg-ink-850 hover:text-mist-100 sm:hidden">

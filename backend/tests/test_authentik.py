@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 from app.db import SessionLocal
 from app.main import app
 from app.models import Account
+from app.security import encrypt_secret
 from app.services import authentik, oidc, settings_service
 
 from .conftest import make_account, sign_in
@@ -58,6 +59,13 @@ class FakeAuthentik:
     #: The address the existing provider "nexlore" sends people back to, and the client id it carries.
     provider_redirect: str = ""
     provider_client: str = "generated-client-id"
+    #: More providers, each with its application: ``{"pk", "name", "client_id", "redirect", "slug"}``. The provider
+    #: of another instance, or this one's own under a name with the host added.
+    others: list[dict] = field(default_factory=list)
+    #: Applications on their own: ``{"slug", "name", "provider"}``, the provider a pk or None (its provider is gone).
+    apps: list[dict] = field(default_factory=list)
+    #: How many applications one page of the list holds; None: all on one page.
+    page_size: int | None = None
     calls: list[Recorded] = field(default_factory=list)
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
@@ -69,7 +77,7 @@ class FakeAuthentik:
         self.calls.append(Recorded(method, path, query, request.headers.get("authorization", ""), body))
         if self.fail and (method, path) == self.fail[:2]:
             return httpx.Response(self.fail[2], text="<html>authentik error page</html>")
-        if path.startswith("/application/o/nexlore") and path.endswith("/.well-known/openid-configuration"):
+        if path.startswith("/application/o/") and path.endswith("/.well-known/openid-configuration"):
             if not self.discovery_ok:
                 return httpx.Response(404, text="not found")
             issuer = f"{URL}{path.removesuffix('.well-known/openid-configuration')}"
@@ -84,6 +92,8 @@ class FakeAuthentik:
             )
         if not path.startswith("/api/v3/"):
             return httpx.Response(404)
+        if request.headers.get("authorization") == "Bearer expired-token":
+            return httpx.Response(401, json={"detail": "Token invalid/expired"})
         if request.headers.get("authorization") != f"Bearer {TOKEN}":
             return httpx.Response(403, json={"detail": "Authentication credentials were not provided."})
         return self._api(method, path[len("/api/v3") :], query, body)
@@ -124,18 +134,52 @@ class FakeAuthentik:
             rows = [{"pk": 7, "name": "nexlore", "client_id": self.provider_client}] if "provider" in self.existing else []
             if rows and self.provider_redirect:
                 rows[0]["redirect_uris"] = [{"matching_mode": "strict", "url": self.provider_redirect}]
-            if "name" in query:
-                rows = [row for row in rows if row["name"] == query["name"]]
+            rows += [
+                {"pk": other["pk"], "name": other["name"], "client_id": other["client_id"],
+                 "redirect_uris": [{"matching_mode": "strict", "url": other["redirect"]}]}
+                for other in self.others
+            ]
+            # As authentik's provider serializer: the application a provider is assigned to, by slug and name.
+            for row in rows:
+                assigned = next((app for app in self._applications() if str(app["provider"]) == str(row["pk"])), None)
+                row["assigned_application_slug"] = assigned["slug"] if assigned else ""
+                row["assigned_application_name"] = assigned["name"] if assigned else ""
+            for key in ("name", "client_id"):
+                if key in query:
+                    rows = [row for row in rows if row[key] == query[key]]
             return httpx.Response(200, json={"results": rows})
         if (method, path) in (("POST", "/providers/oauth2/"), ("PATCH", "/providers/oauth2/7/")):
             status = 201 if method == "POST" else 200
-            return httpx.Response(status, json={**body, "pk": 7, "client_id": "generated-client-id", "client_secret": "generated-secret"})
+            client = "generated-client-id" if method == "POST" else self.provider_client
+            return httpx.Response(status, json={**body, "pk": 7, "client_id": client, "client_secret": "generated-secret"})
+        for other in self.others:
+            if (method, path) == ("PATCH", f"/providers/oauth2/{other['pk']}/"):
+                return httpx.Response(200, json={**body, "pk": other["pk"], "client_id": other["client_id"],
+                                                  "client_secret": "generated-secret"})
+            if other["slug"] and (method, path) == ("PATCH", f"/core/applications/{other['slug']}/"):
+                return httpx.Response(200, json={**body, "pk": f"app-{other['pk']}"})
+        for lone in self.apps:
+            if (method, path) == ("PATCH", f"/core/applications/{lone['slug']}/"):
+                return httpx.Response(200, json={**body, "pk": f"app-{lone['slug']}"})
         if (method, path) == ("GET", "/core/applications/"):
-            rows = [{"pk": "app-uuid", "slug": "nexlore", "name": "nexlore"}] if "application" in self.existing else []
-            return httpx.Response(200, json={"results": rows})
+            # authentik lists only what the token's user may open, unless asked for the full list; it filters by slug
+            # (and name, launch URL and a few more), never by provider: an unknown filter is ignored.
+            if query.get("superuser_full_list") != "true":
+                return httpx.Response(200, json={"results": []})
+            rows = self._applications()
+            if "slug" in query:
+                rows = [row for row in rows if row["slug"] == query["slug"]]
+            return httpx.Response(200, json={"results": rows[: self.page_size]})
         if (method, path) in (("POST", "/core/applications/"), ("PATCH", "/core/applications/nexlore/")):
             return httpx.Response(201 if method == "POST" else 200, json={**body, "pk": "app-uuid"})
         return httpx.Response(404, json={"detail": f"no fake answer for {method} {path}"})
+
+    def _applications(self) -> list[dict]:
+        rows = [{"pk": "app-uuid", "slug": "nexlore", "name": "nexlore", "provider": 7}] if "application" in self.existing else []
+        rows += [{"pk": f"app-{other['pk']}", "slug": other["slug"], "name": other["name"], "provider": other["pk"]}
+                 for other in self.others if other["slug"]]
+        rows += [{"pk": f"app-{lone['slug']}", **lone} for lone in self.apps]
+        return rows
 
 
 @pytest.fixture
@@ -369,3 +413,407 @@ def test_its_own_provider_keeps_the_plain_names(client: TestClient, operator: Ac
     assert ("PATCH", "/api/v3/providers/oauth2/7/") in methods, "moved, still its own: updated"
     assert ("PATCH", "/api/v3/core/applications/nexlore/") in methods
     assert result["issuer"] == ISSUER
+
+
+OLD_HOST = "old.example.com"
+OWN_SLUG = "nexlore-old-example-com"
+OWN_ISSUER = f"{URL}/application/o/{OWN_SLUG}/"
+
+
+def configured_as(issuer: str, client_id: str) -> int:
+    """nexlore set up by an earlier run of the button, with one account bound to the provider; returns its id."""
+    with SessionLocal() as db:
+        settings_service.save(db, {"oidc_issuer": issuer, "oidc_client_id": client_id,
+                                   "oidc_client_secret_enc": encrypt_secret("old-secret"), "oidc_provider_name": "authentik"})
+        db.commit()
+    member = make_account("bound")
+    with SessionLocal() as db:
+        row = db.get(Account, member.id)
+        assert row is not None
+        row.oidc_subject = "subject-1"
+        db.commit()
+    return member.id
+
+
+def test_a_second_instance_keeps_its_own_provider_after_a_move(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """The second nexlore at an authentik has a provider named after its old host. Moved to a new address, it finds
+    that provider by the client id it stored and updates it: no third provider, the issuer stays, nobody's sign-in
+    is dropped."""
+    fake.existing = {"cert", "mapping", "provider", "application"}
+    fake.provider_redirect = "https://first.example.com/api/oidc/callback"
+    fake.provider_client = "the-first-instance"
+    fake.others = [{"pk": 8, "name": f"nexlore ({OLD_HOST})", "client_id": "own-client",
+                    "redirect": f"https://{OLD_HOST}/api/oidc/callback", "slug": OWN_SLUG}]
+    member = configured_as(OWN_ISSUER, "own-client")
+    result = run_setup(client)
+    assert steps(result) == [(key, True) for key in authentik.STEP_KEYS]
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/providers/oauth2/8/") in methods
+    assert ("PATCH", f"/api/v3/core/applications/{OWN_SLUG}/") in methods
+    assert ("POST", "/api/v3/providers/oauth2/") not in methods
+    assert ("POST", "/api/v3/core/applications/") not in methods
+    assert ("PATCH", "/api/v3/providers/oauth2/7/") not in methods, "the first instance's provider stays"
+    patched = next(call for call in fake.calls if (call.method, call.path) == ("PATCH", "/api/v3/providers/oauth2/8/"))
+    assert patched.body["name"] == f"nexlore ({OLD_HOST})"
+    assert patched.body["redirect_uris"] == [{"matching_mode": "strict", "url": REDIRECT}]
+    assert result["issuer"] == OWN_ISSUER and stored()["oidc_issuer"] == OWN_ISSUER
+    with SessionLocal() as db:
+        assert db.get(Account, member).oidc_subject == "subject-1"  # type: ignore[union-attr]
+
+
+def test_its_own_provider_renamed_in_authentik_keeps_its_name_and_issuer(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """The operator renamed the provider in authentik. Found by the stored client id, it keeps the name it has there,
+    and the slug comes from the stored issuer, so the issuer stays."""
+    fake.existing = {"cert", "mapping", "provider", "application"}
+    fake.provider_redirect = "https://first.example.com/api/oidc/callback"
+    fake.provider_client = "the-first-instance"
+    fake.others = [{"pk": 8, "name": "Whiteboards", "client_id": "own-client",
+                    "redirect": f"https://{OLD_HOST}/api/oidc/callback", "slug": OWN_SLUG}]
+    configured_as(OWN_ISSUER, "own-client")
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/providers/oauth2/8/") in methods
+    assert ("PATCH", f"/api/v3/core/applications/{OWN_SLUG}/") in methods
+    assert ("POST", "/api/v3/providers/oauth2/") not in methods
+    patched = next(call for call in fake.calls if (call.method, call.path) == ("PATCH", "/api/v3/providers/oauth2/8/"))
+    assert patched.body["name"] == "Whiteboards"
+    assert result["issuer"] == OWN_ISSUER
+
+def test_a_stored_client_id_never_takes_over_another_instances_provider(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """The client id stored here belongs to this instance's own provider, not to the one with the plain name, which
+    another instance signs in with. While the own one is there, it is updated; once it is gone from authentik, a new
+    one is made under this host's name and the other instance's provider is still left alone."""
+    fake.existing = {"cert", "mapping", "provider", "application"}
+    fake.provider_redirect = "https://first.example.com/api/oidc/callback"
+    fake.provider_client = "the-first-instance"
+    fake.others = [{"pk": 8, "name": "nexlore (testserver)", "client_id": "own-client", "redirect": REDIRECT,
+                    "slug": "nexlore-testserver"}]
+    configured_as(f"{URL}/application/o/nexlore-testserver/", "own-client")
+    run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/providers/oauth2/8/") in methods
+    assert ("PATCH", "/api/v3/providers/oauth2/7/") not in methods
+    fake.others = []
+    fake.calls.clear()
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/providers/oauth2/7/") not in methods, "never the other instance's provider"
+    assert ("PATCH", "/api/v3/core/applications/nexlore/") not in methods
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/providers/oauth2/"))
+    assert made.body["name"] == "nexlore (testserver)"
+    assert result["issuer"] == f"{URL}/application/o/nexlore-testserver/"
+
+
+def test_its_own_application_keeps_a_slug_with_capitals_and_underscores(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """authentik allows capitals and underscores in a slug. The operator gave the application one; after a move the
+    button still finds its own provider and application by it, and the issuer stays."""
+    fake.existing = {"cert", "mapping", "provider", "application"}
+    fake.provider_redirect = "https://first.example.com/api/oidc/callback"
+    fake.provider_client = "the-first-instance"
+    fake.others = [{"pk": 8, "name": "Boards", "client_id": "own-client",
+                    "redirect": f"https://{OLD_HOST}/api/oidc/callback", "slug": "My_Boards"}]
+    member = configured_as(f"{URL}/application/o/My_Boards/", "own-client")
+    result = run_setup(client)
+    assert steps(result) == [(key, True) for key in authentik.STEP_KEYS]
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/providers/oauth2/8/") in methods
+    assert ("PATCH", "/api/v3/core/applications/My_Boards/") in methods
+    assert ("POST", "/api/v3/providers/oauth2/") not in methods
+    assert ("POST", "/api/v3/core/applications/") not in methods
+    assert result["issuer"] == f"{URL}/application/o/My_Boards/"
+    with SessionLocal() as db:
+        assert db.get(Account, member).oidc_subject == "subject-1"  # type: ignore[union-attr]
+
+
+@pytest.mark.parametrize("name", [f"nexlore ({OLD_HOST})", "Whiteboards"])
+def test_its_own_application_is_found_by_its_provider_when_the_issuer_names_no_slug(
+    client: TestClient, operator: Account, fake: FakeAuthentik, name: str
+) -> None:
+    """The stored issuer was typed by hand and names no slug: the application that belongs to the own provider says
+    which one it is. Never the plain name only because nothing else was readable."""
+    fake.existing = {"cert", "mapping", "provider", "application"}
+    fake.provider_redirect = "https://first.example.com/api/oidc/callback"
+    fake.provider_client = "the-first-instance"
+    fake.others = [{"pk": 8, "name": name, "client_id": "own-client",
+                    "redirect": f"https://{OLD_HOST}/api/oidc/callback", "slug": OWN_SLUG}]
+    fake.page_size = 1
+    configured_as(f"{URL}/issuer-typed-by-hand", "own-client")
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/providers/oauth2/8/") in methods
+    assert ("PATCH", f"/api/v3/core/applications/{OWN_SLUG}/") in methods
+    assert ("PATCH", "/api/v3/core/applications/nexlore/") not in methods
+    assert ("POST", "/api/v3/providers/oauth2/") not in methods
+    assert result["issuer"] == OWN_ISSUER
+
+
+def test_the_stored_issuer_never_bends_another_instances_application(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """The client id belongs to the own provider, but the stored issuer names the slug of the application the first
+    instance signs in with (set by hand or left from before). That application stays as it is; the own provider's
+    application is the one updated."""
+    fake.existing = {"cert", "mapping", "provider", "application"}
+    fake.provider_redirect = "https://first.example.com/api/oidc/callback"
+    fake.provider_client = "the-first-instance"
+    fake.others = [{"pk": 8, "name": f"nexlore ({OLD_HOST})", "client_id": "own-client",
+                    "redirect": f"https://{OLD_HOST}/api/oidc/callback", "slug": OWN_SLUG}]
+    configured_as(ISSUER, "own-client")
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/core/applications/nexlore/") not in methods, "the first instance's application stays"
+    assert ("PATCH", "/api/v3/providers/oauth2/7/") not in methods
+    assert ("PATCH", f"/api/v3/core/applications/{OWN_SLUG}/") in methods
+    assert result["issuer"] == OWN_ISSUER
+
+
+@pytest.mark.parametrize("slug", [OWN_SLUG, "My_Boards"])
+def test_a_deleted_own_provider_comes_back_under_its_application(
+    client: TestClient, operator: Account, fake: FakeAuthentik, slug: str
+) -> None:
+    """The own provider was deleted in authentik, its application is still there without one, and nexlore moved.
+    The button makes the provider again for that application: the issuer stays, and so does every account bound to
+    it. Also for a slug with capitals and underscores, which authentik allows."""
+    fake.existing = {"cert", "mapping", "provider", "application"}
+    fake.provider_redirect = "https://first.example.com/api/oidc/callback"
+    fake.provider_client = "the-first-instance"
+    fake.apps = [{"slug": slug, "name": f"nexlore ({OLD_HOST})", "provider": None}]
+    issuer = f"{URL}/application/o/{slug}/"
+    member = configured_as(issuer, "own-client")
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/providers/oauth2/"))
+    assert made.body["name"] == f"nexlore ({OLD_HOST})"
+    assert ("PATCH", f"/api/v3/core/applications/{slug}/") in methods
+    assert ("PATCH", "/api/v3/providers/oauth2/7/") not in methods
+    assert result["issuer"] == issuer and stored()["oidc_issuer"] == issuer
+    with SessionLocal() as db:
+        assert db.get(Account, member).oidc_subject == "subject-1"  # type: ignore[union-attr]
+
+
+def test_an_application_of_another_provider_is_not_taken_for_a_deleted_own_one(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """The own provider is gone, and the application the stored issuer names now belongs to another provider: that is
+    somebody else's. The button leaves it alone and makes names of its own."""
+    fake.existing = {"cert", "mapping", "provider", "application"}
+    fake.provider_redirect = "https://first.example.com/api/oidc/callback"
+    fake.provider_client = "the-first-instance"
+    fake.apps = [{"slug": OWN_SLUG, "name": f"nexlore ({OLD_HOST})", "provider": 7}]
+    configured_as(OWN_ISSUER, "own-client")
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", f"/api/v3/core/applications/{OWN_SLUG}/") not in methods
+    assert ("PATCH", "/api/v3/providers/oauth2/7/") not in methods
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/providers/oauth2/"))
+    assert made.body["name"] == "nexlore (testserver)"
+    assert result["issuer"] == f"{URL}/application/o/nexlore-testserver/"
+
+
+def test_a_left_application_named_like_another_instances_provider_is_not_taken(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """The own provider is gone and its application is left without one, but it carries the plain name, and the
+    provider of that name signs another instance in. Making the provider again under that name would update that
+    one instead: the button makes names of its own."""
+    fake.existing = {"cert", "mapping", "provider"}
+    fake.provider_redirect = "https://first.example.com/api/oidc/callback"
+    fake.provider_client = "the-first-instance"
+    fake.apps = [{"slug": "nexlore", "name": "nexlore", "provider": None}]
+    configured_as(ISSUER, "own-client")
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/providers/oauth2/7/") not in methods
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/providers/oauth2/"))
+    assert made.body["name"] == "nexlore (testserver)"
+    assert result["issuer"] == f"{URL}/application/o/nexlore-testserver/"
+
+
+def test_an_issuer_without_a_slug_never_adopts_a_left_application(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """The stored issuer was typed by hand and names no slug, and the own provider is gone. A left application under
+    the plain slug is not taken for this instance's by guessing: the button goes by the plain names as on a first
+    run, and the renamed application gets the provider's name."""
+    fake.existing = {"cert", "mapping"}
+    fake.apps = [{"slug": "nexlore", "name": "Whiteboards", "provider": None}]
+    configured_as(f"{URL}/issuer-typed-by-hand", "own-client")
+    result = run_setup(client)
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/providers/oauth2/"))
+    assert made.body["name"] == "nexlore"
+    assert result["issuer"] == ISSUER
+
+
+def own_without_application(fake: FakeAuthentik) -> None:
+    """The plain names belong to the first instance; this one's provider is there, its application is not."""
+    fake.existing = {"cert", "mapping", "provider", "application"}
+    fake.provider_redirect = "https://first.example.com/api/oidc/callback"
+    fake.provider_client = "the-first-instance"
+    fake.others = [{"pk": 8, "name": f"nexlore ({OLD_HOST})", "client_id": "own-client",
+                    "redirect": f"https://{OLD_HOST}/api/oidc/callback", "slug": None}]
+
+
+def test_its_own_provider_without_an_application_gets_it_back_under_the_stored_slug(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """The application was deleted in authentik, the own provider is still there, and nexlore moved. The provider is
+    updated, never a second one made, and the application comes back under the slug the issuer names: the issuer stays,
+    and so does every account bound to it."""
+    own_without_application(fake)
+    member = configured_as(OWN_ISSUER, "own-client")
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/providers/oauth2/8/") in methods
+    assert ("POST", "/api/v3/providers/oauth2/") not in methods
+    assert ("PATCH", "/api/v3/providers/oauth2/7/") not in methods
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/core/applications/"))
+    assert made.body == {"name": f"nexlore ({OLD_HOST})", "slug": OWN_SLUG, "provider": 8}
+    assert result["issuer"] == OWN_ISSUER and stored()["oidc_issuer"] == OWN_ISSUER
+    with SessionLocal() as db:
+        assert db.get(Account, member).oidc_subject == "subject-1"  # type: ignore[union-attr]
+
+
+def test_its_own_provider_without_an_application_takes_a_left_one_under_the_stored_slug(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """The application the issuer names is still there, but without a provider: it is free, and the own one is hung
+    onto it again. Also when the provider was renamed and its name gives another slug: the issuer stays."""
+    own_without_application(fake)
+    fake.others[0]["name"] = "Boards"
+    fake.apps = [{"slug": OWN_SLUG, "name": f"nexlore ({OLD_HOST})", "provider": None}]
+    configured_as(OWN_ISSUER, "own-client")
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/providers/oauth2/8/") in methods
+    assert ("POST", "/api/v3/providers/oauth2/") not in methods
+    assert ("POST", "/api/v3/core/applications/") not in methods
+    patched = next(call for call in fake.calls if (call.method, call.path) == ("PATCH", f"/api/v3/core/applications/{OWN_SLUG}/"))
+    assert patched.body == {"name": "Boards", "slug": OWN_SLUG, "provider": 8}
+    assert result["issuer"] == OWN_ISSUER
+
+
+def test_its_own_provider_without_an_application_never_takes_another_ones(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """The issuer names the application of the first instance. That one stays; the own provider gets a new application
+    under its own name, and still no second provider is made."""
+    own_without_application(fake)
+    configured_as(ISSUER, "own-client")
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/providers/oauth2/8/") in methods
+    assert ("POST", "/api/v3/providers/oauth2/") not in methods
+    assert ("PATCH", "/api/v3/core/applications/nexlore/") not in methods
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/core/applications/"))
+    assert made.body == {"name": f"nexlore ({OLD_HOST})", "slug": OWN_SLUG, "provider": 8}
+    assert result["issuer"] == OWN_ISSUER
+
+
+def test_a_new_application_for_its_own_provider_never_takes_a_slug_in_use(
+    client: TestClient, operator: Account, fake: FakeAuthentik
+) -> None:
+    """The slug the own provider's name gives is held by another provider's application: the new one gets the
+    provider's number added instead of bending that one."""
+    own_without_application(fake)
+    fake.others[0]["name"] = "Boards"
+    fake.apps = [{"slug": "boards", "name": "Boards", "provider": 7}]
+    configured_as(ISSUER, "own-client")
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/core/applications/boards/") not in methods
+    assert ("POST", "/api/v3/providers/oauth2/") not in methods
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/core/applications/"))
+    assert made.body == {"name": "Boards", "slug": "boards-8", "provider": 8}
+    assert result["issuer"] == f"{URL}/application/o/boards-8/"
+
+
+def test_applications_are_looked_up_in_the_full_list(client: TestClient, operator: Account, fake: FakeAuthentik) -> None:
+    """authentik lists only the applications the token's user may open, unless asked for the full list: without it, an
+    application of this instance would look missing and a second one would be made."""
+    own_without_application(fake)
+    fake.apps = [{"slug": OWN_SLUG, "name": f"nexlore ({OLD_HOST})", "provider": None}]
+    configured_as(OWN_ISSUER, "own-client")
+    run_setup(client)
+    lookups = [call for call in fake.calls if (call.method, call.path) == ("GET", "/api/v3/core/applications/")]
+    assert lookups
+    assert all(call.query.get("superuser_full_list") == "true" for call in lookups), [call.query for call in lookups]
+
+
+def test_a_new_application_counts_on_past_slugs_in_use(client: TestClient, operator: Account, fake: FakeAuthentik) -> None:
+    """The slug of the own name and the one with the provider's number added are both held by other providers'
+    applications: the button counts on and never hangs one of them onto its own provider."""
+    own_without_application(fake)
+    fake.others[0]["name"] = "Boards"
+    fake.apps = [{"slug": "boards", "name": "Boards", "provider": 7}, {"slug": "boards-8", "name": "Boards", "provider": 9}]
+    configured_as(ISSUER, "own-client")
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("PATCH", "/api/v3/core/applications/boards/") not in methods
+    assert ("PATCH", "/api/v3/core/applications/boards-8/") not in methods
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/core/applications/"))
+    assert made.body == {"name": "Boards", "slug": "boards-8-2", "provider": 8}
+    assert result["issuer"] == f"{URL}/application/o/boards-8-2/"
+
+
+def test_when_every_slug_is_in_use_the_step_says_so(client: TestClient, operator: Account, fake: FakeAuthentik) -> None:
+    """Every slug the button would try belongs to another provider's application: it stops at the provider step with a
+    reason of its own, before anything is made or changed."""
+    own_without_application(fake)
+    fake.others[0]["name"] = "Boards"
+    slugs = ["boards", "boards-8"] + [f"boards-8-{number}" for number in range(2, 10)]
+    fake.apps = [{"slug": slug, "name": "Boards", "provider": 9} for slug in slugs]
+    configured_as(ISSUER, "own-client")
+    result = run_setup(client)
+    assert steps(result)[-1] == ("provider", False)
+    assert "belongs to an application of another provider" in result["steps"][-1]["detail"]
+    changes = [call for call in fake.calls if call.method in ("POST", "PATCH") and "/core/applications/" in call.path]
+    assert not changes
+    assert not any(call.method in ("POST", "PATCH") and "/providers/oauth2/" in call.path for call in fake.calls)
+
+
+def test_a_left_application_under_a_fallback_slug_is_taken(client: TestClient, operator: Account, fake: FakeAuthentik) -> None:
+    """The slug of the own name is held by another provider's application; under the next one an application was left
+    without a provider. That one is free: the own provider is hung onto it, no new one is made."""
+    own_without_application(fake)
+    fake.others[0]["name"] = "Boards"
+    fake.apps = [{"slug": "boards", "name": "Boards", "provider": 7}, {"slug": "boards-8", "name": "Old boards", "provider": None}]
+    configured_as(ISSUER, "own-client")
+    result = run_setup(client)
+    methods = [(call.method, call.path) for call in fake.calls]
+    assert ("POST", "/api/v3/core/applications/") not in methods
+    assert ("PATCH", "/api/v3/core/applications/boards/") not in methods
+    patched = next(call for call in fake.calls if (call.method, call.path) == ("PATCH", "/api/v3/core/applications/boards-8/"))
+    assert patched.body == {"name": "Boards", "slug": "boards-8", "provider": 8}
+    assert result["issuer"] == f"{URL}/application/o/boards-8/"
+
+
+def test_the_fallback_slug_counts_on_until_one_is_free(client: TestClient, operator: Account, fake: FakeAuthentik) -> None:
+    own_without_application(fake)
+    fake.others[0]["name"] = "Boards"
+    held = ["boards", "boards-8", "boards-8-2", "boards-8-3", "boards-8-4"]
+    fake.apps = [{"slug": slug, "name": "Boards", "provider": 9} for slug in held]
+    configured_as(ISSUER, "own-client")
+    result = run_setup(client)
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/core/applications/"))
+    assert made.body == {"name": "Boards", "slug": "boards-8-5", "provider": 8}
+    assert not any(call.method == "PATCH" and "/core/applications/" in call.path for call in fake.calls)
+    assert result["issuer"] == f"{URL}/application/o/boards-8-5/"
+
+
+def test_a_slug_from_a_name_with_umlauts_spells_them_out(client: TestClient, operator: Account, fake: FakeAuthentik) -> None:
+    """Umlauts and sharp s are written out as German does, other letters lose their accents: no letter falls away."""
+    own_without_application(fake)
+    fake.others[0]["name"] = "Tafel Ü (Büro), Straße, Café"
+    configured_as(ISSUER, "own-client")
+    result = run_setup(client)
+    made = next(call for call in fake.calls if (call.method, call.path) == ("POST", "/api/v3/core/applications/"))
+    assert made.body["slug"] == "tafel-ue-buero-strasse-cafe"
+    assert result["issuer"] == f"{URL}/application/o/tafel-ue-buero-strasse-cafe/"

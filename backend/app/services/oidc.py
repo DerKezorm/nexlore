@@ -67,6 +67,14 @@ TIMEOUT_SECONDS = 10
 #: is "no additional information". The token exchange is the opposite; without it there is no sign-in.
 USERINFO_SECONDS = 5
 
+#: Microsoft Entra ID with ``common`` or ``organizations`` as the issuer: the discovery document names
+#: ``https://login.microsoftonline.com/{tenantid}/v2.0``, a placeholder for the tenant. Every token carries the
+#: real one, the tenant's id from its ``tid`` claim in place of the placeholder. The placeholder itself is never an
+#: issuer anybody can sign in with.
+TENANT_PLACEHOLDER = "{tenantid}"
+#: A tenant id as Entra writes it: a GUID. Anything else in ``tid`` fills in no placeholder.
+_TENANT_ID = re.compile(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
+
 COOKIE_NAME = "nexlore_oidc"
 COOKIE_PATH = "/api/oidc"
 
@@ -211,7 +219,9 @@ async def discovery(issuer_url: str, *, fresh: bool = False) -> dict[str, Any]:
 
     The ``issuer`` inside the document must equal the requested address. The standard demands it, and it is no
     formality: the value is later compared character by character with the ``iss`` of every token. A provider
-    answering under one address and claiming another would silently defeat that check.
+    answering under one address and claiming another would silently defeat that check. The one exception is Entra
+    ID's placeholder (``TENANT_PLACEHOLDER``): asked at ``.../common/v2.0``, it answers ``.../{tenantid}/v2.0``;
+    that matches when the address is the same with any one path segment in the placeholder's place.
     """
     issuer = issuer_url.rstrip("/")
     if not fresh:
@@ -220,7 +230,7 @@ async def discovery(issuer_url: str, *, fresh: bool = False) -> dict[str, Any]:
             return cached[0]
     data = await _fetch_json(f"{issuer}/.well-known/openid-configuration", "provider description")
     reported = str(data.get("issuer") or "").rstrip("/")
-    if reported != issuer:
+    if not _same_issuer(reported, issuer):
         logger.warning("OIDC: provider at %r calls itself %r, refusing the mismatch", issuer, reported)
         raise OidcError("oidc_issuer_mismatch", "The provider reports a different address than configured.")
     missing = [key for key in ("authorization_endpoint", "token_endpoint", "jwks_uri") if not data.get(key)]
@@ -229,6 +239,40 @@ async def discovery(issuer_url: str, *, fresh: bool = False) -> dict[str, Any]:
         raise OidcError("oidc_provider_invalid", "The provider's answer is not understandable.")
     _discovery_cache[issuer] = (data, time.monotonic())
     return data
+
+
+def _same_issuer(reported: str, issuer: str) -> bool:
+    if TENANT_PLACEHOLDER not in reported:
+        return reported == issuer
+    pattern = re.escape(reported).replace(re.escape(TENANT_PLACEHOLDER), "[^/]+")
+    return re.fullmatch(pattern, issuer) is not None
+
+
+def accepted_issuer(description: dict[str, Any], claims: dict[str, Any]) -> str | None:
+    """Who may have issued this token: the issuer of the discovery document, character by character.
+
+    With Entra ID's placeholder (``common``, ``organizations``) the tenant id from the token's own ``tid`` takes its
+    place. The token is signed by then, so ``tid`` is the provider's word, not the browser's; which tenants get in is
+    settled by the app registration there (single or multi tenant). Without a ``tid`` in the form of a tenant id there
+    is no issuer to accept: the placeholder itself never passes.
+    """
+    published = str(description.get("issuer") or "")
+    if TENANT_PLACEHOLDER not in published:
+        return published or None
+    tenant = str(claims.get("tid") or "")
+    if not _TENANT_ID.fullmatch(tenant):
+        return None
+    return published.replace(TENANT_PLACEHOLDER, tenant)
+
+
+def username_from(claims: dict[str, Any]) -> str:
+    """The name a new account starts from. ``preferred_username`` is a full address at some providers (Entra ID sends
+    the UPN, ``max@example.com``): then only the part before the @, else the account would be called
+    ``max-example.com``. Without it the display name."""
+    preferred = str(claims.get("preferred_username") or "").strip()
+    if "@" in preferred:
+        preferred = preferred.split("@", 1)[0]
+    return preferred or str(claims.get("name") or "").strip()
 
 
 def _find_kid(jwks: dict[str, Any], kid: str | None) -> dict[str, Any] | None:
@@ -429,9 +473,10 @@ async def _verify_token(
             key=key,
             algorithms=list(ALGORITHMS),
             audience=client_id,
-            issuer=str(description["issuer"]),
             leeway=CLOCK_LEEWAY,
-            options={"require": list(required)},
+            # The issuer is checked below, after the signature: with Entra's placeholder the accepted one depends on
+            # the token's ``tid``.
+            options={"require": list(required), "verify_iss": False},
         )
     except jwt.PyJWTError as error:
         # ``alg`` belongs in the line: an algorithm outside ALGORITHMS looks like a bad signature otherwise.
@@ -444,6 +489,18 @@ async def _verify_token(
             error,
         )
         raise OidcError("oidc_token_invalid", "The provider's token could not be checked.") from error
+
+    expected = accepted_issuer(description, claims)
+    if expected is None or claims.get("iss") != expected:
+        logger.warning(
+            "OIDC: %s was rejected (alg %r, kid %r, expected issuer %r): issued by %r",
+            purpose,
+            header.get("alg"),
+            header.get("kid"),
+            expected or description.get("issuer"),
+            claims.get("iss"),
+        )
+        raise OidcError("oidc_token_invalid", "The provider's token could not be checked.")
 
     # ``azp`` must be this client whenever it is present (OIDC Core 3.1.3.7). ``jwt.decode`` only checks that
     # our client id occurs in ``aud``; a token the provider issued for another application that merely mentions
@@ -579,7 +636,7 @@ async def verify_id_token(
         )
         verified = False
 
-    name = str(claims.get("preferred_username") or claims.get("name") or "").strip()
+    name = username_from(claims)
     if not name and email:
         name = email.split("@", 1)[0]
     return Identity(
