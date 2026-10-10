@@ -76,7 +76,7 @@ def _state(store: Store, account_id: int) -> AccountState:
         # A link without an account cannot exist (``ON DELETE CASCADE``); a store that loses one is broken.
         raise OidcError("oidc_no_account", f"account {account_id} of a link is gone")
     if state.blocked:
-        raise OidcError("account_blocked", f"account {state.name!r} is blocked")
+        raise OidcError("account_blocked", f"the account is blocked name={state.name}")
     return state
 
 
@@ -122,7 +122,10 @@ def sign_in(store: Store, arrival: Arrival) -> SignedIn:
         raise
     store.commit()
     _log().info(
-        "Account %s created via OIDC provider=%s (%s)", name, provider.slug, "invitation" if invite else "auto_create"
+        "Account created via OIDC provider=%s (%s) name=%s",
+        provider.slug,
+        "invitation" if invite else "auto_create",
+        name,
     )
     return SignedIn(account_id, name, True, False)
 
@@ -154,7 +157,7 @@ def link(store: Store, arrival: Arrival, signed_in_account_id: int | None) -> No
     else:
         store.touch_link(provider.id, identity.subject, identity.email)
     store.commit()
-    _log().info("Account %s linked to provider %s by its owner", state.name, provider.slug)
+    _log().info("OIDC link to provider %s made by its owner name=%s", provider.slug, state.name)
 
 
 def unlink(store: Store, account_id: int, provider_id: int) -> bool:
@@ -167,10 +170,11 @@ def unlink(store: Store, account_id: int, provider_id: int) -> bool:
     if not any(entry.provider_id == provider_id for entry in links):
         return False
     if not state.has_password and len(links) <= 1:
-        raise OidcError("oidc_only_account", f"account {state.name!r} signs in through this provider only")
+        raise OidcError("oidc_only_account", f"the account signs in through this provider only name={state.name}")
     removed = store.remove_link(provider_id, account_id)
     store.commit()
-    _log().info("Account %s unlinked from provider %s", state.name, provider_id)
+    entry = store.get_provider(provider_id)
+    _log().info("OIDC link to provider %s removed name=%s", entry.slug if entry else provider_id, state.name)
     return removed
 
 

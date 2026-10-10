@@ -14,7 +14,8 @@ What lives here (Bauplan "Anmeldung mit OIDC und authentik", parts 01 to 03 and 
 - ``providers``: the provider list, issuer changes, removal;
 - ``migrate``: from one provider in the settings to the list;
 - ``coupling``: nexsuite as the provider of a coupled app, the own entries set aside and back;
-- ``authentik``: the button and the blueprint.
+- ``authentik``: the button and the blueprint;
+- ``tls``: one TLS context for every call, read once outside the event loop (``warm()`` at the app's start).
 
 Only httpx and PyJWT (with cryptography) are needed; nothing from an app is imported.
 """
@@ -39,8 +40,9 @@ from .model import (
     Store,
     secret_context,
 )
+from .tls import warm
 
-__version__ = "1.0.4"
+__version__ = "1.0.6"
 
 __all__ = [
     "CODES",
@@ -66,4 +68,5 @@ __all__ = [
     "current",
     "secret_context",
     "use_transport",
+    "warm",
 ]

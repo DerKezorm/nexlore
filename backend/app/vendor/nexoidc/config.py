@@ -11,6 +11,7 @@ Tests replace the network with ``use_transport(httpx.MockTransport(...))``; noth
 from __future__ import annotations
 
 import re
+import ssl
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -18,6 +19,9 @@ import httpx
 
 #: An app name as it appears in cookie names, key prefixes, authentik names and slugs.
 _APP_NAME = re.compile(r"[a-z][a-z0-9-]{1,30}")
+#: What an instance adds to its cookie names (letters, digits, "_"): two instances on one host with different ports
+#: share their cookies, the browser tells no ports apart (nexcanvas, nextasks, nexbrand: ``cookie_name_suffix()``).
+_COOKIE_SUFFIX = re.compile(r"[A-Za-z0-9_]*")
 #: Where an API lives: ``/api`` for most apps, ``/api/v1`` for apps whose whole API sits there (Bauplan 06).
 _API_PREFIX = re.compile(r"(/[a-z0-9]+)+")
 
@@ -53,12 +57,20 @@ class AppConfig:
     login_page: str = "/login"
     account_page: str = "/account"
     home: str = "/"
+    #: The app's own suffix for every cookie of this instance (``Settings.cookie_name_suffix()`` where the app has
+    #: one), so that a start at a second instance on the same host does not overwrite this one's attempt. "" for none.
+    cookie_suffix: str = ""
+    #: A TLS context of the app's own (with the trusted certificates already read) for every call the module makes;
+    #: None: the module reads one once, in a worker thread (``tls.py``).
+    ssl_context: ssl.SSLContext | None = None
 
     def __post_init__(self) -> None:
         if not _APP_NAME.fullmatch(self.app_name):
             raise ValueError(f"app_name {self.app_name!r} must be lower-case letters, digits and dashes")
         if not _API_PREFIX.fullmatch(self.api_prefix):
             raise ValueError(f"api_prefix {self.api_prefix!r} must look like /api or /api/v1")
+        if not _COOKIE_SUFFIX.fullmatch(self.cookie_suffix):
+            raise ValueError(f"cookie_suffix {self.cookie_suffix!r} takes letters, digits and _ only")
         for page in (self.login_page, self.account_page, self.home):
             if not page.startswith("/") or page.startswith("//"):
                 raise ValueError(f"page {page!r} must be a path of this app")
@@ -69,7 +81,7 @@ class AppConfig:
 
     @property
     def cookie_name(self) -> str:
-        return f"{self.app_name.replace('-', '_')}_oidc"
+        return f"{self.app_name.replace('-', '_')}_oidc{self.cookie_suffix}"
 
     @property
     def cookie_path(self) -> str:

@@ -1,17 +1,18 @@
 {
   "files": {
-    "backend/app/vendor/nexoidc/__init__.py": "sha256-x6/N7wfj1shtR29UrvFpt8UGMN20QZalZ4xT2rHLOAY=",
-    "backend/app/vendor/nexoidc/accounts.py": "sha256-NsXBEu/gvfumF0ATTjLBFjNoGdeO2o07TguhMVioZbI=",
+    "backend/app/vendor/nexoidc/__init__.py": "sha256-IPmz6U/JHXoEPHG8wAzmpIewEd9Lw4bxh1xfwjnGzik=",
+    "backend/app/vendor/nexoidc/accounts.py": "sha256-kLa3b2PQ+U9D+oi8ioawpnmJcXcBPbjuI12atC9kuSE=",
     "backend/app/vendor/nexoidc/attempt.py": "sha256-+6/Q1D/bqkSv/bsbMS3r4nrV41cre04CSyerq6iynaA=",
-    "backend/app/vendor/nexoidc/authentik.py": "sha256-r/zEJ9AHm/xQA3nmLr95w8bEiuoXg062xY/00wdnshU=",
-    "backend/app/vendor/nexoidc/config.py": "sha256-9BJpDKGeZ9Pavj45dbo3eLJeJer98Q+UZZ8cL1Aq6d0=",
+    "backend/app/vendor/nexoidc/authentik.py": "sha256-UfauuRvtpaXyD5OWV9M0eTcWdJxh3Uh0N1aRL+bE9TQ=",
+    "backend/app/vendor/nexoidc/config.py": "sha256-m1Ty43eJrTnrp6l7MGrB94MoXLwtXJh9YioK+LyV0SY=",
     "backend/app/vendor/nexoidc/coupling.py": "sha256-rps2tDJahGdcCrh42h0fK/JonwaAWl9kNz/09rURlhU=",
     "backend/app/vendor/nexoidc/errors.py": "sha256-FJkm7kniZ90gBRPtvZiaWwG7D28vhXpxcGL2G9aPHwQ=",
     "backend/app/vendor/nexoidc/flow.py": "sha256-OgGniHhnSDfaMd4gbOjP7eQgtVWytbD9RFS51nEojY0=",
     "backend/app/vendor/nexoidc/migrate.py": "sha256-csr1voglDGmylfAEsP3h+aPWZ1fu+ohb2ZK+PSpT8uI=",
     "backend/app/vendor/nexoidc/model.py": "sha256-yHQ1CSBO9hW4l0f+YPfgoSYik70qROki5tPY0zu0hgg=",
-    "backend/app/vendor/nexoidc/protocol.py": "sha256-TWwGdavG07LbwuLgBwMat5Q766Tq3m+UlZalL9l2Dsw=",
+    "backend/app/vendor/nexoidc/protocol.py": "sha256-ru3F0jSim8HzkX6BatdHP/QrD99o2o0JrwMYY1VIxy8=",
     "backend/app/vendor/nexoidc/providers.py": "sha256-0YexfCU5qllWihaFsQrd1IAULk6ij3cJupjBqLOmQhg=",
+    "backend/app/vendor/nexoidc/tls.py": "sha256-Qb+c/KKuAA5/bhfRnoB0I6cY8PEchLtC5px4Nh4aGa8=",
     "backend/tests/nexoidc/conftest.py": "sha256-mIgfLrl12RYsWgewrqBIXRct1l0TQwByLm3wINTOA/o=",
     "backend/tests/nexoidc/oidc_contract.py": "sha256-y9B0lLZ13PzNN5CHmPra+dtiv5YhjV6H3/hP6sZ7Xjw=",
     "backend/tests/nexoidc/oidc_fakes.py": "sha256-lbo7g/eZzWuWHSqAafTLY8P7JxPzCecEWjNFkzBy59U=",
@@ -32,5 +33,5 @@
     "pyjwt": "2.15.1"
   },
   "vendor_path": "backend/app/vendor/nexoidc",
-  "version": "1.0.4"
+  "version": "1.0.6"
 }

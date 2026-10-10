@@ -27,7 +27,7 @@ from urllib.parse import quote, urlencode
 import httpx
 import jwt
 
-from . import config
+from . import config, tls
 from .errors import OidcError
 from .model import Identity, Provider
 
@@ -185,10 +185,11 @@ def clear_caches() -> None:
     _jwks_cache.clear()
 
 
-def _client(timeout: float = TIMEOUT_SECONDS) -> httpx.AsyncClient:
+async def _client(timeout: float = TIMEOUT_SECONDS) -> httpx.AsyncClient:
     # A fresh client per operation: the app runs under different event loops in tests, and a sign-in is rare enough
     # that connection reuse buys nothing. Redirects are not followed: a redirect is a misconfiguration to report.
-    return httpx.AsyncClient(timeout=timeout, transport=config.transport())
+    # The TLS context is read once for the module (``tls.py``), never per client and never in the event loop.
+    return httpx.AsyncClient(timeout=timeout, transport=config.transport(), verify=await tls.context())
 
 
 def _content_type(response: httpx.Response) -> str:
@@ -217,7 +218,7 @@ def _as_object(response: httpx.Response, purpose: str, url: str) -> dict[str, An
 
 async def _fetch_json(url: str, purpose: str) -> dict[str, Any]:
     try:
-        async with _client() as client:
+        async with await _client() as client:
             response = await client.get(url)
     except httpx.HTTPError as error:
         _log().warning("OIDC: fetching the %s from %r failed: %r", purpose, url, error)
@@ -377,7 +378,7 @@ async def exchange_code(
         if method == "client_secret_post":
             form["client_secret"] = provider.client_secret
     try:
-        async with _client() as client:
+        async with await _client() as client:
             response = await client.post(url, auth=auth, data=form)
     except httpx.HTTPError as error:
         _log().warning("OIDC: the token exchange at %r could not be sent: %r", url, error)
@@ -534,7 +535,7 @@ async def ask_userinfo(description: dict[str, Any], client_id: str, access_token
     if not isinstance(url, str) or not url:
         return {}
     try:
-        async with _client(USERINFO_SECONDS) as client:
+        async with await _client(USERINFO_SECONDS) as client:
             response = await client.get(url, headers={"Authorization": f"Bearer {access_token}"})
         response.raise_for_status()
         data = await _read_userinfo(description, client_id, response, url)

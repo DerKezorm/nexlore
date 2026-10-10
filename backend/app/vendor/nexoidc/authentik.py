@@ -29,6 +29,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import ssl
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
@@ -36,7 +37,7 @@ from urllib.parse import urlsplit
 
 import httpx
 
-from . import config, flow, protocol, providers
+from . import config, flow, protocol, providers, tls
 from .errors import OidcError
 from .model import (
     DEFAULT_SCOPES,
@@ -144,11 +145,12 @@ class SetupResult:
 class _Api:
     """The few calls the button needs, with the token in the Authorization header and nowhere else."""
 
-    def __init__(self, base_url: str, token: str) -> None:
+    def __init__(self, base_url: str, token: str, verify: ssl.SSLContext) -> None:
         self.base_url = base_url.rstrip("/")
         self._client = httpx.AsyncClient(
             timeout=TIMEOUT,
             transport=config.transport(),
+            verify=verify,
             headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
         )
 
@@ -491,7 +493,7 @@ async def setup(store: Store, base_url: str, token: str, request_base: str) -> S
         if not token.isascii() or not token.isprintable() or any(char.isspace() for char in token):
             # No HTTP header carries it, so no authentik token looks like this (Bauplan 03: reason "malformed").
             raise StepFailed("the token holds characters an HTTP header cannot carry", "malformed", 0)
-        api = _Api(base_url, token)
+        api = _Api(base_url, token, await tls.context())
     except StepFailed as error:
         result.steps.append(Step(STEP_KEYS[0], False, error.detail, error.reason, error.status))
         _log().warning("authentik setup stopped at step %s: %s", STEP_KEYS[0], error.detail)

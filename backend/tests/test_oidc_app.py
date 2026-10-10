@@ -355,3 +355,14 @@ def test_the_button_pressed_again_after_the_migration_keeps_the_old_address_the_
         assert location(back) == "/" and browser.get("/api/auth/me").json()["name"] == "anna"
     finally:
         module.use_transport(None)
+
+
+def test_the_start_of_nexlore_reads_the_tls_context_of_the_sign_in_module_ahead() -> None:
+    """``nexoidc.warm()`` in the lifespan: the first sign-in after a start does not wait for the certificates."""
+    from app.main import app
+    from app.vendor.nexoidc import tls
+
+    tls.forget()
+    assert tls._context is None
+    with TestClient(app):
+        assert tls._context is not None

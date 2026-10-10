@@ -56,6 +56,7 @@ from .routers import v1 as v1_router
 from .routers import vault as vault_router
 from .security import HashingBusy, purge_sessions
 from .services import accounts, backups, graphstore, locales, logs, notify, oidc_store, settings_service, totp, watcher
+from .vendor import nexoidc
 
 logger = logging.getLogger("nexlore")
 
@@ -105,6 +106,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     init_db()
     # The single sign-in provider of the settings becomes the entry "oidc" of the list, once (backup first).
     oidc_store.migrate_settings()
+    # The TLS context of the sign-in module is read once, in a thread, so that the first sign-in does not wait for it.
+    await nexoidc.warm()
     private.tighten_all()
     logs.attach_store(_read_log_mode, _write_log_mode)
     logs.apply_stored_mode()
