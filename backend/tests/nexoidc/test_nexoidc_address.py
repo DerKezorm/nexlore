@@ -120,6 +120,12 @@ def test_38_a_new_public_address_is_reported_and_the_next_run_moves_the_redirect
 WAYS = ("adopt_only", "save_public_url_route")
 
 
+def active_by_hand(adapter: Any, oidc: Any) -> int:
+    """The entries made by hand that are on now (the store's word)."""
+    with adapter.store() as store:
+        return sum(1 for item in store.list_providers() if item.managed == oidc.MANAGED_HAND and item.enabled)
+
+
 @pytest.mark.parametrize("way", WAYS)
 def test_39_saving_the_public_address_asks_first_and_the_card_reports_it_after(
     adapter: Any, oidc: Any, ak: fakes.FakeAuthentik, with_sso: dict, way: str
@@ -150,8 +156,13 @@ def test_39_saving_the_public_address_asks_first_and_the_card_reports_it_after(
     assert adapter.error_code(asked) == "public_url_change"
     question = adapter.error_detail(asked)
     assert question["count"] == 1 and question["address"] == first + callback
-    # The entry made by hand (sso) needs its redirect address changed at its provider: the question says so.
-    assert question["hand"] == 1
+    # The entry made by hand (sso) needs its redirect address changed at its provider: the question says so. In an
+    # app with authentik alone (nexsuite) the button may have switched entries by hand off (since 1.0.8, the app's
+    # rule): then the question counts the ones still on, and no adapter has to switch them on again (1.0.11).
+    if adapter.only_authentik:
+        assert question["hand"] == active_by_hand(adapter, oidc)
+    else:
+        assert question["hand"] == 1 == active_by_hand(adapter, oidc)
     assert adapter.read_public_url().rstrip("/") == first and entry(adapter, "authentik")["redirect_stale"] is False
     # Confirmed: saved, and the card reports what authentik still knows until the button ran again.
     done = save(second, confirm=True)

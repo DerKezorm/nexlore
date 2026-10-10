@@ -646,3 +646,62 @@ def test_the_first_start_with_the_fingerprint_stores_it_takes_nothing_over_and_w
     assert _old()["client"] == "" and _old()["subjects"]["anna"] == "anna-1"
     with SessionLocal() as db:
         assert settings_service.get(db, oidc_store.FINGERPRINT)
+
+
+# --- Module 1.0.11 ------------------------------------------------------------------------------------------------------
+
+
+def test_the_issuer_stays_as_the_older_version_wrote_it_letter_by_letter_through_every_change_and_start(
+    client: TestClient, operator: Account, provider: FakeProvider
+) -> None:
+    """Six older versions compare the issuer character by character: the one authentik writes (with a slash at the
+    end) must come back as it was, after the migration, off and on, a save and a start."""
+    make_account("anna")
+    written = provider.issuer + "/"
+    _legacy(provider, label="authentik", issuer=written, subjects={"anna": "anna-1"})
+    entry = oidc_store.migrate_settings(backup=False)
+    assert entry is not None
+    assert _old()["issuer"] == written
+    _change_entry(client, entry.id, enabled=False)
+    assert _old()["issuer"] == written
+    _change_entry(client, entry.id, enabled=True)
+    assert _old()["issuer"] == written
+    _change_entry(client, entry.id, label="Renamed")
+    assert _old()["issuer"] == written
+    assert oidc_store.migrate_settings() is None
+    old = _old()
+    assert old["issuer"] == written and old["subjects"]["anna"] == "anna-1"
+    # An issuer typed without the slash stays without it.
+    with SessionLocal() as db:
+        settings_service.save(db, {"oidc_issuer": provider.issuer})
+    assert oidc_store.migrate_settings(backup=False) is None
+    assert _old()["issuer"] == provider.issuer
+
+
+def test_a_start_after_a_fingerprint_of_module_1_0_9_makes_a_backup_only_when_the_older_version_changed_something(
+    client: TestClient, operator: Account, provider: FakeProvider
+) -> None:
+    """The fingerprint of 1.0.9 is another form than today's: comparing the two forms would see a change at every
+    first start. ``changes_since`` compares in the stored form, so the backup follows what really changed."""
+    from app.vendor.nexoidc import migrate
+
+    make_account("anna")
+    _legacy(provider, label="Company", subjects={"anna": "anna-1"})
+    assert oidc_store.migrate_settings(backup=False) is not None
+
+    def store_old_form() -> None:
+        with SessionLocal() as db:
+            legacy, subjects = oidc_store.read_legacy(db)
+            settings_service.save(db, {oidc_store.FINGERPRINT: migrate._fingerprint(legacy, subjects, "nexoidc-fp1")})
+
+    store_old_form()
+    kept = len(backups.entries())
+    assert oidc_store.migrate_settings() is None
+    assert len(backups.entries()) == kept
+    # The older version let anna go after that start: taken over, with a backup first.
+    store_old_form()
+    with SessionLocal() as db:
+        accounts.by_name(db, "anna").oidc_subject = ""
+        db.commit()
+    assert oidc_store.migrate_settings() is None
+    assert len(backups.entries()) == kept + 1 and _linked_names() == {}

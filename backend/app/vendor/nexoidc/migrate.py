@@ -310,6 +310,16 @@ def changes(previous: str | None, current: str) -> Changes:
     return Changes(known=True, settings=before.settings != now.settings, accounts=frozenset(touched))
 
 
+def changes_since(previous: str | None, legacy: Legacy, subjects: Iterable[tuple[int, str]]) -> Changes:
+    """What the older version changed since the stored fingerprint ``previous``, read from the old settings and the
+    old column as for ``plan``: the comparison ``resync`` makes, in the form ``previous`` was stored in (one of 1.0.9
+    is compared as 1.0.9 would have). For an app that makes a backup before ``resync`` only when something changed:
+    ``changes_since(...).any``. ``changes`` alone compares two fingerprints of one form and tells nothing across
+    forms."""
+    stored = _read(previous)
+    return changes(previous, _fingerprint(legacy, list(subjects), stored.form if stored else FINGERPRINT_FORM))
+
+
 @dataclass
 class Resync:
     """What ``resync`` did. ``coupled``: nothing, because the app is coupled to nexsuite (the list changes through the
@@ -416,7 +426,7 @@ def resync(
     then names nobody at the entry)."""
     subjects = list(subjects)
     stored = _read(previous)
-    found = changes(previous, _fingerprint(legacy, subjects, stored.form if stored else FINGERPRINT_FORM))
+    found = changes_since(previous, legacy, subjects)
     done = Resync(changes=found)
     entry = store.provider_by_slug(LEGACY_SLUG)
     coupled_now = providers.coupled(store) or (entry is not None and entry.managed == MANAGED_NEXSUITE)
@@ -433,7 +443,8 @@ def resync(
     if found.settings:
         had_provider = stored is not None and stored.provider
         wanted = plan(legacy, sorted(olds.items()), trusts_second_factor=trusts_second_factor)
-        done.anchor = CLOSED if wanted is None else wanted.provider.issuer
+        # The issuer as the older version wrote it (slash and all): it compares its own setting letter by letter.
+        done.anchor = CLOSED if wanted is None else _open(legacy.issuer) or CLOSED
         if wanted is None:
             if entry is not None:
                 store.delete_provider(entry.id)
@@ -493,9 +504,11 @@ _EMPTY = Legacy(issuer="", client_id="", client_secret="")
 
 
 def _open(anchor: str | None) -> str:
-    """The issuer of an open anchor, or "" when it is closed or unknown."""
-    issuer = protocol.normalize_issuer(anchor or "")
-    return "" if not issuer or issuer == CLOSED else issuer
+    """The issuer of an open anchor as the older version wrote it (without spaces around, a slash at the end kept),
+    or "" when it is closed or unknown."""
+    text = (anchor or "").strip()
+    issuer = protocol.normalize_issuer(text)
+    return "" if not issuer or issuer == CLOSED else text
 
 
 def anchor_of(legacy: Legacy | None) -> str:
@@ -504,19 +517,24 @@ def anchor_of(legacy: Legacy | None) -> str:
     comes in through ``resync``, which opens the anchor). Stored by the app before the migration commits."""
     if legacy is None or not _has_provider(legacy):
         return CLOSED
-    return protocol.normalize_issuer(legacy.issuer)
+    return _open(legacy.issuer) or CLOSED
 
 
 def _kept(store: Store, legacy: Legacy, anchor: str | None) -> str:
-    """The anchor when ``resync`` takes no provider over: the stored one; without one (a database migrated before
-    1.0.10) the entry's issuer while the old settings name the same issuer, else ``CLOSED``."""
+    """The anchor when ``resync`` takes no provider over: the stored one, written as the old settings write it now
+    when they name the same issuer (the older version may have written it again with a slash, its button does);
+    without one (a database migrated before 1.0.10) the old settings' issuer while it is the entry's, else
+    ``CLOSED``."""
+    written = _open(legacy.issuer)
     if anchor:
-        return _open(anchor) or CLOSED
+        kept = _open(anchor)
+        if not kept:
+            return CLOSED
+        return written if written and protocol.same_issuer(written, kept) else kept
     entry = store.provider_by_slug(LEGACY_SLUG)
-    written = protocol.normalize_issuer(legacy.issuer)
     if entry is None or entry.managed == MANAGED_NEXSUITE or not written:
         return CLOSED
-    return protocol.normalize_issuer(entry.issuer) if protocol.same_issuer(entry.issuer, written) else CLOSED
+    return written if protocol.same_issuer(entry.issuer, written) else CLOSED
 
 
 @dataclass(frozen=True)
@@ -538,7 +556,8 @@ def way_back(entry: Provider | None, links: Iterable[tuple[int, str]], anchor: s
     (account, subject); ``anchor`` the stored anchor (None or "": none, the way back is closed).
 
     1. The entry on, the provider trusted with the second factor, and the same issuer as the anchor: the entry in
-       full (issuer, client id, secret, name, ``auto_create``), the subjects are its links.
+       full (client id, secret, name, ``auto_create``; the issuer as the anchor writes it, since 1.0.11), the
+       subjects are its links.
     2. The entry off or not trusted, the same issuer: issuer and name stay, client id and secret empty,
        ``auto_create`` off, the subjects are its links. The older version lets nobody in without a client; if it sets
        another issuer up, its own comparison drops the old subjects, and with a new client for the same issuer they
@@ -556,9 +575,12 @@ def way_back(entry: Provider | None, links: Iterable[tuple[int, str]], anchor: s
     if entry is None or not known or not protocol.same_issuer(entry.issuer, known):
         return Mirror(legacy=_EMPTY, subjects={}, anchor=CLOSED)
     button = entry.managed == MANAGED_AUTHENTIK
+    # The issuer as the older version knows it, not the entry's form: most older versions compare their setting
+    # letter by letter when a provider is saved (nexcanvas, nextasks, nexbrand, nextrmnl, nexsift, nexcrate), and
+    # their authentik button writes it with a slash; written without, the button dropped every subject there.
     if entry.enabled and entry.trusts_second_factor:
         legacy = Legacy(
-            issuer=entry.issuer,
+            issuer=known,
             client_id=entry.client_id,
             client_secret=entry.client_secret or "",
             label=entry.label,
@@ -566,5 +588,5 @@ def way_back(entry: Provider | None, links: Iterable[tuple[int, str]], anchor: s
             set_up_by_button=button,
         )
     else:
-        legacy = Legacy(issuer=entry.issuer, client_id="", client_secret="", label=entry.label, set_up_by_button=button)
+        legacy = Legacy(issuer=known, client_id="", client_secret="", label=entry.label, set_up_by_button=button)
     return Mirror(legacy=legacy, subjects=_subjects_of(links), anchor=known)

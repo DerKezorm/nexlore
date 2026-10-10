@@ -459,7 +459,7 @@ def _take_over(*, backup: bool) -> None:
     with SessionLocal() as db:
         legacy, subjects = read_legacy(db)
         previous = str(settings_service.get(db, FINGERPRINT) or "") or None
-        found = migrate.changes(previous, migrate.fingerprint(legacy, subjects))
+        found = migrate.changes_since(previous, legacy, subjects)
     if found.any and backup:
         from . import backups
 

@@ -57,7 +57,7 @@
       "noAddress": "No public address yet. You reach {{app}} at this address right now, and authentik leads back to it after sign-in:",
       "adopt": "Use it and set up",
       "adoptOnly": "Use it only",
-      "proxyWarning": "The server receives this request as {{address}}. If {{app}} runs behind a proxy, the proxy has to pass on the scheme (X-Forwarded-Proto) and {{app}} has to trust it (--forwarded-allow-ips).",
+      "proxyWarning": "The server receives this request as {{address}}. If {{app}} runs behind a proxy, the proxy has to pass on the scheme (X-Forwarded-Proto) and {{app}} has to trust it (the setting for trusted proxies, see the documentation).",
       "stale": "authentik still knows the old redirect address {{address}}. Sign-in through authentik does not work until you run the button again with a token.",
       "step": {
         "reached": "Connection to authentik",

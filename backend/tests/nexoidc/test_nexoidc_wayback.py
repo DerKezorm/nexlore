@@ -169,7 +169,8 @@ def found(adapter: Any, *, like: dict[str, Any] = CLOSED) -> dict[str, Any]:
 def in_full(adapter: Any, sso: fakes.FakeProvider, **changes: Any) -> dict[str, Any]:
     """Rule 1: the entry ``oidc`` of ``migrated`` in full, as the version before the list finds it."""
     return {
-        "issuer": sso.issuer.rstrip("/"),
+        # As the version before the list wrote it (``older``), not the entry's form (since 1.0.11).
+        "issuer": sso.issuer.strip(),
         "client_id": sso.client_id,
         "client_secret": sso.client_secret,
         "label": "Company",
@@ -300,6 +301,51 @@ def test_22_rule_2_on_again_is_no_change_and_a_provider_removed_in_the_older_ver
     adapter.run_migration()
     assert the_entry(adapter) is None and linked(adapter) == {}
     assert found(adapter) == CLOSED
+
+
+def test_22_the_issuer_stays_as_the_older_version_wrote_it_letter_by_letter(
+    adapter: Any, sso: fakes.FakeProvider, oidc: Any
+) -> None:
+    """Most versions before the list compare their issuer setting letter by letter when a provider is saved
+    (nexcanvas, nextasks, nexbrand, nextrmnl, nexsift, nexcrate), and their authentik button writes it with a slash.
+    Written back without one, the next press of that button there took it for another provider and dropped every
+    subject. So the way back writes the issuer the older version knows, character by character: after the
+    migration, through off and on, a save here and a start; the entry keeps its own form (since 1.0.11)."""
+    if not _one_provider(adapter):
+        return
+    bare = sso.issuer.strip().rstrip("/")
+    slashed = bare + "/"
+    adapter.make_account("alex")
+    older(adapter, sso, subjects={"alex": "person-1"}, issuer=slashed)
+    adapter.run_migration()
+    assert the_entry(adapter).issuer == bare
+
+    def issuer_there() -> str:
+        return adapter.legacy_read()["issuer"]
+
+    assert issuer_there() == slashed
+    for values in ({"enabled": False}, {"enabled": True}, {"label": "Renamed"}, {"trusts_second_factor": False}):
+        change_entry(adapter, oidc, **values)
+        assert issuer_there() == slashed, values
+        adapter.run_migration()
+        assert issuer_there() == slashed, values
+    change_entry(adapter, oidc, trusts_second_factor=True, label="Company")
+    assert found(adapter, like=in_full(adapter, sso)) == in_full(adapter, sso, issuer=slashed)
+    browser, response = oidc_contract.round_trip(adapter, sso, "oidc", legacy=True)
+    assert location(response) == adapter.home and adapter.who(browser) == "alex"
+    # The older version's form writes it without the slash: that text from now on, and the links stay.
+    older(adapter, sso, subjects={"alex": "person-1"}, issuer=bare, label="Form")
+    adapter.run_migration()
+    change_entry(adapter, oidc, enabled=False)
+    change_entry(adapter, oidc, enabled=True)
+    assert issuer_there() == bare and linked(adapter) == {"alex": "person-1"}
+    # Its button writes it with the slash again, with another name (taken over) and then alone (no change at all in
+    # the fingerprint): the way back follows both times, through a start and a save here.
+    for issuer, label in ((slashed, "authentik"), (bare, "authentik"), (slashed, "authentik")):
+        older(adapter, sso, subjects={"alex": "person-1"}, issuer=issuer, label=label)
+        adapter.run_migration()
+        change_entry(adapter, oidc, enabled=True)
+        assert issuer_there() == issuer and linked(adapter) == {"alex": "person-1"}, issuer
 
 
 class _Lines(logging.Handler):

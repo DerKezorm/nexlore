@@ -57,7 +57,7 @@
       "noAddress": "Noch keine öffentliche Adresse. Du erreichst {{app}} gerade unter dieser Adresse, und authentik leitet nach der Anmeldung dorthin zurück:",
       "adopt": "Übernehmen und einrichten",
       "adoptOnly": "Nur übernehmen",
-      "proxyWarning": "Am Server kommt diese Anfrage als {{address}} an. Steht {{app}} hinter einem Proxy, muss der das Schema weitergeben (X-Forwarded-Proto) und {{app}} ihm trauen (--forwarded-allow-ips).",
+      "proxyWarning": "Am Server kommt diese Anfrage als {{address}} an. Steht {{app}} hinter einem Proxy, muss der das Schema weitergeben (X-Forwarded-Proto) und {{app}} ihm trauen (Einstellung für vertraute Proxys, siehe Anleitung).",
       "stale": "authentik kennt noch die alte Rückleitadresse {{address}}. Bis du den Knopf noch einmal mit einem Token ausführst, geht die Anmeldung über authentik nicht.",
       "step": {
         "reached": "Verbindung zu authentik",

@@ -173,7 +173,8 @@ nexlore is made to be reachable from outside, for yourself on the road or for a 
 3. **Tell nexlore about the proxy**: `NEXLORE_PUBLIC_URL` (the address people use), `NEXLORE_TRUSTED_PROXIES` (the
    proxy's address or network; without it every sign-in seems to come from the proxy and the brake against guessing
    cannot tell people apart; the log says so; only such a proxy is believed about `X-Forwarded-For` and
-   `X-Forwarded-Proto`, so that the return address of a sign-in is `https`), and `NEXLORE_COOKIE_SECURE: "on"`.
+   `X-Forwarded-Proto`, so that the return address of a sign-in is `https`; the warning in the authentik card under
+   Settings, Sign-in points here), and `NEXLORE_COOKIE_SECURE: "on"`.
 4. **A second factor**: set up your own under My account, then Settings, Sign-in, "Require a second factor". Or sign
    in through your OpenID Connect provider (and leave "The provider checks the second factor itself" on only for
    one that does).
