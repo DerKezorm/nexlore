@@ -10,7 +10,7 @@ import logging
 import smtplib
 import ssl
 from email.message import EmailMessage
-from email.utils import formataddr, make_msgid
+from email.utils import formataddr, formatdate, make_msgid
 
 from sqlalchemy.orm import Session
 
@@ -43,6 +43,9 @@ def _send(db: Session, message: EmailMessage) -> None:
     security = str(values["smtp_security"])
     message["From"] = str(values["smtp_from"])
     message["Message-ID"] = make_msgid(domain=str(values["smtp_from"]).rpartition("@")[2] or None)
+    # Required by RFC 5322. smtplib does not add it, and without it iCloud, Outlook and Gmail drop the mail silently.
+    if "Date" not in message:
+        message["Date"] = formatdate(localtime=True)
     context = ssl.create_default_context()
     try:
         if security == "tls":

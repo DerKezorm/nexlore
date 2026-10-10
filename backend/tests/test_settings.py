@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import smtplib
+from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
+from email.utils import parsedate_to_datetime
 from typing import Any, ClassVar, Self
 
 import pytest
@@ -116,6 +118,18 @@ def test_an_invitation_goes_out_by_mail(client: TestClient, operator: Account, s
     assert message["To"] == "dora@example.com" and message["From"] == "notes@example.com"
     assert made["link"] in message.get_content() and '"Team"' in message.get_content()
     assert smtp.logins == [("notes", "mail password")] and smtp.tls == [True]
+
+
+def test_mail_carries_a_date_header(client: TestClient, operator: Account, smtp: type[FakeSmtp]) -> None:
+    """Without ``Date`` large providers drop a mail silently, and smtplib does not add it (nexbeat issue 2)."""
+    client.put("/api/settings", json=MAIL)
+    before = datetime.now(UTC) - timedelta(seconds=5)
+    assert client.post("/api/settings/mail-test", json={"to": "dora@example.com"}).status_code == 204
+    [message] = smtp.sent
+    headers = message.get_all("Date")
+    assert headers is not None and len(headers) == 1
+    sent_at = parsedate_to_datetime(headers[0])
+    assert before <= sent_at <= datetime.now(UTC) + timedelta(seconds=5)
 
 
 def test_a_failing_mail_server_says_so_without_its_answer(
