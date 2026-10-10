@@ -28,12 +28,13 @@ from ..models import (
     Account,
     OidcLink,
     OidcProvider,
+    Setting,
     utcnow,
 )
 from ..models import Invite as InviteRow
 from ..security import decrypt_secret, encrypt_secret
 from ..vendor import nexoidc
-from ..vendor.nexoidc import AccountState, Invite, Link, Provider, ProviderValues, migrate, secret_context
+from ..vendor.nexoidc import AccountState, Invite, Link, Provider, ProviderValues, migrate, protocol, secret_context
 from . import accounts, emailaddr, settings_service
 
 logger = logging.getLogger("nexlore.oidc")
@@ -276,6 +277,8 @@ class SqlStore:
     # --- Transaction -----------------------------------------------------------------------------------------------
 
     def commit(self) -> None:
+        # Whatever the module settled, the way back to the version before the list sees the same (``mirror_legacy``).
+        mirror_legacy(self.db)
         self.db.commit()
 
     def rollback(self) -> None:
@@ -309,6 +312,55 @@ def legacy_plan(db: Session) -> migrate.Plan | None:
     ]
     # nexlore asked no code after the provider before the list: the migrated entry keeps that (blueprint 06).
     return migrate.plan(legacy, subjects, trusts_second_factor=True)
+
+
+def mirror_legacy(db: Session) -> None:
+    """The way back to nexlore 1.5 (blueprint 01 "Umstieg" 4): that version reads the old settings ``oidc_*`` and the
+    column ``oidc_subject``, so they must always describe the entry ``oidc`` exactly, or be empty. Otherwise going back
+    would bring a removed provider back, or let a subject into an account that gave it up.
+
+    - The entry ``oidc`` gone or its issuer changed: the old settings and every old subject are emptied for good.
+    - Else the old settings follow the entry: its client (only while it is on; switched off, the old version finds no
+      client and lets nobody in through it), its name, ``auto_create`` only while on; each account's old subject is
+      its link there, and an account without one has none.
+
+    Nothing is committed here; the store calls it before every commit."""
+    issuer = str(settings_service.get(db, "oidc_issuer") or "")
+    entry = db.scalar(select(OidcProvider).where(OidcProvider.slug == nexoidc.LEGACY_SLUG)) if issuer else None
+    if issuer and (entry is None or not protocol.same_issuer(entry.issuer, issuer)):
+        put_settings(db, {key: settings_service.DEFAULTS[key] for key in LEGACY_KEYS})
+        logger.info("The provider before the list is gone or another: its old settings and subjects are emptied")
+        entry = None
+    db.flush()
+    if entry is None:
+        db.execute(update(Account).where(Account.oidc_subject != "").values(oidc_subject=""))
+        return
+    rows = db.execute(select(OidcLink.account_id, OidcLink.subject).where(OidcLink.provider_id == entry.id))
+    linked = {account_id: subject for account_id, subject in rows}
+    for account in db.scalars(select(Account).where((Account.oidc_subject != "") | Account.id.in_(linked))):
+        wanted = linked.get(account.id, "")
+        if account.oidc_subject != wanted:
+            account.oidc_subject = wanted
+    client_id = entry.client_id if entry.enabled else ""
+    secret = decrypt_secret(entry.client_secret_enc, secret_context(entry.id)) if entry.enabled else ""
+    old_secret = decrypt_secret(str(settings_service.get(db, "oidc_client_secret_enc") or ""))
+    if str(settings_service.get(db, "oidc_client_id") or "") != client_id or old_secret != secret:
+        sealed = encrypt_secret(secret) if secret else ""
+        put_settings(db, {"oidc_client_id": client_id, "oidc_client_secret_enc": sealed})
+    shown = {"oidc_provider_name": entry.label, "oidc_auto_create": bool(entry.auto_create and entry.enabled)}
+    changed = {key: value for key, value in shown.items() if settings_service.get(db, key) != value}
+    if changed:
+        put_settings(db, changed)
+
+
+def put_settings(db: Session, changes: dict[str, object]) -> None:
+    """Settings written in the open transaction (``settings_service.save`` commits on its own)."""
+    for key, value in changes.items():
+        row = db.get(Setting, key)
+        if row is None:
+            db.add(Setting(key=key, value=value))
+        else:
+            row.value = value
 
 
 #: Set once the settings were looked at: an operator who later removes every entry must not get the old provider

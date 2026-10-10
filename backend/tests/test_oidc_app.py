@@ -15,7 +15,7 @@ from sqlalchemy import select
 from app.db import SessionLocal
 from app.models import OPERATOR, SIGN_IN_OIDC, WRITE, Account, Membership, OidcLink, OidcProvider, Space
 from app.routers.auth import PENDING_COOKIE
-from app.security import encrypt_secret, hash_password
+from app.security import decrypt_secret, encrypt_secret, hash_password
 from app.services import accounts, backups, logs, oidc_store, settings_service, totp, vault
 
 from .conftest import PASSWORD, make_account, sign_in
@@ -366,3 +366,85 @@ def test_the_start_of_nexlore_reads_the_tls_context_of_the_sign_in_module_ahead(
     assert tls._context is None
     with TestClient(app):
         assert tls._context is not None
+
+
+# --- The way back to 1.5 (blueprint 01 "Umstieg" 4) -----------------------------------------------------------------
+
+
+def _old() -> dict[str, object]:
+    with SessionLocal() as db:
+        values = settings_service.get_all(db)
+        subjects = {row.name: row.oidc_subject for row in db.scalars(select(Account))}
+        secret = decrypt_secret(str(values["oidc_client_secret_enc"] or ""))
+    return {"issuer": values["oidc_issuer"], "client": values["oidc_client_id"], "secret": secret,
+            "name": values["oidc_provider_name"], "auto": values["oidc_auto_create"], "subjects": subjects}
+
+
+def test_the_old_settings_and_subjects_always_describe_the_entry_oidc(
+    client: TestClient, operator: Account, provider: FakeProvider
+) -> None:
+    make_account("anna")
+    make_account("ben")
+    _legacy(provider, label="Company", subjects={"anna": "anna-1", "ben": "ben-1"})
+    entry = oidc_store.migrate_settings(backup=False)
+    assert entry is not None
+    old = _old()
+    assert (old["client"], old["secret"], old["name"], old["auto"]) == (provider.client_id, provider.client_secret,
+                                                                       "Company", False)
+    assert old["subjects"] == {"tester": "", "anna": "anna-1", "ben": "ben-1"}
+    # Unlinked by itself, by the operator, linked anew: the old column says the same as the links.
+    anna = fresh_browser()
+    sign_in(anna, accounts_row("anna"))
+    assert anna.delete("/api/oidc/oidc/link", headers=UI).status_code == 204
+    ben_id = accounts_row("ben").id
+    assert client.request("DELETE", f"/api/oidc/admin/accounts/{ben_id}/links/{entry.id}",
+                          json={"current_password": PASSWORD}, headers=UI).status_code == 204
+    assert _old()["subjects"] == {"tester": "", "anna": "", "ben": ""}
+    assert location(link(anna, provider, PASSWORD, slug="oidc", sub="anna-9")) == "/account?linked=oidc"
+    assert _old()["subjects"]["anna"] == "anna-9"
+    # Switched off, the old version finds no client; on with new people allowed, it lets them in as before.
+    view = client.get("/api/oidc/admin/providers").json()[0]
+    body = {key: view[key] for key in ("label", "issuer", "client_id", "scopes", "trusts_second_factor")}
+    assert client.put(f"/api/oidc/admin/providers/{entry.id}", json={**body, "enabled": False, "auto_create": True},
+                      headers=UI).status_code == 200
+    old = _old()
+    assert (old["client"], old["secret"], old["auto"]) == ("", "", False)
+    assert client.put(f"/api/oidc/admin/providers/{entry.id}", json={**body, "enabled": True, "auto_create": True},
+                      headers=UI).status_code == 200
+    old = _old()
+    assert (old["client"], old["secret"], old["auto"]) == (provider.client_id, provider.client_secret, True)
+    assert old["subjects"]["anna"] == "anna-9"
+
+
+def test_another_issuer_or_removing_the_entry_oidc_empties_the_old_settings_for_good(
+    client: TestClient, operator: Account, provider: FakeProvider
+) -> None:
+    from .oidc_helpers import fakes
+
+    make_account("anna")
+    _legacy(provider, label="Company", subjects={"anna": "anna-1"})
+    entry = oidc_store.migrate_settings(backup=False)
+    assert entry is not None
+    moved = provider.network.add(fakes.FakeProvider("https://moved.example.com", client_id=provider.client_id,
+                                                     client_secret=provider.client_secret))
+    view = client.get("/api/oidc/admin/providers").json()[0]
+    body = {key: view[key] for key in ("label", "client_id", "scopes", "enabled", "auto_create",
+                                         "trusts_second_factor")}
+    assert client.put(f"/api/oidc/admin/providers/{entry.id}", json={**body, "issuer": moved.issuer},
+                      headers=UI).status_code == 200
+    old = _old()
+    assert (old["issuer"], old["client"], old["secret"], old["subjects"]["anna"]) == ("", "", "", "")
+    # Back to the first issuer: the old settings stay empty, a provider gone once does not come back that way.
+    assert client.put(f"/api/oidc/admin/providers/{entry.id}", json={**body, "issuer": provider.issuer},
+                      headers=UI).status_code == 200
+    assert _old()["issuer"] == ""
+    make_account("ben")
+    _legacy(provider, label="Company", subjects={"ben": "ben-1"})
+    with SessionLocal() as db:
+        db.query(OidcProvider).delete()
+        db.commit()
+    entry = oidc_store.migrate_settings(backup=False)
+    assert entry is not None and _old()["subjects"]["ben"] == "ben-1"
+    assert client.delete(f"/api/oidc/admin/providers/{entry.id}", headers=UI).status_code == 200
+    old = _old()
+    assert (old["issuer"], old["client"], old["subjects"]["ben"]) == ("", "", "")

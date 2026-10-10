@@ -183,6 +183,38 @@ def test_30_the_form_after_the_button_and_the_button_after_the_form_keep_the_lin
     assert again["ok"] and again["links_dropped"] == 0 and _link_count(adapter) == 1
 
 
+def test_30_the_address_in_other_letters_is_the_same_authentik_and_keeps_the_links(
+    adapter: Any, ak: fakes.FakeAuthentik
+) -> None:
+    first = setup(adapter, ak)
+    adapter.make_account("alex")
+    _link_through_authentik(adapter, ak)
+    scheme, rest = ak.base.split("://", 1)
+    typed = f"{scheme.upper()}://{rest.title()}/"
+    assert typed != ak.base
+    again = setup(adapter, ak, url=typed)
+    assert again["ok"] and again["issuer"] == first["issuer"] and again["links_dropped"] == 0
+    assert entry(adapter, "authentik")["issuer"] == first["issuer"].rstrip("/") and _link_count(adapter) == 1
+
+
+def test_30_a_new_issuer_whose_discovery_fails_changes_nothing(
+    adapter: Any, ak: fakes.FakeAuthentik, net: fakes.Network
+) -> None:
+    setup(adapter, ak)
+    adapter.make_account("alex")
+    _link_through_authentik(adapter, ak)
+    before = entry(adapter, "authentik")
+    other = net.add(fakes.FakeAuthentik(base="https://auth2.example.com"))
+    other.discovery_ok = False
+    result = setup(adapter, other)
+    assert steps(result)[-1] == ("filled", False) and result["links_dropped"] == 0
+    assert entry(adapter, "authentik") == before and _link_count(adapter) == 1
+    # Once it answers, the links go, and the answer says how many.
+    other.discovery_ok = True
+    moved = setup(adapter, other)
+    assert moved["ok"] and moved["links_dropped"] == 1 and _link_count(adapter) == 0
+
+
 def test_32_the_blueprint_makes_the_same_objects_with_grant_types_and_the_callback(
     adapter: Any, ak: fakes.FakeAuthentik
 ) -> None:

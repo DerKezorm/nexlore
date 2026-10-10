@@ -33,7 +33,7 @@ import ssl
 import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
@@ -415,6 +415,22 @@ async def _binding(api: _Api, application_pk: Any) -> str:
     return f"the application lets only {username!r} in"
 
 
+def normalize_base(base_url: str) -> str:
+    """The address of authentik as the button uses it: scheme and host in small letters, the path as typed, no slash
+    at the end. authentik writes its issuer that way, and the issuer is compared letter by letter (``same_issuer``):
+    ``HTTPS://Auth.Example.com/`` typed on a phone would otherwise read as another issuer. An address that cannot be
+    taken apart stays as it is; building the client then names it unusable."""
+    raw = base_url.strip()
+    try:
+        parts = urlsplit(raw)
+    except ValueError:
+        return raw.rstrip("/")
+    if parts.scheme and parts.netloc:
+        userinfo, at, host = parts.netloc.rpartition("@")
+        raw = urlunsplit((parts.scheme.lower(), userinfo + at + host.lower(), parts.path, parts.query, parts.fragment))
+    return raw.rstrip("/")
+
+
 def issuer_for(base_url: str, slug: str) -> str:
     """The issuer as authentik writes it."""
     return f"{base_url.rstrip('/')}/application/o/{slug}/"
@@ -423,10 +439,20 @@ def issuer_for(base_url: str, slug: str) -> str:
 async def _fill(
     store: Store, entry: Provider | None, entry_slug: str, issuer: str, client_id: str, client_secret: str
 ) -> tuple[Provider, int, str]:
-    """Write the entry, then confirm the issuer with one discovery. Stored first: the values are what authentik handed
-    out, and a failed discovery usually means the app cannot reach authentik under this address, which the operator
-    fixes at the network. A new entry is on, makes no new accounts and trusts authentik with the second factor; an
-    existing one keeps the operator's choices and only gets issuer, client id and secret."""
+    """Confirm the new issuer with one discovery, then write the entry. Probed first: a failed discovery changes
+    nothing in the list, and links only go when an issuer that answers really replaces the old one (Bauplan 02). What
+    authentik handed out stays there; running the button again once authentik is reachable fills the entry. A new
+    entry is on, makes no new accounts and trusts authentik with the second factor; an existing one keeps the
+    operator's choices and only gets issuer, client id and secret. The number returned is the links really dropped."""
+    try:
+        await protocol.discovery(issuer, fresh=True)
+    except OidcError as error:
+        reason = "unreachable" if error.code == "oidc_provider_unreachable" else "answered"
+        raise StepFailed(
+            f"discovery at {issuer} failed: {error.code}; the list is unchanged",
+            reason,
+            200 if reason == "answered" else 0,
+        ) from error
     dropped = 0
     if entry is None:
         position = max((item.position for item in store.list_providers()), default=-1) + 1
@@ -468,19 +494,12 @@ async def _fill(
         note = f"entry {saved.slug!r} updated" + (f", {dropped} links dropped" if dropped else "")
     store.commit()
     protocol.clear_caches()
-    try:
-        await protocol.discovery(issuer, fresh=True)
-    except OidcError as error:
-        reason = "unreachable" if error.code == "oidc_provider_unreachable" else "answered"
-        raise StepFailed(
-            f"{note}, but discovery at {issuer} failed: {error.code}", reason, 200 if reason == "answered" else 0
-        ) from error
-    return saved, dropped, f"{note}; discovery at {issuer} confirmed"
+    return saved, dropped, f"discovery at {issuer} confirmed; {note}"
 
 
 async def setup(store: Store, base_url: str, token: str, request_base: str) -> SetupResult:
     """The whole run, step by step. Stops at the first failure; the result lists every step that ran."""
-    base_url = base_url.strip().rstrip("/")
+    base_url = normalize_base(base_url)
     result = SetupResult()
     if providers.coupled(store):
         # While coupled, sign-in comes through nexsuite (Bauplan 06): the button touches neither authentik nor the
