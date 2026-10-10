@@ -25,6 +25,14 @@ function collectProblems(page: Page): string[] {
 }
 
 test.afterEach(async ({ page }) => {
+  // A test that failed in the editor leaves its lock on the note: the reset below would only land in a conflict copy,
+  // and the retry would find the note locked for 90 seconds. Out of the editor first, the lock goes with it.
+  const editing = page.getByRole('button', { name: 'Edit', exact: true })
+  if ((await editing.getAttribute('aria-pressed', { timeout: 1_000 }).catch(() => null)) === 'true') {
+    const unlocked = page.waitForResponse((answer) => answer.url().includes('/api/locks') && answer.request().method() === 'DELETE')
+    await page.getByRole('button', { name: 'Read', exact: true }).click()
+    await unlocked
+  }
   // The server is shared by all tests: closed again, the note as it was.
   await page.waitForLoadState('networkidle')
   await page.request.put('/api/settings', { data: { link_titles_allowed: false, calendar_feed_allowed: false }, headers: TAB })
@@ -94,6 +102,11 @@ test('an address pasted onto chosen words makes them a link, in the app as it ru
   }).toPass({ timeout: 10_000 })
   const written = page.waitForResponse((response) => response.url().includes('/api/note') && response.request().method() === 'PUT')
   await editor.evaluate((element) => {
+    // The page's selection is the browser's; the editor takes it over when the browser sends "selectionchange", a
+    // moment after the last key (measured: the page said "Start" while the editor still held "Star", and pasting in
+    // that moment linked "Star" in the CI, 06.10. and 10.10.2026). A person is slower than the event; the test waits
+    // for it by sending it itself, the editor then reads the page's selection at once.
+    element.ownerDocument.dispatchEvent(new Event('selectionchange'))
     const data = new DataTransfer()
     data.setData('text/plain', 'https://example.com/start')
     element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
