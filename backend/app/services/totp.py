@@ -33,7 +33,7 @@ from urllib.parse import quote
 import segno
 from sqlalchemy.orm import Session
 
-from ..models import SIGN_IN_PASSWORD, Account
+from ..models import SESSION_VIA_PASSWORD, SESSION_VIA_PROVIDER, SIGN_IN_PASSWORD, Account
 from ..security import decrypt_secret, encrypt_secret
 from . import settings_service
 
@@ -156,11 +156,15 @@ def use_recovery(stored: str, code: str) -> str | None:
     return json.dumps(remaining)
 
 
-def setup_required(db: Session, account: Account) -> bool:
+def setup_required(db: Session, account: Account, via: str = SESSION_VIA_PASSWORD) -> bool:
     """The operator requires a second factor, and this password account has none yet. Such an account reaches its
-    own account page and nothing else until it enrols. Accounts from OIDC bring their provider's."""
+    own account page and nothing else until it enrols. Accounts from OIDC bring their provider's, and so does a
+    session that began through a provider the entry trusts with the second factor (``via``): the same account signing
+    in with its password is made to enrol all the same (rule of 10.10.2026). What has no session (tokens, keys, the
+    calendar feed) asks the account, so it keeps the stricter rule."""
     return (
-        bool(settings_service.get(db, "two_factor_required"))
+        via != SESSION_VIA_PROVIDER
+        and bool(settings_service.get(db, "two_factor_required"))
         and account.sign_in == SIGN_IN_PASSWORD
         and not account.totp_secret_enc
     )

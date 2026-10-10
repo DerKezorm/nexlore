@@ -51,7 +51,7 @@ from .model import (
 STEP_KEYS = ("reached", "signingKey", "mapping", "provider", "application", "filled")
 #: Only in apps with one account (Bauplan 06): authentik lets only the token's own user into the application.
 STEP_BINDING = "binding"
-REASONS = ("unreachable", "unusable", "token", "malformed", "answered", "slug", "coupled")
+REASONS = ("unreachable", "unusable", "token", "malformed", "answered", "slug", "coupled", "issuer_change")
 #: authentik's own mappings, found by their managed names.
 MANAGED_MAPPINGS = (
     "goauthentik.io/providers/oauth2/scope-openid",
@@ -94,11 +94,11 @@ def app_name() -> str:
 class StepFailed(Exception):
     """``detail`` is the technical line for the log; ``reason`` (with ``status``) names the failure for the page."""
 
-    def __init__(self, detail: str, reason: str = "answered", status: int = 0) -> None:
+    def __init__(self, detail: str, reason: str = "answered", status: int = 0, count: int = 0) -> None:
         super().__init__(detail)
         if reason not in REASONS:
             raise ValueError(f"unknown reason {reason!r}")
-        self.detail, self.reason, self.status = detail, reason, status
+        self.detail, self.reason, self.status, self.count = detail, reason, status, count
 
 
 @dataclass
@@ -124,6 +124,8 @@ class SetupResult:
     issuer: str = ""
     provider_id: int | None = None
     links_dropped: int = 0
+    #: With ``reason: issuer_change``: how many accounts would have to link again.
+    count: int = 0
 
     @property
     def ok(self) -> bool:
@@ -139,6 +141,7 @@ class SetupResult:
             "issuer": self.issuer,
             "provider_id": self.provider_id,
             "links_dropped": self.links_dropped,
+            "count": self.count,
         }
 
 
@@ -436,14 +439,71 @@ def issuer_for(base_url: str, slug: str) -> str:
     return f"{base_url.rstrip('/')}/application/o/{slug}/"
 
 
+def _accounts_of(store: Store, entry: Provider) -> int:
+    return len({link.account_id for link in store.links_of_provider(entry.id)})
+
+
+def _issuer_change(entry: Provider, issuer: str, count: int, *, foreseen: bool) -> StepFailed:
+    when = "would change" if foreseen else "changes"
+    return StepFailed(
+        f"the issuer of entry {entry.slug!r} {when} from {entry.issuer} to {issuer}; {count} accounts would have to"
+        " link again, and the operator has not confirmed that yet",
+        "issuer_change",
+        0,
+        count,
+    )
+
+
+async def _ask_first(store: Store, api: _Api, base_url: str, request_base: str) -> None:
+    """Bauplan 03, "Rückfrage vor dem Wechsel": raise ``issuer_change`` when the run would give an entry with links
+    another issuer, found with reading calls only (the same ones the run makes later). Nothing to ask without an entry
+    or without links. An issuer that cannot be told in advance (the application slug belongs to another provider and
+    the own provider does not exist yet, so the replacement slug carries a number authentik has not handed out) counts
+    as another one: asking once too often costs a click, dropping links unasked costs the people their way in."""
+    entry = await _entry(store, api)
+    count = _accounts_of(store, entry) if entry is not None else 0
+    if entry is None or not count:
+        return
+    redirect = flow.redirect_uri(entry.slug, request_base, entry.redirect_path)
+    name, slug = await _names(api, entry, redirect)
+    existing = await api.find_one("/providers/oauth2/", {"name": name}, "name", name)
+    pk = str(existing.get("pk") or "") if existing is not None else ""
+    application = await _application_by_slug(api, slug)
+    if application is not None and str(application.get("provider") or "") not in ("", pk):
+        if not pk:
+            raise _issuer_change(entry, f"a new application at {base_url}", count, foreseen=True)
+        try:
+            slug = await _free_slug(api, name, pk)
+        except StepFailed:
+            # The run stops at the application with reason "slug" before it reaches the list.
+            return
+    issuer = issuer_for(base_url, slug)
+    if not protocol.same_issuer(entry.issuer, issuer):
+        raise _issuer_change(entry, issuer, count, foreseen=True)
+
+
 async def _fill(
-    store: Store, entry: Provider | None, entry_slug: str, issuer: str, client_id: str, client_secret: str
+    store: Store,
+    entry: Provider | None,
+    entry_slug: str,
+    issuer: str,
+    client_id: str,
+    client_secret: str,
+    confirmed: bool,
 ) -> tuple[Provider, int, str]:
     """Confirm the new issuer with one discovery, then write the entry. Probed first: a failed discovery changes
     nothing in the list, and links only go when an issuer that answers really replaces the old one (Bauplan 02). What
     authentik handed out stays there; running the button again once authentik is reachable fills the entry. A new
     entry is on, makes no new accounts and trusts authentik with the second factor; an existing one keeps the
-    operator's choices and only gets issuer, client id and secret. The number returned is the links really dropped."""
+    operator's choices and only gets issuer, client id and secret. The number returned is the links really dropped.
+
+    The guard behind the question at the start: should authentik have handed out another issuer than foreseen, an
+    unconfirmed change stops here too, with nothing written in the app (what the run made in authentik stays, and the
+    confirmed run updates it)."""
+    if entry is not None and not confirmed and not protocol.same_issuer(entry.issuer, issuer):
+        count = _accounts_of(store, entry)
+        if count:
+            raise _issuer_change(entry, issuer, count, foreseen=False)
     try:
         await protocol.discovery(issuer, fresh=True)
     except OidcError as error:
@@ -497,8 +557,15 @@ async def _fill(
     return saved, dropped, f"discovery at {issuer} confirmed; {note}"
 
 
-async def setup(store: Store, base_url: str, token: str, request_base: str) -> SetupResult:
-    """The whole run, step by step. Stops at the first failure; the result lists every step that ran."""
+async def setup(
+    store: Store, base_url: str, token: str, request_base: str, *, confirm_issuer_change: bool = False
+) -> SetupResult:
+    """The whole run, step by step. Stops at the first failure; the result lists every step that ran.
+
+    Would the run give the entry another issuer while accounts are linked to it, it stops at the first step, after
+    reading calls only, with ``reason: issuer_change`` and ``count`` (Bauplan 03): nothing is written in authentik or
+    in the app. The page asks the operator with ``oidc.admin.issuerChangeConfirm`` and runs the button again with
+    ``confirm_issuer_change=True``, which changes the issuer and drops the links."""
     base_url = normalize_base(base_url)
     result = SetupResult()
     if providers.coupled(store):
@@ -536,6 +603,8 @@ async def setup(store: Store, base_url: str, token: str, request_base: str) -> S
             try:
                 if key == "reached":
                     detail = await _reached(api)
+                    if not confirm_issuer_change:
+                        await _ask_first(store, api, base_url, request_base)
                 elif key == "signingKey":
                     signing_key, detail = await _signing_key(api)
                 elif key == "mapping":
@@ -555,13 +624,14 @@ async def setup(store: Store, base_url: str, token: str, request_base: str) -> S
                     result.issuer = issuer_for(base_url, slug)
                 elif key == "filled":
                     saved, result.links_dropped, detail = await _fill(
-                        store, entry, entry_slug, result.issuer, client_id, client_secret
+                        store, entry, entry_slug, result.issuer, client_id, client_secret, confirm_issuer_change
                     )
                     result.provider_id = saved.id
                 else:
                     detail = await _binding(api, application_pk)
             except StepFailed as error:
                 result.steps.append(Step(key, False, error.detail, error.reason, error.status))
+                result.count = error.count
                 _log().warning("authentik setup stopped at step %s: %s", key, error.detail)
                 break
             result.steps.append(Step(key, True, detail))

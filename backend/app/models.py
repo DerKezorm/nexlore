@@ -365,6 +365,11 @@ MEMBER = "member"
 ROLES = (OPERATOR, MEMBER)
 
 SIGN_IN_PASSWORD = "password"
+#: How a browser session began (``AuthSession.via``): with the password (also after an untrusted provider and its
+#: code), or through a provider that checks the second factor itself. Only the second kind is not made to set up
+#: a second factor of its own when the operator requires one (``totp.setup_required``).
+SESSION_VIA_PASSWORD = "password"
+SESSION_VIA_PROVIDER = "provider"
 SIGN_IN_OIDC = "oidc"
 
 #: Rights in a space, each one including the ones before it: reading; writing (notes, files, the trash);
@@ -461,6 +466,8 @@ class AuthSession(Base):
     last_seen_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     ip: Mapped[str] = mapped_column(String(64), default="")
     user_agent: Mapped[str] = mapped_column(String(255), default="")
+    #: ``SESSION_VIA_PASSWORD`` or ``SESSION_VIA_PROVIDER``; sessions from before the column began with the password.
+    via: Mapped[str] = mapped_column(String(16), default=SESSION_VIA_PASSWORD)
 
 
 class OidcProvider(Base):

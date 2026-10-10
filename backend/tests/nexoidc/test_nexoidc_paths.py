@@ -88,6 +88,16 @@ def test_22_an_entry_with_an_old_callback_signs_in_there(adapter: Any, oidc: Any
 def test_06_coupling_sets_the_own_entries_aside_and_uncoupling_puts_them_back(
     adapter: Any, oidc: Any, sso: fakes.FakeProvider, with_sso: dict, net: fakes.Network
 ) -> None:
+    if not adapter.supports_coupling:
+        # Apps with one account are never coupled (Bauplan 06 names only the apps of the Verbund): the list stays
+        # the app's own, editable, and the authentik button is not held back.
+        with adapter.store() as store:
+            assert not oidc.providers.coupled(store)
+        assert all(item["editable"] and item["managed"] != "nexsuite" for item in adapter.providers())
+        ak = net.add(fakes.FakeAuthentik())
+        reasons = [step.get("reason") for step in adapter.setup_authentik(ak.base, ak.token).json()["steps"]]
+        assert "coupled" not in reasons and ak.calls
+        return
     suite = net.add(fakes.FakeProvider("https://suite.example.com"))
     # The app's own migrated entry holds the slug nexsuite needs: it is parked while coupled.
     own = net.add(fakes.FakeProvider("https://own.example.com"))

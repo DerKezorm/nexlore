@@ -20,8 +20,17 @@ def ak(net: fakes.Network) -> fakes.FakeAuthentik:
     return net.add(fakes.FakeAuthentik())
 
 
-def setup(adapter: Any, ak: fakes.FakeAuthentik, *, token: str | None = None, url: str | None = None) -> dict:
-    response = adapter.setup_authentik(url or ak.base, ak.token if token is None else token)
+def setup(
+    adapter: Any,
+    ak: fakes.FakeAuthentik,
+    *,
+    token: str | None = None,
+    url: str | None = None,
+    confirm: bool = False,
+) -> dict:
+    response = adapter.setup_authentik(
+        url or ak.base, ak.token if token is None else token, confirm_issuer_change=confirm
+    )
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -206,13 +215,30 @@ def test_30_a_new_issuer_whose_discovery_fails_changes_nothing(
     before = entry(adapter, "authentik")
     other = net.add(fakes.FakeAuthentik(base="https://auth2.example.com"))
     other.discovery_ok = False
-    result = setup(adapter, other)
+    result = setup(adapter, other, confirm=True)
     assert steps(result)[-1] == ("filled", False) and result["links_dropped"] == 0
     assert entry(adapter, "authentik") == before and _link_count(adapter) == 1
     # Once it answers, the links go, and the answer says how many.
     other.discovery_ok = True
-    moved = setup(adapter, other)
+    moved = setup(adapter, other, confirm=True)
     assert moved["ok"] and moved["links_dropped"] == 1 and _link_count(adapter) == 0
+
+
+def test_30_another_authentik_asks_first_and_the_route_takes_the_confirmation(
+    adapter: Any, ak: fakes.FakeAuthentik, net: fakes.Network
+) -> None:
+    setup(adapter, ak)
+    adapter.make_account("alex")
+    _link_through_authentik(adapter, ak)
+    before = entry(adapter, "authentik")
+    other = net.add(fakes.FakeAuthentik(base="https://auth2.example.com"))
+    asked = setup(adapter, other)
+    assert steps(asked) == [("reached", False)] and asked["steps"][0]["reason"] == "issuer_change"
+    assert asked["count"] == 1 and asked["links_dropped"] == 0
+    assert [call for call in other.calls if call.method != "GET"] == []
+    assert entry(adapter, "authentik") == before and _link_count(adapter) == 1
+    confirmed = setup(adapter, other, confirm=True)
+    assert confirmed["ok"] and confirmed["links_dropped"] == 1 and _link_count(adapter) == 0
 
 
 def test_32_the_blueprint_makes_the_same_objects_with_grant_types_and_the_callback(

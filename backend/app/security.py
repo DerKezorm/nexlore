@@ -21,7 +21,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from .config import get_settings
-from .models import Account, AuthSession, McpKey, utcnow
+from .models import SESSION_VIA_PASSWORD, Account, AuthSession, McpKey, utcnow
 
 SESSION_COOKIE = "nexlore_session"
 MIN_PASSWORD = 12
@@ -82,8 +82,8 @@ def new_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def start_session(db: Session, account: Account, ip: str, user_agent: str) -> str:
-    """Creates a browser session and returns the token for the cookie."""
+def start_session(db: Session, account: Account, ip: str, user_agent: str, via: str = SESSION_VIA_PASSWORD) -> str:
+    """Creates a browser session and returns the token for the cookie. ``via``: how it began (``SESSION_VIA_*``)."""
     token = new_token()
     db.add(
         AuthSession(
@@ -92,6 +92,7 @@ def start_session(db: Session, account: Account, ip: str, user_agent: str) -> st
             expires_at=utcnow() + timedelta(days=get_settings().session_days),
             ip=ip[:64],
             user_agent=user_agent[:255],
+            via=via,
         )
     )
     account.last_seen_at = utcnow()
@@ -119,6 +120,14 @@ def session_account(db: Session, token: str | None) -> Account | None:
         account.last_seen_at = now
         db.commit()
     return account
+
+
+def session_via(db: Session, token: str | None) -> str:
+    """How the session of this cookie began; the password for an unknown one (the stricter rule)."""
+    if not token:
+        return SESSION_VIA_PASSWORD
+    found = db.scalar(select(AuthSession.via).where(AuthSession.token_hash == hash_token(token)))
+    return found or SESSION_VIA_PASSWORD
 
 
 def end_session(db: Session, token: str | None) -> None:

@@ -42,6 +42,9 @@ DEFAULTS: dict[str, Any] = {
     "oidc_auto_create": False,
     #: The settings above were looked at once and, where there was a provider, became the entry ``oidc``.
     "oidc_list_migrated": False,
+    #: What the way back last wrote into the settings above and ``accounts.oidc_subject`` (``migrate.fingerprint``):
+    #: at the next start ``migrate.resync`` takes over what the version before the list changed since.
+    "oidc_legacy_fingerprint": "",
     #: Public reading pages: a way out, closed until the operator opens it.
     "shares_allowed": False,
     #: AI from outside (M7): off until the operator opens it, and the highest level a key may have.

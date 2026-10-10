@@ -131,6 +131,64 @@ def test_16_two_returning_at_once_with_one_invitation_make_one_account(
     assert len({"p1", "p2"} & set(adapter.account_names())) == 1
 
 
+def test_16_a_known_identity_with_an_invitation_signs_in_and_takes_its_rights_once(
+    adapter: Any, sso: fakes.FakeProvider, with_sso: dict
+) -> None:
+    if adapter.single_account:
+        # Bauplan 06: no invitations, not even for the one account's own identity.
+        adapter.make_account("owner")
+        link_person(adapter, "owner", "sso", sso)
+        assert error_in(start(adapter, adapter.browser(), "sso", invite="any-key")) == "invite_invalid"
+        return
+    adapter.make_account("alex")
+    link_person(adapter, "alex", "sso", sso)
+    assert adapter.rights_of("alex") == "member"
+    names = adapter.account_names()
+    key = adapter.make_invite("editor")
+    browser, response = round_trip(adapter, sso, "sso", invite=key)
+    assert location(response) == adapter.home and adapter.who(browser) == "alex"
+    assert adapter.rights_of("alex") == "editor" and adapter.account_names() == names
+    # Used up: it does not even start again.
+    assert error_in(start(adapter, adapter.browser(), "sso", invite=key)) == "invite_invalid"
+    # Rights are added, never taken away: a member's invitation leaves the editor an editor.
+    browser, response = round_trip(adapter, sso, "sso", invite=adapter.make_invite("member"))
+    assert adapter.who(browser) == "alex" and adapter.rights_of("alex") == "editor"
+
+
+def test_16_a_known_and_a_new_identity_at_once_with_one_invitation_use_it_once(
+    adapter: Any, sso: fakes.FakeProvider, with_sso: dict
+) -> None:
+    if adapter.single_account:
+        assert error_in(start(adapter, adapter.browser(), "sso", invite="any-key")) == "invite_invalid"
+        return
+    adapter.make_account("alex")
+    sso.person = {"sub": "person-1", "preferred_username": "alex"}
+    link_person(adapter, "alex", "sso", sso)
+    key = adapter.make_invite("editor")
+    ready = []
+    for number in (1, 2):
+        sso.person = {"sub": f"person-{number}", "preferred_username": f"p{number}"}
+        browser = adapter.browser()
+        ready.append((browser, sso.authorize(location(start(adapter, browser, "sso", invite=key)))))
+    answers: list[Any] = [None, None]
+
+    def back(index: int) -> None:
+        browser, params = ready[index]
+        answers[index] = oidc_contract.come_back(adapter, browser, "sso", params)
+
+    threads = [threading.Thread(target=back, args=(index,)) for index in (0, 1)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+    # alex is in either way (the link comes first); the invitation went to exactly one of the two.
+    assert error_in(answers[0]) is None and adapter.who(ready[0][0]) == "alex"
+    took = adapter.rights_of("alex") == "editor"
+    made = "p2" in adapter.account_names()
+    assert took != made
+    assert error_in(answers[1]) == ("invite_invalid" if took else None)
+
+
 def test_17_auto_create_makes_a_member(adapter: Any, sso: fakes.FakeProvider, with_sso: dict) -> None:
     if adapter.only_authentik:
         with adapter.store() as store:
@@ -185,6 +243,19 @@ def test_18_linking_asks_for_the_password_and_refuses_an_identity_of_another_acc
     assert refused.status_code in (400, 401, 403) and "url" not in refused.text
     assert adapter.link_start(adapter.browser(), "sso", adapter.password_for("alex")).status_code in (401, 403)
     link_person(adapter, "alex", "sso", sso)
+    if adapter.single_account:
+        # Bauplan 06: there is no other account to take the identity. A foreign identity at the same provider does
+        # not come in; linking another identity replaces the one account's link (one per provider, Bauplan 01).
+        sso.person = {"sub": "person-2", "preferred_username": "stranger"}
+        browser, response = round_trip(adapter, sso, "sso")
+        assert error_in(response) == "oidc_no_account" and adapter.who(browser) is None
+        link_person(adapter, "alex", "sso", sso)
+        assert [link.subject for link in links_of(adapter, "alex")] == ["person-2"]
+        assert adapter.who(round_trip(adapter, sso, "sso")[0]) == "alex"
+        sso.person = {"sub": "person-1", "preferred_username": "alex"}
+        assert error_in(round_trip(adapter, sso, "sso")[1]) == "oidc_no_account"
+        assert adapter.account_names() == ["alex"]
+        return
     adapter.make_account("bob")
     bob = adapter.browser()
     adapter.sign_in_with_password(bob, "bob")
@@ -322,7 +393,9 @@ def test_22_the_old_single_provider_becomes_the_entry_oidc_and_the_old_callback_
         assert adapter.legacy_model in ("list", "none")
         return
     adapter.make_account("alex")
-    adapter.make_account("bob")
+    if not adapter.single_account:
+        # Somebody without an identity, who stays without one.
+        adapter.make_account("bob")
     adapter.legacy_setup(
         issuer=sso.issuer,
         client_id=sso.client_id,

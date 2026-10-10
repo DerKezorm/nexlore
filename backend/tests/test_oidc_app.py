@@ -448,3 +448,199 @@ def test_another_issuer_or_removing_the_entry_oidc_empties_the_old_settings_for_
     assert client.delete(f"/api/oidc/admin/providers/{entry.id}", headers=UI).status_code == 200
     old = _old()
     assert (old["issuer"], old["client"], old["subjects"]["ben"]) == ("", "", "")
+
+
+def _change_entry(client: TestClient, entry_id: int, **changes: object) -> None:
+    """The operator saves the entry ``oidc`` with ``changes`` laid over what it says now."""
+    view = client.get("/api/oidc/admin/providers").json()[0]
+    body = {key: view[key] for key in ("label", "issuer", "client_id", "scopes", "enabled", "auto_create",
+                                         "trusts_second_factor")}
+    assert client.put(f"/api/oidc/admin/providers/{entry_id}", json={**body, **changes},
+                      headers=UI).status_code == 200
+
+
+def test_an_entry_whose_provider_does_not_check_the_second_factor_is_off_for_the_old_settings_both_ways(
+    client: TestClient, operator: Account, provider: FakeProvider
+) -> None:
+    """Rule of 10.10.2026: nexlore 1.5 has no such switch and would ask for no code after the provider, so it finds no
+    client while the switch is off; switching it on again brings everything back at once."""
+    make_account("anna")
+    _legacy(provider, label="Company", auto_create=True, subjects={"anna": "anna-1"})
+    entry = oidc_store.migrate_settings(backup=False)
+    assert entry is not None
+    assert (_old()["client"], _old()["auto"]) == (provider.client_id, True)
+    _change_entry(client, entry.id, trusts_second_factor=False)
+    old = _old()
+    assert (old["client"], old["secret"], old["auto"]) == ("", "", False)
+    # Only the way in is closed: the issuer, the name and the subjects stay for the way back to come up again.
+    assert (old["issuer"], old["name"], old["subjects"]["anna"]) == (provider.issuer, "Company", "anna-1")
+    _change_entry(client, entry.id, trusts_second_factor=True)
+    old = _old()
+    assert (old["client"], old["secret"], old["auto"]) == (provider.client_id, provider.client_secret, True)
+    # Off and untrusted together, then only one of them taken back: still closed.
+    _change_entry(client, entry.id, trusts_second_factor=False, enabled=False)
+    _change_entry(client, entry.id, enabled=True, trusts_second_factor=False)
+    assert _old()["client"] == ""
+    _change_entry(client, entry.id, enabled=False, trusts_second_factor=True)
+    assert _old()["client"] == ""
+    _change_entry(client, entry.id, enabled=True, trusts_second_factor=True)
+    assert _old()["client"] == provider.client_id
+
+
+# --- Up again after the way back (module 1.0.9) -----------------------------------------------------------------------
+
+
+def _linked_names() -> dict[str, str]:
+    with SessionLocal() as db:
+        return {db.get(Account, link.account_id).name: link.subject for link in db.scalars(select(OidcLink))}
+
+
+def test_a_start_takes_over_what_the_older_version_changed_and_makes_a_backup_only_then(
+    client: TestClient, operator: Account, provider: FakeProvider
+) -> None:
+    make_account("anna")
+    make_account("ben")
+    _legacy(provider, label="Company", subjects={"anna": "anna-1", "ben": "ben-1"})
+    assert oidc_store.migrate_settings(backup=False) is not None
+    kept = len(backups.entries())
+    # A start that changes nothing writes nothing and makes no backup; the secret sealed anew by the older version is
+    # no change (the fingerprint reads it decrypted, the stored text differs at every sealing).
+    with SessionLocal() as db:
+        settings_service.save(db, {"oidc_client_secret_enc": encrypt_secret(provider.client_secret)})
+    assert oidc_store.migrate_settings() is None and len(backups.entries()) == kept
+    # The older version let ben go and renamed the button: both come over, with a backup first.
+    with SessionLocal() as db:
+        accounts.by_name(db, "ben").oidc_subject = ""
+        db.commit()
+        settings_service.save(db, {"oidc_provider_name": "Renamed"})
+    assert oidc_store.migrate_settings() is None and len(backups.entries()) == kept + 1
+    assert backups.entries()[0].kind == backups.UPDATE
+    assert _linked_names() == {"anna": "anna-1"} and _entries()[0].label == "Renamed"
+    # The next start has nothing left to take over.
+    assert oidc_store.migrate_settings() is None and len(backups.entries()) == kept + 1
+    assert _linked_names() == {"anna": "anna-1"} and _old()["subjects"]["ben"] == ""
+
+
+def test_a_provider_the_older_version_set_up_comes_up_again_with_the_links_it_made(
+    client: TestClient, operator: Account, provider: FakeProvider
+) -> None:
+    make_account("anna")
+    _legacy(provider, label="Company", subjects={"anna": "anna-1"})
+    entry = oidc_store.migrate_settings(backup=False)
+    assert entry is not None
+    # The operator removed the provider here; the older version set one up again and linked anna to another subject.
+    assert client.delete(f"/api/oidc/admin/providers/{entry.id}", headers=UI).status_code == 200
+    assert _entries() == [] and _old()["client"] == ""
+    _legacy(provider, label="Back again", subjects={"anna": "anna-2"})
+    with SessionLocal() as db:
+        settings_service.save(db, {oidc_store.MIGRATED: True})
+    oidc_store.migrate_settings(backup=False)
+    [row] = _entries()
+    assert (row.slug, row.label, row.enabled, row.trusts_second_factor) == ("oidc", "Back again", True, True)
+    assert _linked_names() == {"anna": "anna-2"}
+    assert _old()["client"] == provider.client_id
+
+
+# --- An invitation at a known link (module 1.0.8) -----------------------------------------------------------------
+
+
+def test_an_invitation_at_a_known_link_adds_its_rights_and_is_used_up(
+    client: TestClient, operator: Account, provider: FakeProvider
+) -> None:
+    add_provider(client, provider)
+    vault.create_space("Team")
+    make_account("dora")
+    member = fresh_browser()
+    sign_in(member, accounts_row("dora"))
+    assert location(link(member, provider, PASSWORD, sub="dora-1")) == "/account?linked=sso"
+    with SessionLocal() as db:
+        space = db.scalar(select(Space).where(Space.folder == "Team"))
+        assert space is not None
+        _invite, token = accounts.create_invite(db, db.get(Account, operator.id), space_id=space.id,
+                                                space_role=WRITE, days=7)
+        space_id = space.id
+    browser = fresh_browser()
+    back = sign_in_via_oidc(browser, provider, invite=token, sub="dora-1", preferred_username="dora")
+    assert location(back) == "/" and browser.get("/api/auth/me").json()["name"] == "dora"
+    with SessionLocal() as db:
+        roles = {db.get(Account, row.account_id).name: row.role
+                 for row in db.scalars(select(Membership).where(Membership.space_id == space_id))}
+    assert roles == {"dora": WRITE, "tester": "manage"}
+    # Used up for good: the same link brings nothing a second time.
+    again = fresh_browser().get("/api/oidc/sso/start", params={"invite": token})
+    assert error_in(again) == "invite_invalid"
+
+
+# --- The second factor the operator requires (rule of 10.10.2026) ---------------------------------------------------
+
+
+def _require_second_factor(on: bool) -> None:
+    with SessionLocal() as db:
+        settings_service.save(db, {"two_factor_required": on})
+
+
+def test_a_provider_that_checks_the_second_factor_ends_the_duty_to_enrol_one_but_the_password_does_not(
+    client: TestClient, operator: Account, provider: FakeProvider
+) -> None:
+    entry = add_provider(client, provider, trusts_second_factor=True)
+    make_account("anna")
+    member = fresh_browser()
+    sign_in(member, accounts_row("anna"))
+    assert location(link(member, provider, PASSWORD, sub="anna-1")) == "/account?linked=sso"
+    _require_second_factor(True)
+
+    # Through the provider: nothing to enrol, the whole app is open.
+    through = fresh_browser()
+    assert location(sign_in_via_oidc(through, provider, sub="anna-1")) == "/"
+    me = through.get("/api/auth/me").json()
+    assert me["name"] == "anna" and me["second_factor_setup_required"] is False
+    assert through.get("/api/spaces").status_code == 200
+
+    # The same account with its password is made to enrol, as before.
+    with_password = fresh_browser()
+    assert with_password.post("/api/auth/login", json={"name": "anna", "password": PASSWORD}).status_code == 200
+    assert with_password.get("/api/auth/me").json()["second_factor_setup_required"] is True
+    blocked = with_password.get("/api/spaces")
+    assert blocked.status_code == 403 and blocked.json()["detail"]["code"] == "second_factor_setup_required"
+
+    # A provider the entry does not trust with the second factor ends nothing: the session counts as the password's.
+    # (The operator's own session is a password session as well: the requirement stays off while the entry changes.)
+    _require_second_factor(False)
+    _change_entry(client, entry["id"], trusts_second_factor=False)
+    _require_second_factor(True)
+    untrusted = fresh_browser()
+    assert location(sign_in_via_oidc(untrusted, provider, sub="anna-1")) == "/"
+    assert untrusted.get("/api/auth/me").json()["second_factor_setup_required"] is True
+    assert untrusted.get("/api/spaces").status_code == 403
+
+    # An account that only has the provider is not made to enrol either way (it never had to).
+    new = fresh_browser()
+    _require_second_factor(False)
+    _change_entry(client, entry["id"], trusts_second_factor=True, auto_create=True)
+    _require_second_factor(True)
+    assert location(sign_in_via_oidc(new, provider, sub="new-1", preferred_username="neo")) == "/"
+    assert new.get("/api/auth/me").json()["second_factor_setup_required"] is False
+
+
+def test_the_first_start_with_the_fingerprint_stores_it_takes_nothing_over_and_writes_the_way_back_again(
+    client: TestClient, operator: Account, provider: FakeProvider
+) -> None:
+    """A database as module 1.0.7 left it: no fingerprint yet, so what the older version changed since cannot be told
+    and nothing is taken over; the start writes the way back anew (the entry does not trust the provider with the
+    second factor, so the old client goes) and stores the first fingerprint."""
+    from app.models import Setting
+
+    make_account("anna")
+    _legacy(provider, label="Company", subjects={"anna": "anna-1"})
+    assert oidc_store.migrate_settings(backup=False) is not None
+    with SessionLocal() as db:
+        db.query(OidcProvider).update({"trusts_second_factor": False})
+        db.query(Setting).filter(Setting.key == oidc_store.FINGERPRINT).delete()
+        db.commit()
+        settings_service.save(db, {"oidc_provider_name": "Changed before the first start"})
+    kept = len(backups.entries())
+    assert oidc_store.migrate_settings() is None
+    assert _entries()[0].label == "Company" and len(backups.entries()) == kept
+    assert _old()["client"] == "" and _old()["subjects"]["anna"] == "anna-1"
+    with SessionLocal() as db:
+        assert settings_service.get(db, oidc_store.FINGERPRINT)

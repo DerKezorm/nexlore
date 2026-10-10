@@ -143,3 +143,41 @@ test('34: add, edit and remove a provider; the authentik card lists its steps', 
   await expect(steps).toContainText('authentik cannot be reached at this address')
   expect(problems).toEqual([])
 })
+
+test('35: another issuer asks first in the authentik card, Yes runs the button again with the confirmation, No changes nothing', async ({ page }) => {
+  const problems = collectProblems(page)
+  // There is no authentik stand-in here: the server's answer is played, and what the page sends is read.
+  const sent: Array<{ url: string; token: string; confirm_issuer_change: boolean }> = []
+  const steps = ['reached', 'signingKey', 'mapping', 'provider', 'application', 'filled']
+  await page.route('**/api/oidc/authentik/setup', async (route) => {
+    const body = route.request().postDataJSON() as (typeof sent)[number]
+    sent.push(body)
+    const answer = body.confirm_issuer_change
+      ? { ok: true, steps: steps.map((key) => ({ key, ok: true, detail: key })), client_id: 'c', issuer: 'https://auth.example.com/o/x/', provider_id: 1, links_dropped: 2 }
+      : { ok: false, steps: [{ key: 'reached', ok: false, detail: 'would change', reason: 'issuer_change', status: 0 }], client_id: '', issuer: '', provider_id: null, links_dropped: 0, count: 2 }
+    await route.fulfill({ json: answer })
+  })
+  await page.goto('/settings?tab=server&sub=signin')
+  const card = page.locator('#sign-in-authentik')
+  await card.getByLabel('Address of authentik').fill('http://127.0.0.1:9')
+  const token = `e2e-${Date.now()}`
+  await card.getByLabel('API token').fill(token)
+  const run = card.getByRole('button', { name: 'Set up', exact: true })
+  await run.click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Another issuer is another provider. 2 accounts will have to link again afterwards.')
+  // No failure on the page behind the question: the button waits for the answer.
+  await expect(page.getByTestId('authentik-steps')).toHaveCount(0)
+  if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT })
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(sent.map((body) => body.confirm_issuer_change)).toEqual([false])
+  await run.click()
+  await dialog.getByRole('button', { name: 'Set up', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByTestId('authentik-steps').locator('li')).toHaveCount(steps.length)
+  expect(sent.map((body) => body.confirm_issuer_change)).toEqual([false, false, true])
+  // The token stayed in the field while the question waited: all three runs carry it.
+  expect(sent.map((body) => body.token)).toEqual([token, token, token])
+  expect(problems).toEqual([])
+})

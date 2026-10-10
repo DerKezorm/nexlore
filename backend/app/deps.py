@@ -20,7 +20,7 @@ from .db import SessionLocal, get_db
 from .errors import detail, error
 from .models import OPERATOR, SIGN_IN_PASSWORD
 from .models import Account as AccountRow
-from .security import SESSION_COOKIE, brake, session_account
+from .security import SESSION_COOKIE, brake, session_account, session_via
 from .services import accounts, logs, paths, rights, totp
 
 DbSession = Annotated[Session, Depends(get_db)]
@@ -117,7 +117,9 @@ def require_account(request: Request) -> AccountRow:
         account = session_account(db, request.cookies.get(SESSION_COOKIE))
         if account is None:
             raise error("sign_in_required", "Sign in first.", 401)
-        if request.url.path not in SETUP_ONLY_PATHS and totp.setup_required(db, account):
+        if request.url.path not in SETUP_ONLY_PATHS and totp.setup_required(
+            db, account, session_via(db, request.cookies.get(SESSION_COOKIE))
+        ):
             raise error("second_factor_setup_required", "Set up your second factor first.", 403)
         db.expunge(account)
     logs.set_actor(account.name)

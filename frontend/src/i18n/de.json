@@ -1277,7 +1277,7 @@
     },
     "signIn": {
       "twoFactor": "Zweiten Faktor verlangen",
-      "twoFactorHint": "Jedes Konto, das sich mit Passwort anmeldet, muss ihn einrichten, bevor es weiterkommt. Konten vom Anbieter bringen dessen eigenen mit."
+      "twoFactorHint": "Wer sich mit Passwort anmeldet, braucht einen zweiten Faktor: ein Konto ohne einen muss ihn einrichten, bevor es weiterkommt. Die Anmeldung über einen Anbieter, der den zweiten Faktor selbst prüft, braucht keinen."
     },
     "shares": {
       "title": "Öffentliche Seiten",

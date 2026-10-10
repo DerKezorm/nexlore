@@ -692,6 +692,8 @@ export type AuthentikResult = {
   issuer: string
   provider_id: number | null
   links_dropped: number
+  /** With the reason `issuer_change`: how many accounts would have to link again. */
+  count?: number
 }
 export type Backup = { name: string; size: number; created: string; kind: string; note: string; notes: number; files: number; version: string; uploaded?: boolean }
 
@@ -1001,7 +1003,9 @@ export const adminApi = {
   /** Takes an account's link to a provider, with the operator's own password. */
   unlinkAccount: (accountId: number, providerId: number, current_password: string) =>
     api<void>(`/api/oidc/admin/accounts/${accountId}/links/${providerId}`, { method: 'DELETE', body: { current_password } }),
-  authentik: (url: string, token: string) => api<AuthentikResult>('/api/oidc/authentik/setup', { method: 'POST', body: { url, token } }),
+  /** `confirm_issuer_change`: the answer to the question the button stops at when another issuer takes the links. */
+  authentik: (url: string, token: string, confirm_issuer_change = false) =>
+    api<AuthentikResult>('/api/oidc/authentik/setup', { method: 'POST', body: { url, token, confirm_issuer_change } }),
   backups: () => api<Backup[]>('/api/backups'),
   makeBackup: (note: string) => api<{ name: string }>('/api/backups', { method: 'POST', body: { note } }),
   checkBackup: (name: string) => api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/check`, { method: 'POST' }),

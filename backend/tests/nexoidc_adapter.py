@@ -40,6 +40,7 @@ class Adapter(StandardAdapter):
     only_authentik = False
     has_second_factor = True
     legacy_model = "single"
+    trusted_before = True
     old_callback_paths: tuple[str, ...] = ()
     operator_name = OPERATOR_NAME
 
@@ -175,7 +176,21 @@ class Adapter(StandardAdapter):
             db.commit()
 
     def run_migration(self) -> None:
+        # The whole start-up: the migration once, later ``resync`` against the fingerprint, then the way back again.
         oidc_store.migrate_settings(backup=False)
+
+    def legacy_read(self) -> dict[str, Any]:
+        # What nexlore 1.5 would find now: the old settings (secret decrypted) and the column ``oidc_subject``.
+        with SessionLocal() as db:
+            legacy, subjects = oidc_store.read_legacy(db)
+            names = {row.id: row.name for row in db.scalars(select(Account))}
+        return {
+            "issuer": legacy.issuer,
+            "client_id": legacy.client_id,
+            "client_secret": legacy.client_secret,
+            "label": legacy.label,
+            "subjects": {names[account_id]: subject for account_id, subject in subjects},
+        }
 
     def trip_throttle(self, client: Any) -> None:
         # As many failed runs at the provider from this sender as the brake lets pass (every TestClient is the

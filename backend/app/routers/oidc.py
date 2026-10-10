@@ -23,7 +23,7 @@ Paths (all below ``/api/oidc``):
 | GET | ``/me`` | signed in: every active entry with ``linked`` |
 | POST, DELETE | ``/{slug}/link`` | signed in: link (``{"password"}`` → ``{"url"}``), unlink |
 | DELETE | ``/admin/accounts/{account}/links/{provider}`` | operator, with the own password |
-| POST | ``/authentik/setup`` | operator: ``{"url", "token"}`` → always 200 with the steps |
+| POST | ``/authentik/setup`` | operator: ``{"url", "token", "confirm_issuer_change"}`` → always 200 with the steps |
 | GET | ``/authentik/blueprint`` | operator: ``nexlore-authentik.yaml`` |
 """
 
@@ -50,7 +50,7 @@ from ..deps import (
     reauth_succeeded,
 )
 from ..errors import error
-from ..models import SIGN_IN_PASSWORD, SpaceNotice
+from ..models import SESSION_VIA_PASSWORD, SESSION_VIA_PROVIDER, SIGN_IN_PASSWORD, SpaceNotice
 from ..models import Account as AccountRow
 from ..security import SESSION_COOKIE, brake, session_account
 from ..services import accounts, logs, totp
@@ -90,6 +90,9 @@ class PasswordIn(BaseModel):
 class SetupIn(BaseModel):
     url: str = Field(min_length=1, max_length=500)
     token: str = Field(min_length=1, max_length=2000)
+    #: The answer to the button's question "another issuer, {count} accounts link again" (module 1.0.8): the run stops
+    #: at ``reached`` with the reason ``issuer_change`` until it comes with ``true``.
+    confirm_issuer_change: bool = False
 
 
 class OrderIn(BaseModel):
@@ -259,7 +262,9 @@ async def _returned(slug: str, request: Request) -> RedirectResponse:
             return response
         response = _redirect(flow.arrived(arrival), request)
         # The module logged the sign-in with its provider already; ``sign_in`` adds nexlore's own line.
-        sign_in(s.db, request, response, row)
+        # A provider the entry trusts with the second factor ends the duty to enrol one of the own (rule of 10.10.2026).
+        via = SESSION_VIA_PROVIDER if arrival.provider.trusts_second_factor else SESSION_VIA_PASSWORD
+        sign_in(s.db, request, response, row, via)
         return response
 
 
@@ -364,7 +369,8 @@ async def authentik_setup(payload: SetupIn, operator: OperatorAccount, request: 
     # Always 200 with the steps that ran, a failed one included: the page says why in the operator's language.
     logger.info("authentik setup started by=%s", operator.name)
     with store() as s:
-        result = await authentik.setup(s, payload.url, payload.token, _base(request))
+        result = await authentik.setup(s, payload.url, payload.token, _base(request),
+                                       confirm_issuer_change=payload.confirm_issuer_change)
     return result.as_dict()
 
 

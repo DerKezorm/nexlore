@@ -274,6 +274,14 @@ class SqlStore:
         row = invite.rights
         return isinstance(row, InviteRow) and accounts.consume(self.db, row)
 
+    def accept_invite(self, account_id: int, invite: Invite) -> None:
+        # A known identity came through an invitation (module 1.0.8): the rights of the invitation come on top of the
+        # account's own, never fewer (``accounts.redeem`` only raises). The address it was made for is not taken over:
+        # the account has its own. Only uncoupled: coupled, ``find_invite`` finds none.
+        row = self.db.get(Account, account_id)
+        if row is not None and isinstance(invite.rights, InviteRow):
+            accounts.redeem(self.db, invite.rights, row, consumed=True, commit=False)
+
     # --- Transaction -----------------------------------------------------------------------------------------------
 
     def commit(self) -> None:
@@ -287,12 +295,17 @@ class SqlStore:
 
 # --- The migration from the single provider of the settings (blueprint 01 "Umstieg", 06 "Wanderung") --------------
 
+#: How nexlore 1.5 behaved after the provider: it asked no code of its own (blueprint 06 "Wanderung").
+TRUSTED_BEFORE = True
+#: The fingerprint of what the way back wrote last (``migrate.fingerprint``), a setting.
+FINGERPRINT = "oidc_legacy_fingerprint"
 #: The settings of the single provider before the list. They stay readable for one version (the way back), then go.
 LEGACY_KEYS = ("oidc_issuer", "oidc_client_id", "oidc_client_secret_enc", "oidc_provider_name", "oidc_auto_create")
 
 
-def legacy_plan(db: Session) -> migrate.Plan | None:
-    """The entry ``oidc`` and its links the old settings become; None when no provider was set up."""
+def read_legacy(db: Session) -> tuple[migrate.Legacy, list[tuple[int, str]]]:
+    """The old settings and the old column, read the one way the migration, the fingerprint and ``resync`` read them
+    (the secret decrypted: sealed with a random nonce, the stored text would differ at every write)."""
     values = settings_service.get_all(db)
     label = str(values.get("oidc_provider_name") or "")
     legacy = migrate.Legacy(
@@ -310,21 +323,37 @@ def legacy_plan(db: Session) -> migrate.Plan | None:
             select(Account.id, Account.oidc_subject).where(Account.oidc_subject != "").order_by(Account.id)
         )
     ]
+    return legacy, subjects
+
+
+def legacy_plan(db: Session) -> migrate.Plan | None:
+    """The entry ``oidc`` and its links the old settings become; None when no provider was set up."""
+    legacy, subjects = read_legacy(db)
     # nexlore asked no code after the provider before the list: the migrated entry keeps that (blueprint 06).
-    return migrate.plan(legacy, subjects, trusts_second_factor=True)
+    return migrate.plan(legacy, subjects, trusts_second_factor=TRUSTED_BEFORE)
 
 
 def mirror_legacy(db: Session) -> None:
+    """Write the way back (``_write_legacy``), then the fingerprint of what stands there for ``migrate.resync`` at the
+    next start: what the older version changes in between is taken over, nothing else (module 1.0.9). Nothing is
+    committed here; the store calls it before every commit."""
+    _write_legacy(db)
+    db.flush()
+    legacy, subjects = read_legacy(db)
+    put_settings(db, {FINGERPRINT: migrate.fingerprint(legacy, subjects)})
+
+
+def _write_legacy(db: Session) -> None:
     """The way back to nexlore 1.5 (blueprint 01 "Umstieg" 4): that version reads the old settings ``oidc_*`` and the
     column ``oidc_subject``, so they must always describe the entry ``oidc`` exactly, or be empty. Otherwise going back
     would bring a removed provider back, or let a subject into an account that gave it up.
 
     - The entry ``oidc`` gone or its issuer changed: the old settings and every old subject are emptied for good.
-    - Else the old settings follow the entry: its client (only while it is on; switched off, the old version finds no
-      client and lets nobody in through it), its name, ``auto_create`` only while on; each account's old subject is
-      its link there, and an account without one has none.
-
-    Nothing is committed here; the store calls it before every commit."""
+    - Else the old settings follow the entry: its client (only while it is on and the provider checks the second
+      factor itself; switched off, or without that, the old version finds no client and lets nobody in through it:
+      it has no such switch and would ask for no code after the provider, rule of 10.10.2026), its name,
+      ``auto_create`` only while that holds; each account's old subject is its link there, and an account without
+      one has none."""
     issuer = str(settings_service.get(db, "oidc_issuer") or "")
     entry = db.scalar(select(OidcProvider).where(OidcProvider.slug == nexoidc.LEGACY_SLUG)) if issuer else None
     if issuer and (entry is None or not protocol.same_issuer(entry.issuer, issuer)):
@@ -341,13 +370,14 @@ def mirror_legacy(db: Session) -> None:
         wanted = linked.get(account.id, "")
         if account.oidc_subject != wanted:
             account.oidc_subject = wanted
-    client_id = entry.client_id if entry.enabled else ""
-    secret = decrypt_secret(entry.client_secret_enc, secret_context(entry.id)) if entry.enabled else ""
+    open_way = entry.enabled and entry.trusts_second_factor
+    client_id = entry.client_id if open_way else ""
+    secret = decrypt_secret(entry.client_secret_enc, secret_context(entry.id)) if open_way else ""
     old_secret = decrypt_secret(str(settings_service.get(db, "oidc_client_secret_enc") or ""))
     if str(settings_service.get(db, "oidc_client_id") or "") != client_id or old_secret != secret:
         sealed = encrypt_secret(secret) if secret else ""
         put_settings(db, {"oidc_client_id": client_id, "oidc_client_secret_enc": sealed})
-    shown = {"oidc_provider_name": entry.label, "oidc_auto_create": bool(entry.auto_create and entry.enabled)}
+    shown = {"oidc_provider_name": entry.label, "oidc_auto_create": bool(entry.auto_create and open_way)}
     changed = {key: value for key, value in shown.items() if settings_service.get(db, key) != value}
     if changed:
         put_settings(db, changed)
@@ -377,15 +407,18 @@ def migration_due(db: Session) -> bool:
 
 
 def migrate_settings(*, backup: bool = True) -> Provider | None:
-    """Once, at the first start with the list: the provider of the settings becomes the entry ``oidc`` with a link
-    per stored subject; ``/api/oidc/callback`` keeps signing in. A backup goes first (the way back). Nothing happens
-    when there was no provider or the list has entries already."""
+    """What the app runs at every start-up, after the check of the database: once, the provider of the settings
+    becomes the entry ``oidc`` with a link per stored subject (``/api/oidc/callback`` keeps signing in; a backup goes
+    first, the way back). Every later start takes over what the version before the list changed in the old settings
+    and the old column since (``migrate.resync``, a backup first when there is something), and writes the way back
+    and its fingerprint again. Returns the new entry of the first kind, else None."""
     with SessionLocal() as db:
         due = migration_due(db)
-        if not due:
-            if not settings_service.get(db, MIGRATED):
-                settings_service.save(db, {MIGRATED: True})
-            return None
+        if not due and not settings_service.get(db, MIGRATED):
+            settings_service.save(db, {MIGRATED: True})
+    if not due:
+        _take_over(backup=backup)
+        return None
     if backup:
         from . import backups
 
@@ -396,3 +429,21 @@ def migrate_settings(*, backup: bool = True) -> Provider | None:
         entry = migrate.apply(SqlStore(db), legacy_plan(db))
         settings_service.save(db, {MIGRATED: True})
         return entry
+
+
+def _take_over(*, backup: bool) -> None:
+    """``migrate.resync`` against the fingerprint of the last mirror, then the mirror and the new fingerprint (the
+    store's commit does both). The first start with the fingerprint has none stored: nothing is taken over."""
+    with SessionLocal() as db:
+        legacy, subjects = read_legacy(db)
+        previous = str(settings_service.get(db, FINGERPRINT) or "") or None
+        found = migrate.changes(previous, migrate.fingerprint(legacy, subjects))
+    if found.any and backup:
+        from . import backups
+
+        backups.create(kind=backups.UPDATE, note="before taking over the old sign-in settings")
+    with SessionLocal() as db:
+        store = SqlStore(db)
+        legacy, subjects = read_legacy(db)
+        migrate.resync(store, legacy, subjects, previous=previous, trusts_second_factor=TRUSTED_BEFORE)
+        store.commit()

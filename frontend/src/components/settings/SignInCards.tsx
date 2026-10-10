@@ -19,7 +19,7 @@ import {
   type ServerSettings,
 } from '../../api/client'
 import { errorText } from '../../lib/errors'
-import { authentikReasonKey, authentikStepKey, oidcErrorKey, oidcFormErrorKey, slugFromLabel } from '../../vendor/nexoidc/oidc'
+import { authentikIssuerChange, authentikReasonKey, authentikStepKey, oidcErrorKey, oidcFormErrorKey, slugFromLabel } from '../../vendor/nexoidc/oidc'
 import { ConfirmDialog } from '../ConfirmDialog'
 import { Symbol } from '../Symbol'
 import { Button, Card, CopyLink, Feedback, Input, Toggle } from './ui'
@@ -471,7 +471,27 @@ export function AuthentikCard({ publicUrl, coupled, reload }: { publicUrl: strin
   const { t } = useTranslation()
   const [authentik, setAuthentik] = useState({ url: '', token: '' })
   const [steps, setSteps] = useState<AuthentikResult | null>(null)
+  // The button stopped before it wrote anything: another issuer, this many accounts would have to link again.
+  const [asking, setAsking] = useState<number | null>(null)
   const { busy, problem, run } = useAction()
+
+  const start = (confirm: boolean) => {
+    setSteps(null)
+    setAsking(null)
+    return run(async () => {
+      const answer = await adminApi.authentik(authentik.url, authentik.token, confirm)
+      // Not a failure: the button waits for the operator's yes (blueprint 04, card 3), nothing was changed. The
+      // token stays for the second run.
+      const count = authentikIssuerChange(answer)
+      if (count !== null) {
+        setAsking(count)
+        return
+      }
+      setSteps(answer)
+      setAuthentik((current) => ({ ...current, token: '' }))
+      await reload()
+    })
+  }
 
   return (
     <Card id="sign-in-authentik" symbol="sparkle" title={t('oidc.authentik.title')} text={t('oidc.authentik.text')}>
@@ -489,12 +509,7 @@ export function AuthentikCard({ publicUrl, coupled, reload }: { publicUrl: strin
         onSubmit={(event) => {
           event.preventDefault()
           if (coupled) return
-          setSteps(null)
-          void run(async () => {
-            setSteps(await adminApi.authentik(authentik.url, authentik.token))
-            setAuthentik((current) => ({ ...current, token: '' }))
-            await reload()
-          })
+          void start(false)
         }}
       >
         <Input label={t('oidc.authentik.url')} value={authentik.url} onChange={(url) => setAuthentik({ ...authentik, url })} placeholder="https://auth.example.com" />
@@ -525,7 +540,7 @@ export function AuthentikCard({ publicUrl, coupled, reload }: { publicUrl: strin
                 </span>
                 <span>
                   <span className={step.ok ? 'text-mist-200' : 'font-medium text-bad-500'}>{name ? t(name) : step.key}</span>
-                  {why && <span className="block text-xs text-mist-400">{t(why, { status: step.status ?? 0 })}</span>}
+                  {why && <span className="block text-xs text-mist-400">{t(why, { status: step.status ?? 0, count: steps.count ?? 0 })}</span>}
                 </span>
               </li>
             )
@@ -533,6 +548,17 @@ export function AuthentikCard({ publicUrl, coupled, reload }: { publicUrl: strin
         </ol>
       )}
       <Feedback problem={problem} />
+      <ConfirmDialog
+        open={asking !== null}
+        title={t('oidc.authentik.title')}
+        confirm={t('oidc.authentik.run')}
+        danger
+        busy={busy}
+        onCancel={() => setAsking(null)}
+        onConfirm={() => void start(true)}
+      >
+        {t('oidc.admin.issuerChangeConfirm', { count: asking ?? 0 })}
+      </ConfirmDialog>
     </Card>
   )
 }

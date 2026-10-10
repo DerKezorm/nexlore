@@ -28,10 +28,17 @@ class StandardAdapter:
     single_account = False
     #: nexsuite: only authentik, no second entry through the form (Bauplan 06). Entries are then made in the store.
     only_authentik = False
+    #: The app can be coupled to nexsuite (Bauplan 06). False for the apps with one account (nexcrate, nexsift): they
+    #: have no people to pair, and the coupling test checks instead that the list stays uncoupled.
+    supports_coupling = True
     #: The app has a second factor of its own.
     has_second_factor = True
     #: "single": the app kept one provider in its settings and migrates (Pflichttest 22); "list" or "none": not.
     legacy_model = "single"
+    #: legacy_model "single": how the version before the list behaved after the provider, as the app passes it to
+    #: ``migrate.plan`` and ``migrate.resync`` (Bauplan 06 "Wanderung"): True asked no code, False (nexdiary, nexpaper)
+    #: asked it.
+    trusted_before = True
     #: Callback paths the app's providers knew before the module, with ``{slug}`` (nexbeat
     #: ``/api/auth/oidc/{slug}/callback``); the app routes them to the same return. Empty: none.
     old_callback_paths: tuple[str, ...] = ()
@@ -114,7 +121,15 @@ class StandardAdapter:
         raise NotImplementedError
 
     def run_migration(self) -> None:
-        """APP (legacy_model "single"): run the app's migration to the provider list."""
+        """APP (legacy_model "single"): what the app runs at every start-up: the migration to the provider list once;
+        after it, ``migrate.resync`` with the fingerprint stored at the last mirror; then the mirror and the new
+        fingerprint (since 1.0.9). ``legacy_setup`` between two calls is the version before the list at work."""
+        raise NotImplementedError
+
+    def legacy_read(self) -> dict[str, Any]:
+        """APP (legacy_model "single", since 1.0.9): the old settings and ``oidc_subject`` as the app has them now
+        (what the version before the list would find): ``issuer``, ``client_id``, ``client_secret`` (decrypted),
+        ``label`` and ``subjects`` (account name to subject, accounts without one left out)."""
         raise NotImplementedError
 
     # --- standard routes (override when the app differs) ------------------------------------------------------------
@@ -180,8 +195,11 @@ class StandardAdapter:
     def unlink(self, client: Any, slug: str) -> httpx.Response:
         return client.delete(self.path("link", slug=slug))
 
-    def setup_authentik(self, url: str, token: str) -> httpx.Response:
-        return self.operator().post(self.path("setup"), json={"url": url, "token": token})
+    def setup_authentik(self, url: str, token: str, *, confirm_issuer_change: bool = False) -> httpx.Response:
+        body: dict[str, Any] = {"url": url, "token": token}
+        if confirm_issuer_change:
+            body["confirm_issuer_change"] = True
+        return self.operator().post(self.path("setup"), json=body)
 
     def blueprint(self) -> httpx.Response:
         return self.operator().get(self.path("blueprint"))

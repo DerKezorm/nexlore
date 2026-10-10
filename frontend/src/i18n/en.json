@@ -1277,7 +1277,7 @@
     },
     "signIn": {
       "twoFactor": "Require a second factor",
-      "twoFactorHint": "Every account that signs in with a password must set one up before it gets any further. Accounts from the provider bring its own."
+      "twoFactorHint": "Every sign-in with a password needs a second factor: an account without one must set it up before it gets any further. Signing in through a provider that checks the second factor itself needs none."
     },
     "shares": {
       "title": "Public pages",

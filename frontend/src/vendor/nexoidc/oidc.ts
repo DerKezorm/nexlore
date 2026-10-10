@@ -7,7 +7,8 @@
  *
  * The wording files use i18next's `{{app}}` for the name of the app. Set it once, for example
  * `i18n.init({ interpolation: { defaultVariables: { app: 'nexlore' } } })`, and merge the files into the app's
- * resources under the same keys (`oidc.…`).
+ * resources under the same keys (`oidc.…`) through `oidcWording` (since 1.0.9; it picks the sentences of apps with
+ * one account).
  */
 
 /** The error codes of Bauplan 02; each has a sentence under `oidc.error.<code>`. Same order as `errors.CODES`. */
@@ -46,8 +47,17 @@ export const OIDC_FORM_CODES = [
 /** The steps of the authentik button in their order; `binding` only in apps with one account. */
 export const AUTHENTIK_STEPS = ['reached', 'signingKey', 'mapping', 'provider', 'application', 'filled'] as const
 export const AUTHENTIK_STEP_BINDING = 'binding'
-/** Why a step failed, under `oidc.authentik.why.<reason>` (with `{{status}}`). */
-export const AUTHENTIK_REASONS = ['unreachable', 'unusable', 'token', 'malformed', 'answered', 'slug', 'coupled'] as const
+/** Why a step failed, under `oidc.authentik.why.<reason>` (with `{{status}}`; `issuer_change` with `{{count}}`). */
+export const AUTHENTIK_REASONS = [
+  'unreachable',
+  'unusable',
+  'token',
+  'malformed',
+  'answered',
+  'slug',
+  'coupled',
+  'issuer_change',
+] as const
 
 export type OidcErrorCode = (typeof OIDC_ERROR_CODES)[number]
 
@@ -70,6 +80,48 @@ export function authentikStepKey(step: string): string | null {
 /** The text key of a step's reason. */
 export function authentikReasonKey(reason: string | null | undefined): string | null {
   return reason && (AUTHENTIK_REASONS as readonly string[]).includes(reason) ? `oidc.authentik.why.${reason}` : null
+}
+
+/**
+ * The number of accounts the button asks about before it changes the issuer (`reason: issuer_change`, Bauplan 03), or
+ * null when the run did not stop for that. The page then asks with `oidc.admin.issuerChangeConfirm` and, on yes, runs
+ * the button again with `confirm_issuer_change: true`.
+ */
+export function authentikIssuerChange(result: {
+  steps: ReadonlyArray<{ ok: boolean; reason?: string }>
+  count?: number
+}): number | null {
+  const failed = result.steps.find((step) => !step.ok)
+  return failed?.reason === 'issuer_change' ? (result.count ?? 0) : null
+}
+
+/** A wording file (`oidc.de.json`, `oidc.en.json`) or a part of it. */
+export interface OidcWording {
+  [key: string]: string | OidcWording
+}
+
+function overlay(base: OidcWording, over: OidcWording): OidcWording {
+  const merged: OidcWording = { ...base }
+  for (const [key, value] of Object.entries(over)) {
+    const below = merged[key]
+    merged[key] = typeof value === 'object' && typeof below === 'object' ? overlay(below, value) : value
+  }
+  return merged
+}
+
+/**
+ * The words of a wording file as the app merges them into its resources. Apps with one account (nexcrate, nexsift;
+ * `AppConfig.single_account`) pass `singleAccount: true`: then the sentences under `oidc.single` take the place of
+ * the keys of the same name (`oidc.admin.passwordHint`, `oidc.admin.addressHint`, `oidc.error.oidc_no_account`), so
+ * the page asks for the same keys in every app. `oidc.single` itself is not handed on. Counts use i18next's plural
+ * forms (`_one`, `_other`): ask for the key without the suffix and pass `count`.
+ */
+export function oidcWording(file: OidcWording, options: { singleAccount: boolean }): OidcWording {
+  const root = file.oidc
+  if (typeof root !== 'object') return { ...file }
+  const { single, ...words } = root
+  const chosen = options.singleAccount && typeof single === 'object' ? overlay(words, single) : words
+  return { ...file, oidc: chosen }
 }
 
 const SPELLED_OUT: Record<string, string> = { ä: 'ae', ö: 'oe', ü: 'ue', ß: 'ss', Ä: 'Ae', Ö: 'Oe', Ü: 'Ue' }

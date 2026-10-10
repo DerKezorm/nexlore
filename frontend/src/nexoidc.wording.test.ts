@@ -8,12 +8,15 @@
  */
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
+import { oidcWording, type OidcWording } from './vendor/nexoidc/oidc'
 import de from './vendor/nexoidc/oidc.de.json'
 import en from './vendor/nexoidc/oidc.en.json'
 // nexlore's i18n after its set-up: the module's files merged into the resources, `{{app}}` set (src/i18n/index.ts).
 import i18n, { changeLanguage, startI18n } from './i18n'
 
 const APP_NAME = 'nexlore'
+// nexlore has accounts: the sentences for the apps with one account (nexcrate, nexsift) are not merged in.
+const SINGLE_ACCOUNT = false
 
 beforeAll(async () => {
   // No server in a unit test: no languages added by an operator.
@@ -21,7 +24,7 @@ beforeAll(async () => {
   await startI18n()
 })
 
-type Tree = { [key: string]: string | Tree }
+type Tree = OidcWording
 
 function leaves(tree: Tree, prefix = ''): [string, string][] {
   return Object.entries(tree).flatMap(([name, value]) => {
@@ -37,12 +40,18 @@ describe('the oidc texts', () => {
     it(`are all in the app in ${language}, word for word, with the app's name`, async () => {
       await changeLanguage(language)
       expect(i18n.language).toBe(language)
-      for (const [key, text] of leaves(tree as Tree)) {
+      for (const [key, text] of leaves(oidcWording(tree, { singleAccount: SINGLE_ACCOUNT }))) {
+        // Plural forms are asked for without their suffix, with a count that picks them (since 1.0.9).
+        const plural = /_(one|other)$/.exec(key)
+        const given = plural ? { ...values, count: plural[1] === 'one' ? 1 : 2 } : values
+        const asked = plural ? key.slice(0, plural.index) : key
         const expected = text.replace(/\{\{(\w+)\}\}/g, (_, name: string) =>
-          name === 'app' ? APP_NAME : String(values[name as keyof typeof values]),
+          name === 'app' ? APP_NAME : String(given[name as keyof typeof given]),
         )
-        expect(i18n.t(key, values), key).toBe(expected)
+        expect(i18n.t(asked, given), key).toBe(expected)
       }
+      // The sentences of the apps with one account are in the app only where it has one (`oidc.single` is never handed on).
+      expect(i18n.exists('oidc.single.admin.passwordHint'), 'oidc.single').toBe(SINGLE_ACCOUNT)
     })
   }
 })

@@ -2,7 +2,10 @@
 
 The order on a return, and nothing else:
 
-1. the link ``(provider_id, subject)``: found, signed in, whatever name and address the provider sends today;
+1. the link ``(provider_id, subject)``: found, signed in, whatever name and address the provider sends today; a
+   valid invitation in the attempt is accepted with that account (its rights added, the invitation used up by the
+   same one-row statement as below). One that ran out or was used meanwhile changes nothing: the link comes first,
+   so the person is signed in all the same, and ``SignedIn.invitation`` says ``invalid`` for a hint;
 2. the invitation in the attempt: a new account with the rights of the invitation, which is used up by one statement
    that must hit exactly one row (two people returning at once: only one gets in);
 3. ``auto_create`` of the provider: a new account as a member;
@@ -24,6 +27,9 @@ from .errors import OidcError
 from .flow import Arrival
 from .model import AccountState, Identity, Link, Store
 
+#: ``SignedIn.invitation``: what became of an invitation that came along with a known link.
+INVITATION_ACCEPTED = "accepted"
+INVITATION_INVALID = "invalid"
 #: How far numbering goes when a name is taken (``max-2``, ``max-3`` …) before the module gives up.
 NAME_TRIES = 1000
 FALLBACK_NAME = "user"
@@ -36,12 +42,15 @@ def _log() -> logging.Logger:
 @dataclass(frozen=True)
 class SignedIn:
     """The account the identity signs in as. ``second_factor_due``: the app asks for the code of its own second
-    factor before the session counts (provider does not check it, and the account has one)."""
+    factor before the session counts (provider does not check it, and the account has one). ``invitation``: for a
+    known link that came with an invitation, ``accepted`` (rights added, invitation used) or ``invalid`` (ran out or
+    used meanwhile; signed in all the same, the app may say so); empty otherwise."""
 
     account_id: int
     name: str
     created: bool
     second_factor_due: bool
+    invitation: str = ""
 
 
 def name_for(identity: Identity, clean: Callable[[str], str], taken: Callable[[str], bool]) -> str:
@@ -90,10 +99,21 @@ def sign_in(store: Store, arrival: Arrival) -> SignedIn:
     link = store.find_link(provider.id, identity.subject)
     if link is not None:
         state = _state(store, link.account_id)
-        store.touch_link(provider.id, identity.subject, identity.email)
+        invitation = ""
+        if started.purpose == INVITE and started.invite and not cfg.single_account:
+            invitation = _accept(store, state, started.invite)
+        try:
+            store.touch_link(provider.id, identity.subject, identity.email)
+        except Exception:
+            store.rollback()
+            raise
         store.commit()
         _log().info("Signed in via OIDC name=%s provider=%s", state.name, provider.slug)
-        return SignedIn(state.id, state.name, False, second_factor_due(provider.trusts_second_factor, state))
+        if invitation == INVITATION_ACCEPTED:
+            _log().info("Invitation accepted via OIDC name=%s provider=%s", state.name, provider.slug)
+        return SignedIn(
+            state.id, state.name, False, second_factor_due(provider.trusts_second_factor, state), invitation
+        )
     invite = None
     if started.purpose == INVITE and started.invite and not cfg.single_account:
         invite = store.find_invite(started.invite)
@@ -128,6 +148,21 @@ def sign_in(store: Store, arrival: Arrival) -> SignedIn:
         name,
     )
     return SignedIn(account_id, name, True, False)
+
+
+def _accept(store: Store, state: AccountState, key: str) -> str:
+    """The invitation of the attempt for an account that is known already (Bauplan 01, "Wer ist das?" 1): used up with
+    the one-row statement, then its rights added. Nothing committed here; a failure rolls the use back."""
+    invite = store.find_invite(key)
+    if invite is None or not store.consume_invite(invite):
+        store.rollback()
+        return INVITATION_INVALID
+    try:
+        store.accept_invite(state.id, invite)
+    except Exception:
+        store.rollback()
+        raise
+    return INVITATION_ACCEPTED
 
 
 def link(store: Store, arrival: Arrival, signed_in_account_id: int | None) -> None:

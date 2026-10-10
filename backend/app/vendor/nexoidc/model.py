@@ -202,6 +202,12 @@ class Store(Protocol):
         faster (two people returning at the same moment: only one gets in)."""
         ...
 
+    def accept_invite(self, account_id: int, invite: Invite) -> None:
+        """Give an existing account the rights of the invitation in addition to its own (Bauplan 01, "Wer ist das?"
+        1: a known identity that came through an invitation). Adds, never takes away: an account with more rights
+        keeps them. Called after ``consume_invite`` succeeded, in the same transaction; the module commits."""
+        ...
+
     # --- Transaction ---------------------------------------------------------------------------------------------
     def commit(self) -> None: ...
 

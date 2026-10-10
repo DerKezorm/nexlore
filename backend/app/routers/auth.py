@@ -28,7 +28,7 @@ from ..deps import (
     reauth_succeeded,
 )
 from ..errors import detail, error
-from ..models import OPERATOR, ROLES, SIGN_IN_PASSWORD, Membership, OidcLink, OidcProvider
+from ..models import OPERATOR, ROLES, SESSION_VIA_PASSWORD, SIGN_IN_PASSWORD, Membership, OidcLink, OidcProvider
 from ..models import Account as AccountRow
 from ..security import (
     DEVICE_COOKIE,
@@ -42,6 +42,7 @@ from ..security import (
     end_all_sessions,
     end_session,
     session_account,
+    session_via,
     start_session,
 )
 from ..services import (
@@ -175,8 +176,9 @@ def account_view(account: AccountRow, db: Session | None = None) -> dict[str, An
     }
 
 
-def sign_in(db: DbSession, request: Request, response: Response, account: AccountRow) -> dict[str, Any]:
-    token = start_session(db, account, client_ip(request), request.headers.get("user-agent", ""))
+def sign_in(db: DbSession, request: Request, response: Response, account: AccountRow,
+            via: str = SESSION_VIA_PASSWORD) -> dict[str, Any]:
+    token = start_session(db, account, client_ip(request), request.headers.get("user-agent", ""), via)
     _set_cookie(response, request, token)
     # This browser is known from now on: a lock that strangers cause by guessing does not keep it out.
     if device_of(request.cookies.get(DEVICE_COOKIE)) != account.id:
@@ -302,14 +304,16 @@ def logout_everywhere(request: Request, account: Account, db: DbSession) -> None
 
 
 @router.get("/auth/me", summary="The signed-in account, and what this server offers it")
-def me(account: Account, db: DbSession) -> dict[str, Any]:
+def me(account: Account, db: DbSession, request: Request) -> dict[str, Any]:
     return {
         **account_view(account, db),
         "shares_allowed": bool(settings_service.get(db, "shares_allowed")),
         "mail": mailer.configured(db),
         # Why the profile cannot send a confirmation now (empty: it can): no mail server, or no public address.
         "email_confirm": emailaddr.cannot_mail(db),
-        "second_factor_setup_required": totp.setup_required(db, account),
+        "second_factor_setup_required": totp.setup_required(
+            db, account, session_via(db, request.cookies.get(SESSION_COOKIE))
+        ),
         # The editor offers AI only when the operator allows it and the account switched its own service on.
         "ai_ready": ai.ready(db, account),
         # Frag Lore shows in the header whenever the operator allows AI; without a service it says what is missing.
