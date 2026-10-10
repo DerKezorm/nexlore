@@ -17,6 +17,7 @@ import { formatDate } from '../lib/markdown'
 import { mcpCommand, mcpJson } from '../lib/mcp'
 import { copyText } from '../lib/vaultActions'
 import { useAuth } from '../state/auth'
+import { KeyFactorHint } from './KeyFactorHint'
 import { Symbol } from './Symbol'
 import { ToolRights } from './ToolRights'
 
@@ -113,6 +114,7 @@ export function McpKeys() {
         <Symbol name="key" className="h-4 w-4 text-accent-400" /> {t('mcp.title')}
       </h2>
       <p className="mb-4 text-sm text-mist-500">{t('mcp.text')}</p>
+      <KeyFactorHint />
       {problem && <p role="alert" className="mb-3 rounded-lg border border-bad-500/30 bg-bad-500/10 px-3 py-2 text-sm text-bad-500">{problem}</p>}
       {shown && (
         <div className="mb-4 rounded-xl border border-accent-500/40 bg-accent-500/10 p-3 text-sm" data-testid="mcp-token">
@@ -174,6 +176,7 @@ export function McpKeys() {
                 {t(key.kind === 'oauth' ? 'mcp.disconnect' : 'mcp.revoke')}
               </button>
               </div>
+              <KeyFactorHint compact />
               {catalog && rightsOf === key.id && (
                 <ToolRights
                   mcpKey={key}

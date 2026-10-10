@@ -2415,6 +2415,10 @@
     "emailNoAddressLink": "Enter it in the profile",
     "emailNoServerLink": "Set up a mail server"
   },
+  "keyFactor": {
+    "text": "Works only once you set up a second factor.",
+    "link": "Set it up"
+  },
   "apiTokens": {
     "title": "API tokens",
     "text": "For programs such as n8n or nexdeck. A token may do what you may, limited to its level and its spaces. Deleting, moving and sharing never go through a token.",

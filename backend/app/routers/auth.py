@@ -59,7 +59,7 @@ from ..services import (
     totp,
 )
 from ..services.accounts import AccountError
-from ..services.oidc_store import SqlStore
+from ..services.oidc_store import SqlStore, mirror_legacy
 from ..vendor.nexoidc import providers
 from . import themes as theme_routes
 
@@ -314,6 +314,10 @@ def me(account: Account, db: DbSession, request: Request) -> dict[str, Any]:
         "second_factor_setup_required": totp.setup_required(
             db, account, session_via(db, request.cookies.get(SESSION_COOKIE))
         ),
+        # API tokens, MCP and OAuth keys and the calendar address have no session: they ask the account, so they stay
+        # dead for a password account without a second factor even where this session is spared the duty (it came
+        # in through a provider that checks the factor). The page says so beside them.
+        "keys_need_second_factor": totp.setup_required(db, account),
         # The editor offers AI only when the operator allows it and the account switched its own service on.
         "ai_ready": ai.ready(db, account),
         # Frag Lore shows in the header whenever the operator allows AI; without a service it says what is missing.
@@ -556,6 +560,9 @@ def delete_account(
     row = _row(db, account_id)
     name = row.name
     db.delete(row)
+    # The account's links and old subject go with it: the way back and its fingerprint follow in the same commit
+    # (module 1.0.10), or the next start takes the stale fingerprint for a change of the older version.
+    mirror_legacy(db)
     db.commit()
     totp.forget_account(account_id)
     logger.warning("Account deleted name=%s by=%s", name, operator.name)

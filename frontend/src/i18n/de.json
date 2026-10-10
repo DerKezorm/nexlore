@@ -2415,6 +2415,10 @@
     "emailNoAddressLink": "Im Profil eintragen",
     "emailNoServerLink": "Mailserver eintragen"
   },
+  "keyFactor": {
+    "text": "Wirkt erst, wenn du einen zweiten Faktor einrichtest.",
+    "link": "Jetzt einrichten"
+  },
   "apiTokens": {
     "title": "API-Token",
     "text": "Für Programme wie n8n oder nexdeck. Ein Token darf, was du darfst, beschränkt auf seine Stufe und seine Bereiche. Löschen, Verschieben und Teilen gehen nie über ein Token.",

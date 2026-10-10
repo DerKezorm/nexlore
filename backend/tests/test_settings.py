@@ -82,7 +82,7 @@ def test_settings_are_the_operators_and_the_password_is_never_shown(client: Test
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
-        ("https://Notes.example.com/", "https://Notes.example.com"),
+        ("https://Notes.example.com/", "https://notes.example.com"),  # the module's form: host in small letters
         ("http://10.0.0.5:8470", "http://10.0.0.5:8470"),
         ("", ""),
     ],

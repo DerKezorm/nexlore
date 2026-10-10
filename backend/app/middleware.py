@@ -9,11 +9,12 @@ import secrets
 import sqlite3
 import time
 from collections.abc import Callable
-from typing import Any
+from typing import Any, ClassVar
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+from .deps import is_trusted_proxy
 from .services import logs
 
 logger = logging.getLogger("nexlore.api")
@@ -53,6 +54,33 @@ SECURITY_HEADERS: tuple[tuple[bytes, bytes], ...] = (
     (b"x-frame-options", b"DENY"),
     (b"permissions-policy", b"camera=(), microphone=(), geolocation=()"),
 )
+
+
+class ForwardedSchemeMiddleware:
+    """The scheme a trusted proxy names: behind a proxy that ends TLS the request arrives as ``http``, and every
+    address nexlore builds from it (``request.base_url``: the return address of the sign-in, links in mails) would
+    be an ``http`` one. ``X-Forwarded-Proto`` counts only when the peer is one of ``NEXLORE_TRUSTED_PROXIES`` (the
+    list ``X-Forwarded-For`` already goes by), never from anybody else, and nothing but the scheme is taken (the host
+    comes from the ``Host`` header, as the proxy passes it on). Without the list the app behaves as before.
+    uvicorn runs with ``--no-proxy-headers``: this is the one place that decides."""
+
+    SCHEMES: ClassVar[dict[str, str]] = {"http": "http", "https": "https"}
+    SOCKETS: ClassVar[dict[str, str]] = {"http": "ws", "https": "wss"}
+
+    def __init__(self, app: Any) -> None:
+        self.app = app
+
+    async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
+        if scope["type"] in ("http", "websocket"):
+            client = scope.get("client")
+            if client and is_trusted_proxy(client[0]):
+                for name, value in scope.get("headers", []):
+                    if name == b"x-forwarded-proto":
+                        proto = value.decode("latin-1").split(",")[0].strip().lower()
+                        if proto in self.SCHEMES:
+                            scope["scheme"] = (self.SOCKETS if scope["type"] == "websocket" else self.SCHEMES)[proto]
+                        break
+        await self.app(scope, receive, send)
 
 
 class RequestContextMiddleware:

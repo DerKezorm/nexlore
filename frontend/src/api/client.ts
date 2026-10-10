@@ -9,6 +9,7 @@ import { nameRefused } from '../lib/errors'
 import { readerNow } from '../lib/everyday'
 import type { Appearance } from '../lib/appearance'
 import type { Colours, Weak } from '../lib/themes'
+import type { AuthentikAddress } from '../vendor/nexoidc/oidc'
 
 export class ApiError extends Error {
   constructor(
@@ -494,6 +495,9 @@ export type Me = Account & {
   /** Why the profile cannot send a confirmation now (`mail_off`, `public_url_missing`), empty when it can. */
   email_confirm?: string
   second_factor_setup_required: boolean
+  /** Keys, tokens and the calendar address of this account stay dead until it sets up a second factor (the operator
+   * requires one): they have no session, so the spared session of a provider does not count for them. */
+  keys_need_second_factor?: boolean
   /** The editor offers AI: the operator allows it and the account switched its own service on. */
   ai_ready?: boolean
   /** The operator allows AI at all: Frag Lore stands in the header, and says what is missing when not ready. */
@@ -650,7 +654,11 @@ export type ServerSettings = {
   calendar_feed_allowed: boolean
   link_titles_allowed: boolean
 }
-export type ServerSettingsChange = Partial<Omit<ServerSettings, 'smtp_password_set'>> & { smtp_password?: string }
+export type ServerSettingsChange = Partial<Omit<ServerSettings, 'smtp_password_set'>> & {
+  smtp_password?: string
+  /** The operator said yes to the question that came back as 409 `public_url_change` (module 1.0.10). */
+  confirm_address?: boolean
+}
 export type FileSettings = { attachment_folder: string; upload_max_mb: number; quota_mb: number; strip_location: boolean }
 /** An entry of the provider list as the operator sees it: never the secret, only whether one is stored. */
 export type OidcProvider = {
@@ -694,6 +702,10 @@ export type AuthentikResult = {
   links_dropped: number
   /** With the reason `issuer_change`: how many accounts would have to link again. */
   count?: number
+  /** The public address this run stored (the browser's own, confirmed); empty when the app had one already. */
+  public_url?: string
+  /** With the reason `public_url_needed`: what the card shows about the address. */
+  address?: AuthentikAddress | null
 }
 export type Backup = { name: string; size: number; created: string; kind: string; note: string; notes: number; files: number; version: string; uploaded?: boolean }
 
@@ -1004,8 +1016,16 @@ export const adminApi = {
   unlinkAccount: (accountId: number, providerId: number, current_password: string) =>
     api<void>(`/api/oidc/admin/accounts/${accountId}/links/${providerId}`, { method: 'DELETE', body: { current_password } }),
   /** `confirm_issuer_change`: the answer to the question the button stops at when another issuer takes the links. */
-  authentik: (url: string, token: string, confirm_issuer_change = false) =>
-    api<AuthentikResult>('/api/oidc/authentik/setup', { method: 'POST', body: { url, token, confirm_issuer_change } }),
+  authentik: (url: string, token: string, confirm_issuer_change = false, public_url = '') =>
+    api<AuthentikResult>('/api/oidc/authentik/setup', {
+      method: 'POST',
+      body: { url, token, confirm_issuer_change, ...(public_url ? { public_url } : {}) },
+    }),
+  /** What the authentik card shows about the public address: the saved one, what the server sees, what authentik knows. */
+  authentikAddress: () => api<AuthentikAddress>('/api/oidc/authentik/address'),
+  /** "Use it only": saves the address; 409 `public_url_change` asks first (`count`, `address`, `hand`), `confirm` answers. */
+  saveAuthentikAddress: (public_url: string, confirm = false) =>
+    api<AuthentikAddress>('/api/oidc/authentik/address', { method: 'POST', body: { public_url, confirm } }),
   backups: () => api<Backup[]>('/api/backups'),
   makeBackup: (note: string) => api<{ name: string }>('/api/backups', { method: 'POST', body: { note } }),
   checkBackup: (name: string) => api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/check`, { method: 'POST' }),

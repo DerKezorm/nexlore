@@ -72,7 +72,7 @@ def normal_address(text: str) -> str:
     return str(address)
 
 
-def _is_trusted_proxy(text: str) -> bool:
+def is_trusted_proxy(text: str) -> bool:
     networks = _trusted_networks(get_settings().trusted_proxies)
     address = parse_address(text) if networks else None
     return address is not None and any(address in network for network in networks)
@@ -98,11 +98,11 @@ def client_ip(request: Request) -> str:
     then its rightmost hop that is not itself a trusted proxy: everything left of it the sender wrote itself."""
     peer = request.client.host if request.client else "-"
     forwarded = request.headers.get("x-forwarded-for", "")
-    if not forwarded or not _is_trusted_proxy(peer):
+    if not forwarded or not is_trusted_proxy(peer):
         return normal_address(peer)
     hops = [hop.strip() for hop in forwarded.split(",") if hop.strip()]
     for hop in reversed(hops):
-        if not _is_trusted_proxy(hop):
+        if not is_trusted_proxy(hop):
             return normal_address(hop)
     return normal_address(hops[0] if hops else peer)
 

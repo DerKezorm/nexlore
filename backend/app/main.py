@@ -21,7 +21,7 @@ from . import __version__, private
 from .config import get_settings
 from .db import SessionLocal, init_db
 from .errors import detail
-from .middleware import GuardMiddleware, RequestContextMiddleware, unhandled_error
+from .middleware import ForwardedSchemeMiddleware, GuardMiddleware, RequestContextMiddleware, unhandled_error
 from .routers import about, attachments, auth, drafts, everyday, graph, health, imports, members, oidc, shares
 from .routers import ai as ai_router
 from .routers import apitokens as apitokens_router
@@ -153,6 +153,7 @@ app = FastAPI(
 )
 # Added last, runs first: the request id and headers wrap everything, the guard sits inside it.
 app.add_middleware(GuardMiddleware)
+app.add_middleware(ForwardedSchemeMiddleware)
 app.add_middleware(RequestContextMiddleware)
 
 

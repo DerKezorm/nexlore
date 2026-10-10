@@ -45,6 +45,9 @@ DEFAULTS: dict[str, Any] = {
     #: What the way back last wrote into the settings above and ``accounts.oidc_subject`` (``migrate.fingerprint``):
     #: at the next start ``migrate.resync`` takes over what the version before the list changed since.
     "oidc_legacy_fingerprint": "",
+    #: The issuer the version before the list knows, or ``migrate.CLOSED`` (module 1.0.10, ``migrate.way_back``). Read
+    #: and written by ``services/oidc_store`` only; never interpreted anywhere else.
+    "oidc_legacy_anchor": "",
     #: Public reading pages: a way out, closed until the operator opens it.
     "shares_allowed": False,
     #: AI from outside (M7): off until the operator opens it, and the highest level a key may have.

@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from ..deps import DbSession, OperatorAccount
@@ -18,7 +18,7 @@ from ..models import SIGN_IN_PASSWORD
 from ..security import encrypt_secret
 from ..services import accounts, ai, guide, lore, mailer, settings_service
 from ..services.oidc_store import SqlStore
-from ..vendor.nexoidc import providers
+from ..vendor.nexoidc import authentik, flow, providers
 
 logger = logging.getLogger("nexlore.settings")
 
@@ -56,6 +56,8 @@ class SettingsOut(BaseModel):
 
 class SettingsIn(BaseModel):
     public_url: str | None = Field(default=None, max_length=255)
+    #: The operator said yes to the question that came back with 409 ``public_url_change`` (module 1.0.10).
+    confirm_address: bool | None = None
     password_login: bool | None = None
     two_factor_required: bool | None = None
     shares_allowed: bool | None = None
@@ -127,16 +129,26 @@ def read(_operator: OperatorAccount, db: DbSession) -> SettingsOut:
 
 
 @router.put("", response_model=SettingsOut)
-def save(payload: SettingsIn, operator: OperatorAccount, db: DbSession) -> SettingsOut:
+def save(payload: SettingsIn, operator: OperatorAccount, db: DbSession, request: Request) -> SettingsOut:
     changes: dict[str, Any] = {}
     for key, value in payload.model_dump(exclude_unset=True).items():
-        if value is None:
+        if value is None or key == "confirm_address":
             continue
         if key == "public_url":
             try:
                 value = settings_service.normalize_public_url(value)
+                if value:
+                    # Nothing the sign-in module would refuse as a public address.
+                    value = flow.clean_public_url(value)
             except ValueError as exc:
                 raise error("invalid_url", "Give an address like https://notes.example.com.", 422) from exc
+            if value != settings_service.public_url(db):
+                # The address leaves what authentik (or a provider entered by hand) knows behind: ask first (1.0.10).
+                question = authentik.public_url_guard(
+                    SqlStore(db), value, str(request.base_url), confirm=bool(payload.confirm_address)
+                )
+                if question is not None:
+                    raise error("public_url_change", "The address changes what the providers know.", 409, **question)
         elif key == "smtp_from":
             value = value.strip()
             if value and not accounts.EMAIL_PATTERN.match(value):

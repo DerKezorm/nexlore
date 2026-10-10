@@ -34,7 +34,7 @@ from ..models import (
 from ..models import Invite as InviteRow
 from ..security import decrypt_secret, encrypt_secret
 from ..vendor import nexoidc
-from ..vendor.nexoidc import AccountState, Invite, Link, Provider, ProviderValues, migrate, protocol, secret_context
+from ..vendor.nexoidc import AccountState, Invite, Link, Provider, ProviderValues, migrate, secret_context
 from . import accounts, emailaddr, settings_service
 
 logger = logging.getLogger("nexlore.oidc")
@@ -54,6 +54,13 @@ def _public_url() -> str:
         return settings_service.public_url(db)
 
 
+def _save_public_url(url: str) -> None:
+    """The address the operator confirmed in the authentik card (module 1.0.10): the same setting the settings page
+    writes and ``_public_url`` reads first, committed at once in a transaction of its own."""
+    with SessionLocal() as db:
+        settings_service.save(db, {"public_url": url})
+
+
 def _server_secret() -> str:
     return get_settings().resolved_secret_key()
 
@@ -65,6 +72,7 @@ def configure() -> None:
             app_name=APP_NAME,
             server_secret=_server_secret,
             public_url=_public_url,
+            save_public_url=_save_public_url,
             login_page=LOGIN_PAGE,
             account_page=ACCOUNT_PAGE,
             home=HOME,
@@ -114,6 +122,7 @@ class SqlStore:
             position=row.position,
             redirect_path=row.redirect_path,
             created_at=row.created_at,
+            registered_redirect=row.registered_redirect or "",
         )
 
     def list_providers(self) -> list[Provider]:
@@ -136,6 +145,8 @@ class SqlStore:
             values.position,
         )
         row.redirect_path = values.redirect_path
+        if values.registered_redirect is not None:
+            row.registered_redirect = values.registered_redirect
 
     def insert_provider(self, values: ProviderValues) -> Provider:
         row = OidcProvider()
@@ -299,6 +310,8 @@ class SqlStore:
 TRUSTED_BEFORE = True
 #: The fingerprint of what the way back wrote last (``migrate.fingerprint``), a setting.
 FINGERPRINT = "oidc_legacy_fingerprint"
+#: The issuer the version before the list knows, or ``migrate.CLOSED`` (module 1.0.10, ``migrate.way_back``).
+ANCHOR = "oidc_legacy_anchor"
 #: The settings of the single provider before the list. They stay readable for one version (the way back), then go.
 LEGACY_KEYS = ("oidc_issuer", "oidc_client_id", "oidc_client_secret_enc", "oidc_provider_name", "oidc_auto_create")
 
@@ -336,61 +349,67 @@ def legacy_plan(db: Session) -> migrate.Plan | None:
 def mirror_legacy(db: Session) -> None:
     """Write the way back (``_write_legacy``), then the fingerprint of what stands there for ``migrate.resync`` at the
     next start: what the older version changes in between is taken over, nothing else (module 1.0.9). Nothing is
-    committed here; the store calls it before every commit."""
+    committed here; the store calls it before every commit, and so does every other commit that changes accounts,
+    links or the entry (deleting an account)."""
+    db.flush()
     _write_legacy(db)
     db.flush()
     legacy, subjects = read_legacy(db)
     put_settings(db, {FINGERPRINT: migrate.fingerprint(legacy, subjects)})
 
 
+def stored_anchor(db: Session) -> str | None:
+    """The issuer the version before the list knows, or ``migrate.CLOSED``; None while nothing is stored yet."""
+    return str(settings_service.get(db, ANCHOR) or "") or None
+
+
 def _write_legacy(db: Session) -> None:
     """The way back to nexlore 1.5 (blueprint 01 "Umstieg" 4): that version reads the old settings ``oidc_*`` and the
-    column ``oidc_subject``, so they must always describe the entry ``oidc`` exactly, or be empty. Otherwise going back
-    would bring a removed provider back, or let a subject into an account that gave it up.
-
-    - The entry ``oidc`` gone or its issuer changed: the old settings and every old subject are emptied for good.
-    - Else the old settings follow the entry: its client (only while it is on and the provider checks the second
-      factor itself; switched off, or without that, the old version finds no client and lets nobody in through it:
-      it has no such switch and would ask for no code after the provider, rule of 10.10.2026), its name,
-      ``auto_create`` only while that holds; each account's old subject is its link there, and an account without
-      one has none."""
-    issuer = str(settings_service.get(db, "oidc_issuer") or "")
-    entry = db.scalar(select(OidcProvider).where(OidcProvider.slug == nexoidc.LEGACY_SLUG)) if issuer else None
-    if issuer and (entry is None or not protocol.same_issuer(entry.issuer, issuer)):
-        put_settings(db, {key: settings_service.DEFAULTS[key] for key in LEGACY_KEYS})
+    column ``oidc_subject``. What they show is ``migrate.way_back``'s, one rule for every app (module 1.0.10): the
+    entry ``oidc`` and the stored anchor decide, nexlore only writes it in its old form (the secret sealed without a
+    context, as 1.5 reads it) and stores the anchor that comes back."""
+    store = SqlStore(db)
+    entry = store.provider_by_slug(nexoidc.LEGACY_SLUG)
+    links = [(link.account_id, link.subject) for link in store.links_of_provider(entry.id)] if entry else []
+    before = stored_anchor(db)
+    mirror = migrate.way_back(entry, links, before)
+    shown = mirror.legacy
+    changes: dict[str, object] = {}
+    wanted = {
+        "oidc_issuer": shown.issuer,
+        "oidc_client_id": shown.client_id,
+        "oidc_provider_name": shown.label,
+        "oidc_auto_create": bool(shown.auto_create),
+        ANCHOR: mirror.anchor,
+    }
+    for key, value in wanted.items():
+        if settings_service.get(db, key) != value:
+            changes[key] = value
+    # A sealed secret differs at every write (random nonce): compare what is inside.
+    if decrypt_secret(str(settings_service.get(db, "oidc_client_secret_enc") or "")) != (shown.client_secret or ""):
+        changes["oidc_client_secret_enc"] = encrypt_secret(shown.client_secret) if shown.client_secret else ""
+    if changes:
+        put_settings(db, changes)
+    if mirror.anchor == migrate.CLOSED and before not in (None, migrate.CLOSED):
         logger.info("The provider before the list is gone or another: its old settings and subjects are emptied")
-        entry = None
-    db.flush()
-    if entry is None:
-        db.execute(update(Account).where(Account.oidc_subject != "").values(oidc_subject=""))
-        return
-    rows = db.execute(select(OidcLink.account_id, OidcLink.subject).where(OidcLink.provider_id == entry.id))
-    linked = {account_id: subject for account_id, subject in rows}
-    for account in db.scalars(select(Account).where((Account.oidc_subject != "") | Account.id.in_(linked))):
-        wanted = linked.get(account.id, "")
-        if account.oidc_subject != wanted:
-            account.oidc_subject = wanted
-    open_way = entry.enabled and entry.trusts_second_factor
-    client_id = entry.client_id if open_way else ""
-    secret = decrypt_secret(entry.client_secret_enc, secret_context(entry.id)) if open_way else ""
-    old_secret = decrypt_secret(str(settings_service.get(db, "oidc_client_secret_enc") or ""))
-    if str(settings_service.get(db, "oidc_client_id") or "") != client_id or old_secret != secret:
-        sealed = encrypt_secret(secret) if secret else ""
-        put_settings(db, {"oidc_client_id": client_id, "oidc_client_secret_enc": sealed})
-    shown = {"oidc_provider_name": entry.label, "oidc_auto_create": bool(entry.auto_create and open_way)}
-    changed = {key: value for key, value in shown.items() if settings_service.get(db, key) != value}
-    if changed:
-        put_settings(db, changed)
+    for account in db.scalars(
+        select(Account).where((Account.oidc_subject != "") | Account.id.in_([account_id for account_id, _ in links]))
+    ):
+        wanted_subject = mirror.subjects.get(account.id, "")
+        if account.oidc_subject != wanted_subject:
+            account.oidc_subject = wanted_subject
 
 
 def put_settings(db: Session, changes: dict[str, object]) -> None:
-    """Settings written in the open transaction (``settings_service.save`` commits on its own)."""
+    """Settings written in the open transaction (``settings_service.save`` commits on its own); flushed, so that what
+    the mirror reads next in the same transaction (the anchor) is there."""
     for key, value in changes.items():
         row = db.get(Setting, key)
         if row is None:
             db.add(Setting(key=key, value=value))
         else:
             row.value = value
+    db.flush()
 
 
 #: Set once the settings were looked at: an operator who later removes every entry must not get the old provider
@@ -426,6 +445,9 @@ def migrate_settings(*, backup: bool = True) -> Provider | None:
     with SessionLocal() as db:
         if not migration_due(db):
             return None
+        # The anchor first: the mirror inside the commit of ``apply`` reads it (module 1.0.10).
+        legacy, _subjects = read_legacy(db)
+        put_settings(db, {ANCHOR: migrate.anchor_of(legacy)})
         entry = migrate.apply(SqlStore(db), legacy_plan(db))
         settings_service.save(db, {MIGRATED: True})
         return entry
@@ -445,5 +467,19 @@ def _take_over(*, backup: bool) -> None:
     with SessionLocal() as db:
         store = SqlStore(db)
         legacy, subjects = read_legacy(db)
-        migrate.resync(store, legacy, subjects, previous=previous, trusts_second_factor=TRUSTED_BEFORE)
+
+        def keep_anchor(value: str) -> None:
+            put_settings(db, {ANCHOR: value})
+
+        migrate.resync(
+            store,
+            legacy,
+            subjects,
+            previous=previous,
+            trusts_second_factor=TRUSTED_BEFORE,
+            anchor=stored_anchor(db),
+            keep_anchor=keep_anchor,
+        )
+        # Always, also without any provider: the mirror and the fingerprint of what stands there, or a provider set
+        # up later in the older version would be thrown away at the next start.
         store.commit()

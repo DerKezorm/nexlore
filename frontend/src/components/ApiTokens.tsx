@@ -17,6 +17,7 @@ import { errorText } from '../lib/errors'
 import { formatDate, formatDay } from '../lib/markdown'
 import { copyText } from '../lib/vaultActions'
 import { useAuth } from '../state/auth'
+import { KeyFactorHint } from './KeyFactorHint'
 import { Symbol } from './Symbol'
 
 const LEVELS: ApiLevel[] = ['read', 'write']
@@ -155,6 +156,7 @@ export function ApiTokens() {
     <section id="api-tokens" className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="api-tokens-title">
       {title}
       <p className="mb-4 text-sm text-mist-500">{t('apiTokens.text')}</p>
+      <KeyFactorHint />
       {problem && <p role="alert" className="mb-3 rounded-lg border border-bad-500/30 bg-bad-500/10 px-3 py-2 text-sm text-bad-500">{problem}</p>}
       {shown && (
         <div className="mb-4 rounded-xl border border-accent-500/40 bg-accent-500/10 p-3 text-sm" data-testid="api-token-shown">
@@ -206,6 +208,7 @@ export function ApiTokens() {
                   )}
                   <span>{token.last_used_at ? t('mcp.used', { when: formatDate(token.last_used_at) }) : t('mcp.unused')}</span>
                 </div>
+                <KeyFactorHint compact />
               </li>
             )
           })}

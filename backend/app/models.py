@@ -467,7 +467,9 @@ class AuthSession(Base):
     ip: Mapped[str] = mapped_column(String(64), default="")
     user_agent: Mapped[str] = mapped_column(String(255), default="")
     #: ``SESSION_VIA_PASSWORD`` or ``SESSION_VIA_PROVIDER``; sessions from before the column began with the password.
-    via: Mapped[str] = mapped_column(String(16), default=SESSION_VIA_PASSWORD)
+    #: ``server_default`` as well: a database this version made fresh must still take a session from the version
+    #: before the column (the way back), which does not name it.
+    via: Mapped[str] = mapped_column(String(16), default=SESSION_VIA_PASSWORD, server_default=SESSION_VIA_PASSWORD)
 
 
 class OidcProvider(Base):
@@ -497,6 +499,9 @@ class OidcProvider(Base):
     position: Mapped[int] = mapped_column(Integer, default=0)
     #: A callback path the provider knew before (a migration or a coupling sets it); "" is the standard one.
     redirect_path: Mapped[str] = mapped_column(String(300), default="")
+    #: The redirect address the authentik button last registered at authentik for this entry (module 1.0.10); empty
+    #: for none. ``server_default`` as well: the version before the list does not know the column.
+    registered_redirect: Mapped[str] = mapped_column(String(600), default="", server_default="")
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
 
 

@@ -10,6 +10,7 @@ import { useSearchParams } from 'react-router-dom'
 
 import { ApiError, oauthApi, type ConsentInfo, type McpLevel } from '../api/client'
 import { AuthFrame } from '../components/AuthFrame'
+import { KeyFactorHint } from '../components/KeyFactorHint'
 import { errorText } from '../lib/errors'
 import { useAuth } from '../state/auth'
 
@@ -81,6 +82,7 @@ export function ConnectPage() {
     <AuthFrame title={t('connect.title', { name: info.client_name })} text={t('connect.text', { account: me?.name ?? '', host: info.redirect_host })}>
       {/* The name is the program's own claim: anybody may register under any name. Where it sends you is not. */}
       <p className="mb-4 rounded-lg border border-warn-500/40 bg-warn-500/10 px-3 py-2 text-xs text-mist-200">{t('connect.unverified', { host: info.redirect_host })}</p>
+      <KeyFactorHint />
       <fieldset className="space-y-2">
         <legend className="mb-1 text-sm text-mist-300">{t('mcp.what')}</legend>
         {offered.map((option) => (

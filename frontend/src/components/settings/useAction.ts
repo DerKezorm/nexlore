@@ -3,6 +3,9 @@ import { useCallback, useState } from 'react'
 import { ApiError } from '../../api/client'
 import { errorText } from '../../lib/errors'
 
+/** What an action returns when it stopped at a question and saved nothing: no success line then. */
+export const NOT_DONE = Symbol('not done')
+
 /** One running action at a time, with its error as a sentence and an optional success line. */
 export function useAction() {
   const [busy, setBusy] = useState(false)
@@ -13,8 +16,8 @@ export function useAction() {
     setProblem(null)
     setDone(null)
     try {
-      await action()
-      setDone(success)
+      const result = await action()
+      setDone(result === NOT_DONE ? null : success)
       return true
     } catch (error) {
       setProblem(error instanceof ApiError ? errorText(error.code, error.values) : errorText('internal_error'))

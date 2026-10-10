@@ -157,6 +157,29 @@ class Adapter(StandardAdapter):
         with SessionLocal() as db:
             settings_service.save(db, {"public_url": url})
 
+    def read_public_url(self) -> str:
+        # The setting the settings page and ``AppConfig.save_public_url`` write (no environment variable in the tests).
+        with SessionLocal() as db:
+            return str(settings_service.get(db, "public_url") or "")
+
+    def save_public_url_route(self, url: str, *, confirm: bool = False) -> httpx.Response:
+        # Card 1 saves the address in the settings route, which asks ``authentik.public_url_guard`` first.
+        body: dict[str, Any] = {"public_url": url}
+        if confirm:
+            body["confirm_address"] = True
+        return self.operator().put("/api/settings", json=body)
+
+    def delete_account(self, name: str) -> None:
+        # The operator's own route, with the operator's password: it writes the way back in the same commit.
+        with SessionLocal() as db:
+            row = accounts.by_name(db, name)
+            assert row is not None
+            account_id = row.id
+        answer = self.operator().request(
+            "DELETE", f"/api/accounts/{account_id}", json={"current_password": self.password_for(OPERATOR_NAME)}
+        )
+        assert answer.status_code == 204, answer.text
+
     def legacy_setup(
         self, *, issuer: str, client_id: str, client_secret: str, label: str, subjects: dict[str, str]
     ) -> None:
@@ -189,6 +212,7 @@ class Adapter(StandardAdapter):
             "client_id": legacy.client_id,
             "client_secret": legacy.client_secret,
             "label": legacy.label,
+            "auto_create": bool(legacy.auto_create),
             "subjects": {names[account_id]: subject for account_id, subject in subjects},
         }
 

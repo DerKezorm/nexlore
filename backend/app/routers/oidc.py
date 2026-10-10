@@ -23,8 +23,10 @@ Paths (all below ``/api/oidc``):
 | GET | ``/me`` | signed in: every active entry with ``linked`` |
 | POST, DELETE | ``/{slug}/link`` | signed in: link (``{"password"}`` → ``{"url"}``), unlink |
 | DELETE | ``/admin/accounts/{account}/links/{provider}`` | operator, with the own password |
-| POST | ``/authentik/setup`` | operator: ``{"url", "token", "confirm_issuer_change"}`` → always 200 with the steps |
-| GET | ``/authentik/blueprint`` | operator: ``nexlore-authentik.yaml`` |
+| POST | ``/authentik/setup`` | operator: ``{"url", "token", "confirm_issuer_change", "public_url"}`` → 200, the steps |
+| GET | ``/authentik/address`` | operator: the public address, what the server sees, what authentik knows |
+| POST | ``/authentik/address`` | operator: ``{"public_url", "confirm"}`` saves it ("Use it only"); 409 asks first |
+| GET | ``/authentik/blueprint`` | operator: ``nexlore-authentik.yaml``; 409 while there is no public address |
 """
 
 from __future__ import annotations
@@ -93,6 +95,14 @@ class SetupIn(BaseModel):
     #: The answer to the button's question "another issuer, {count} accounts link again" (module 1.0.8): the run stops
     #: at ``reached`` with the reason ``issuer_change`` until it comes with ``true``.
     confirm_issuer_change: bool = False
+    #: The address the operator confirmed in the card (the browser's own) while nexlore has none (module 1.0.10).
+    public_url: str = Field(default="", max_length=600)
+
+
+class AddressIn(BaseModel):
+    public_url: str = Field(max_length=600)
+    #: The operator confirmed ``oidc.admin.addressChangeConfirm`` (or ``addressChangeHand``).
+    confirm: bool = False
 
 
 class OrderIn(BaseModel):
@@ -369,14 +379,46 @@ async def authentik_setup(payload: SetupIn, operator: OperatorAccount, request: 
     # Always 200 with the steps that ran, a failed one included: the page says why in the operator's language.
     logger.info("authentik setup started by=%s", operator.name)
     with store() as s:
-        result = await authentik.setup(s, payload.url, payload.token, _base(request),
-                                       confirm_issuer_change=payload.confirm_issuer_change)
+        result = await authentik.setup(
+            s,
+            payload.url,
+            payload.token,
+            _base(request),
+            confirm_issuer_change=payload.confirm_issuer_change,
+            public_url=payload.public_url,
+            headers=request.headers,
+        )
     return result.as_dict()
+
+
+@router.get("/authentik/address", summary="The public address, what the server sees and what authentik knows")
+def authentik_address(_operator: OperatorAccount, request: Request) -> dict[str, Any]:
+    with store() as s:
+        return authentik.address_view(s, _base(request), request.headers)
+
+
+@router.post("/authentik/address", summary="Save the public address (\"Use it only\"); asks first on a change")
+def authentik_save_address(payload: AddressIn, operator: OperatorAccount, request: Request) -> dict[str, Any]:
+    with store() as s:
+        try:
+            view = authentik.save_public_url(s, payload.public_url, _base(request), confirm=payload.confirm)
+        except ValueError as exc:
+            raise error("public_url_invalid", "This is not a public address.", 422) from exc
+        except authentik.PublicUrlChange as asked:
+            text = "The address changes what authentik knows."
+            raise error("public_url_change", text, 409, **asked.question) from asked
+        except authentik.PublicUrlNotKept as exc:
+            raise error("public_url_needed", "The address could not be saved.", 409) from exc
+    logger.info("Public address saved by=%s", operator.name)
+    return view
 
 
 @router.get("/authentik/blueprint", summary="Download a blueprint that creates the same objects in authentik")
 def authentik_blueprint(_operator: OperatorAccount, request: Request) -> Response:
     with store() as s:
-        text = authentik.blueprint(authentik.blueprint_redirect(s, _base(request)))
+        try:
+            text = authentik.blueprint(authentik.blueprint_redirect(s, _base(request)))
+        except authentik.PublicUrlNeeded as exc:
+            raise error("public_url_needed", "Set the public address first.", 409) from exc
     return Response(content=text, media_type="application/yaml",
                     headers={"Content-Disposition": f'attachment; filename="{authentik.blueprint_filename()}"'})

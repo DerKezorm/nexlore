@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 
 import { adminApi, feedApi, type ServerSettings } from '../../api/client'
 import { useAuth } from '../../state/auth'
+import { KeyFactorHint } from '../KeyFactorHint'
 import { Button, Card, CopyLink, Feedback, Toggle } from './ui'
 import { useAction } from './useAction'
 
@@ -47,6 +48,7 @@ export function CalendarFeed() {
         )}
         {state?.allowed && (
           <>
+            <KeyFactorHint />
             {address && (
               <div className="mb-3 space-y-2">
                 <CopyLink link={address} label={t('feed.copy')} />

@@ -29,3 +29,35 @@ describe('the authentik call', () => {
     })
   })
 })
+
+describe('the authentik card and the public address (module 1.0.10)', () => {
+  it('sends the address the operator confirmed only when there is one', async () => {
+    expect(await bodyOf(() => adminApi.authentik('https://auth.example.com', 'token', false, 'https://notes.example.com'))).toEqual({
+      url: 'https://auth.example.com',
+      token: 'token',
+      confirm_issuer_change: false,
+      public_url: 'https://notes.example.com',
+    })
+  })
+
+  it('"Use it only" sends the address and the answer to the question', async () => {
+    expect(await bodyOf(() => adminApi.saveAuthentikAddress('https://notes.example.com'))).toEqual({
+      public_url: 'https://notes.example.com',
+      confirm: false,
+    })
+    expect(await bodyOf(() => adminApi.saveAuthentikAddress('https://notes.example.com', true))).toEqual({
+      public_url: 'https://notes.example.com',
+      confirm: true,
+    })
+  })
+
+  it('saves the address on the settings page with the answer to the question when it was asked', async () => {
+    expect(await bodyOf(() => adminApi.saveSettings({ public_url: 'https://notes.example.com' }))).toEqual({
+      public_url: 'https://notes.example.com',
+    })
+    expect(await bodyOf(() => adminApi.saveSettings({ public_url: 'https://notes.example.com', confirm_address: true }))).toEqual({
+      public_url: 'https://notes.example.com',
+      confirm_address: true,
+    })
+  })
+})
