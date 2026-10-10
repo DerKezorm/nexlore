@@ -74,12 +74,14 @@ class ForwardedSchemeMiddleware:
         if scope["type"] in ("http", "websocket"):
             client = scope.get("client")
             if client and is_trusted_proxy(client[0]):
+                # The rightmost value of the last header line: it is the one the trusted proxy appended itself.
+                # Anything left of it a visitor may have sent along.
+                proto = None
                 for name, value in scope.get("headers", []):
                     if name == b"x-forwarded-proto":
-                        proto = value.decode("latin-1").split(",")[0].strip().lower()
-                        if proto in self.SCHEMES:
-                            scope["scheme"] = (self.SOCKETS if scope["type"] == "websocket" else self.SCHEMES)[proto]
-                        break
+                        proto = value.decode("latin-1").split(",")[-1].strip().lower()
+                if proto in self.SCHEMES:
+                    scope["scheme"] = (self.SOCKETS if scope["type"] == "websocket" else self.SCHEMES)[proto]
         await self.app(scope, receive, send)
 
 

@@ -306,7 +306,6 @@ def test_the_scheme_comes_from_a_proxy_nexlore_trusts_and_from_nobody_else(
     monkeypatch.setattr(get_settings(), "trusted_proxies", "10.9.0.0/16")
     # The proxy of the list: https is taken, and only the scheme (the host stays what the proxy passed on).
     assert _seen(PROXY) == "https://testserver"
-    assert _seen(PROXY, "https, http") == "https://testserver"
     assert _seen(PROXY, "HTTP") == "http://testserver"
     # Nonsense is not a scheme, and no header leaves it alone.
     assert _seen(PROXY, "gopher").startswith("http://")
@@ -314,6 +313,55 @@ def test_the_scheme_comes_from_a_proxy_nexlore_trusts_and_from_nobody_else(
     # Anybody else may write the header all day.
     assert _seen("10.8.0.5").startswith("http://")
     assert _seen("203.0.113.9").startswith("http://")
+
+
+def test_the_scheme_is_the_rightmost_value_the_proxy_appended_and_not_the_one_a_visitor_wrote(
+    client: TestClient, operator: Account, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(get_settings(), "trusted_proxies", "10.9.0.0/16")
+    # A visitor wrote "https" itself, the proxy appended what it saw: the proxy's value counts.
+    assert _seen(PROXY, "https, http") == "http://testserver"
+    assert _seen(PROXY, "http, https") == "https://testserver"
+    assert _seen(PROXY, "http,https , https") == "https://testserver"
+    # Upper case is a scheme too (the same rule for the rightmost one).
+    assert _seen(PROXY, "http, HTTPS") == "https://testserver"
+    # The rightmost one decides even when it is nonsense: nothing further left is taken instead.
+    assert _seen(PROXY, "https, gopher").startswith("http://")
+
+
+async def _scheme_after(headers: list[tuple[bytes, bytes]], kind: str, peer: str = PROXY) -> str:
+    """The scheme the app behind ``ForwardedSchemeMiddleware`` sees for a bare ASGI scope of ``kind``."""
+    from app.middleware import ForwardedSchemeMiddleware
+
+    seen: dict = {}
+
+    async def inner(scope: dict, receive: object, send: object) -> None:
+        seen.update(scope)
+
+    scope = {"type": kind, "scheme": "ws" if kind == "websocket" else "http", "client": (peer, 50000), "headers": headers}
+    await ForwardedSchemeMiddleware(inner)(scope, None, None)  # type: ignore[arg-type]
+    return str(seen["scheme"])
+
+
+async def test_a_websocket_behind_a_trusted_proxy_gets_ws_or_wss_never_http_or_https(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(get_settings(), "trusted_proxies", "10.9.0.0/16")
+    proto = b"x-forwarded-proto"
+    assert await _scheme_after([(proto, b"https")], "websocket") == "wss"
+    assert await _scheme_after([(proto, b"HTTP")], "websocket") == "ws"
+    assert await _scheme_after([(proto, b"http, https")], "websocket") == "wss"
+    assert await _scheme_after([(proto, b"https")], "http") == "https"
+    # A stranger is not believed on a socket either, and nonsense changes nothing.
+    assert await _scheme_after([(proto, b"https")], "websocket", peer="203.0.113.9") == "ws"
+    assert await _scheme_after([(proto, b"gopher")], "websocket") == "ws"
+
+
+async def test_of_several_header_lines_the_last_one_counts(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(get_settings(), "trusted_proxies", "10.9.0.0/16")
+    proto = b"x-forwarded-proto"
+    assert await _scheme_after([(proto, b"https"), (proto, b"http")], "http") == "http"
+    assert await _scheme_after([(proto, b"http"), (proto, b"https")], "http") == "https"
 
 
 def test_the_return_address_of_a_sign_in_through_a_trusted_proxy_is_https(
@@ -330,3 +378,13 @@ def test_the_return_address_of_a_sign_in_through_a_trusted_proxy_is_https(
 
     assert redirect_uri(PROXY) == "https://testserver/api/oidc/sso/callback"
     assert redirect_uri("10.8.0.5") == "http://testserver/api/oidc/sso/callback"
+
+
+def test_put_settings_makes_a_new_value_readable_in_the_same_transaction(client: TestClient) -> None:
+    """The session does not flush by itself (``autoflush=False``): what the mirror reads next in the open transaction
+    (the anchor) is there only because ``put_settings`` flushes."""
+    with SessionLocal() as db:
+        assert settings_service.get(db, "oidc_probe_key") is None
+        oidc_store.put_settings(db, {"oidc_probe_key": "https://idp.example.org/"})
+        assert settings_service.get(db, "oidc_probe_key") == "https://idp.example.org/"
+        db.rollback()
