@@ -38,10 +38,12 @@ services:
       # NEXLORE_PUBLIC_URL: https://notes.example.com
 
       # Behind a reverse proxy: its address, so that the brake against password guessing sees the real sender and
-      # the address nexlore builds (the return from a sign-in provider) is https when the proxy ends TLS.
+      # the address nexlore builds (the return from a sign-in provider) and the session cookie are https when the
+      # proxy ends TLS.
       # NEXLORE_TRUSTED_PROXIES: 172.16.0.0/12
 
-      # Behind a TLS proxy: the session cookie only over HTTPS, also when the proxy sends no X-Forwarded-Proto.
+      # Behind a TLS proxy: the session cookie only over HTTPS, also when the proxy is not in
+      # NEXLORE_TRUSTED_PROXIES or sends no X-Forwarded-Proto.
       # NEXLORE_COOKIE_SECURE: "on"
 
       # The code the first account needs. Without it nexlore makes one at every start until it is set up and

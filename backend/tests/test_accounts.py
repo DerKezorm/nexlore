@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
+from app.config import get_settings
 from app.db import SessionLocal
+from app.main import app
 from app.models import OPERATOR, Account, AuthSession, utcnow
 from app.security import MAX_FAILURES, SESSION_COOKIE, decrypt_secret, encrypt_secret, hash_token
 from app.services import settings_service
@@ -61,12 +64,62 @@ def test_sign_in_and_out(client: TestClient) -> None:
     assert client.get("/api/auth/me").status_code == 401
 
 
-def test_the_cookie_is_secure_behind_https(client: TestClient) -> None:
+PROXY = "10.9.0.5"
+
+
+def _session_cookie_secure(peer: str, *protos: str) -> bool:
+    """Whether the session cookie of a sign-in through ``peer`` is ``Secure``; each of ``protos`` is one line of
+    ``X-Forwarded-Proto`` (none: no such header)."""
+    browser = TestClient(app, base_url="http://testserver", client=(peer, 50000),
+                         headers={"X-Nexlore-Client": "tab-tests000"})
+    signed = browser.post("/api/auth/login", json={"name": "anna", "password": PASSWORD},
+                          headers=[("X-Forwarded-Proto", proto) for proto in protos])
+    assert signed.status_code == 200, signed.text
+    cookies = [line for line in signed.headers.get_list("set-cookie") if line.startswith(f"{SESSION_COOKIE}=")]
+    assert len(cookies) == 1
+    return "secure" in [part.strip().lower() for part in cookies[0].split(";")]
+
+
+def test_the_cookie_takes_https_from_a_trusted_proxy_and_from_nobody_else(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     make_account("anna")
-    signed = client.post(
-        "/api/auth/login", json={"name": "anna", "password": PASSWORD}, headers={"X-Forwarded-Proto": "https"}
-    )
-    assert "Secure" in signed.headers["set-cookie"]
+    # Nobody is trusted from the start: the header of the proxy counts for nothing yet.
+    assert get_settings().trusted_proxies == ""
+    assert not _session_cookie_secure(PROXY, "https")
+    monkeypatch.setattr(get_settings(), "trusted_proxies", "10.9.0.0/16")
+    assert _session_cookie_secure(PROXY, "https")
+    assert _session_cookie_secure(PROXY, "HTTPS")
+    assert not _session_cookie_secure(PROXY, "http")
+    assert not _session_cookie_secure(PROXY)
+    # Not a scheme of a plain request, from the proxy neither.
+    assert not _session_cookie_secure(PROXY, "wss")
+    # Anybody else may write the header all day.
+    assert not _session_cookie_secure("203.0.113.9", "https")
+    assert not _session_cookie_secure("10.8.0.5", "https")
+
+
+def test_the_cookie_goes_by_the_rightmost_value_of_the_last_header_line(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    make_account("anna")
+    monkeypatch.setattr(get_settings(), "trusted_proxies", "10.9.0.0/16")
+    # A visitor wrote "https" itself, the proxy appended what it saw: the proxy's value counts.
+    assert not _session_cookie_secure(PROXY, "https, http")
+    assert _session_cookie_secure(PROXY, "http, https")
+    assert not _session_cookie_secure(PROXY, "https, gopher")
+    # Of several header lines the last one.
+    assert not _session_cookie_secure(PROXY, "https", "http")
+    assert _session_cookie_secure(PROXY, "http", "https")
+
+
+def test_cookie_secure_on_and_off_overrule_the_scheme(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    make_account("anna")
+    monkeypatch.setattr(get_settings(), "trusted_proxies", "10.9.0.0/16")
+    monkeypatch.setattr(get_settings(), "cookie_secure", "on")
+    assert _session_cookie_secure("203.0.113.9")
+    monkeypatch.setattr(get_settings(), "cookie_secure", "off")
+    assert not _session_cookie_secure(PROXY, "https")
 
 
 def test_an_expired_session_is_gone(client: TestClient) -> None:
@@ -115,7 +168,6 @@ def test_the_account_locks_after_ten_failures_from_anywhere(client: TestClient) 
 
 
 def test_forwarded_for_counts_only_from_a_trusted_proxy(client: TestClient, monkeypatch) -> None:
-    from app.config import get_settings
     from app.deps import client_ip
 
     class Fake:

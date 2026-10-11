@@ -174,7 +174,8 @@ nexlore is made to be reachable from outside, for yourself on the road or for a 
    proxy's address or network; without it every sign-in seems to come from the proxy and the brake against guessing
    cannot tell people apart; the log says so; only such a proxy is believed about `X-Forwarded-For` and
    `X-Forwarded-Proto`, so that the return address of a sign-in is `https`; the warning in the authentik card under
-   Settings, Sign-in points here), and `NEXLORE_COOKIE_SECURE: "on"`.
+   Settings, Sign-in points here, and the session cookie gets its `Secure` flag from it), and
+   `NEXLORE_COOKIE_SECURE: "on"`.
 4. **A second factor**: set up your own under My account, then Settings, Sign-in, "Require a second factor". Or sign
    in through your OpenID Connect provider (and leave "The provider checks the second factor itself" on only for
    one that does).
@@ -250,14 +251,14 @@ nothing needs doing by hand. Make a backup before a big jump anyway (Settings, B
 | `NEXLORE_LOCALES_DIR` | `<data>/locales` | Extra languages, one JSON file each |
 | `NEXLORE_SECRET_KEY` | created on first start | Protects server-side secrets; when set, it wins over `secret.key` |
 | `NEXLORE_PUBLIC_URL` | from the request | The address people use to reach nexlore, for invitation links, the links confirming a mail address, public pages and the OIDC redirect. The setting under Settings, Sign-in wins when set |
-| `NEXLORE_TRUSTED_PROXIES` | none | Addresses or networks of reverse proxies whose `X-Forwarded-For` and `X-Forwarded-Proto` are believed, comma separated. Without it every request counts as coming from its peer, and as `http` if that is how it arrives |
+| `NEXLORE_TRUSTED_PROXIES` | none | Addresses or networks of reverse proxies whose `X-Forwarded-For` and `X-Forwarded-Proto` are believed (of `X-Forwarded-Proto` the rightmost value, the one the proxy appended), comma separated. Without it every request counts as coming from its peer, and as `http` if that is how it arrives, so the session cookie has no `Secure` flag unless `NEXLORE_COOKIE_SECURE` is `on` |
 | `NEXLORE_SETUP_TOKEN` | made at start | The code the first account needs; without it nexlore makes one at every start until set up and writes it to the log |
 | `NEXLORE_OPERATOR_NETWORKS` | none | Networks the operator's settings may be changed from, comma separated (`192.168.0.0/16`); everything else stays reachable from anywhere |
 | `NEXLORE_WATCH_POLLING` | `false` | Watch the vault by polling, for mounts without change notifications |
 | `NEXLORE_SCAN_INTERVAL` | `300` | Seconds between two full passes over the vault; `0` turns them off |
 | `NEXLORE_SESSION_DAYS` | `30` | A browser session ends after this many days |
 | `NEXLORE_LOG_LEVEL` | stored setting | `quiet`, `normal`, `detailed` or `trace`; overrides the setting, the way out when the app does not start |
-| `NEXLORE_COOKIE_SECURE` | `auto` | `on`, `off` or `auto` (from the request or `X-Forwarded-Proto`) |
+| `NEXLORE_COOKIE_SECURE` | `auto` | `on`, `off` or `auto` (`Secure` when the request came over HTTPS, or a proxy in `NEXLORE_TRUSTED_PROXIES` says so through `X-Forwarded-Proto`; behind any other TLS proxy set `on`) |
 | `NEXLORE_API_DOCS` | `false` | Serves `/api/docs` and `/api/openapi.json` |
 | `NEXLORE_PORT` | `8000` | Port inside the container, for host networking |
 | `PUID`, `PGID` | `1000` | Owner of the files in the data directory |

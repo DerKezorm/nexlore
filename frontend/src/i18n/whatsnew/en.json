@@ -373,5 +373,17 @@
     ],
     "smallTitle": "Also",
     "small": []
+  },
+  "1.6.2": {
+    "lead": "The session cookie now takes the word of a proxy only when the operator named it, like everything else nexlore reads from a proxy.",
+    "sections": [
+      {
+        "title": "Secure cookies only from a trusted proxy",
+        "where": "For operators: NEXLORE_TRUSTED_PROXIES and NEXLORE_COOKIE_SECURE",
+        "body": "nexlore marks the session cookie Secure when the request came over HTTPS. Behind a proxy that ends TLS it now believes the proxy's X-Forwarded-Proto only when the proxy is listed in NEXLORE_TRUSTED_PROXIES, and then only the value the proxy appended itself. If you run behind a TLS proxy that is not in that list, add it there or set NEXLORE_COOKIE_SECURE to on; otherwise the cookie goes out without the Secure flag."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": []
   }
 }

@@ -373,5 +373,17 @@
     ],
     "smallTitle": "Außerdem",
     "small": []
+  },
+  "1.6.2": {
+    "lead": "Das Sitzungs-Cookie glaubt einem Proxy jetzt nur noch, wenn der Betreiber ihn genannt hat, wie alles andere, was nexlore von einem Proxy liest.",
+    "sections": [
+      {
+        "title": "Sichere Cookies nur über einen vertrauten Proxy",
+        "where": "Für Betreiber: NEXLORE_TRUSTED_PROXIES und NEXLORE_COOKIE_SECURE",
+        "body": "nexlore setzt am Sitzungs-Cookie Secure, wenn die Anfrage über HTTPS kam. Hinter einem Proxy, der TLS beendet, glaubt nexlore dessen X-Forwarded-Proto jetzt nur noch, wenn der Proxy in NEXLORE_TRUSTED_PROXIES steht, und dann nur den Wert, den der Proxy selbst angehängt hat. Läuft nexlore hinter einem TLS-Proxy, der dort nicht steht, trag ihn ein oder setze NEXLORE_COOKIE_SECURE auf on; sonst geht das Cookie ohne Secure hinaus."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": []
   }
 }

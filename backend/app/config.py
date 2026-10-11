@@ -51,13 +51,15 @@ class Settings(BaseSettings):
     argon2_time: int = 3
     argon2_memory_kib: int = 65536
     argon2_parallelism: int = 2
-    #: ``auto``: the session cookie is ``Secure`` when the request came over HTTPS (or a proxy says so).
+    #: ``auto``: the session cookie is ``Secure`` when the request came over HTTPS (or a proxy in ``trusted_proxies``
+    #: says so). Behind a TLS proxy that is not in that list: ``on``.
     cookie_secure: str = "auto"
     #: The address people reach nexlore under, for links in invitations and the OIDC return. Empty: the address of
     #: the request. The setting in the interface wins over this.
     public_url: str = ""
-    #: Addresses or networks of reverse proxies whose ``X-Forwarded-For`` may be believed, comma separated. Empty:
-    #: the header is ignored, so that nobody dodges the sign-in brake with made-up addresses.
+    #: Addresses or networks of reverse proxies whose ``X-Forwarded-For`` and ``X-Forwarded-Proto`` may be believed,
+    #: comma separated. Empty: both headers are ignored, so that nobody dodges the sign-in brake with made-up
+    #: addresses, and the scheme (return addresses, the Secure flag of cookies) is the connection's own.
     trusted_proxies: str = ""
     #: The code the first account must bring. Empty: nexlore makes one at every start until set up and writes it to
     #: the log, so that whoever reaches a fresh instance first does not become its operator.

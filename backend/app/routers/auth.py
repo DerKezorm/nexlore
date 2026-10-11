@@ -124,10 +124,10 @@ def secure_cookie(request: Request) -> bool:
         return True
     if mode == "off":
         return False
-    # Read from any sender on purpose, unlike ForwardedSchemeMiddleware: a forged value can only make the cookie
-    # stricter, and behind a proxy that ends TLS without NEXLORE_TRUSTED_PROXIES set it still gets the Secure flag.
-    forwarded = request.headers.get("x-forwarded-proto", "")
-    return request.url.scheme == "https" or forwarded.split(",")[0].strip() == "https"
+    # The scheme as ``ForwardedSchemeMiddleware`` left it: the connection's own, or the rightmost value of
+    # ``X-Forwarded-Proto`` from a proxy in ``NEXLORE_TRUSTED_PROXIES``, never the header of anybody else (the shared
+    # sign-in module README, "Hinter einem Proxy"). Behind a proxy nexlore was not told about: ``on``.
+    return request.url.scheme == "https"
 
 
 def _set_cookie(response: Response, request: Request, token: str) -> None:

@@ -352,6 +352,12 @@ async def test_a_websocket_behind_a_trusted_proxy_gets_ws_or_wss_never_http_or_h
     assert await _scheme_after([(proto, b"HTTP")], "websocket") == "ws"
     assert await _scheme_after([(proto, b"http, https")], "websocket") == "wss"
     assert await _scheme_after([(proto, b"https")], "http") == "https"
+    # Traefik names a socket ws/wss: taken as it is, any case, rightmost value. A plain request takes neither.
+    assert await _scheme_after([(proto, b"wss")], "websocket") == "wss"
+    assert await _scheme_after([(proto, b"WS")], "websocket") == "ws"
+    assert await _scheme_after([(proto, b"ws, wss")], "websocket") == "wss"
+    assert await _scheme_after([(proto, b"wss")], "http") == "http"
+    assert await _scheme_after([(proto, b"ws")], "http") == "http"
     # A stranger is not believed on a socket either, and nonsense changes nothing.
     assert await _scheme_after([(proto, b"https")], "websocket", peer="203.0.113.9") == "ws"
     assert await _scheme_after([(proto, b"gopher")], "websocket") == "ws"

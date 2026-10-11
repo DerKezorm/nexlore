@@ -61,27 +61,33 @@ class ForwardedSchemeMiddleware:
     address nexlore builds from it (``request.base_url``: the return address of the sign-in, links in mails) would
     be an ``http`` one. ``X-Forwarded-Proto`` counts only when the peer is one of ``NEXLORE_TRUSTED_PROXIES`` (the
     list ``X-Forwarded-For`` already goes by), never from anybody else, and nothing but the scheme is taken (the host
-    comes from the ``Host`` header, as the proxy passes it on). Without the list the app behaves as before.
-    uvicorn runs with ``--no-proxy-headers``: this is the one place that decides."""
+    comes from the ``Host`` header, as the proxy passes it on). Without the list the app behaves as before, and the
+    list is empty until the operator sets it. uvicorn runs with ``--no-proxy-headers``: this is the one place that
+    decides, and the Secure flag of the cookies (``auth.secure_cookie``) goes by the scheme it leaves."""
 
-    SCHEMES: ClassVar[dict[str, str]] = {"http": "http", "https": "https"}
-    SOCKETS: ClassVar[dict[str, str]] = {"http": "ws", "https": "wss"}
+    #: The schemes a trusted proxy may hand on, per kind of connection. A WebSocket may arrive as http/https (nginx's
+    #: ``$scheme``) or as ws/wss (Traefik); either becomes ws/wss. A plain request takes http and https only.
+    SCHEMES: ClassVar[dict[str, dict[str, str]]] = {
+        "http": {"http": "http", "https": "https"},
+        "websocket": {"http": "ws", "https": "wss", "ws": "ws", "wss": "wss"},
+    }
 
     def __init__(self, app: Any) -> None:
         self.app = app
 
     async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
-        if scope["type"] in ("http", "websocket"):
+        if scope["type"] in self.SCHEMES:
             client = scope.get("client")
             if client and is_trusted_proxy(client[0]):
                 # The rightmost value of the last header line: it is the one the trusted proxy appended itself.
-                # Anything left of it a visitor may have sent along.
+                # Anything left of it a visitor may have sent along. Case does not matter.
                 proto = None
                 for name, value in scope.get("headers", []):
-                    if name == b"x-forwarded-proto":
+                    if name.lower() == b"x-forwarded-proto":
                         proto = value.decode("latin-1").split(",")[-1].strip().lower()
-                if proto in self.SCHEMES:
-                    scope["scheme"] = (self.SOCKETS if scope["type"] == "websocket" else self.SCHEMES)[proto]
+                scheme = self.SCHEMES[scope["type"]].get(proto or "")
+                if scheme:
+                    scope["scheme"] = scheme
         await self.app(scope, receive, send)
 
 
