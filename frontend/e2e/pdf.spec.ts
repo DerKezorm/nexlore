@@ -125,3 +125,18 @@ test('in the editor an embedded PDF is a reader too, and its tools change nothin
   await expect(embed).toHaveAttribute('data-page', '3')
   await expect(page.getByText('Not saved yet')).toBeHidden()
 })
+
+test('a PDF whose standard font is not embedded draws without a word from the frame policy', async ({ page }) => {
+  // Media/leaflet.pdf names Helvetica without embedding it. pdf.js then fills in a standard font; told to use the
+  // system's fonts, it would name that one by an address in a FontFace, which the frame's policy refuses.
+  const problems: string[] = []
+  page.on('console', (message) => message.type() === 'error' && problems.push(message.text()))
+  await page.goto('/file/Media/leaflet.pdf')
+  await reader(page.getByTestId('pdf-view'), 1)
+  const frame = page.frameLocator('[data-testid="pdf-view"] iframe')
+  await expect(frame.locator('.textLayer')).toContainText('kingfisher', { timeout: 20_000 })
+  await expect(frame.locator('canvas').first()).toBeVisible()
+  // The font is asked for once the page is drawn; a moment for a refusal to arrive.
+  await page.waitForTimeout(1_000)
+  expect(problems).toEqual([])
+})

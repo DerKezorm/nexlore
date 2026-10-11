@@ -124,6 +124,8 @@ def secure_cookie(request: Request) -> bool:
         return True
     if mode == "off":
         return False
+    # Read from any sender on purpose, unlike ForwardedSchemeMiddleware: a forged value can only make the cookie
+    # stricter, and behind a proxy that ends TLS without NEXLORE_TRUSTED_PROXIES set it still gets the Secure flag.
     forwarded = request.headers.get("x-forwarded-proto", "")
     return request.url.scheme == "https" or forwarded.split(",")[0].strip() == "https"
 

@@ -361,5 +361,17 @@
       "Mails carry a Date header; some providers dropped them silently without one.",
       "Signing in for the first time twice at the same moment through the same provider no longer ends in an error."
     ]
+  },
+  "1.6.1": {
+    "lead": "PDFs that leave out a standard font now show it with the font nexlore brings along.",
+    "sections": [
+      {
+        "title": "Standard fonts in PDFs",
+        "where": "Every PDF opened in nexlore",
+        "body": "Many PDFs name Helvetica, Times or Courier without carrying the font. The PDF reader now takes the font nexlore ships for it, instead of running into a font the page's own policy blocks and falling back to a stand-in."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": []
   }
 }

@@ -361,5 +361,17 @@
       "Mails tragen einen Date-Header; manche Anbieter verwarfen sie ohne ihn stillschweigend.",
       "Zweimal zugleich zum ersten Mal über denselben Anbieter anzumelden endet nicht mehr in einem Fehler."
     ]
+  },
+  "1.6.1": {
+    "lead": "PDFs, die eine Standardschrift weglassen, zeigt nexlore jetzt mit der Schrift, die es selbst mitbringt.",
+    "sections": [
+      {
+        "title": "Standardschriften in PDFs",
+        "where": "Jede PDF, die in nexlore geöffnet wird",
+        "body": "Viele PDFs nennen Helvetica, Times oder Courier, ohne die Schrift mitzuliefern. Der PDF-Leser nimmt dafür jetzt die Schrift, die nexlore mitbringt, statt an einer Schrift zu scheitern, die die eigene Richtlinie der Seite sperrt, und eine Ersatzschrift zu zeigen."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": []
   }
 }

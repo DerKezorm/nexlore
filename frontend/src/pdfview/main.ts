@@ -240,7 +240,9 @@ async function open(message: Extract<ToFrame, { type: 'open' }>): Promise<void> 
       data: new Uint8Array(message.data),
       isEvalSupported: false,
       enableXfa: false,
-      useSystemFonts: true,
+      // Not the system's fonts: pdf.js would name the standard fonts by an address (`page:/...`) in a FontFace, which the
+      // frame's policy refuses; without them it asks for their bytes like any other file (FromPage).
+      useSystemFonts: false,
       useWorkerFetch: false,
       // Only a name to hand to FromPage; pdf.js wants them to end in a slash.
       cMapUrl: 'page:/', cMapPacked: true, standardFontDataUrl: 'page:/', wasmUrl: 'page:/',
