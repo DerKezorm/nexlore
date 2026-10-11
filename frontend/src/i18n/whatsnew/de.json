@@ -330,5 +330,36 @@
       "Ein in authentik umbenannter Provider behält seinen neuen Namen, wenn der Knopf noch einmal läuft.",
       "Eine Anwendung für nexlores eigenen Provider nimmt nie den Slug der Anwendung eines anderen Providers."
     ]
+  },
+  "1.6.0": {
+    "lead": "Anmelden über mehrere Anbieter zugleich, jeder mit eigenem Knopf und eigenen Verknüpfungen, und eine Rückfrage, bevor sich die öffentliche Adresse ändert.",
+    "sections": [
+      {
+        "title": "Mehrere Anbieter für die Anmeldung",
+        "where": "Einstellungen, Server, Anmeldung",
+        "body": "Füge so viele OpenID-Connect-Anbieter hinzu, wie du möchtest, jeden mit eigenem Namen, eigenem Knopf auf der Anmeldeseite und eigenem Schalter, ob er den zweiten Faktor selbst prüft. Der authentik-Knopf richtet seinen Anbieter in einem Schritt ein. Konten, die sich bisher über deinen einen Anbieter anmeldeten, werden beim ersten Start von selbst übernommen, davor wird eine Sicherung gemacht."
+      },
+      {
+        "title": "Verknüpfungen je Anbieter",
+        "where": "Kontomenü, Mein Konto, Sicherheit",
+        "body": "Verknüpfe dein Konto mit jedem Anbieter einzeln und löse es wieder. Ein Konto wird nie mehr über seine Mailadresse zugeordnet, auch nicht, wenn ein Anbieter die Adresse als bestätigt meldet; wer anderswo dieselbe Adresse besitzt, kann so kein Konto übernehmen. Konten, die ihren Anbieter bisher über die Adresse fanden, sind schon verknüpft. Der Betreiber löst eine Verknüpfung in der Kontenliste, und die Person erfährt es."
+      },
+      {
+        "title": "Eine Frage, bevor sich die Adresse ändert",
+        "where": "Einstellungen, Server, Anmeldung",
+        "body": "Wer die öffentliche Adresse ändert oder leert, wird zuerst gefragt, weil bei jedem Anbieter die alte Rückleitadresse eingetragen ist. Die authentik-Karte nennt die Adresse, die sie eingetragen hat, wenn sie von der jetzigen abweicht. Außerdem liest nexlore das Schema vom vorgeschalteten Proxy nur von Adressen aus NEXLORE_TRUSTED_PROXIES; setze es, wenn nexlore hinter einem TLS-Proxy läuft."
+      },
+      {
+        "title": "Schlüssel warten auf den zweiten Faktor",
+        "where": "Kontomenü, Mein Konto, Verbindungen",
+        "body": "Wo ein zweiter Faktor verlangt wird, sagen API-Tokens, KI-Schlüssel und das Kalender-Abo jetzt, dass sie erst funktionieren, wenn du ihn eingerichtet hast, mit einem Link dorthin. Wer sich über einen Anbieter anmeldet, der den zweiten Faktor selbst prüft, muss keinen weiteren einrichten."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Ein Klick auf einen Link im Editor öffnet ihn, auch wenn die Maustaste einen Moment gehalten wird.",
+      "Mails tragen einen Date-Header; manche Anbieter verwarfen sie ohne ihn stillschweigend.",
+      "Zweimal zugleich zum ersten Mal über denselben Anbieter anzumelden endet nicht mehr in einem Fehler."
+    ]
   }
 }

@@ -330,5 +330,36 @@
       "A provider renamed in authentik keeps its new name when the button runs again.",
       "An application for nexlore's own provider never takes the slug of another provider's application."
     ]
+  },
+  "1.6.0": {
+    "lead": "Sign in through several providers at once, each with its own button and its own links, and a question before the public address changes.",
+    "sections": [
+      {
+        "title": "Several sign-in providers",
+        "where": "Settings, Server, Sign-in",
+        "body": "Add as many OpenID Connect providers as you like, each with its own name, its own button on the sign-in page and its own switch for whether it checks the second factor itself. The authentik button sets up its provider in one step. Accounts that signed in through your one provider before are moved over by themselves on the first start, and a backup is made first."
+      },
+      {
+        "title": "Links per provider",
+        "where": "Account menu, My account, Security",
+        "body": "Link your account to each provider on its own and unlink it again. An account is never matched by its mail address any more, not even when a provider says the address is confirmed, so nobody can take over an account by owning the same address elsewhere. Accounts that found their provider by the address are already linked. The operator can unlink a link in the account list, and the person is told about it."
+      },
+      {
+        "title": "A question before the address changes",
+        "where": "Settings, Server, Sign-in",
+        "body": "Changing or clearing the public address asks first, because every provider has the old return address registered. The authentik card names the address it registered when it differs from the current one. nexlore also reads the scheme from the proxy in front of it only from addresses listed in NEXLORE_TRUSTED_PROXIES, so set it when you run behind a TLS proxy."
+      },
+      {
+        "title": "Keys wait for a second factor",
+        "where": "Account menu, My account, Connections",
+        "body": "Where a second factor is required, API tokens, AI keys and the calendar subscription now say that they work only once you have set one up, with a link to do it. Whoever signs in through a provider that checks the second factor itself does not have to set up another."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "A click on a link in the editor opens it, also when the mouse button is held a moment.",
+      "Mails carry a Date header; some providers dropped them silently without one.",
+      "Signing in for the first time twice at the same moment through the same provider no longer ends in an error."
+    ]
   }
 }
