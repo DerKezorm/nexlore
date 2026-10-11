@@ -19,17 +19,17 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
 import oidcEn from '../vendor/nexoidc/oidc.en.json'
-import { oidcWording } from '../vendor/nexoidc/oidc'
+import { oidcVariables, oidcWording } from '../vendor/nexoidc/oidc'
 import ownEn from './en.json'
 
 /** nexlore's own English texts with the shared sign-in texts. */
-export const en: Texts = { ...ownEn, ...oidcWording(oidcEn, { singleAccount: false }) }
+export const en: Texts = { ...ownEn, ...oidcWording(oidcEn, { singleAccount: false, invitations: true }) }
 /** What `{{app}}` stands for in the shared texts. */
 export const APP_NAME = 'nexlore'
 
 async function german(): Promise<{ default: Texts }> {
   const [own, oidc] = await Promise.all([import('./de.json'), import('../vendor/nexoidc/oidc.de.json')])
-  return { default: { ...own.default, ...oidcWording(oidc.default, { singleAccount: false }) } }
+  return { default: { ...own.default, ...oidcWording(oidc.default, { singleAccount: false, invitations: true }) } }
 }
 
 type Texts = Record<string, unknown>
@@ -149,7 +149,7 @@ export async function startI18n(): Promise<void> {
     resources: { en: { translation: en } },
     lng: FALLBACK,
     fallbackLng: FALLBACK,
-    interpolation: { escapeValue: false, defaultVariables: { app: APP_NAME } },
+    interpolation: { escapeValue: false, defaultVariables: oidcVariables(APP_NAME) },
     returnNull: false,
   })
   const wanted = storedLanguage() ?? browserLanguage()

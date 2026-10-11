@@ -8,7 +8,7 @@
  */
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { oidcWording, type OidcWording } from './vendor/nexoidc/oidc'
+import { oidcVariables, oidcWording, type OidcWording } from './vendor/nexoidc/oidc'
 import de from './vendor/nexoidc/oidc.de.json'
 import en from './vendor/nexoidc/oidc.en.json'
 // nexlore's i18n after its set-up: the module's files merged into the resources, `{{app}}` set (src/i18n/index.ts).
@@ -17,6 +17,11 @@ import i18n, { changeLanguage, startI18n } from './i18n'
 const APP_NAME = 'nexlore'
 // nexlore has accounts: the sentences for the apps with one account (nexcrate, nexsift) are not merged in.
 const SINGLE_ACCOUNT = false
+// The slug the authentik button gives the app (the server's app_name); the app sets the same through oidcVariables.
+const APP_SLUG = oidcVariables(APP_NAME).slug
+// nexlore has invitations.
+const INVITATIONS = true
+const WORDING = { singleAccount: SINGLE_ACCOUNT, invitations: INVITATIONS }
 
 beforeAll(async () => {
   // No server in a unit test: no languages added by an operator.
@@ -33,7 +38,7 @@ function leaves(tree: Tree, prefix = ''): [string, string][] {
   })
 }
 
-// Every placeholder of the texts but `{{app}}` (`address` since 1.0.10).
+// Every placeholder of the texts but `{{app}}` and `{{slug}}`, which the app's i18n fills in itself.
 const values = { name: 'N', count: 2, only: 1, status: 403, address: 'https://app.example.com' }
 
 describe('the oidc texts', () => {
@@ -41,13 +46,13 @@ describe('the oidc texts', () => {
     it(`are all in the app in ${language}, word for word, with the app's name`, async () => {
       await changeLanguage(language)
       expect(i18n.language).toBe(language)
-      for (const [key, text] of leaves(oidcWording(tree, { singleAccount: SINGLE_ACCOUNT }))) {
+      for (const [key, text] of leaves(oidcWording(tree, WORDING))) {
         // Plural forms are asked for without their suffix, with a count that picks them (since 1.0.9).
         const plural = /_(one|other)$/.exec(key)
         const given = plural ? { ...values, count: plural[1] === 'one' ? 1 : 2 } : values
         const asked = plural ? key.slice(0, plural.index) : key
         const expected = text.replace(/\{\{(\w+)\}\}/g, (_, name: string) =>
-          name === 'app' ? APP_NAME : String(given[name as keyof typeof given]),
+          name === 'app' ? APP_NAME : name === 'slug' ? APP_SLUG : String(given[name as keyof typeof given]),
         )
         expect(i18n.t(asked, given), key).toBe(expected)
       }
