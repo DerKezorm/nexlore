@@ -1,13 +1,10 @@
 # nexlore
 
-[![Website: www.nexlore.de](https://img.shields.io/badge/website-www.nexlore.de-14b8a6?style=for-the-badge)](https://www.nexlore.de)
-
 Notes as Markdown files, edited in the browser, with a graph you can zoom into. Self-hosted, for yourself or a
 small team, and friendly to Obsidian: the files on disk stay the truth, and Obsidian, Syncthing or any editor may
 work on the same folder at the same time.
 
-nexlore is one of the nex apps and looks like them: turquoise, dark and light. What it can do, the full guide and
-answers to common questions are on the project site, **[www.nexlore.de](https://www.nexlore.de)**.
+nexlore is one of the nex apps and looks like them: turquoise, dark and light.
 
 ![The graph: folders as faint circles behind their notes, one note chosen and its links lit](docs/screenshots/graph.png)
 
