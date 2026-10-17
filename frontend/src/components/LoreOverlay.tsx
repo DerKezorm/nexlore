@@ -1,5 +1,5 @@
 /**
- * Lore in the corner (design answer 05.10.2026): a round spider button at the bottom right of every page opens a chat
+ * Lore in the corner: a round spider button at the bottom right of every page opens a chat
  * window above it; on a phone the window takes the screen. Only where the operator switched Lore on and an AI service
  * stands ready (`me.lore`), and not on the page "Ask Lore" itself.
  *

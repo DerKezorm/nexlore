@@ -1,6 +1,6 @@
 /**
- * The line numbers of the file beside the text (design answer 29.09.2026: the lines of the file, as Obsidian counts
- * them, so that a number matches a text editor or git). Each block, list item and table row shows the line it starts
+ * The line numbers of the file beside the text (the lines of the file, so that a number matches
+ * a text editor or git). Each block, list item and table row shows the line it starts
  * on in the text that would be saved: the block layer's, not the editor's own Markdown.
  *
  * Matching: the saved text is cut into its top-level blocks; each block's round trip is compared with what each

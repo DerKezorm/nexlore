@@ -1,7 +1,7 @@
 """A mail address for each account (issue #13): entered in the profile, set by the operator, or from the provider.
 
 The address that counts (``Account.email``) is mailed. It never finds an account at a sign-in through a provider:
-only the identity there does (``oidc_links``, the shared sign-in blueprint). An address an account enters for itself
+only the identity there does (``oidc_links``). An address an account enters for itself
 still counts only once its link was opened, so that mail goes only where its owner reads it. Until then it waits in
 ``email_pending``; an address confirmed before stays in force meanwhile.
 
@@ -284,9 +284,9 @@ def set_by_operator(db: Session, target: Account, address: str, operator: Accoun
 
 def from_provider(db: Session, account: Account, address: str) -> None:
     """What the provider says at a sign-in or a link (the caller commits). ``email_verified`` is never read (the
-    shared blueprint): the address finds nobody, it is only what the account is mailed at. An account through the
+    shared module): the address finds nobody, it is only what the account is mailed at. An account through the
     provider only follows it; every other account is offered it in the profile, also one without an address of its
-    own, and takes it only when it says so (blueprint 01, "Wer ist das?", last paragraph)."""
+    own, and takes it only when it says so."""
     if not address:
         return
     try:

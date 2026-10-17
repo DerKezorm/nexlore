@@ -223,7 +223,7 @@ def test_mcp_marks_hits_so_that_bold_text_stays_readable_and_refuses_an_unknown_
         assert ping.status_code == status, version
 
 
-# --- Acts on another account ask for the operator's password once more (design answer, 28.09.2026) ------------------
+# --- Acts on another account ask for the operator's password once more ------------------
 
 ACTS = {
     "password": ("PUT", "/api/accounts/{id}/password", {"password": "a brand new password"}),

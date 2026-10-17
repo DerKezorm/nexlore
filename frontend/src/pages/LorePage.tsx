@@ -1,5 +1,5 @@
 /**
- * Frag Lore, the page (design answers 05.10.2026): the own conversations on the left, grouped by day, the open one in
+ * Frag Lore, the page: the own conversations on the left, grouped by day, the open one in
  * the middle, and under the field the spaces Lore looks in, each one to leave out (kept with the account). Without an
  * AI service Lore says what is missing and where to put it in. On a phone the list is a sheet.
  */

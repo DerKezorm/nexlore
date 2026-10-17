@@ -1,7 +1,7 @@
 """Sign-in through OpenID Connect providers, their list, linking, and the authentik button.
 
 The protocol, who an identity is, the provider list and the button live in the shared module ``vendor/nexoidc``
-(the blueprint "Anmeldung mit OIDC und authentik", the same in every nex app); this router puts nexlore around it:
+(the same in every nex app); this router puts nexlore around it:
 sessions, the sign-in brake, the password asked again before linking, the second factor, and the error answers.
 
 The return leg is a browser redirect, not an API answer: the provider sends the browser back with GET, and a human
@@ -309,7 +309,7 @@ async def link_start(
     with store() as s:
         row = s.db.get(AccountRow, account.id)
         assert row is not None
-        # The same brake as before start and return (blueprint 02, "Ablauf" 4): a braked sender links nothing.
+        # The same brake as before start and return: a braked sender links nothing.
         wait = brake.wait_seconds(_brake_key(request))
         if wait:
             raise error("too_many_attempts", "Too many attempts. Try again later.", 429, retry_after=wait)
@@ -364,7 +364,7 @@ def operator_unlink(
         if not removed:
             raise error("not_found", "Not found.", 404)
         if account_id != operator.id:
-            # Never unseen (blueprint 01): the account finds it under "New", with the provider's name.
+            # Never unseen: the account finds it under "New", with the provider's name.
             s.db.add(SpaceNotice(account_id=account_id, space_id=None, space_name="", kind=NOTICE_UNLINKED,
                                  actor=operator.name, actor_id=operator.id, subject=entry.label))
             s.db.commit()

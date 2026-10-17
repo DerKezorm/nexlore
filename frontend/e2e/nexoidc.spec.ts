@@ -1,5 +1,5 @@
 /**
- * Pflichttests 33 and 34 of the shared sign-in blueprint (copied once from bauplaene/oidc, then nexlore's file).
+ * Contract tests 33 and 34 of the shared sign-in module (started from the shared copy, then nexlore's file).
  *
  * The provider is the stand-in of e2e/fake-postbox.mjs (an OpenID Connect provider over http on 8476 with a key made
  * at its start, sending the browser straight back with a code for whoever POST /oidc/next named). Never a real

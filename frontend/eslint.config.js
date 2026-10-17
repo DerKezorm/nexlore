@@ -10,7 +10,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  // The shared sign-in module comes unchanged from bauplaene/oidc and is linted there.
+  // The shared sign-in module is copied in unchanged and linted at its source.
   { ignores: ['**/dist/**', 'src/vendor/nexoidc/**'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

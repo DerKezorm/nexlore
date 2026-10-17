@@ -1,5 +1,5 @@
 /**
- * A draft an AI proposed over MCP, next to what the note holds now (design answer M7): the same side by side as a
+ * A draft an AI proposed over MCP, next to what the note holds now: the same side by side as a
  * conflict copy, the changed words marked, then take it over or throw it away. Taking over saves against the state
  * the AI read: a note changed since gets a conflict copy, never an overwrite (the server says so, `conflict`).
  */

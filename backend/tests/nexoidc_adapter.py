@@ -1,4 +1,4 @@
-"""nexoidc contract tests: nexlore's adapter (copied once from ``bauplaene/oidc/tests-fuer-apps/adapter_template.py``,
+"""nexoidc contract tests: nexlore's adapter (started from the shared adapter template,
 from then on nexlore's own file).
 
 The contract tests in ``tests/nexoidc/`` are the same in every nex app and never edited here. They reach nexlore

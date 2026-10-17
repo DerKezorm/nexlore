@@ -1,5 +1,5 @@
 /**
- * The toolbar in the Markdown view (design answer 05.10.2026: "Volle Leiste"): the same commands as in the visual
+ * The toolbar in the Markdown view (the full toolbar): the same commands as in the visual
  * editor, done on the text itself. Each command reads the text and the selection and says what to put where; the
  * caller writes it into the field so that the browser's own undo takes it back.
  *

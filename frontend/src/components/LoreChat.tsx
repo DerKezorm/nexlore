@@ -1,6 +1,6 @@
 /**
  * A conversation with Lore (`lib/lore.ts`) as a chat with bubbles, in the overlay in the corner and on the page "Ask
- * Lore" (design answer 05.10.2026, after the attrappe `tools/lore-attrappe/attrappe-overlay.html`): the own questions
+ * Lore" the own questions
  * on the right, Lore's answers on the left beside the spider, as they come. In an answer only small raised numbers;
  * below it, folded, the sources and the way Lore searched; what the notes do not say as a quiet line at the foot of
  * the bubble. Copy, save as a note and propose show on hovering the answer.

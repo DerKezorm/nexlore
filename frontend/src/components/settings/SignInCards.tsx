@@ -1,6 +1,6 @@
 /**
- * Settings, Server, Sign-in: three cards one below the other, as the shared sign-in blueprint lays them out for every
- * nex app (part 04). Order, wording and behaviour come from there; the parts (card, switch, field, button, question)
+ * Settings, Server, Sign-in: three cards one below the other, as the shared sign-in module lays them out for every
+ * nex app. Order, wording and behaviour come from there; the parts (card, switch, field, button, question)
  * are nexlore's own.
  *
  * 1. Sign-in: password sign-in (locked on while no provider is active), the public address, the second factor.
@@ -327,7 +327,7 @@ const EMPTY: OidcProviderForm = {
 
 type FieldName = 'label' | 'slug' | 'issuer' | 'client_id' | 'client_secret' | 'scopes' | 'id'
 
-/** The provider form as a dialog, fields in the blueprint's order. */
+/** The provider form as a dialog, fields in the shared order. */
 function ProviderDialog({
   entry,
   publicUrl,
@@ -579,7 +579,7 @@ export function AuthentikCard({
     setAsking(null)
     return run(async () => {
       const answer = await adminApi.authentik(authentik.url, authentik.token, confirm, adopt ? proposal : '')
-      // Not a failure: the button waits for the operator's yes (blueprint 04, card 3), nothing was changed. The
+      // Not a failure: the button waits for the operator's yes, nothing was changed. The
       // token stays for the second run.
       const count = authentikIssuerChange(answer)
       if (count !== null) {

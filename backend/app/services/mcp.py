@@ -62,9 +62,9 @@ USED_EVERY = timedelta(minutes=1)
 GROUPS = ("read", "draft", "change", "risky")
 DEFAULT_RIGHT = {"read": "allow", "draft": "allow", "change": "ask", "risky": "deny"}
 RIGHTS = ("allow", "ask", "deny")
-#: Blocked for everybody until the operator says otherwise (design answer Y2): what cannot be undone.
+#: Blocked for everybody until the operator says otherwise: what cannot be undone.
 BLOCKED_BY_DEFAULT = ("delete_space", "empty_trash")
-#: How long a request waits for its account (design answer Y3).
+#: How long a request waits for its account.
 REQUEST_HOURS = 24
 #: Waiting requests per account: an AI in a loop must not fill the list.
 MAX_WAITING = 100

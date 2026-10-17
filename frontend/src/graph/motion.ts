@@ -1,11 +1,11 @@
 /**
- * The map moves (design answer 05.10.2026, after the attrappe `tools/graph-attrappe/`): notes in sight swing into
+ * The map moves: notes in sight swing into
  * place when their group opens, and a note dragged pulls its neighbours along; everything stays in its own circle.
  *
  * Only the notes on screen take part (at most `MAX_MOVING`), so a vault of 100,000 notes costs what a screen holds.
- * As in the attrappe, links pull their notes together into bunches and all notes keep each other at a distance; the
- * place the server gave a note pulls only lightly, so the map stays recognisable (05.10.2026, compared with the
- * attrappe: the layout of the server alone spread linked notes evenly over their circle). Links into other
+ * Links pull their notes together into bunches and all notes keep each other at a distance; the
+ * place the server gave a note pulls only lightly, so the map stays recognisable (the layout of the server
+ * alone spread linked notes evenly over their circle). Links into other
  * groups do not pull: a note would only hang at the edge of its circle. A dropped note holds its place more firmly.
  * Nothing is saved: a reload brings the server's layout back and lets it settle again.
  */

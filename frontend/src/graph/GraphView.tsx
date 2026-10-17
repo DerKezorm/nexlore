@@ -9,7 +9,7 @@
  * it; a note dragged with the mouse pulls its neighbours along (`motion.ts`). Touch: one finger moves, two fingers
  * zoom (pinch).
  *
- * The look of 05.10.2026 (attrappe `tools/graph-attrappe/`): the rest fades by degrees around a focus and back, the
+ * The look: the rest fades by degrees around a focus and back, the
  * wheel glides to its zoom, and notes swing in when their group opens. Asked for less motion, all of it is at once.
  */
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
@@ -391,15 +391,15 @@ export const GraphView = forwardRef<GraphHandle, Props>(function GraphView(props
       const dot = dotRadius(note.r, cam.k, scene.groups.get(note.group)?.or ?? 0)
       const isFocus = note.id === focus
       const isNear = near.has(note.id)
-      // As in the attrappe: names fade in as one comes into the group, the most linked first.
+      // Names fade in as one comes into the group, the most linked first.
       const into = zoomIn(scene.groups.get(note.group)?.or ?? 0, cam.k)
       const labelAlpha = isFocus || isNear ? a : a * Math.min(1, Math.max(0, (into - 0.35) * 2.5)) * smoothstep(0, 1, (into * into * 12) / Math.max(1, 15 - note.r))
       if (labelAlpha < 0.03) continue
       candidates.push({ note, labelAlpha, dot, isFocus, isNear, priority: isFocus ? 1000 : isNear ? 500 : note.r })
     }
-    // A screen holds a few hundred names, never thousands: only the most linked notes in view are offered (as the
-    // attrappe's budget), the focus and its neighbours always. Thousands of names a frame took seconds with 40,000
-    // notes loaded and every folder open (05.10.2026).
+    // A screen holds a few hundred names, never thousands: only the most linked notes in view are offered, the focus and its
+    // neighbours always. Thousands of names a frame took seconds with 40,000 notes loaded and every folder open
+    // (05.10.2026).
     if (candidates.length > LABELS) {
       candidates.sort((p, q) => q.priority - p.priority)
       candidates.length = LABELS

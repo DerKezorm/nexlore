@@ -439,7 +439,7 @@ export function McpCard({ settings, onChange }: { settings: ServerSettings; onCh
   )
 }
 
-/** Tools no account may use, whatever its keys say (block Y, design answer Y2). Saved at once. */
+/** Tools no account may use, whatever its keys say Saved at once. */
 function BlockedTools() {
   const { t, i18n } = useTranslation()
   const [catalog, setCatalog] = useState<McpTools | null>(null)
@@ -486,7 +486,7 @@ function BlockedTools() {
 // --- API tokens for programs (n8n, nexdeck) ------------------------------------------------------------------------
 
 /** The switch for API tokens, and every token there is: who made it, its level, when it was used; blocked for good
- * on request (design answer: every way out needs a latch). Never the token itself. */
+ * on request (every way out needs a latch). Never the token itself. */
 export function ApiTokensCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
   const { t } = useTranslation()
   const { busy, problem, run } = useAction()

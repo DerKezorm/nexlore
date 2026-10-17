@@ -536,7 +536,7 @@ def list_accounts(_operator: OperatorAccount, db: DbSession) -> list[dict[str, A
     spaces: dict[int, int] = {}
     for account_id in db.scalars(select(Membership.account_id)):
         spaces[account_id] = spaces.get(account_id, 0) + 1
-    # The providers each account is linked to, as marks in the operator's list (the shared sign-in blueprint 04).
+    # The providers each account is linked to, as marks in the operator's list.
     linked: dict[int, list[dict[str, Any]]] = {}
     for link, entry in db.execute(
         select(OidcLink, OidcProvider).join(OidcProvider, OidcProvider.id == OidcLink.provider_id)

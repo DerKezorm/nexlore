@@ -1,5 +1,5 @@
 /**
- * Settings → General: the view a note opens in for editing, for the own account (design answer 05.10.2026: some write
+ * Settings → General: the view a note opens in for editing, for the own account (some write
  * Markdown directly, others want the visual editor). The switch in the toolbar still changes it for the note at hand.
  */
 import { useTranslation } from 'react-i18next'

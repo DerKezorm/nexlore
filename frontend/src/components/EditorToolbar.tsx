@@ -5,7 +5,7 @@
  * On a phone it is one narrow row above the on-screen keyboard (`visualViewport` says where that is), swiped sideways.
  * Its buttons never take the focus from the text, so the keyboard stays and the command works where the caret was.
  *
- * The same toolbar serves the Markdown view (design answer 05.10.2026): there its commands write the Markdown signs
+ * The same toolbar serves the Markdown view: there its commands write the Markdown signs
  * into the text (`lib/sourceTools.ts`). A switch "Visual | Markdown" at the end says which view is open.
  */
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'

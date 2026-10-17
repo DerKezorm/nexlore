@@ -6,8 +6,8 @@ Taken over from nexmail, where it was measured and argued out in use:
   speaks, in the cloud or at home (Ollama). The server knows **no provider**, only three values: address, key,
   model. The tiles that fill in an address live in the interface; any other address is just as good.
 * **Per account, or one for all.** The access belongs to the person, like a mailbox: each pays for their own key.
-  The operator may instead put in one service for everybody (``ai_mode`` "shared", Frag Lore, design answer
-  05.10.2026); the accounts' own accesses then rest, unchanged, until the operator switches back.
+  The operator may instead put in one service for everybody (``ai_mode`` "shared", Frag Lore); the accounts'
+  own accesses then rest, unchanged, until the operator switches back.
 * **Two locks.** The operator's (``ai_allowed``, closed from the start: this is where note text leaves the house) and
   the account's own switch, which only goes on with a complete access.
 * **A task from a list, not a free text.** The promise "changes no fact" holds only when nobody can tell the model

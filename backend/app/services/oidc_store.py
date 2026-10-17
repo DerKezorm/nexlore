@@ -1,7 +1,7 @@
 """nexlore's side of the shared sign-in module ``vendor/nexoidc``: the ``Store`` over its tables, the start-up
 configuration, and the migration from the single provider of the settings to the list.
 
-The module (anmeldung mit OIDC und authentik, the shared blueprint) runs the protocol, decides who an identity is and
+The shared module runs the protocol, decides who an identity is and
 keeps the provider list; it never sees a database. What is nexlore's own lives here: accounts and their names, the
 rights an invitation brings into a space, the address an account takes from its provider (``services/emailaddr``),
 and the encryption of the client secrets with the server secret.
@@ -304,9 +304,9 @@ class SqlStore:
         self.db.rollback()
 
 
-# --- The migration from the single provider of the settings (blueprint 01 "Umstieg", 06 "Wanderung") --------------
+# --- The migration from the single provider of the settings (from the settings to the list) --------------
 
-#: How nexlore 1.5 behaved after the provider: it asked no code of its own (blueprint 06 "Wanderung").
+#: How nexlore 1.5 behaved after the provider: it asked no code of its own.
 TRUSTED_BEFORE = True
 #: The fingerprint of what the way back wrote last (``migrate.fingerprint``), a setting.
 FINGERPRINT = "oidc_legacy_fingerprint"
@@ -342,7 +342,7 @@ def read_legacy(db: Session) -> tuple[migrate.Legacy, list[tuple[int, str]]]:
 def legacy_plan(db: Session) -> migrate.Plan | None:
     """The entry ``oidc`` and its links the old settings become; None when no provider was set up."""
     legacy, subjects = read_legacy(db)
-    # nexlore asked no code after the provider before the list: the migrated entry keeps that (blueprint 06).
+    # nexlore asked no code after the provider before the list: the migrated entry keeps that.
     return migrate.plan(legacy, subjects, trusts_second_factor=TRUSTED_BEFORE)
 
 
@@ -364,7 +364,7 @@ def stored_anchor(db: Session) -> str | None:
 
 
 def _write_legacy(db: Session) -> None:
-    """The way back to nexlore 1.5 (blueprint 01 "Umstieg" 4): that version reads the old settings ``oidc_*`` and the
+    """The way back to nexlore 1.5: that version reads the old settings ``oidc_*`` and the
     column ``oidc_subject``. What they show is ``migrate.way_back``'s, one rule for every app (module 1.0.10): the
     entry ``oidc`` and the stored anchor decide, nexlore only writes it in its old form (the secret sealed without a
     context, as 1.5 reads it) and stores the anchor that comes back."""

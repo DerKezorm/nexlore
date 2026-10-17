@@ -42,7 +42,7 @@ LEVELS = ("read", "write")
 TOKEN_PREFIX = "nxa_"
 #: How many tokens an account may hold.
 MAX_TOKENS = 20
-#: The choices for running out, in days; None: never (the default, design answer).
+#: The choices for running out, in days; None: never (the default).
 LIFETIMES = (30, 90, 365)
 #: Requests one token may make per minute.
 PER_MINUTE = 600

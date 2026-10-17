@@ -7,7 +7,7 @@ you take part in), ``invite`` (an invitation into a space), ``approval`` (an AI 
 backup failed, a newer version is out, the disk runs full); and ``tokens`` (an API token runs out within a week,
 once per token).
 
-**The webhook is always open** (design answer Z2): an address of the account's choosing, http or https, kept encrypted
+**The webhook is always open**: an address of the account's choosing, http or https, kept encrypted
 and never shown again in full. It gets a small JSON body (``app``, ``event``, ``title``, ``message``, ``url``,
 ``priority``), which a webhook inbox such as nexsift takes as it is. Mail goes only where the operator entered a mail
 server and the account has an address.

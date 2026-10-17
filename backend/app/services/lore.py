@@ -1,6 +1,6 @@
 """Frag Lore: questions about one's own notes, answered from them, with the places they come from.
 
-Built after the attrappe of 05.10.2026 (``tools/lore-attrappe``) and its design answers:
+How it works:
 
 * **The server looks things up, the model only answers.** The words of the question go into the full-text index
   (``"word"*`` joined with OR, ranked by bm25), over the spaces the account may read and has not left out. Of every

@@ -107,7 +107,7 @@ def test_the_operators_key_cannot_withdraw_somebody_elses_public_page(world: Wor
     assert failure(call(token, "remove_member", space="Garden", name="anna"))
     assert [share["id"] for share in world.anna.get("/api/shares", params={"path": "Garden/Plan.md"}).json()] == [
         share_id]
-    # In the interface the operator still may (design answer PG-1, and every member is told).
+    # In the interface the operator still may (and every member is told).
     assert world.operator.delete(f"/api/shares/{share_id}").status_code == 204
 
 

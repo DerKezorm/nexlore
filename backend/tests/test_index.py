@@ -277,7 +277,7 @@ def linked(vault: Path) -> Path:
         ("S/A/Note.md", "[x](/B/Only%20B.md)", "S/B/Only B.md"),
         ("S/Home.md", "[[s/B/Note]]", "S/B/Note.md"),  # written from a vault that holds all spaces
         ("S/A/Note.md", "[x](S/B/Only%20B.md)", "S/B/Only B.md"),
-        # Into another space, with its name in front (the design answer of M6).
+        # Into another space, with its name in front.
         ("S/Home.md", "[[T/Note]]", "T/Note.md"),
         ("S/Home.md", "[[t/note]]", "T/Note.md"),  # without case, like every link
         ("S/Home.md", "[x](../T/Note.md)", "T/Note.md"),  # a Markdown path that climbs out of its space

@@ -21,7 +21,7 @@ import { KeyFactorHint } from './KeyFactorHint'
 import { Symbol } from './Symbol'
 
 const LEVELS: ApiLevel[] = ['read', 'write']
-/** Days until a token runs out; null: never (the default, design answer). */
+/** Days until a token runs out; null: never (the default). */
 const LIFETIMES: (number | null)[] = [30, 90, 365, null]
 const WEEK = 7 * 24 * 60 * 60 * 1000
 

@@ -326,7 +326,7 @@ def test_no_secret_and_no_invitation_leaves_a_trace_in_the_log(
 def test_the_button_pressed_again_after_the_migration_keeps_the_old_address_the_entry_and_its_links(
     client: TestClient, operator: Account
 ) -> None:
-    """Blueprint 01 "Umstieg" 3: the entry ``oidc`` keeps ``/api/oidc/callback`` when the operator presses the
+    """The entry ``oidc`` keeps ``/api/oidc/callback`` when the operator presses the
     authentik button again; the provider is its own (found by its client id), so no link is dropped."""
     from app.vendor import nexoidc as module
 
@@ -370,7 +370,7 @@ def test_the_start_of_nexlore_reads_the_tls_context_of_the_sign_in_module_ahead(
         assert tls._context is not None
 
 
-# --- The way back to 1.5 (blueprint 01 "Umstieg" 4) -----------------------------------------------------------------
+# --- The way back to 1.5 -----------------------------------------------------------------
 
 
 def _old() -> dict[str, object]:

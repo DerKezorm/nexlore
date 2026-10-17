@@ -1,5 +1,5 @@
 /**
- * The spaces Lore looks in, kept with the account (`appearance.lore_hidden`, design answer 05.10.2026): every readable
+ * The spaces Lore looks in, kept with the account (`appearance.lore_hidden`: every readable
  * one, less those left out. All left out (chosen elsewhere, or the last one shown is gone): Lore looks in all of them
  * rather than in none. The last one shown cannot be left out.
  */

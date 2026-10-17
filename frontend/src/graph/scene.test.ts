@@ -258,7 +258,7 @@ describe('symbols and colours chosen by hand', () => {
   })
 
   it('opens a group early when its items have room on screen, a large one only closer', () => {
-    // As the folder of the attrappe: a few notes are seen from afar, a group of hundreds keeps its bubble longer.
+    // A few notes are seen from afar, a group of hundreds keeps its bubble longer.
     expect(openRadius(100, 3)).toBeCloseTo((100 * 80) / 36)
     expect(openRadius(100, 26)).toBeCloseTo((100 * 80) / (9 * Math.sqrt(27)))
     expect(openRadius(100, 500)).toBe(100)

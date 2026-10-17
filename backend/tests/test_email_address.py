@@ -288,7 +288,7 @@ def test_an_address_typed_in_never_catches_somebody_elses_first_sign_in(
 def test_even_a_confirmed_own_address_never_links_a_first_sign_in(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
-    """The shared blueprint: accounts are never found by their address, not even with ``email_verified: true``. anna
+    """The shared module: accounts are never found by their address, not even with ``email_verified: true``. anna
     links herself in the profile instead."""
     mail_ready()
     add_provider(client, provider, auto_create=False)
@@ -309,7 +309,7 @@ def link(member: TestClient, provider: FakeProvider, sub: str, **claims: Any) ->
 def test_an_account_with_a_password_and_no_address_is_offered_the_providers_never_given_it(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
-    """Blueprint 01: only accounts through the provider alone follow its address; every other one is offered it,
+    """Only accounts through the provider alone follow its address; every other one is offered it,
     also one that has none of its own yet."""
     add_provider(client, provider, auto_create=False)
     anna = person("anna")
@@ -453,7 +453,7 @@ def test_the_providers_address_is_no_longer_offered_once_the_provider_is_gone(
 def test_email_verified_is_never_read_an_address_marked_unconfirmed_counts_like_any_other(
     client: TestClient, operator: Account, postbox: Postbox, provider: FakeProvider
 ) -> None:
-    """The address finds nobody any more, so whether the provider vouches for it decides nothing (the blueprint)."""
+    """The address finds nobody any more, so whether the provider vouches for it decides nothing."""
     add_provider(client, provider, auto_create=False)
     anna = person("anna")
     link(anna, provider, "anna-1", email="anna.sso@example.com", email_verified=False)

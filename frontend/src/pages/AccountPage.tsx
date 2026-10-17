@@ -1,5 +1,5 @@
 /**
- * The own account, in tabs like the settings (design answer 29.09.2026): Profile (name, picture), Security (password,
+ * The own account, in tabs like the settings: Profile (name, picture), Security (password,
  * second factor, the link to the provider, signing out everywhere), AI (AI in notes, keys for AI from outside) and
  * Plugins. The tab stands in the address (`?tab=`); the old anchors (`#ai`, `#mcp`, `#plugins`) still lead there.
  */

@@ -1,4 +1,4 @@
-"""One AI service for all (Frag Lore, design answer 05.10.2026) and answers that flow: the operator chooses "own" or
+"""One AI service for all (Frag Lore) and answers that flow: the operator chooses "own" or
 "shared", members then use the operator's service without seeing its address or key, their own accesses rest, and a
 conversation hands its answer on piece by piece. Always against a stand-in service, never with a real key."""
 

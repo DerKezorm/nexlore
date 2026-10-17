@@ -7,9 +7,9 @@
  * its parent's, and the CPU does nothing per frame but set four numbers. Notes are points (one vertex each; software
  * rendering is fifty times slower with instancing), circles and thick lines are quads, thin lines are GL lines.
  *
- * The same rules as in the attrappe (`OPEN_FROM`, `OPEN_TO`, shell, ring, inner) and as the server's `OPEN_FROM`.
+ * The same rules (`OPEN_FROM`, `OPEN_TO`, shell, ring, inner) as the server's `OPEN_FROM`.
  *
- * The look of 05.10.2026 (attrappe `tools/graph-attrappe/`): a note's size says how linked it is, also deep in (the
+ * The look: a note's size says how linked it is, also deep in (the
  * largest stop later), every dot has a soft glow, lines are faint far away and clearer close up, and a focus dims
  * the rest by degrees: `focusOn` is not on or off but how far the fade has come (0 to 1).
  */
@@ -21,14 +21,14 @@ export const MAX_DOT = 15
 export const MIN_DOT = 2
 
 /**
- * The rules of the attrappe (tools/graph-attrappe, 05.10.2026), the same here as there. Its zoom `k` is how far one
- * has come into a group: the group's radius on screen over `OPEN_TO` (1 just open, more when closer).
+ * The zoom `k` is how far one has come into a group: the group's radius on screen over `OPEN_TO` (1 just open,
+ * more when closer).
  */
 export function zoomIn(groupRadius: number, k: number): number {
   return groupRadius > 0 ? (groupRadius * k) / OPEN_TO : k
 }
 
-/** A dot's radius on screen: by its links as in the attrappe (4.5 to 14), growing with the root of the zoom. The
+/** A dot's radius on screen: by its links (4.5 to 14), growing with the root of the zoom. The
  * server's size (`note_radius`: 5 + √links · 1.6, at most 12) gives back the number of links. */
 export function dotRadius(rad: number, k: number, groupRadius = 0): number {
   const links = Math.pow(Math.max(0, rad - 5) / 1.6, 2)
@@ -38,7 +38,7 @@ export function dotRadius(rad: number, k: number, groupRadius = 0): number {
 
 export type Camera = { x: number; y: number; k: number }
 
-/** Lines share this much ink: up to so many on screen each is drawn as in the attrappe, beyond it each one fainter
+/** Lines share this much ink: up to so many on screen each is drawn in full, beyond it each one fainter
  * (and bundles narrower), so that thousands make a veil rather than a grey surface (50,000 notes, 05.10.2026). */
 export const INK = 600
 
@@ -68,7 +68,7 @@ float ring(float o) { return ease(0.1, 0.5, o); }
 float inner(float o) { return ease(0.1, 0.6, o); }
 vec2 toScreen(vec2 p) { return (p - cam.xy) * cam.z + size * 0.5; }
 vec4 toClip(vec2 s) { return vec4(s / size * 2.0 - 1.0, 0.0, 1.0) * vec4(1.0, -1.0, 1.0, 1.0); }
-// The attrappe's zoom: how far into a group (its radius on screen over OPEN_TO).
+// The zoom: how far into a group (its radius on screen over OPEN_TO).
 float zoomIn(float r) { return r > 0.0 ? r * cam.z / ${OPEN_TO.toFixed(1)} : cam.z; }
 // How visible an end of a line is: a note (kind 0) with its group's radius, or a closed circle (kind 1).
 float endAlpha(float kind, float r, float rp) {
@@ -89,7 +89,7 @@ void main() {
   float r = clamp(2.25 * sqrt(links + 1.0), 4.5, 14.0) * clamp(sqrt(zoomIn(home)), 0.5, 2.0);
   vRing = flag.y > 0.5 ? 1.0 : 0.0;
   vColor = vec4(col.rgb, a);
-  // The glow reaches three times the dot (as in the attrappe), and there is room for the ring of the focus.
+  // The glow reaches three times the dot, and there is room for the ring of the focus.
   float outer = max(r * (1.0 + 2.2 * glow), r + 7.0);
   // The device draws points only up to a size: smaller then, but dot and ring in the same proportion.
   float size = min(2.0 * outer * dpr, maxPoint);
@@ -109,7 +109,7 @@ out vec4 o;
 void main() {
   float d = length(gl_PointCoord * 2.0 - 1.0) * vOuter;    // CSS pixels from the middle
   float fill = clamp(vPix - d + 0.5, 0.0, 1.0);
-  // The glow of the attrappe: its colour at a third from the middle, fading evenly to nothing at 3.2 radii.
+  // The glow: its colour at a third from the middle, fading evenly to nothing at 3.2 radii.
   float halo = (1.0 - clamp(d / (vPix * 3.2), 0.0, 1.0)) * (light > 0.5 ? 0.19 : 0.33) * (1.0 - fill) * glow;
   vec3 c = vColor.rgb;
   float a = max(fill, halo);
@@ -180,7 +180,7 @@ ${COMMON}
 uniform float focusOn; uniform float ink;
 out float vA;
 void main() {
-  // As in the attrappe: faint far away (0.05), clearer as one comes into the groups (up to 0.55).
+  // Faint far away (0.05), clearer as one comes into the groups (up to 0.55).
   float k = min(zoomIn(self.y), zoomIn(other.y));
   float far = clamp((k - 0.35) * 0.55, 0.05, 0.55);
   vA = min(endAlpha(self.x, self.y, self.z), endAlpha(other.x, other.y, other.z)) * mix(far, 0.04, focusOn) * ink;

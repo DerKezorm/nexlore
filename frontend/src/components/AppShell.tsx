@@ -52,7 +52,7 @@ const ITEMS: NavItem[] = [
   { to: '/calendar', label: 'nav.calendar', symbol: 'calendar', end: false },
   { to: '/tasks', label: 'nav.tasks', symbol: 'tasks', end: false },
   { to: '/files', label: 'nav.files', symbol: 'files', end: false, wide: true },
-  // Frag Lore (design answer 05.10.2026): an entry of its own with the spider; only where the operator switched Lore
+  // Frag Lore: an entry of its own with the spider; only where the operator switched Lore
   // on and an AI service is ready.
   { to: '/lore', label: 'nav.lore', symbol: 'lore', end: false },
 ]

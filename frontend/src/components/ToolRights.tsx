@@ -1,5 +1,5 @@
 /**
- * What one MCP key may do with each tool (block Y, design answers Y1 and Y4): under the key on the account page, in the
+ * What one MCP key may do with each tool under the key on the account page, in the
  * four groups of the server. Allow runs at once, Ask keeps the call for approval in nexlore, Deny hides the tool. A
  * tool above the key's level or blocked by the operator cannot be chosen. Every change is saved at once.
  */

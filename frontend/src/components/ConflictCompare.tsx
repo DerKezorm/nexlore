@@ -1,5 +1,5 @@
 /**
- * A note and its conflict copy side by side (design answer M1): what is equal once, what differs next to each
+ * A note and its conflict copy side by side: what is equal once, what differs next to each
  * other with the changed words marked, and for each difference the choice to keep the note's version, take the
  * copy's, or keep both. Saving writes the note against the state it was read in (a change in between becomes a
  * conflict again, never an overwrite) and moves the copy to the trash.

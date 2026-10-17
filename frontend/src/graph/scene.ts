@@ -92,8 +92,8 @@ function ease(a: number, b: number, v: number): number {
 export const openness = (r: number, k: number) => (r <= 0 ? 1 : ease(OPEN_FROM, OPEN_TO, r * k))
 
 /**
- * A group opens once its items would have room on screen, not at one size for all (design answer 05.10.2026: the
- * folders lie behind their notes, faint, as in the attrappe): a few notes show from afar, a group of hundreds only
+ * A group opens once its items would have room on screen, not at one size for all (the
+ * folders lie behind their notes, faint): a few notes show from afar, a group of hundreds only
  * closer, so that a vault of 100,000 notes still draws no more than a screen holds. The answer is a radius the
  * rules of `openness` take in place of the real one (drawing keeps the real one).
  */
@@ -611,7 +611,7 @@ export class Scene {
       const ea = bundle.a < 0 ? this.end('group', -bundle.a - 1) : this.end('note', bundle.a)
       const eb = bundle.b < 0 ? this.end('group', -bundle.b - 1) : this.end('note', bundle.b)
       if (!ea || !eb) continue
-      // The focus's lines fine, as in the attrappe of 05.10.2026; bundles wider for more links.
+      // The focus's lines fine; bundles wider for more links.
       const width = bundle.hot ? 0.9 : Math.min(7, 1 + Math.log2(bundle.count) * 1.3)
       for (let v = 0; v < 6; v++) {
         const at = m * (BAND_STRIDE / 4)

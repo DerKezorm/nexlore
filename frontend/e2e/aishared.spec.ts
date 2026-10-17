@@ -1,5 +1,5 @@
 /**
- * One AI service for all (Frag Lore, design answer 05.10.2026), through the interface and against the stand-in service
+ * One AI service for all (Frag Lore), through the interface and against the stand-in service
  * (`e2e/fake-ai.mjs`): the operator chooses "One for all", puts in the service without listing its address in the own
  * network, and every account is told it needs nothing of its own. The settings are put back as they were found, since
  * the tests share one server and one operator.
