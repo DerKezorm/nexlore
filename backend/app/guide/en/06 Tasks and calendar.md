@@ -24,6 +24,8 @@ You can tick tasks off anywhere: here in the text, in the **Tasks** overview and
 
 A task with `[-]` counts as cancelled. It stands in a group of its own, **Cancelled**, and counts neither as open nor as done.
 
+Characters of your own like `[r]` or `[a]` work too. nexlore reads what they mean from the settings of the Tasks plugin when the space comes from Obsidian. The managers of a space can also set it themselves under **Settings → Spaces → Options**, say `[a]` as cancelled or `[r]` as open with the name “To review”. A character nobody names stays open. The **Every status** field in the overview shows only the tasks with one character.
+
 ![The tasks overview](Attachments/tasks.webp)
 
 ## The calendar

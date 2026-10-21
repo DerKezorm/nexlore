@@ -235,7 +235,7 @@ def _call(caller: Caller, client: str, name: str, args: dict[str, Any]) -> Any:
             or None, _text(args, "query", required=False, limit=200) or None, 0, 100,
         )
         return [{"path": t["path"], "line": t["line"], "raw": t["raw"], "text": t["text"], "status": t["status"],
-                 "due": t["due"]} for t in found["items"]]
+                 "kind": t["kind"], "due": t["due"]} for t in found["items"]]
     if name == "search_notes":
         page = search_routes.search_notes(account, _text(args, "query", limit=500), _limit(args), 0)
         marks = str.maketrans({vault_routes.HIT_START: "«", vault_routes.HIT_END: "»"})

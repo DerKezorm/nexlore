@@ -46,6 +46,8 @@ describe('translation keys used in the code', () => {
       ].map((key) => `editor.slash.${key}`),
       ...['text', 'list', 'number', 'checkbox', 'date', 'datetime'].map((kind) => `properties.kinds.${kind}`),
       ...['left', 'right', 'both'].map((choice) => `compare.take.${choice}`),
+      // What a character between a task's brackets means, as the server names the kinds (services/taskstatus.py).
+      ...['todo', 'in_progress', 'on_hold', 'done', 'cancelled', 'non_task'].map((kind) => `tasks.kind.${kind}`),
       // How a version came about, as the server names it.
       ...['initial', 'app', 'external', 'rename', 'restore', 'import', 'mcp', 'api', 'plugin'].map((source) => `note.source.${source}`),
       // API tokens: levels, their texts, the lifetimes offered; the occasion of the notification.
@@ -59,7 +61,7 @@ describe('translation keys used in the code', () => {
         'not_found', 'invalid_input', 'sign_in_required', 'locale_unusable', 'internal_error', 'path_invalid',
         'path_too_long', 'name_invalid', 'exists', 'locked', 'not_a_note', 'move_across_spaces', 'too_large_for_trash',
         'archive_invalid', 'archive_unsafe', 'archive_too_large', 'archive_too_many_files', 'client_required', 'too_large',
-        'changed_meanwhile', 'api_off', 'too_many_tokens',
+        'changed_meanwhile', 'api_off', 'too_many_tokens', 'bad_task_status',
       ].map((code) => `errors.byCode.${code}`),
     ]
     expect(composed.filter((key) => !existsWithPlural(key))).toEqual([])

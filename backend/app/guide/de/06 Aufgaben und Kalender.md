@@ -24,6 +24,8 @@ Abhaken geht überall: hier im Text, in der Übersicht **Aufgaben** und im **Kal
 
 Eine Aufgabe mit `[-]` gilt als abgebrochen. Sie steht in der eigenen Gruppe **Abgebrochen** und zählt weder als offen noch als erledigt.
 
+Eigene Zeichen wie `[r]` oder `[a]` gehen auch. Was sie bedeuten, liest nexlore aus den Einstellungen des Tasks-Plugins, wenn der Bereich aus Obsidian kommt. Die Verwalter eines Bereichs legen es unter **Einstellungen → Bereiche → Optionen** auch selbst fest, etwa `[a]` als abgebrochen oder `[r]` als offen mit dem Namen „Zur Durchsicht“. Ein Zeichen, das niemand benennt, bleibt offen. Das Feld **Alle Status** in der Übersicht zeigt nur die Aufgaben mit einem bestimmten Zeichen.
+
 ![Die Aufgabenübersicht](Attachments/aufgaben.webp)
 
 ## Der Kalender

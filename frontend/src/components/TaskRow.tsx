@@ -106,9 +106,15 @@ export function TaskRow({
               {task.due ? '📅' : '⏳'} {nice(day)}
             </span>
           )}
-          {!done && task.mark === '/' && (
-            <span className="rounded-full bg-warn-500/15 px-1.5 text-warn-500" data-testid="in-progress">
-              {t('tasks.inProgress')}
+          {/* What the character means, when it says more than open or done: in progress, on hold, a name the
+              space gave it ([r] "To be reviewed"). */}
+          {(task.status_name || (!done && (task.kind === 'in_progress' || task.kind === 'on_hold'))) && (
+            <span
+              className={'rounded-full px-1.5 ' + (done ? 'bg-ink-850 text-mist-500' : 'bg-warn-500/15 text-warn-500')}
+              data-testid={task.kind === 'in_progress' && !task.status_name ? 'in-progress' : 'task-status'}
+              title={`[${task.mark}]`}
+            >
+              {task.status_name || t(`tasks.kind.${task.kind}`)}
             </span>
           )}
           {task.recurrence && <span className="text-mist-500" title={task.recurrence}>🔁 {recurrenceWords(task.recurrence, t, i18n.language)}</span>}

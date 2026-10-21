@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import File, Space, Task
-from . import dayname, index, paths, tasks, templates, vault
+from . import dayname, index, paths, tasks, taskstatus, templates, vault
 from .spaceopts import DATE, daily_day, daily_path, options_of
 from .vault import Actor, VaultError
 
@@ -108,6 +108,32 @@ def options(space_name: str) -> dict[str, str]:
         if space is None:
             raise VaultError("not_found", "no such space", 404)
         return options_of(space)
+
+
+def task_statuses(space_name: str) -> dict[str, Any]:
+    with SessionLocal() as db:
+        space = db.scalar(select(Space).where(Space.folder == space_name))
+        if space is None:
+            raise VaultError("not_found", "no such space", 404)
+        return taskstatus.overview(space)
+
+
+def set_task_statuses(space_name: str, entries: list[dict[str, Any]]) -> dict[str, Any]:
+    """The managers' own meanings of task characters; they stand above what the Tasks plugin says."""
+    try:
+        clean = taskstatus.clean_own(entries)
+    except taskstatus.StatusError as exc:
+        raise VaultError("bad_task_status", str(exc), 422) from exc
+    with SessionLocal() as db:
+        space = db.scalar(select(Space).where(Space.folder == space_name))
+        if space is None:
+            raise VaultError("not_found", "no such space", 404)
+        stored = dict(space.options) if isinstance(space.options, dict) else {}
+        stored["task_statuses"] = clean
+        # A new dict: the JSON column only notices a new value, not one changed in place.
+        space.options = stored
+        db.commit()
+        return taskstatus.overview(space)
 
 
 def all_options(db: Session, space_ids: set[int]) -> dict[int, tuple[str, dict[str, str]]]:
@@ -264,22 +290,25 @@ def _template_files(space_ids: set[int]) -> list[int] | None:
 
 def task_query(
     space_ids: set[int], *, status: str, when: str | None, today: str, on: str | None, tag: str | None, q: str | None,
-    space_id: int | None, between: tuple[str, str] | None = None,
+    space_id: int | None, between: tuple[str, str] | None = None, meaning: taskstatus.Meaning | None = None,
+    mark: str | None = None,
 ) -> Any:
-    # An empty `- [ ]` is no task (a template's placeholder line, a list begun).
-    conditions: list[Any] = [Task.space_id.in_(space_ids), Task.text != ""]
+    if meaning is None:
+        with SessionLocal() as db:
+            meaning = taskstatus.meaning(db, space_ids)
+    # An empty `- [ ]` is no task (a template's placeholder line, a list begun), nor is a line whose character the
+    # space calls no task.
+    conditions: list[Any] = [Task.space_id.in_(space_ids), Task.text != "", meaning.where("task")]
     patterns = _template_files(space_ids)
     if patterns is not None:
         conditions.append(Task.file_id.not_in(patterns))
     if space_id is not None:
         conditions.append(Task.space_id == space_id)
-    if status == "open":
-        conditions.append(Task.status == OPEN)
-    elif status == "done":
-        conditions.append(Task.status == tasks.DONE_STATUS)
-    elif status == "cancelled":
+    if mark is not None:
+        conditions.append(Task.mark == mark)
+    if status in ("open", "done", "cancelled"):
         # Cancelled is neither open nor done: a group of its own (review before 1.0.0, P5.20).
-        conditions.append(Task.status == tasks.CANCELLED_STATUS)
+        conditions.append(meaning.where(status))
     if when:
         conditions.append(_when(today)[when])
     if on:
@@ -305,7 +334,7 @@ def task_query(
 def list_tasks(
     space_ids: set[int], *, status: str = "open", when: str | None = None, today: str, on: str | None = None,
     tag: str | None = None, q: str | None = None, space_id: int | None = None, offset: int = 0, limit: int = 200,
-    between: tuple[str, str] | None = None,
+    between: tuple[str, str] | None = None, mark: str | None = None,
 ) -> dict[str, Any]:
     today = valid_date(today)
     if on:
@@ -313,49 +342,66 @@ def list_tasks(
     if between:
         between = (valid_date(between[0]), valid_date(between[1]))
     if not space_ids:
-        return {"total": 0, "counts": dict.fromkeys(("open", "done", "cancelled", *WHEN), 0), "items": []}
-    where = task_query(
-        space_ids, status=status, when=when, today=today, on=on, tag=tag, q=q, space_id=space_id, between=between
-    )
+        return {"total": 0, "counts": dict.fromkeys(("open", "done", "cancelled", *WHEN), 0), "items": [], "marks": []}
+    with SessionLocal() as db:
+        meaning = taskstatus.meaning(db, space_ids)
+    asked = {"today": today, "on": on, "tag": tag, "q": q, "space_id": space_id, "between": between, "meaning": meaning}
+    where = task_query(space_ids, status=status, when=when, mark=mark, **asked)
     moment = func.coalesce(Task.due, Task.scheduled)
+    is_open = meaning.where(OPEN)
     if status in ("done", "cancelled"):
         order = [Task.completed.desc(), File.path, Task.line]
     else:
         # Open ones first, by date, the undated last, on one day the higher priority first.
-        order = [Task.status != OPEN, moment.is_(None), moment, Task.priority.desc(), File.path, Task.line]
+        order = [case((is_open, 0), else_=1), moment.is_(None), moment, Task.priority.desc(), File.path, Task.line]
     with SessionLocal() as db:
         total = db.scalar(select(func.count()).select_from(Task).where(where)) or 0
         rows = db.execute(
             select(Task, File.path, File.title, File.hash).join(File, File.id == Task.file_id).where(where)
             .order_by(*order).offset(offset).limit(limit)
         ).all()
-        # The chips: every count for the same spaces, tag and words, whatever the chosen status and time.
-        base = task_query(
-            space_ids, status="all", when=None, today=today, on=on, tag=tag, q=q, space_id=space_id, between=between
-        )
+        # The chips: every count for the same spaces, tag, words and character, whatever the chosen status and time.
+        base = task_query(space_ids, status="all", when=None, mark=mark, **asked)
         conditions = _when(today)
-        is_open = Task.status == OPEN
         sums = [
             func.sum(case((is_open, 1), else_=0)),
-            func.sum(case((Task.status == tasks.DONE_STATUS, 1), else_=0)),
-            func.sum(case((Task.status == tasks.CANCELLED_STATUS, 1), else_=0)),
+            func.sum(case((meaning.where(tasks.DONE_STATUS), 1), else_=0)),
+            func.sum(case((meaning.where(tasks.CANCELLED_STATUS), 1), else_=0)),
         ]
         sums += [func.sum(case((and_(is_open, conditions[key]), 1), else_=0)) for key in WHEN]
         counted = db.execute(select(*sums).where(base)).one()
+        # The characters there are, for the status filter: counted without it, so the others stay to choose.
+        unmarked = task_query(space_ids, status="all", when=None, **asked)
+        found = db.execute(
+            select(Task.space_id, Task.mark, func.count()).where(unmarked).group_by(Task.space_id, Task.mark)
+        ).all()
     counts = dict(zip(("open", "done", "cancelled", *WHEN), (int(value or 0) for value in counted), strict=True))
-    items = [
-        {
+    items = []
+    for task, path, title, file_hash in rows:
+        said = meaning.of(task.space_id, task.mark)
+        items.append({
             "id": task.id, "path": path, "title": title or paths.stem(path), "line": task.line, "raw": task.raw,
-            "status": task.status, "mark": task.mark, "text": task.text, "due": task.due, "scheduled": task.scheduled,
-            "start": task.start,
+            "status": said.status, "mark": task.mark, "kind": said.kind, "status_name": said.name,
+            "text": task.text, "due": task.due, "scheduled": task.scheduled, "start": task.start,
             "completed": task.completed, "priority": task.priority, "recurrence": task.recurrence,
             "tags": task.tags.split() if task.tags else [],
             # The file as it was when listed: ticking off checks it (identical lines, P5.25).
             "file_hash": file_hash,
-        }
-        for task, path, title, file_hash in rows
-    ]
-    return {"total": total, "counts": counts, "items": items}
+        })
+    return {"total": total, "counts": counts, "items": items, "marks": _marks(meaning, found)}
+
+
+def _marks(meaning: taskstatus.Meaning, found: list[Any]) -> list[dict[str, Any]]:
+    """Each character once, with how many tasks have it and what it means (as the first space with it says), in the
+    order the statuses come: open ones, then done, then cancelled."""
+    out: dict[str, dict[str, Any]] = {}
+    for space_id, mark, count in found:
+        said = meaning.of(space_id, mark)
+        entry = out.setdefault(mark, {"mark": mark, "kind": said.kind, "name": said.name, "status": said.status,
+                                      "count": 0})
+        entry["count"] += int(count)
+    rank = {tasks.OPEN: 0, tasks.DONE_STATUS: 1, tasks.CANCELLED_STATUS: 2}
+    return sorted(out.values(), key=lambda entry: (rank.get(entry["status"], 3), entry["mark"] != " ", entry["mark"]))
 
 
 def _lines(data: bytes) -> list[tuple[bytes, bytes]]:
@@ -417,8 +463,12 @@ def toggle(
     _content, end = lines[index_of]
     lines[index_of] = (new.encode("utf-8"), end)
     # A recurring task ticked off: its next occurrence goes above it, as the Tasks plugin writes it.
-    was_open = tasks.parse_line(old, 0)
-    following = tasks.next_occurrence(old, today) if done and was_open and was_open.status == OPEN else None
+    # Open as the space reads the character: a custom one like `[r]` repeats, a done one does not.
+    parsed = tasks.parse_line(old, 0)
+    with SessionLocal() as db:
+        meaning = taskstatus.meaning(db, {file.space_id})
+    was_open = parsed is not None and meaning.status(file.space_id, parsed.mark) == OPEN
+    following = tasks.next_occurrence(old, today) if done and was_open else None
     if following is not None:
         ending = end or next((found for _part, found in lines if found), b"\n")
         lines.insert(index_of, (following.encode("utf-8"), ending))
@@ -426,7 +476,7 @@ def toggle(
     changed = (BOM if bom else b"") + b"".join(part + ending for part, ending in lines)
     saved = vault.save(rel, changed, base_hash=index.digest(data), actor=actor, source=source)
     # A repetition nexlore does not read (`every 3rd tuesday`) ends without a next task: said, not silent (P5.13).
-    unknown = bool(done and was_open and was_open.status == OPEN and was_open.recurrence and following is None)
+    unknown = bool(done and was_open and parsed is not None and parsed.recurrence and following is None)
     return {
         "path": rel, "line": index_of + 1, "raw": new, "hash": index.digest(changed),
         "conflict": saved.conflict, "added": following, "recurrence_unknown": unknown,
@@ -473,11 +523,15 @@ def calendar(space_ids: set[int], month: str, *, today: str, space_id: int | Non
                     day_of(day)["daily"].append(name)
         today = valid_date(today)
         moment = func.coalesce(Task.due, Task.scheduled)
-        for when, status, count in db.execute(
-            select(moment, Task.status, func.count())
+        meaning = taskstatus.meaning(db, wanted)
+        for when, space, mark, count in db.execute(
+            select(moment, Task.space_id, Task.mark, func.count())
             .where(Task.space_id.in_(wanted), moment >= first.isoformat(), moment <= last.isoformat())
-            .group_by(moment, Task.status)
+            .group_by(moment, Task.space_id, Task.mark)
         ):
+            status = meaning.status(space, mark)
+            if status == taskstatus.NOT_A_TASK:
+                continue
             entry = day_of(when)
             if status == OPEN:
                 entry["open"] += count

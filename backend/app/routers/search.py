@@ -14,7 +14,7 @@ from sqlalchemy import and_, column, exists, func, select, table, text
 from ..db import SessionLocal
 from ..deps import Account, readable_spaces
 from ..models import FTS_TABLE, TRI_TABLE, File, Space, Tag, Task
-from ..services import index, midword, paths, snippets, tagrename
+from ..services import index, midword, paths, snippets, tagrename, taskstatus
 from ..services.searchquery import Query as SearchQuery
 from ..services.searchquery import fold, parse
 from ..services.tasks import OPEN
@@ -97,7 +97,10 @@ def _filters(query: SearchQuery, account: Any) -> list[Any]:
     for number, (name, value) in enumerate(query.not_properties):
         where.append(_property(f"n{number}", name, value, negated=True))
     if query.tasks:
-        where.append(exists().where(Task.file_id == File.id, Task.status == OPEN))
+        # Open as each space reads its characters (`[r]` to review still is, `[a]` set aside is not).
+        with SessionLocal() as db:
+            meaning = taskstatus.meaning(db, readable_spaces(account))
+        where.append(exists().where(Task.file_id == File.id, meaning.where(OPEN)))
     if query.changed:
         where.append(File.mtime_ns >= int((time.time() - query.changed) * 1e9))
     return where

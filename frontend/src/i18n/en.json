@@ -860,7 +860,8 @@
       "email_link_invalid": "This link does not work any more. Enter the address in the profile again and a new one comes.",
       "email_from_provider": "The address comes from the sign-in service; it can only be changed there.",
       "email_nothing_waits": "No address is waiting for confirmation.",
-      "email_no_offer": "The sign-in service reports no other address."
+      "email_no_offer": "The sign-in service reports no other address.",
+      "bad_task_status": "This list cannot be saved: each entry is one character, given once, without a bracket."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
@@ -1560,7 +1561,17 @@
     "example": "Call the plumber",
     "noneYetMore": "The date is optional; ticking it off here writes the line in the note.",
     "recurrenceUnknown": "Ticked off. nexlore cannot read this repetition, so there is no next task. It understands every day, week, month, year, weekday and every week on …",
-    "readOnly": "Read only: you may not tick off tasks in this space."
+    "readOnly": "Read only: you may not tick off tasks in this space.",
+    "status": "Status",
+    "allStatuses": "Every status",
+    "kind": {
+      "todo": "to do",
+      "in_progress": "in progress",
+      "on_hold": "on hold",
+      "done": "done",
+      "cancelled": "cancelled",
+      "non_task": "not a task"
+    }
   },
   "newNote": {
     "title": "New note in “{{folder}}”",
@@ -1599,7 +1610,19 @@
     "dailyFormatHint": "YYYY year, MM month, DD day, / for a subfolder, [text] as it stands. Today: {{example}}",
     "guess_one": "“{{folder}}” holds one note named like a daily note ({{format}}).",
     "guess_other": "“{{folder}}” holds {{count}} notes named like daily notes ({{format}}).",
-    "guessTake": "Use them"
+    "guessTake": "Use them",
+    "statuses": "Characters in tasks",
+    "statusesText": "What a character between the brackets means, like [r] or [a]. Open ones stay in the list, done and cancelled ones have chips of their own, and a line that is not a task is left out everywhere. A character nobody names stays open.",
+    "statusesPlugin": "From the settings of the Tasks plugin in this space:",
+    "statusesPluginUnreadable": "The settings of the Tasks plugin could not be read in full.",
+    "statusesOwn": "Set here, above the plugin:",
+    "statusesNone": "None set here yet.",
+    "statusMark": "Character",
+    "statusName": "Name",
+    "statusKind": "Counts as",
+    "statusAdd": "Add a character",
+    "statusRemove": "Remove {{mark}}",
+    "statusTwice": "Each character only once."
   },
   "install": {
     "title": "nexlore as an app on your home screen",

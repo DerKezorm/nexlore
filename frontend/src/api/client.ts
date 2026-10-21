@@ -1146,6 +1146,8 @@ export const graphApi = {
 // --- Everyday use (M6): tasks, the calendar, daily notes, templates, the options of a space ---------------------
 
 export type TaskStatus = 'open' | 'done' | 'cancelled'
+/** The kinds of the Tasks plugin: the first three are open, `non_task` is never listed. */
+export type TaskKind = 'todo' | 'in_progress' | 'on_hold' | 'done' | 'cancelled' | 'non_task'
 export type TaskWhen = 'overdue' | 'today' | 'week' | 'later' | 'none'
 export type TaskItem = {
   id: number
@@ -1157,6 +1159,10 @@ export type TaskItem = {
   status: TaskStatus
   /** The character between the brackets: `/` is "in progress" in the Tasks plugin, still open. */
   mark: string
+  /** What the character means in the task's space (the Tasks plugin's settings there, or the space's own list). */
+  kind: TaskKind
+  /** Its name there; empty for nexlore's own characters, which the app names itself. */
+  status_name: string
   text: string
   due: string | null
   scheduled: string | null
@@ -1170,7 +1176,9 @@ export type TaskItem = {
   file_hash?: string
 }
 export type TaskCounts = Record<'open' | 'done' | 'cancelled' | TaskWhen, number>
-export type TaskList = { total: number; counts: TaskCounts; items: TaskItem[] }
+/** A character the listed tasks have, with how many and what it means; counted whatever character is chosen. */
+export type TaskMark = { mark: string; kind: TaskKind; name: string; status: TaskStatus; count: number }
+export type TaskList = { total: number; counts: TaskCounts; items: TaskItem[]; marks: TaskMark[] }
 export type TaskQuery = {
   today: string
   status?: 'open' | 'done' | 'cancelled' | 'all'
@@ -1181,6 +1189,8 @@ export type TaskQuery = {
   space?: string
   tag?: string
   q?: string
+  /** One character between the brackets: only tasks with it. */
+  mark?: string
   offset?: number
   limit?: number
 }
@@ -1194,6 +1204,17 @@ export type SpaceOptions = { daily_folder: string; daily_template: string; templ
 /** Daily notes a space's settings miss: where they are and how they are named. */
 export type DailyGuess = { daily_folder: string; daily_format: string; count: number }
 export type Template = { path: string; title: string }
+/** One meaning of a character, and where it comes from: nexlore itself, the Tasks plugin's settings, the space's list. */
+export type TaskStatusEntry = { mark: string; kind: TaskKind; name: string; source: 'built_in' | 'plugin' | 'own' }
+export type TaskStatuses = {
+  built_in: TaskStatusEntry[]
+  /** Null when the space has no settings of the Tasks plugin. */
+  plugin: TaskStatusEntry[] | null
+  plugin_unreadable: boolean
+  own: TaskStatusEntry[]
+  /** All of them together, as the space reads its tasks. */
+  statuses: TaskStatusEntry[]
+}
 
 export const everydayApi = {
   tasks: (query: TaskQuery) => api<TaskList>('/api/tasks', { query }),
@@ -1213,6 +1234,9 @@ export const everydayApi = {
   dailyGuess: (space: string) => api<DailyGuess | null>(`/api/spaces/${encodeURIComponent(space)}/daily-guess`),
   setOptions: (space: string, options: Partial<SpaceOptions>) =>
     api<SpaceOptions>(`/api/spaces/${encodeURIComponent(space)}/options`, { method: 'PUT', body: options }),
+  taskStatuses: (space: string) => api<TaskStatuses>(`/api/spaces/${encodeURIComponent(space)}/task-statuses`),
+  setTaskStatuses: (space: string, own: Pick<TaskStatusEntry, 'mark' | 'kind' | 'name'>[]) =>
+    api<TaskStatuses>(`/api/spaces/${encodeURIComponent(space)}/task-statuses`, { method: 'PUT', body: { own } }),
 }
 
 // --- Open to the outside (M7): MCP keys, drafts an AI proposed ----------------------------------------------------

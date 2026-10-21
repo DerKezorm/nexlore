@@ -1,17 +1,19 @@
 /**
  * Where the daily notes and templates of a space live (M6), set by its managers for everybody in it: the folder for
- * daily notes, the template a new daily note starts from, the folder whose notes are templates.
+ * daily notes, the template a new daily note starts from, the folder whose notes are templates; and what the
+ * characters between a task's brackets mean there (`TaskStatusList`).
  */
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { everydayApi, themesApi, type DailyGuess, type SpaceOptions, type Template, type ThemeList } from '../api/client'
+import { everydayApi, themesApi, type DailyGuess, type SpaceOptions, type TaskStatuses, type Template, type ThemeList } from '../api/client'
 import { dayName } from '../lib/dayname'
 import { today as isoToday } from '../lib/everyday'
 import { forgetSpaceThemes } from '../lib/themes'
 import { useStore } from '../state/store'
 import { showModalOnce } from '../lib/dialog'
 import { Button, Feedback, Input, Select } from './settings/ui'
+import { type OwnStatus, TaskStatusList } from './TaskStatusList'
 import { useAction } from './settings/useAction'
 import { Symbol } from './Symbol'
 
@@ -24,19 +26,24 @@ export function SpaceOptionsDialog({ space, onClose }: { space: string; onClose:
   const [templates, setTemplates] = useState<Template[]>([])
   const [themeList, setThemeList] = useState<ThemeList | null>(null)
   const [guess, setGuess] = useState<DailyGuess | null>(null)
+  const [statuses, setStatuses] = useState<TaskStatuses | null>(null)
+  const [own, setOwn] = useState<OwnStatus[]>([])
   const { reload } = useStore()
   const { busy, problem, done, run } = useAction()
 
   useEffect(() => {
     showModalOnce(dialog.current)
     void run(async () => {
-      const [found, list, looks, missed] = await Promise.all([
+      const [found, list, looks, missed, meanings] = await Promise.all([
         everydayApi.options(space),
         everydayApi.templates(space),
         themesApi.list(),
         everydayApi.dailyGuess(space).catch(() => null),
+        everydayApi.taskStatuses(space),
       ])
       setOptions(found)
+      setStatuses(meanings)
+      setOwn(meanings.own.map(({ mark, kind, name }) => ({ mark, kind, name })))
       setGuess(missed)
       setTemplates(list)
       setThemeList(looks)
@@ -68,6 +75,10 @@ export function SpaceOptionsDialog({ space, onClose }: { space: string; onClose:
           if (!options) return
           void run(async () => {
             setOptions(await everydayApi.setOptions(space, options))
+            // A row without a character is one begun and left: it goes.
+            const meanings = await everydayApi.setTaskStatuses(space, own.filter((row) => row.mark))
+            setStatuses(meanings)
+            setOwn(meanings.own.map(({ mark, kind, name }) => ({ mark, kind, name })))
             // The notes of the space show the new colours at once.
             forgetSpaceThemes()
             await reload()
@@ -141,6 +152,7 @@ export function SpaceOptionsDialog({ space, onClose }: { space: string; onClose:
                 </code>
               ))}
             </p>
+            {statuses && <TaskStatusList statuses={statuses} own={own} onChange={setOwn} />}
           </div>
         )}
         <Feedback problem={problem} done={done} />

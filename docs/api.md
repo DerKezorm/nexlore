@@ -183,12 +183,16 @@ Tasks in the Obsidian Tasks format, across the spaces the token sees.
 {"total": 1,
  "counts": {"open": 3, "done": 5, "cancelled": 0, "overdue": 1, "today": 1, "week": 1, "later": 0, "none": 0},
  "items": [{"path": "Garden/Plan.md", "title": "Plan", "line": 5, "raw": "- [ ] Water the beans 📅 2026-10-02",
-            "text": "Water the beans", "status": "open", "due": "2026-10-02", "scheduled": null,
+            "text": "Water the beans", "status": "open", "kind": "todo", "due": "2026-10-02", "scheduled": null,
             "completed": null, "priority": 0, "tags": [], "file_hash": "9f2c..."}]}
 ```
 
 `counts` are for the same spaces, tag and words whatever `status` and `when` say: one request gives the numbers for
 every chip. Open tasks come by date, the undated last.
+
+`status` and `kind` follow what the character between the brackets means in the task's space: the Tasks plugin's
+custom statuses when the space has its settings, and the list the space's managers keep in nexlore. `kind` is `todo`,
+`in_progress`, `on_hold` (all three open), `done` or `cancelled`. A character the space calls no task is never listed.
 
 ### `GET /api/v1/dashboard?today=2026-10-02&space=Garden`
 

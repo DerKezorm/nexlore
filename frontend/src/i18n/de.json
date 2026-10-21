@@ -860,7 +860,8 @@
       "email_link_invalid": "Dieser Link gilt nicht mehr. Trag die Adresse im Profil noch einmal ein, dann kommt ein neuer.",
       "email_from_provider": "Die Adresse kommt vom Anmeldedienst; ändern lässt sie sich nur dort.",
       "email_nothing_waits": "Es wartet keine Adresse auf Bestätigung.",
-      "email_no_offer": "Der Anmeldedienst meldet keine andere Adresse."
+      "email_no_offer": "Der Anmeldedienst meldet keine andere Adresse.",
+      "bad_task_status": "Diese Liste lässt sich nicht speichern: Jeder Eintrag ist ein Zeichen, nur einmal, ohne Klammer."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
@@ -1560,7 +1561,17 @@
     "example": "Klempner anrufen",
     "noneYetMore": "Das Datum ist freiwillig; abgehakt wird hier, geschrieben in der Notiz.",
     "recurrenceUnknown": "Abgehakt. Die Wiederholung kann nexlore nicht lesen, darum gibt es keine nächste Aufgabe. Verstanden werden every day, week, month, year, weekday und every week on …",
-    "readOnly": "Nur lesend: In diesem Bereich darfst du Aufgaben nicht abhaken."
+    "readOnly": "Nur lesend: In diesem Bereich darfst du Aufgaben nicht abhaken.",
+    "status": "Status",
+    "allStatuses": "Alle Status",
+    "kind": {
+      "todo": "zu erledigen",
+      "in_progress": "in Arbeit",
+      "on_hold": "pausiert",
+      "done": "erledigt",
+      "cancelled": "abgebrochen",
+      "non_task": "keine Aufgabe"
+    }
   },
   "newNote": {
     "title": "Neue Notiz in „{{folder}}“",
@@ -1599,7 +1610,19 @@
     "dailyFormatHint": "YYYY Jahr, MM Monat, DD Tag, / für Unterordner, [Text] wörtlich. Heute: {{example}}",
     "guess_one": "In „{{folder}}“ liegt eine Notiz, die wie eine Tagesnotiz heißt ({{format}}).",
     "guess_other": "In „{{folder}}“ liegen {{count}} Notizen, die wie Tagesnotizen heißen ({{format}}).",
-    "guessTake": "Übernehmen"
+    "guessTake": "Übernehmen",
+    "statuses": "Zeichen in Aufgaben",
+    "statusesText": "Was ein Zeichen zwischen den Klammern bedeutet, etwa [r] oder [a]. Offene bleiben in der Liste, erledigte und abgebrochene haben eigene Chips, und eine Zeile, die keine Aufgabe ist, fehlt überall. Ein Zeichen, das niemand benennt, bleibt offen.",
+    "statusesPlugin": "Aus den Einstellungen des Tasks-Plugins in diesem Bereich:",
+    "statusesPluginUnreadable": "Die Einstellungen des Tasks-Plugins ließen sich nicht ganz lesen.",
+    "statusesOwn": "Hier festgelegt, gilt vor dem Plugin:",
+    "statusesNone": "Hier noch keine festgelegt.",
+    "statusMark": "Zeichen",
+    "statusName": "Name",
+    "statusKind": "Zählt als",
+    "statusAdd": "Zeichen hinzufügen",
+    "statusRemove": "{{mark}} entfernen",
+    "statusTwice": "Jedes Zeichen nur einmal."
   },
   "install": {
     "title": "nexlore als App auf den Startbildschirm",

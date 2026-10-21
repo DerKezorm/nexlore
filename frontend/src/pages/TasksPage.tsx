@@ -2,12 +2,13 @@
  * The task overview (M6): every task of every space the account may read, in the Obsidian Tasks format. Chips for
  * open, overdue, today, this week, later, no date and done, with their counts; a space, a tag, words. Open tasks are
  * grouped by when they are due (or by note, switchable, remembered per browser). Ticking one off writes that one line.
+ * A status filter picks one character between the brackets (`[r]`), named as its space names it (Issue #14).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
-import { ApiError, everydayApi, type TaskCounts, type TaskItem, type TaskQuery, type TaskWhen, type Toggled } from '../api/client'
+import { ApiError, everydayApi, type TaskCounts, type TaskItem, type TaskMark, type TaskQuery, type TaskWhen, type Toggled } from '../api/client'
 import { Symbol } from '../components/Symbol'
 import { TaskRow } from '../components/TaskRow'
 import { errorText } from '../lib/errors'
@@ -23,6 +24,9 @@ const CHIPS: Chip[] = ['open', 'overdue', 'today', 'week', 'later', 'none', 'don
 const GROUPS: TaskWhen[] = ['overdue', 'today', 'week', 'later', 'none']
 const PAGE = 200
 const GROUP_KEY = 'nexlore.tasks.group'
+
+/** Characters every task list has: the filter shows only when a space has more to tell apart. */
+const PLAIN_MARKS = new Set([' ', 'x', 'X'])
 
 function storedGroup(): 'due' | 'note' {
   try {
@@ -45,6 +49,8 @@ export function TasksPage() {
   const readOnlyIn = useMemo(() => new Set(spaces.filter((item) => item.role === 'read').map((item) => item.name)), [spaces])
   const [chip, setChip] = useState<Chip>('open')
   const [space, setSpace] = useState('')
+  const [mark, setMark] = useState('')
+  const [marks, setMarks] = useState<TaskMark[]>([])
   const [tag, setTag] = useState('')
   const [words, setWords] = useState('')
   const [query, setQuery] = useState({ tag: '', q: '' })
@@ -77,10 +83,11 @@ export function TasksPage() {
       space: space || undefined,
       tag: query.tag || undefined,
       q: query.q || undefined,
+      mark: mark || undefined,
       offset,
       limit,
     }),
-    [chip, space, query, today],
+    [chip, space, query, mark, today],
   )
 
   const load = useCallback(
@@ -99,6 +106,7 @@ export function TasksPage() {
         if (mine !== asked.current) return
         setItems(answer.items)
         setCounts(answer.counts)
+        setMarks(answer.marks ?? [])
         setTotal(answer.total)
         setProblem(null)
       } catch (error) {
@@ -132,6 +140,16 @@ export function TasksPage() {
     setNotice(code === 'task_changed' ? t('tasks.changed') : errorText(code))
     if (code === 'task_changed') void load(items.length)
   }
+
+  // A character that counts as done or cancelled is not among the open ones: its chip comes along.
+  const chooseMark = (value: string) => {
+    setMark(value)
+    const status = marks.find((entry) => entry.mark === value)?.status
+    if (status === 'done' || status === 'cancelled') setChip(status)
+    else if (status === 'open' && (chip === 'done' || chip === 'cancelled')) setChip('open')
+  }
+  const markLabel = (entry: TaskMark) => `[${entry.mark}] ${entry.name || t(`tasks.kind.${entry.kind}`)}`
+  const showMarks = mark !== '' || marks.some((entry) => !PLAIN_MARKS.has(entry.mark))
 
   const chooseGroup = (value: 'due' | 'note') => {
     setGroup(value)
@@ -215,6 +233,26 @@ export function TasksPage() {
             ))}
           </select>
         </label>
+        {showMarks && (
+          <label className="text-xs text-mist-500">
+            <span className="sr-only">{t('tasks.status')}</span>
+            <select
+              value={mark}
+              onChange={(event) => chooseMark(event.target.value)}
+              aria-label={t('tasks.status')}
+              data-testid="task-mark"
+              className="h-8 max-w-48 rounded-lg border border-ink-700 bg-ink-850 px-2 text-sm text-mist-200"
+            >
+              <option value="">{t('tasks.allStatuses')}</option>
+              {marks.map((entry) => (
+                <option key={entry.mark} value={entry.mark}>
+                  {markLabel(entry)} ({entry.count})
+                </option>
+              ))}
+              {mark && !marks.some((entry) => entry.mark === mark) && <option value={mark}>[{mark}]</option>}
+            </select>
+          </label>
+        )}
         {!flat && (
           <div className="flex rounded-full border border-ink-700 p-0.5 text-xs" role="group" aria-label={t('tasks.groupBy')}>
             {(['due', 'note'] as const).map((value) => (
@@ -243,13 +281,14 @@ export function TasksPage() {
         {problem && <p className="px-3 text-sm text-bad-500">{errorText(problem)}</p>}
         {!problem && !loading && items.length === 0 && (
           // Three kinds of nothing: filters that leave nothing, no task anywhere yet, or none of this kind.
-          space || query.tag || query.q ? (
+          space || query.tag || query.q || mark ? (
             <p className="px-3 text-sm text-mist-500" data-testid="tasks-empty">
               {t('tasks.noneFit')}{' '}
               <button
                 type="button"
                 onClick={() => {
                   setSpace('')
+                  setMark('')
                   setTag('')
                   setWords('')
                   setQuery({ tag: '', q: '' })

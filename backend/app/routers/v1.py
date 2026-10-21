@@ -388,6 +388,9 @@ class TaskOut(BaseModel):
     text: str
     #: ``open``, ``done`` or ``cancelled``.
     status: str
+    #: What the character between the brackets means in the task's space: ``todo``, ``in_progress``, ``on_hold``,
+    #: ``done`` or ``cancelled`` (the Tasks plugin's own statuses, or the space's list).
+    kind: str = "todo"
     due: str | None = None
     scheduled: str | None = None
     completed: str | None = None

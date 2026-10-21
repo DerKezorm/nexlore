@@ -16,7 +16,7 @@ from ..db import SessionLocal
 from ..deps import Account, need, readable_spaces
 from ..errors import error
 from ..models import MANAGE, READ, WRITE, Space
-from ..services import everyday, paths, rights, themes
+from ..services import everyday, paths, rights, taskstatus, themes
 from ..services.vault import Actor, VaultError
 from .themes import colours_of
 from .vault import actor
@@ -102,6 +102,38 @@ def put_options(name: str, body: OptionsIn, account: Account) -> dict[str, str]:
         raise _fail(exc) from exc
 
 
+class StatusIn(BaseModel):
+    mark: str = Field(min_length=1, max_length=1)
+    kind: str = Field(pattern="^(" + "|".join(taskstatus.KINDS) + ")$")
+    name: str = Field(default="", max_length=200)
+
+
+class StatusesIn(BaseModel):
+    own: list[StatusIn] = Field(max_length=taskstatus.MAX_STATUSES)
+
+
+@router.get("/spaces/{name}/task-statuses", summary="What the characters of a space's tasks mean, and from where")
+def get_task_statuses(name: str, account: Account) -> dict[str, Any]:
+    space = need(account, name, READ)
+    if "/" in space:
+        raise error("not_found", "Not found.", 404)
+    try:
+        return everyday.task_statuses(space)
+    except VaultError as exc:
+        raise _fail(exc) from exc
+
+
+@router.put("/spaces/{name}/task-statuses", summary="Set the managers' own meanings of task characters")
+def put_task_statuses(name: str, body: StatusesIn, account: Account) -> dict[str, Any]:
+    space = need(account, name, MANAGE)
+    if "/" in space:
+        raise error("not_found", "Not found.", 404)
+    try:
+        return everyday.set_task_statuses(space, [entry.model_dump() for entry in body.own])
+    except VaultError as exc:
+        raise _fail(exc) from exc
+
+
 # --- Daily notes and templates -------------------------------------------------------------------------------------
 
 
@@ -173,12 +205,13 @@ def task_list(
     q: Annotated[str | None, Query(max_length=200)] = None,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=500)] = 200,
+    mark: Annotated[str | None, Query(min_length=1, max_length=1)] = None,
 ) -> dict[str, Any]:
     space_id = _space_id(account, space)
     try:
         return everyday.list_tasks(
             readable_spaces(account), status=status, when=when, today=today, on=on, tag=tag or None, q=q or None,
-            space_id=space_id, offset=offset, limit=limit, between=(start, end) if start and end else None,
+            space_id=space_id, offset=offset, limit=limit, between=(start, end) if start and end else None, mark=mark,
         )
     except VaultError as exc:
         raise _fail(exc) from exc
