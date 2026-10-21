@@ -385,5 +385,29 @@
     ],
     "smallTitle": "Also",
     "small": []
+  },
+  "1.7.0": {
+    "lead": "Characters of your own between a task's brackets, like [r] to review or [a] set aside, and a filter that shows only one of them.",
+    "sections": [
+      {
+        "title": "Statuses from the Tasks plugin",
+        "where": "Tasks, Calendar",
+        "body": "When a space comes from Obsidian and uses the Tasks plugin with statuses of its own, nexlore reads what each character means from the plugin's settings in the space. A cancelled one leaves the open list, Today, Overdue and every count, a to-do one stays open and shows its name next to the task, and a line that is no task is left out everywhere. Your notes and the plugin's settings stay as they are."
+      },
+      {
+        "title": "Characters set per space",
+        "where": "Settings, Spaces, Options",
+        "body": "The managers of a space can say themselves what a character means: to do, in progress, on hold, done, cancelled or not a task, with a name. This list stands above the plugin's, so a space without Obsidian gets the same. A character nobody names stays open."
+      },
+      {
+        "title": "Filter by status",
+        "where": "Tasks",
+        "body": "Next to the space, the field Every status shows only the tasks with one character, with how many there are of each. Picking a done or cancelled one takes its chip along. The field shows once a space knows more than the usual characters."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "Tasks in the API and through MCP say their kind: todo, in_progress, on_hold, done or cancelled."
+    ]
   }
 }

@@ -385,5 +385,29 @@
     ],
     "smallTitle": "Außerdem",
     "small": []
+  },
+  "1.7.0": {
+    "lead": "Eigene Zeichen zwischen den Klammern einer Aufgabe, etwa [r] zur Durchsicht oder [a] beiseitegelegt, und ein Filter, der nur eines davon zeigt.",
+    "sections": [
+      {
+        "title": "Status aus dem Tasks-Plugin",
+        "where": "Aufgaben, Kalender",
+        "body": "Kommt ein Bereich aus Obsidian und nutzt das Tasks-Plugin mit eigenen Status, liest nexlore aus den Einstellungen des Plugins im Bereich, was jedes Zeichen bedeutet. Ein abgebrochenes fällt aus der offenen Liste, aus Heute, Überfällig und allen Zählern, ein zu erledigendes bleibt offen und zeigt seinen Namen an der Aufgabe, und eine Zeile, die keine Aufgabe ist, fehlt überall. Deine Notizen und die Einstellungen des Plugins bleiben, wie sie sind."
+      },
+      {
+        "title": "Zeichen je Bereich festlegen",
+        "where": "Einstellungen, Bereiche, Optionen",
+        "body": "Die Verwalter eines Bereichs legen selbst fest, was ein Zeichen bedeutet: zu erledigen, in Arbeit, pausiert, erledigt, abgebrochen oder keine Aufgabe, mit Namen. Diese Liste gilt vor der des Plugins, so bekommt auch ein Bereich ohne Obsidian dasselbe. Ein Zeichen, das niemand benennt, bleibt offen."
+      },
+      {
+        "title": "Nach Status filtern",
+        "where": "Aufgaben",
+        "body": "Neben dem Bereich zeigt das Feld Alle Status nur die Aufgaben mit einem Zeichen, samt Anzahl je Zeichen. Wer ein erledigtes oder abgebrochenes wählt, bekommt den passenden Chip dazu. Das Feld erscheint, sobald ein Bereich mehr als die üblichen Zeichen kennt."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Aufgaben in der API und über MCP nennen ihre Art: todo, in_progress, on_hold, done oder cancelled."
+    ]
   }
 }
