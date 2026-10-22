@@ -1,11 +1,11 @@
 {
   "id": "query",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "nexlore",
   "name": { "en": "Queries", "de": "Abfragen" },
   "description": {
-    "en": "A code block ```query``` shows notes by tag or folder as a list or a table. Reads only; Dataview code is never run.",
-    "de": "Ein Codeblock ```query``` zeigt Notizen nach Tag oder Ordner als Liste oder Tabelle. Nur lesend; Dataview-Code wird nie ausgeführt."
+    "en": "A code block ```query``` shows notes by tag, folder or a search as a list or a table. Reads only; Dataview code is never run.",
+    "de": "Ein Codeblock ```query``` zeigt Notizen nach Tag, Ordner oder einer Suche als Liste oder Tabelle. Nur lesend; Dataview-Code wird nie ausgeführt."
   },
   "permissions": ["vault:read"],
   "place": { "block": "query" },
@@ -15,7 +15,7 @@
       "folder": "Folder",
       "changed": "Changed",
       "nothing": "No note matches.",
-      "unknown": "Unknown line: {{line}}. Known are tag, folder, space, sort, limit and view.",
+      "unknown": "Not understood: {{line}}. A query takes tag, folder, space, sort, limit and view, or a search such as path:Recipes tag:garden.",
       "failed": "The query could not be run."
     },
     "de": {
@@ -23,7 +23,7 @@
       "folder": "Ordner",
       "changed": "Geändert",
       "nothing": "Keine Notiz passt.",
-      "unknown": "Unbekannte Zeile: {{line}}. Bekannt sind tag, folder, space, sort, limit und view.",
+      "unknown": "Nicht verstanden: {{line}}. Eine Abfrage nimmt tag, folder, space, sort, limit und view oder eine Suche wie path:Rezepte tag:garten.",
       "failed": "Die Abfrage ließ sich nicht ausführen."
     }
   }

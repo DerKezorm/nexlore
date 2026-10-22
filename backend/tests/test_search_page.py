@@ -85,6 +85,25 @@ def test_no_search_text_is_taken_as_syntax(client: TestClient, filled: Path, nas
     assert client.get("/api/search/notes", params={"q": nasty}).status_code == 200
 
 
+def test_an_operator_with_a_blank_behind_its_colon_takes_the_next_piece() -> None:
+    """``path: "Server/"`` in an Obsidian query block (issue #15): the value stands behind a blank."""
+    query = parse('path: "Server/" tag: #garden -file: old space: Work changed: 2d')
+    assert query.paths == ["Server/"] and query.tags == ["garden"] and query.not_files == ["old"]
+    assert query.spaces == ["Work"] and query.changed == 2 * 86400 and not query.has_text
+    # An operator never swallows the next operator.
+    assert parse("path: tag:x").tags == ["x"]
+
+
+def test_content_and_task_todo_read_as_obsidian_writes_them() -> None:
+    query = parse('content:pool content:"zfs pool" -content:old task-todo:')
+    assert query.words == ["pool"] and query.phrases == ["zfs pool"] and query.without == ["old"] and query.tasks
+
+
+def test_a_blank_behind_the_colon_finds_what_the_operator_finds(client: TestClient, filled: Path) -> None:
+    assert find(client, 'path: "Inventar/"') == find(client, 'path:"Inventar/"') == ["Homelab/Inventar/Geräte.md"]
+    assert find(client, "content: Café") == ["Küche/Brot.md"]
+
+
 def test_the_parser_reads_obsidian_s_way_of_writing() -> None:
     query = parse('tag:#garden/beds path:"Recipes" -old "zfs pool" [status:open] task:call changed:2w word')
     assert query.tags == ["garden/beds"]

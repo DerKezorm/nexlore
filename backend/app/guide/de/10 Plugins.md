@@ -14,6 +14,8 @@ tag: anleitung
 view: table
 ```
 
+Statt `tag` und `folder` versteht der Block auch eine Suche wie auf der Suchseite, etwa `path:"Rezepte/" tag:#kochen`.
+
 - **Kanban:** Eine Notiz mit Spalten als Überschriften und Karten als Aufgaben wird zum Brett. Probier es mit dem [[Projektbrett]].
 - **Wiederentdecken:** eine zufällige ältere Notiz und was heute vor einem Jahr geschrieben wurde.
 

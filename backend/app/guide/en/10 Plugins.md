@@ -14,6 +14,8 @@ tag: guide
 view: table
 ```
 
+Instead of `tag` and `folder`, the block also takes a search as on the search page, such as `path:"Recipes/" tag:#cooking`.
+
 - **Kanban:** a note with columns as headings and cards as tasks becomes a board. Try it with the [[Project board]].
 - **Rediscover:** a random older note, and what was written a year ago today.
 

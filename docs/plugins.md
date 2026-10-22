@@ -10,7 +10,7 @@ The operator installs plugins under Settings, Plugins, from the catalog that com
 | Plugin | What it does | May |
 |---|---|---|
 | Contents | The headings of the note, its words and its reading time, beside the note | read the note |
-| Queries | A ` ```query ` block lists notes by tag or folder, as a list or a table (read only, never Dataview code) | list notes |
+| Queries | A ` ```query ` block lists notes by tag, folder or a search (`path:"Server/"`, as Obsidian's own query block holds it), as a list or a table (read only, never Dataview code) | list notes |
 | Kanban | Notes with `kanban-plugin` in their front matter as a board, in the format of the Obsidian Kanban plugin; moving a card writes the lanes it touches the way that plugin does | read and write the note |
 | Rediscover | A random older note, and what was written a year ago today | list notes |
 
@@ -74,7 +74,7 @@ nexlore.on('changed', function () { /* the note changed: read it again */ })
 |---|---|---|
 | `nexlore.ask('note.read')` | `note:read` | `{ path, title, content, hash }` |
 | `nexlore.ask('note.write', { content, base_hash })` | `note:write` | `{ saved, conflict, hash }`; a changed note ends in a conflict copy |
-| `nexlore.ask('vault.query', { tag, folder, space, sort, limit, random, day })` | `vault:read` | notes the account may read, at most 200 |
+| `nexlore.ask('vault.query', { tag, folder, space, sort, limit, random, day, q })` | `vault:read` | notes the account may read, at most 200; `q` is a search with operators, as on the search page |
 | `nexlore.ask('note.open', { path })` | nothing | opens a note the account may read |
 | `nexlore.ask('note.reveal', { heading, index })` | nothing | scrolls the note to a heading |
 

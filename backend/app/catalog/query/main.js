@@ -8,24 +8,36 @@
  *   limit: 20
  *   view: list | table
  *
- * shows the notes that match, as a list or a table. Only what the account may read; nothing is ever run.
+ * shows the notes that match, as a list or a table. Any other line is a search, as the search page and Obsidian's own
+ * query block read it (path:"Server/" tag:#garden -draft words). Only what the account may read; nothing is ever run.
  */
 (function () {
   'use strict'
   var KEYS = ['tag', 'folder', 'space', 'sort', 'limit', 'view']
+  // Operators the search understands; a line starting with another `word:` is a typo or one nexlore lacks.
+  var SEARCH = ['path', 'file', 'tag', 'space', 'task', 'task-todo', 'content', 'changed']
+  var MISSING = /(^|\s)-?(line|block|section|task-done|match-case|ignore-case):/i
 
   function parse(source) {
     var query = { view: 'list' }
     var problems = []
+    var search = []
     String(source || '').split(/\r?\n/).forEach(function (raw) {
       var line = raw.trim()
       if (!line || line.charAt(0) === '#') return
-      var match = /^([a-z]+)\s*:\s*(.*)$/i.exec(line)
-      if (!match || KEYS.indexOf(match[1].toLowerCase()) < 0) { problems.push(line); return }
-      query[match[1].toLowerCase()] = match[2].trim()
+      var match = /^([a-z][\w-]*)\s*:\s*(.*)$/i.exec(line)
+      var key = match ? match[1].toLowerCase() : ''
+      // `tag: garden` is ours; `tag:#a tag:#b` is a search with two tags.
+      if (KEYS.indexOf(key) >= 0 && !(key === 'tag' && /\s/.test(match[2].trim()))) {
+        query[key] = match[2].trim()
+        return
+      }
+      if ((match && SEARCH.indexOf(key) < 0) || MISSING.test(line)) { problems.push(line); return }
+      search.push(line)
     })
     if (query.tag) query.tag = query.tag.replace(/^#/, '')
     if (query.limit) query.limit = Math.max(1, Math.min(200, parseInt(query.limit, 10) || 20))
+    if (search.length) query.q = search.join(' ')
     return { query: query, problems: problems }
   }
 

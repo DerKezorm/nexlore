@@ -180,6 +180,32 @@ def test_lists_for_plugins_show_only_readable_notes(world: World) -> None:
     assert world.anna.get("/api/plugins/query", params={"day": "2026-13-40"}).status_code == 422
 
 
+def test_a_search_in_the_query_block_finds_what_the_search_page_finds_in_readable_spaces(world: World) -> None:
+    """Obsidian's own query block holds a search (issue #15): ``path: "Garden/"``, words, a minus, words in the middle."""
+    (world.vault / "Garden" / "Tools").mkdir()
+    (world.vault / "Garden" / "Tools" / "Spade.md").write_bytes(b"# Spade\n\nDig the rows deep.\n")
+    index.scan()
+
+    def found(who: TestClient, q: str, **more: object) -> list[str]:
+        answer = who.get("/api/plugins/query", params={"q": q, **more})
+        assert answer.status_code == 200, answer.text
+        return sorted(item["path"] for item in answer.json())
+
+    assert found(world.anna, 'path: "Garden/Tools/"') == ["Garden/Tools/Spade.md"]
+    assert found(world.anna, "rows") == ["Garden/Beds.md", "Garden/Tools/Spade.md"]
+    assert found(world.bob, "rows") == ["Secret/Hidden.md"]
+    assert found(world.anna, "rows -deep") == ["Garden/Beds.md"]
+    # In the middle of a word, as the search page finds it, and the minus still holds there.
+    assert found(world.anna, "pade") == ["Garden/Tools/Spade.md"]
+    assert found(world.anna, "ows -deep") == ["Garden/Beds.md"]
+    assert found(world.anna, "tag:veg") == ["Garden/Beds.md"]
+    assert found(world.anna, "secret") == []
+    # The block's own filters and the search hold together.
+    assert found(world.anna, "rows", folder="Tools") == ["Garden/Tools/Spade.md"]
+    assert found(world.anna, "-") == [] and found(world.anna, "   ") == []
+    assert world.anna.get("/api/plugins/query", params={"q": "x" * 1025}).status_code == 422
+
+
 def test_a_day_finds_the_notes_changed_on_it_and_the_daily_note_named_after_it(world: World) -> None:
     """What rediscover asks for: "a year ago today" (UTC days, both ends measured)."""
     changed = world.vault / "Garden" / "Old.md"

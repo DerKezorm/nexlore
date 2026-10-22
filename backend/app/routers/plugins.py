@@ -24,7 +24,9 @@ from ..errors import error
 from ..models import WRITE, File, Plugin, PluginUser, Space, Tag, Version
 from ..services import index, paths, plugins, settings_service, textblocks, vault
 from ..services.plugins import PluginError
+from ..services.searchquery import parse
 from ..services.vault import VaultError
+from .search import note_filters, text_condition
 from .vault import ActorDep
 
 logger = logging.getLogger("nexlore.plugins")
@@ -126,13 +128,23 @@ def query(
     limit: Annotated[int, Query(ge=1, le=200)] = 20,
     random: bool = False,
     day: Annotated[str | None, Query(pattern=r"^\d{4}-\d{2}-\d{2}$")] = None,
+    q: Annotated[str | None, Query(max_length=1024)] = None,
 ) -> list[Listed]:
-    """Notes for a plugin's list (the query block, rediscover): readable spaces only, like every list."""
+    """Notes for a plugin's list (the query block, rediscover): readable spaces only, like every list. ``q`` is a
+    search as the search page reads it (``path:Server tag:garden words``), what Obsidian's own query block holds."""
     readable = readable_spaces(account)
+    searched = parse(q) if q else None
+    if searched is not None and searched.empty:
+        return []
     with SessionLocal() as db:
         statement = select(File.id, File.path, File.title, File.mtime_ns).where(
             File.is_note.is_(True), File.deleted_at.is_(None), File.space_id.in_(readable)
         )
+        if searched is not None:
+            statement = statement.where(*note_filters(searched, account))
+            words = text_condition(searched)
+            if words is not None:
+                statement = statement.where(words)
         if space:
             statement = statement.join(Space, Space.id == File.space_id).where(Space.folder == space)
         if tag:

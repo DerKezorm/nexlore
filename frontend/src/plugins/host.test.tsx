@@ -82,9 +82,9 @@ describe('the page answers a plugin only what its manifest allows', () => {
   it('lists notes only with vault:read, and passes on only the known query words', async () => {
     expect((await mount([]).ask('vault.query', { tag: 'x' }))?.error).toBe('not_allowed')
     act(() => root?.unmount())
-    const answer = await mount(['vault:read']).ask('vault.query', { tag: 'veg', url: 'https://example.com' })
+    const answer = await mount(['vault:read']).ask('vault.query', { tag: 'veg', q: 'path:Server', url: 'https://example.com' })
     expect(answer?.value).toEqual([{ path: 'S/a.md', title: 'a' }])
-    expect(calls).toEqual([{ path: '/api/plugins/query', options: { query: { tag: 'veg' } } }])
+    expect(calls).toEqual([{ path: '/api/plugins/query', options: { query: { tag: 'veg', q: 'path:Server' } } }])
   })
 
   it('listens to its own frame only', async () => {

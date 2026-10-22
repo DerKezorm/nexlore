@@ -2,7 +2,8 @@
 
 ``tag:garden`` (and the tags below it), ``path:Recipes`` (part of the path), ``space:Kitchen``, ``file:plan`` (part of
 the file name), ``task:`` (notes with open tasks; the lines shown are the task lines), ``[status]`` and
-``[status:open]`` (a property, and part of its value), ``changed:7d`` (changed within 7 days, also ``h`` and ``w``).
+``[status:open]`` (a property, and part of its value), ``changed:7d`` (changed within 7 days, also ``h`` and ``w``),
+``content:`` (words, as Obsidian writes them) and ``task-todo:`` (as ``task:``). A blank behind the colon is allowed.
 A minus before an operator leaves out what it finds (``-tag:draft``); ``OR`` between words finds either.
 Anything else is a word. Nothing of it ever reaches SQL or FTS5 as syntax: words go in quoted, filters as values.
 """
@@ -16,6 +17,8 @@ from dataclasses import dataclass, field
 #: A piece of the search: ``key:"two words"``, ``"a phrase"``, ``[property:value]`` or anything up to a blank.
 _TOKEN = re.compile(r'-?[\w-]+:"[^"]*"|-?"[^"]*"|-?\[[^\]]*\]|\S+')
 _CHANGED = re.compile(r"^(\d{1,4})([hdw])$")
+#: An operator with nothing behind its colon (``path:`` in ``path: "Server/"``).
+_BARE = re.compile(r"^-?(tag|path|space|file|content|changed):$", re.IGNORECASE)
 MAX_TERMS = 12
 
 
@@ -89,7 +92,7 @@ def _clean(text: str) -> str:
 
 def parse(raw: str) -> Query:
     query = Query()
-    tokens = _TOKEN.findall(raw)[: MAX_TERMS * 2]
+    tokens = _spaced(_TOKEN.findall(raw))[: MAX_TERMS * 2]
     # `a OR b OR c`: the words around each OR go into one group, of which one is enough.
     groups: list[list[str]] = []
     joined = [False] * len(tokens)
@@ -124,6 +127,25 @@ def parse(raw: str) -> Query:
     query.phrases = query.phrases[:MAX_TERMS]
     query.without = query.without[:MAX_TERMS]
     return query
+
+
+def _spaced(tokens: list[str]) -> list[str]:
+    """``path: "Server/"`` as Obsidian reads it: an operator with a blank behind its colon takes the next piece as its
+    value."""
+    joined: list[str] = []
+    position = 0
+    while position < len(tokens):
+        token = tokens[position]
+        if _BARE.match(token) and position + 1 < len(tokens) and not tokens[position + 1].startswith(("-", "[")):
+            following = tokens[position + 1]
+            if ":" not in following or following.startswith('"'):
+                joined.append(token + following)
+                position += 2
+                continue
+        joined.append(token)
+        position += 1
+    return joined
+
 
 
 def _plain_term(token: str) -> bool:
@@ -170,8 +192,12 @@ def _take(query: Query, token: str) -> None:
         if key == "file" and value:
             (query.not_files if negative else query.files).append(value)
             return
+        if key == "content" and value:
+            # Only in the text, as Obsidian has it; nexlore's words already search the text (and the title).
+            (query.without if negative else query.phrases if " " in value else query.words).append(value)
+            return
     if colon and not negative:
-        if key == "task":
+        if key in ("task", "task-todo"):
             query.tasks = True
             if value:
                 query.words.append(value)

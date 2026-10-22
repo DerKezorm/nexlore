@@ -71,7 +71,7 @@ def _property(key: str, name: str, value: str | None, *, negated: bool = False) 
     return text(condition).bindparams(**values)
 
 
-def _filters(query: SearchQuery, account: Any) -> list[Any]:
+def note_filters(query: SearchQuery, account: Any) -> list[Any]:
     where: list[Any] = [File.is_note.is_(True), File.deleted_at.is_(None), File.space_id.in_(readable_spaces(account))]
     if query.spaces:
         wanted = [paths.fold(name) for name in query.spaces]
@@ -104,6 +104,33 @@ def _filters(query: SearchQuery, account: Any) -> list[Any]:
     if query.changed:
         where.append(File.mtime_ns >= int((time.time() - query.changed) * 1e9))
     return where
+
+
+def text_condition(query: SearchQuery) -> Any | None:
+    """What the words of a search ask, as one condition for a list that sorts on its own (the query block): found by
+    the word index or in the middle of a word, without the words left out. None when the search has no words."""
+    fts, without = query.fts(), query.fts_without()
+    if not fts:
+        if not without:
+            return None
+        return ~File.id.in_(select(FTS.c.rowid).where(text(f"{FTS_TABLE} MATCH :tc_no").bindparams(tc_no=without)))
+    found = File.id.in_(select(FTS.c.rowid).where(text(f"{FTS_TABLE} MATCH :tc_fts").bindparams(tc_fts=fts)))
+    groups = query.middle()
+    tri = midword.match(groups)
+    if not tri:
+        return found
+    check, values = midword.verify(groups, paths.fold)
+    middle = File.id.in_(
+        text(
+            f"SELECT x.rowid FROM {FTS_TABLE} AS x WHERE x.rowid IN (SELECT rowid FROM {TRI_TABLE} WHERE {TRI_TABLE} "  # noqa: S608
+            f"MATCH :tc_tri) AND {check}"
+        ).bindparams(tc_tri=tri, **values).columns(column("rowid"))
+    )
+    if without:
+        middle = middle & ~File.id.in_(
+            select(FTS.c.rowid).where(text(f"{FTS_TABLE} MATCH :tc_no").bindparams(tc_no=without))
+        )
+    return found | middle
 
 
 def _mark(line: str, terms: list[str]) -> str | None:
@@ -198,7 +225,7 @@ def search_notes(
     query = parse(q)
     if query.empty:
         return Page(notes=[], more=False, ms=0)
-    filters = _filters(query, account)
+    filters = note_filters(query, account)
     statement = select(File.id, File.path, File.title).where(and_(*filters))
     fts = query.fts()
     if fts:

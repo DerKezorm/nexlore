@@ -54,7 +54,7 @@ export type PluginFrameProps = {
   className?: string
 }
 
-const QUERY_KEYS = ['tag', 'folder', 'space', 'sort', 'limit', 'random', 'day'] as const
+const QUERY_KEYS = ['tag', 'folder', 'space', 'sort', 'limit', 'random', 'day', 'q'] as const
 
 export function PluginFrame({ plugin, place, note, source, onOpen, onReveal, onWritten, className = '' }: PluginFrameProps) {
   const { i18n } = useTranslation()
