@@ -409,5 +409,19 @@
     "small": [
       "Tasks in the API and through MCP say their kind: todo, in_progress, on_hold, done or cancelled."
     ]
+  },
+  "1.7.1": {
+    "lead": "A query block now also takes a search, as the search page reads it, for example path:\"Server/\".",
+    "sections": [
+      {
+        "title": "Searches in a query block",
+        "where": "A ```query``` code block in a note, with the plugin Queries switched on",
+        "body": "Besides its own lines tag, folder, space, sort, limit and view, the block reads every other line as a search: path:, file:, tag:, content:, task-todo:, properties in brackets, phrases in quotes, a minus to leave out and OR. Both work together. A line nexlore cannot read, such as line: or section:, is named above the result. Operators: the plugin comes as version 1.1.0, click Update to 1.1.0 once under Settings, Server, AI, API and plugins."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "On the search page a blank after the colon is fine now: path: \"Server/\" finds what path:\"Server/\" finds."
+    ]
   }
 }

@@ -409,5 +409,19 @@
     "small": [
       "Aufgaben in der API und über MCP nennen ihre Art: todo, in_progress, on_hold, done oder cancelled."
     ]
+  },
+  "1.7.1": {
+    "lead": "Ein Abfrageblock nimmt jetzt auch eine Suche, so wie die Suchseite sie liest, zum Beispiel path:\"Server/\".",
+    "sections": [
+      {
+        "title": "Suchen im Abfrageblock",
+        "where": "Ein Codeblock ```query``` in einer Notiz, mit eingeschaltetem Plugin Abfragen",
+        "body": "Neben seinen eigenen Zeilen tag, folder, space, sort, limit und view liest der Block jede andere Zeile als Suche: path:, file:, tag:, content:, task-todo:, Eigenschaften in eckigen Klammern, Phrasen in Anführungszeichen, ein Minus zum Weglassen und OR. Beides wirkt zusammen. Eine Zeile, die nexlore nicht lesen kann, etwa line: oder section:, steht als Hinweis über dem Ergebnis. Für Betreiber: Das Plugin kommt als Version 1.1.0, einmal unter Einstellungen, Server, KI, API und Plugins auf „Auf 1.1.0 bringen“ klicken."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Auf der Suchseite darf jetzt ein Leerzeichen nach dem Doppelpunkt stehen: path: \"Server/\" findet dasselbe wie path:\"Server/\"."
+    ]
   }
 }
