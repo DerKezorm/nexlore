@@ -225,16 +225,23 @@ test('a folder gets a symbol and a colour of its own, and the folders in it take
 
 test('the open note stays in sight while the folders above it are read after it', async ({ page }) => {
   // Every listing but that of the note's own space comes late: their rows arrive above the note once it is shown.
+  let late = 0
+  let answered = 0
   await page.route('**/api/folder?**', async (route) => {
     const asked = new URL(route.request().url()).searchParams.get('path') ?? ''
-    if (!asked.startsWith('Zone')) await new Promise((resolve) => setTimeout(resolve, 1500))
+    if (asked.startsWith('Zone')) return route.continue()
+    late++
+    await new Promise((resolve) => setTimeout(resolve, 1500))
     await route.continue()
+    answered++
   })
   await page.goto('/note/Zone/Across.md')
   const across = page.getByTestId('sidebar-tree').getByRole('button', { name: 'Across', exact: true })
   await expect(across).toBeInViewport()
-  // The late listings are in (the space above has its notes), and the note is still where it was seen.
-  await expect(page.getByTestId('sidebar-tree').getByRole('button', { name: 'Linking', exact: true })).toBeAttached({ timeout: 10_000 })
+  // The late listings are in, their rows drawn above the note (not by name: the tree draws only rows near the view,
+  // and how many lie between depends on what other tests left), and the note is still where it was seen.
+  await expect.poll(() => late > 0 && answered === late, { timeout: 10_000 }).toBe(true)
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))))
   await expect(across).toBeInViewport()
 })
 

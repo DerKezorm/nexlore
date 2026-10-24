@@ -4,6 +4,7 @@
  */
 import { type Page } from '@playwright/test'
 import { expect, test } from './fixtures'
+import { clickRow } from './tree'
 import fs from 'node:fs'
 
 test.skip(!!process.env.E2E_BASE_URL, 'needs the prepared vault')
@@ -77,8 +78,8 @@ test('the calendar subscription is closed until the operator opens it, and its a
 
 test('a space comes as a ZIP file from its menu in the sidebar', async ({ page }) => {
   await page.goto('/note/Heath/Heather.md')
-  const space = page.getByTestId('sidebar-tree').getByRole('button', { name: /^Heath( \d+)?$/ })
-  await space.click({ button: 'right' })
+  // The tree draws only rows near the view, and the space's own row lies above the open note: found as by hand.
+  await clickRow(page, 'Heath', { button: 'right' })
   const waiting = page.waitForEvent('download')
   await page.getByRole('menuitem', { name: 'Download as ZIP' }).click()
   const download = await waiting
