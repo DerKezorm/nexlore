@@ -423,5 +423,24 @@
     "small": [
       "Auf der Suchseite darf jetzt ein Leerzeichen nach dem Doppelpunkt stehen: path: \"Server/\" findet dasselbe wie path:\"Server/\"."
     ]
+  },
+  "1.8.0": {
+    "lead": "Bereiche und Ordner lassen sich jetzt durchblättern wie ein Regal voller Platten, jeder mit eigenem Titelbild.",
+    "sections": [
+      {
+        "title": "Coverflow",
+        "where": "Seitenleiste unten, Stöbern; oder Rechtsklick auf einen Ordner, Als Coverflow zeigen",
+        "body": "Über dem ganzen Fenster ist jeder Bereich und jeder Ordner eine Karte mit Titelbild, jede Notiz eine Karte mit einem Stück ihres Textes. Pfeiltasten, Mausrad oder Ziehen blättern, Buchstaben springen, ein Klick auf die mittlere Karte geht eine Ebene tiefer oder liest die Notiz, und Esc geht zurück."
+      },
+      {
+        "title": "Titelbilder",
+        "where": "Coverflow, der Stift auf der mittleren Ordnerkarte",
+        "body": "Wer im Bereich schreiben darf, wählt ein gezeichnetes Motiv in jeder Farbe, ein eigenes Bild oder eines aus den Anhängen. Jedes Titelbild hat dasselbe Format, drei zu vier; der Regler wählt den Ausschnitt. Es liegt als versteckte Datei im Ordner, zieht also mit ihm um und ist in jeder Sicherung dabei."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Ein Ordner ohne Titelbild zeigt ein Muster in seiner Farbe."
+    ]
   }
 }

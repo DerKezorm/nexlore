@@ -423,5 +423,24 @@
     "small": [
       "On the search page a blank after the colon is fine now: path: \"Server/\" finds what path:\"Server/\" finds."
     ]
+  },
+  "1.8.0": {
+    "lead": "Spaces and folders can now be flipped through like a shelf of records, each with a cover picture of its own.",
+    "sections": [
+      {
+        "title": "Cover flow",
+        "where": "Bottom of the sidebar, Browse; or right click on a folder, Show as cover flow",
+        "body": "Over the whole window every space and folder is a card with its cover, every note a card with a little of its text. Arrow keys, the wheel or a drag flip through, letters jump, a click on the middle card goes one level deeper or reads the note, and Escape goes back up."
+      },
+      {
+        "title": "Cover pictures",
+        "where": "Cover flow, the pen on the folder card in the middle",
+        "body": "Whoever may write in a space chooses a drawn motif in any colour, a picture of their own or one from the attachments. Every cover has the same shape, three by four; the slider chooses the part that stays. It is kept as a hidden file in the folder, so it moves with the folder and comes along in every backup."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "A folder without a cover shows a pattern in its colour."
+    ]
   }
 }
