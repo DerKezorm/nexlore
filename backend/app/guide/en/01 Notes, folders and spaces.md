@@ -32,6 +32,15 @@ Make a new space with the **+** beside "SPACES" in the sidebar. Whoever manages 
 
 A click on a hit opens the note where the hit stands.
 
+## Flip through like record covers
+
+**Browse** at the bottom of the sidebar opens the **cover flow** over the whole window. It starts in the folder of the open note, else at all spaces. Every space and folder is a card with a cover picture, every note a card with a little of its text. The right-click menu of a folder in the sidebar has **Show as cover flow**.
+
+- **Flip:** arrow keys, the mouse wheel, a drag or the slider at the bottom. Type letters to jump to the first card that begins so.
+- **Open:** a click on the card in the middle (or `Enter`) goes into the folder or opens the note for reading. **Open in nexlore** takes you to the note itself.
+- **Back:** `Esc` goes up one level; at the top it closes the view. The path at the top can be clicked.
+- **Cover:** whoever may write in the space sees a pen on the folder card in the middle. There you choose a drawn motif in a colour, a picture of your own or one from the attachments. The shape is fixed (three by four), the slider chooses the part that stays. The picture is kept as the hidden file `.cover.webp` in the folder and moves with it.
+
 ## Deleted is not gone
 
 What you delete stays in the trash on the **Files** page for 30 days. Every saved version of a note is in the **Versions** tab of the column beside the note (`Alt+R`).

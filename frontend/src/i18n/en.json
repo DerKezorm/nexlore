@@ -861,7 +861,9 @@
       "email_from_provider": "The address comes from the sign-in service; it can only be changed there.",
       "email_nothing_waits": "No address is waiting for confirmation.",
       "email_no_offer": "The sign-in service reports no other address.",
-      "bad_task_status": "This list cannot be saved: each entry is one character, given once, without a bracket."
+      "bad_task_status": "This list cannot be saved: each entry is one character, given once, without a bracket.",
+      "cover_not_a_picture": "That is not a picture nexlore takes (JPEG, PNG, WebP, GIF, HEIC or AVIF).",
+      "cover_too_large": "The picture is too large (at most {{max_mb}} MB)."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
@@ -1880,7 +1882,8 @@
     "favorite": "Add to favorites",
     "unfavorite": "Remove from favorites",
     "openRight": "Open to the right",
-    "zip": "Download as ZIP"
+    "zip": "Download as ZIP",
+    "coverflow": "Show as cover flow"
   },
   "editorMenu": {
     "openLink": "Open the note",
@@ -2667,5 +2670,61 @@
     "text": "{{email}} now counts for your account {{name}}. Invitations and notifications by mail go there from now on.",
     "failed": "Not confirmed",
     "toApp": "To nexlore"
+  },
+  "coverflow": {
+    "title": "Cover flow",
+    "command": "Open the cover flow",
+    "keywords": "covers albums folders browse shelf",
+    "all": "All spaces",
+    "where": "Where you are",
+    "back": "One level up",
+    "fullscreen": "Full screen",
+    "space": "Space",
+    "folder": "Folder",
+    "note": "Note",
+    "folders_one": "{{count}} folder",
+    "folders_other": "{{count}} folders",
+    "notes_one": "{{count}} note",
+    "notes_other": "{{count}} notes",
+    "emptyShort": "empty",
+    "empty": "This folder is empty",
+    "open": "Open",
+    "read": "Read",
+    "flip": "Flip through",
+    "more": "The first {{shown}} of {{count}} notes are shown.",
+    "jump": "Jump to “{{typed}}”",
+    "jumpNone": "Nothing begins with “{{typed}}”",
+    "keyFlip": "flip",
+    "keyOpen": "open",
+    "keyBack": "back",
+    "keyJump": "jump",
+    "editCover": "Change the cover",
+    "previous": "Previous",
+    "next": "Next",
+    "openNote": "Open in nexlore",
+    "motifs": {
+      "mountains": "Mountains",
+      "dunes": "Dunes",
+      "waves": "Silk",
+      "forest": "Forest",
+      "blossom": "Blossom",
+      "city": "City",
+      "aurora": "Northern lights",
+      "sea": "Sea"
+    },
+    "picker": {
+      "title": "Cover for “{{name}}”",
+      "motif": "Motif",
+      "none": "No picture",
+      "hue": "Hue",
+      "own": "Own picture",
+      "upload": "Upload …",
+      "fromVault": "From the attachments",
+      "noPictures": "There are no pictures in this space yet.",
+      "focus": "Section",
+      "shape": "A cover has a fixed shape, three by four: every picture is cut to it, and the slider moves the part that stays. Drawn motifs fit as they are. The cover is kept as a hidden file in the folder, so it moves with the folder."
+    },
+    "browse": "Browse",
+    "browseHint": "Flip through spaces and folders as covers"
   }
 }

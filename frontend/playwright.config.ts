@@ -86,6 +86,10 @@ const E2E_NOTES: Record<string, string | Buffer> = {
   // Find and replace (find.spec.ts).
   'Zoo/Find.md': '# Find\n\nThe cat sat.\n\nA *Cat* and a cat.\n\nUntouched   spacing  here.\n\n```\ncat in code\n```\n',
   'Zoo/Find keys.md': '# Find keys\n\nOne fox, two fox, three fox.\n',
+  // The cover flow (coverflow.spec.ts): a folder late in Zoo, with a folder and two notes in it.
+  'Zoo/Zz shelf/Records/Old record.md': '# Old record\n',
+  'Zoo/Zz shelf/Alpha shelf.md': '# Alpha shelf\n\nFirst words of the alpha shelf, **bold** and plain.\n',
+  'Zoo/Zz shelf/Beta shelf.md': '# Beta shelf\n\nThe beta shelf.\n',
   // Mentions without a link and cleaning up (cleanup.spec.ts), a space of their own so the lists stay short.
   'Moor/Pond heron.md': '# Pond heron\n\nA wading bird.\n',
   'Moor/Walk.md': '# Walk\n\nWe saw a pond heron by the water.\n',

@@ -861,7 +861,9 @@
       "email_from_provider": "Die Adresse kommt vom Anmeldedienst; ändern lässt sie sich nur dort.",
       "email_nothing_waits": "Es wartet keine Adresse auf Bestätigung.",
       "email_no_offer": "Der Anmeldedienst meldet keine andere Adresse.",
-      "bad_task_status": "Diese Liste lässt sich nicht speichern: Jeder Eintrag ist ein Zeichen, nur einmal, ohne Klammer."
+      "bad_task_status": "Diese Liste lässt sich nicht speichern: Jeder Eintrag ist ein Zeichen, nur einmal, ohne Klammer.",
+      "cover_not_a_picture": "Das ist kein Bild, das nexlore annimmt (JPEG, PNG, WebP, GIF, HEIC oder AVIF).",
+      "cover_too_large": "Das Bild ist zu groß (höchstens {{max_mb}} MB)."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
@@ -1880,7 +1882,8 @@
     "favorite": "Zu den Favoriten",
     "unfavorite": "Aus den Favoriten entfernen",
     "openRight": "Rechts daneben öffnen",
-    "zip": "Als ZIP herunterladen"
+    "zip": "Als ZIP herunterladen",
+    "coverflow": "Als Coverflow zeigen"
   },
   "editorMenu": {
     "openLink": "Notiz öffnen",
@@ -2667,5 +2670,61 @@
     "text": "{{email}} gilt jetzt für dein Konto {{name}}. Einladungen und Benachrichtigungen per Mail gehen ab jetzt dorthin.",
     "failed": "Nicht bestätigt",
     "toApp": "Zu nexlore"
+  },
+  "coverflow": {
+    "title": "Coverflow",
+    "command": "Coverflow öffnen",
+    "keywords": "cover alben ordner blättern regal",
+    "all": "Alle Bereiche",
+    "where": "Wo du bist",
+    "back": "Eine Ebene höher",
+    "fullscreen": "Vollbild",
+    "space": "Bereich",
+    "folder": "Ordner",
+    "note": "Notiz",
+    "folders_one": "{{count}} Ordner",
+    "folders_other": "{{count}} Ordner",
+    "notes_one": "{{count}} Notiz",
+    "notes_other": "{{count}} Notizen",
+    "emptyShort": "leer",
+    "empty": "Dieser Ordner ist leer",
+    "open": "Öffnen",
+    "read": "Lesen",
+    "flip": "Blättern",
+    "more": "Gezeigt sind die ersten {{shown}} von {{count}} Notizen.",
+    "jump": "Springe zu „{{typed}}“",
+    "jumpNone": "Nichts beginnt mit „{{typed}}“",
+    "keyFlip": "blättern",
+    "keyOpen": "öffnen",
+    "keyBack": "zurück",
+    "keyJump": "springen",
+    "editCover": "Titelbild ändern",
+    "previous": "Vorige",
+    "next": "Nächste",
+    "openNote": "In nexlore öffnen",
+    "motifs": {
+      "mountains": "Berge",
+      "dunes": "Dünen",
+      "waves": "Seide",
+      "forest": "Wald",
+      "blossom": "Blüten",
+      "city": "Stadt",
+      "aurora": "Nordlicht",
+      "sea": "Meer"
+    },
+    "picker": {
+      "title": "Titelbild für „{{name}}“",
+      "motif": "Motiv",
+      "none": "Ohne Bild",
+      "hue": "Farbton",
+      "own": "Eigenes Bild",
+      "upload": "Hochladen …",
+      "fromVault": "Aus den Anhängen",
+      "noPictures": "In diesem Bereich gibt es noch keine Bilder.",
+      "focus": "Ausschnitt",
+      "shape": "Ein Titelbild hat ein festes Format, drei zu vier: Jedes Bild wird darauf zugeschnitten, der Regler verschiebt den Ausschnitt. Gezeichnete Motive passen so, wie sie sind. Das Titelbild liegt als versteckte Datei im Ordner und zieht mit ihm um."
+    },
+    "browse": "Stöbern",
+    "browseHint": "Durch Bereiche und Ordner blättern wie durch Plattencover"
   }
 }

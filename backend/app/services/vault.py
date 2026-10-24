@@ -46,7 +46,7 @@ from ..models import (
     Version,
     utcnow,
 )
-from . import canvas, favorites, index, looks, mdparse, midword, paths, settings_service
+from . import canvas, covers, favorites, index, looks, mdparse, midword, paths, settings_service
 
 logger = logging.getLogger("nexlore.vault")
 
@@ -519,6 +519,8 @@ def delete_path(rel: str, *, actor: Actor, along: Iterable[str] = ()) -> int:
                 # Still on the disk (held open elsewhere): the next scan finds it and indexes it again.
                 left.append(file.path)
         if full.is_dir():
+            # Its cover pictures go with it, as its symbol and colour do; else they would keep the folder on the disk.
+            covers.gone_below(full)
             _remove_empty_folders(full)
     if left:
         logger.warning("Files in the trash could not leave the disk, they stay files=%s", len(left))

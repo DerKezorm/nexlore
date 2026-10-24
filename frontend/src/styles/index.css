@@ -567,3 +567,120 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* The cover flow (components/Coverflow.tsx): cards in a fan, a mirror image below, a blurred cover behind. */
+.nn-cf-stage {
+  perspective: 1500px;
+  perspective-origin: 50% 42%;
+  touch-action: pan-y;
+}
+.nn-cf-row {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.38s cubic-bezier(0.3, 0.7, 0.2, 1), opacity 0.3s;
+}
+.nn-cf-row[data-phase='out-deeper'] { transform: translateZ(500px); opacity: 0; }
+.nn-cf-row[data-phase='out-up'] { transform: translateZ(-700px); opacity: 0; }
+.nn-cf-row[data-phase='in-deeper'] { transform: translateZ(-700px); opacity: 0; transition: none; }
+.nn-cf-row[data-phase='in-up'] { transform: translateZ(500px); opacity: 0; transition: none; }
+.nn-cf-card {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  width: var(--cw);
+  height: var(--ch);
+  margin-left: calc(var(--cw) / -2);
+  margin-top: calc(var(--ch) / -2);
+  transition: transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s;
+  -webkit-box-reflect: below 14px linear-gradient(transparent 72%, rgb(255 255 255 / 0.22));
+}
+:root[data-theme='light'] .nn-cf-card {
+  -webkit-box-reflect: below 14px linear-gradient(transparent 74%, rgb(255 255 255 / 0.4));
+}
+.nn-cf-row[data-drag] .nn-cf-card,
+.nn-cf-row[data-drag] .nn-cf-dim { transition: none; }
+.nn-cf-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 22px;
+  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.08) inset;
+}
+:root[data-theme='light'] .nn-cf-face {
+  box-shadow: 0 30px 50px -24px rgb(0 0 0 / 0.42), 0 0 0 1px rgb(0 0 0 / 0.06) inset;
+}
+.nn-cf-card[data-center] .nn-cf-face {
+  box-shadow: 0 40px 80px -24px rgb(0 0 0 / 0.8), 0 0 0 1px rgb(255 255 255 / 0.15) inset, 0 0 60px -10px var(--glow, transparent);
+}
+.nn-cf-sheet {
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: -8px;
+  height: 30px;
+  border-radius: 16px 16px 0 0;
+  background: var(--sheet);
+  opacity: 0.55;
+}
+.nn-cf-sheet + .nn-cf-sheet { left: 13%; right: 13%; top: -15px; opacity: 0.3; }
+.nn-cf-dim {
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  background: #000;
+  pointer-events: none;
+  transition: opacity 0.55s;
+}
+:root[data-theme='light'] .nn-cf-dim { background: var(--color-ink-950); }
+.nn-cf-cover {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+}
+/* A folder without a cover: a pattern in its colour. */
+.nn-cf-pattern {
+  background:
+    radial-gradient(circle at 25% 20%, color-mix(in srgb, var(--tint) 70%, white) 0, transparent 55%),
+    radial-gradient(circle at 80% 85%, color-mix(in srgb, var(--tint) 80%, black) 0, transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--tint) 45%, #101016), color-mix(in srgb, var(--tint) 25%, #0b0b0f));
+}
+.nn-cf-pattern::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgb(255 255 255 / 0.13) 1.2px, transparent 1.3px);
+  background-size: 16px 16px;
+}
+.nn-cf-shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(0 0 0 / 0.25) 0%, transparent 22%, transparent 52%, rgb(0 0 0 / 0.72) 100%);
+}
+.nn-cf-go {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.3s, transform 0.3s;
+}
+.nn-cf-card[data-center] .nn-cf-go { opacity: 1; transform: none; }
+.nn-cf-excerpt {
+  -webkit-mask-image: linear-gradient(180deg, #000 60%, transparent);
+  mask-image: linear-gradient(180deg, #000 60%, transparent);
+}
+.nn-cf-glow {
+  position: absolute;
+  inset: -20%;
+  background-size: cover;
+  background-position: center;
+  filter: blur(70px) saturate(1.5);
+  opacity: 0;
+  transition: opacity 0.7s;
+}
+.nn-cf-glow[data-on] { opacity: 0.5; }
+.nn-cf-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 45%, transparent 30%, var(--color-ink-950) 92%);
+}

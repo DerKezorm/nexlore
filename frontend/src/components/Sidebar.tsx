@@ -34,6 +34,7 @@ import { useThemeVersion } from '../lib/theme'
 import { Symbol, type SymbolName } from './Symbol'
 import { NameDialog } from './NameDialog'
 import { askExport } from '../lib/exportPdf'
+import { askCoverflow } from '../lib/coverflow'
 
 const FAVORITE_SYMBOLS: Record<Favorite['kind'], SymbolName> = { note: 'note', folder: 'folder', file: 'file', heading: 'heading', search: 'search' }
 
@@ -73,6 +74,8 @@ const pageName = (path: string, title: string) => (opensAsPage(path) ? title.rep
 /** What a note or folder dragged in the sidebar carries. */
 
 export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: Props) {
+  // Browsing as cover flow starts where one is: the folder open on the map, or the folder of the open note.
+  const browse = () => askCoverflow(activeFolder ?? (activeNote ? folderOf(activeNote) : ''))
   const { t, i18n } = useTranslation()
   const nameOf = usePeople()
   const news = useNews()
@@ -602,6 +605,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
       items.push({ label: t('menu.move'), symbol: 'move', onSelect: () => askVaultAction({ kind: 'move', path: row.path, folder: true }) })
     }
     items.push({ label: t('menu.showInGraph'), symbol: 'graph', onSelect: () => (onFolder ? onFolder(row.path) : navigate('/?folder=' + encodeURIComponent(row.path))) })
+    items.push({ label: t('menu.coverflow'), symbol: 'coverflow', onSelect: () => askCoverflow(row.path) })
     items.push(favoriteItem(row.path))
     items.push({ label: t('export.folderMenu'), symbol: 'print', onSelect: () => askExport({ folder: row.path }, 'pdf') })
     // Everything of a space in one file, for whoever may read it.
@@ -895,6 +899,9 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
             <span aria-hidden="true" className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-accent-400" />
           </button>
         )}
+        <button type="button" onClick={browse} title={t('coverflow.browseHint')} aria-label={t('coverflow.browse')} className="mt-auto rounded-lg p-2 text-mist-500 hover:bg-ink-850 hover:text-mist-100">
+          <Symbol name="coverflow" className="h-4 w-4" />
+        </button>
       </nav>
     )
   }
@@ -1153,6 +1160,19 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           {t('menu.copied', { text: copied })}
         </p>
       )}
+      {/* The cover flow, at the open folder or note; here rather than in the header, which has no room left. */}
+      <div className="shrink-0 border-t border-ink-700/80 p-2">
+        <button
+          type="button"
+          onClick={browse}
+          title={t('coverflow.browseHint')}
+          data-testid="open-coverflow"
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-mist-400 hover:bg-ink-850 hover:text-mist-100"
+        >
+          <Symbol name="coverflow" />
+          {t('coverflow.browse')}
+        </button>
+      </div>
       {menu.element}
       {grouping && (
         <NameDialog

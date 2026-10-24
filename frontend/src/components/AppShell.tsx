@@ -10,6 +10,7 @@ import { isNotePath } from '../lib/files'
 import { fileRoute } from '../lib/markdown'
 import { NEW_NOTE_EVENT } from '../lib/newNote'
 import { askCapture, CAPTURE_EVENT, takeCapture } from '../lib/capture'
+import { askCoverflow } from '../lib/coverflow'
 import { askNoteList, askPanelToggle, askSidebarToggle, hasSidebar, narrow, SEARCH_EVENT } from '../lib/shell'
 import { allCommands, PALETTE_EVENT, useCommands, type Command } from '../lib/commands'
 import { comboOf, commandFor, isRecording } from '../lib/shortcuts'
@@ -18,6 +19,7 @@ import { useAuth } from '../state/auth'
 import { refreshNews } from '../lib/news'
 import { startTaken, startWish } from '../lib/start'
 import { CommandPalette } from './CommandPalette'
+import { Coverflow } from './Coverflow'
 import { LinkPreview } from './LinkPreview'
 import { ExportHost } from './ExportDialog'
 import { VaultActions } from './VaultActions'
@@ -188,6 +190,11 @@ export function AppShell() {
     return home?.name ?? null
   }
   const newNoteTarget = newNoteFolder()
+  // The cover flow opens where one is: at the folder of the open note, else at the spaces.
+  const coverflowStart = (): string => {
+    const path = location.pathname.startsWith('/note/') ? notePathOf(location.pathname) : null
+    return path ? folderOf(path) : ''
+  }
   newNoteAt.current = newNoteTarget
   // A note named by the minute (lib/zettel.ts), where a new note goes, opened for writing.
   const makeZettel = async () => {
@@ -252,6 +259,7 @@ export function AppShell() {
       ...(home ? [{ id: 'app.today', label: t('today.title'), group, symbol: 'today' as const, keys: 'Alt+T', run: () => void openToday() }] : []),
       ...(newNoteAt.current ? [{ id: 'app.newNote', label: t('sidebar.newNote'), group, symbol: 'plus' as const, keys: 'Alt+N', run: () => setCreating(newNoteAt.current) }] : []),
       ...(newNoteAt.current ? [{ id: 'app.zettel', label: t('zettel.command'), keywords: t('zettel.keywords'), group, symbol: 'clock' as const, run: () => void makeZettel() }] : []),
+      { id: 'app.coverflow', label: t('coverflow.command'), keywords: t('coverflow.keywords'), group, symbol: 'coverflow', run: () => askCoverflow(coverflowStart()) },
       { id: 'app.capture', label: t('capture.title'), keywords: t('capture.keywords'), group, symbol: 'plus', keys: 'Alt+Shift+N', run: () => askCapture() },
       { id: 'go.search', label: t('searchPage.open'), group, symbol: 'search', keys: 'Ctrl Shift F', run: () => navigate('/search') },
       go('go.graph', t('palette.goTo', { place: t('nav.graph') }), '/', 'graph'),
@@ -408,6 +416,7 @@ export function AppShell() {
       {commanding && <CommandPalette onClose={() => setCommanding(false)} />}
       <LinkPreview />
       <VaultActions />
+      <Coverflow />
       <ExportHost />
       {creating && (
         <NewNoteDialog

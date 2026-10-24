@@ -32,6 +32,15 @@ Einen neuen Bereich legst du mit dem **+** neben „BEREICHE“ in der Seitenlei
 
 Ein Klick auf einen Treffer öffnet die Notiz an der Stelle, an der er steht.
 
+## Blättern wie durch Plattencover
+
+**Stöbern** unten in der Seitenleiste öffnet die **Coverflow-Ansicht** über dem ganzen Fenster. Sie beginnt im Ordner der offenen Notiz, sonst bei allen Bereichen. Jeder Bereich und jeder Ordner ist eine Karte mit Titelbild, jede Notiz eine Karte mit einem Stück ihres Textes. Im Rechtsklick-Menü eines Ordners in der Seitenleiste steht **Als Coverflow zeigen**.
+
+- **Blättern:** Pfeiltasten, Mausrad, Ziehen oder der Regler unten. Tippst du Buchstaben, springt die Ansicht zur ersten Karte mit diesem Anfang.
+- **Öffnen:** Ein Klick auf die Karte in der Mitte (oder `Enter`) geht in den Ordner hinein oder öffnet die Notiz zum Lesen. **In nexlore öffnen** bringt dich zur Notiz selbst.
+- **Zurück:** `Esc` geht eine Ebene höher, ganz oben schließt es die Ansicht. Der Pfad oben ist klickbar.
+- **Titelbild:** Wer im Bereich schreiben darf, sieht auf der mittleren Ordnerkarte einen Stift. Dort wählst du ein gezeichnetes Motiv in einer Farbe, ein eigenes Bild oder eines aus den Anhängen. Das Format ist fest (drei zu vier), der Regler wählt den Ausschnitt. Das Bild liegt als versteckte Datei `.cover.webp` im Ordner und zieht mit ihm um.
+
 ## Gelöscht ist nicht weg
 
 Was du löschst, liegt 30 Tage im Papierkorb auf der Seite **Dateien**. Jede gespeicherte Fassung einer Notiz findest du im Reiter **Versionen** in der Spalte neben der Notiz (`Alt+R`).

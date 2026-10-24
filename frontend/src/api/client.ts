@@ -272,6 +272,52 @@ export const looksApi = {
   put: (path: string, icon: string | null, color: string | null) => api<void>('/api/looks', { method: 'PUT', body: { path, icon, color } }),
 }
 
+/** A card of the cover flow (`/api/coverflow`): a space or folder with its cover, or a note with a little of its text. */
+export type CoverFolder = {
+  kind: 'folder'
+  name: string
+  path: string
+  space: boolean
+  folders: number
+  notes: number
+  /** When the cover was set (part of its address), null without one. */
+  cover: number | null
+  icon: string | null
+  color: string | null
+  writable: boolean
+}
+export type CoverNote = { kind: 'note'; name: string; path: string; modified: number; tags: string[]; excerpt: string; image: string | null }
+export type CoverItem = CoverFolder | CoverNote
+export type CoverLevel = { path: string; items: CoverItem[]; total_notes: number; writable: boolean }
+
+/** Where a cover picture is shown from; the time it was set makes a new picture a new address. */
+export function coverUrl(path: string, version: number): string {
+  return `/api/cover?path=${encodeURIComponent(path)}&v=${version}`
+}
+
+export const coverflowApi = {
+  level: (path: string) => api<CoverLevel>('/api/coverflow', { query: { path: path || undefined } }),
+  /** A picture as the body; the server cuts it to three by four at `focus` (0 top or left, 100 bottom or right). */
+  setCover: async (path: string, picture: Blob, focus = 50): Promise<{ path: string; cover: number }> => {
+    const query = new URLSearchParams({ path, focus: String(focus) })
+    const response = await fetch(`/api/cover?${query}`, {
+      method: 'PUT',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/octet-stream', 'X-Nexlore-Client': tabId() },
+      body: picture,
+    })
+    const data = await response.json().catch(() => null)
+    if (!response.ok) {
+      const found = data?.detail
+      throw new ApiError(response.status, typeof found?.code === 'string' ? found.code : response.status === 413 ? 'too_large' : 'internal_error', found ?? {})
+    }
+    return data as { path: string; cover: number }
+  },
+  /** An image file of the vault as the cover. */
+  coverFrom: (path: string, source: string, focus = 50) =>
+    api<{ path: string; cover: number }>('/api/cover', { method: 'PUT', query: { path, source, focus } }),
+  removeCover: (path: string) => api<void>('/api/cover', { method: 'DELETE', query: { path } }),
+}
+
 /** A place another note names this one without a link (`/api/mentions`). */
 export type Mention = {
   path: string
