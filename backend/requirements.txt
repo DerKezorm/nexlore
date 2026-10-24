@@ -8,9 +8,9 @@ mdit-py-plugins==0.6.1
 PyYAML==6.0.3
 watchfiles==1.3.0
 python-multipart==0.0.32
-pillow==12.3.0
-pillow-heif==1.8.0
-pypdf==6.21.1
+pillow==13.0.0
+pillow-heif==1.8.1
+pypdf==6.21.2
 numpy==2.5.3
 argon2-cffi==25.1.0
 cryptography==50.0.1
