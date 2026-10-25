@@ -442,5 +442,22 @@
     "small": [
       "Ein Ordner ohne Titelbild zeigt ein Muster in seiner Farbe."
     ]
+  },
+  "1.8.1": {
+    "lead": "Die Suche findet wieder, wenn OR neben anderen Wörtern oder in Klammern steht, und eine übersetzte Seite bringt nexlore nicht mehr zum Absturz.",
+    "sections": [
+      {
+        "title": "OR in der Suche",
+        "where": "Suchseite, ein Abfrageblock und die Suche über API und MCP",
+        "body": "Eine Suche mit OR neben einem weiteren Wort, etwa pool tank OR Sonntag, oder mit zwei OR-Gruppen endete mit einem Fehler. Jetzt findet sie die Notizen, die jedes Wort und aus jeder Gruppe eines enthalten. Klammern um eine Gruppe gehen auch, und eine Phrase in Anführungszeichen bleibt darin eine Phrase: (\"uptime kuma\" OR wud) findet die beiden Wörter nebeneinander oder wud."
+      },
+      {
+        "title": "Vom Browser übersetzte Seiten",
+        "where": "Jede Seite, wenn Chrome, Edge oder eine Erweiterung sie übersetzt",
+        "body": "Eine übersetzte Seite konnte leer werden, sobald sich etwas auf ihr änderte, weil der Browser die Texte gegen eigene getauscht hatte. nexlore arbeitet auf so einer Seite jetzt weiter."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": []
   }
 }
