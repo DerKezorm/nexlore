@@ -7,6 +7,7 @@ import { startI18n } from './i18n'
 import { defaultCalloutCss } from './lib/callouts'
 import { registerServiceWorker } from './lib/offline'
 import { installRovingKeys } from './lib/rovingKeys'
+import { bearTranslatedPages } from './lib/translatedPage'
 import { AuthProvider } from './state/auth'
 import '@fontsource-variable/inter'
 import '@fontsource-variable/jetbrains-mono'
@@ -23,6 +24,9 @@ document.head.append(calloutSymbols)
 // The texts first, so the first paint is already in the chosen language.
 // Tabs and option groups answer the arrows (P8.14).
 installRovingKeys()
+
+// A page the browser translated must not take the app down (lib/translatedPage.ts).
+bearTranslatedPages()
 
 void startI18n().then(() => {
   createRoot(document.getElementById('root')!).render(
