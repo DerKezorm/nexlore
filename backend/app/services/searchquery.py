@@ -4,7 +4,8 @@
 the file name), ``task:`` (notes with open tasks; the lines shown are the task lines), ``[status]`` and
 ``[status:open]`` (a property, and part of its value), ``changed:7d`` (changed within 7 days, also ``h`` and ``w``),
 ``content:`` (words, as Obsidian writes them) and ``task-todo:`` (as ``task:``). A blank behind the colon is allowed.
-A minus before an operator leaves out what it finds (``-tag:draft``); ``OR`` between words finds either.
+A minus before an operator leaves out what it finds (``-tag:draft``); ``OR`` between words finds either, also
+in brackets (``("uptime kuma" OR wud)``: the brackets only gather, a phrase in them stays a phrase).
 Anything else is a word. Nothing of it ever reaches SQL or FTS5 as syntax: words go in quoted, filters as values.
 """
 
@@ -14,8 +15,9 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 
-#: A piece of the search: ``key:"two words"``, ``"a phrase"``, ``[property:value]`` or anything up to a blank.
-_TOKEN = re.compile(r'-?[\w-]+:"[^"]*"|-?"[^"]*"|-?\[[^\]]*\]|\S+')
+#: A piece of the search: ``key:"two words"``, ``"a phrase"``, ``[property:value]`` or anything up to a blank; brackets
+#: around the first two belong to the piece (``("a phrase"``), so the blank inside the quotes does not split it.
+_TOKEN = re.compile(r'\(*-?[\w-]+:"[^"]*"\)*|\(*-?"[^"]*"\)*|-?\[[^\]]*\]|\S+')
 _CHANGED = re.compile(r"^(\d{1,4})([hdw])$")
 #: An operator with nothing behind its colon (``path:`` in ``path: "Server/"``).
 _BARE = re.compile(r"^-?(tag|path|space|file|content|changed):$", re.IGNORECASE)
@@ -60,7 +62,8 @@ class Query:
         parts += ["(" + " OR ".join(group) + ")" for group in self.either]
         if not parts:
             return None
-        return " ".join(parts) + "".join(f' NOT "{word}"*' for word in self.without)
+        # AND written out: FTS5 takes no implicit AND next to a bracket (`"a"* ("b"* OR "c"*)` is a syntax error).
+        return " AND ".join(parts) + "".join(f' NOT "{word}"*' for word in self.without)
 
     def middle(self) -> list[list[str]]:
         """The words and phrases as groups for the search in the middle of words: every group must be found, of a group
@@ -92,7 +95,7 @@ def _clean(text: str) -> str:
 
 def parse(raw: str) -> Query:
     query = Query()
-    tokens = _spaced(_TOKEN.findall(raw))[: MAX_TERMS * 2]
+    tokens = _spaced(_unbracketed(_TOKEN.findall(raw)))[: MAX_TERMS * 2]
     # `a OR b OR c`: the words around each OR go into one group, of which one is enough.
     groups: list[list[str]] = []
     joined = [False] * len(tokens)
@@ -127,6 +130,12 @@ def parse(raw: str) -> Query:
     query.phrases = query.phrases[:MAX_TERMS]
     query.without = query.without[:MAX_TERMS]
     return query
+
+
+def _unbracketed(tokens: list[str]) -> list[str]:
+    """``(a OR b)`` as ``a OR b``: the brackets of a group come off its first and last piece."""
+    pieces = [token.lstrip("(").rstrip(")") for token in tokens]
+    return [piece for piece in pieces if piece]
 
 
 def _spaced(tokens: list[str]) -> list[str]:

@@ -113,7 +113,21 @@ def test_the_parser_reads_obsidian_s_way_of_writing() -> None:
     assert query.properties == [("status", "open")]
     assert query.tasks and "call" in query.words and "word" in query.words
     assert query.changed == 14 * 86400
-    assert query.fts() == '"call"* "word"* "zfs pool" NOT "old"*'
+    assert query.fts() == '"call"* AND "word"* AND "zfs pool" NOT "old"*'
     # A value with a blank stays one value.
     spaced = parse('space:"Mein Wissen" path:"Team Homelab/Inventar" brot')
     assert spaced.spaces == ["Mein Wissen"] and spaced.paths == ["Team Homelab/Inventar"] and spaced.words == ["brot"]
+
+
+
+def test_or_groups_search_next_to_words_and_with_phrases_in_brackets(client: TestClient, filled: Path) -> None:
+    """``("zfs pool" OR Mehl)`` and ``pool tank OR Sonntag`` gave a 500: FTS5 takes no implicit AND next to a bracket,
+    and the bracket split the phrase in two."""
+    query = parse('("zfs pool" OR Mehl)')
+    assert query.either == [['"zfs pool"', '"Mehl"*']] and not query.words and not query.phrases
+    assert set(find(client, '("zfs pool" OR Mehl)')) == set(find(client, '"zfs pool"')) | {"Küche/Brot.md"}
+    assert set(find(client, '"zfs pool" OR Mehl')) == set(find(client, '("zfs pool" OR Mehl)'))
+    # A word beside the group, and two groups: each must be found, of a group one is enough.
+    assert find(client, "pool tank OR Sonntag") == ["Homelab/Inventar/Geräte.md"]
+    assert set(find(client, "(zfs OR Mehl) (tank OR Wasser)")) == {"Homelab/Inventar/Geräte.md", "Küche/Brot.md"}
+    assert find(client, 'space:Homelab ("zfs pool" OR Mehl) -test') == find(client, 'space:Homelab "zfs pool" -test')
