@@ -300,7 +300,7 @@ def changes(
     found_items.sort(key=lambda pair: pair[0])
     more = len(found_items) > limit
     page = found_items[:limit]
-    # Of one id only the newest state (a row moved between spaces leaves a deleted entry in the old one).
+    # Of one id only the newest state, should a row and an entry of the gone ever meet on one page.
     newest: dict[int, int] = {}
     for position, (_number, item) in enumerate(page):
         newest[item.id] = position

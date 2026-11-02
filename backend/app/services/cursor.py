@@ -26,6 +26,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import Connection, delete, event, func, insert, inspect, select, text, update
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from ..models import File, GoneFile, VaultCursor, utcnow
@@ -48,7 +49,9 @@ def _ensure(connection: Connection) -> None:
         connection.execute(select(func.coalesce(func.max(GoneFile.cursor), 0))).scalar_one(),
     )
     top = connection.execute(select(func.coalesce(func.max(File.id), 0))).scalar_one()
-    connection.execute(insert(VaultCursor).values(id=ROW, last=last, oldest=0, top_id=top))
+    # Two first writers at once: the second finds the row made.
+    connection.execute(sqlite_insert(VaultCursor).values(id=ROW, last=last, oldest=0, top_id=top)
+                       .on_conflict_do_nothing())
 
 
 def take(connection: Connection, count: int) -> int:

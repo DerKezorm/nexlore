@@ -315,18 +315,22 @@ def test_files_are_handed_out_with_their_hash_and_in_ranges(world: World) -> Non
 
 def test_the_base_comes_from_the_device_first_then_from_the_versions(world: World) -> None:
     plan = world.id_of("Garden/Plan.md")
-    world.post("/api/app/1/fetch", {"ids": [plan]})
-    # The browser saves twice in a row: one version, folded, and the fetched state is in no version but the first.
+    # The browser saves, the app fetches that state, the browser saves again at once: its two saves fold into one
+    # version, and the state the app got is kept nowhere but in the app's base.
     first = b"# Plan\n\none\n"
     vault.save("Garden/Plan.md", first, base_hash=index.digest(PLAN), actor=ACTOR)
+    world.post("/api/app/1/fetch", {"ids": [plan]})
     vault.save("Garden/Plan.md", b"# Plan\n\ntwo\n", base_hash=index.digest(first), actor=ACTOR)
-    got = world.get(f"/api/app/1/notes/{plan}/base", hash=index.digest(PLAN))
-    assert got.json() == {"hash": index.digest(PLAN), "text": PLAN.decode()}
+    with SessionLocal() as db:
+        assert db.scalar(select(Version.id).where(Version.file_id == plan, Version.hash == index.digest(first))) is None
+    got = world.get(f"/api/app/1/notes/{plan}/base", hash=index.digest(first))
+    assert got.json() == {"hash": index.digest(first), "text": first.decode()}
+    # The state of the scan is a version of its own.
+    from_versions = world.get(f"/api/app/1/notes/{plan}/base", hash=index.digest(PLAN))
+    assert from_versions.json() == {"hash": index.digest(PLAN), "text": PLAN.decode()}
     with SessionLocal() as db:
         db.execute(DeviceBase.__table__.delete())
         db.commit()
-    from_versions = world.get(f"/api/app/1/notes/{plan}/base", hash=index.digest(PLAN))
-    assert from_versions.status_code == 200  # the first version of the scan
     lost = world.get(f"/api/app/1/notes/{plan}/base", hash=index.digest(first))
     assert lost.status_code == 404 and lost.json()["detail"]["code"] == "not_found"
     secret = world.get(f"/api/app/1/notes/{world.id_of('Secret/Diary.md')}/base",
