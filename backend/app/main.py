@@ -25,6 +25,8 @@ from .middleware import ForwardedSchemeMiddleware, GuardMiddleware, RequestConte
 from .routers import about, attachments, auth, drafts, everyday, graph, health, imports, members, oidc, shares
 from .routers import ai as ai_router
 from .routers import apitokens as apitokens_router
+from .routers import app1 as app1_router
+from .routers import app_pairing as app_pairing_router
 from .routers import avatars as avatars_router
 from .routers import backups as backups_router
 from .routers import bases as bases_router
@@ -67,7 +69,7 @@ ROUTERS = [
     ai_router, favorites_router, avatars_router, recent_router, themes_router, search_router, news_router,
     proposals_router, bases_router, canvas_router, cleanup_router, inbox_router, feed_router, comments_router,
     presence_router, linktitle_router, oauth_router, notify_router, apitokens_router, v1_router, lore_router,
-    export_router, covers_router,
+    export_router, covers_router, app_pairing_router, app1_router,
 ]
 
 

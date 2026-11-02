@@ -46,7 +46,7 @@ from ..models import (
     Version,
     utcnow,
 )
-from . import canvas, covers, favorites, index, looks, mdparse, midword, paths, settings_service
+from . import canvas, covers, cursor, favorites, index, looks, mdparse, midword, paths, settings_service
 
 logger = logging.getLogger("nexlore.vault")
 
@@ -259,8 +259,14 @@ def _not_too_large(data: bytes) -> None:
         raise VaultError("too_large", "A note holds at most 5 MB.", 413)
 
 
-def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str | None = None) -> Saved:
+def save(
+    rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str | None = None, strict: bool = False
+) -> Saved:
     """Write a note the client had loaded as ``base_hash``. Changed in between: into a conflict copy instead.
+
+    ``strict`` (the iPhone app, which merges on its own copy): no conflict copy ever. A note that changed since is
+    refused with ``stale`` and its hash; a lock somebody holds does not count, the base decides; a note that is not
+    UTF-8 on disk is refused, it would lose its bytes.
 
     Somebody else holding the note's lock does not refuse the text either: a tab that lost its lock (it ran out, the
     heartbeat failed) still has words nobody saved, often in a last request as the tab closes. They go into a
@@ -287,6 +293,12 @@ def save(rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str | N
             db.expunge(file)
             return Saved(file=file, changed=False)
         not_text = current is not None and not _is_utf8(current)
+        if strict and current is not None:
+            if index.digest(current) != base_hash:
+                raise VaultError("stale", "the note changed since", 409, hash=index.digest(current), path=rel)
+            if not_text:
+                raise VaultError("forbidden", "the note is not UTF-8; it is never written from text", 403)
+            locked_out = False
         if current is not None and (locked_out or not_text or index.digest(current) != base_hash):
             # Local time in the name: it is read by people, next to the files' own times (TZ in the container).
             copy_name = paths.unique_name(full.parent, conflict_name(rel, datetime.now().astimezone()))
@@ -366,6 +378,42 @@ def create_canvas(folder: str, name: str, *, actor: Actor, source: str | None = 
         db.refresh(file)
         db.expunge(file)
     logger.info("Canvas created file_id=%s", file.id)
+    return file
+
+
+def create_at(rel: str, data: bytes, *, actor: Actor, source: str | None = None) -> File:
+    """A new note at exactly this path (the iPhone app names its own), folders made on the way. A file there already,
+    compared as Windows compares: ``exists`` with its id and hash; one on the disk the index has not met yet is read in
+    first, so that it has them."""
+    _not_too_large(data)
+    rel = _parse(rel)
+    if not paths.is_note(rel):
+        raise VaultError("path_invalid", "a note ends in .md")
+    space, *folders, name = rel.split("/")
+    clean = "/".join([space, *(_check_name(part) for part in folders), _check_name(name)])
+    if not _full(space).is_dir():
+        raise VaultError("not_found", "no such space", 404)
+    full = _full(clean)
+    with index.guard, SessionLocal() as db:
+        there = live_by_key(db, clean)
+        if there is None and taken(full):
+            on_disk = next(entry for entry in os.listdir(full.parent) if paths.fold(entry) == paths.fold(full.name))
+            found = full.parent / on_disk
+            if not found.is_file():
+                raise VaultError("exists", "a folder of that name exists", 409, id=None, hash=None)
+            there = index.record(db, posixpath.join(posixpath.dirname(clean), on_disk), found.read_bytes(),
+                                 found.stat(), source=index.EXTERNAL)
+            db.commit()
+        if there is not None:
+            raise VaultError("exists", "a file of that name exists", 409, id=there.id, hash=there.hash)
+        stat = atomic_write(full, data)
+        file = index.record(db, clean, data, stat, source=actor.writes_as(source), author=actor.name,
+                            session=actor.client)
+        index.reresolve(db, file.space_id, [file.name_key])
+        db.commit()
+        db.refresh(file)
+        db.expunge(file)
+    logger.info("Note created file_id=%s", file.id)
     return file
 
 
@@ -462,7 +510,7 @@ def _keep_current(db: Session, file: File, full: Path) -> bool:
     return True
 
 
-def delete_path(rel: str, *, actor: Actor, along: Iterable[str] = ()) -> int:
+def delete_path(rel: str, *, actor: Actor, along: Iterable[str] = (), ignore_locks: bool = False) -> int:
     """Into the trash with a file, a folder or a whole space. Returns how many files went. ``along``: files only
     this note uses that go with it, in the same trash entry (they come back together); one that another note links
     meanwhile stays. A space keeps its row and its members: restoring from the trash brings it back as it was."""
@@ -484,7 +532,9 @@ def delete_path(rel: str, *, actor: Actor, along: Iterable[str] = ()) -> int:
             wanted = set(along)
             if wanted and files[0].is_note:
                 files += [file for file in _its_own(db, files[0]) if file.path in wanted]
-        _refuse_foreign_lock(db, files, actor)
+        if not ignore_locks:
+            # The iPhone app's delete goes to the trash whoever edits the note (``ignore_locks``), as its save does.
+            _refuse_foreign_lock(db, files, actor)
         # Favorites of it, and of what lies in it, go too.
         favorites.gone(db, rel)
         keys: set[str] = set()
@@ -706,6 +756,8 @@ def purge_expired(now: datetime | None = None) -> int:
         removed += len(files)
         if len(files) < HOUSEKEEPING_PART:
             break
+    with index.guard, SessionLocal() as db:
+        cursor.purge_gone(db, now, TRASH_DAYS)
     if removed:
         logger.info("Trash emptied of old entries files=%s", removed)
     return removed
@@ -829,6 +881,8 @@ class Moved:
     #: The space of every note whose links were rewritten: the count shown afterwards names only those the mover
     #: may read, or it would tell of spaces they do not know.
     rewritten_spaces: list[int] = field(default_factory=list)
+    #: The ids of those notes, in the same order.
+    rewritten_ids: list[int] = field(default_factory=list)
 
 
 def _link_text(link: mdparse.LinkRef, target_rel: str, source_rel: str, names: index.Names, target_id: int) -> str:
@@ -895,8 +949,9 @@ def _still_right(
     return index.resolve(link.kind, link.target, source_rel, names) == target_id
 
 
-def move(source: str, destination: str, *, actor: Actor) -> Moved:
-    """Move or rename a file or a folder within its space. Links to it, and relative links in it, follow."""
+def move(source: str, destination: str, *, actor: Actor, ignore_locks: bool = False) -> Moved:
+    """Move or rename a file or a folder within its space. Links to it, and relative links in it, follow.
+    ``ignore_locks``: the iPhone app's move, which goes ahead whoever edits the note, as its save does."""
     source = _parse(source)
     destination = _parse(destination)
     if paths.space_of(source) != paths.space_of(destination):
@@ -920,7 +975,8 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
 
     with index.guard, SessionLocal() as db:
         files = below(db, source) if is_folder else [_file(db, source)]
-        _refuse_foreign_lock(db, files, actor)
+        if not ignore_locks:
+            _refuse_foreign_lock(db, files, actor)
         new_path = {
             file.id: destination + file.path[len(source) :] if is_folder else destination for file in files
         }
@@ -1020,14 +1076,15 @@ def move(source: str, destination: str, *, actor: Actor) -> Moved:
             _release(job_id)
             raise
     rewritten_spaces: list[int] = []
+    rewritten_ids: list[int] = []
     try:
-        _follow(job_id, rewritten_spaces)
+        _follow(job_id, rewritten_spaces, rewritten_ids)
     except Exception:
         # The file has moved; what is left of its links follows before the next full scan (``resume_moves``).
         logger.exception("Rewriting the links of a move stopped half way job=%s", job_id)
     logger.info("Moved files=%s notes_rewritten=%s", len(files), len(rewritten_spaces))
     return Moved(path=destination, files=len(files), rewritten=len(rewritten_spaces),
-                 rewritten_spaces=rewritten_spaces)
+                 rewritten_spaces=rewritten_spaces, rewritten_ids=rewritten_ids)
 
 
 # --- Renaming a space ---------------------------------------------------------------------------------------------
@@ -1247,15 +1304,18 @@ def _release(job_id: int) -> None:
         _claimed.discard(job_id)
 
 
-def _follow(job_id: int, spaces: list[int]) -> None:
+def _follow(job_id: int, spaces: list[int], notes: list[int] | None = None) -> None:
     """Rewrite the links of a move job, part by part, then resolve the old and new names once more and let the job
-    go. ``spaces`` gets the space of every note rewritten. The job must be claimed; it is released at the end, also
-    when a part fails (it is taken up again by ``resume_moves``). Between two parts a link not yet rewritten shows the
-    old name and leads nowhere on its note page; the index keeps it pointing at its file until the end."""
+    go. ``spaces`` gets the space of every note rewritten, ``notes`` its id. The job must be claimed; it is released at
+    the end, also when a part fails (it is taken up again by ``resume_moves``). Between two parts a link not yet
+    rewritten shows the old name and leads nowhere on its note page; the index keeps it pointing at its file until the
+    end."""
     try:
         while True:
-            done, part = _follow_part(job_id)
+            done, part, ids = _follow_part(job_id)
             spaces += part
+            if notes is not None:
+                notes += ids
             if done:
                 break
         _finish(job_id)
@@ -1263,31 +1323,33 @@ def _follow(job_id: int, spaces: list[int]) -> None:
         _release(job_id)
 
 
-def _follow_part(job_id: int) -> tuple[bool, list[int]]:
+def _follow_part(job_id: int) -> tuple[bool, list[int], list[int]]:
     with index.guard, SessionLocal() as db:
         job = db.get(MoveJob, job_id)
         if job is None:
-            return True, []
+            return True, [], []
         rows = db.scalars(
             select(MoveJobNote).where(MoveJobNote.job_id == job_id).order_by(MoveJobNote.position).limit(MOVE_PART)
         ).all()
         if not rows:
-            return True, []
+            return True, [], []
         # Row by row, always current: the names change between parts when someone else renames something.
         names = index.Names(db, job.space_id, preload=False)
         spaces = []
+        rewritten = []
         done = []
         began = time.monotonic()
         for row in rows:
             space_id = _follow_note(db, row, names, job.author)
             if space_id is not None:
                 spaces.append(space_id)
+                rewritten.append(row.note_id)
             done.append(row.note_id)
             if time.monotonic() - began >= MOVE_PART_SECONDS:
                 break
         db.execute(delete(MoveJobNote).where(MoveJobNote.job_id == job_id, MoveJobNote.note_id.in_(done)))
         db.commit()
-    return False, spaces
+    return False, spaces, rewritten
 
 
 def _follow_note(db: Session, row: MoveJobNote, names: index.Names, author: str | None) -> int | None:

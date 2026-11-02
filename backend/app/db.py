@@ -83,7 +83,7 @@ def get_db() -> Iterator[Session]:
 
 
 def init_db() -> None:
-    from .services import midword
+    from .services import cursor, midword
 
     Base.metadata.create_all(engine)
     _add_missing_columns()
@@ -97,6 +97,8 @@ def init_db() -> None:
             connection.execute(text(f"DROP TABLE {TRI_TABLE}"))
         connection.execute(text(TRI_CREATE))
         midword.rebuild_if_needed(connection)
+        # Rows from before the change counter get their number (``services/cursor.py``).
+        cursor.number_existing(connection)
     # create_all makes the indexes of new tables only; one added to an existing table comes here.
     for table in Base.metadata.sorted_tables:
         for table_index in table.indexes:
