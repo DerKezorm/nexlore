@@ -124,8 +124,11 @@ export type Inserted = { link: string; name: string; image: boolean }
 export type FileHelpers = {
   /** The address a picture the note links is shown from (`Anhänge/Foto%201.png` → the server's address). */
   src: (written: string) => string
-  /** Upload files for this note; for each what to link, or null when it was refused (the page says why). */
-  upload: (files: File[]) => Promise<(Inserted | null)[]>
+  /**
+   * Upload files for this note; for each what to link, or null when it was refused (the page says why). Without it
+   * (the iPhone app's editor) pictures show, but nothing is uploaded and the menu offers no files.
+   */
+  upload?: (files: File[]) => Promise<(Inserted | null)[]>
 }
 
 /** A speech bubble with a pen, drawn like Crepe's own symbols (24 by 24, filled with the text colour). */
@@ -156,7 +159,7 @@ export type EditorOptions = {
   folds?: FoldStore
   /** The title of a pasted web address, for its link's words; null at once when titles are not asked for. */
   linkTitle?: (url: string) => Promise<string | null> | null
-  /** For tests: more Milkdown plugins, after nexlore's own. */
+  /** More Milkdown plugins, after nexlore's own (tests, and the app's `#` suggestions in src/editorapp). */
   plugins?: MilkdownPlugin[]
   /**
    * Where the bar over chosen words, the slash menu, the link boxes and the block handle go instead of beside the
@@ -251,6 +254,8 @@ export type NoteEditor = {
   replace: (original: string) => void
   /** Redraw link colours (the list of notes changed). */
   refresh: () => void
+  /** Reading only, or writing again, without making the editor anew. */
+  setReadOnly: (readOnly: boolean) => void
   destroy: () => Promise<void>
 }
 
@@ -469,27 +474,32 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
           const uploadPicked = (ctx: Ctx, accept?: string) => {
             replaceBlock(ctx, () => ({ text: '', caret: 0 }))
             const files = options.files
-            if (!files) return options.onFileRefused?.()
+            if (!files?.upload) return options.onFileRefused?.()
             void pickFiles(accept).then(async (chosen) => {
               if (!chosen.length) return
               const view = ctx.get(editorViewCtx)
-              const nodes = insertedNodes(view.state.schema, await files.upload(chosen))
+              const nodes = insertedNodes(view.state.schema, await files.upload!(chosen))
               if (!nodes.length) return
               insertFiles(view, nodes)
               view.focus()
             })
           }
+          // Files shown but never uploaded (the app's editor): no menu entries that could only be refused.
+          const pickable = !options.files || !!options.files.upload
           // Crepe's own picture block writes the alt text wrong (see obsidian.ts); this one uploads like pasting.
-          builder.getGroup('advanced').addItem('picture', { label: labels.slash.image, icon: icon('🖼'), onRun: (ctx: Ctx) => uploadPicked(ctx, 'image/*') })
-          builder
+          if (pickable) builder.getGroup('advanced').addItem('picture', { label: labels.slash.image, icon: icon('🖼'), onRun: (ctx: Ctx) => uploadPicked(ctx, 'image/*') })
+          const obsidianGroup = builder
             .addGroup('obsidian', labels.slash.groupObsidian)
             .addItem('wiki-link', { label: labels.slash.wikiLink, icon: icon('[[ ]]'), onRun: (ctx: Ctx) => replaceBlock(ctx, () => ({ text: '[[', caret: 2 })) })
             .addItem('embed', { label: labels.slash.embed, icon: icon('![[ ]]'), onRun: (ctx: Ctx) => replaceBlock(ctx, () => ({ text: '![[', caret: 3 })) })
-            .addItem('attachment', {
+          if (pickable) {
+            obsidianGroup.addItem('attachment', {
               label: labels.slash.attachment,
               icon: icon('📎'),
               onRun: (ctx: Ctx) => uploadPicked(ctx),
             })
+          }
+          obsidianGroup
             .addItem('callout', {
               label: labels.slash.callout,
               icon: icon('[!]'),
@@ -523,7 +533,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
       ctx.update(uploadConfig.key, (previous) => ({
         ...previous,
         uploader: async (files: FileList, schema: Schema) => {
-          if (!options.files) {
+          if (!options.files?.upload) {
             options.onFileRefused?.()
             return []
           }
@@ -734,10 +744,10 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
 
   const attach = () => {
     const files = options.files
-    if (!files) return options.onFileRefused?.()
+    if (!files?.upload) return options.onFileRefused?.()
     void pickFiles().then(async (chosen) => {
       if (!chosen.length) return
-      const nodes = insertedNodes(view.state.schema, await files.upload(chosen))
+      const nodes = insertedNodes(view.state.schema, await files.upload!(chosen))
       if (!nodes.length) return
       insertFiles(view, nodes)
       view.focus()
@@ -956,6 +966,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
       refreshLive(view)
       refreshSuggest(view)
     },
+    setReadOnly: (readOnly) => crepe.setReadonly(readOnly),
     destroy: async () => {
       handleWatch.disconnect()
       stopSlashAria()
