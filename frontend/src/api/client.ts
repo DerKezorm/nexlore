@@ -690,6 +690,7 @@ export type ServerSettings = {
   mcp_max_level: McpLevel
   mcp_oauth_allowed: boolean
   api_tokens_allowed: boolean
+  app_pairing_allowed: boolean
   plugin_upload_allowed: boolean
   ai_allowed: boolean
   ai_private_hosts: string
@@ -1363,6 +1364,21 @@ export const apiTokensApi = {
   remove: (id: number) => api<void>(`/api/api-tokens/${id}`, { method: 'DELETE' }),
   every: () => api<AnyApiToken[]>('/api/admin/api-tokens'),
   block: (id: number) => api<AnyApiToken>(`/api/admin/api-tokens/${id}/block`, { method: 'POST' }),
+}
+
+/** A pairing for the iPhone app, as the browser shows it: the code and the QR code exist only in this answer. */
+export type AppPairing = { id: string; code: string; expires_at: string; address: string; link: string; qr_svg: string }
+export type AppPairingState = { state: 'waiting' | 'connected' | 'expired'; device: string }
+export type AppDevice = { id: number; name: string; created_at: string; last_seen_at: string | null }
+
+/** The own iPhone app: pairing it in the browser, the paired devices, the operator's latch. */
+export const appApi = {
+  pair: (address: string) => api<AppPairing>('/api/app-pairing', { method: 'POST', body: { address } }),
+  state: (id: string) => api<AppPairingState>(`/api/app-pairing/${encodeURIComponent(id)}`),
+  withdraw: (id: string) => api<void>(`/api/app-pairing/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  allowed: () => api<{ allowed: boolean }>('/api/app-pairing/allowed'),
+  devices: () => api<AppDevice[]>('/api/app-devices'),
+  disconnect: (id: number) => api<void>(`/api/app-devices/${id}`, { method: 'DELETE' }),
 }
 
 export type NotifyChoices = {

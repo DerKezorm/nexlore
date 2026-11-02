@@ -863,7 +863,19 @@
       "email_no_offer": "The sign-in service reports no other address.",
       "bad_task_status": "This list cannot be saved: each entry is one character, given once, without a bracket.",
       "cover_not_a_picture": "That is not a picture nexlore takes (JPEG, PNG, WebP, GIF, HEIC or AVIF).",
-      "cover_too_large": "The picture is too large (at most {{max_mb}} MB)."
+      "cover_too_large": "The picture is too large (at most {{max_mb}} MB).",
+      "not_signed_in": "This device is no longer signed in. Connect it again.",
+      "app_disabled": "The operator has switched the iPhone app off.",
+      "too_many": "Too many requests. Wait a moment and try again.",
+      "app_address_missing": "nexlore does not know its address. The operator enters it in the settings.",
+      "app_too_many_pairings": "Five codes are waiting already. Close one or wait until it runs out.",
+      "app_pairing_unknown": "This code does not exist or is no longer valid.",
+      "cursor_expired": "Syncing starts over.",
+      "bad_path": "This name or place does not work.",
+      "stale": "The note was changed elsewhere meanwhile.",
+      "in_trash": "The note is in the trash.",
+      "across_spaces": "Notes stay in their space.",
+      "skipped": "Skipped, because a change before it did not go through."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
@@ -1150,7 +1162,28 @@
       "submit": "Sign out everywhere else",
       "done": "Every other browser is signed out."
     },
-    "unlinked": "No longer linked to {{name}}."
+    "unlinked": "No longer linked to {{name}}.",
+    "app": {
+      "title": "iPhone app",
+      "text": "Connected iPhones have the same rights as this browser. An iPhone is disconnected here, by signing out everywhere else, or by a new password.",
+      "connect": "Connect the iPhone app",
+      "scan": "Open the iPhone's camera and point it at the code.",
+      "orType": "Or type the address and the code into the app.",
+      "address": "Address",
+      "code": "Code",
+      "qr": "QR code to connect the iPhone app",
+      "left_one": "Valid for {{count}} more minute.",
+      "left_other": "Valid for {{count}} more minutes.",
+      "connected": "{{name}} is connected.",
+      "expired": "The code has run out.",
+      "again": "New code",
+      "cancel": "Cancel",
+      "close": "Close",
+      "seen": "Last seen {{when}}",
+      "never": "Not seen yet",
+      "disconnect": "Disconnect",
+      "disconnectNamed": "Disconnect {{name}}"
+    }
   },
   "members": {
     "title": "Members of {{space}}",
@@ -1491,6 +1524,12 @@
       "coupled": "through the coupling",
       "copy": "Copy",
       "more": "More"
+    },
+    "app": {
+      "title": "iPhone app",
+      "text": "Accounts connect the own iPhone app to nexlore. It can do nothing the browser cannot. On from the start.",
+      "allow": "The iPhone app may connect",
+      "hint": "Off, no device gets in any more and none can be connected anew. Connected devices stay and work again when you switch it on."
     }
   },
   "today": {
@@ -2726,5 +2765,14 @@
     },
     "browse": "Browse",
     "browseHint": "Flip through spaces and folders as covers"
+  },
+  "appConnect": {
+    "title": "Connect iPhone",
+    "text": "Signed in as {{account}}. The device “{{device}}” wants to connect.",
+    "rights": "It gets the same rights as this browser. You can disconnect it at any time under My account, Security.",
+    "confirm": "Connect iPhone",
+    "cancel": "Cancel",
+    "doneTitle": "Back to the app",
+    "done": "The app takes over now. You can close this window."
   }
 }
