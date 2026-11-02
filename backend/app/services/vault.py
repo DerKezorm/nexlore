@@ -46,7 +46,7 @@ from ..models import (
     Version,
     utcnow,
 )
-from . import canvas, covers, cursor, favorites, index, looks, mdparse, midword, paths, settings_service
+from . import canvas, covers, cursor, favorites, index, looks, mdparse, midword, paths, prepare, settings_service
 
 logger = logging.getLogger("nexlore.vault")
 
@@ -265,8 +265,8 @@ def save(
     """Write a note the client had loaded as ``base_hash``. Changed in between: into a conflict copy instead.
 
     ``strict`` (the iPhone app, which merges on its own copy): no conflict copy ever. A note that changed since is
-    refused with ``stale`` and its hash; a lock somebody holds does not count, the base decides; a note that is not
-    UTF-8 on disk is refused, it would lose its bytes.
+    refused with ``stale`` and its hash (empty when the file is gone from the disk); a lock somebody holds does not
+    count, the base decides; a note that is not UTF-8 on disk is refused, it would lose its bytes.
 
     Somebody else holding the note's lock does not refuse the text either: a tab that lost its lock (it ran out, the
     heartbeat failed) still has words nobody saved, often in a last request as the tab closes. They go into a
@@ -293,7 +293,11 @@ def save(
             db.expunge(file)
             return Saved(file=file, changed=False)
         not_text = current is not None and not _is_utf8(current)
-        if strict and current is not None:
+        if strict and current is None:
+            # Gone from the disk (renamed or deleted elsewhere, the watcher not there yet): no base can match, and
+            # writing would bring the old path back beside the renamed note.
+            raise VaultError("stale", "the note is gone from the disk", 409, hash="", path=rel)
+        if strict:
             if index.digest(current) != base_hash:
                 raise VaultError("stale", "the note changed since", 409, hash=index.digest(current), path=rel)
             if not_text:
@@ -510,10 +514,15 @@ def _keep_current(db: Session, file: File, full: Path) -> bool:
     return True
 
 
-def delete_path(rel: str, *, actor: Actor, along: Iterable[str] = (), ignore_locks: bool = False) -> int:
+def delete_path(
+    rel: str, *, actor: Actor, along: Iterable[str] = (), ignore_locks: bool = False, base_hash: str | None = None
+) -> int:
     """Into the trash with a file, a folder or a whole space. Returns how many files went. ``along``: files only
     this note uses that go with it, in the same trash entry (they come back together); one that another note links
-    meanwhile stays. A space keeps its row and its members: restoring from the trash brings it back as it was."""
+    meanwhile stays. A space keeps its row and its members: restoring from the trash brings it back as it was.
+
+    ``base_hash`` (the iPhone app, a single file): only while the file on disk still has it, else ``stale`` with the
+    hash it has. Checked under the guard, so a save cannot land between the check and the trash."""
     rel = _parse(rel) if "/" in rel.strip("/") else _parse_space(rel)
     full = _full(rel)
     group = str(uuid.uuid4())
@@ -529,6 +538,13 @@ def delete_path(rel: str, *, actor: Actor, along: Iterable[str] = (), ignore_loc
                 looks.gone(db, space.id, rel.partition("/")[2])
         else:
             files = [_file(db, rel)]
+            if base_hash is not None:
+                try:
+                    current = prepare.hash_file(str(full))[0]
+                except OSError:
+                    current = files[0].hash
+                if current != base_hash:
+                    raise VaultError("stale", "the file changed since", 409, hash=current)
             wanted = set(along)
             if wanted and files[0].is_note:
                 files += [file for file in _its_own(db, files[0]) if file.path in wanted]

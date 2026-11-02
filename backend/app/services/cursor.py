@@ -14,6 +14,10 @@ that it went. ``oldest`` rises to its number then, and an app that asks from bef
 that goes without the trash (a scan folding a moved file into its old row) leaves a ``GoneFile`` behind that reports it
 as deleted, until the trash's time is over.
 
+**A space that comes to be read.** An account that becomes a member of a space (or the operator, who reads the spaces
+without members) would get the space in ``spaces`` but none of its rows, which kept their old numbers. So every live
+row of such a space gets a new number then: whoever already had them gets them again with the same ``hash``.
+
 **Ids are never handed out twice.** SQLite gives a new row the highest id plus one, and so would give a new file the
 id of the newest file gone for good; the app would take it for that file. New rows get their id from ``top_id``.
 """
@@ -25,11 +29,11 @@ from collections.abc import Iterable
 from datetime import datetime, timedelta
 from typing import Any
 
-from sqlalchemy import Connection, delete, event, func, insert, inspect, select, text, update
+from sqlalchemy import Connection, bindparam, delete, event, func, insert, inspect, select, text, update
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
-from ..models import File, GoneFile, VaultCursor, utcnow
+from ..models import OPERATOR, Account, File, GoneFile, Membership, Space, VaultCursor, utcnow
 
 #: What the app sees of a row: a change to any of these is a change it must hear of. The time alone is not (a sync
 #: program touching a file leaves its content as it was).
@@ -116,8 +120,37 @@ def _differs(file: File) -> bool:
     return False
 
 
+def _came_to_read(session: Session) -> set[int]:
+    """The spaces somebody may read from this flush on who could not before: a membership made or ended (the last
+    one ending hands the space to the operator), an account made operator. A changed role reads as before."""
+    spaces = {item.space_id for item in session.new if isinstance(item, Membership)}
+    spaces |= {item.space_id for item in session.deleted if isinstance(item, Membership)}
+    if any(isinstance(item, Account) and item.role == OPERATOR and inspect(item).attrs.role.history.has_changes()
+           for item in session.dirty):
+        with_members = select(Membership.space_id).distinct()
+        spaces |= set(session.execute(select(Space.id).where(Space.id.not_in(with_members))).scalars())
+    return spaces
+
+
+def _renumber(session: Session, spaces: set[int]) -> None:
+    """Every live row of these spaces gets a new number, each its own (a page of ``/changes`` ends between two)."""
+    connection = session.connection()
+    ids = connection.execute(
+        select(File.id).where(File.space_id.in_(spaces), File.deleted_at.is_(None)).order_by(File.id)
+    ).scalars().all()
+    if not ids:
+        return
+    first = take(connection, len(ids))
+    connection.execute(update(File).where(File.id == bindparam("row_id")).values(cursor=bindparam("number")),
+                       [{"row_id": row_id, "number": first + offset} for offset, row_id in enumerate(ids)])
+    session.info["cursor_moved"] = True
+
+
 @event.listens_for(Session, "before_flush")
 def _stamp(session: Session, _context: object, _instances: Iterable[object] | None) -> None:
+    spaces = _came_to_read(session)
+    if spaces:
+        _renumber(session, spaces)
     new = [item for item in session.new if isinstance(item, File)]
     changed = [item for item in session.dirty if isinstance(item, File) and _differs(item)]
     gone = [item for item in session.deleted if isinstance(item, File)]

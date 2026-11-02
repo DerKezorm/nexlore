@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import func, select, update
 
 from app.db import SessionLocal, engine
-from app.models import AppOp, DeviceBase, File, GoneFile, Version, utcnow
+from app.models import OPERATOR, Account, AppOp, DeviceBase, File, GoneFile, Version, utcnow
 from app.routers import app1
 from app.services import cursor, index, vault
 from app.services.vault import Actor
@@ -173,6 +173,28 @@ def test_secret_changes_never_show(world: World) -> None:
     vault.save("Secret/Diary.md", b"# Diary\n\nprivate\n", base_hash=world.hash_of("Secret/Diary.md"), actor=ACTOR)
     got = world.changes(before)
     assert got["items"] == [] and got["cursor"] > before
+
+
+def test_a_space_the_account_comes_to_read_brings_its_notes(world: World) -> None:
+    """Its rows kept their old numbers; without a new one the app would get the space without what is in it."""
+    before = world.changes()["cursor"]
+    join(world.bob, "Secret", "anna", "read")
+    got = world.changes(before)
+    assert "Secret" in {space["name"] for space in got["spaces"]}
+    assert [item["path"] for item in got["items"]] == ["Secret/Diary.md"]
+
+
+def test_an_account_made_operator_hears_of_the_spaces_without_members(world: World) -> None:
+    (world.vault / "Loose").mkdir()
+    (world.vault / "Loose" / "Found.md").write_bytes(b"# Found\n")
+    index.scan()
+    before = world.changes()["cursor"]
+    with SessionLocal() as db:
+        db.scalars(select(Account).where(Account.name == "anna")).one().role = OPERATOR
+        db.commit()
+    got = world.changes(before)
+    assert "Loose" in {space["name"] for space in got["spaces"]}
+    assert [item["path"] for item in got["items"]] == ["Loose/Found.md"]
 
 
 def test_an_outside_move_keeps_the_id_and_tells_the_fresh_row_as_gone(world: World) -> None:
@@ -415,6 +437,15 @@ def test_update_saves_against_its_base_and_refuses_a_stale_one_without_a_copy(wo
     assert (world.vault / "Garden" / "Plan.md").read_bytes() == b"# Plan\n\nphone\n"
 
 
+def test_update_of_a_note_gone_from_the_disk_meanwhile_is_stale_and_brings_nothing_back(world: World) -> None:
+    """Renamed or deleted by another program, before the watcher got to it: the old path stays empty."""
+    plan = world.id_of("Garden/Plan.md")
+    (world.vault / "Garden" / "Plan.md").unlink()
+    [stale] = world.ops({"type": "update", "id": plan, "base_hash": index.digest(PLAN), "text": "# Plan\n\nphone\n"})
+    assert stale == {"op_id": stale["op_id"], "ok": False, "code": "stale", "hash": "", "path": "Garden/Plan.md"}
+    assert not (world.vault / "Garden" / "Plan.md").exists()
+
+
 def test_update_goes_ahead_while_the_browser_holds_the_lock(world: World) -> None:
     assert world.anna.post("/api/locks", json={"path": "Garden/Plan.md"}).status_code == 200
     [saved] = world.ops({"type": "update", "id": world.id_of("Garden/Plan.md"), "base_hash": index.digest(PLAN),
@@ -478,6 +509,21 @@ def test_delete_goes_to_the_trash_against_its_base(world: World) -> None:
     assert read_only["code"] == "forbidden"
 
 
+def test_delete_refuses_a_save_that_lands_just_before_it(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The base is checked where the browser's save cannot come in between."""
+    browser = b"# Plan\n\nfrom the browser\n"
+    delete_path = vault.delete_path
+
+    def saved_first(rel: str, **options: Any) -> int:
+        vault.save(rel, browser, base_hash=world.hash_of(rel), actor=ACTOR)
+        return delete_path(rel, **options)
+
+    monkeypatch.setattr(vault, "delete_path", saved_first)
+    [stale] = world.ops({"type": "delete", "id": world.id_of("Garden/Plan.md"), "base_hash": index.digest(PLAN)})
+    assert stale == {"op_id": stale["op_id"], "ok": False, "code": "stale", "hash": index.digest(browser)}
+    assert (world.vault / "Garden" / "Plan.md").read_bytes() == browser
+
+
 def test_restore_brings_a_note_back_beside_a_new_one(world: World) -> None:
     plan = world.id_of("Garden/Plan.md")
     vault.delete_path("Garden/Plan.md", actor=ACTOR)
@@ -513,6 +559,30 @@ def test_the_same_op_id_answers_the_same_and_does_nothing_twice(world: World) ->
         db.commit()
     third = world.post("/api/app/1/batch", body).json()
     assert third["results"][0]["ok"] is True and (world.vault / "Garden" / "Once.md").exists()
+
+
+def test_the_same_op_id_twice_at_once_runs_once(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A retry after a timeout while the first request still runs: the second waits and gets the first's answer."""
+    runs: list[str] = []
+    update_ = app1.RUN["update"]
+
+    def slow(found: Any, op: Any) -> dict[str, Any]:
+        runs.append(op.op_id)
+        time.sleep(0.4)
+        return update_(found, op)
+
+    monkeypatch.setitem(app1.RUN, "update", slow)
+    body = {"ops": [{"op_id": "twice", "type": "update", "id": world.id_of("Garden/Plan.md"),
+                     "base_hash": index.digest(PLAN), "text": "# Plan\n\nonce\n"}]}
+    answers: list[dict[str, Any]] = []
+    threads = [threading.Thread(target=lambda: answers.append(world.post("/api/app/1/batch", body).json()))
+               for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert runs == ["twice"]
+    assert answers[0]["results"] == answers[1]["results"] and answers[0]["results"][0]["ok"] is True
 
 
 def test_a_skipped_op_is_not_kept(world: World) -> None:

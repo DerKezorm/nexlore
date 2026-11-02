@@ -21,15 +21,15 @@ Writes go through the functions of the browser (``vault.save``, ``vault.move``, 
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import logging
 import mimetypes
 import os
 import posixpath
+import threading
 import time
 import zlib
 from datetime import UTC, datetime, timedelta
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 import anyio
 from fastapi import APIRouter, Depends, Form, Header, Query, Request, UploadFile
@@ -629,27 +629,12 @@ def _move(found: Caller, op: MoveOp) -> dict[str, Any]:
     return {"path": moved.path, "touched": list(dict.fromkeys(touched))}
 
 
-def _disk_hash(rel: str, fallback: str) -> str:
-    full = paths.vault_root().joinpath(*rel.split("/"))
-    digest = hashlib.sha256()
-    try:
-        with open(full, "rb") as handle:
-            for part in iter(lambda: handle.read(1024 * 1024), b""):
-                digest.update(part)
-    except OSError:
-        return fallback
-    return digest.hexdigest()
-
-
 def _delete(found: Caller, op: DeleteOp) -> dict[str, Any]:
     row = _row_for(found, op.id, WRITE)
     if row.deleted_at is not None:
         return {}
-    current = _disk_hash(row.path, row.hash)
-    if current != op.base_hash:
-        raise OpFailed("stale", hash=current)
     try:
-        vault.delete_path(row.path, actor=_actor(found), ignore_locks=True)
+        vault.delete_path(row.path, actor=_actor(found), ignore_locks=True, base_hash=op.base_hash)
     except VaultError as exc:
         raise _from_vault(exc) from exc
     return {}
@@ -683,6 +668,32 @@ def _store(device_id: int, result: dict[str, Any]) -> None:
         db.commit()
 
 
+class _OneAtATime:
+    """The same ``op_id`` twice at once (the app retries after a timeout while the first request still runs): the
+    second waits for the first and then finds its answer. One process serves nexlore (``index.guard`` too). Entered
+    in one thread and left in another is fine: it is a plain lock."""
+
+    #: The ``op_id``s running right now, each with its lock and how many requests hold or wait for it.
+    running: ClassVar[dict[tuple[int, str], list[Any]]] = {}
+    guard: ClassVar[threading.Lock] = threading.Lock()
+
+    def __init__(self, device_id: int, op_id: str) -> None:
+        self.key = (device_id, op_id)
+
+    def __enter__(self) -> None:
+        with self.guard:
+            self.entry = self.running.setdefault(self.key, [threading.Lock(), 0])
+            self.entry[1] += 1
+        self.entry[0].acquire()
+
+    def __exit__(self, *_exc: object) -> None:
+        self.entry[0].release()
+        with self.guard:
+            self.entry[1] -= 1
+            if not self.entry[1]:
+                del self.running[self.key]
+
+
 def _forget_old_ops() -> None:
     with SessionLocal() as db:
         db.execute(delete(AppOp).where(AppOp.created_at < utcnow() - timedelta(days=OP_DAYS)))
@@ -709,13 +720,14 @@ def batch(body: BatchIn, found: Device) -> BatchOut:
     results: list[dict[str, Any]] = []
     for op in body.ops:
         target = getattr(op, "id", None)
-        result = _stored(found.device_id, op.op_id)
-        if result is None:
-            if target is not None and target in failed:
-                result = {"op_id": op.op_id, "ok": False, "code": "skipped"}
-            else:
-                result = _run(found, op)
-                _store(found.device_id, result)
+        with _OneAtATime(found.device_id, op.op_id):
+            result = _stored(found.device_id, op.op_id)
+            if result is None:
+                if target is not None and target in failed:
+                    result = {"op_id": op.op_id, "ok": False, "code": "skipped"}
+                else:
+                    result = _run(found, op)
+                    _store(found.device_id, result)
         if not result["ok"] and target is not None:
             failed.add(target)
         results.append(result)
@@ -736,15 +748,21 @@ async def upload(
     """The same file in the space already: its id, nothing stored twice. A name taken by another file: the upload
     gets the next free name beside it, both stay (attachments are never merged)."""
     _not_scanning()
-    stored = await run_in_threadpool(_stored, found.device_id, op_id)
-    if stored is not None:
-        return ResultOut(**stored)
+    running = _OneAtATime(found.device_id, op_id)
+    # Waiting for the same upload still running takes a thread, not the event loop.
+    await run_in_threadpool(running.__enter__)
     try:
-        result = {"op_id": op_id, "ok": True, **await _upload(found, space, path, file)}
-    except OpFailed as exc:
-        result = {"op_id": op_id, "ok": False, "code": exc.code, **exc.values}
-    await run_in_threadpool(_store, found.device_id, result)
-    return ResultOut(**result)
+        stored = await run_in_threadpool(_stored, found.device_id, op_id)
+        if stored is not None:
+            return ResultOut(**stored)
+        try:
+            result = {"op_id": op_id, "ok": True, **await _upload(found, space, path, file)}
+        except OpFailed as exc:
+            result = {"op_id": op_id, "ok": False, "code": exc.code, **exc.values}
+        await run_in_threadpool(_store, found.device_id, result)
+        return ResultOut(**result)
+    finally:
+        running.__exit__(None, None, None)
 
 
 async def _upload(found: Caller, space: str, path: str, file: UploadFile) -> dict[str, Any]:
