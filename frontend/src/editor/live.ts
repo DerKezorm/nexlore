@@ -112,8 +112,12 @@ function touches(state: EditorState, from: number, to: number): boolean {
   return a <= to && b >= from
 }
 
-/** Decorations for one top-level block at `start` (its position in the document). */
-function decorateBlock(state: EditorState, block: ProseNode, start: number, helpers: LinkHelpers, decorations: Decoration[]) {
+/**
+ * Decorations for one top-level block at `start` (its position in the document). Reading, nothing is being edited:
+ * the caret, wherever it stands, shows no syntax.
+ */
+function decorateBlock(state: EditorState, block: ProseNode, start: number, helpers: LinkHelpers, decorations: Decoration[], reading: boolean) {
+  const editing = (from: number, to: number) => !reading && touches(state, from, to)
   const code = state.schema.marks.inlineCode ?? state.schema.marks.code
   const hide = (from: number, to: number) => from < to && decorations.push(Decoration.inline(from, to, { class: 'nx-hide' }))
   const dim = (from: number, to: number) => from < to && decorations.push(Decoration.inline(from, to, { class: 'nx-syntax' }))
@@ -139,7 +143,7 @@ function decorateBlock(state: EditorState, block: ProseNode, start: number, help
       const open = from + match[1].length + 2
       const close = to - 2
       const cls = ['nx-wiki', embed ? 'nx-embed' : '', missing ? 'nx-wiki-missing' : ''].filter(Boolean).join(' ')
-      if (touches(state, from, to)) {
+      if (editing(from, to)) {
         dim(from, open)
         dim(close, to)
         decorations.push(Decoration.inline(open, close, { class: cls + ' nx-wiki-editing', 'data-target': target }))
@@ -204,7 +208,7 @@ function decorateBlock(state: EditorState, block: ProseNode, start: number, help
       const to = begin + b
       if (!free(from, to) || inCode(from, to)) continue
       taken.push([from, to])
-      if (touches(state, from, to)) {
+      if (editing(from, to)) {
         dim(from, from + 2)
         dim(to - 2, to)
       } else {
@@ -257,7 +261,7 @@ function decorateBlock(state: EditorState, block: ProseNode, start: number, help
       offset += child.nodeSize
     })
     const titleTo = from + (lineEnd < 0 ? text.length : lineEnd)
-    if (touches(state, from, titleTo)) {
+    if (editing(from, titleTo)) {
       decorations.push(Decoration.inline(from, to, { class: 'nx-callout-marker' }))
     } else {
       hide(from, to)
@@ -277,9 +281,9 @@ function decorateBlock(state: EditorState, block: ProseNode, start: number, help
 }
 
 /** Every decoration of the document at once (the start, a refresh; tests compare the step by step result with it). */
-export function build(state: EditorState, helpers: LinkHelpers): DecorationSet {
+export function build(state: EditorState, helpers: LinkHelpers, reading = false): DecorationSet {
   const decorations: Decoration[] = []
-  state.doc.forEach((block, offset) => decorateBlock(state, block, offset, helpers, decorations))
+  state.doc.forEach((block, offset) => decorateBlock(state, block, offset, helpers, decorations, reading))
   return DecorationSet.create(state.doc, decorations)
 }
 
@@ -291,8 +295,8 @@ function blocksAround(doc: ProseNode, from: number, to: number, into: Map<number
   })
 }
 
-function update(tr: Transaction, previous: DecorationSet, old: EditorState, state: EditorState, helpers: LinkHelpers): DecorationSet {
-  if (tr.getMeta(liveKey)) return build(state, helpers)
+function update(tr: Transaction, previous: DecorationSet, old: EditorState, state: EditorState, helpers: LinkHelpers, reading: boolean): DecorationSet {
+  if (tr.getMeta(liveKey)) return build(state, helpers, reading)
   if (!tr.docChanged && !tr.selectionSet) return previous
   const dirty = new Map<number, number>()
   let set = previous
@@ -311,19 +315,20 @@ function update(tr: Transaction, previous: DecorationSet, old: EditorState, stat
   for (const [from, to] of dirty) {
     set = set.remove(set.find(from, to, () => true).filter((decoration) => decoration.from >= from && decoration.to <= to))
     const block = state.doc.nodeAt(from)
-    if (block) decorateBlock(state, block, from, helpers, fresh)
+    if (block) decorateBlock(state, block, from, helpers, fresh, reading)
   }
   return set.add(state.doc, fresh)
 }
 
-export function livePreview(helpers: () => LinkHelpers) {
+/** `reading`: whether the editor is read only now; when that changes, `refreshLive` draws it anew. */
+export function livePreview(helpers: () => LinkHelpers, reading: () => boolean = () => false) {
   // The link a press came down on, until its click.
   let pressed: Element | null = null
   return new Plugin<DecorationSet>({
     key: liveKey,
     state: {
-      init: (_, state) => build(state, helpers()),
-      apply: (tr, value, old, state) => update(tr, value, old, state, helpers()),
+      init: (_, state) => build(state, helpers(), reading()),
+      apply: (tr, value, old, state) => update(tr, value, old, state, helpers(), reading()),
     },
     props: {
       decorations: (state) => liveKey.getState(state),

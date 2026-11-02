@@ -247,8 +247,8 @@ it('takes a text from outside without telling it back, the caret where it was', 
   const made = await open('First line here.\n\nSecond.\n')
   caretAfter(made, 'First')
   made.bridge.command('insertText', { text: '!' })
-  // The merged text comes before the typing was told (here even before it was done): the old typing is not told
-  // over it.
+  // The merged text comes before the typing was told (here even before it was done), and the app's text changed the
+  // line typed in: its text is taken, nothing is told back.
   made.bridge.setText('---\nstatus: merged\n---\nFirst! line here.\n\nSecond, merged.\n')
   await made.bridge.settled()
   await sleep(CHANGE_EVERY + 100)
@@ -281,4 +281,80 @@ it('takes the theme and says an unknown command is one', async () => {
   made.bridge.command('explode')
   await made.bridge.settled()
   expect(of(made.seen, 'error')).toEqual([{ type: 'error', message: 'unknown command: explode' }])
+})
+
+it('tells what was typed before the tap on a wiki link, and before a new note when blurred first', async () => {
+  const made = await open('Go to [[Compost]]\n\nTyping here\n')
+  caretAfter(made, 'here')
+  made.bridge.command('insertText', { text: ' more' })
+  await made.bridge.settled()
+  const link = made.host.querySelector('.nx-wiki[data-target]:not(.nx-wiki-editing)')!
+  link.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }))
+  link.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }))
+  // The typing comes first, so the app files it under the note it was typed in.
+  expect(made.seen.filter((message) => message.type === 'change' || message.type === 'openLink')).toEqual([
+    { type: 'change', text: 'Go to [[Compost]]\n\nTyping here more\n' },
+    { type: 'openLink', target: 'Compost', kind: 'wiki' },
+  ])
+
+  const next = await open('Note A\n')
+  caretAfter(next, 'A')
+  next.bridge.command('insertText', { text: ' typed' })
+  await next.bridge.settled()
+  next.bridge.blur()
+  next.bridge.load({ text: 'Note B\n' })
+  await next.bridge.settled()
+  await sleep(CHANGE_EVERY + 100)
+  expect(of(next.seen, 'change')).toEqual([{ type: 'change', text: 'Note A typed\n' }])
+})
+
+it('keeps what is typed while a merged text comes from outside', async () => {
+  const made = await open('Line one\n\nLine two\n')
+  caretAfter(made, 'two')
+  made.bridge.command('insertText', { text: ' typed' })
+  await made.bridge.settled()
+  // The app merged what it was told last; the typing since is laid onto its text and told.
+  made.bridge.setText('---\nstatus: merged\n---\nLine one merged\n\nLine two\n')
+  expect(await told(made)).toBe('---\nstatus: merged\n---\nLine one merged\n\nLine two typed\n')
+  expect(made.host.querySelector('.ProseMirror')?.textContent).toBe('Line one mergedLine two typed')
+  // The caret is still after the typing, though the text before it grew.
+  made.bridge.command('insertText', { text: '!' })
+  expect(await told(made)).toBe('---\nstatus: merged\n---\nLine one merged\n\nLine two typed!\n')
+})
+
+it('reads a note that starts with a picture or a link as it is shown, not as its source', async () => {
+  const made = await open('![[Photo.png]]\n\nSee [[Compost]].\n', { readOnly: true })
+  expect(of(made.seen, 'asset').map((message) => message.path)).toEqual(['Photo.png'])
+  const first = await open('[[Compost]] first\n\nText.\n', { readOnly: true })
+  expect(first.host.querySelector('.nx-wiki')).toBeTruthy()
+  expect(first.host.querySelector('.nx-wiki-editing')).toBeNull()
+
+  // Writing shows the link at the caret as its source; reading again shows it as a link.
+  const toggled = await open('[[Compost]] first\n\nText.\n')
+  caretAfter(toggled, 'Comp')
+  expect(toggled.host.querySelector('.nx-wiki-editing')).toBeTruthy()
+  toggled.bridge.setReadOnly(true)
+  await toggled.bridge.settled()
+  expect(toggled.host.querySelector('.nx-wiki-editing')).toBeNull()
+})
+
+it('takes suggestions written with their # or brackets', async () => {
+  const made = await open('Start\n')
+  caretAfter(made, 'Start')
+  const view = made.bridge.current()!.view
+  made.bridge.command('insertText', { text: ' #gre' })
+  await made.bridge.settled()
+  const tag = of(made.seen, 'suggest').find((message) => message.kind === 'tag' && message.query === 'gre')!
+  made.bridge.answer(tag.id, [{ label: '#green', insert: '#green' }])
+  await expect.poll(() => document.querySelector('.nx-suggest')?.textContent).toBe('#green')
+  view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+  expect(await told(made)).toBe('Start #green\n')
+
+  made.bridge.command('insertText', { text: ' [[Com' })
+  await made.bridge.settled()
+  const wiki = of(made.seen, 'suggest').find((message) => message.kind === 'wiki' && message.query === 'Com')!
+  made.bridge.answer(wiki.id, [{ label: 'Compost', insert: '[[Garden/Compost]]' }])
+  await expect.poll(() => document.querySelector('.nx-suggest')?.textContent).toBe('Compost')
+  view.dom.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+  expect(await told(made)).toBe('Start #green [[Garden/Compost]]\n')
 })

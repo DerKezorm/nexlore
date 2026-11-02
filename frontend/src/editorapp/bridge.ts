@@ -12,6 +12,7 @@
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { setBlockType } from '@milkdown/kit/prose/commands'
+import type { Node as ProseNode } from '@milkdown/kit/prose/model'
 import { PluginKey, TextSelection } from '@milkdown/kit/prose/state'
 import { $prose } from '@milkdown/kit/utils'
 
@@ -23,6 +24,7 @@ import { editorLabels } from '../editor/labels'
 import type { EmbedShown, LinkHelpers } from '../editor/live'
 import { linkSuggest, refreshSuggest, type Active, type Suggestion } from '../editor/suggest'
 import { fileKind, isFileTarget } from '../lib/files'
+import { rebase } from './rebase'
 
 export type Theme = { mode: 'dark' | 'light'; accent?: string }
 
@@ -88,16 +90,19 @@ export function assetPath(written: string): string | null {
   return path || null
 }
 
-/** An answer to `suggest`: what the list can show, nothing else. */
-function suggestionList(payload: unknown): Suggestion[] {
+/** An answer to `suggest`: what the list can show, nothing else. The `#` or brackets around it are already typed. */
+function suggestionList(payload: unknown, kind: 'wiki' | 'tag'): Suggestion[] {
   if (!Array.isArray(payload)) return []
   return payload
     .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object' && typeof item.label === 'string')
-    .map((item) => ({
-      label: item.label as string,
-      insert: typeof item.insert === 'string' ? item.insert : (item.label as string),
-      detail: typeof item.detail === 'string' ? item.detail : '',
-    }))
+    .map((item) => {
+      const insert = typeof item.insert === 'string' ? item.insert : (item.label as string)
+      return {
+        label: item.label as string,
+        insert: kind === 'tag' ? insert.replace(/^#+/, '') : insert.replace(/^\[\[(.*)\]\]$/s, '$1'),
+        detail: typeof item.detail === 'string' ? item.detail : '',
+      }
+    })
 }
 
 /** An answer to `asset`: its address, or '' for none (a script address never becomes the source of a frame). */
@@ -105,6 +110,32 @@ function assetUrl(payload: unknown): string {
   const url = payload && typeof payload === 'object' ? (payload as { url?: unknown }).url : null
   if (typeof url !== 'string' || /^\s*(javascript|vbscript):/i.test(url)) return ''
   return url
+}
+
+/** The plain text of a document up to a position, its blocks a line apart. */
+const plain = (doc: ProseNode, to: number) => doc.textBetween(0, to, '\n', '\ufffc')
+
+/** The first position of a document with `count` characters of plain text before it. */
+function positionAt(doc: ProseNode, count: number): number {
+  let low = 0
+  let high = doc.content.size
+  while (low < high) {
+    const middle = (low + high) >> 1
+    if (plain(doc, middle).length >= count) high = middle
+    else low = middle + 1
+  }
+  return low
+}
+
+/** A place in a plain text, carried over a change of it: it stays before the change and moves with what follows. */
+function carry(at: number, before: string, after: string): number {
+  let start = 0
+  while (start < before.length && start < after.length && before[start] === after[start]) start++
+  let end = 0
+  while (end < before.length - start && end < after.length - start && before[before.length - 1 - end] === after[after.length - 1 - end]) end++
+  if (at <= start) return at
+  if (at >= before.length - end) return at + after.length - before.length
+  return Math.min(at, after.length - end)
 }
 
 export function applyTheme(theme: Theme | undefined): void {
@@ -133,6 +164,8 @@ export function createBridge(host: HTMLElement, post: (message: Message) => void
 
   let editor: NoteEditor | null = null
   let head = ''
+  // The text the app knows the editor holds: what it loaded or set, or what it was told last.
+  let told = ''
   let readOnly = false
   let queue: Promise<void> = Promise.resolve()
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -151,15 +184,31 @@ export function createBridge(host: HTMLElement, post: (message: Message) => void
 
   const flush = () => {
     timer = null
-    if (editor) post({ type: 'change', text: head + editor.text() })
+    if (!editor) return
+    told = head + editor.text()
+    post({ type: 'change', text: told })
   }
   const changed = () => {
     timer ??= setTimeout(flush, CHANGE_EVERY)
   }
-  /** A change not yet told goes when another note or a text from outside comes: it belonged to the old one. */
+  /** What was typed and not told yet goes now, not after the wait. */
+  const flushNow = () => {
+    if (timer === null) return
+    clearTimeout(timer)
+    flush()
+  }
+  /**
+   * A change not yet told goes when another note comes: a `change` after `load` would be taken for the new note. The
+   * app that wants it calls `blur` first. A text from outside takes it along (`setText`).
+   */
   const drop = () => {
     if (timer !== null) clearTimeout(timer)
     timer = null
+  }
+  /** A tap that leads elsewhere: the typing before it is told first, while the app still has this note open. */
+  const openLink = (target: string, kind: 'wiki' | 'url' | 'tag') => {
+    flushNow()
+    post({ type: 'openLink', target, kind })
   }
 
   const measure = () => {
@@ -219,7 +268,7 @@ export function createBridge(host: HTMLElement, post: (message: Message) => void
       const id = String(++asked)
       waiting.set(id, (payload) => {
         if (forNote !== suggestions) return
-        forNote.set(key, suggestionList(payload))
+        forNote.set(key, suggestionList(payload, kind))
         if (editor) refreshSuggest(editor.view, kind === 'tag' ? tagKey : undefined)
       })
       post({ type: 'suggest', id, kind, query })
@@ -257,7 +306,7 @@ export function createBridge(host: HTMLElement, post: (message: Message) => void
   const helpers: LinkHelpers = {
     // Which notes exist only the app knows; no link is drawn as missing.
     exists: () => true,
-    open: (target) => post({ type: 'openLink', target, kind: 'wiki' }),
+    open: (target) => openLink(target, 'wiki'),
     embed: (target): EmbedShown | null | undefined => {
       const name = target.split('#')[0].split('|')[0].trim()
       if (!isFileTarget(name)) return null
@@ -296,13 +345,13 @@ export function createBridge(host: HTMLElement, post: (message: Message) => void
     const anchor = target?.closest?.('a[href]')
     if (anchor && host.contains(anchor)) {
       event.preventDefault()
-      if (readOnly) post({ type: 'openLink', target: anchor.getAttribute('href') ?? '', kind: 'url' })
+      if (readOnly) openLink(anchor.getAttribute('href') ?? '', 'url')
       return
     }
     const tag = target?.closest?.('.nx-tag')
     if (tag && editorBox.contains(tag) && readOnly) {
       event.preventDefault()
-      post({ type: 'openLink', target: (tag.textContent ?? '').replace(/^#/, ''), kind: 'tag' })
+      openLink((tag.textContent ?? '').replace(/^#/, ''), 'tag')
     }
   }
   host.addEventListener('click', clicked, true)
@@ -335,7 +384,7 @@ export function createBridge(host: HTMLElement, post: (message: Message) => void
         const { from, empty, $from } = view.state.selection
         // Chosen words become the tag; otherwise "#" at the caret, after a blank, and the suggestions open.
         if (!empty) return view.dispatch(view.state.tr.insertText('#', from).scrollIntoView())
-        const before = $from.parent.textBetween(Math.max(0, $from.parentOffset - 1), $from.parentOffset, undefined, '￼')
+        const before = $from.parent.textBetween(Math.max(0, $from.parentOffset - 1), $from.parentOffset, undefined, '\ufffc')
         return view.dispatch(view.state.tr.insertText(before && !/\s/.test(before) ? ' #' : '#').scrollIntoView())
       }
       case 'insertText':
@@ -364,6 +413,7 @@ export function createBridge(host: HTMLElement, post: (message: Message) => void
         readOnly = !!options?.readOnly
         const split = splitNote(String(options?.text ?? ''))
         head = split.head
+        told = head + split.body
         showHead()
         const root = document.createElement('div')
         editorBox.replaceChildren(root)
@@ -399,7 +449,13 @@ export function createBridge(host: HTMLElement, post: (message: Message) => void
       enqueue(() => {
         drop()
         if (!editor) return
-        const split = splitNote(String(text ?? ''))
+        const outside = String(text ?? '')
+        // Typing the app was not told of yet is laid onto its text and told after the wait; where the app's text
+        // changed that very place, its text is taken.
+        const merged = rebase(told, head + editor.text(), outside) ?? outside
+        told = outside
+        if (merged !== outside) changed()
+        const split = splitNote(merged)
         if (split.head !== head) {
           head = split.head
           showHead()
@@ -407,11 +463,14 @@ export function createBridge(host: HTMLElement, post: (message: Message) => void
         if (split.body === editor.text()) return
         const { view } = editor
         const { from, to } = view.state.selection
+        const old = view.state.doc
+        const before = plain(old, old.content.size)
         editor.replace(split.body)
-        // The caret stays where it was, as far as the new text reaches.
+        // The caret stays by the words it stood at, as far as the new text keeps them.
         const { doc } = view.state
-        const clamp = (at: number) => Math.max(0, Math.min(at, doc.content.size))
-        view.dispatch(view.state.tr.setSelection(TextSelection.between(doc.resolve(clamp(from)), doc.resolve(clamp(to)))))
+        const after = plain(doc, doc.content.size)
+        const [anchor, focus] = [from, to].map((at) => positionAt(doc, carry(plain(old, at).length, before, after)))
+        view.dispatch(view.state.tr.setSelection(TextSelection.between(doc.resolve(anchor), doc.resolve(focus))))
       })
     },
     setTheme: (theme) => applyTheme(theme),
@@ -438,13 +497,12 @@ export function createBridge(host: HTMLElement, post: (message: Message) => void
     },
     focus: () => enqueue(() => editor?.view.focus()),
     blur: () => {
+      // Leaving the text: what was typed goes now, not after the wait. Typed so far at once, before a `load` that
+      // may follow; typed by the calls still queued when they are done.
+      flushNow()
       enqueue(() => {
         ;(editor?.view.dom as HTMLElement | undefined)?.blur()
-        // Leaving the text: what was typed goes now, not after the wait.
-        if (timer !== null) {
-          clearTimeout(timer)
-          flush()
-        }
+        flushNow()
       })
     },
     settled: () => queue,

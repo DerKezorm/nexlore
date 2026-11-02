@@ -394,6 +394,8 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
   let quiet = false
   const lines: LineControl = { set: () => {} }
   const listeners = new Set<() => void>()
+  // Read only: the live preview then shows no syntax at the caret.
+  let reading = !!options.readOnly
 
   const crepe = new Crepe({
     root: options.root,
@@ -587,7 +589,7 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
           }),
       ),
     )
-    .use($prose(() => livePreview(options.links)))
+    .use($prose(() => livePreview(options.links, () => reading)))
     .use($prose(() => blockPreviews()))
     .use($prose(() => findPlugin()))
     .use($prose(() => commentPlugin()))
@@ -966,7 +968,12 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
       refreshLive(view)
       refreshSuggest(view)
     },
-    setReadOnly: (readOnly) => crepe.setReadonly(readOnly),
+    setReadOnly: (readOnly) => {
+      crepe.setReadonly(readOnly)
+      if (readOnly === reading) return
+      reading = readOnly
+      refreshLive(view)
+    },
     destroy: async () => {
       handleWatch.disconnect()
       stopSlashAria()
