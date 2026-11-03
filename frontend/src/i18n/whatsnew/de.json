@@ -471,5 +471,29 @@
     ],
     "smallTitle": "Außerdem",
     "small": []
+  },
+  "1.9.0": {
+    "lead": "nexlore bekommt eine App für iPhone und iPad. Sie hält deine Notizen auf dem Gerät, damit du auch ohne Netz liest und schreibst, und gleicht ab, sobald wieder Verbindung da ist.",
+    "sections": [
+      {
+        "title": "Die iPhone-App verbinden",
+        "where": "Kontomenü, Mein Konto, Sicherheit, iPhone-App verbinden",
+        "body": "nexlore zeigt einen QR-Code und einen kurzen Code. Die Kamera des iPhones öffnet damit die App, oder du tippst Adresse und Code in der App ein. Ein verbundenes iPhone hat dieselben Rechte wie dein Browser. In derselben Karte siehst du, wann jedes iPhone zuletzt da war, und trennst es mit einem Tippen; „Überall sonst abmelden“ und ein neues Passwort trennen es ebenfalls."
+      },
+      {
+        "title": "Abgleich ohne Verlust",
+        "where": "Die App",
+        "body": "Die App arbeitet immer auf ihrer Kopie und schickt Änderungen samt dem Stand, auf dem sie beruhen. Hat sich die Notiz auf dem Server inzwischen an anderer Stelle geändert, führt nexlore beides zusammen; trifft es dieselbe Stelle, entscheidest du in der App, und der verworfene Text bleibt in den Versionen."
+      },
+      {
+        "title": "Für Betreiber",
+        "where": "Einstellungen, Server, KI, API und Plugins, iPhone-App",
+        "body": "Ab Werk dürfen sich Konten mit der App verbinden. Hier schaltest du das für alle ab. Die App spricht mit nexlore unter /api/app/1; beschrieben ist das in docs/api.md."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Die App steht bald im App Store. Sie braucht nexlore 1.9.0 oder neuer."
+    ]
   }
 }

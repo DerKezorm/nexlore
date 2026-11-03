@@ -471,5 +471,29 @@
     ],
     "smallTitle": "Also",
     "small": []
+  },
+  "1.9.0": {
+    "lead": "nexlore gets an app for iPhone and iPad. It keeps your notes on the device, so you read and write without a connection too, and syncs as soon as you are back online.",
+    "sections": [
+      {
+        "title": "Connect the iPhone app",
+        "where": "Account menu, My account, Security, Connect the iPhone app",
+        "body": "nexlore shows a QR code and a short code. The iPhone's camera opens the app with it, or you type the address and the code into the app. A connected iPhone has the same rights as your browser. The same card shows when each iPhone was last seen and disconnects it with one tap; “Sign out everywhere else” and a new password disconnect it as well."
+      },
+      {
+        "title": "Sync without loss",
+        "where": "The app",
+        "body": "The app always works on its own copy and sends changes along with the state they are based on. If the note changed elsewhere on the server meanwhile, nexlore merges both; if the same place changed, you decide in the app, and the text you drop stays in the versions."
+      },
+      {
+        "title": "For operators",
+        "where": "Settings, Server, AI, API and plugins, iPhone app",
+        "body": "Out of the box, accounts may connect the app. This is where you turn it off for everyone. The app talks to nexlore under /api/app/1, described in docs/api.md."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "The app comes to the App Store soon. It needs nexlore 1.9.0 or later."
+    ]
   }
 }
