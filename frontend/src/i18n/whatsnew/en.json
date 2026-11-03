@@ -459,5 +459,17 @@
     ],
     "smallTitle": "Also",
     "small": []
+  },
+  "1.8.2": {
+    "lead": "The map now shows in Firefox too.",
+    "sections": [
+      {
+        "title": "The map in Firefox",
+        "where": "The map",
+        "body": "Firefox drew no map at all and said WebGL 2 was not available, even where it works. Two values in the drawing were set with a different precision for the shape and for the colour, which Chrome lets pass and Firefox does not. Both now agree, and the map shows in Firefox as it does in Chrome."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": []
   }
 }

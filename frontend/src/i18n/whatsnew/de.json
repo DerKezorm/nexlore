@@ -459,5 +459,17 @@
     ],
     "smallTitle": "Außerdem",
     "small": []
+  },
+  "1.8.2": {
+    "lead": "Die Karte erscheint jetzt auch in Firefox.",
+    "sections": [
+      {
+        "title": "Die Karte in Firefox",
+        "where": "Die Karte",
+        "body": "Firefox zeichnete gar keine Karte und meldete, WebGL 2 sei nicht verfügbar, auch wo es läuft. Zwei Werte der Zeichnung hatten für die Form und für die Farbe eine andere Genauigkeit, was Chrome durchgehen lässt und Firefox nicht. Jetzt stimmen beide überein, und die Karte erscheint in Firefox wie in Chrome."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": []
   }
 }
