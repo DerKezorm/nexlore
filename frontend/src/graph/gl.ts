@@ -101,10 +101,13 @@ void main() {
   if (a < 0.004) gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
 }`
 
+// A uniform both shaders of a program declare must have the same precision there. Floats are highp in the vertex
+// shader and mediump in these fragment shaders, so a shared one says highp: Firefox refuses to link the program
+// otherwise, Chrome lets it pass (issue #16).
 const POINT_FS = `#version 300 es
 precision mediump float;
 in vec4 vColor; in float vPix; in float vOuter; in float vRing;
-uniform vec3 accent; uniform float dpr; uniform float light; uniform highp float glow;
+uniform vec3 accent; uniform float light; uniform highp float glow;
 out vec4 o;
 void main() {
   float d = length(gl_PointCoord * 2.0 - 1.0) * vOuter;    // CSS pixels from the middle
@@ -146,7 +149,7 @@ void main() {
 const BUBBLE_FS = `#version 300 es
 precision mediump float;
 in vec2 vLocal; in float vR; in float vShell; in float vRing; in vec4 vColor; in vec4 vFlag;
-uniform float focusOn; uniform float light; uniform vec3 accent;
+uniform highp float focusOn; uniform float light; uniform vec3 accent;
 out vec4 o;
 void main() {
   float d = length(vLocal);
@@ -226,6 +229,14 @@ void main() {
   vec3 c = vHot > 0.5 ? accent : edge;
   o = vec4(c * a, a);
 }`
+
+/** The four programs, vertex and fragment shader each. */
+export const SHADERS = {
+  points: [POINT_VS, POINT_FS],
+  bubbles: [BUBBLE_VS, BUBBLE_FS],
+  lines: [LINE_VS, LINE_FS],
+  bands: [BAND_VS, BAND_FS],
+} as const
 
 function compile(gl: WebGL2RenderingContext, vs: string, fs: string): WebGLProgram {
   const program = gl.createProgram()!
@@ -341,10 +352,10 @@ export class GraphGL {
     this.pointLimit = range?.[1] && range[1] > 1 ? range[1] : 64
     const F = gl.FLOAT
     const U = gl.UNSIGNED_BYTE
-    const points = compile(gl, POINT_VS, POINT_FS)
-    const bubbles = compile(gl, BUBBLE_VS, BUBBLE_FS)
-    const lines = compile(gl, LINE_VS, LINE_FS)
-    const bands = compile(gl, BAND_VS, BAND_FS)
+    const points = compile(gl, ...SHADERS.points)
+    const bubbles = compile(gl, ...SHADERS.bubbles)
+    const lines = compile(gl, ...SHADERS.lines)
+    const bands = compile(gl, ...SHADERS.bands)
     this.programs = [points, bubbles, lines, bands]
     this.points = new Layer(gl, points, POINT_STRIDE, [
       { name: 'pos', size: 2, type: F, offset: 0 },
