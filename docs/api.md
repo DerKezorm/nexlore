@@ -7,6 +7,8 @@ renames, shares or touches members: no route for that exists here.
 
 MCP for AI programs is a separate way in with its own keys, see [mcp.md](mcp.md).
 
+nexlore's own iPhone app has a way in of its own as well, `/api/app/1`, described further down.
+
 ## Switching it on
 
 API tokens are off until the operator opens them: Settings, Server, AI, API and plugins, card "API tokens". While
@@ -335,3 +337,22 @@ curl -H "Authorization: Bearer $NEXLORE_TOKEN" https://notes.example.com/api/v1/
 curl -X POST -H "Authorization: Bearer $NEXLORE_TOKEN" -H "Content-Type: application/json" \
   -d '{"text": "from curl"}' https://notes.example.com/api/v1/inbox
 ```
+
+## The iPhone app: `/api/app/1`
+
+nexlore's iPhone app talks to its own part of the API, `/api/app/1`, not to `/api/v1`. It works offline on a copy of
+the vault and sends its changes later, so it needs what a script does not: changes since a cursor, several changes in
+one request, the base a change was made on.
+
+- **Pairing** happens in the browser: on the account page, "Connect the iPhone app" shows a QR code and a short
+  code; the app can also sign in through `/app-connect`. The app gets a device key (`nxd_...`) that acts as the
+  account, with the same rights per space as the interface. The operator can close pairing for everybody.
+- **The key opens nothing else.** A device key works only under `/api/app/1`, and a token or a browser session opens
+  nothing there.
+- **The promise:** while `app/1` is in the address, nothing changes that breaks the app. A change that must break
+  comes as `/api/app/2` beside it. The addresses are listed in `PROMISED` in `backend/app/routers/app1.py`, the fields
+  of every answer in `backend/tests/app1_contract.json`.
+- **Without a key** every address answers `401 not_signed_in`; a nexlore older than the app's part of the API answers
+  `GET /api/app/1/me` with `404`.
+
+The routes are made for the app and not meant for scripts; for your own programs `/api/v1` above is the way.

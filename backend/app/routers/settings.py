@@ -42,6 +42,7 @@ class SettingsOut(BaseModel):
     mcp_max_level: str
     mcp_oauth_allowed: bool
     api_tokens_allowed: bool
+    app_pairing_allowed: bool
     calendar_feed_allowed: bool
     link_titles_allowed: bool
     plugin_upload_allowed: bool
@@ -74,6 +75,7 @@ class SettingsIn(BaseModel):
     mcp_max_level: Literal["read", "draft", "write"] | None = None
     mcp_oauth_allowed: bool | None = None
     api_tokens_allowed: bool | None = None
+    app_pairing_allowed: bool | None = None
     calendar_feed_allowed: bool | None = None
     link_titles_allowed: bool | None = None
     plugin_upload_allowed: bool | None = None
@@ -110,6 +112,7 @@ def _view(db: DbSession) -> SettingsOut:
         mcp_max_level=str(values["mcp_max_level"]),
         mcp_oauth_allowed=bool(values["mcp_oauth_allowed"]),
         api_tokens_allowed=bool(values["api_tokens_allowed"]),
+        app_pairing_allowed=bool(values["app_pairing_allowed"]),
         calendar_feed_allowed=bool(values["calendar_feed_allowed"]),
         link_titles_allowed=bool(values["link_titles_allowed"]),
         plugin_upload_allowed=bool(values["plugin_upload_allowed"]),

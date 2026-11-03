@@ -9,6 +9,7 @@ import { AccountPage } from './pages/AccountPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { CleanupPage } from './pages/CleanupPage'
 import { AboutPage } from './pages/AboutPage'
+import { AppConnectPage } from './pages/AppConnectPage'
 import { ConnectPage } from './pages/ConnectPage'
 import { McpRequestsPage } from './pages/McpRequestsPage'
 import { CaptureRoute } from './pages/CaptureRoute'
@@ -75,6 +76,15 @@ export default function App() {
         element={
           <SignedIn>
             <ConnectPage />
+          </SignedIn>
+        }
+      />
+      {/* The iPhone app connecting by address: sign in as always, then confirm, without the app around it. */}
+      <Route
+        path="app-connect"
+        element={
+          <SignedIn>
+            <AppConnectPage />
           </SignedIn>
         }
       />

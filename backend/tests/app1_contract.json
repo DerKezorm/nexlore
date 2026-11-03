@@ -1,0 +1,88 @@
+{
+  "DELETE /api/app/1/device": [],
+  "GET /api/app/1/changes": [
+    "cursor",
+    "items",
+    "items.deleted",
+    "items.hash",
+    "items.id",
+    "items.kind",
+    "items.mtime",
+    "items.path",
+    "items.size",
+    "items.space",
+    "more",
+    "spaces",
+    "spaces.color",
+    "spaces.icon",
+    "spaces.id",
+    "spaces.name",
+    "spaces.role"
+  ],
+  "GET /api/app/1/files/{file_id}": [],
+  "GET /api/app/1/me": [
+    "account",
+    "account.id",
+    "account.name",
+    "account.operator",
+    "account.username",
+    "device",
+    "device.id",
+    "device.name",
+    "features",
+    "spaces",
+    "spaces.color",
+    "spaces.icon",
+    "spaces.id",
+    "spaces.name",
+    "spaces.role",
+    "version"
+  ],
+  "GET /api/app/1/notes/{file_id}/base": [
+    "hash",
+    "text"
+  ],
+  "GET /api/app/1/wait": [
+    "cursor"
+  ],
+  "POST /api/app/1/batch": [
+    "cursor",
+    "results",
+    "results.code",
+    "results.hash",
+    "results.id",
+    "results.ok",
+    "results.op_id",
+    "results.path",
+    "results.touched"
+  ],
+  "POST /api/app/1/fetch": [
+    "missing",
+    "notes",
+    "notes.hash",
+    "notes.id",
+    "notes.path",
+    "notes.text"
+  ],
+  "POST /api/app/1/files": [
+    "code",
+    "hash",
+    "id",
+    "ok",
+    "op_id",
+    "path",
+    "touched"
+  ],
+  "POST /api/app/1/pairing/code": [
+    "account",
+    "account.id",
+    "account.name",
+    "key"
+  ],
+  "POST /api/app/1/pairing/{pairing_id}/key": [
+    "account",
+    "account.id",
+    "account.name",
+    "key"
+  ]
+}

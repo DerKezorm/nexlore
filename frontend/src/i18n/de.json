@@ -863,7 +863,19 @@
       "email_no_offer": "Der Anmeldedienst meldet keine andere Adresse.",
       "bad_task_status": "Diese Liste lässt sich nicht speichern: Jeder Eintrag ist ein Zeichen, nur einmal, ohne Klammer.",
       "cover_not_a_picture": "Das ist kein Bild, das nexlore annimmt (JPEG, PNG, WebP, GIF, HEIC oder AVIF).",
-      "cover_too_large": "Das Bild ist zu groß (höchstens {{max_mb}} MB)."
+      "cover_too_large": "Das Bild ist zu groß (höchstens {{max_mb}} MB).",
+      "not_signed_in": "Dieses Gerät ist nicht mehr angemeldet. Verbinde es neu.",
+      "app_disabled": "Der Betreiber hat die iPhone-App abgeschaltet.",
+      "too_many": "Zu viele Anfragen. Kurz warten und noch einmal.",
+      "app_address_missing": "nexlore kennt seine Adresse nicht. Der Betreiber trägt sie in den Einstellungen ein.",
+      "app_too_many_pairings": "Es warten schon fünf Codes. Schließe einen oder warte, bis er abläuft.",
+      "app_pairing_unknown": "Diesen Code gibt es nicht oder er gilt nicht mehr.",
+      "cursor_expired": "Der Abgleich fängt von vorn an.",
+      "bad_path": "Dieser Name oder Ort geht nicht.",
+      "stale": "Die Notiz wurde inzwischen woanders geändert.",
+      "in_trash": "Die Notiz liegt im Papierkorb.",
+      "across_spaces": "Notizen bleiben in ihrem Bereich.",
+      "skipped": "Übersprungen, weil eine Änderung davor nicht ging."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
@@ -1150,7 +1162,28 @@
       "submit": "Überall sonst abmelden",
       "done": "Alle anderen Browser sind abgemeldet."
     },
-    "unlinked": "Nicht mehr mit {{name}} verknüpft."
+    "unlinked": "Nicht mehr mit {{name}} verknüpft.",
+    "app": {
+      "title": "iPhone-App",
+      "text": "Verbundene iPhones haben dieselben Rechte wie dieser Browser. Getrennt wird ein iPhone hier, mit „Überall sonst abmelden“ oder mit einem neuen Passwort.",
+      "connect": "iPhone-App verbinden",
+      "scan": "Öffne die Kamera des iPhones und richte sie auf den Code.",
+      "orType": "Oder tippe in der App die Adresse und den Code ein.",
+      "address": "Adresse",
+      "code": "Code",
+      "qr": "QR-Code zum Verbinden der iPhone-App",
+      "left_one": "Gilt noch {{count}} Minute.",
+      "left_other": "Gilt noch {{count}} Minuten.",
+      "connected": "{{name}} ist verbunden.",
+      "expired": "Der Code ist abgelaufen.",
+      "again": "Neuer Code",
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "seen": "Zuletzt gesehen {{when}}",
+      "never": "Noch nicht gesehen",
+      "disconnect": "Trennen",
+      "disconnectNamed": "{{name}} trennen"
+    }
   },
   "members": {
     "title": "Mitglieder von {{space}}",
@@ -1491,6 +1524,12 @@
       "coupled": "über die Kopplung",
       "copy": "Kopieren",
       "more": "Mehr"
+    },
+    "app": {
+      "title": "iPhone-App",
+      "text": "Konten verbinden die eigene iPhone-App mit nexlore. Sie kann nichts, was der Browser nicht auch kann. Ab Werk an.",
+      "allow": "Die iPhone-App darf sich verbinden",
+      "hint": "Ausgeschaltet kommt kein Gerät mehr herein und keines kann neu verbunden werden. Verbundene Geräte bleiben und gehen wieder, wenn du einschaltest."
     }
   },
   "today": {
@@ -2726,5 +2765,14 @@
     },
     "browse": "Stöbern",
     "browseHint": "Durch Bereiche und Ordner blättern wie durch Plattencover"
+  },
+  "appConnect": {
+    "title": "iPhone verbinden",
+    "text": "Angemeldet als {{account}}. Das Gerät „{{device}}“ möchte sich verbinden.",
+    "rights": "Es bekommt dieselben Rechte wie dieser Browser. Trennen kannst du es jederzeit unter Mein Konto, Sicherheit.",
+    "confirm": "iPhone verbinden",
+    "cancel": "Abbrechen",
+    "doneTitle": "Zurück zur App",
+    "done": "Die App übernimmt jetzt. Du kannst dieses Fenster schließen."
   }
 }

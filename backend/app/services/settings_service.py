@@ -60,6 +60,8 @@ DEFAULTS: dict[str, Any] = {
     #: Tokens for programs such as n8n or nexdeck (``/api/v1``): a way in from outside, closed until the operator
     #: opens it.
     "api_tokens_allowed": False,
+    #: The own iPhone app may be paired (``/api/app/1``): open from the start, it can do nothing the browser cannot.
+    "app_pairing_allowed": True,
     #: Notifications (block Z2): the day the disk was last looked at, and the newest version operators were told of.
     "notify_disk_day": "",
     "notify_version": "",

@@ -1,6 +1,6 @@
 /**
  * The own account, in tabs like the settings: Profile (name, picture), Security (password,
- * second factor, the link to the provider, signing out everywhere), AI (AI in notes, keys for AI from outside) and
+ * second factor, the link to the provider, the paired iPhones, signing out everywhere), AI (AI in notes, keys for AI from outside) and
  * Plugins. The tab stands in the address (`?tab=`); the old anchors (`#ai`, `#mcp`, `#plugins`) still lead there.
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
@@ -10,6 +10,7 @@ import { useLocation, useSearchParams } from 'react-router-dom'
 import { ApiError, authApi, type MyProvider } from '../api/client'
 import { Field, Problem } from '../components/AuthFrame'
 import { AiAccess } from '../components/AiAccess'
+import { AppDevices } from '../components/AppDevices'
 import { ApiTokens } from '../components/ApiTokens'
 import { Avatar } from '../components/Avatar'
 import { MailAddress } from '../components/MailAddress'
@@ -321,6 +322,8 @@ export function AccountPage() {
                 </ul>
               </Section>
             )}
+
+            <AppDevices />
 
             <Section symbol="lock" title={t('account.sessions.title')}>
               <p className="mb-3 text-sm text-mist-400">{t('account.sessions.text')}</p>

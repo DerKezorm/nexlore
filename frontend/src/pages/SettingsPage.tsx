@@ -31,6 +31,7 @@ import { SnippetsCard } from '../components/settings/SnippetsCard'
 import { ThemesCard } from '../components/settings/ThemesCard'
 import { SpacesCard } from '../components/settings/SpacesCard'
 import { CalendarFeedSwitch } from '../components/settings/CalendarFeed'
+import { AppPairingSwitch } from '../components/settings/AppPairingSwitch'
 import { LinkTitleSwitch } from '../components/settings/LinkTitleSwitch'
 import { LogCard } from '../components/settings/LogCard'
 import { SignInPart } from '../components/settings/SignInCards'
@@ -115,6 +116,7 @@ function ServerPart({ part }: { part: Part }) {
         settings && (
           <>
             <ApiTokensCard settings={settings} onChange={setSettings} />
+            <AppPairingSwitch settings={settings} onChange={setSettings} />
             <McpCard settings={settings} onChange={setSettings} />
             <CalendarFeedSwitch settings={settings} onChange={setSettings} />
             <LinkTitleSwitch settings={settings} onChange={setSettings} />

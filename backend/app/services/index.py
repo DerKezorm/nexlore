@@ -46,7 +46,7 @@ from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import FTS_TABLE, File, Link, Lock, Setting, Space, Tag, Task, Version, utcnow
-from . import canvas, mdparse, midword, paths
+from . import canvas, cursor, mdparse, midword, paths
 from . import tasks as tasks_service
 from .prepare import (
     MAX_NOTE_BYTES,
@@ -606,6 +606,8 @@ def bulk_add(db: Session, items: list[Prepared]) -> list[tuple[int, int, str, st
             "features": item.analysis.features, "indexed_at": now,
         })
     connection = db.connection()
+    # Past the session, so past its hook: the rows get their ids and numbers here (``cursor``).
+    cursor.stamp_rows(connection, rows)
     ids = connection.execute(insert(File).returning(File.id, sort_by_parameter_order=True), rows).scalars().all()
     versions = []
     content = _Rows()

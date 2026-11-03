@@ -11,6 +11,8 @@
     "test": "vitest run",
     "e2e": "node scripts/pdfjs-assets.mjs && vite build && playwright test",
     "test:browser": "vitest run --config vitest.browser.config.ts",
+    "editor-app": "node scripts/editor-app-pack.mjs",
+    "test:editor-app": "node scripts/editor-app-pack.mjs && playwright test --config playwright.editor.config.ts",
     "icons": "node scripts/icons.mjs",
     "pdfjs": "node scripts/pdfjs-assets.mjs"
   },

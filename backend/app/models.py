@@ -116,6 +116,10 @@ class File(Base):
     #: The account that uploaded the file; its size counts against that account's space. Empty for files that came
     #: from elsewhere (the disk, an import).
     owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    #: Where the row stands in the vault's sequence of changes (``services/cursor.py``): set anew whenever its path,
+    #: content or trash state changes, from wherever the change came. The iPhone app asks for what changed since a
+    #: number (``/api/app/1/changes``).
+    cursor: Mapped[int] = mapped_column(Integer, default=0, index=True)
 
 
 class Link(Base):
@@ -972,3 +976,87 @@ class PluginUser(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     #: Unused: no plugin could reach it (the page offered no way). Kept, because columns are never dropped here.
     data: Mapped[Any] = mapped_column(JSON, nullable=True)
+
+
+# --- The iPhone app (``/api/app/1``) -----------------------------------------------------------------------------
+
+
+class VaultCursor(Base):
+    """One row: the vault's change counter (``services/cursor.py``). ``last`` is the newest number handed out,
+    ``oldest`` the oldest one ``/api/app/1/changes`` still answers for (it rises when rows go for good), ``top_id``
+    the highest file id ever handed out, so that a new file never takes the id of one gone for good."""
+
+    __tablename__ = "vault_cursor"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    last: Mapped[int] = mapped_column(Integer, default=0)
+    oldest: Mapped[int] = mapped_column(Integer, default=0)
+    top_id: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class GoneFile(Base):
+    """A live row that went without passing through the trash (a scan folding a moved file into its old row): the
+    app hears of it as deleted. Goes, and the oldest cursor rises past it, after the trash's time."""
+
+    __tablename__ = "gone_files"
+
+    file_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    space_id: Mapped[int] = mapped_column(Integer, index=True)
+    path: Mapped[str] = mapped_column(String(1024))
+    cursor: Mapped[int] = mapped_column(Integer, index=True)
+    gone_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class AppDevice(Base):
+    """A paired iPhone (``services/devices.py``). It acts as its account with the rights of a browser session; only
+    the SHA-256 of its key is stored."""
+
+    __tablename__ = "app_devices"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(80))
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    last_seen_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class AppPairing(Base):
+    """A pairing waiting in the browser: the secret of the QR code and the short code, both as SHA-256. Lives ten
+    minutes and pairs one device."""
+
+    __tablename__ = "app_pairings"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    secret_hash: Mapped[str] = mapped_column(String(64))
+    code_hash: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+    used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    device_name: Mapped[str] = mapped_column(String(80), default="")
+
+
+class DeviceBase(Base):
+    """What a device last got of a note (``/fetch``) or wrote to it (``/batch``): the base it merges against. One per
+    device and note, the newest; zlib-compressed. Goes with the device and with the file."""
+
+    __tablename__ = "device_bases"
+
+    device_id: Mapped[int] = mapped_column(ForeignKey("app_devices.id", ondelete="CASCADE"), primary_key=True)
+    file_id: Mapped[int] = mapped_column(ForeignKey("files.id", ondelete="CASCADE"), primary_key=True, index=True)
+    hash: Mapped[str] = mapped_column(String(64))
+    content: Mapped[bytes] = mapped_column(LargeBinary)
+    updated_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+
+
+class AppOp(Base):
+    """The answer to an operation of ``/api/app/1/batch``, kept seven days: the same ``op_id`` again gets the same
+    answer and changes nothing twice."""
+
+    __tablename__ = "app_ops"
+
+    device_id: Mapped[int] = mapped_column(ForeignKey("app_devices.id", ondelete="CASCADE"), primary_key=True)
+    op_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    result: Mapped[Any] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow, index=True)
