@@ -264,6 +264,22 @@ def _split_wiki(inner: str, inner_start: int) -> tuple[str, str, int, int]:
     return stripped, subpath.strip(), start, start + len(stripped)
 
 
+#: What must not stand bare in a Markdown link destination; letters and umlauts may (GitHub, VS Code, Obsidian).
+_DESTINATION_ESCAPES = {" ": "%20", "(": "%28", ")": "%29", "<": "%3C", ">": "%3E", "%": "%25", "#": "%23", "?": "%3F"}
+#: A letter beyond ASCII written as percent bytes (``%C3%A4``): the writer encodes everything, a rewrite does too.
+_ENCODED_LETTER = re.compile(r"%[89A-Fa-f][0-9A-Fa-f]")
+
+
+def escape_destination(path: str) -> str:
+    """A path as a Markdown link destination: escaped where Markdown needs it, letters and umlauts as they are."""
+    return "".join(_DESTINATION_ESCAPES.get(char, char) for char in path)
+
+
+def encodes_letters(raw: str) -> bool:
+    """Whether a destination as written spells letters beyond ASCII as percent bytes."""
+    return _ENCODED_LETTER.search(raw) is not None
+
+
 def _decode(destination: str) -> tuple[str, bool]:
     decoded = unquote(destination) if "%" in destination else destination
     return decoded, decoded != destination

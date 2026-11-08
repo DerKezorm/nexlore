@@ -18,6 +18,7 @@ import re
 import shutil
 import threading
 import time
+import unicodedata
 import uuid
 import zlib
 from collections.abc import Iterable
@@ -901,8 +902,11 @@ class Moved:
     rewritten_ids: list[int] = field(default_factory=list)
 
 
-def _link_text(link: mdparse.LinkRef, target_rel: str, source_rel: str, names: index.Names, target_id: int) -> str:
-    """How ``link`` should now spell its target, in the style it was written in."""
+def _link_text(
+    link: mdparse.LinkRef, target_rel: str, source_rel: str, names: index.Names, target_id: int, raw: str = ""
+) -> str:
+    """How ``link`` should now spell its target, in the style it was written in. ``raw``: its target as it stands in
+    the file, before decoding: a link that spelled umlauts as percent bytes keeps doing so, any other keeps them."""
     space = paths.space_of(target_rel)
     within = target_rel[len(space) + 1 :]
     keep_suffix = link.target.lower().endswith(paths.NOTE_SUFFIX)
@@ -915,8 +919,10 @@ def _link_text(link: mdparse.LinkRef, target_rel: str, source_rel: str, names: i
             new = target_rel
         else:
             new = posixpath.relpath(target_rel, posixpath.dirname(source_rel))
-        if link.encoded or (not link.angle and any(char in new for char in " ()<>")):
+        if link.encoded and mdparse.encodes_letters(raw):
             new = quote(new, safe="/")
+        elif link.encoded or (not link.angle and any(char in new for char in " ()<>")):
+            new = mdparse.escape_destination(new)
         return new
     if across:
         written, _, rest = link.target.strip().lstrip("/").partition("/")
@@ -957,12 +963,23 @@ def _still_right(
         folder = other.folder if other is not None else None
         if relative and link.target.startswith(".") and other is not None and folder is not None:
             # Climbing out of its space (``../Team/Note.md``): a path in that space, read just as strictly.
-            return index.by_path(other, index.inside(folder, f"{folder}/{across[1]}")) == target_id
+            joined = index.inside(folder, f"{folder}/{across[1]}")
+            return index.by_path(other, joined) == target_id and _spelled_as(joined, target_rel)
         return index.resolve(link.kind, link.target, source_rel, names) == target_id
     if relative or link.target.startswith(("./", "../")):
         joined = index.inside(space, f"{posixpath.dirname(source_rel)}/{link.target}")
-        return index.by_path(names.home(space), joined) == target_id
+        return index.by_path(names.home(space), joined) == target_id and _spelled_as(joined, target_rel)
     return index.resolve(link.kind, link.target, source_rel, names) == target_id
+
+
+def _spelled_as(written: str | None, actual: str) -> bool:
+    """Whether a path finds the file letter for letter, case too: on Linux, and in GitHub, ``attachments/`` does not
+    lead into ``Attachments/``. A note's path may leave out ``.md``."""
+    if written is None:
+        return False
+    written = unicodedata.normalize("NFC", written)
+    actual = unicodedata.normalize("NFC", actual)
+    return written == actual or written + paths.NOTE_SUFFIX == actual
 
 
 def move(source: str, destination: str, *, actor: Actor, ignore_locks: bool = False) -> Moved:
@@ -1397,7 +1414,8 @@ def _follow_note(db: Session, row: MoveJobNote, names: index.Names, author: str 
         if _still_right(link, note.path, names, target_id, target.path):
             continue
         pieces.append(content[position : link.target_start])
-        pieces.append(_link_text(link, target.path, note.path, names, target_id))
+        raw = content[link.target_start : link.target_end]
+        pieces.append(_link_text(link, target.path, note.path, names, target_id, raw))
         position = link.target_end
     if pieces:
         pieces.append(content[position:])

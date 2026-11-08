@@ -36,7 +36,7 @@ from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
 from ..models import File
-from . import index, media, paths, settings_service, vault
+from . import index, mdparse, media, paths, settings_service, vault
 from .prepare import hash_file, prepare
 from .vault import TEMPORARY_PREFIX, Actor, VaultError
 
@@ -53,8 +53,6 @@ PASTED_DEFAULT = "{note} {n}"
 #: ``{n:3}`` at least three digits: ``007``).
 _PLACEHOLDER = re.compile(r"\{(note|date|time|n)(?::([1-9]))?\}")
 PATTERN_CHARS = 120
-#: What must not stand bare in a Markdown link destination.
-_LINK_ESCAPES = {" ": "%20", "(": "%28", ")": "%29", "<": "%3C", ">": "%3E", "%": "%25", "#": "%23", "?": "%3F"}
 
 
 @dataclass
@@ -125,7 +123,7 @@ def link_text(target: str, note: str) -> str:
     """How ``note`` links ``target``: relative to the note's folder, escaped where Markdown needs it, letters and
     umlauts as they are."""
     relative = posixpath.relpath(target, posixpath.dirname(note))
-    return "".join(_LINK_ESCAPES.get(char, char) for char in relative)
+    return mdparse.escape_destination(relative)
 
 
 def plan(*, note: str | None, folder: str | None, name: str, pasted: bool, actor: Actor) -> Plan:

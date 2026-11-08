@@ -136,20 +136,35 @@ def test_a_new_folder_name_renames_the_folders_there_and_the_links_follow(client
     link_in(client, "Home/Shopping.md", [shopping["link"]])
     link_in(client, "Home/Recipes/Cake.md", [cake["link"], "../Attachments/Shopping%201.jpg"])
 
-    answer = file_settings(client, attachment_folder="Files", rename_existing=True)
+    answer = file_settings(client, attachment_folder="Anhänge", rename_existing=True)
     assert answer.status_code == 200, answer.text
     assert answer.json()["renamed"] == 2 and answer.json()["left"] == []
     assert not (filled / "Home" / "Attachments").exists()
-    assert (filled / "Home" / "Files" / "Shopping 1.jpg").is_file()
-    assert (filled / "Home" / "Recipes" / "Files" / "Cake 1.jpg").is_file()
-    assert (filled / "Home" / "Shopping.md").read_text(encoding="utf-8") == "# Note\n\n![](Files/Shopping%201.jpg)\n"
+    assert (filled / "Home" / "Anhänge" / "Shopping 1.jpg").is_file()
+    assert (filled / "Home" / "Recipes" / "Anhänge" / "Cake 1.jpg").is_file()
+    # The umlaut stays a letter in the links, as an upload writes it.
+    assert (filled / "Home" / "Shopping.md").read_text(encoding="utf-8") == "# Note\n\n![](Anhänge/Shopping%201.jpg)\n"
     assert (filled / "Home" / "Recipes" / "Cake.md").read_text(encoding="utf-8") == (
-        "# Note\n\n![](Files/Cake%201.jpg)\n\n![](../Files/Shopping%201.jpg)\n"
+        "# Note\n\n![](Anhänge/Cake%201.jpg)\n\n![](../Anhänge/Shopping%201.jpg)\n"
     )
     links = client.get("/api/links", params={"path": "Home/Recipes/Cake.md"}, headers=TAB).json()
-    assert [item["path"] for item in links["outgoing"]] == ["Home/Recipes/Files/Cake 1.jpg", "Home/Files/Shopping 1.jpg"]
+    assert [item["path"] for item in links["outgoing"]] == [
+        "Home/Recipes/Anhänge/Cake 1.jpg", "Home/Anhänge/Shopping 1.jpg",
+    ]
     # New uploads go to the new name.
-    assert upload(client, b"x", name="x.txt").json()["path"] == "Home/Files/x.txt"
+    assert upload(client, b"x", name="x.txt").json()["path"] == "Home/Anhänge/x.txt"
+
+
+def test_a_link_that_spelled_letters_as_percent_bytes_keeps_doing_so(client: TestClient, filled: Path) -> None:
+    file_settings(client, attachment_folder="Anhänge")
+    shopping = upload(client, photo(), pasted=True).json()
+    assert shopping["link"] == "Anhänge/Shopping%201.jpg"
+    link_in(client, "Home/Shopping.md", [shopping["link"], "Anh%C3%A4nge/Shopping%201.jpg"])
+    answer = file_settings(client, attachment_folder="Bilder & Dateien", rename_existing=True).json()
+    assert answer["renamed"] == 1
+    assert (filled / "Home" / "Shopping.md").read_text(encoding="utf-8") == (
+        "# Note\n\n![](Bilder%20&%20Dateien/Shopping%201.jpg)\n\n![](Bilder%20%26%20Dateien/Shopping%201.jpg)\n"
+    )
 
 
 def test_a_folder_with_the_new_name_beside_it_stays_as_it_is(client: TestClient, filled: Path) -> None:
@@ -177,6 +192,7 @@ def test_a_new_name_that_only_changes_case_renames_too(client: TestClient, fille
     answer = file_settings(client, attachment_folder="attachments", rename_existing=True).json()
     assert answer["renamed"] == 1
     assert sorted(entry.name for entry in (filled / "Home").iterdir() if entry.is_dir()) == ["Recipes", "attachments"]
-    # The link finds the picture under its new name (nexlore compares names case aside, as on any rename).
+    # The link is spelled anew too: on Linux and in GitHub, "Attachments/" does not lead into "attachments/".
+    assert (filled / "Home" / "Shopping.md").read_text(encoding="utf-8") == "# Note\n\n![](attachments/Shopping%201.jpg)\n"
     links = client.get("/api/links", params={"path": "Home/Shopping.md"}, headers=TAB).json()
     assert [item["path"] for item in links["outgoing"]] == ["Home/attachments/Shopping 1.jpg"]
