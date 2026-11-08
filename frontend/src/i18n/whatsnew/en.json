@@ -495,5 +495,30 @@
     "small": [
       "The app comes to the App Store soon. It needs nexlore 1.9.0 or later."
     ]
+  },
+  "1.10.0": {
+    "lead": "Attachment folders now bend to how you work: hide them from the sidebar, name pasted pictures your way, and give the folders a new name without breaking a link.",
+    "sections": [
+      {
+        "title": "Hide attachment folders",
+        "where": "Sidebar, right click on a space, Hide attachment folders; or Settings, Spaces, Options",
+        "body": "For the managers of a space. The attachment folders stay out of the sidebar and the cover flow for everybody in the space. The files stay where they are, and the notes keep showing them. The same menu shows them again."
+      },
+      {
+        "title": "Name pasted pictures your way",
+        "where": "Settings, Server, Files, Name of pasted pictures",
+        "body": "A pattern with {note} for the note's name, {date}, {time} and {n} for a running number; {n:3} counts 001, 002 and on. An example shows what comes out. Out of the box it stays as before: Shopping 1.png. Files you upload keep their own name."
+      },
+      {
+        "title": "Rename the attachment folders already there",
+        "where": "Settings, Server, Files, Attachment folder",
+        "body": "Give the attachment folder a new name and nexlore offers to rename the folders that exist already. The links in the notes follow. A folder with the new name beside it stays as it is and is named afterwards."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "Links rewritten after a move keep umlauts and other letters as they are, instead of %C3%A4; a link that spelled them that way keeps doing so.",
+      "Renaming that only changes upper and lower case now rewrites relative Markdown links too, so GitHub and Linux find the file as well."
+    ]
   }
 }

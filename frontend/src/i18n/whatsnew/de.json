@@ -495,5 +495,30 @@
     "small": [
       "Die App steht bald im App Store. Sie braucht nexlore 1.9.0 oder neuer."
     ]
+  },
+  "1.10.0": {
+    "lead": "Anhang-Ordner richten sich jetzt nach deiner Arbeitsweise: in der Seitenleiste ausblenden, eingefügte Bilder nach eigenem Muster benennen und die Ordner umbenennen, ohne dass ein Link bricht.",
+    "sections": [
+      {
+        "title": "Anhang-Ordner ausblenden",
+        "where": "Seitenleiste, Rechtsklick auf einen Bereich, Anhang-Ordner ausblenden; oder Einstellungen, Bereiche, Optionen",
+        "body": "Für die Verwaltenden eines Bereichs. Die Anhang-Ordner erscheinen für alle im Bereich nicht mehr in der Seitenleiste und beim Stöbern. Die Dateien bleiben, wo sie sind, und die Notizen zeigen sie weiter. Im selben Menü holst du sie zurück."
+      },
+      {
+        "title": "Eingefügte Bilder nach eigenem Muster",
+        "where": "Einstellungen, Server, Dateien, Name eingefügter Bilder",
+        "body": "Ein Muster mit {note} für den Namen der Notiz, {date}, {time} und {n} für eine fortlaufende Nummer; {n:3} zählt 001, 002 und so weiter. Ein Beispiel zeigt, was herauskommt. Ab Werk bleibt es wie bisher: Einkauf 1.png. Hochgeladene Dateien behalten ihren Namen."
+      },
+      {
+        "title": "Vorhandene Anhang-Ordner umbenennen",
+        "where": "Einstellungen, Server, Dateien, Ordner für Anhänge",
+        "body": "Bekommt der Anhang-Ordner einen neuen Namen, bietet nexlore an, die schon vorhandenen Ordner mit umzubenennen. Die Links in den Notizen ziehen mit. Ein Ordner, neben dem schon einer mit dem neuen Namen liegt, bleibt, wie er ist, und wird danach genannt."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Links, die nach dem Verschieben neu geschrieben werden, behalten Umlaute als Buchstaben statt %C3%A4; ein Link, der sie so geschrieben hatte, bleibt dabei.",
+      "Ändert ein Umbenennen nur Groß- und Kleinschreibung, werden relative Markdown-Links jetzt ebenfalls neu geschrieben, damit auch GitHub und Linux die Datei finden."
+    ]
   }
 }
