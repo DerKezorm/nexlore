@@ -1,7 +1,7 @@
 /**
  * Where the daily notes and templates of a space live (M6), set by its managers for everybody in it: the folder for
- * daily notes, the template a new daily note starts from, the folder whose notes are templates; and what the
- * characters between a task's brackets mean there (`TaskStatusList`).
+ * daily notes, the template a new daily note starts from, the folder whose notes are templates, whether the attachment
+ * folders stay out of the sidebar; and what the characters between a task's brackets mean there (`TaskStatusList`).
  */
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,7 @@ import { today as isoToday } from '../lib/everyday'
 import { forgetSpaceThemes } from '../lib/themes'
 import { useStore } from '../state/store'
 import { showModalOnce } from '../lib/dialog'
-import { Button, Feedback, Input, Select } from './settings/ui'
+import { Button, Feedback, Input, Select, Toggle } from './settings/ui'
 import { type OwnStatus, TaskStatusList } from './TaskStatusList'
 import { useAction } from './settings/useAction'
 import { Symbol } from './Symbol'
@@ -28,7 +28,8 @@ export function SpaceOptionsDialog({ space, onClose }: { space: string; onClose:
   const [guess, setGuess] = useState<DailyGuess | null>(null)
   const [statuses, setStatuses] = useState<TaskStatuses | null>(null)
   const [own, setOwn] = useState<OwnStatus[]>([])
-  const { reload } = useStore()
+  const { reload, spaces } = useStore()
+  const attachmentFolder = spaces.find((item) => item.name === space)?.attachment_folder ?? 'Attachments'
   const { busy, problem, done, run } = useAction()
 
   useEffect(() => {
@@ -144,6 +145,12 @@ export function SpaceOptionsDialog({ space, onClose }: { space: string; onClose:
               onChange={(value) => setOptions({ ...options, theme: value })}
             />
             <p className="text-xs text-mist-500">{t('spaceOptions.themeHint')}</p>
+            <Toggle
+              label={t('spaceOptions.hideAttachments')}
+              hint={t('spaceOptions.hideAttachmentsHint', { folder: attachmentFolder })}
+              checked={options.hide_attachments}
+              onChange={(hide_attachments) => setOptions({ ...options, hide_attachments })}
+            />
             <p className="text-xs text-mist-500">
               {t('spaceOptions.placeholders')}{' '}
               {PLACEHOLDERS.map((placeholder) => (

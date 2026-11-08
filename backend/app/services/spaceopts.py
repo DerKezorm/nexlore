@@ -16,15 +16,20 @@ from . import dayname, paths
 DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 #: English like "Attachments": the folders a new space gets are named the same in every language.
 #: ``theme``: the colours the notes of the space are shown in (a theme reference, ``routers/themes``); empty: none.
+#: ``hide_attachments``: "1" when the sidebar and the cover flow leave the attachment folders out (issue #17).
 DEFAULTS: dict[str, str] = {
     "daily_folder": "Daily", "daily_template": "", "template_folder": "Templates", "theme": "",
-    "daily_format": dayname.DEFAULT,
+    "daily_format": dayname.DEFAULT, "hide_attachments": "",
 }
 
 
 def options_of(space: Space) -> dict[str, str]:
     stored = space.options if isinstance(space.options, dict) else {}
     return {key: str(stored.get(key) or "") if key in stored else default for key, default in DEFAULTS.items()}
+
+
+def hides_attachments(space: Space | None) -> bool:
+    return space is not None and options_of(space)["hide_attachments"] == "1"
 
 
 def daily_path(space_name: str, opts: dict[str, str], day: str) -> str:

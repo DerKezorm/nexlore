@@ -29,6 +29,7 @@ import {
   type ShareInfo,
   shareApi,
 } from '../../api/client'
+import { pastedExample } from '../../lib/pastedName'
 import { resetAddedLanguages, languageOptions, type LanguageOption } from '../../i18n'
 import { AI_PROVIDERS } from '../../lib/aiProviders'
 import { formatDate, formatDay } from '../../lib/markdown'
@@ -1027,23 +1028,61 @@ export function MailCard({ settings, onChange }: { settings: ServerSettings; onC
 export function FilesSettingsCard() {
   const { t } = useTranslation()
   const [values, setValues] = useState<FileSettings | null>(null)
+  // The folder name as stored: a new one may take the folders already there along.
+  const [stored, setStored] = useState('')
+  const [renameExisting, setRenameExisting] = useState(true)
+  const [report, setReport] = useState<string | null>(null)
   const { busy, problem, done, run } = useAction()
   useEffect(() => {
-    void run(async () => setValues(await adminApi.fileSettings()))
+    void run(async () => {
+      const found = await adminApi.fileSettings()
+      setValues(found)
+      setStored(found.attachment_folder)
+    })
   }, [run])
   if (!values) return null
+  const renamed = values.attachment_folder.trim() !== stored
   return (
     <Card id="files" symbol="clip" title={t('admin.files.title')} text={t('admin.files.text')}>
       <form
         className="grid gap-2 sm:grid-cols-3"
         onSubmit={(event) => {
           event.preventDefault()
-          void run(async () => setValues(await adminApi.saveFileSettings(values)), t('common.saved'))
+          setReport(null)
+          void run(async () => {
+            const saved = await adminApi.saveFileSettings({ ...values, rename_existing: renamed && renameExisting })
+            const { renamed: count, left, ...rest } = saved
+            setValues(rest)
+            setStored(rest.attachment_folder)
+            const lines = [
+              ...(count ? [t('admin.files.renamed', { count })] : []),
+              ...(left.length ? [t('admin.files.left', { count: left.length, list: left.join(', ') })] : []),
+            ]
+            setReport(lines.length ? lines.join(' ') : null)
+          }, t('common.saved'))
         }}
       >
         <Input label={t('admin.files.folder')} value={values.attachment_folder} onChange={(attachment_folder) => setValues({ ...values, attachment_folder })} />
         <Input label={t('admin.files.perFile')} value={String(values.upload_max_mb)} onChange={(value) => setValues({ ...values, upload_max_mb: Number(value) || 1 })} type="number" />
         <Input label={t('admin.files.quota')} value={String(values.quota_mb)} onChange={(value) => setValues({ ...values, quota_mb: Number(value) || 0 })} type="number" hint={t('admin.files.quotaHint')} />
+        {renamed && (
+          <div className="sm:col-span-3">
+            <Toggle
+              label={t('admin.files.renameExisting')}
+              hint={t('admin.files.renameExistingHint', { old: stored })}
+              checked={renameExisting}
+              onChange={setRenameExisting}
+            />
+          </div>
+        )}
+        <div className="sm:col-span-3">
+          <Input
+            label={t('admin.files.pasted')}
+            value={values.pasted_name}
+            onChange={(pasted_name) => setValues({ ...values, pasted_name })}
+            hint={t('admin.files.pastedHint', { example: `${pastedExample(values.pasted_name, t('admin.files.pastedNote'), new Date())}.png` })}
+          />
+        </div>
         <div className="sm:col-span-3">
           <Toggle label={t('admin.files.strip')} hint={t('admin.files.stripHint')} checked={values.strip_location} onChange={(strip_location) => setValues({ ...values, strip_location })} />
         </div>
@@ -1053,7 +1092,7 @@ export function FilesSettingsCard() {
           </Button>
         </div>
       </form>
-      <Feedback problem={problem} done={done} />
+      <Feedback problem={problem} done={done && report ? `${done} ${report}` : done} />
     </Card>
   )
 }

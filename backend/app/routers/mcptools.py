@@ -570,7 +570,8 @@ EXTRA_TOOLS: list[dict[str, Any]] = [
         "set_space_options",
         "change",
         "write",
-        "Set where a space keeps its daily notes and templates (manage right).",
+        "Set where a space keeps its daily notes and templates, and whether its attachment folders are hidden "
+        "(manage right).",
         _schema(
             ["space"],
             space=_SPACE,
@@ -578,6 +579,7 @@ EXTRA_TOOLS: list[dict[str, Any]] = [
             daily_template={"type": "string", "maxLength": 1024},
             template_folder={"type": "string", "maxLength": 1024},
             daily_format={"type": "string", "maxLength": 80},
+            hide_attachments={"type": "boolean"},
         ),
         set_space_options,
     ),

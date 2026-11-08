@@ -273,12 +273,13 @@ def test_a_space_whose_folder_is_gone_is_not_offered_after_a_slash(world: World,
 def test_the_options_of_a_space_belong_to_its_managers(world: World) -> None:
     assert world.bob.get("/api/spaces/Shared/options").json() == {
         "daily_folder": "Daily", "daily_template": "", "template_folder": "Templates", "theme": "",
-        "daily_format": "YYYY-MM-DD"}
+        "daily_format": "YYYY-MM-DD", "hide_attachments": False}
     assert world.carl.put("/api/spaces/Shared/options", json={"daily_folder": "Journal"}).status_code == 403
     assert world.bob.get("/api/spaces/Private/options").status_code == 404
     changed = world.anna.put("/api/spaces/Shared/options", json={"daily_folder": "/Journal/2026/", "template_folder": ""})
     assert changed.json() == {
-        "daily_folder": "Journal/2026", "daily_template": "", "template_folder": "", "theme": "", "daily_format": "YYYY-MM-DD"
+        "daily_folder": "Journal/2026", "daily_template": "", "template_folder": "", "theme": "", "daily_format": "YYYY-MM-DD",
+        "hide_attachments": False,
     }
     # The list of spaces says it too: the sidebar marks the two folders with it.
     shared = next(space for space in world.bob.get("/api/spaces").json() if space["name"] == "Shared")

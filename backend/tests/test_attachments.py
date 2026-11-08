@@ -413,7 +413,8 @@ def test_file_settings_are_the_operators(client: TestClient, filled: Path, accou
     assert client.get("/api/settings/files", headers=TAB).status_code == 403
     sign_in(client, account)
     current = client.get("/api/settings/files", headers=TAB).json()
-    assert current == {"attachment_folder": "Attachments", "upload_max_mb": 1024, "quota_mb": 0, "strip_location": True}
+    assert current == {"attachment_folder": "Attachments", "upload_max_mb": 1024, "quota_mb": 0, "strip_location": True,
+                       "pasted_name": "{note} {n}"}
     bad = client.put("/api/settings/files", json={**current, "attachment_folder": "a/b"}, headers=TAB)
     assert bad.status_code == 400
     # A name of its own, umlaut and all: the link keeps the letters as they are.

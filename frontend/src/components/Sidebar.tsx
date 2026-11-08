@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 
-import { recentApi, spaceZipUrl, vaultApi, type Favorite, type FolderEntry, type FileEntry, type NoteRef } from '../api/client'
+import { everydayApi, recentApi, spaceZipUrl, vaultApi, type Favorite, type FolderEntry, type FileEntry, type NoteRef } from '../api/client'
 import { folderColor, spaceColor } from '../graph/palette'
 import { fileRoute } from '../lib/markdown'
 import { PATH_DRAG_TYPE, fileKind } from '../lib/files'
@@ -610,6 +610,15 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     items.push({ label: t('export.folderMenu'), symbol: 'print', onSelect: () => askExport({ folder: row.path }, 'pdf') })
     // Everything of a space in one file, for whoever may read it.
     if (row.space) items.push({ label: t('menu.zip'), symbol: 'download', onSelect: () => download(spaceZipUrl(row.path)) })
+    // The attachment folders of a space shown or left out, for everybody in it: its managers decide.
+    const hidden = row.space && spaces.find((space) => space.name === row.path)?.hide_attachments
+    if (manage) {
+      items.push({
+        label: t(hidden ? 'menu.showAttachments' : 'menu.hideAttachments'),
+        symbol: 'clip',
+        onSelect: () => void everydayApi.setOptions(row.path, { hide_attachments: !hidden }).then(reload, () => undefined),
+      })
+    }
     if (manage) items.push({ label: t('menu.spaceSettings'), symbol: 'users', onSelect: () => navigate('/settings?tab=spaces') })
     if (write && !row.space) {
       items.push('separator')

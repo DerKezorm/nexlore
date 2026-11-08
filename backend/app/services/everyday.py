@@ -71,7 +71,12 @@ def _clean_folder(value: str) -> str:
         raise VaultError(exc.code, str(exc)) from exc
 
 
-def set_options(space_name: str, values: dict[str, str]) -> dict[str, str]:
+def shown(opts: dict[str, str]) -> dict[str, Any]:
+    """The options as the API gives them: a switch as true or false, the rest as stored."""
+    return {**opts, "hide_attachments": opts.get("hide_attachments") == "1"}
+
+
+def set_options(space_name: str, values: dict[str, Any]) -> dict[str, Any]:
     """Store what the managers of a space chose. Folders are relative to the space; the template is a note in it."""
     clean: dict[str, str] = {}
     for key in ("daily_folder", "template_folder"):
@@ -90,6 +95,8 @@ def set_options(space_name: str, values: dict[str, str]) -> dict[str, str]:
     if "theme" in values:
         # Checked by the route (the manager must be able to read the theme); here only kept.
         clean["theme"] = values["theme"]
+    if "hide_attachments" in values:
+        clean["hide_attachments"] = "1" if values["hide_attachments"] else ""
     with SessionLocal() as db:
         space = db.scalar(select(Space).where(Space.folder == space_name))
         if space is None:
@@ -99,15 +106,15 @@ def set_options(space_name: str, values: dict[str, str]) -> dict[str, str]:
         # A new dict: the JSON column only notices a new value, not one changed in place.
         space.options = stored
         db.commit()
-        return options_of(space)
+        return shown(options_of(space))
 
 
-def options(space_name: str) -> dict[str, str]:
+def options(space_name: str) -> dict[str, Any]:
     with SessionLocal() as db:
         space = db.scalar(select(Space).where(Space.folder == space_name))
         if space is None:
             raise VaultError("not_found", "no such space", 404)
-        return options_of(space)
+        return shown(options_of(space))
 
 
 def task_statuses(space_name: str) -> dict[str, Any]:

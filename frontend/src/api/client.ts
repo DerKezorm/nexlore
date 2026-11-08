@@ -134,6 +134,9 @@ export type Space = {
   daily_format?: string
   /** The theme its managers set for the space's notes; empty for none. */
   theme?: string
+  /** Whether its managers leave the attachment folders out of the sidebar, and what those folders are called. */
+  hide_attachments?: boolean
+  attachment_folder?: string
 }
 export type Lock = { holder: string; mine: boolean; expires_at: string; own?: boolean }
 export type NoteData = {
@@ -706,7 +709,9 @@ export type ServerSettingsChange = Partial<Omit<ServerSettings, 'smtp_password_s
   /** The operator said yes to the question that came back as 409 `public_url_change` (module 1.0.10). */
   confirm_address?: boolean
 }
-export type FileSettings = { attachment_folder: string; upload_max_mb: number; quota_mb: number; strip_location: boolean }
+export type FileSettings = { attachment_folder: string; upload_max_mb: number; quota_mb: number; strip_location: boolean; pasted_name: string }
+/** Saving with a new folder name may rename the folders already there: how many it did, and which it left. */
+export type FileSettingsSaved = FileSettings & { renamed: number; left: string[] }
 /** An entry of the provider list as the operator sees it: never the secret, only whether one is stored. */
 export type OidcProvider = {
   id: number
@@ -1034,7 +1039,7 @@ export const adminApi = {
   makeGuide: (language: string) => api<{ space: string }>('/api/settings/guide', { method: 'POST', body: { language } }),
   mailTest: (to: string) => api<void>('/api/settings/mail-test', { method: 'POST', body: { to } }),
   fileSettings: () => api<FileSettings>('/api/settings/files'),
-  saveFileSettings: (values: FileSettings) => api<FileSettings>('/api/settings/files', { method: 'PUT', body: values }),
+  saveFileSettings: (values: FileSettings & { rename_existing?: boolean }) => api<FileSettingsSaved>('/api/settings/files', { method: 'PUT', body: values }),
   accounts: () => api<AdminAccount[]>('/api/accounts'),
   // The four acts on another account carry the operator's own password once more (empty for a provider account).
   deleteAccount: (id: number, current_password: string) =>
@@ -1247,7 +1252,7 @@ export type Toggled = {
   recurrence_unknown?: boolean
 }
 export type CalendarDay = { daily: string[]; open: number; done: number; overdue: number }
-export type SpaceOptions = { daily_folder: string; daily_template: string; template_folder: string; theme: string; daily_format: string }
+export type SpaceOptions = { daily_folder: string; daily_template: string; template_folder: string; theme: string; daily_format: string; hide_attachments: boolean }
 /** Daily notes a space's settings miss: where they are and how they are named. */
 export type DailyGuess = { daily_folder: string; daily_format: string; count: number }
 export type Template = { path: string; title: string }

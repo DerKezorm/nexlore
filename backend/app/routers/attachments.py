@@ -234,6 +234,19 @@ class FileSettings(BaseModel):
     upload_max_mb: int = Field(ge=1, le=1024 * 1024)
     quota_mb: int = Field(ge=0, le=1024 * 1024 * 1024)
     strip_location: bool
+    #: How a picture pasted into a note is named (``attachments.check_pattern``).
+    pasted_name: str = Field(default=attachments.PASTED_DEFAULT, min_length=1, max_length=attachments.PATTERN_CHARS)
+
+
+class FileSettingsIn(FileSettings):
+    #: A new attachment folder name renames the folders already there, and the links in the notes follow.
+    rename_existing: bool = False
+
+
+class FileSettingsOut(FileSettings):
+    #: What the renaming did: folders renamed, and those left as they were.
+    renamed: int = 0
+    left: list[str] = Field(default_factory=list)
 
 
 @router.get("/settings/files", response_model=FileSettings)
@@ -243,16 +256,24 @@ def file_settings(_operator: OperatorAccount) -> FileSettings:
     return FileSettings(**{key: values[key] for key in FileSettings.model_fields})
 
 
-@router.put("/settings/files", response_model=FileSettings)
-def save_file_settings(body: FileSettings, _operator: OperatorAccount) -> FileSettings:
+@router.put("/settings/files", response_model=FileSettingsOut)
+def save_file_settings(body: FileSettingsIn, _operator: OperatorAccount, who: ActorDep) -> FileSettingsOut:
     try:
         folder_name = paths.check_name(body.attachment_folder.strip())
     except paths.PathError as exc:
         raise error(exc.code, str(exc), **exc.values) from exc
-    values = body.model_dump() | {"attachment_folder": folder_name}
+    try:
+        pattern = attachments.check_pattern(body.pasted_name)
+    except attachments.PatternError as exc:
+        raise error("bad_pattern", str(exc), 422) from exc
+    old_name = attachments.folder_name()
+    values = body.model_dump(exclude={"rename_existing"}) | {"attachment_folder": folder_name, "pasted_name": pattern}
     with SessionLocal() as db:
         settings_service.save(db, values)
-    return FileSettings(**values)
+    renamed = attachments.Renamed()
+    if body.rename_existing and old_name != folder_name:
+        renamed = attachments.rename_folders(old_name, folder_name, who)
+    return FileSettingsOut(**values, renamed=renamed.renamed, left=renamed.left)
 
 
 class ResolveOut(BaseModel):

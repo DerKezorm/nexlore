@@ -62,10 +62,12 @@ class OptionsIn(BaseModel):
     daily_format: str | None = Field(default=None, max_length=80)
     #: The theme the space's notes are shown in; empty for none.
     theme: str | None = Field(default=None, max_length=40)
+    #: Leave the attachment folders out of the sidebar and the cover flow.
+    hide_attachments: bool | None = None
 
 
 @router.get("/spaces/{name}/options", summary="Where the daily notes and templates of a space live")
-def get_options(name: str, account: Account) -> dict[str, str]:
+def get_options(name: str, account: Account) -> dict[str, Any]:
     space = need(account, name, READ)
     if "/" in space:
         raise error("not_found", "Not found.", 404)
@@ -87,7 +89,7 @@ def daily_guess(name: str, account: Account) -> dict[str, Any] | None:
 
 
 @router.put("/spaces/{name}/options", summary="Set where the daily notes and templates of a space live")
-def put_options(name: str, body: OptionsIn, account: Account) -> dict[str, str]:
+def put_options(name: str, body: OptionsIn, account: Account) -> dict[str, Any]:
     space = need(account, name, MANAGE)
     if "/" in space:
         raise error("not_found", "Not found.", 404)

@@ -821,6 +821,7 @@
       "provider_first": "Set up a sign-in provider first, or nobody but you could sign in.",
       "bad_view": "The view cannot be read. Check the YAML: indentation, colons and quotes.",
       "bad_day_format": "This pattern cannot name every day: year, month and day as numbers; names of months or weekdays do not work.",
+      "bad_pattern": "This name pattern does not work. Use only {note}, {date}, {time}, {n} or {n:3}, in at most 120 characters.",
       "oauth_client": "This program is not registered here. Start the sign-in again from the program.",
       "oauth_redirect": "This program did not register the address it wants to go back to.",
       "oauth_pkce": "This program does not sign in safely (PKCE with S256 is missing).",
@@ -1350,7 +1351,16 @@
       "quota": "Space per account (MB)",
       "quotaHint": "0 is no limit.",
       "strip": "Remove place and device from photos",
-      "stripHint": "On upload, from pictures and videos. The picture itself stays as it is."
+      "stripHint": "On upload, from pictures and videos. The picture itself stays as it is.",
+      "pasted": "Name of pasted pictures",
+      "pastedHint": "{note} the note’s name, {date} the day, {time} the time, {n} a running number ({n:3} gives 001). Example: {{example}}",
+      "pastedNote": "Shopping",
+      "renameExisting": "Rename the folders already there",
+      "renameExistingHint": "Every folder called “{{old}}” gets the new name, and the links in the notes follow. A folder with the new name beside it stays as it is.",
+      "renamed_one": "One folder renamed.",
+      "renamed_other": "{{count}} folders renamed.",
+      "left_one": "One folder kept its name because one with the new name stands beside it: {{list}}",
+      "left_other": "{{count}} folders kept their name because one with the new name stands beside them: {{list}}"
     },
     "backups": {
       "title": "Backups",
@@ -1634,6 +1644,8 @@
   },
   "spaceOptions": {
     "themeHint": "Only the notes of the space wear it; the sidebar and the header stay in each reader’s own theme. Readers may switch it off.",
+    "hideAttachments": "Hide attachment folders",
+    "hideAttachmentsHint": "The folders called “{{folder}}” stay out of the sidebar and the cover flow, for everybody in this space. The files stay where they are, and the notes keep showing them.",
     "otherTheme": "A theme you cannot see",
     "noTheme": "None (everybody keeps their own)",
     "theme": "Theme of the notes",
@@ -1922,7 +1934,9 @@
     "unfavorite": "Remove from favorites",
     "openRight": "Open to the right",
     "zip": "Download as ZIP",
-    "coverflow": "Show as cover flow"
+    "coverflow": "Show as cover flow",
+    "hideAttachments": "Hide attachment folders",
+    "showAttachments": "Show attachment folders"
   },
   "editorMenu": {
     "openLink": "Open the note",

@@ -20,7 +20,7 @@ from ..db import SessionLocal, sort_key
 from ..deps import Account, need
 from ..errors import error
 from ..models import FTS_TABLE, READ, WRITE, File, Link, Space, Tag
-from ..services import covers, looks, mdparse, paths, rights, snippets
+from ..services import attachments, covers, looks, mdparse, paths, rights, snippets, spaceopts
 from ..services.vault import atomic_write
 
 logger = logging.getLogger("nexlore.vault")
@@ -118,6 +118,7 @@ def _folder_level(account, clean: str) -> dict[str, Any]:
         if space is None:
             raise error("not_found", "Not found.", 404)
         writable = rights.at_least(rights.role_in(db, account, space.id), WRITE)
+        left_out = paths.fold(attachments.folder_name()) if spaceopts.hides_attachments(space) else None
         in_range = (File.deleted_at.is_(None), File.path > prefix, File.path < clean + "0")
         # Notes lying directly in each subfolder: the rest of the path below the subfolder has no slash.
         direct = dict(
@@ -173,6 +174,8 @@ def _folder_level(account, clean: str) -> dict[str, Any]:
         raise error("not_found", "Not found.", 404) from exc
     for entry in entries:
         if paths.is_hidden(entry.name) or entry.is_symlink() or not entry.is_dir():
+            continue
+        if left_out is not None and paths.fold(entry.name) == left_out:
             continue
         rel = prefix + entry.name
         items.append(_folder_card(entry, rel, entry.name, int(direct.get(entry.name) or 0),

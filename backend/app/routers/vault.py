@@ -26,7 +26,19 @@ from ..db import SessionLocal, sort_key
 from ..deps import Account, OperatorAccount, need, readable_spaces
 from ..errors import error
 from ..models import FTS_TABLE, MANAGE, OPERATOR, READ, TRI_TABLE, WRITE, Comment, File, Link, Membership, Space, Tag
-from ..services import everyday, index, mdparse, midword, paths, rights, snippets, spaceopts, tagrename, vault
+from ..services import (
+    attachments,
+    everyday,
+    index,
+    mdparse,
+    midword,
+    paths,
+    rights,
+    snippets,
+    spaceopts,
+    tagrename,
+    vault,
+)
 from ..services.vault import Actor, VaultError
 
 router = APIRouter(prefix="/api", tags=["vault"])
@@ -83,6 +95,9 @@ class SpaceOut(BaseModel):
     daily_format: str = "YYYY-MM-DD"
     #: The theme the managers set for the space's notes (``routers/themes``); empty for none.
     theme: str = ""
+    #: Whether its managers leave the attachment folders out of the sidebar, and what those folders are called.
+    hide_attachments: bool = False
+    attachment_folder: str = "Attachments"
 
 
 class NameIn(BaseModel):
@@ -104,6 +119,7 @@ def spaces(account: Account) -> list[SpaceOut]:
             )
         }
         rows = list(db.scalars(select(Space).order_by(Space.folder)))
+    attachment_folder = attachments.folder_name()
     result = []
     for space in rows:
         role = roles.get(space.id)
@@ -114,7 +130,8 @@ def spaces(account: Account) -> list[SpaceOut]:
         result.append(SpaceOut(
             id=space.id, name=space.folder, notes=int(notes), files=files, role=role,
             template_folder=opts["template_folder"], daily_folder=opts["daily_folder"], theme=opts["theme"],
-            daily_format=opts["daily_format"],
+            daily_format=opts["daily_format"], hide_attachments=opts["hide_attachments"] == "1",
+            attachment_folder=attachment_folder,
         ))
     return result
 
@@ -136,7 +153,8 @@ def create_space(body: NameIn, account: Account) -> SpaceOut:
         assert space is not None
         db.add(Membership(space_id=space.id, account_id=account.id, role=MANAGE))
         db.commit()
-        return SpaceOut(id=space.id, name=name, notes=0, files=0, role=MANAGE)
+        return SpaceOut(id=space.id, name=name, notes=0, files=0, role=MANAGE,
+                        attachment_folder=attachments.folder_name())
 
 
 class FolderEntry(BaseModel):
@@ -215,8 +233,11 @@ def folder(
         entries = list(os.scandir(full))
     except OSError as exc:
         raise error("not_found", "No such folder.", 404) from exc
+    left_out = hidden_attachments(clean)
     for entry in entries:
         if paths.is_hidden(entry.name) or entry.is_symlink() or not entry.is_dir(follow_symlinks=False):
+            continue
+        if left_out is not None and paths.fold(entry.name) == left_out:
             continue
         folders.append(FolderEntry(name=entry.name, path=prefix + entry.name, notes=counts.get(entry.name, 0),
                                    files=every.get(entry.name, 0)))
@@ -233,6 +254,15 @@ def folder(
     )
     end = None if limit is None else offset + limit
     return FolderOut(path=clean, folders=folders, files=ordered[offset:end], total_files=len(ordered))
+
+
+def hidden_attachments(path: str) -> str | None:
+    """The attachment folder's name, folded, when the space of ``path`` leaves those folders out of its listings."""
+    with SessionLocal() as db:
+        space = db.scalar(select(Space).where(Space.folder == paths.space_of(path)))
+        if not spaceopts.hides_attachments(space):
+            return None
+    return paths.fold(attachments.folder_name())
 
 
 class FolderIn(BaseModel):
