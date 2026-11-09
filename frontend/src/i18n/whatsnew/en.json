@@ -539,5 +539,19 @@
     "small": [
       "Renaming a note does not rename its folder of attachments; the links keep working."
     ]
+  },
+  "1.12.0": {
+    "lead": "Renaming a note can now take its own folder in the attachment folder along.",
+    "sections": [
+      {
+        "title": "Attachment folders follow the rename",
+        "where": "Renaming in the sidebar and at the title of a note",
+        "body": "When the attachment folder beside a note holds a folder named after it, as a pattern like {note}/{filename} makes one, renaming the note offers to rename that folder too, ticked from the start. The links in every note follow, and the files inside keep their names. If a folder of the new name is there already, nexlore says so and renames nothing."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "The MCP tool rename_note takes the folder along as well, with attachment_folder."
+    ]
   }
 }

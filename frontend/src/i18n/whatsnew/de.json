@@ -539,5 +539,19 @@
     "small": [
       "Wird eine Notiz umbenannt, behält ihr Anhang-Ordner seinen Namen; die Links funktionieren weiter."
     ]
+  },
+  "1.12.0": {
+    "lead": "Eine Notiz nimmt beim Umbenennen auf Wunsch ihren eigenen Ordner im Anhang-Ordner mit.",
+    "sections": [
+      {
+        "title": "Anhang-Ordner umbenennen sich mit",
+        "where": "Umbenennen in der Seitenleiste und am Titel einer Notiz",
+        "body": "Liegt neben einer Notiz ein Ordner mit ihrem Namen im Anhang-Ordner, wie ihn ein Muster wie {note}/{filename} anlegt, bietet das Umbenennen an, ihn gleich mit umzubenennen; das Häkchen ist gesetzt. Die Links in allen Notizen ziehen mit, die Dateien darin behalten ihre Namen. Gibt es dort schon einen Ordner mit dem neuen Namen, sagt nexlore das und benennt nichts um."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Das MCP-Werkzeug rename_note nimmt den Ordner mit attachment_folder ebenfalls mit."
+    ]
   }
 }
