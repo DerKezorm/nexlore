@@ -520,5 +520,24 @@
       "Links rewritten after a move keep umlauts and other letters as they are, instead of %C3%A4; a link that spelled them that way keeps doing so.",
       "Renaming that only changes upper and lower case now rewrites relative Markdown links too, so GitHub and Linux find the file as well."
     ]
+  },
+  "1.11.0": {
+    "lead": "Attachments can now live in a folder of their own for each note, and uploaded files can follow a name pattern too.",
+    "sections": [
+      {
+        "title": "A folder for each note",
+        "where": "Settings, Server, Files, Name of pasted pictures and Name of uploaded files",
+        "body": "A / in a name pattern makes a folder below the attachment folder: {note}/{n} keeps each note's pictures together. When a note moves, its attachments come along from those folders, and folders left empty go away, after a move as after a delete."
+      },
+      {
+        "title": "Name uploaded files your way",
+        "where": "Settings, Server, Files, Name of uploaded files",
+        "body": "A pattern of its own for files you upload to a note, with {filename} for the name they came with and the same placeholders as for pasted pictures. Out of the box it is {filename}, so files keep their name as before."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "Renaming a note does not rename its folder of attachments; the links keep working."
+    ]
   }
 }

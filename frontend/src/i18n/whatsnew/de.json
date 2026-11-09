@@ -520,5 +520,24 @@
       "Links, die nach dem Verschieben neu geschrieben werden, behalten Umlaute als Buchstaben statt %C3%A4; ein Link, der sie so geschrieben hatte, bleibt dabei.",
       "Ändert ein Umbenennen nur Groß- und Kleinschreibung, werden relative Markdown-Links jetzt ebenfalls neu geschrieben, damit auch GitHub und Linux die Datei finden."
     ]
+  },
+  "1.11.0": {
+    "lead": "Anhänge können jetzt in einem eigenen Ordner je Notiz liegen, und auch hochgeladene Dateien folgen auf Wunsch einem Namensmuster.",
+    "sections": [
+      {
+        "title": "Ein Ordner je Notiz",
+        "where": "Einstellungen, Server, Dateien, Name eingefügter Bilder und Name hochgeladener Dateien",
+        "body": "Ein / im Namensmuster macht einen Ordner im Anhang-Ordner: {note}/{n} hält die Bilder jeder Notiz beisammen. Wird eine Notiz verschoben, kommen ihre Anhänge aus diesen Ordnern mit, und leer gewordene Ordner verschwinden, nach dem Verschieben wie nach dem Löschen."
+      },
+      {
+        "title": "Hochgeladene Dateien nach eigenem Muster",
+        "where": "Einstellungen, Server, Dateien, Name hochgeladener Dateien",
+        "body": "Ein eigenes Muster für Dateien, die du zu einer Notiz hochlädst, mit {filename} für den Namen, mit dem sie kamen, und denselben Platzhaltern wie bei eingefügten Bildern. Ab Werk steht dort {filename}, Dateien behalten also wie bisher ihren Namen."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Wird eine Notiz umbenannt, behält ihr Anhang-Ordner seinen Namen; die Links funktionieren weiter."
+    ]
   }
 }
