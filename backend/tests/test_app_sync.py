@@ -297,6 +297,32 @@ def test_while_the_vault_is_read_in_the_first_time_the_app_waits(world: World,
     assert world.get("/api/app/1/me").status_code == 200
 
 
+def test_me_tells_how_attachments_are_named_as_the_operator_set_it(world: World, client: TestClient) -> None:
+    """The app names its uploads itself, offline too: it needs the folder's name and the patterns (issue #17)."""
+    got = world.get("/api/app/1/me").json()
+    assert (got["attachment_folder"], got["pasted_name"], got["uploaded_name"]) == (
+        "Attachments", "{note} {n}", "{filename}")
+    current = client.get("/api/settings/files").json()
+    changed = client.put("/api/settings/files", json={
+        **current, "attachment_folder": "Anhänge", "pasted_name": "{note}/{date} {n:3}",
+        "uploaded_name": "{note}/{filename}"})
+    assert changed.status_code == 200, changed.text
+    got = world.get("/api/app/1/me").json()
+    assert (got["attachment_folder"], got["pasted_name"], got["uploaded_name"]) == (
+        "Anhänge", "{note}/{date} {n:3}", "{note}/{filename}")
+
+
+def test_me_and_changes_tell_which_spaces_hide_their_attachment_folders(world: World) -> None:
+    def hidden(answer: dict[str, Any]) -> dict[str, bool]:
+        return {space["name"]: space["hide_attachments"] for space in answer["spaces"]}
+
+    assert hidden(world.get("/api/app/1/me").json()) == {"Garden": False, "Shared": False}
+    changed = world.anna.put("/api/spaces/Garden/options", json={"hide_attachments": True})
+    assert changed.status_code == 200, changed.text
+    assert hidden(world.get("/api/app/1/me").json()) == {"Garden": True, "Shared": False}
+    assert hidden(world.changes(world.last())) == {"Garden": True, "Shared": False}
+
+
 # --- S3: reading -------------------------------------------------------------------------------------------------
 
 

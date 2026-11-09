@@ -198,6 +198,8 @@ class SpaceOut(BaseModel):
     color: str | None = None
     #: A symbol's name (``l:<name>`` for one of Lucide) or None.
     icon: str | None = None
+    #: The space's managers leave the attachment folders out of the folder listings (issue #17).
+    hide_attachments: bool = False
 
 
 class MeOut(BaseModel):
@@ -206,6 +208,12 @@ class MeOut(BaseModel):
     device: MeDevice
     spaces: list[SpaceOut]
     features: list[str]
+    #: What the operator calls the attachment folders, and how files put into them are named: ``pasted_name`` for a
+    #: picture without a name of its own, ``uploaded_name`` for any other file (``services/attachments``). The app
+    #: names its uploads itself, offline too, and follows these.
+    attachment_folder: str = "Attachments"
+    pasted_name: str = attachments.PASTED_DEFAULT
+    uploaded_name: str = attachments.UPLOADED_DEFAULT
 
 
 def _spaces(found: Caller) -> list[SpaceOut]:
@@ -213,7 +221,8 @@ def _spaces(found: Caller) -> list[SpaceOut]:
     with SessionLocal() as db:
         seen = looks.of_spaces(db, {space.id for space in listed})
     return [SpaceOut(id=space.id, name=space.name, role=space.role, color=seen.get(space.name, {}).get("", {}).get(
-        "color"), icon=seen.get(space.name, {}).get("", {}).get("icon")) for space in listed]
+        "color"), icon=seen.get(space.name, {}).get("", {}).get("icon"), hide_attachments=space.hide_attachments)
+        for space in listed]
 
 
 @router.get("/me", response_model=MeOut, summary="The account, this device, the spaces it reads, what is offered")
@@ -226,6 +235,9 @@ def me(found: Device) -> MeOut:
         device=MeDevice(id=found.device_id, name=found.device_name),
         spaces=_spaces(found),
         features=FEATURES,
+        attachment_folder=attachments.folder_name(),
+        pasted_name=attachments.pasted_pattern(),
+        uploaded_name=attachments.uploaded_pattern(),
     )
 
 
