@@ -709,7 +709,7 @@ export type ServerSettingsChange = Partial<Omit<ServerSettings, 'smtp_password_s
   /** The operator said yes to the question that came back as 409 `public_url_change` (module 1.0.10). */
   confirm_address?: boolean
 }
-export type FileSettings = { attachment_folder: string; upload_max_mb: number; quota_mb: number; strip_location: boolean; pasted_name: string }
+export type FileSettings = { attachment_folder: string; upload_max_mb: number; quota_mb: number; strip_location: boolean; pasted_name: string; uploaded_name: string }
 /** Saving with a new folder name may rename the folders already there: how many it did, and which it left. */
 export type FileSettingsSaved = FileSettings & { renamed: number; left: string[] }
 /** An entry of the provider list as the operator sees it: never the secret, only whether one is stored. */

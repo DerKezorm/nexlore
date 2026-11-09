@@ -72,11 +72,74 @@ def test_the_default_pattern_names_as_before(client: TestClient, filled: Path) -
     assert upload(client, photo(), pasted=True).json()["path"] == "Home/Attachments/Shopping 1.jpg"
 
 
-@pytest.mark.parametrize("pattern", ["{title} {n}", "{date:3}", "   ", "{n", "x" * 121])
+@pytest.mark.parametrize("pattern", [
+    "{title} {n}", "{date:3}", "   ", "{n", "x" * 121, "{filename}", "/{note}", "{note}/", "{note}//{n}",
+    "../{note}", "{note}/../x", "{n}/{note}", "{note}\\{n}",
+])
 def test_a_pattern_with_an_unknown_placeholder_is_refused(client: TestClient, filled: Path, pattern: str) -> None:
     answer = file_settings(client, pasted_name=pattern)
     assert answer.status_code == 422, answer.text
     assert client.get("/api/settings/files", headers=TAB).json()["pasted_name"] == "{note} {n}"
+
+
+# --- Folders below the attachment folder, and uploaded files after a pattern ---------------------------------------
+
+
+def test_a_slash_in_the_pattern_makes_a_folder_for_each_note(client: TestClient, filled: Path) -> None:
+    assert file_settings(client, pasted_name="{note}/{note} {n:3}").status_code == 200
+    first = upload(client, photo(), pasted=True).json()
+    second = upload(client, photo((0, 0, 255)), pasted=True).json()
+    cake = upload(client, photo((0, 255, 0)), pasted=True, note="Home/Recipes/Cake.md").json()
+    assert first["path"] == "Home/Attachments/Shopping/Shopping 001.jpg"
+    assert second["path"] == "Home/Attachments/Shopping/Shopping 002.jpg"
+    assert first["link"] == "Attachments/Shopping/Shopping%20001.jpg"
+    assert cake["path"] == "Home/Recipes/Attachments/Cake/Cake 001.jpg"
+    assert (filled / "Home" / "Attachments" / "Shopping" / "Shopping 002.jpg").is_file()
+
+
+def test_uploaded_files_may_follow_a_pattern_of_their_own(client: TestClient, filled: Path, fixed_time: None) -> None:
+    # Out of the box they keep the name they came with.
+    assert upload(client, b"one", name="Receipt.txt").json()["path"] == "Home/Attachments/Receipt.txt"
+    assert file_settings(client, uploaded_name="{note}/{date} {filename}").status_code == 200
+    placed = upload(client, b"two", name="Receipt.txt").json()
+    again = upload(client, b"three", name="Receipt.txt").json()
+    assert placed["path"] == "Home/Attachments/Shopping/2026-11-08 Receipt.txt"
+    assert again["path"] == "Home/Attachments/Shopping/2026-11-08 Receipt 2.txt"
+    # Pasted pictures keep their own pattern; {filename} means nothing there and is refused.
+    assert upload(client, photo(), pasted=True).json()["path"] == "Home/Attachments/Shopping 1.jpg"
+    assert file_settings(client, pasted_name="{note}/{filename}").status_code == 422
+    # Straight into a folder (dropped on the sidebar), no note: no pattern either.
+    assert upload(client, b"four", name="Plain.txt", note=None, folder="Home").json()["path"] == "Home/Plain.txt"
+
+
+def test_a_moving_note_takes_its_folder_of_attachments_along(client: TestClient, filled: Path) -> None:
+    file_settings(client, pasted_name="{note}/{n}")
+    own = upload(client, photo(), pasted=True).json()
+    link_in(client, "Home/Shopping.md", [own["link"]])
+    moved = client.post("/api/move", json={"source": "Home/Shopping.md", "destination": "Home/Lists/Shopping.md"},
+                        headers=TAB)
+    assert moved.status_code == 200, moved.text
+    assert (filled / "Home" / "Lists" / "Attachments" / "Shopping" / "1.jpg").is_file()
+    # Nothing left behind: the emptied folders go, the attachment folder too.
+    assert not (filled / "Home" / "Attachments").exists()
+    assert (filled / "Home" / "Lists" / "Shopping.md").read_text(encoding="utf-8") == (
+        "# Note\n\n![](Attachments/Shopping/1.jpg)\n"
+    )
+
+
+def test_a_deleted_note_leaves_no_empty_folder_of_its_attachments(client: TestClient, filled: Path) -> None:
+    file_settings(client, pasted_name="{note}/{n}")
+    own = upload(client, photo(), pasted=True).json()
+    cake = upload(client, photo((0, 0, 255)), pasted=True, note="Home/Recipes/Cake.md").json()
+    link_in(client, "Home/Shopping.md", [own["link"]])
+    gone = client.delete("/api/files", params={"path": "Home/Shopping.md", "along": [own["path"]]}, headers=TAB)
+    assert gone.json() == {"files": 2}
+    assert not (filled / "Home" / "Attachments").exists()
+    # Another note's folder stays, and the deleted one comes back whole from the trash.
+    assert (filled / "Home" / "Recipes" / "Attachments" / "Cake" / "1.jpg").is_file() and cake["path"]
+    entry = client.get("/api/trash", headers=TAB).json()[0]
+    client.post(f"/api/trash/{entry['id']}/restore", headers=TAB)
+    assert (filled / "Home" / "Attachments" / "Shopping" / "1.jpg").is_file()
 
 
 # --- Hidden in the sidebar and the cover flow ----------------------------------------------------------------------

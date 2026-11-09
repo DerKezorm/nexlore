@@ -589,6 +589,11 @@ def delete_path(
             # Its cover pictures go with it, as its symbol and colour do; else they would keep the folder on the disk.
             covers.gone_below(full)
             _remove_empty_folders(full)
+        else:
+            # Files that went along leave their folders empty, a folder of the note's own below the attachment
+            # folder for one (``{note}/{n}``): those go too, up to the note's folder.
+            for file in files[1:]:
+                _prune_up(paths.vault_root().joinpath(*posixpath.dirname(file.path).split("/")), full.parent)
     if left:
         logger.warning("Files in the trash could not leave the disk, they stay files=%s", len(left))
     logger.info("Moved to the trash files=%s", len(files))
@@ -616,6 +621,17 @@ def _remove_empty_folders(top: Path) -> None:
             os.rmdir(directory)
         except OSError:
             continue
+
+
+def _prune_up(folder: Path, home: Path) -> None:
+    """Empty folders from ``folder`` upwards, as far as ``home`` (which stays); the first that holds something ends
+    it. Nothing happens outside ``home``."""
+    while folder != home and home in folder.parents:
+        try:
+            folder.rmdir()
+        except OSError:
+            return
+        folder = folder.parent
 
 
 @dataclass
@@ -1048,10 +1064,15 @@ def move(source: str, destination: str, *, actor: Actor, ignore_locks: bool = Fa
             os.rename(step, full_destination)
         else:
             shutil.move(str(full_source), str(full_destination))
+        left: set[Path] = set()
         for attachment in carried:
             old = paths.vault_root().joinpath(*attachment.path.split("/"))
             _move(old, paths.vault_root().joinpath(*new_path[attachment.id].split("/")))
-            _remove_empty_folders(old.parent)
+            left.add(old.parent)
+        # The folders they left, when nothing is left in them, up to the note's old folder.
+        for folder in sorted(left, key=lambda path: -len(path.parts)):
+            _remove_empty_folders(folder)
+            _prune_up(folder.parent, full_source.parent)
         for file in files:
             file.path = new_path[file.id]
             file.path_key = paths.fold(file.path)
@@ -1536,21 +1557,24 @@ def its_own(rel: str) -> list[str]:
 
 
 def _carried(db: Session, note: File, new_folder: str) -> list[tuple[File, str]]:
-    """The attachments that go along when ``note`` moves to ``new_folder``: those in the attachment folder beside it
-    that no other note links. Each with its new path, in the attachment folder beside the note's new place."""
+    """The attachments that go along when ``note`` moves to ``new_folder``: those in the attachment folder beside it,
+    in its subfolders too (a name pattern like ``{note}/{filename}`` makes them), that no other note links. Each with
+    its new path at the same place below the attachment folder beside the note's new place."""
     folder_name = str(settings_service.get(db, "attachment_folder") or "Attachments")
     old_folder = posixpath.join(posixpath.dirname(note.path), folder_name)
     target_folder = posixpath.join(new_folder, folder_name)
     result: list[tuple[File, str]] = []
-    taken: set[str] = set()
-    directory = paths.vault_root().joinpath(*target_folder.split("/"))
+    taken: dict[str, set[str]] = {}
     for attachment in _its_own(db, note):
-        # Only what lies right in the attachment folder beside the note, not below it or elsewhere.
-        if posixpath.dirname(attachment.path) != old_folder:
+        # Only what lies in the attachment folder beside the note, not elsewhere.
+        if not attachment.path.startswith(old_folder + "/"):
             continue
-        name = paths.unique_name(directory, posixpath.basename(attachment.path), taken=taken)
-        taken.add(name)
-        result.append((attachment, f"{target_folder}/{name}"))
+        below, _, name = attachment.path[len(old_folder) + 1 :].rpartition("/")
+        folder = f"{target_folder}/{below}" if below else target_folder
+        seen = taken.setdefault(paths.fold(folder), set())
+        name = paths.unique_name(paths.vault_root().joinpath(*folder.split("/")), name, taken=seen)
+        seen.add(name)
+        result.append((attachment, f"{folder}/{name}"))
     return result
 
 

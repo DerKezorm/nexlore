@@ -5,7 +5,9 @@ for instance), and the note links them with an ordinary relative Markdown link, 
 Obsidian read it. A picture pasted from the
 clipboard has no name worth keeping: it is called after the note with a number (``Shopping 1.png``), or after the
 pattern the operator chose (``pasted_name``: ``{note}``, ``{date}``, ``{time}``, ``{n}``, ``{n:3}``). Any other file
-keeps its name, made safe for Windows, macOS and Linux, with a number when the name is taken.
+keeps its name, made safe for Windows, macOS and Linux, with a number when the name is taken, unless the operator
+chose a pattern for those too (``uploaded_name``, with ``{filename}``). A ``/`` in either pattern makes folders below
+the attachment folder: ``{note}/{filename}`` keeps each note's files in a folder of its own.
 
 **On the way in.** The body is streamed into a hidden file in the target folder and counted while it arrives, against
 the limit per file and the space left for the account; nothing large is held in memory. Then:
@@ -49,9 +51,11 @@ ENDINGS = {"jpeg": ".jpg", "png": ".png", "gif": ".gif", "webp": ".webp", "heic"
 _ENDING = re.compile(r"^\.[A-Za-z0-9]{1,10}$")
 #: How pasted pictures are named unless the operator chose otherwise: ``Shopping 1.png``.
 PASTED_DEFAULT = "{note} {n}"
-#: The placeholders of that pattern: the note's name, the day and time of the upload, and a running number (with
-#: ``{n:3}`` at least three digits: ``007``).
-_PLACEHOLDER = re.compile(r"\{(note|date|time|n)(?::([1-9]))?\}")
+#: How uploaded files are named unless the operator chose otherwise: as they came.
+UPLOADED_DEFAULT = "{filename}"
+#: The placeholders of those patterns: the note's name, the uploaded file's name, the day and time of the upload, and
+#: a running number (with ``{n:3}`` at least three digits: ``007``). A ``/`` makes folders below the attachment folder.
+_PLACEHOLDER = re.compile(r"\{(note|filename|date|time|n)(?::([1-9]))?\}")
 PATTERN_CHARS = 120
 
 
@@ -82,8 +86,8 @@ class Plan:
     pasted: bool
     limits: Limits
     strip: bool
-    #: How a pasted picture is named (``pasted_name``).
-    pattern: str = PASTED_DEFAULT
+    #: How the file is named when it belongs to a note: ``pasted_name`` for a pasted picture, else ``uploaded_name``.
+    pattern: str = UPLOADED_DEFAULT
 
 
 @dataclass
@@ -158,7 +162,8 @@ def plan(*, note: str | None, folder: str | None, name: str, pasted: bool, actor
         raise VaultError("not_found", "no such folder", 404)
     return Plan(
         space_id=space_id, space=space, folder=target_folder, directory=directory, note=note, name=name.strip(),
-        pasted=pasted, limits=limits(actor.name), strip=strip, pattern=pasted_pattern() if pasted else PASTED_DEFAULT,
+        pasted=pasted, limits=limits(actor.name), strip=strip,
+        pattern=pasted_pattern() if pasted else uploaded_pattern(),
     )
 
 
@@ -191,28 +196,40 @@ class PatternError(ValueError):
     pass
 
 
-def check_pattern(pattern: str) -> str:
-    """A pattern for pasted pictures as the operator typed it, or ``PatternError``: known placeholders only, and
-    something that stays a name when they are filled in."""
+def check_pattern(pattern: str, *, uploaded: bool = False) -> str:
+    """A name pattern as the operator typed it, or ``PatternError``: known placeholders only (``{filename}`` only for
+    uploaded files, a pasted picture has no name of its own), ``/`` only between folders below the attachment
+    folder, ``{n}`` only in the file's own name, and something that stays a name when it is filled in."""
     pattern = pattern.strip()
     if not pattern or len(pattern) > PATTERN_CHARS:
         raise PatternError("empty or too long")
     for found in _PLACEHOLDER.finditer(pattern):
         if found.group(2) and found.group(1) != "n":
             raise PatternError("only {n} takes a width")
+        if found.group(1) == "filename" and not uploaded:
+            raise PatternError("{filename} only for uploaded files")
     rest = _PLACEHOLDER.sub("", pattern)
     if "{" in rest or "}" in rest:
         raise PatternError("unknown placeholder")
-    if not _fill(pattern, "Note", time.localtime(), 1).strip(" ."):
+    if "\\" in pattern:
+        raise PatternError("folders are separated by /")
+    parts = pattern.split("/")
+    if any(not part.strip(" .") for part in parts):
+        raise PatternError("an empty folder, or one that climbs out")
+    if any(found.group(1) == "n" for part in parts[:-1] for found in _PLACEHOLDER.finditer(part)):
+        raise PatternError("{n} only in the file's name")
+    if any(not _fill(part, "Note", "File", time.localtime(), 1).strip(" .") for part in parts):
         raise PatternError("names nothing")
     return pattern
 
 
-def _fill(pattern: str, note: str, moment: time.struct_time, number: int) -> str:
+def _fill(pattern: str, note: str, filename: str, moment: time.struct_time, number: int) -> str:
     def one(found: re.Match[str]) -> str:
         word = found.group(1)
         if word == "note":
             return note
+        if word == "filename":
+            return filename
         if word == "date":
             return time.strftime("%Y-%m-%d", moment)
         if word == "time":
@@ -222,27 +239,40 @@ def _fill(pattern: str, note: str, moment: time.struct_time, number: int) -> str
     return _PLACEHOLDER.sub(one, pattern)
 
 
-def pasted_pattern() -> str:
+def _stored_pattern(key: str, default: str, *, uploaded: bool) -> str:
     with SessionLocal() as db:
-        stored = str(settings_service.get(db, "pasted_name") or "")
+        stored = str(settings_service.get(db, key) or "")
     try:
-        return check_pattern(stored)
+        return check_pattern(stored, uploaded=uploaded)
     except PatternError:
-        return PASTED_DEFAULT
+        return default
 
 
-def _pasted_name(directory: Path, pattern: str, note: str, ending: str, moment: time.struct_time) -> str:
-    """The name a pasted picture gets: the pattern filled in, with the first free number for ``{n}``; a pattern
-    without one gets a number of its own when the name is taken (``2026-11-08 2.png``)."""
-    taken = {paths.fold(entry) for entry in os.listdir(directory)} if directory.is_dir() else set()
-    if not any(found.group(1) == "n" for found in _PLACEHOLDER.finditer(pattern)):
-        base = _fill(pattern, note, moment, 1)
-        return _free_name(directory, base, ending, numbered=False)
+def pasted_pattern() -> str:
+    return _stored_pattern("pasted_name", PASTED_DEFAULT, uploaded=False)
+
+
+def uploaded_pattern() -> str:
+    return _stored_pattern("uploaded_name", UPLOADED_DEFAULT, uploaded=True)
+
+
+def _named(
+    directory: Path, pattern: str, *, note: str, filename: str, ending: str, moment: time.struct_time
+) -> tuple[str, str]:
+    """Where in the attachment folder a file goes after the pattern, and its name: the folders before the last
+    ``/`` (``Shopping`` for ``{note}/{filename}``, empty for none), and the name with the first free number for
+    ``{n}``; a name without one gets a number of its own when it is taken (``2026-11-08 2.png``)."""
+    *folders, last = pattern.split("/")
+    below = [paths.safe_name(_fill(part, note, filename, moment, 1), "") for part in folders]
+    target = directory.joinpath(*below)
+    if not any(found.group(1) == "n" for found in _PLACEHOLDER.finditer(last)):
+        return "/".join(below), _free_name(target, _fill(last, note, filename, moment, 1), ending, numbered=False)
+    taken = {paths.fold(entry) for entry in os.listdir(target)} if target.is_dir() else set()
     number = 1
     while True:
-        candidate = paths.safe_name(_fill(pattern, note, moment, number), ending)
+        candidate = paths.safe_name(_fill(last, note, filename, moment, number), ending)
         if paths.fold(candidate) not in taken:
-            return candidate
+            return "/".join(below), candidate
         number += 1
 
 
@@ -337,14 +367,18 @@ def finish(upload: Plan, received: Path, size: int, actor: Actor) -> Uploaded:
                 if quota and used_by(db, actor.name) + size > quota:
                     raise VaultError("quota_exceeded", "no space left for this account", 413, left=0)
                 ending = _ending(upload, kind)
-                if upload.pasted and upload.note:
-                    name = _pasted_name(upload.directory, upload.pattern, paths.stem(upload.note), ending,
-                                        time.localtime())
+                base = os.path.splitext(upload.name)[0] or "Untitled"
+                below = ""
+                if upload.note:
+                    below, name = _named(upload.directory, upload.pattern, note=paths.stem(upload.note),
+                                         filename=base, ending=ending, moment=time.localtime())
                 else:
-                    base = os.path.splitext(upload.name)[0]
-                    name = _free_name(upload.directory, base or "Untitled", ending, numbered=upload.pasted)
-                _place(received, upload.directory / name)
-                file = _record(db, f"{upload.folder}/{name}", actor)
+                    name = _free_name(upload.directory, base, ending, numbered=upload.pasted)
+                folder = f"{upload.folder}/{below}" if below else upload.folder
+                target = paths.vault_root().joinpath(*folder.split("/"))
+                target.mkdir(parents=True, exist_ok=True)
+                _place(received, target / name)
+                file = _record(db, f"{folder}/{name}", actor)
                 index.reresolve(db, file.space_id, [file.name_key])
                 duplicate = False
             linked, original = file, None

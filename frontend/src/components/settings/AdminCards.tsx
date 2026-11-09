@@ -1080,7 +1080,17 @@ export function FilesSettingsCard() {
             label={t('admin.files.pasted')}
             value={values.pasted_name}
             onChange={(pasted_name) => setValues({ ...values, pasted_name })}
-            hint={t('admin.files.pastedHint', { example: `${pastedExample(values.pasted_name, t('admin.files.pastedNote'), new Date())}.png` })}
+            hint={t('admin.files.pastedHint', { example: `${values.attachment_folder.trim()}/${pastedExample(values.pasted_name, t('admin.files.pastedNote'), new Date())}.png` })}
+          />
+        </div>
+        <div className="sm:col-span-3">
+          <Input
+            label={t('admin.files.uploaded')}
+            value={values.uploaded_name}
+            onChange={(uploaded_name) => setValues({ ...values, uploaded_name })}
+            hint={t('admin.files.uploadedHint', {
+              example: `${values.attachment_folder.trim()}/${pastedExample(values.uploaded_name, t('admin.files.pastedNote'), new Date(), t('admin.files.uploadedFile'))}.pdf`,
+            })}
           />
         </div>
         <div className="sm:col-span-3">

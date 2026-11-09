@@ -19,8 +19,11 @@ DEFAULTS: dict[str, Any] = {
     "backup_keep": 7,
     #: Where uploaded files go, next to the note they belong to. Only a name, never a path.
     "attachment_folder": "Attachments",
-    #: How a picture pasted into a note is named: ``{note}``, ``{date}``, ``{time}``, ``{n}``, ``{n:3}``.
+    #: How a picture pasted into a note is named: ``{note}``, ``{date}``, ``{time}``, ``{n}``, ``{n:3}``; ``/`` makes
+    #: folders below the attachment folder.
     "pasted_name": "{note} {n}",
+    #: How a file uploaded for a note is named: as for pasted pictures, plus ``{filename}``; ``/`` makes folders.
+    "uploaded_name": "{filename}",
     #: Largest single upload, in MB.
     "upload_max_mb": 1024,
     #: Space per account for what it uploaded, in MB; 0 is no limit.

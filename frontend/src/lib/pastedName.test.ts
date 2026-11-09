@@ -11,6 +11,11 @@ describe('the example under the pattern for pasted pictures', () => {
     expect(pastedExample('{note}-{date}_{time}', 'Shopping', moment)).toBe('Shopping-2026-11-08_14-05-09')
   })
 
+  it('keeps a slash for a folder, and fills in the file name of an upload', () => {
+    expect(pastedExample('{note}/{n:3}', 'Shopping', moment)).toBe('Shopping/001')
+    expect(pastedExample('{note}/{date} {filename}', 'Shopping', moment, 'Receipt')).toBe('Shopping/2026-11-08 Receipt')
+  })
+
   it('leaves what is no placeholder as it stands', () => {
     expect(pastedExample('  {title} {n} ', 'Shopping', moment)).toBe('{title} 1')
   })

@@ -24,7 +24,11 @@ test('a manager hides the attachment folders of a space from its menu, and shows
 
     await page.goto('/')
     // A new space may stand open already: opened only when it is not.
-    await expect(await shownRow(page, SPACE)).toBeVisible()
+    // The tree may still be filling after the first scan: looked for again until the row is there.
+    await expect(async () => {
+      await page.getByTestId('sidebar-tree').evaluate((element) => element.scrollTo(0, 0))
+      await expect(await shownRow(page, SPACE)).toBeVisible({ timeout: 2_000 })
+    }).toPass({ timeout: 20_000 })
     const expand = page.getByTestId('sidebar-tree').getByRole('listitem').filter({ has: row(page, SPACE) }).getByRole('button', { name: 'Expand' })
     if (await expand.isVisible()) await expand.click()
     await expect(await shownRow(page, 'Attachments')).toBeVisible()
@@ -50,9 +54,14 @@ test('the operator sets how pasted pictures are named, and sees an example', asy
     const card = page.locator('#files')
     const pattern = card.getByLabel('Name of pasted pictures')
     await expect(pattern).toHaveValue('{note} {n}')
-    await expect(card).toContainText('Example: Shopping 1.png')
-    await pattern.fill('{note} {n:3}')
-    await expect(card).toContainText('Example: Shopping 001.png')
+    await expect(card).toContainText('Example: Attachments/Shopping 1.png')
+    await pattern.fill('{note}/{note} {n:3}')
+    await expect(card).toContainText('Example: Attachments/Shopping/Shopping 001.png')
+    const uploaded = card.getByLabel('Name of uploaded files')
+    await expect(uploaded).toHaveValue('{filename}')
+    await expect(card).toContainText('Example: Attachments/Receipt.pdf')
+    await uploaded.fill('{note}/{filename}')
+    await expect(card).toContainText('Example: Attachments/Shopping/Receipt.pdf')
     // A new folder name offers to take the folders already there along; left as it was, the offer goes.
     const folder = card.getByLabel('Attachment folder')
     await folder.fill('Clips')
@@ -61,7 +70,7 @@ test('the operator sets how pasted pictures are named, and sees an example', asy
     await expect(card.getByText('Rename the folders already there')).toHaveCount(0)
     await card.getByRole('button', { name: 'Save' }).click()
     await expect(card).toContainText('Saved')
-    expect((await (await page.request.get('/api/settings/files', { headers: TAB })).json()).pasted_name).toBe('{note} {n:3}')
+    expect((await (await page.request.get('/api/settings/files', { headers: TAB })).json()).pasted_name).toBe('{note}/{note} {n:3}')
     // Something the server does not know is refused with the reason.
     await pattern.fill('{title}')
     await card.getByRole('button', { name: 'Save' }).click()

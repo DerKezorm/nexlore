@@ -236,6 +236,8 @@ class FileSettings(BaseModel):
     strip_location: bool
     #: How a picture pasted into a note is named (``attachments.check_pattern``).
     pasted_name: str = Field(default=attachments.PASTED_DEFAULT, min_length=1, max_length=attachments.PATTERN_CHARS)
+    #: How a file uploaded for a note is named; ``{filename}`` keeps the name it came with.
+    uploaded_name: str = Field(default=attachments.UPLOADED_DEFAULT, min_length=1, max_length=attachments.PATTERN_CHARS)
 
 
 class FileSettingsIn(FileSettings):
@@ -265,9 +267,15 @@ def save_file_settings(body: FileSettingsIn, _operator: OperatorAccount, who: Ac
     try:
         pattern = attachments.check_pattern(body.pasted_name)
     except attachments.PatternError as exc:
-        raise error("bad_pattern", str(exc), 422) from exc
+        raise error("bad_pattern", str(exc), 422, field="pasted_name") from exc
+    try:
+        uploaded = attachments.check_pattern(body.uploaded_name, uploaded=True)
+    except attachments.PatternError as exc:
+        raise error("bad_pattern", str(exc), 422, field="uploaded_name") from exc
     old_name = attachments.folder_name()
-    values = body.model_dump(exclude={"rename_existing"}) | {"attachment_folder": folder_name, "pasted_name": pattern}
+    values = body.model_dump(exclude={"rename_existing"}) | {
+        "attachment_folder": folder_name, "pasted_name": pattern, "uploaded_name": uploaded,
+    }
     with SessionLocal() as db:
         settings_service.save(db, values)
     renamed = attachments.Renamed()

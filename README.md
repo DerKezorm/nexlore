@@ -67,8 +67,9 @@ from one space into another that only resolve for people who may read both.*
 - **Everyday use**: daily notes with a calendar, templates (`{{date}}`, `{{title}}` and friends), a task overview
   across all spaces (due, scheduled, recurring, done), installable on a phone as an app.
 - **Attachments** next to the note in an `Attachments` folder, pasted pictures named after the note. The operator
-  picks the folder name (the folders already there follow, links and all) and a name pattern for pasted pictures
-  (`{note}`, `{date}`, `{time}`, `{n}`); a space can hide its attachment folders from the sidebar. Place and
+  picks the folder name (the folders already there follow, links and all) and name patterns for pasted pictures and
+  uploaded files (`{note}`, `{filename}`, `{date}`, `{time}`, `{n}`, with `/` for a folder per note); a space can hide
+  its attachment folders from the sidebar. Place and
   device are removed from photos and videos on upload (on by default), HEIC gets a WebP copy, duplicates are found
   by content, PDFs are searched. SVG and HTML are always downloaded, never run.
 - **PDFs** open in nexlore's own reader: pages with their text to select and find, pictures of the pages, the PDF's
