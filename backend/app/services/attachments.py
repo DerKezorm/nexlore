@@ -214,12 +214,11 @@ def check_pattern(pattern: str, *, uploaded: bool = False) -> str:
     if "\\" in pattern:
         raise PatternError("folders are separated by /")
     parts = pattern.split("/")
-    if any(not part.strip(" .") for part in parts):
-        raise PatternError("an empty folder, or one that climbs out")
     if any(found.group(1) == "n" for part in parts[:-1] for found in _PLACEHOLDER.finditer(part)):
         raise PatternError("{n} only in the file's name")
+    # An empty part (``a//b``, a ``/`` at either end) or one of dots only (``..``) names nothing once filled in.
     if any(not _fill(part, "Note", "File", time.localtime(), 1).strip(" .") for part in parts):
-        raise PatternError("names nothing")
+        raise PatternError("an empty name, or a folder that climbs out")
     return pattern
 
 
