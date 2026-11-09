@@ -443,8 +443,13 @@ export const vaultApi = {
   remove: (path: string, along: string[] = []) => api<{ files: number }>('/api/files', { method: 'DELETE', query: { path, along } }),
   /** The files only this note uses. */
   own: (path: string) => api<{ paths: string[] }>('/api/files/own', { query: { path } }),
-  move: (source: string, destination: string) =>
-    api<{ path: string; files: number; rewritten: number }>('/api/move', { method: 'POST', body: { source, destination } }),
+  move: (source: string, destination: string, withFolder = false) =>
+    api<{ path: string; files: number; rewritten: number; folder?: string | null }>('/api/move', {
+      method: 'POST',
+      body: withFolder ? { source, destination, with_folder: true } : { source, destination },
+    }),
+  /** The folder named after the note in the attachment folder beside it, if there is one (renamed along on request). */
+  noteFolder: (path: string) => api<{ folder: string | null }>('/api/files/note-folder', { query: { path } }),
   /** A space gets another name; links naming it in front follow (block Y2). */
   renameSpace: (space: string, name: string) =>
     api<{ path: string; files: number; rewritten: number }>(`/api/spaces/${encodeURIComponent(space)}/rename`, { method: 'POST', body: { name } }),

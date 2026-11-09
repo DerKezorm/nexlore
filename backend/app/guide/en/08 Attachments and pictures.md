@@ -13,6 +13,7 @@ Drag pictures and files into the editor, paste them with `Ctrl+V`, or pick them 
 - **Duplicates** are recognised by their content; the file already there is linked instead.
 - **PDFs** are searched: the search finds text inside them too.
 - When a note moves, its attachments go with it.
+- When a note has a folder of its own in the attachment folder (a name pattern like `{note}/{filename}` makes one), renaming the note offers to rename that folder too; the links follow.
 
 The **Files** page lists every attachment of a space, those no note uses any more too.
 

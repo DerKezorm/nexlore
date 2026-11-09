@@ -513,9 +513,20 @@ def own(path: PathQuery, account: Account) -> dict[str, list[str]]:
         raise _fail(exc) from exc
 
 
+@router.get("/files/note-folder")
+def note_folder(path: PathQuery, account: Account) -> dict[str, str | None]:
+    """The folder named after the note in the attachment folder beside it, if there is one: the rename dialog offers
+    to rename it along."""
+    clean = need(account, path, READ)
+    return {"folder": attachments.note_folder(clean)}
+
+
 class MoveIn(BaseModel):
     source: str = Field(min_length=1, max_length=paths.MAX_PATH_CHARS)
     destination: str = Field(min_length=1, max_length=paths.MAX_PATH_CHARS)
+    #: A note renamed within its folder: its folder in the attachment folder (``GET /api/files/note-folder``) takes
+    #: the new name too.
+    with_folder: bool = False
 
 
 @router.post("/move")
@@ -524,15 +535,25 @@ def move(body: MoveIn, account: Account, who: ActorDep) -> dict[str, Any]:
     need(account, body.source, WRITE)
     need(account, body.destination, WRITE)
     try:
-        moved = vault.move(body.source, body.destination, actor=who)
+        if body.with_folder:
+            renamed = attachments.rename_note(body.source, body.destination, actor=who, with_folder=True)
+            moved, folder = renamed.moved, renamed.folder
+        else:
+            moved, folder = vault.move(body.source, body.destination, actor=who), None
     except VaultError as exc:
         raise _fail(exc) from exc
     # Links follow in every space, also where the mover may only read or not even that (a link into a space must
     # not die because its note was renamed). The count names only notes the mover may read: any other would tell
     # that a space they do not know links here.
     readable = readable_spaces(account)
-    rewritten = sum(1 for space_id in moved.rewritten_spaces if space_id in readable)
-    return {"path": moved.path, "files": moved.files, "rewritten": rewritten}
+    spaces = moved.rewritten_spaces + (folder.rewritten_spaces if folder else [])
+    ids = moved.rewritten_ids + (folder.rewritten_ids if folder else [])
+    rewritten = len({note_id for note_id, space_id in zip(ids, spaces, strict=True) if space_id in readable})
+    answer: dict[str, Any] = {"path": moved.path, "files": moved.files, "rewritten": rewritten}
+    if body.with_folder:
+        # Only for a caller that asked: the answer stays as it was for everyone else.
+        answer["folder"] = folder.path if folder else None
+    return answer
 
 
 @router.post("/spaces/{name}/rename", summary="Give a space another name; links naming it follow")

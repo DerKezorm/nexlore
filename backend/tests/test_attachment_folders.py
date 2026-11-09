@@ -259,3 +259,105 @@ def test_a_new_name_that_only_changes_case_renames_too(client: TestClient, fille
     assert (filled / "Home" / "Shopping.md").read_text(encoding="utf-8") == "# Note\n\n![](attachments/Shopping%201.jpg)\n"
     links = client.get("/api/links", params={"path": "Home/Shopping.md"}, headers=TAB).json()
     assert [item["path"] for item in links["outgoing"]] == ["Home/attachments/Shopping 1.jpg"]
+
+
+# --- A note's own folder, renamed along with it --------------------------------------------------------------------
+
+
+def rename(client: TestClient, source: str, destination: str, **extra: object):
+    return client.post("/api/move", json={"source": source, "destination": destination, **extra}, headers=TAB)
+
+
+def note_folder(client: TestClient, path: str) -> str | None:
+    return client.get("/api/files/note-folder", params={"path": path}, headers=TAB).json()["folder"]
+
+
+def test_the_rename_dialog_hears_of_a_folder_named_after_the_note(client: TestClient, filled: Path) -> None:
+    assert note_folder(client, "Home/Shopping.md") is None
+    upload(client, photo(), pasted=True)
+    assert note_folder(client, "Home/Shopping.md") is None  # "Shopping 1.jpg" beside it, no folder
+    file_settings(client, pasted_name="{note}/{n}")
+    upload(client, photo((0, 0, 255)), pasted=True)
+    assert note_folder(client, "Home/Shopping.md") == "Home/Attachments/Shopping"
+    # Another note in the same folder has none.
+    put(filled, "Home/Lists.md", "# Lists\n")
+    index.scan()
+    assert note_folder(client, "Home/Lists.md") is None
+
+
+def test_a_renamed_note_takes_its_folder_along_and_every_link_follows(client: TestClient, filled: Path) -> None:
+    file_settings(client, pasted_name="{note}/{note} {n}")
+    own = upload(client, photo(), pasted=True).json()
+    assert own["path"] == "Home/Attachments/Shopping/Shopping 1.jpg"
+    link_in(client, "Home/Shopping.md", [own["link"]])
+    put(filled, "Home/Week.md", "[[Shopping]]: ![](Attachments/Shopping/Shopping%201.jpg)\n")
+    index.scan()
+    answer = rename(client, "Home/Shopping.md", "Home/Groceries.md", with_folder=True)
+    assert answer.status_code == 200, answer.text
+    assert answer.json()["path"] == "Home/Groceries.md"
+    assert answer.json()["folder"] == "Home/Attachments/Groceries"
+    # Each note counted once: both moves rewrote "Week" (its link to the note, then the one to the picture).
+    assert answer.json()["rewritten"] == 2
+    # The files in it keep their names; only the folder takes the note's new one.
+    assert (filled / "Home" / "Attachments" / "Groceries" / "Shopping 1.jpg").is_file()
+    assert not (filled / "Home" / "Attachments" / "Shopping").exists()
+    assert (filled / "Home" / "Groceries.md").read_text(encoding="utf-8") == (
+        "# Note\n\n![](Attachments/Groceries/Shopping%201.jpg)\n"
+    )
+    assert (filled / "Home" / "Week.md").read_text(encoding="utf-8") == (
+        "[[Groceries]]: ![](Attachments/Groceries/Shopping%201.jpg)\n"
+    )
+    assert note_folder(client, "Home/Groceries.md") == "Home/Attachments/Groceries"
+
+
+def test_without_the_wish_the_folder_keeps_its_name_as_before(client: TestClient, filled: Path) -> None:
+    file_settings(client, pasted_name="{note}/{n}")
+    own = upload(client, photo(), pasted=True).json()
+    link_in(client, "Home/Shopping.md", [own["link"]])
+    answer = rename(client, "Home/Shopping.md", "Home/Groceries.md")
+    assert answer.status_code == 200 and "folder" not in answer.json()
+    assert (filled / "Home" / "Attachments" / "Shopping" / "1.jpg").is_file()
+    assert (filled / "Home" / "Groceries.md").read_text(encoding="utf-8") == "# Note\n\n![](Attachments/Shopping/1.jpg)\n"
+
+
+def test_a_folder_of_the_new_name_there_refuses_the_rename_before_anything_moves(
+    client: TestClient, filled: Path
+) -> None:
+    file_settings(client, pasted_name="{note}/{n}")
+    upload(client, photo(), pasted=True)
+    put(filled, "Home/Attachments/Groceries/other.txt", "x")
+    index.scan()
+    answer = rename(client, "Home/Shopping.md", "Home/Groceries.md", with_folder=True)
+    assert answer.status_code == 409 and answer.json()["detail"]["code"] == "attachment_folder_exists"
+    assert (filled / "Home" / "Shopping.md").is_file() and not (filled / "Home" / "Groceries.md").exists()
+    assert (filled / "Home" / "Attachments" / "Shopping" / "1.jpg").is_file()
+
+
+def test_a_rename_that_only_changes_case_renames_the_folder_too(client: TestClient, filled: Path) -> None:
+    file_settings(client, pasted_name="{note}/{n}")
+    own = upload(client, photo(), pasted=True).json()
+    link_in(client, "Home/Shopping.md", [own["link"]])
+    answer = rename(client, "Home/Shopping.md", "Home/shopping.md", with_folder=True)
+    assert answer.status_code == 200, answer.text
+    assert [entry.name for entry in (filled / "Home" / "Attachments").iterdir()] == ["shopping"]
+    assert (filled / "Home" / "shopping.md").read_text(encoding="utf-8") == "# Note\n\n![](Attachments/shopping/1.jpg)\n"
+
+
+def test_a_note_without_such_a_folder_renames_as_ever_with_the_wish(client: TestClient, filled: Path) -> None:
+    upload(client, photo(), pasted=True)
+    answer = rename(client, "Home/Shopping.md", "Home/Groceries.md", with_folder=True)
+    assert answer.status_code == 200 and answer.json()["folder"] is None
+    assert (filled / "Home" / "Attachments" / "Shopping 1.jpg").is_file()
+
+
+def test_the_folder_goes_along_only_when_the_note_stays_in_its_folder(client: TestClient, filled: Path) -> None:
+    file_settings(client, pasted_name="{note}/{n}")
+    own = upload(client, photo(), pasted=True).json()
+    link_in(client, "Home/Shopping.md", [own["link"]])
+    # A folder of the new name in the old place does not stop a move elsewhere.
+    put(filled, "Home/Attachments/Groceries/other.txt", "x")
+    index.scan()
+    answer = rename(client, "Home/Shopping.md", "Home/Recipes/Groceries.md", with_folder=True)
+    assert answer.status_code == 200 and answer.json()["folder"] is None
+    # Moving carries it along under its name, as ever.
+    assert (filled / "Home" / "Recipes" / "Attachments" / "Shopping" / "1.jpg").is_file()

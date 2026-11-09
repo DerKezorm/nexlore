@@ -13,6 +13,7 @@ Bilder und Dateien ziehst du in den Editor, fügst sie mit `Strg+V` ein oder wä
 - **Doppelte** erkennt nexlore am Inhalt und verlinkt die vorhandene Datei.
 - **PDFs** werden durchsucht: Die Suche findet auch Text darin.
 - Verschiebst du eine Notiz, wandern ihre Anhänge mit.
+- Hat eine Notiz einen eigenen Ordner im Anhang-Ordner (ein Namensmuster wie `{note}/{filename}` legt ihn an), bietet das Umbenennen an, ihn gleich mit umzubenennen; die Links ziehen mit.
 
 Die Seite **Dateien** zeigt alle Anhänge eines Bereichs, auch die, die keine Notiz mehr benutzt.
 

@@ -449,3 +449,51 @@ def rename_folders(old: str, new: str, actor: Actor) -> Renamed:
         result.renamed += 1
     logger.info("Attachment folders renamed renamed=%s left=%s", result.renamed, len(result.left))
     return result
+
+
+# --- A note's own folder, renamed along with it -------------------------------------------------------------------
+
+
+def note_folder(note: str) -> str | None:
+    """The folder named after the note in the attachment folder beside it (``Shopping/Attachments/Shopping``), as
+    a pattern like ``{note}/{filename}`` makes it, spelled as it stands on the disk; None when there is none."""
+    attachments = posixpath.join(posixpath.dirname(note), folder_name())
+    wanted = paths.fold(paths.safe_name(paths.stem(note), ""))
+    full = paths.vault_root().joinpath(*attachments.split("/"))
+    if not full.is_dir():
+        return None
+    for entry in os.listdir(full):
+        if paths.fold(entry) == wanted and (full / entry).is_dir():
+            return f"{attachments}/{entry}"
+    return None
+
+
+@dataclass
+class NoteRenamed:
+    moved: vault.Moved
+    #: The note's folder in the attachment folder under its new name, when it went along.
+    folder: vault.Moved | None = None
+
+
+def rename_note(source: str, destination: str, *, actor: Actor, with_folder: bool) -> NoteRenamed:
+    """Rename a note within its folder; with ``with_folder`` its folder in the attachment folder (``note_folder``)
+    takes the new name too, and the links into it follow. A folder of the new name there already refuses the whole
+    rename before anything moves (``attachment_folder_exists``): the two would have to be merged."""
+    source, destination = paths.parse(source), paths.parse(destination)
+    folder = note_folder(source) if with_folder and paths.is_note(source) else None
+    target = None
+    if folder is not None and posixpath.dirname(source) == posixpath.dirname(destination):
+        target = f"{posixpath.dirname(folder)}/{paths.safe_name(paths.stem(destination), '')}"
+        if target == folder:
+            target = None
+        elif paths.fold(target) != paths.fold(folder) and paths.vault_root().joinpath(*target.split("/")).exists():
+            raise VaultError("attachment_folder_exists", "the attachment folder holds one of the new name", 409)
+    moved = vault.move(source, destination, actor=actor)
+    if target is None or folder is None:
+        return NoteRenamed(moved)
+    try:
+        return NoteRenamed(moved, vault.move(folder, target, actor=actor))
+    except VaultError as exc:
+        # The note has its new name; its folder keeps the old one, which links still find.
+        logger.warning("Attachment folder of a renamed note left code=%s", exc.code)
+        return NoteRenamed(moved)

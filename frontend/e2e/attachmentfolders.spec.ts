@@ -79,3 +79,78 @@ test('the operator sets how pasted pictures are named, and sees an example', asy
     await page.request.put('/api/settings/files', { data: before, headers: TAB })
   }
 })
+
+test('renaming a note offers to rename its own attachment folder along, in the dialog and at the title', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const SPACE = `Zz Racks ${Date.now() % 100000}`
+  const before = await (await page.request.get('/api/settings/files', { headers: TAB })).json()
+  const problems: string[] = []
+  page.on('pageerror', (error) => problems.push(error.message))
+  expect((await page.request.post('/api/spaces', { data: { name: SPACE }, headers: TAB })).status()).toBe(201)
+  try {
+    expect((await page.request.put('/api/settings/files', { data: { ...before, uploaded_name: '{note}/{filename}' }, headers: TAB })).status()).toBe(200)
+    expect((await page.request.post('/api/notes', { data: { folder: SPACE, title: 'Shelf', content: 'Things.\n' }, headers: TAB })).status()).toBe(201)
+    const stored = await page.request.post('/api/attachments', { params: { note: `${SPACE}/Shelf.md`, name: 'list.txt' }, data: 'milk', headers: TAB })
+    expect(stored.status()).toBe(201)
+    const link = (await stored.json()).link as string
+    const note = await (await page.request.get('/api/note', { params: { path: `${SPACE}/Shelf.md` }, headers: TAB })).json()
+    expect((await page.request.put('/api/note', { data: { path: note.path, content: `See [list](${link}).\n`, base_hash: note.hash }, headers: TAB })).status()).toBe(200)
+    const ownFolder = async (path: string) =>
+      (await (await page.request.get('/api/files/note-folder', { params: { path }, headers: TAB })).json()).folder as string | null
+    expect(await ownFolder(`${SPACE}/Shelf.md`)).toBe(`${SPACE}/Attachments/Shelf`)
+
+    // From the sidebar: the dialog names the folder, ticked, and the folder takes the new name.
+    await page.goto('/')
+    await expect(async () => {
+      await page.getByTestId('sidebar-tree').evaluate((element) => element.scrollTo(0, 0))
+      await expect(await shownRow(page, SPACE)).toBeVisible({ timeout: 2_000 })
+    }).toPass({ timeout: 20_000 })
+    const expand = page.getByTestId('sidebar-tree').getByRole('listitem').filter({ has: row(page, SPACE) }).getByRole('button', { name: 'Expand' })
+    if (await expand.isVisible()) await expand.click()
+    await clickRow(page, 'Shelf', { button: 'right' })
+    await page.getByRole('menuitem', { name: 'Rename' }).click()
+    const dialog = page.getByTestId('name-dialog')
+    const choice = dialog.getByTestId('rename-folder')
+    await expect(choice).toContainText('Also rename its attachment folder “Attachments/Shelf”')
+    await expect(choice.getByRole('checkbox')).toBeChecked()
+    await dialog.getByRole('textbox').fill('Rack')
+    await dialog.getByRole('button', { name: 'Rename' }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(await ownFolder(`${SPACE}/Rack.md`)).toBe(`${SPACE}/Attachments/Rack`)
+    const renamed = await (await page.request.get('/api/note', { params: { path: `${SPACE}/Rack.md` }, headers: TAB })).json()
+    expect(renamed.content).toBe('See [list](Attachments/Rack/list.txt).\n')
+
+    // At the title: going to the choice and back keeps the rename open, by keyboard and by mouse; it goes ahead
+    // with what is ticked at the end. Ticked on the way there, unticked at the end: a rename that went ahead early
+    // would have taken the folder along.
+    await page.goto(`/note/${encodeURIComponent(`${SPACE}/Rack.md`)}`)
+    await page.getByTestId('note-title').getByRole('button').click()
+    const title = page.getByTestId('note-title')
+    const box = title.getByTestId('rename-folder').getByRole('checkbox')
+    await expect(title.getByTestId('rename-folder')).toContainText('“Attachments/Rack”')
+    await title.getByRole('textbox').fill('Crate')
+    await expect(box).toBeChecked()
+    await page.keyboard.press('Tab')
+    await expect(box).toBeFocused()
+    await page.keyboard.press('Space')
+    await expect(box).not.toBeChecked()
+    await page.keyboard.press('Shift+Tab')
+    await expect(title.getByRole('textbox')).toHaveValue('Crate')
+    await expect(title.getByRole('textbox')).toBeFocused()
+    // A click leaves the focus in the name, so Enter still renames.
+    await box.click()
+    await expect(box).toBeChecked()
+    await box.click()
+    await expect(box).not.toBeChecked()
+    await expect(title.getByRole('textbox')).toBeFocused()
+    await title.getByRole('textbox').press('Enter')
+    await expect(page.getByTestId('note-title')).toHaveText('Crate')
+    expect(await ownFolder(`${SPACE}/Crate.md`)).toBeNull()
+    const crate = await (await page.request.get('/api/note', { params: { path: `${SPACE}/Crate.md` }, headers: TAB })).json()
+    expect(crate.content).toBe('See [list](Attachments/Rack/list.txt).\n')
+    expect(problems).toEqual([])
+  } finally {
+    await page.request.put('/api/settings/files', { data: before, headers: TAB })
+    await page.request.delete('/api/files', { params: { path: SPACE }, headers: TAB })
+  }
+})

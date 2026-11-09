@@ -21,6 +21,8 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { FolderTree } from './FolderTree'
 import { isLucide, searchLucide, useLucide } from '../lib/lucide'
 import { LookIcon } from './LookIcon'
+import { NoteFolderChoice } from './NoteFolderChoice'
+import { useNoteFolder } from '../lib/noteFolder'
 import { Symbol } from './Symbol'
 import { TrashWarnings } from './TrashWarnings'
 
@@ -41,10 +43,10 @@ export function VaultActions() {
   here.current = shownPath(location.pathname)
 
   /** Moves `path` to `destination`; the page follows if it stood on it or inside it. */
-  const moveTo = async (path: string, destination: string, how = vaultApi.move) => {
+  const moveTo = async (path: string, destination: string, how: typeof vaultApi.move = vaultApi.move, withFolder = false) => {
     const affected = here.current !== null && within(here.current, path)
     if (affected) await announceLeaving(here.current!)
-    const moved = await how(path, destination)
+    const moved = await how(path, destination, withFolder)
     forget(path)
     await reload()
     reveal(moved.path.includes('/') ? folderOf(moved.path) : moved.path)
@@ -215,16 +217,15 @@ export function VaultActions() {
         />
       )}
       {action.kind === 'rename' && (
-        <NameDialog
-          title={t('actions.renameTitle', { name: baseName(action.path) })}
-          hint={t(action.path.includes('/') ? 'actions.renameHint' : 'actions.renameSpaceHint')}
-          confirm={t('actions.renameDo')}
+        <RenameDialog
+          path={action.path}
+          note={!action.folder && !action.file && action.path.includes('/')}
           initial={action.file ? action.path.slice(action.path.lastIndexOf('/') + 1) : baseName(action.path)}
           onClose={close}
-          onSubmit={async (name) => {
+          onSubmit={async (name, withFolder) => {
             // A space has no folder around it: it is renamed as a whole, and links naming it follow (block Y2).
             const moved = action.path.includes('/')
-              ? await moveTo(action.path, `${folderOf(action.path)}/${name}${action.folder || action.file ? '' : '.md'}`)
+              ? await moveTo(action.path, `${folderOf(action.path)}/${name}${action.folder || action.file ? '' : '.md'}`, vaultApi.move, withFolder)
               : await moveTo(action.path, name, vaultApi.renameSpace)
             done(moved.rewritten > 0 ? t('note.linksFollowed', { count: moved.rewritten }) : null)
           }}
@@ -340,7 +341,25 @@ function useSubmit(run: () => Promise<void>) {
 }
 
 /** A name; for a new space or folder (`look`) also its symbol and colour, chosen right away. */
-function NameDialog({ title, hint, confirm, initial, look = false, onClose, onSubmit }: { title: string; hint?: string; confirm: string; initial: string; look?: boolean; onClose: () => void; onSubmit: (name: string, icon: string | null, color: string | null) => Promise<void> }) {
+/** Renaming from the sidebar; a note with a folder of its own in the attachment folder offers to rename it along. */
+function RenameDialog({ path, note, initial, onClose, onSubmit }: { path: string; note: boolean; initial: string; onClose: () => void; onSubmit: (name: string, withFolder: boolean) => Promise<void> }) {
+  const { t } = useTranslation()
+  const folder = useNoteFolder(note ? path : null)
+  const [withFolder, setWithFolder] = useState(true)
+  return (
+    <NameDialog
+      title={t('actions.renameTitle', { name: baseName(path) })}
+      hint={t(path.includes('/') ? 'actions.renameHint' : 'actions.renameSpaceHint')}
+      confirm={t('actions.renameDo')}
+      initial={initial}
+      extra={folder ? <NoteFolderChoice folder={folder} checked={withFolder} onChange={setWithFolder} /> : null}
+      onClose={onClose}
+      onSubmit={(name) => onSubmit(name, folder !== null && withFolder)}
+    />
+  )
+}
+
+function NameDialog({ title, hint, confirm, initial, look = false, extra, onClose, onSubmit }: { title: string; hint?: string; confirm: string; initial: string; look?: boolean; extra?: ReactNode; onClose: () => void; onSubmit: (name: string, icon: string | null, color: string | null) => Promise<void> }) {
   const { t } = useTranslation()
   const [name, setName] = useState(initial)
   const [icon, setIcon] = useState<string | null>(null)
@@ -361,6 +380,7 @@ function NameDialog({ title, hint, confirm, initial, look = false, onClose, onSu
           />
         </label>
         {hint && <p className="text-xs text-mist-500">{hint}</p>}
+        {extra}
         {look && (
           <div className="space-y-4 pt-2">
             <LookPicker icon={icon} color={color} onIcon={setIcon} onColor={setColor} />

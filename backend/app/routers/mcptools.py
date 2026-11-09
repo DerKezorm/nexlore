@@ -196,9 +196,13 @@ def create_folder(ctx: Context, args: dict[str, Any]) -> Any:
     )
 
 
-def _move(ctx: Context, source: str, destination: str) -> Any:
-    moved = vault_routes.move(vault_routes.MoveIn(source=source, destination=destination), ctx.caller.account, ctx.who)
-    return {"path": moved["path"], "links_rewritten": moved.get("rewritten", 0)}
+def _move(ctx: Context, source: str, destination: str, *, with_folder: bool = False) -> Any:
+    asked = vault_routes.MoveIn(source=source, destination=destination, with_folder=with_folder)
+    moved = vault_routes.move(asked, ctx.caller.account, ctx.who)
+    result = {"path": moved["path"], "links_rewritten": moved.get("rewritten", 0)}
+    if moved.get("folder"):
+        result["attachment_folder"] = moved["folder"]
+    return result
 
 
 def _kind(path: str, folder: bool) -> None:
@@ -228,7 +232,8 @@ def rename_note(ctx: Context, args: dict[str, Any]) -> Any:
     name = args["title"].strip()
     if not name.lower().endswith(".md"):
         name += ".md"
-    return _move(ctx, source, posixpath.join(posixpath.dirname(source), name))
+    return _move(ctx, source, posixpath.join(posixpath.dirname(source), name),
+                 with_folder=bool(args.get("attachment_folder")))
 
 
 def move_note(ctx: Context, args: dict[str, Any]) -> Any:
@@ -611,8 +616,10 @@ EXTRA_TOOLS: list[dict[str, Any]] = [
         "rename_note",
         "change",
         "write",
-        "Rename a note; links to it follow.",
-        _schema(["path", "title"], path=_PATH, title={"type": "string", "maxLength": 255}),
+        "Rename a note; links to it follow. attachment_folder: its folder in the attachment folder, named after it"
+        " (made by a name pattern like {note}/{filename}), takes the new name too.",
+        _schema(["path", "title"], path=_PATH, title={"type": "string", "maxLength": 255},
+                attachment_folder={"type": "boolean"}),
         rename_note,
     ),
     _tool(

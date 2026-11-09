@@ -33,7 +33,8 @@ The level decides which tools a key can have at all:
 The tools follow what the interface can do: spaces (`create_space`, `rename_space` with links naming it following,
 `space_options`, `set_space_options`, `list_templates`), favorites (`set_favorite`), folders (`create_folder`,
 `rename_folder`, `move_folder`), notes (`create_note`, `create_from_template`, `write_note`, `edit_note`,
-`set_property`, `rename_note` and `move_note` with links following, `merge_notes`), versions (`list_versions`,
+`set_property`, `rename_note` (with `attachment_folder` its folder in the attachment folder takes the new name too)
+and `move_note` with links following, `merge_notes`), versions (`list_versions`,
 `read_version`, `restore_version`), the trash (`list_trash`, `trash_note`, `trash_folder`, `restore_from_trash`,
 `empty_trash`), tags (`list_tags`, `rename_tag`), comments (`read_comments`, `add_comment`, `reply_comment`,
 `resolve_comment`), tasks and daily notes (`list_tasks`, `complete_task`, `append_to_daily`, `capture_to_inbox`),

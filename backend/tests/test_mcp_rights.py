@@ -423,3 +423,16 @@ def test_a_source_asked_for_wins_over_the_actors_own() -> None:
     ai = Actor(name="anna", client="mcp-1-abcd", source=index.MCP)
     assert (ai.writes_as(), ai.writes_as(index.RESTORE)) == (index.MCP, index.RESTORE)
     assert Actor(name="anna", client="tab-anna0000").writes_as() == index.APP
+
+
+def test_renaming_a_note_takes_its_attachment_folder_along_when_asked(world: World) -> None:
+    token = world.key("write")
+    folder = world.vault / "Garden" / "Attachments" / "Plan"
+    folder.mkdir(parents=True)
+    (folder / "bed.txt").write_bytes(b"x")
+    (world.vault / "Garden" / "Plan.md").write_bytes(b"See [bed](Attachments/Plan/bed.txt).\n")
+    index.scan()
+    renamed = value(call(token, "rename_note", path="Garden/Plan.md", title="Spring", attachment_folder=True))
+    assert renamed["attachment_folder"] == "Garden/Attachments/Spring"
+    assert (world.vault / "Garden" / "Attachments" / "Spring" / "bed.txt").is_file()
+    assert (world.vault / "Garden" / "Spring.md").read_bytes() == b"See [bed](Attachments/Spring/bed.txt).\n"

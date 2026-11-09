@@ -18,6 +18,8 @@ import { addDays, today as isoToday } from '../lib/everyday'
 import { taskLines } from '../lib/taskLines'
 import { ApiError, draftsApi, everydayApi, vaultApi, type DraftInfo, type Links, type NoteData, type Uploaded, type VersionInfo, recentApi, themesApi, proposalsApi, type NoteNews, type Proposal, commentsApi, type Thread } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { NoteFolderChoice } from '../components/NoteFolderChoice'
+import { useNoteFolder } from '../lib/noteFolder'
 import { TrashWarnings } from '../components/TrashWarnings'
 import { ConflictCompare } from '../components/ConflictCompare'
 import { DraftCompare } from '../components/DraftCompare'
@@ -296,6 +298,9 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
   const [draftShown, setDraftShown] = useState<number | null>(null)
   const [lockHolder, setLockHolder] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
+  // The note's folder in the attachment folder, offered to rename along while the name is being changed.
+  const ownFolder = useNoteFolder(renaming !== null && note ? note.path : null)
+  const [withFolder, setWithFolder] = useState(true)
   const [deleting, setDeleting] = useState(false)
   // Files only this note uses, offered to go into the trash with it; and whether they do.
   const [own, setOwn] = useState<string[]>([])
@@ -906,7 +911,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     if (!clean || !note) return
     const destination = `${folderOf(note.path)}/${clean}.md`
     try {
-      const moved = await vaultApi.move(note.path, destination)
+      const moved = await vaultApi.move(note.path, destination, ownFolder !== null && withFolder)
       setRenaming(null)
       // Counts only notes the account may read: the server leaves out the others (they follow all the same).
       if (moved.rewritten > 0) afterOpen.current = t('note.linksFollowed', { count: moved.rewritten })
@@ -1420,6 +1425,16 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                       event.preventDefault()
                       void rename(renaming)
                     }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') setRenaming(null)
+                    }}
+                    onBlur={(event) => {
+                      // Between the name and the choice below it (its folder along or not): still renaming. Leaving
+                      // both renames, or ends it when the name stayed.
+                      if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return
+                      if (renaming.trim() && renaming.trim() !== baseName(note.path)) void rename(renaming)
+                      else setRenaming(null)
+                    }}
                   >
                     <input
                       autoFocus
@@ -1427,13 +1442,15 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                       value={renaming}
                       onChange={(event) => setRenaming(event.target.value)}
                       onFocus={(event) => event.currentTarget.select()}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Escape') setRenaming(null)
-                      }}
-                      onBlur={() => renaming.trim() && renaming.trim() !== baseName(note.path) ? void rename(renaming) : setRenaming(null)}
                       className="w-full rounded-lg border border-accent-500 bg-ink-900 px-1.5 text-[1.9rem] leading-tight font-bold text-mist-100 outline-none"
                     />
                     <p className="mt-1 px-1.5 text-xs text-mist-500">{t('note.renameHint')}</p>
+                    {ownFolder && (
+                      // Pressing it keeps the focus in the name, so the rename does not go ahead on the way there.
+                      <div className="mt-2 px-1.5" onMouseDown={(event) => event.preventDefault()}>
+                        <NoteFolderChoice folder={ownFolder} checked={withFolder} onChange={setWithFolder} />
+                      </div>
+                    )}
                   </form>
                 ) : mayRename ? (
                   <button
