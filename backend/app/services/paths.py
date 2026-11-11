@@ -50,6 +50,12 @@ def vault_root() -> Path:
     return root
 
 
+def space_present(folder: str) -> bool:
+    """A space whose folder is on the disk. A deleted space keeps its row (and its members, for the way back from the
+    trash), also after the trash was emptied: every list of spaces asks this, or it would show one that is gone."""
+    return (vault_root() / folder).is_dir()
+
+
 def trash_root() -> Path:
     """Where deleted files other than notes wait, by their row id (notes wait in their versions)."""
     return get_settings().data_dir / "trash"

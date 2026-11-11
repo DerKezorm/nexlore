@@ -155,7 +155,9 @@ def me(found: Reader) -> MeOut:
         row = db.get(ApiToken, found.token_id)
         names = None
         if found.account.key_spaces is not None:
-            names = sorted(db.scalars(select(Space.folder).where(Space.id.in_(rights.readable_ids(db, found.account)))))
+            names = sorted(name for name in db.scalars(
+                select(Space.folder).where(Space.id.in_(rights.readable_ids(db, found.account)))
+            ) if paths.space_present(name))
     return MeOut(account=found.account.name, display_name=found.account.display_name or found.account.name,
                  level=found.level, spaces=names, expires_at=row.expires_at if row else None, version=__version__)
 

@@ -39,7 +39,7 @@ from ..errors import error
 from ..models import Account as AccountRow
 from ..models import McpKey, OAuthClient, OAuthCode, Space, utcnow
 from ..security import brake
-from ..services import mcp, rights, settings_service, totp
+from ..services import mcp, paths, rights, settings_service, totp
 
 logger = logging.getLogger("nexlore.oauth")
 
@@ -271,7 +271,8 @@ def consent_info(
     readable = rights.readable_ids(db, account)
     spaces = db.execute(select(Space.id, Space.folder).where(Space.id.in_(readable)).order_by(Space.folder)).all()
     return ConsentInfo(client_name=client.name, redirect_host=urlsplit(redirect_uri).netloc,
-                       max_level=mcp.max_level(db), spaces=[{"id": sid, "name": name} for sid, name in spaces])
+                       max_level=mcp.max_level(db),
+                       spaces=[{"id": sid, "name": name} for sid, name in spaces if paths.space_present(name)])
 
 
 class ConsentIn(BaseModel):

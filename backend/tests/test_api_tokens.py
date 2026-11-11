@@ -244,6 +244,11 @@ def test_me_and_the_spaces_a_token_sees(world: World) -> None:
     # Outside its spaces a token finds nothing, exactly as in a space its account may not read.
     for token, path in ((limited, "Garden/Plan.md"), (every, "Secret/Diary.md"), (every, "Garden/Nothing.md")):
         assert code(api(token, "GET", "/api/v1/note", params={"path": path})) == (404, "not_found")
+    # A deleted space leaves the list of a token limited to it (issue #18).
+    both = world.token(spaces=[world.space_id("Garden"), world.space_id("Shared")])
+    assert ok(api(both, "GET", "/api/v1/me"))["spaces"] == ["Garden", "Shared"]
+    assert world.anna.delete("/api/files", params={"path": "Garden"}).status_code == 200
+    assert ok(api(both, "GET", "/api/v1/me"))["spaces"] == ["Shared"]
 
 
 def test_folder_note_and_links(world: World) -> None:

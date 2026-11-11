@@ -158,6 +158,11 @@ def test_the_consent_page_needs_an_account_a_known_client_its_address_and_pkce(w
     info = world.anna.get("/api/oauth/authorize", params=asked).json()
     assert info["client_name"] == "Made-up connector" and info["redirect_host"] == "connector.example.com"
     assert [space["name"] for space in info["spaces"]] == ["Garden"]
+    # A deleted space is no choice (issue #18).
+    assert world.anna.post("/api/spaces", json={"name": "Gone"}).status_code == 201
+    assert world.anna.delete("/api/files", params={"path": "Gone"}).status_code == 200
+    again = world.anna.get("/api/oauth/authorize", params=asked).json()
+    assert [space["name"] for space in again["spaces"]] == ["Garden"]
     assert world.anna.get("/api/oauth/authorize", params=asked | {"client_id": "nxo_unknown"}).status_code == 400
     elsewhere = asked | {"redirect_uri": "https://thief.example.com/cb"}
     assert world.anna.get("/api/oauth/authorize", params=elsewhere).json()["detail"]["code"] == "oauth_redirect"

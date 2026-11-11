@@ -25,7 +25,7 @@ from ..errors import detail, error
 from ..models import MANAGE, OPERATOR, SPACE_ROLES, Invite, Membership, Space
 from ..models import Account as AccountRow
 from ..security import MIN_PASSWORD, SESSION_COOKIE, brake, session_account
-from ..services import accounts, mailer, notices, rights, settings_service
+from ..services import accounts, mailer, notices, paths, rights, settings_service
 from ..services.accounts import AccountError
 from .auth import check_password, fail, sign_in
 
@@ -245,6 +245,8 @@ def decline_notice(notice_id: Annotated[int, PathParam(ge=1)], account: Account,
 def all_spaces(operator: OperatorAccount, db: DbSession) -> list[dict[str, Any]]:
     result = []
     for space in db.scalars(select(Space).order_by(Space.folder)):
+        if not paths.space_present(space.folder):
+            continue
         rows = _members(db, space.id)
         result.append(
             {

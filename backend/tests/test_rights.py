@@ -302,6 +302,24 @@ def test_a_deleted_space_comes_back_with_its_members(world: World) -> None:
     assert "Shared" in names(world.bob)
 
 
+def test_the_operators_list_of_all_spaces_leaves_out_a_deleted_one(world: World) -> None:
+    def listed() -> list[str]:
+        return [row["name"] for row in world.operator.get("/api/admin/spaces").json()]
+
+    assert listed() == ["Ops", "Private", "Shared"]
+    world.anna.delete("/api/files", params={"path": "Shared"})
+    # In the trash it is gone from the list, as from the sidebar; it comes back with it.
+    assert listed() == ["Ops", "Private"]
+    entry = world.anna.get("/api/trash").json()[0]["id"]
+    world.anna.post(f"/api/trash/{entry}/restore")
+    assert listed() == ["Ops", "Private", "Shared"]
+    # Deleted for good (issue #18): it stays away.
+    world.anna.delete("/api/files", params={"path": "Shared"})
+    entry = world.anna.get("/api/trash").json()[0]["id"]
+    assert world.anna.delete(f"/api/trash/{entry}").status_code == 200
+    assert listed() == ["Ops", "Private"]
+
+
 def test_a_new_space_under_an_old_name_has_only_its_maker(world: World) -> None:
     world.anna.delete("/api/files", params={"path": "Shared"})
     entry = world.anna.get("/api/trash").json()[0]["id"]
