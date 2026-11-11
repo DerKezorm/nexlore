@@ -553,5 +553,19 @@
     "small": [
       "The MCP tool rename_note takes the folder along as well, with attachment_folder."
     ]
+  },
+  "1.12.1": {
+    "lead": "Deleted spaces now leave the list of all spaces too.",
+    "sections": [
+      {
+        "title": "Deleted spaces stay gone",
+        "where": "Settings › Server › Accounts › All spaces",
+        "body": "A deleted space was still listed there, even after the trash was emptied. Now it is gone as soon as it is in the trash, as in the sidebar, and comes back with it when restored."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "The space choice when connecting a connector, and /api/v1/me for tokens limited to some spaces, no longer name deleted spaces either."
+    ]
   }
 }

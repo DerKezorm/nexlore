@@ -553,5 +553,19 @@
     "small": [
       "Das MCP-Werkzeug rename_note nimmt den Ordner mit attachment_folder ebenfalls mit."
     ]
+  },
+  "1.12.1": {
+    "lead": "Gelöschte Bereiche verschwinden jetzt auch aus der Liste aller Bereiche.",
+    "sections": [
+      {
+        "title": "Gelöschte Bereiche bleiben weg",
+        "where": "Einstellungen › Server › Konten › Alle Bereiche",
+        "body": "Ein gelöschter Bereich stand dort weiter, auch nachdem der Papierkorb geleert war. Jetzt fehlt er, sobald er im Papierkorb liegt, wie in der Seitenleiste, und kommt mit ihm zurück, wenn man ihn wiederherstellt."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Auch die Bereichsauswahl beim Verbinden eines Konnektors und /api/v1/me für Token mit bestimmten Bereichen nennen gelöschte Bereiche nicht mehr."
+    ]
   }
 }
