@@ -401,7 +401,8 @@ class VersionEntry(BaseModel):
     created_at: datetime
     #: When the version last changed: saves within a short time are folded into one version.
     updated_at: datetime
-    #: ``app``, ``external``, ``rename``, ``restore``, ``import``, ``initial``, ``mcp``, ``api``, ``plugin``, ``lore``.
+    #: ``app``, ``external``, ``rename``, ``restore``, ``import``, ``initial``, ``proposal``, ``upload``, ``catalog``,
+    #: ``mcp``, ``api``, ``plugin``, ``lore``; more may come.
     source: str
     #: The change came from outside nexlore (Syncthing, an editor, a script): nexlore saw the file change.
     outside: bool

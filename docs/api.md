@@ -187,7 +187,8 @@ keeps (nexlore thins old versions out: the last day completely, then one per hou
   saw it. It then comes again with a later `updated_at` and a new `hash`.
 - `file_id` stays with the note when it is moved or renamed; `path` is where the note was when the version was made.
 - `source`: `app`, `external` (from outside, then `outside` is true), `rename`, `restore`, `import`, `initial` (found as
-  it was), `mcp`, `api`, `plugin`, `lore`.
+  it was), `proposal` (a proposal taken over; `author` is who took it), `upload`, `catalog`, `mcp`, `api`, `plugin`,
+  `lore`. More may come; treat one you do not know like `app`.
 - `author` is null for changes from outside and for notes nexlore found as they were. `email` is the confirmed mail
   address of the account; other accounts' addresses only for the operator's token (nexlore shows them nowhere else
   either), null without one.
