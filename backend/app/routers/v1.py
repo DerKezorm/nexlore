@@ -22,17 +22,18 @@ import secrets
 import zlib
 from datetime import UTC, date, datetime
 from typing import Annotated, Any, Literal
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
-from sqlalchemy import Integer, cast, func, select
+from sqlalchemy import Integer, and_, cast, func, or_, select
 
 from .. import __version__
 from ..db import SessionLocal
 from ..deps import need, readable_spaces
 from ..errors import error
-from ..models import READ, WRITE, ApiToken, File, Space, Version
+from ..models import OPERATOR, READ, WRITE, Account, ApiToken, File, Space, Version
 from ..services import apitokens, appearance, everyday, inbox, index, logs, paths, rights, textblocks, vault
 from ..services.apitokens import Caller
 from ..services.vault import Actor, VaultError
@@ -376,6 +377,134 @@ class TemplateOut(BaseModel):
 @router.get("/templates", response_model=list[TemplateOut], summary="The templates of a space")
 def templates(found: Reader, space: Annotated[str, Query(min_length=1, max_length=255)]) -> list[TemplateOut]:
     return [TemplateOut(**item) for item in everyday_routes.template_list(space, found.account)]
+
+
+# --- Versions ---------------------------------------------------------------------------------------------------------
+
+
+class VersionAuthor(BaseModel):
+    #: The account's name, the one it signs in with.
+    name: str
+    #: The name shown in nexlore; the account's name without one.
+    display_name: str
+    #: The confirmed mail address; None without one, and for other accounts unless the token is the operator's.
+    email: str | None = None
+
+
+class VersionEntry(BaseModel):
+    id: int
+    #: The note the version belongs to. A note keeps it when it is moved or renamed.
+    file_id: int
+    #: Where the note was when this version was made.
+    path: str
+    space: str
+    created_at: datetime
+    #: When the version last changed: saves within a short time are folded into one version.
+    updated_at: datetime
+    #: ``app``, ``external``, ``rename``, ``restore``, ``import``, ``initial``, ``mcp``, ``api``, ``plugin``, ``lore``.
+    source: str
+    #: The change came from outside nexlore (Syncthing, an editor, a script): nexlore saw the file change.
+    outside: bool
+    #: Who made the change in nexlore; None for changes from outside and for notes nexlore found as they were.
+    author: VersionAuthor | None = None
+    hash: str
+    size: int
+
+
+class VersionsOut(BaseModel):
+    #: Oldest first, by ``updated_at``.
+    versions: list[VersionEntry]
+    #: More versions follow: ask again with ``cursor``.
+    more: bool
+    #: Give it back as ``cursor`` to get what came after; None when there were no versions.
+    cursor: str | None = None
+
+
+def _since(value: str) -> datetime:
+    try:
+        moment = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise error("bad_time", "The time is not ISO 8601.", 400) from exc
+    if moment.tzinfo is None:
+        raise error("bad_time", "The time needs its offset, as in 2026-11-17T06:00:00+01:00.", 400)
+    return moment
+
+
+def _cursor(value: str) -> tuple[datetime, int]:
+    moment, _, last = value.rpartition("~")
+    try:
+        when, after = datetime.fromisoformat(moment), int(last)
+    except ValueError as exc:
+        raise error("bad_cursor", "The cursor is not one nexlore gave.", 400) from exc
+    if when.tzinfo is None:
+        raise error("bad_cursor", "The cursor is not one nexlore gave.", 400)
+    return when, after
+
+
+def _authors(db: Any, found: Caller, names: set[str]) -> dict[str, VersionAuthor]:
+    # Mail addresses are not shown to other members anywhere in nexlore; the operator sees them in the account list.
+    sees_mail = found.account.role == OPERATOR
+    rows = db.execute(select(Account.name, Account.display_name, Account.email).where(Account.name.in_(names))).all()
+    return {
+        name: VersionAuthor(name=name, display_name=shown or name,
+                            email=(mail or None) if sees_mail or name == found.account.name else None)
+        for name, shown, mail in rows
+    }
+
+
+@router.get("/versions", response_model=VersionsOut,
+            summary="The versions of notes since a moment: which note, when, who, from nexlore or from outside")
+def versions(
+    found: Reader,
+    since: Annotated[str | None, Query(max_length=40)] = None,
+    cursor: Annotated[str | None, Query(max_length=80)] = None,
+    space: Annotated[str | None, Query(max_length=255)] = None,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 200,
+) -> VersionsOut:
+    readable = readable_spaces(found.account)
+    if space:
+        need(found.account, _space_only(space), READ)
+    with SessionLocal() as db:
+        query = (
+            select(Version, Space.folder)
+            .join(File, File.id == Version.file_id)
+            .join(Space, Space.id == File.space_id)
+            .where(File.deleted_at.is_(None), File.space_id.in_(readable))
+        )
+        if space:
+            query = query.where(Space.folder == space)
+        if cursor:
+            when, after = _cursor(cursor)
+            query = query.where(or_(Version.updated_at > when, and_(Version.updated_at == when, Version.id > after)))
+        elif since:
+            query = query.where(Version.updated_at > _since(since))
+        rows = db.execute(query.order_by(Version.updated_at, Version.id).limit(limit + 1)).all()
+        more = len(rows) > limit
+        rows = rows[:limit]
+        authors = _authors(db, found, {row.author for row, _folder in rows if row.author})
+    entries = [
+        VersionEntry(id=row.id, file_id=row.file_id, path=row.path, space=folder, created_at=row.created_at,
+                     updated_at=row.updated_at, source=row.source, outside=row.source == index.EXTERNAL,
+                     author=authors.get(row.author) if row.author else None, hash=row.hash, size=row.size)
+        for row, folder in rows
+    ]
+    last = entries[-1] if entries else None
+    return VersionsOut(versions=entries, more=more,
+                       cursor=f"{last.updated_at.isoformat()}~{last.id}" if last else cursor)
+
+
+@router.get("/versions/{version_id}/content", response_class=Response,
+            summary="The text of a version, byte for byte", responses={200: {"content": {"text/markdown": {}}}})
+def version_content(found: Reader, version_id: int) -> Response:
+    with SessionLocal() as db:
+        row = db.get(Version, version_id)
+        file = db.get(File, row.file_id) if row is not None else None
+        where = file.path if file is not None and file.deleted_at is None else None
+    if row is None or where is None:
+        raise error("not_found", "Not found.", 404)
+    need(found.account, where, READ)
+    return Response(zlib.decompress(row.content), media_type="text/markdown",
+                    headers={"X-Nexlore-Path": quote(row.path), "X-Nexlore-Hash": row.hash})
 
 
 # --- Tasks ------------------------------------------------------------------------------------------------------------

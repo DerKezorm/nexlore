@@ -163,6 +163,47 @@ The notes changed last, newest first. `space` optional, `limit` at most 100.
 [{"path": "Garden/Beans.md", "title": "Beans", "space": "Garden", "modified": "2026-10-02T05:12:40Z"}]
 ```
 
+### `GET /api/v1/versions?since=2026-11-17T06:00:00+01:00&space=Garden&limit=200`
+
+Every saved state of a note since a moment, oldest first: which note, when, who, and whether the change was made in
+nexlore or came from outside (Syncthing, an editor, a script; nexlore notices the file change and keeps it as a
+version). Made for programs that mirror a space somewhere else, such as Git. All parameters are optional: `since` (ISO
+with offset), `space`, `limit` (at most 1000). Without `since` the list starts with the oldest version nexlore still
+keeps (nexlore thins old versions out: the last day completely, then one per hour, per day, per week).
+
+```json
+{"versions": [{"id": 812, "file_id": 37, "path": "Garden/Plan.md", "space": "Garden",
+               "created_at": "2026-11-17T06:02:11Z", "updated_at": "2026-11-17T06:04:40Z",
+               "source": "app", "outside": false,
+               "author": {"name": "alex", "display_name": "Alex Smith", "email": "alex@example.com"},
+               "hash": "9f2c...", "size": 812}],
+ "more": false, "cursor": "2026-11-17T06:04:40+00:00~812"}
+```
+
+- **Paging:** while `more` is true, ask again with `cursor` instead of `since`. Keep the last `cursor` and ask with it
+  next time: you get exactly what came after, also versions made in the same second. An empty answer hands your
+  `cursor` back.
+- **Folded saves:** saves of one person close together are folded into one version, so a version can change after you
+  saw it. It then comes again with a later `updated_at` and a new `hash`.
+- `file_id` stays with the note when it is moved or renamed; `path` is where the note was when the version was made.
+- `source`: `app`, `external` (from outside, then `outside` is true), `rename`, `restore`, `import`, `initial` (found as
+  it was), `mcp`, `api`, `plugin`, `lore`.
+- `author` is null for changes from outside and for notes nexlore found as they were. `email` is the confirmed mail
+  address of the account; other accounts' addresses only for the operator's token (nexlore shows them nowhere else
+  either), null without one.
+- Notes in the trash and their versions are left out. Attachments have no versions.
+
+### `GET /api/v1/versions/812/content`
+
+The text of a version, byte for byte (line ends, encoding and all), as `text/markdown`. The headers
+`X-Nexlore-Path` (URL-encoded) and `X-Nexlore-Hash` say where the note was and which state it is.
+
+**Mirroring a space into Git:** [`docs/examples/git-mirror.py`](examples/git-mirror.py) makes one commit per version
+with the real author, follows renames, and adds a last commit with attachments and deletions so Git always ends with
+the folder as it is. It needs Python 3.9+, git and a token of the level `read`; the repository lies next to the vault,
+never in it. Authors without a mail address get `name@` the host of nexlore's address, or the domain given with
+`--mail-domain`. `python3 git-mirror.py --help` lists the options.
+
 ### `GET /api/v1/templates?space=Garden`
 
 ```json
