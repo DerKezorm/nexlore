@@ -567,5 +567,24 @@
     "small": [
       "The space choice when connecting a connector, and /api/v1/me for tokens limited to some spaces, no longer name deleted spaces either."
     ]
+  },
+  "1.13.0": {
+    "lead": "Programs can now learn who changed which note and when, and an example script mirrors a space into Git with the real authors.",
+    "sections": [
+      {
+        "title": "Versions through the API",
+        "where": "GET /api/v1/versions with an API token",
+        "body": "The route lists every version since a moment: which note, when, who, and whether the change was made in nexlore or came from outside, through Syncthing for example. A program remembers where it stopped and next time gets exactly what came after. The text of each version comes byte for byte. Other accounts' mail addresses are shown only to the operator's token."
+      },
+      {
+        "title": "Mirror a space into Git",
+        "where": "docs/examples/git-mirror.py in the repository",
+        "body": "The script makes a commit of every version with its real author and the time of the change, follows renames, and finally takes attachments and deleted notes from the folder. The repository lies next to the vault; nexlore stays the leading system. It needs only Python and git and runs as a cron job on the server."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "docs/api.md describes both routes, paging with cursor included."
+    ]
   }
 }

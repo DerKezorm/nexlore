@@ -567,5 +567,24 @@
     "small": [
       "Auch die Bereichsauswahl beim Verbinden eines Konnektors und /api/v1/me für Token mit bestimmten Bereichen nennen gelöschte Bereiche nicht mehr."
     ]
+  },
+  "1.13.0": {
+    "lead": "Programme erfahren jetzt, wer welche Notiz wann geändert hat, und ein Beispielskript spiegelt einen Bereich mit echten Autoren nach Git.",
+    "sections": [
+      {
+        "title": "Versionen über die API",
+        "where": "GET /api/v1/versions mit einem API-Token",
+        "body": "Die Route liefert alle Versionen seit einem Zeitpunkt: welche Notiz, wann, wer, und ob die Änderung in nexlore gemacht wurde oder von außen kam, etwa über Syncthing. Ein Programm merkt sich, wo es aufgehört hat, und bekommt beim nächsten Mal genau das, was danach kam. Den Text jeder Version gibt es Byte für Byte. Mailadressen anderer Konten sieht nur ein Token des Betreibers."
+      },
+      {
+        "title": "Einen Bereich nach Git spiegeln",
+        "where": "docs/examples/git-mirror.py im Repository",
+        "body": "Das Skript macht aus jeder Version einen Commit mit dem echten Autor und der Zeit der Änderung, zieht Umbenennungen mit und nimmt am Ende Anhänge und gelöschte Notizen aus dem Ordner. Das Repository liegt neben dem Tresor, nexlore bleibt das führende System. Es braucht nur Python und git und läuft als Cronjob auf dem Server."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "docs/api.md beschreibt beide Routen samt Blättern mit cursor."
+    ]
   }
 }
