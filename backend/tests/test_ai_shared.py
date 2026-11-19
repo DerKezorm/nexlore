@@ -15,7 +15,7 @@ from app.db import SessionLocal
 from app.models import Account as AccountRow
 from app.services import ai
 
-from .test_ai import KEY, NOTE, Service, open_lock, person, set_up
+from .test_ai import KEY, NOTE, Service, newer_openai, open_lock, person, set_up
 
 SHARED_KEY = "sk-shared-stand-in"
 
@@ -207,6 +207,26 @@ def test_a_service_that_does_not_flow_is_heard_all_at_once(client: TestClient, a
     # The echo answers with the question in capitals, as one JSON answer.
     assert spoken.text == "HOW OFTEN?" and heard == ["HOW OFTEN?"]
     assert (spoken.tokens_in, spoken.tokens_out) == (11, 7)
+
+
+def test_a_conversation_with_a_newer_openai_model_gets_the_limit_as_max_completion_tokens(
+    client: TestClient, account: object, service: Service
+) -> None:
+    share(client)
+    row_of("anna")
+    asked: list[dict] = []
+    newer = newer_openai(service)
+
+    def thinking(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        asked.append(body)
+        return newer(request) if "max_tokens" in body or "temperature" in body else flowing("Fine.", usage=False)
+
+    service.answer = thinking
+    assert talk("anna", []).text == "Fine."
+    assert [("max_tokens" in body, "temperature" in body) for body in asked] == [(True, True), (False, True), (False, False)]
+    assert asked[-1]["max_completion_tokens"] == ai.MAX_OUT_TOKENS + ai.THINKING_OUT_TOKENS
+    assert asked[-1]["reasoning_effort"] == "low" and asked[-1]["stream"] is True
 
 
 def test_a_conversation_without_temperature_is_asked_once_more_and_a_refusal_is_kept(

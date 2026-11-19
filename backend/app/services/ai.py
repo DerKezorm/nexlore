@@ -70,6 +70,8 @@ MIN_WORDS = 3
 MAX_INSTRUCTION = 2_000
 #: What may come back.
 MAX_OUT_TOKENS = 8_000
+#: What a model that thinks before it answers gets on top: its thoughts count against ``max_completion_tokens``.
+THINKING_OUT_TOKENS = 4_000
 #: How much of a service's error message comes back to the person.
 SAID_CHARS = 300
 MAX_OUT_CHARS = 200_000
@@ -246,6 +248,29 @@ def _said(answer: httpx.Response) -> str:
     if not isinstance(found, str):
         return ""
     return " ".join("".join(c if c.isprintable() else " " for c in found).split())[:SAID_CHARS]
+
+
+def _ask_differently(body: dict[str, Any], said: str) -> bool:
+    """Changes ``body`` the way a service's 400 asks for, and says whether it did: then it is sent once more.
+
+    Newer models choose the temperature themselves and turn down a request that sets it ("`temperature` is deprecated
+    for this model"); newer OpenAI models take the limit only as ``max_completion_tokens`` and say so. Such a model
+    thinks before it answers, and its thoughts count against that limit: room for them on top, and asked to keep them
+    short with ``reasoning_effort``, which a model that does not take it turns down in turn. Only a refusal that names
+    the new word renames the limit (a local server saying ``max_tokens`` is too high is no reason), and each change
+    happens at most once: a field left out stays out, so asking again always ends."""
+    said = said.lower()
+    if "temperature" in body and "temperature" in said:
+        del body["temperature"]
+        return True
+    if "reasoning_effort" in body and "reasoning" in said:
+        del body["reasoning_effort"]
+        return True
+    if "max_tokens" in body and "max_completion_tokens" in said:
+        body["max_completion_tokens"] = body.pop("max_tokens") + THINKING_OUT_TOKENS
+        body["reasoning_effort"] = "low"
+        return True
+    return False
 
 
 def list_models(db: Session, url: str, key: str, *, trusted: bool = False) -> list[dict[str, str]]:
@@ -608,10 +633,8 @@ def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "",
         with httpx.Client(timeout=TEXT_SECONDS, follow_redirects=False, transport=transport, trust_env=False,
                           verify=tls()) as client:
             answer = _send(client, "POST", place, _headers(using.key), json=body)
-            # Newer models choose it themselves and turn down a request that sets it ("`temperature` is deprecated
-            # for this model"): once more without, which older models and other services still take.
-            if answer.status_code == 400 and "temperature" in _said(answer).lower():
-                del body["temperature"]
+            # A newer model turns down a field older models and other services still take: once more as it asks.
+            while answer.status_code == 400 and _ask_differently(body, _said(answer)):
                 answer = _send(client, "POST", place, _headers(using.key), json=body)
     except httpx.ReadTimeout as exc:
         # Only a read timeout: the connection stood and the service wrote too slowly. Not connecting is "unreachable".
@@ -820,7 +843,8 @@ def converse(
     try:
         with httpx.Client(timeout=TEXT_SECONDS, follow_redirects=False, transport=transport, trust_env=False,
                           verify=tls()) as client:
-            for _attempt in range(3):
+            # Each change happens at most once: temperature, the limit's name, reasoning_effort, tools.
+            for _attempt in range(5):
                 with client.stream("POST", place.url, headers=headers, extensions=extensions, json=body) as answer:
                     if answer.status_code == 200:
                         spoken = _flow(answer, heard)
@@ -829,8 +853,7 @@ def converse(
                         break
                     whole = httpx.Response(answer.status_code, content=answer.read()[:MAX_ANSWER])
                 said = _said(whole).lower()
-                if whole.status_code == 400 and "temperature" in body and "temperature" in said:
-                    del body["temperature"]
+                if whole.status_code == 400 and _ask_differently(body, said):
                     continue
                 if whole.status_code == 400 and "tools" in body and ("tool" in said or "function" in said):
                     # A model without tools: Lore answers from what was looked up before, as with every model.

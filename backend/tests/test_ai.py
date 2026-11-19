@@ -242,6 +242,75 @@ def test_a_model_that_sets_its_own_temperature_is_asked_once_more_without(anna: 
     assert len(service.requests) == count + 1
 
 
+#: As OpenAI answers for its newer models (nexdiary issue #3), word for word.
+NO_MAX_TOKENS = {"error": {"message": "Unsupported parameter: 'max_tokens' is not supported with this model. Use "
+                           "'max_completion_tokens' instead.", "type": "invalid_request_error", "param": "max_tokens",
+                           "code": "unsupported_parameter"}}
+NO_TEMPERATURE = {"error": {"message": "Unsupported value: 'temperature' does not support 0.3 with this model. Only the "
+                            "default (1) value is supported.", "type": "invalid_request_error", "param": "temperature"}}
+
+
+def newer_openai(service: Service, *, effort: bool = True) -> Callable[[httpx.Request], httpx.Response]:
+    """A newer OpenAI model: only ``max_completion_tokens``, no temperature, ``reasoning_effort`` if ``effort``."""
+    def answer(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        if "max_tokens" in body:
+            return httpx.Response(400, json=NO_MAX_TOKENS)
+        if "temperature" in body:
+            return httpx.Response(400, json=NO_TEMPERATURE)
+        if "reasoning_effort" in body and not effort:
+            return httpx.Response(400, json={"error": {"message": "Unrecognized request argument supplied: reasoning_effort"}})
+        return service.echo(request)
+
+    return answer
+
+
+def test_a_newer_openai_model_gets_the_limit_as_max_completion_tokens_with_room_to_think(
+    anna: TestClient, service: Service
+) -> None:
+    service.answer = newer_openai(service)
+    count = len(service.requests)
+    assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).json()["text"] == NOTE.upper()
+    first, second, third = (json.loads(request.content) for request in service.requests[count:])
+    assert first["max_tokens"] == ai.MAX_OUT_TOKENS and "max_completion_tokens" not in first
+    assert "max_tokens" not in second and second["max_completion_tokens"] == ai.MAX_OUT_TOKENS + ai.THINKING_OUT_TOKENS
+    assert second["reasoning_effort"] == "low" and "temperature" in second
+    assert "temperature" not in third and third["reasoning_effort"] == "low"
+    assert third["max_completion_tokens"] == ai.MAX_OUT_TOKENS + ai.THINKING_OUT_TOKENS
+    # What went out is kept as it went out the last time.
+    kept = anna.get("/api/ai/events").json()
+    assert kept[0]["body"]["max_completion_tokens"] == ai.MAX_OUT_TOKENS + ai.THINKING_OUT_TOKENS
+
+    # A model that does not take reasoning_effort is asked once more without it, the limit's name stays.
+    service.answer = newer_openai(service, effort=False)
+    count = len(service.requests)
+    assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).json()["text"] == NOTE.upper()
+    last = json.loads(service.requests[-1].content)
+    assert len(service.requests) == count + 4
+    assert "reasoning_effort" not in last and "max_tokens" not in last and "max_completion_tokens" in last
+
+
+def test_an_older_model_keeps_max_tokens_in_one_request_and_only_the_new_word_renames_it(
+    anna: TestClient, service: Service
+) -> None:
+    count = len(service.requests)
+    assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).json()["text"] == NOTE.upper()
+    assert len(service.requests) == count + 1
+    sent = service.last_body()
+    assert sent["max_tokens"] == ai.MAX_OUT_TOKENS
+    assert "max_completion_tokens" not in sent and "reasoning_effort" not in sent
+    # A local server saying the limit is too high is no reason to send another name.
+    service.answer = lambda request: httpx.Response(400, json={"error": {"message": "max_tokens must be at most 4096"}})
+    count = len(service.requests)
+    assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).json()["detail"]["code"] == "ai_service_failed"
+    assert len(service.requests) == count + 1
+    # A service that keeps refusing the new name too is not asked on and on.
+    service.answer = lambda request: httpx.Response(400, json=NO_MAX_TOKENS)
+    count = len(service.requests)
+    assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).json()["detail"]["code"] == "ai_service_failed"
+    assert len(service.requests) == count + 2
+
+
 def test_what_went_out_is_kept_word_for_word_encrypted_per_account_and_goes_on_request(
     anna: TestClient, service: Service
 ) -> None:
