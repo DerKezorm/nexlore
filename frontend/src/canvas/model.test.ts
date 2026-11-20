@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 
 import {
   CanvasError,
+  PAGES_FIELD,
   PDF_SIZE,
+  isFolded,
   pictureSize,
   EMPTY_CANVAS,
   addEdge,
@@ -245,5 +247,16 @@ describe('the card of a file laid on the canvas', () => {
 
   it('is a page of A4 for a PDF', () => {
     expect(PDF_SIZE.height / PDF_SIZE.width).toBeCloseTo(297 / 210, 2)
+  })
+})
+
+describe('a PDF card folded to its first page', () => {
+  it('is a file card with the field set to 1, nothing else', () => {
+    const pdf = { id: 'p', type: 'file', file: 'A/x.pdf', x: 0, y: 0, width: 420, height: 594 }
+    expect(isFolded({ ...pdf, [PAGES_FIELD]: 1 })).toBe(true)
+    expect(isFolded(pdf)).toBe(false)
+    expect(isFolded({ ...pdf, [PAGES_FIELD]: 2 })).toBe(false)
+    expect(isFolded({ ...pdf, [PAGES_FIELD]: '1' })).toBe(false)
+    expect(isFolded({ ...pdf, type: 'text', [PAGES_FIELD]: 1 })).toBe(false)
   })
 })

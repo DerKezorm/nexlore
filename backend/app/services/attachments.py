@@ -427,28 +427,22 @@ def finish(upload: Plan, received: Path, size: int, actor: Actor) -> Uploaded:
 @dataclass
 class NewInk:
     path: str
-    #: The text that embeds it in the note: ``![[Shopping 1.svg]]``; None on a canvas (a card shows it there).
-    embed: str | None
+    #: The text that embeds it in the note: ``![[Shopping 1.svg]]``.
+    embed: str
 
 
-def new_ink(note: str | None = None, *, actor: Actor, canvas: str | None = None) -> NewInk:
+def new_ink(note: str, *, actor: Actor) -> NewInk:
     """A new, empty drawing for ``note``: in the note's attachment folder, named the way a picture pasted into it is
     (``pasted_name``: ``Shopping 1.svg``). A drawing is made where the note is being written, like a pasted picture,
     and has no name of its own either. The name is chosen and the file made under one lock: two drawings started at
-    once get two names.
-
-    For ``canvas`` instead: the pen's layer over that canvas, in the canvas's attachment folder, named the same way
-    after the canvas (``Board 1.svg``)."""
-    upload = plan(note=note, folder=None, name="", pasted=True, actor=actor, canvas=canvas)
-    clean = upload.note or note or canvas or ""
+    once get two names."""
+    upload = plan(note=note, folder=None, name="", pasted=True, actor=actor)
+    clean = upload.note or note
     with index.guard:
-        below, name = _named(upload.directory, upload.pattern, note=owner_name(clean), filename="",
+        below, name = _named(upload.directory, upload.pattern, note=paths.stem(clean), filename="",
                              ending=paths.SVG_SUFFIX, moment=time.localtime())
         folder = f"{upload.folder}/{below}" if below else upload.folder
         file = vault.create_ink(f"{folder}/{name}", actor=actor)
-    if upload.canvas:
-        logger.info("Drawing made for a canvas file_id=%s", file.id)
-        return NewInk(path=file.path, embed=None)
     logger.info("Drawing made for a note file_id=%s", file.id)
     return NewInk(path=file.path, embed=ink_embed(file, clean))
 

@@ -12,10 +12,8 @@
  * the pointer is lifted: one step back each.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
 
 import {
-  INK,
   LIMITS,
   eraseWhole,
   erasePart,
@@ -51,13 +49,6 @@ type Props = {
   height?: number
   /** Its size in pixels, as soon as it is known and whenever it changes. */
   onSize?: (width: number, height: number) => void
-  /** Laid over something else (the cards of a canvas): no ground and no paper of its own, only the strokes. */
-  clear?: boolean
-  /**
-   * A layer beside the surface (outside its stacking) that draws the strokes in ink once more, there to be blended
-   * with what lies under them: the canvas turns white ink dark on a light card in the dark (`canvas.css`).
-   */
-  echo?: HTMLElement | null
   className?: string
   children?: ReactNode
 }
@@ -72,7 +63,7 @@ type Gesture =
 /** Points closer than this on the screen add nothing to a stroke. */
 const MIN_STEP_PX = 1.2
 
-export function InkSurface({ ink, tools, place, onPlace, moves, draws, height, onSize, clear = false, echo = null, className = '', children }: Props) {
+export function InkSurface({ ink, tools, place, onPlace, moves, draws, height, onSize, className = '', children }: Props) {
   const root = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: height ?? 0 })
   const gesture = useRef<Gesture | null>(null)
@@ -295,7 +286,7 @@ export function InkSurface({ ink, tools, place, onPlace, moves, draws, height, o
       data-ink-surface=""
       data-tool={drawing ? tools.tool : undefined}
       data-zoom={Math.round(place.z * 100)}
-      className={'relative overflow-hidden text-mist-100 outline-none ' + (clear ? '' : 'bg-ink-900 ') + cursor + ' ' + (height === undefined ? 'h-full w-full ' : 'w-full ') + className}
+      className={'relative overflow-hidden bg-ink-900 text-mist-100 outline-none ' + cursor + ' ' + (height === undefined ? 'h-full w-full ' : 'w-full ') + className}
       style={{ height, touchAction: moves || drawing ? 'none' : 'pan-y' }}
       onPointerDown={down}
       onPointerMove={moved}
@@ -305,7 +296,7 @@ export function InkSurface({ ink, tools, place, onPlace, moves, draws, height, o
       onContextMenu={(event) => moves && event.preventDefault()}
     >
       <svg className="block h-full w-full select-none" viewBox={viewBoxOf(place, width, tall)} preserveAspectRatio="xMinYMin slice">
-        {!clear && <Paper bg={ink.bg} box={{ x: place.x, y: place.y, w: width / place.z, h: tall / place.z }} />}
+        <Paper bg={ink.bg} box={{ x: place.x, y: place.y, w: width / place.z, h: tall / place.z }} />
         <Strokes strokes={shown} picked={ink.selection} />
         {live && <StrokePath stroke={live} />}
         {lasso && lasso.length > 1 && (
@@ -336,25 +327,6 @@ export function InkSurface({ ink, tools, place, onPlace, moves, draws, height, o
         )}
       </svg>
       {children}
-      {echo && createPortal(<InkEcho strokes={shown} live={live} picked={ink.selection} viewBox={viewBoxOf(place, width, tall)} />, echo)}
     </div>
-  )
-}
-
-/** The strokes in ink only, for the layer beside the surface; picked ones dimmed as on the surface. */
-function InkEcho({ strokes, live, picked, viewBox }: { strokes: InkStroke[]; live: InkStroke | null; picked: readonly number[]; viewBox: string }) {
-  const chosen = new Set(picked)
-  const kept: InkStroke[] = []
-  const dimmed: number[] = []
-  strokes.forEach((stroke, index) => {
-    if (stroke.color !== INK) return
-    if (chosen.has(index)) dimmed.push(kept.length)
-    kept.push(stroke)
-  })
-  return (
-    <svg className="block h-full w-full select-none" viewBox={viewBox} preserveAspectRatio="xMinYMin slice" data-ink-echo="">
-      <Strokes strokes={kept} picked={dimmed} />
-      {live && live.color === INK && <StrokePath stroke={live} />}
-    </svg>
   )
 }

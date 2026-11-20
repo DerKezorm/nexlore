@@ -21,8 +21,7 @@ import { LinkIndex } from '../lib/links'
 import { noteSection, renderMarkdown } from '../lib/markdown'
 import { useAuth } from '../state/auth'
 import { useCards } from './context'
-import { isFolded } from './inkLayer'
-import { SIDES, colorOf, titleOf, type CanvasNode, type Side } from './model'
+import { SIDES, colorOf, isFolded, titleOf, type CanvasNode, type Side } from './model'
 
 export type CardData = { node: CanvasNode }
 export type CardNode = Node<CardData>

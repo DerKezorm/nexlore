@@ -324,19 +324,3 @@
   stroke-width: 3.5;
   filter: drop-shadow(0 0 3px var(--color-accent-400)) drop-shadow(0 0 1px var(--color-accent-400));
 }
-
-/* Ink on the canvas in the dark: white on the dark ground, but white on a white PDF page or picture is gone. The
-   strokes in ink are drawn once more in a layer of their own that subtracts them from what lies under them (white on
-   dark stays white, on white it turns black); on the pen's own layer they stay out of sight. Strokes in a colour
-   keep it. In the light, ink is dark anyway and the second layer is not drawn. */
-.nl-pen-echo {
-  display: none;
-  color: #fff;
-  mix-blend-mode: difference;
-}
-:root:not([data-theme='light']) .nl-pen-echo {
-  display: block;
-}
-:root:not([data-theme='light']) .nl-pen-layer [data-ink] {
-  visibility: hidden;
-}

@@ -437,9 +437,7 @@
       "noteShort": "Note",
       "fileShort": "File",
       "linkShort": "Link",
-      "groupShort": "Group",
-      "pen": "Pen",
-      "penShort": "Pen"
+      "groupShort": "Group"
     },
     "group": "Group",
     "groupName": "Name of the group",
@@ -476,11 +474,6 @@
     "restoreTitle": "Bring back this version?",
     "restoreText": "The canvas goes back to how it was on {{when}}. How it is now stays as a version of its own.",
     "emptyNote": "Empty note",
-    "pen": {
-      "toolbar": "Pen over the canvas",
-      "hint": "Draw anywhere. Space, the right button or a finger move the canvas; Ctrl and the wheel zoom; Esc ends.",
-      "failed": "The pen could not start a drawing here: {{reason}}"
-    },
     "pdfFirstPage": "Show the first page only",
     "pdfAllPages": "Show every page",
     "pdfPages_one": "One page",

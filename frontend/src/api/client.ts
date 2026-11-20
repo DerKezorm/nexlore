@@ -541,8 +541,6 @@ export const inkApi = {
     api<Saved>('/api/ink', { method: 'PUT', body: { path, ink, base_hash: baseHash }, keepalive: keepalive && length < 60_000 }),
   /** A new, empty drawing in the note's attachment folder; `embed` is the text that shows it in the note. */
   create: (note: string) => api<{ path: string; embed: string }>('/api/inks', { method: 'POST', body: { note } }),
-  /** The pen's layer of a canvas: a new, empty drawing in the canvas's attachment folder (the page lays its card). */
-  createLayer: (canvas: string) => api<{ path: string }>('/api/inks', { method: 'POST', body: { canvas } }),
 }
 
 // --- Accounts, rights, invitations -----------------------------------------------------------------------------------
