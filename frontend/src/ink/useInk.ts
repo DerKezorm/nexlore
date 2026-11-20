@@ -20,6 +20,8 @@ export type InkController = Pick<EditedFile, 'status' | 'error' | 'problem' | 'r
   path: string
   /** The drawing as last loaded (null until then, and for an SVG that is no drawing). */
   loaded: Ink | null
+  /** The path `loaded` came from (null: the empty one of a drawing not made yet). */
+  source: string | null
   strokes: InkStroke[]
   bg: InkBackground
   /** The view kept in the file (D9), as last saved. */
@@ -39,12 +41,22 @@ export type InkController = Pick<EditedFile, 'status' | 'error' | 'problem' | 'r
   space: { current: boolean }
 }
 
-/** The drawing at `path`. */
-export function useInk(path: string): InkController {
+/** A drawing that is not made yet (a canvas before its first stroke): empty, never asked for, never saved. */
+const NOT_YET: FileBackend = {
+  load: () => Promise.resolve({ content: JSON.stringify({ v: 1, bg: 'none', strokes: [] }), hash: '', lock: null, readonly: false, problem: null }),
+  state: () => Promise.resolve({ hash: '', lock: null }),
+  save: () => Promise.reject(new Error('no drawing yet')),
+}
+
+/**
+ * The drawing at `path`. `null` (`inSpace` names the space it will lie in): none yet, an empty one to show; whoever holds
+ * it makes the file before the first change is committed (`canvas/useCanvasInk.ts`).
+ */
+export function useInk(path: string | null, inSpace?: string): InkController {
   const { spaces } = useStore()
-  const role = spaces.find((item) => item.name === path.split('/')[0])?.role
+  const role = spaces.find((item) => item.name === (path ?? inSpace ?? '').split('/')[0])?.role
   const backend = useMemo<FileBackend>(
-    () => ({
+    () => path === null ? NOT_YET : ({
       load: () =>
         inkApi.read(path).then((data) => ({
           content: data.ink ? JSON.stringify(data.ink) : '',
@@ -58,9 +70,10 @@ export function useInk(path: string): InkController {
     }),
     [path],
   )
-  const file = useEditedFile(path, backend, role === 'write' || role === 'manage')
+  const file = useEditedFile(path ?? '', backend, role === 'write' || role === 'manage')
 
   const [loaded, setLoaded] = useState<Ink | null>(null)
+  const [source, setSource] = useState<string | null>(null)
   const [present, setPresent] = useState<Snapshot>({ strokes: [], bg: 'none' })
   const [view, setView] = useState<InkView | undefined>(undefined)
   const [history, setHistory] = useState<History>(NO_HISTORY)
@@ -71,6 +84,7 @@ export function useInk(path: string): InkController {
   // to another file.
   useEffect(() => {
     if (!file.version) return
+    setSource(path)
     if (!file.content) {
       setLoaded(null)
       return
@@ -87,6 +101,8 @@ export function useInk(path: string): InkController {
     setView(ink.view)
     setHistory(NO_HISTORY)
     setSelection([])
+    // A new load is what counts, not a new path before it (`source` tells the two apart).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file.version, file.content])
 
   // What is drawn now and what saving needs, read when a change comes (several may come before the page draws again).
@@ -141,7 +157,7 @@ export function useInk(path: string): InkController {
   )
 
   return {
-    path,
+    path: path ?? '',
     status: file.status,
     error: file.error,
     problem: file.problem,
@@ -153,6 +169,7 @@ export function useInk(path: string): InkController {
     flush: file.flush,
     reload: file.reload,
     loaded,
+    source,
     strokes: present.strokes,
     bg: present.bg,
     view,

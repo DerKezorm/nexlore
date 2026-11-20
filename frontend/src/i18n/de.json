@@ -437,7 +437,9 @@
       "noteShort": "Notiz",
       "fileShort": "Datei",
       "linkShort": "Link",
-      "groupShort": "Gruppe"
+      "groupShort": "Gruppe",
+      "pen": "Stift",
+      "penShort": "Stift"
     },
     "group": "Gruppe",
     "groupName": "Name der Gruppe",
@@ -473,7 +475,17 @@
     "current": "Jetzt",
     "restoreTitle": "Diese Version zurückholen?",
     "restoreText": "Die Leinwand kehrt zum Stand vom {{when}} zurück. Der Stand von jetzt bleibt als eigene Version erhalten.",
-    "emptyNote": "Leere Notiz"
+    "emptyNote": "Leere Notiz",
+    "pen": {
+      "toolbar": "Stift über der Leinwand",
+      "hint": "Überall zeichnen. Leertaste, rechte Maustaste oder ein Finger verschieben die Leinwand; Strg und das Rad zoomen; Esc beendet.",
+      "failed": "Der Stift konnte hier keine Zeichnung anlegen: {{reason}}"
+    },
+    "pdfPages_one": "Eine Seite",
+    "pdfPages_other": "{{count}} Seiten",
+    "uploading_one": "Eine Datei kommt auf die Leinwand …",
+    "uploading_other": "{{count}} Dateien kommen auf die Leinwand …",
+    "uploadFailed": "„{{name}}“ konnte nicht auf die Leinwand: {{reason}}"
   },
   "noteStart": {
     "recentOpened": "Zuletzt geöffnet",
@@ -2725,7 +2737,8 @@
     "newNoteHint": "Legt neben dem PDF eine Notiz an, die oben darauf verlinkt, und öffnet sie neben dem PDF.",
     "beside": "Neben einer Notiz öffnen",
     "panel": "Die Spalte rechts",
-    "pageWord": "Seite"
+    "pageWord": "Seite",
+    "morePages": "Weitere Seiten im Leser: {{pages}}"
   },
   "confirmEmail": {
     "busy": "Wird bestätigt …",

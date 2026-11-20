@@ -30,18 +30,37 @@ import {
   type OnDelete,
   type OnNodeDrag,
 } from '@xyflow/react'
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent, type MouseEvent as ReactMouseEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type DragEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { ApiError, uploadFile } from '../api/client'
 import { Symbol } from '../components/Symbol'
-import { PATH_DRAG_TYPE, fileKind, isNotePath } from '../lib/files'
+import { InkSurface } from '../ink/InkSurface'
+import { InkToolbar } from '../ink/InkToolbar'
+import { inkKeys } from '../ink/keys'
+import { useTools, type InkController } from '../ink/useInk'
+import { errorText } from '../lib/errors'
+import { PATH_DRAG_TYPE, fileKind, isNotePath, isPasted } from '../lib/files'
 import { useContextMenu, type MenuItem } from '../lib/menu'
 import { askFolder } from '../lib/shell'
 import type { SymbolName } from '../lib/symbols'
 import { FileCard, GroupCard, LinkCard, OtherCard, TextCard, type CardNode } from './cards'
 import { useCards, writtenPath } from './context'
 import { AskDialog, PickDialog } from './dialogs'
+import { cardsOf, clampedPlacement, inkLayerOf, isInkLayer, placementOf, viewportOf } from './inkLayer'
 import {
+  PDF_SIZE,
+  pictureSize,
   PRESET_COLORS,
   addEdge,
   addNode,
@@ -64,9 +83,13 @@ import {
 } from './model'
 import { middleOf, pathOf, port, route, type Point } from './route'
 import { moving, snap } from './snap'
+import { useCanvasInk } from './useCanvasInk'
 
 /** Below this zoom a card shows only its title, as on the map. */
 export const FAR_ZOOM = 0.45
+/** How far the canvas zooms out and in (the pen's surface keeps to it too). */
+export const MIN_ZOOM = 0.05
+export const MAX_ZOOM = 4
 
 // Not "group": React Flow styles a node type of that name itself (a grey ground, a frame and padding).
 const NODE_TYPES = { text: TextCard, file: FileCard, link: LinkCard, frame: GroupCard, other: OtherCard }
@@ -82,6 +105,8 @@ export type Apply = (next: Canvas, live?: boolean) => void
 type Props = {
   canvas: Canvas
   apply: Apply
+  /** A change the canvas makes by itself, no step to go back to (`CanvasPage`). */
+  adjust: (change: (canvas: Canvas) => Canvas) => void
   undo: () => void
   redo: () => void
   canUndo: boolean
@@ -105,7 +130,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   group: { width: 480, height: 320 },
 }
 
-export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo, snapping, setSnapping }: Props) {
+export function CanvasView({ canvas, apply: handUp, adjust, undo, redo, canUndo, canRedo, snapping, setSnapping }: Props) {
   const cards = useCards()
   const { t } = useTranslation()
   const flow = useReactFlow<CardNode, LineEdgeType>()
@@ -129,6 +154,35 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
   const editable = !cards.readonly
   const arrange = editable && !cards.touch
 
+  // The pen: drawn over every card, in the canvas's own units (`inkLayer.ts`).
+  const [pen, setPen] = useState(false)
+  const [tools, setTools] = useTools()
+  const layer = useCanvasInk({
+    path: cards.path,
+    space: cards.space,
+    layer: inkLayerOf(canvas),
+    target: cards.target,
+    remember: cards.remember,
+    editable,
+    adjust,
+  })
+  const drawing = pen && editable
+  const startPen = useCallback(() => {
+    setSelected(new Set())
+    cards.setEditing(null)
+    setPen(true)
+  }, [cards])
+  const { select: selectStrokes } = layer.ink
+  const stopPen = useCallback(() => {
+    selectStrokes([])
+    setPen(false)
+  }, [selectStrokes])
+  const { carry } = layer
+  // Read only now (somebody else took the canvas): the pen ends.
+  useEffect(() => {
+    if (pen && !editable) setPen(false)
+  }, [pen, editable])
+
   // Alt while dragging turns snapping the other way; followed on the window, the mouse events do not carry it to us.
   useEffect(() => {
     const key = (event: KeyboardEvent) => (alt.current = event.altKey)
@@ -146,9 +200,10 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
     setSelected((now) => ([...now].every((id) => there.has(id)) ? now : new Set([...now].filter((id) => there.has(id)))))
   }, [canvas])
 
+  // The pen's layer is no card: it is drawn over all of them (`PenLayer`), never chosen, moved or carried.
   const nodes = useMemo<CardNode[]>(
     () =>
-      canvas.nodes.map((node) => ({
+      cardsOf(canvas.nodes).map((node) => ({
         id: node.id,
         type: KIND[node.type] ?? 'other',
         position: { x: node.x, y: node.y },
@@ -169,7 +224,7 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
   // them and through them, only around the cards.
   const drawn = useMemo(() => {
     const byId = new Map(canvas.nodes.map((node) => [node.id, node]))
-    const cards = canvas.nodes.filter((node) => node.type !== 'group')
+    const cards = cardsOf(canvas.nodes).filter((node) => node.type !== 'group')
     const out = new Map<string, LineData>()
     for (const edge of canvas.edges) {
       const from = byId.get(edge.fromNode)
@@ -218,19 +273,21 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
     const current = latest.current
     const moved = new Set(flow.getNodes().filter((item) => item.dragging || item.selected).map((item) => item.id))
     moved.add(_node.id)
-    // A group carries what lies wholly inside it, groups in it with theirs.
+    // A group carries what lies wholly inside it, groups in it with theirs; never the pen's layer (its strokes go
+    // along on their own when the move ends).
     const carried = new Set<string>()
-    const queue = current.nodes.filter((node) => moved.has(node.id) && node.type === 'group')
+    const cardsOnly = { ...current, nodes: cardsOf(current.nodes) }
+    const queue = cardsOnly.nodes.filter((node) => moved.has(node.id) && node.type === 'group')
     while (queue.length) {
       const group = queue.pop()!
-      for (const inside of inGroup(current, group)) {
+      for (const inside of inGroup(cardsOnly, group)) {
         if (moved.has(inside.id) || carried.has(inside.id)) continue
         carried.add(inside.id)
         if (inside.type === 'group') queue.push(inside)
       }
     }
     const start = new Map<string, { x: number; y: number }>()
-    for (const node of current.nodes) if (moved.has(node.id) || carried.has(node.id)) start.set(node.id, { x: node.x, y: node.y })
+    for (const node of cardsOnly.nodes) if (moved.has(node.id) || carried.has(node.id)) start.set(node.id, { x: node.x, y: node.y })
     drag.current = { start, carried }
     setDragging(true)
   }, [flow])
@@ -278,7 +335,7 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
           const box = bounds(movingNodes.map((node) => ({ ...node, x: start.get(node.id)!.x + dx, y: start.get(node.id)!.y + dy })))
           let lines = { x: [] as number[], y: [] as number[] }
           if (box && snapping !== alt.current) {
-            const others = current.nodes.filter((node) => !start.has(node.id))
+            const others = cardsOf(current.nodes).filter((node) => !start.has(node.id))
             const snapped = snap(moving(box), others, zoom)
             dx += snapped.dx
             dy += snapped.dy
@@ -291,10 +348,19 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
         }
       }
       if (moveEnds && drag.current) {
+        const { start } = drag.current
         drag.current = null
         setDragging(false)
         setGuides({ x: [], y: [] })
         apply(latest.current)
+        // Strokes written on what moved go along: those lying wholly on the cards where they stood.
+        const ended = latest.current.nodes.filter((node) => start.has(node.id) && !isInkLayer(node))
+        const first = ended[0]
+        if (first) {
+          const from = start.get(first.id)!
+          const boxes = ended.map((node) => ({ x: start.get(node.id)!.x, y: start.get(node.id)!.y, width: node.width, height: node.height }))
+          carry(boxes, first.x - from.x, first.y - from.y)
+        }
       }
 
       if (sizes.size) {
@@ -308,7 +374,7 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
           const y = size.position?.y ?? node.y
           // Only the right and the lower edge snap (growing from there is the usual way).
           if (!size.position && snapping !== alt.current) {
-            const snapped = snap({ x: [x + width], y: [y + height] }, current.nodes.filter((item) => item.id !== id), zoom)
+            const snapped = snap({ x: [x + width], y: [y + height] }, cardsOf(current.nodes).filter((item) => item.id !== id), zoom)
             width += snapped.dx
             height += snapped.dy
             lines = { x: snapped.guidesX, y: snapped.guidesY }
@@ -319,7 +385,7 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
         apply(updateNodes(current, change), !sizeEnds)
       }
     },
-    [apply, selected, snapping, zoom],
+    [apply, carry, selected, snapping, zoom],
   )
 
   const onEdgesChange = useCallback(
@@ -398,17 +464,62 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
   )
 
   const placeFile = useCallback(
-    (path: string, at: { x: number; y: number }) => {
+    (path: string, at: { x: number; y: number }, size?: { width: number; height: number }) => {
       // From another space too: written with its space's name in front (Obsidian on the whole vault), shown to
       // whoever may read that space and locked for anybody else.
       const written = writtenPath(cards.space, path)
       if (written === path) cards.remember(written, path)
-      // A drawing (an SVG with strokes) shows itself on its card like a picture: it gets a picture's size.
-      const kind = isNotePath(path) ? 'note' : fileKind(path) === 'image' || fileKind(path) === 'svg' ? 'image' : 'file'
-      place({ type: 'file', file: written }, DEFAULT_SIZE[kind], at)
+      // A drawing (an SVG with strokes) shows itself on its card like a picture: it gets a picture's size. A PDF shows
+      // its pages: a page of A4 to begin with.
+      const shown = fileKind(path)
+      const kind = isNotePath(path) ? 'note' : shown === 'image' || shown === 'svg' ? 'image' : 'file'
+      place({ type: 'file', file: written }, size ?? (shown === 'pdf' ? PDF_SIZE : DEFAULT_SIZE[kind]), at)
     },
     [cards, place],
   )
+
+  // Files from the desktop or the clipboard: uploaded into the canvas's attachment folder (named as for a note), each a
+  // card where it was let go (one a little below the other), a picture in its own shape.
+  const [laying, setLaying] = useState(0)
+  const [layProblem, setLayProblem] = useState<string | null>(null)
+  const lay = useCallback(
+    (files: File[], at: { x: number; y: number }, pasted: boolean) => {
+      if (!editable || !files.length) return
+      setLayProblem(null)
+      setLaying((count) => count + files.length)
+      files.forEach((file, index) => {
+        const spot = { x: at.x + index * 32, y: at.y + index * 32 }
+        void sizeOf(file)
+          .then(async (size) => {
+            const made = await uploadFile(file, { canvas: cards.path, pasted: pasted && isPasted(file) })
+            placeFile(made.path, spot, size)
+          })
+          .catch((caught: unknown) => {
+            const reason = errorText(caught instanceof ApiError ? caught.code : 'internal_error')
+            setLayProblem(t('canvas.uploadFailed', { name: file.name || '…', reason }))
+          })
+          .finally(() => setLaying((count) => count - 1))
+      })
+    },
+    [cards.path, editable, placeFile, t],
+  )
+  const layRef = useRef(lay)
+  layRef.current = lay
+
+  // Ctrl V of a picture or a PDF (a screenshot, a file copied in the explorer): onto the middle of the view. Typing
+  // in a card or a field keeps its own pasting.
+  useEffect(() => {
+    const paste = (event: ClipboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target?.closest('input, textarea, [contenteditable="true"], .milkdown, aside, [role="dialog"], dialog')) return
+      const files = [...(event.clipboardData?.files ?? [])]
+      if (!files.length || !editable) return
+      event.preventDefault()
+      layRef.current(files, center(), true)
+    }
+    window.addEventListener('paste', paste)
+    return () => window.removeEventListener('paste', paste)
+  }, [editable, center])
 
   const onDoubleClick = (event: ReactMouseEvent) => {
     const target = event.target as Element
@@ -428,23 +539,50 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
     else if (node.type === 'group' && editable) setAsking({ kind: 'group-label', id: node.id, initial: node.label ?? '' })
   }
 
+  // From the sidebar: a card for the file that is there. From the desktop: the files uploaded first.
   const onDragOver = (event: DragEvent) => {
-    if (editable && event.dataTransfer.types.includes(PATH_DRAG_TYPE)) {
+    const types = event.dataTransfer.types
+    if (editable && (types.includes(PATH_DRAG_TYPE) || types.includes('Files'))) {
       event.preventDefault()
       event.dataTransfer.dropEffect = 'copy'
     }
   }
   const onDrop = (event: DragEvent) => {
+    if (!editable) return
+    const at = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY })
     const path = event.dataTransfer.getData(PATH_DRAG_TYPE)
-    if (!path || !editable) return
+    if (path) {
+      event.preventDefault()
+      return placeFile(path, at)
+    }
+    const files = [...event.dataTransfer.files]
+    if (!files.length) return
     event.preventDefault()
-    placeFile(path, flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }))
+    lay(files, at, false)
   }
 
   // --- Keys ------------------------------------------------------------------------------------------------------
 
+  // With the pen, the keys are the pen's (as in a drawing): P, M, E, L, Ctrl Z on the strokes, Space held moves, Esc
+  // lets go of the chosen strokes and then ends the pen. Wherever the focus is, but never in a field.
+  const penKeys = useMemo(() => inkKeys(layer.ink, tools, setTools, { onEscape: stopPen }), [layer.ink, tools, setTools, stopPen])
+  useEffect(() => {
+    if (!drawing) return
+    const down = (event: KeyboardEvent) => penKeys.onKeyDown(event as unknown as ReactKeyboardEvent)
+    const up = (event: KeyboardEvent) => penKeys.onKeyUp(event as unknown as ReactKeyboardEvent)
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    window.addEventListener('blur', penKeys.onBlur)
+    return () => {
+      window.removeEventListener('keydown', down)
+      window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', penKeys.onBlur)
+    }
+  }, [drawing, penKeys])
+
   useEffect(() => {
     const keys = (event: KeyboardEvent) => {
+      if (drawing) return
       const target = event.target as HTMLElement | null
       const typing = !!target?.closest('input, textarea, [contenteditable="true"], .milkdown')
       if (event.key === 'Escape') {
@@ -465,7 +603,7 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
         // Every card, wherever the keys are on this page (before any click they are on the page itself, and the
         // browser chose all its text); not in the sidebar, the note beside the canvas, or a dialog.
         event.preventDefault()
-        setSelected(new Set(latest.current.nodes.map((node) => node.id)))
+        setSelected(new Set(cardsOf(latest.current.nodes).map((node) => node.id)))
       } else if (event.key === 'Enter' && selected.size === 1) {
         const node = latest.current.nodes.find((item) => selected.has(item.id))
         if (node?.type === 'text') {
@@ -476,7 +614,7 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
     }
     window.addEventListener('keydown', keys)
     return () => window.removeEventListener('keydown', keys)
-  }, [cards, editable, redo, undo, selected])
+  }, [cards, editable, redo, undo, selected, drawing])
 
   // --- What the chosen cards can do --------------------------------------------------------------------------------
 
@@ -570,7 +708,7 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
         nodesDraggable={arrange}
         nodesConnectable={arrange}
         elementsSelectable
-        deleteKeyCode={editable ? ['Delete', 'Backspace'] : null}
+        deleteKeyCode={editable && !drawing ? ['Delete', 'Backspace'] : null}
         multiSelectionKeyCode={['Shift', 'Meta', 'Control']}
         selectionKeyCode={null}
         selectionOnDrag={false}
@@ -578,8 +716,8 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
         zoomOnDoubleClick={false}
         elevateNodesOnSelect={false}
         onlyRenderVisibleElements
-        minZoom={0.05}
-        maxZoom={4}
+        minZoom={MIN_ZOOM}
+        maxZoom={MAX_ZOOM}
         fitView
         fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
         proOptions={{ hideAttribution: true }}
@@ -609,16 +747,35 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
             </div>
           </NodeToolbar>
         )}
+        <PenLayer ink={layer.ink} tools={tools} drawing={drawing} />
         <Panel position="top-right">
           <ZoomBar undo={undo} redo={redo} canUndo={canUndo} canRedo={canRedo} snapping={snapping} setSnapping={setSnapping} />
         </Panel>
         {editable && (
           // On a phone the dock reaches into the corner of Lore's spider: it stands above it there.
-          <Panel position="bottom-center" className="max-sm:!mb-[var(--lore-corner,15px)]">
+          <Panel position="bottom-center" className="flex flex-col items-center gap-2 max-sm:!mb-[var(--lore-corner,15px)]">
+            {drawing && (
+              <div className="flex w-max max-w-[calc(100vw-2rem)] flex-col items-center gap-1" data-pen-tools="">
+                <InkToolbar ink={layer.ink} tools={tools} setTools={setTools} onDone={stopPen} up paper={false} />
+                <span className="rounded-md bg-ink-900/90 px-2 text-[11px] text-mist-500" aria-live="polite" data-ink-saved={layer.ink.dirty ? 'saving' : 'saved'}>
+                  {layer.failed
+                    ? t('canvas.pen.failed', { reason: errorText(layer.failed) })
+                    : layer.ink.lockedBy
+                      ? t('ink.locked', { name: layer.ink.lockedBy })
+                      : layer.ink.dirty
+                        ? t('ink.saving')
+                        : t('canvas.pen.hint')}
+                </span>
+              </div>
+            )}
             <Dock
               touch={cards.touch}
+              pen={drawing}
               add={(kind) => {
                 const at = center()
+                if (kind === 'pen') return drawing ? stopPen() : startPen()
+                // Another tool ends the pen.
+                stopPen()
                 if (kind === 'text') place({ type: 'text', text: '' }, DEFAULT_SIZE.text, at, true)
                 else if (kind === 'note') setAsking({ kind: 'pick', files: false, at })
                 else if (kind === 'file') setAsking({ kind: 'pick', files: true, at })
@@ -631,6 +788,20 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
         )}
       </ReactFlow>
       {(guides.x.length > 0 || guides.y.length > 0) && <Guides x={guides.x} y={guides.y} />}
+      {(laying > 0 || layProblem) && (
+        <p
+          className={'absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-xl border bg-ink-900/95 px-4 py-2 text-sm shadow-lg ' + (layProblem ? 'border-bad-500/40 text-bad-500' : 'border-ink-600 text-mist-300')}
+          role={layProblem ? 'alert' : 'status'}
+          data-laying={laying}
+        >
+          {layProblem ?? t('canvas.uploading', { count: laying })}
+          {layProblem && (
+            <button type="button" className="ml-2 underline" onClick={() => setLayProblem(null)}>
+              {t('common.close')}
+            </button>
+          )}
+        </p>
+      )}
       {chosenEdge && editable && !cards.touch && (
         <EdgeTools
           edge={chosenEdge}
@@ -804,7 +975,7 @@ function EdgeTools({ edge, onLabel, onEnds, onColor, onRemove }: { edge: CanvasE
   )
 }
 
-function ZoomBar({ undo, redo, canUndo, canRedo, snapping, setSnapping }: Omit<Props, 'canvas' | 'apply'>) {
+function ZoomBar({ undo, redo, canUndo, canRedo, snapping, setSnapping }: Omit<Props, 'canvas' | 'apply' | 'adjust'>) {
   const { t } = useTranslation()
   const flow = useReactFlow()
   const { zoom } = useViewport()
@@ -849,12 +1020,15 @@ function ZoomBar({ undo, redo, canUndo, canRedo, snapping, setSnapping }: Omit<P
   )
 }
 
-function Dock({ touch, add }: { touch: boolean; add: (kind: 'text' | 'note' | 'file' | 'link' | 'group' | 'fit') => void }) {
+type DockKind = 'text' | 'note' | 'file' | 'link' | 'group' | 'pen' | 'fit'
+
+function Dock({ touch, pen, add }: { touch: boolean; pen: boolean; add: (kind: DockKind) => void }) {
   const { t } = useTranslation()
-  const items: { kind: 'text' | 'note' | 'file' | 'link' | 'group' | 'fit'; symbol: SymbolName }[] = touch
+  const items: { kind: DockKind; symbol: SymbolName }[] = touch
     ? [
         { kind: 'text', symbol: 'pencil' },
         { kind: 'note', symbol: 'note' },
+        { kind: 'pen', symbol: 'draw' },
         { kind: 'fit', symbol: 'fit' },
       ]
     : [
@@ -863,6 +1037,7 @@ function Dock({ touch, add }: { touch: boolean; add: (kind: 'text' | 'note' | 'f
         { kind: 'file', symbol: 'image' },
         { kind: 'link', symbol: 'link' },
         { kind: 'group', symbol: 'columns' },
+        { kind: 'pen', symbol: 'draw' },
       ]
   return (
     <div className="flex gap-0.5 rounded-2xl border border-ink-600 bg-ink-850 p-1 shadow-2xl" role="toolbar" aria-label={t('canvas.add.label')}>
@@ -871,7 +1046,12 @@ function Dock({ touch, add }: { touch: boolean; add: (kind: 'text' | 'note' | 'f
           key={item.kind}
           type="button"
           onClick={() => add(item.kind)}
-          className="flex min-w-14 flex-col items-center gap-0.5 rounded-xl px-2.5 py-1.5 text-[11px] text-mist-300 hover:bg-ink-700 hover:text-mist-100"
+          aria-pressed={item.kind === 'pen' ? pen : undefined}
+          data-dock={item.kind}
+          className={
+            'flex min-w-14 flex-col items-center gap-0.5 rounded-xl px-2.5 py-1.5 text-[11px] hover:bg-ink-700 hover:text-mist-100 ' +
+            (item.kind === 'pen' && pen ? 'bg-accent-500/15 text-accent-400' : 'text-mist-300')
+          }
         >
           <Symbol name={item.symbol} className="h-[18px] w-[18px]" />
           {item.kind === 'fit' ? t('canvas.everything') : t(`canvas.add.${item.kind}Short`)}
@@ -879,6 +1059,58 @@ function Dock({ touch, add }: { touch: boolean; add: (kind: 'text' | 'note' | 'f
       ))}
     </div>
   )
+}
+
+/**
+ * The pen's layer over every card, in the canvas's units: the drawing surface of a note's drawing, its view React
+ * Flow's (`placementOf`, `viewportOf`). Without the pen it only shows, every pointer goes through to the cards; with it,
+ * it takes every pointer: a pen or a mouse draws, Space, the right or the middle button and a finger move the canvas,
+ * Ctrl and the wheel zoom within the canvas's zoom.
+ */
+function PenLayer({ ink, tools, drawing }: { ink: InkController; tools: ReturnType<typeof useTools>[0]; drawing: boolean }) {
+  const flow = useReactFlow()
+  const viewport = useViewport()
+  const place = placementOf(viewport)
+  const shown = useRef(place)
+  shown.current = place
+  const onPlace = useCallback(
+    (next: ReturnType<typeof placementOf>) => {
+      const kept = clampedPlacement(shown.current, next, MIN_ZOOM, MAX_ZOOM)
+      shown.current = kept
+      void flow.setViewport(viewportOf(kept))
+    },
+    [flow],
+  )
+  // Nothing drawn yet and no pen: nothing to lay over the cards.
+  if (!drawing && !ink.strokes.length) return null
+  return (
+    <div
+      className={'nl-pen-layer absolute inset-0 ' + (drawing ? '' : 'pointer-events-none')}
+      style={{ zIndex: 4 }}
+      data-pen={drawing ? 'on' : 'off'}
+      data-ink-layer={ink.path}
+      data-strokes={ink.strokes.length}
+    >
+      <InkSurface ink={ink} tools={tools} place={place} onPlace={onPlace} moves={drawing} draws={drawing} clear />
+    </div>
+  )
+}
+
+/** The size of a card for a picture laid on the canvas, in its own shape; any other file gets its kind's (`placeFile`). */
+async function sizeOf(file: File): Promise<{ width: number; height: number } | undefined> {
+  if (!file.type.startsWith('image/')) return undefined
+  const url = URL.createObjectURL(file)
+  try {
+    const picture = new Image()
+    picture.src = url
+    await picture.decode()
+    return pictureSize(picture.naturalWidth, picture.naturalHeight)
+  } catch {
+    // A picture the browser cannot show (HEIC outside Safari): the usual card.
+    return undefined
+  } finally {
+    URL.revokeObjectURL(url)
+  }
 }
 
 /** The guides of a snap, drawn in screen pixels over the canvas. */

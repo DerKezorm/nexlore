@@ -630,6 +630,62 @@ def test_a_drawing_is_never_made_over_a_file(home: Path) -> None:
     assert made.path == "Haus/Neu/Tief/Da.svg" and (home / "Neu" / "Tief" / "Da.svg").read_bytes() == ink.EMPTY.encode()
 
 
+# --- The pen's layer over a canvas ----------------------------------------------------------------------------------
+
+
+def _board(client: TestClient, folder: str = "Haus/Projekte", name: str = "Board") -> str:
+    made = client.post("/api/canvases", json={"folder": folder, "name": name})
+    assert made.status_code == 201, made.text
+    return str(made.json()["path"])
+
+
+def test_a_canvas_gets_its_layer_in_its_attachment_folder_named_after_it(client: TestClient, home: Path) -> None:
+    board = _board(client)
+    before = client.get("/api/canvas", params={"path": board}).json()["content"]
+    answer = client.post("/api/inks", json={"canvas": board})
+    assert answer.status_code == 201, answer.text
+    # Only the path: the page lays the card on the canvas itself, there is nothing to embed.
+    assert answer.json() == {"path": "Haus/Projekte/Attachments/Board 1.svg"}
+    assert (home / "Projekte" / "Attachments" / "Board 1.svg").read_bytes() == ink.EMPTY.encode()
+    assert _row("Haus/Projekte/Attachments/Board 1.svg").features == {"ink": 1}
+    assert client.post("/api/inks", json={"canvas": board}).json() == {"path": "Haus/Projekte/Attachments/Board 2.svg"}
+    # The canvas itself is not touched: the page adds the card.
+    assert client.get("/api/canvas", params={"path": board}).json()["content"] == before
+
+
+def test_a_canvas_layer_follows_the_operators_pattern(client: TestClient, home: Path) -> None:
+    board = _board(client, "Haus", "Plan.Neu")
+    current = client.get("/api/settings/files").json()
+    assert client.put("/api/settings/files", json={**current, "pasted_name": "{note}/Stift {n}"}).status_code == 200
+    made = client.post("/api/inks", json={"canvas": board}).json()
+    # The canvas's name without its ending, and nothing more taken away (a dot in the name stays).
+    assert made == {"path": "Haus/Attachments/Plan.Neu/Stift 1.svg"}
+
+
+def test_a_layer_is_made_only_for_a_canvas_that_is_there(client: TestClient, home: Path) -> None:
+    board = _board(client)
+    assert client.post("/api/inks", json={"canvas": "Haus/Projekte/Netzwerk.md"}).json()["detail"]["code"] == "not_a_canvas"
+    assert client.post("/api/inks", json={"canvas": "Haus/Projekte/Fehlt.canvas"}).status_code == 404
+    assert client.post("/api/inks", json={"canvas": "Haus/../x.canvas"}).status_code in (400, 422)
+    assert client.post("/api/inks", json={"note": "Haus/Projekte/Board.canvas"}).json()["detail"]["code"] == "not_a_note"
+    # Exactly one of the two.
+    assert client.post("/api/inks", json={"note": "Haus/Projekte/Netzwerk.md", "canvas": board}).status_code == 422
+    assert client.post("/api/inks", json={}).status_code == 422
+    assert not (home / "Projekte" / "Attachments").exists()
+
+
+def test_a_canvas_layer_needs_the_right_to_write_the_canvas(client: TestClient, vault: Path) -> None:
+    anna, rita, bob = person("anna"), person("rita"), person("bob")
+    assert anna.post("/api/spaces", json={"name": "Garten"}).status_code == 201
+    board = anna.post("/api/canvases", json={"folder": "Garten", "name": "Beete"}).json()["path"]
+    join(anna, "Garten", "rita", "read")
+    assert rita.post("/api/inks", json={"canvas": board}).status_code == 403
+    assert bob.post("/api/inks", json={"canvas": board}).status_code == 404
+    assert not (vault / "Garten" / "Attachments").exists()
+    made = anna.post("/api/inks", json={"canvas": board})
+    assert made.status_code == 201 and made.json() == {"path": "Garten/Attachments/Beete 1.svg"}
+
+
 # --- Reading and saving ---------------------------------------------------------------------------------------------
 
 

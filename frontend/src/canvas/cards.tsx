@@ -4,11 +4,12 @@
  * A card is never wider than the canvas says: what does not fit scrolls once the card is chosen.
  */
 import { Selection } from '@milkdown/kit/prose/state'
-import { Handle, NodeResizer, Position, type Node, type NodeProps } from '@xyflow/react'
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { Handle, NodeResizer, Position, useStore, type Node, type NodeProps } from '@xyflow/react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { fileUrl, inkApi, linkTitleApi } from '../api/client'
+import { PdfPages } from '../components/PdfPages'
 import { Symbol } from '../components/Symbol'
 import { createEditor, type NoteEditor } from '../editor/editor'
 import { editorLabels } from '../editor/labels'
@@ -192,10 +193,12 @@ export function FileCard({ data, selected }: NodeProps<CardNode>) {
         <Picture node={node} path={path} name={name} from={from} />
       ) : kind === 'svg' ? (
         <Drawing node={node} path={path} name={name} from={from} />
+      ) : kind === 'pdf' ? (
+        <PdfCard node={node} path={path} name={name} from={from} />
       ) : (
         <div className="nl-card" data-title={name} {...colored(node)}>
           <div className="nl-card-body flex items-center gap-2">
-            <Symbol name={kind === 'pdf' ? 'pdf' : 'file'} className="h-5 w-5 shrink-0 text-accent-400" />
+            <Symbol name="file" className="h-5 w-5 shrink-0 text-accent-400" />
             <span className="truncate text-sm font-medium">{name}</span>
             {from && <span className="nl-card-space" title={from}>{from}</span>}
             <span className="ml-auto shrink-0 text-xs text-mist-500">{t('canvas.file')}</span>
@@ -318,6 +321,45 @@ function Drawing({ node, path, name, from }: { node: CanvasNode; path: string; n
       </div>
       <div className="nl-card-body nl-drawing-body bg-ink-900">
         {ink === undefined ? <p className="text-xs text-mist-500">{t('common.loading')}</p> : <InkPicture strokes={ink.strokes} bg={ink.bg} />}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * A PDF on a card: all its pages one below the other at the card's width (the first `STRIP_PAGES`), the card as tall as
+ * they are. The frame says how tall; the card follows, which is no step to go back to. A double click opens the reader.
+ */
+function PdfCard({ node, path, name, from }: { node: CanvasNode; path: string; name: string; from?: string }) {
+  const cards = useCards()
+  const { t } = useTranslation()
+  const zoom = useStore((state) => state.transform[2])
+  const outer = useRef<HTMLDivElement>(null)
+  const body = useRef<HTMLDivElement>(null)
+  const [pages, setPages] = useState(0)
+  const latest = useRef({ cards, id: node.id, height: node.height })
+  latest.current = { cards, id: node.id, height: node.height }
+  // Sharper only in quarter steps: each step draws the pages again.
+  const sharp = Math.min(3, Math.max(1, Math.round(zoom * 4) / 4))
+  const grow = useCallback((height: number) => {
+    const box = outer.current
+    const inner = body.current
+    if (!box || !inner) return
+    // What the card has besides the pages (its head, its frame): layout sizes, not changed by the canvas's zoom.
+    const wanted = Math.ceil(height + box.offsetHeight - inner.clientHeight)
+    const { cards: now, id, height: had } = latest.current
+    if (Math.abs(wanted - had) > 1) now.fit(id, wanted)
+  }, [])
+  return (
+    <div ref={outer} className="nl-card nl-pdf" data-title={name} data-pdf-card={path} data-pages={pages || undefined} {...colored(node)}>
+      <div className="nl-card-head">
+        <Symbol name="pdf" className="h-3.5 w-3.5 shrink-0" />
+        <b>{name}</b>
+        {from && <span className="nl-card-space" title={from}>{from}</span>}
+        <span className="ml-auto shrink-0">{pages ? t('canvas.pdfPages', { count: pages }) : t('canvas.file')}</span>
+      </div>
+      <div ref={body} className="nl-card-body nl-pdf-body">
+        <PdfPages path={path} sharp={sharp} onHeight={grow} onPages={setPages} />
       </div>
     </div>
   )

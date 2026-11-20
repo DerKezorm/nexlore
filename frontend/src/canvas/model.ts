@@ -140,9 +140,16 @@ export function makeNode(canvas: Canvas, what: NewNode, box: { x: number; y: num
   return node
 }
 
-/** Cards go in on top of the others; a group goes in below all of them (it holds cards, it does not cover them). */
+/**
+ * Cards go in on top of the others; a group goes in below all of them (it holds cards, it does not cover them). The
+ * pen's layer (a file card marked `nexloreInk`) stays on top of everything: a program that shows it as a picture
+ * draws it last, over the cards it was written on.
+ */
 export function addNode(canvas: Canvas, node: CanvasNode): Canvas {
-  return { ...canvas, nodes: node.type === 'group' ? [node, ...canvas.nodes] : [...canvas.nodes, node] }
+  if (node.type === 'group') return { ...canvas, nodes: [node, ...canvas.nodes] }
+  const layer = canvas.nodes.findIndex((item) => item.type === 'file' && item.nexloreInk === true)
+  if (layer < 0 || node.nexloreInk === true) return { ...canvas, nodes: [...canvas.nodes, node] }
+  return { ...canvas, nodes: [...canvas.nodes.slice(0, layer), node, ...canvas.nodes.slice(layer)] }
 }
 
 /**
@@ -255,6 +262,19 @@ export function bounds(nodes: readonly Box[]): Box | null {
   const right = Math.max(...nodes.map((node) => node.x + node.width))
   const bottom = Math.max(...nodes.map((node) => node.y + node.height))
   return { x: left, y: top, width: right - left, height: bottom - top }
+}
+
+/** A PDF laid on a canvas: a page of A4 at a card's width (the card grows to all its pages once they are drawn). */
+export const PDF_SIZE = { width: 420, height: 594 } as const
+
+/**
+ * The card of a picture laid on a canvas: in the picture's own shape, at most `most` wide and tall, never smaller than
+ * a card can be; a picture whose size is not known gets a card of the usual shape.
+ */
+export function pictureSize(width: number, height: number, most = 480): { width: number; height: number } {
+  if (!(width > 0) || !(height > 0)) return { width: 320, height: 220 }
+  const scale = Math.min(1, most / width, most / height)
+  return { width: Math.max(60, Math.round(width * scale)), height: Math.max(36, Math.round(height * scale)) }
 }
 
 /** A colour of the format as CSS: a preset becomes the canvas's own colour of that number, `#rrggbb` stays. */

@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from ..deps import Account, need
 from ..errors import error
@@ -129,20 +129,33 @@ def save(body: SaveIn, account: Account, who: ActorDep) -> SaveOut:
 
 class CreateIn(BaseModel):
     #: The note the drawing is for: it lands in that note's attachment folder.
-    note: str = Field(min_length=1, max_length=paths.MAX_PATH_CHARS)
+    note: str | None = Field(default=None, min_length=1, max_length=paths.MAX_PATH_CHARS)
+    #: Or the canvas whose pen layer it becomes: in that canvas's attachment folder, named after the canvas.
+    canvas: str | None = Field(default=None, min_length=1, max_length=paths.MAX_PATH_CHARS)
+
+    @model_validator(mode="after")
+    def _one_owner(self) -> CreateIn:
+        if (self.note is None) == (self.canvas is None):
+            raise ValueError("name either a note or a canvas")
+        return self
 
 
 class CreateOut(BaseModel):
     path: str
-    #: What to put into the note where the drawing goes: ``![[Shopping 1.svg]]``.
-    embed: str
+    #: What to put into the note where the drawing goes: ``![[Shopping 1.svg]]``. Not for a canvas: the page lays a
+    #: card on it itself.
+    embed: str | None = None
 
 
-@router.post("/inks", response_model=CreateOut, status_code=201, summary="Make a new, empty drawing for a note")
+@router.post(
+    "/inks", response_model=CreateOut, response_model_exclude_none=True, status_code=201,
+    summary="Make a new, empty drawing for a note or a canvas",
+)
 def create(body: CreateIn, account: Account, who: ActorDep) -> CreateOut:
-    need(account, body.note, WRITE)
+    owner = body.note if body.note is not None else body.canvas or ""
+    need(account, owner, WRITE)
     try:
-        made = attachments.new_ink(body.note, actor=who)
+        made = attachments.new_ink(body.note, actor=who, canvas=body.canvas)
     except VaultError as exc:
         raise _fail(exc) from exc
     return CreateOut(path=made.path, embed=made.embed)

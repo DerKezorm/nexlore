@@ -49,6 +49,8 @@ type Props = {
   height?: number
   /** Its size in pixels, as soon as it is known and whenever it changes. */
   onSize?: (width: number, height: number) => void
+  /** Laid over something else (the cards of a canvas): no ground and no paper of its own, only the strokes. */
+  clear?: boolean
   className?: string
   children?: ReactNode
 }
@@ -63,7 +65,7 @@ type Gesture =
 /** Points closer than this on the screen add nothing to a stroke. */
 const MIN_STEP_PX = 1.2
 
-export function InkSurface({ ink, tools, place, onPlace, moves, draws, height, onSize, className = '', children }: Props) {
+export function InkSurface({ ink, tools, place, onPlace, moves, draws, height, onSize, clear = false, className = '', children }: Props) {
   const root = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: height ?? 0 })
   const gesture = useRef<Gesture | null>(null)
@@ -286,7 +288,7 @@ export function InkSurface({ ink, tools, place, onPlace, moves, draws, height, o
       data-ink-surface=""
       data-tool={drawing ? tools.tool : undefined}
       data-zoom={Math.round(place.z * 100)}
-      className={'relative overflow-hidden bg-ink-900 text-mist-100 outline-none ' + cursor + ' ' + (height === undefined ? 'h-full w-full ' : 'w-full ') + className}
+      className={'relative overflow-hidden text-mist-100 outline-none ' + (clear ? '' : 'bg-ink-900 ') + cursor + ' ' + (height === undefined ? 'h-full w-full ' : 'w-full ') + className}
       style={{ height, touchAction: moves || drawing ? 'none' : 'pan-y' }}
       onPointerDown={down}
       onPointerMove={moved}
@@ -296,7 +298,7 @@ export function InkSurface({ ink, tools, place, onPlace, moves, draws, height, o
       onContextMenu={(event) => moves && event.preventDefault()}
     >
       <svg className="block h-full w-full select-none" viewBox={viewBoxOf(place, width, tall)} preserveAspectRatio="xMinYMin slice">
-        <Paper bg={ink.bg} box={{ x: place.x, y: place.y, w: width / place.z, h: tall / place.z }} />
+        {!clear && <Paper bg={ink.bg} box={{ x: place.x, y: place.y, w: width / place.z, h: tall / place.z }} />}
         <Strokes strokes={shown} picked={ink.selection} />
         {live && <StrokePath stroke={live} />}
         {lasso && lasso.length > 1 && (

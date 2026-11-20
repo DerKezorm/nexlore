@@ -13,7 +13,18 @@ import type { PDFDocumentProxy } from 'pdfjs-dist'
 import workerSource from 'pdfjs-dist/build/pdf.worker.min.mjs?raw'
 import { EventBus, PDFFindController, PDFLinkService, PDFViewer } from 'pdfjs-dist/web/pdf_viewer.mjs'
 
-import { classicWorker, DATA_FOLDERS, plainName, type Colours, type DataKind, type FrameTexts, type FromFrame, type ToFrame } from '../lib/pdfFrame'
+import {
+  classicWorker,
+  DATA_FOLDERS,
+  plainName,
+  sharpness,
+  stripLayout,
+  type Colours,
+  type DataKind,
+  type FrameTexts,
+  type FromFrame,
+  type ToFrame,
+} from '../lib/pdfFrame'
 
 const box = document.getElementById('box') as HTMLDivElement
 const viewerDiv = document.getElementById('viewer') as HTMLDivElement
@@ -225,6 +236,78 @@ function buildTabs(): void {
   }
 }
 
+// --- A strip: every page at the frame's width (a card on a canvas) -----------------------------------------------------
+
+/** The strip's pages (their size in points), how sharp they are drawn, and which drawing is the latest. */
+const strip = { sizes: [] as { width: number; height: number }[], more: 0, sharp: 1, width: 0, round: 0 }
+const stripBox = document.createElement('div')
+stripBox.id = 'strip'
+
+/**
+ * The strip laid out at the frame's width (the page says how tall the card must be), then each page drawn, one after
+ * the other. A newer layout (the card grew, the canvas zoomed in) stops an older drawing.
+ */
+async function drawStrip(): Promise<void> {
+  if (!documentShown) return
+  const width = document.documentElement.clientWidth
+  if (!width) return
+  const round = ++strip.round
+  strip.width = width
+  const layout = stripLayout(strip.sizes, width, strip.more)
+  const canvases = stripBox.querySelectorAll('canvas')
+  layout.heights.forEach((height, index) => {
+    canvases[index].style.height = `${height}px`
+  })
+  tell({ type: 'height', height: layout.total })
+  const ratio = sharpness(window.devicePixelRatio || 1, strip.sharp)
+  for (let number = 1; number <= strip.sizes.length; number++) {
+    if (round !== strip.round || !documentShown) return
+    const page = await documentShown.getPage(number)
+    const canvas = canvases[number - 1]
+    const viewport = page.getViewport({ scale: (width * ratio) / strip.sizes[number - 1].width })
+    canvas.width = Math.floor(viewport.width)
+    canvas.height = Math.floor(viewport.height)
+    try {
+      await page.render({ canvas, viewport }).promise
+    } catch {
+      // A page pdf.js cannot draw stays white; the others are drawn.
+    }
+  }
+}
+
+let stripTimer = 0
+function redrawStrip(): void {
+  window.clearTimeout(stripTimer)
+  stripTimer = window.setTimeout(() => void drawStrip(), 120)
+}
+
+async function openStrip(pdf: PDFDocumentProxy, most: number): Promise<void> {
+  box.hidden = true
+  side.hidden = true
+  document.body.classList.add('strip')
+  document.body.append(stripBox)
+  const count = Math.min(pdf.numPages, Math.max(1, most))
+  strip.sizes = []
+  for (let number = 1; number <= count; number++) {
+    const viewport = (await pdf.getPage(number)).getViewport({ scale: 1 })
+    strip.sizes.push({ width: viewport.width, height: viewport.height })
+    const canvas = document.createElement('canvas')
+    canvas.dataset.page = String(number)
+    stripBox.append(canvas)
+  }
+  strip.more = pdf.numPages - count
+  if (strip.more > 0) {
+    const line = document.createElement('p')
+    line.className = 'more'
+    line.textContent = (texts?.more ?? '+{{count}}').replace('{{count}}', String(strip.more))
+    stripBox.append(line)
+  }
+  new ResizeObserver(() => {
+    if (document.documentElement.clientWidth !== strip.width) redrawStrip()
+  }).observe(document.documentElement)
+  await drawStrip()
+}
+
 // --- What the page says ----------------------------------------------------------------------------------------------
 
 async function open(message: Extract<ToFrame, { type: 'open' }>): Promise<void> {
@@ -233,8 +316,8 @@ async function open(message: Extract<ToFrame, { type: 'open' }>): Promise<void> 
   firstPage = message.page
   document.body.classList.toggle('compact', compact)
   paint(message.colours)
-  side.hidden = !message.sidebar || compact
-  buildTabs()
+  side.hidden = !message.sidebar || compact || !!message.strip
+  if (!message.strip) buildTabs()
   try {
     const task = pdfjs.getDocument({
       data: new Uint8Array(message.data),
@@ -255,6 +338,11 @@ async function open(message: Extract<ToFrame, { type: 'open' }>): Promise<void> 
     }
     const pdf = await task.promise
     documentShown = pdf
+    if (message.strip) {
+      tell({ type: 'loaded', pages: pdf.numPages })
+      await openStrip(pdf, message.strip)
+      return
+    }
     viewer.setDocument(pdf)
     linkService.setDocument(pdf, null)
     tell({ type: 'loaded', pages: pdf.numPages })
@@ -303,6 +391,15 @@ window.addEventListener('message', (event: MessageEvent<ToFrame>) => {
     case 'colours':
       paint(message.colours)
       break
+    case 'sharp': {
+      const factor = Math.min(3, Math.max(1, Number(message.factor) || 1))
+      // Drawn again only for a change that shows (a quarter sharper or blunter).
+      if (Math.abs(factor - strip.sharp) / strip.sharp > 0.25) {
+        strip.sharp = factor
+        if (strip.sizes.length) redrawStrip()
+      }
+      break
+    }
     case 'data': {
       const resolve = waiting.get(message.id)
       if (resolve) {

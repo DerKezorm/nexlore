@@ -69,16 +69,20 @@ async def upload(
     note: Annotated[str | None, Query(max_length=paths.MAX_PATH_CHARS)] = None,
     folder: Annotated[str | None, Query(max_length=paths.MAX_PATH_CHARS)] = None,
     pasted: bool = False,
+    canvas: Annotated[str | None, Query(max_length=paths.MAX_PATH_CHARS)] = None,
 ) -> UploadOut:
     """The body is the file itself, streamed; ``name`` its name, ``note`` the note it is for (it lands in that note's
-    attachment folder) or ``folder`` where it goes. Duplicates are found within the space only, where the uploader
-    may read anyway."""
-    if note is None and folder is None:
-        raise error("invalid_input", "Name a note or a folder.", 422)
-    need(account, note if note is not None else folder or "", WRITE)
+    attachment folder), ``canvas`` the canvas it is laid on (the canvas's attachment folder, named the same way) or
+    ``folder`` where it goes. Duplicates are found within the space only, where the uploader may read anyway."""
+    owners = [owner for owner in (note, canvas, folder) if owner is not None]
+    if not owners:
+        raise error("invalid_input", "Name a note, a canvas or a folder.", 422)
+    # More than one is refused by the plan (``path_invalid``), after the right to write to each.
+    for owner in owners:
+        need(account, owner, WRITE)
     try:
         plan = await run_in_threadpool(
-            attachments.plan, note=note, folder=folder, name=name, pasted=pasted, actor=who
+            attachments.plan, note=note, folder=folder, name=name, pasted=pasted, actor=who, canvas=canvas
         )
         declared = request.headers.get("content-length", "")
         if declared.isdigit():

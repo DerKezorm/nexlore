@@ -18,6 +18,9 @@ the limit per file and the space left for the account; nothing large is held in 
 4. a HEIC photo gets a WebP beside it, and the note links the WebP (browsers other than Safari cannot show HEIC);
    the HEIC stays as the original.
 
+**On a canvas.** A file laid on a canvas (dragged from the desktop, pasted) goes into the attachment folder next to
+the canvas, named as for a note with the canvas's name as ``{note}``; nothing links it there but the canvas's card.
+
 **Space per account.** What an account uploaded counts against its space, in the vault and in the trash, until it is
 gone for good. Files that came from elsewhere (the disk, an import) belong to nobody and count for nobody.
 """
@@ -80,7 +83,7 @@ class Plan:
     #: Vault-relative folder the file lands in.
     folder: str
     directory: Path
-    #: The note it is uploaded for, if any: links are written relative to it.
+    #: The note (or canvas) it is uploaded for, if any: it is named after it, and a note's links are relative to it.
     note: str | None
     name: str
     pasted: bool
@@ -88,6 +91,8 @@ class Plan:
     strip: bool
     #: How the file is named when it belongs to a note: ``pasted_name`` for a pasted picture, else ``uploaded_name``.
     pattern: str = UPLOADED_DEFAULT
+    #: ``note`` is a canvas: a card shows the file there, no link is written.
+    canvas: bool = False
 
 
 @dataclass
@@ -130,15 +135,28 @@ def link_text(target: str, note: str) -> str:
     return mdparse.escape_destination(relative)
 
 
-def plan(*, note: str | None, folder: str | None, name: str, pasted: bool, actor: Actor) -> Plan:
+def owner_name(rel: str) -> str:
+    """What ``{note}`` stands for: the name of the note or canvas a file belongs to, without its ending."""
+    name = paths.stem(rel)
+    return name[: -len(paths.CANVAS_SUFFIX)] if paths.is_canvas(name) else name
+
+
+def plan(
+    *, note: str | None, folder: str | None, name: str, pasted: bool, actor: Actor, canvas: str | None = None
+) -> Plan:
     """Check an upload before it starts: where it goes, under what limits. ``note``: into that note's attachment
-    folder; ``folder``: straight into that folder."""
-    if (note is None) == (folder is None):
-        raise VaultError("path_invalid", "name either a note or a folder")
+    folder; ``canvas``: into that canvas's, the same way; ``folder``: straight into that folder."""
+    if sum(owner is not None for owner in (note, folder, canvas)) != 1:
+        raise VaultError("path_invalid", "name either a note, a canvas or a folder")
+    on_canvas = canvas is not None
+    if on_canvas:
+        note = canvas
     try:
         if note is not None:
             note = paths.parse(note)
-            if not paths.is_note(note) or "/" not in note:
+            if on_canvas and (not paths.is_canvas(note) or "/" not in note):
+                raise VaultError("not_a_canvas", "this is no canvas")
+            if not on_canvas and (not paths.is_note(note) or "/" not in note):
                 raise VaultError("not_a_note", "attachments belong to a note")
             target_folder = posixpath.join(posixpath.dirname(note), paths.check_name(folder_name()))
         else:
@@ -149,7 +167,7 @@ def plan(*, note: str | None, folder: str | None, name: str, pasted: bool, actor
     space = paths.space_of(target_folder)
     with SessionLocal() as db:
         if note is not None and index_live(db, note) is None:
-            raise VaultError("not_found", "no such note", 404)
+            raise VaultError("not_found", "no such canvas" if on_canvas else "no such note", 404)
         strip = bool(settings_service.get(db, "strip_location"))
         space_row = index.ensure_space(db, space)
         db.commit()
@@ -163,7 +181,7 @@ def plan(*, note: str | None, folder: str | None, name: str, pasted: bool, actor
     return Plan(
         space_id=space_id, space=space, folder=target_folder, directory=directory, note=note, name=name.strip(),
         pasted=pasted, limits=limits(actor.name), strip=strip,
-        pattern=pasted_pattern() if pasted else uploaded_pattern(),
+        pattern=pasted_pattern() if pasted else uploaded_pattern(), canvas=on_canvas,
     )
 
 
@@ -369,7 +387,7 @@ def finish(upload: Plan, received: Path, size: int, actor: Actor) -> Uploaded:
                 base = os.path.splitext(upload.name)[0] or "Untitled"
                 below = ""
                 if upload.note:
-                    below, name = _named(upload.directory, upload.pattern, note=paths.stem(upload.note),
+                    below, name = _named(upload.directory, upload.pattern, note=owner_name(upload.note),
                                          filename=base, ending=ending, moment=time.localtime())
                 else:
                     name = _free_name(upload.directory, base, ending, numbered=upload.pasted)
@@ -389,7 +407,7 @@ def finish(upload: Plan, received: Path, size: int, actor: Actor) -> Uploaded:
             db.commit()
             result = Uploaded(
                 path=linked.path, size=file.size, kind=kind, duplicate=duplicate, removed=removed, original=original,
-                link=link_text(linked.path, upload.note) if upload.note else "",
+                link=link_text(linked.path, upload.note) if upload.note and not upload.canvas else "",
             )
     finally:
         if received.exists():
@@ -409,22 +427,28 @@ def finish(upload: Plan, received: Path, size: int, actor: Actor) -> Uploaded:
 @dataclass
 class NewInk:
     path: str
-    #: The text that embeds it in the note: ``![[Shopping 1.svg]]``.
-    embed: str
+    #: The text that embeds it in the note: ``![[Shopping 1.svg]]``; None on a canvas (a card shows it there).
+    embed: str | None
 
 
-def new_ink(note: str, *, actor: Actor) -> NewInk:
+def new_ink(note: str | None = None, *, actor: Actor, canvas: str | None = None) -> NewInk:
     """A new, empty drawing for ``note``: in the note's attachment folder, named the way a picture pasted into it is
     (``pasted_name``: ``Shopping 1.svg``). A drawing is made where the note is being written, like a pasted picture,
     and has no name of its own either. The name is chosen and the file made under one lock: two drawings started at
-    once get two names."""
-    upload = plan(note=note, folder=None, name="", pasted=True, actor=actor)
-    clean = upload.note or note
+    once get two names.
+
+    For ``canvas`` instead: the pen's layer over that canvas, in the canvas's attachment folder, named the same way
+    after the canvas (``Board 1.svg``)."""
+    upload = plan(note=note, folder=None, name="", pasted=True, actor=actor, canvas=canvas)
+    clean = upload.note or note or canvas or ""
     with index.guard:
-        below, name = _named(upload.directory, upload.pattern, note=paths.stem(clean), filename="",
+        below, name = _named(upload.directory, upload.pattern, note=owner_name(clean), filename="",
                              ending=paths.SVG_SUFFIX, moment=time.localtime())
         folder = f"{upload.folder}/{below}" if below else upload.folder
         file = vault.create_ink(f"{folder}/{name}", actor=actor)
+    if upload.canvas:
+        logger.info("Drawing made for a canvas file_id=%s", file.id)
+        return NewInk(path=file.path, embed=None)
     logger.info("Drawing made for a note file_id=%s", file.id)
     return NewInk(path=file.path, embed=ink_embed(file, clean))
 

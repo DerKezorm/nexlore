@@ -133,3 +133,29 @@ body {
 body.compact .pdfViewer .page {
   margin: 8px auto;
 }
+
+/* A strip on a canvas card: every page at the frame's width, one below the other, nothing to scroll (the card is as
+   tall as the pages; the page asks the frame how tall that is). */
+body.strip {
+  background: transparent;
+}
+#strip {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#strip canvas {
+  display: block;
+  width: 100%;
+  background: #fff;
+}
+#strip .more {
+  height: 36px;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}

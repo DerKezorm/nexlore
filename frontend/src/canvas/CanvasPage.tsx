@@ -139,6 +139,20 @@ export default function CanvasPage({ path }: { path: string }) {
     },
     [save],
   )
+  // A change the canvas makes by itself (the pen layer's card following its strokes, a PDF card as tall as its pages):
+  // no step of its own, and the same in every step back and forth, so that going back never takes it away again.
+  const adjust = useCallback(
+    (change: (canvas: Canvas) => Canvas) => {
+      const before = present.current
+      const next = change(before)
+      if (next === before) return
+      present.current = next
+      if (liveBase.current) liveBase.current = change(liveBase.current)
+      setHistory((now) => ({ past: now.past.map(change), present: next, future: now.future.map(change) }))
+      save(serializeCanvas(next))
+    },
+    [save],
+  )
   const undo = useCallback(() => {
     const now = shown.current
     const back = now.past.at(-1)
@@ -211,13 +225,17 @@ export default function CanvasPage({ path }: { path: string }) {
       openFile: (target) => navigate(/\.md$/i.test(target) ? noteUrl(target) : fileRoute(target)),
       target: (written) => targetOf(space, targets, placed.current, written),
       remember: (written, where) => void placed.current.set(written, where),
+      fit: (id, height) => {
+        if (file.readonly || unreadable) return
+        adjust((canvas) => updateNodes(canvas, { [id]: { height } }))
+      },
       notes,
       links,
       menus,
     }),
     // `answers`: a new answer about a link draws the text cards again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [path, space, file.readonly, unreadable, touch, editing, apply, notes, links, menus, answers, navigate, targets],
+    [path, space, file.readonly, unreadable, touch, editing, apply, adjust, notes, links, menus, answers, navigate, targets],
   )
 
   // A finger on a phone: once, what works there.
@@ -282,6 +300,7 @@ export default function CanvasPage({ path }: { path: string }) {
                 <CanvasView
                   canvas={history.present}
                   apply={apply}
+                  adjust={adjust}
                   undo={undo}
                   redo={redo}
                   canUndo={history.past.length > 0}

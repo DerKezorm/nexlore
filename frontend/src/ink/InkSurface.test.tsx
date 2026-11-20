@@ -21,6 +21,7 @@ function controller(strokes: InkStroke[] = [], selection: number[] = []): InkCon
     flush: async () => undefined,
     reload: async () => undefined,
     loaded: { v: 1, bg: 'none', strokes },
+    source: 'S/a.svg',
     strokes,
     bg: 'none',
     view: undefined,

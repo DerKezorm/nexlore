@@ -437,7 +437,9 @@
       "noteShort": "Note",
       "fileShort": "File",
       "linkShort": "Link",
-      "groupShort": "Group"
+      "groupShort": "Group",
+      "pen": "Pen",
+      "penShort": "Pen"
     },
     "group": "Group",
     "groupName": "Name of the group",
@@ -473,7 +475,17 @@
     "current": "Now",
     "restoreTitle": "Bring back this version?",
     "restoreText": "The canvas goes back to how it was on {{when}}. How it is now stays as a version of its own.",
-    "emptyNote": "Empty note"
+    "emptyNote": "Empty note",
+    "pen": {
+      "toolbar": "Pen over the canvas",
+      "hint": "Draw anywhere. Space, the right button or a finger move the canvas; Ctrl and the wheel zoom; Esc ends.",
+      "failed": "The pen could not start a drawing here: {{reason}}"
+    },
+    "pdfPages_one": "One page",
+    "pdfPages_other": "{{count}} pages",
+    "uploading_one": "Laying a file on the canvas …",
+    "uploading_other": "Laying {{count}} files on the canvas …",
+    "uploadFailed": "“{{name}}” could not be laid on the canvas: {{reason}}"
   },
   "noteStart": {
     "recentOpened": "Opened last",
@@ -2725,7 +2737,8 @@
     "newNoteHint": "Makes a note next to the PDF with a link to it at the top, and opens it beside the PDF.",
     "beside": "Open beside a note",
     "panel": "The column on the right",
-    "pageWord": "page"
+    "pageWord": "page",
+    "morePages": "More pages in the reader: {{pages}}"
   },
   "confirmEmail": {
     "busy": "Confirming …",

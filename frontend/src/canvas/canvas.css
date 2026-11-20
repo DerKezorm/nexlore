@@ -139,6 +139,13 @@
     padding: 0;
     overflow: hidden;
   }
+  /* A PDF's pages in a frame of their own, as tall as the card (the card follows the pages). */
+  .nl-card.nl-pdf .nl-card-body {
+    position: relative;
+    padding: 0;
+    overflow: hidden;
+    background: var(--color-ink-900);
+  }
   .nl-card.nl-link .nl-card-body {
     display: flex;
     flex-direction: column;

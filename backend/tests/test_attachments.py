@@ -16,8 +16,9 @@ from app.db import SessionLocal
 from app.models import Account, File
 from app.services import index, paths, prepare, settings_service
 
-from .conftest import make_account, sign_in
+from .conftest import join, make_account, sign_in
 from .test_media import XMP, exif_bytes
+from .test_profile import person
 
 pillow_heif.register_heif_opener()
 
@@ -139,6 +140,47 @@ def test_an_upload_goes_only_where_it_may(client: TestClient, filled: Path) -> N
     # A change without its tab is refused before the route.
     assert upload(client, b"x", headers={"X-Nexlore-Client": ""}).status_code == 400
     assert not (filled / "Home" / "Attachments").exists()
+
+
+def on_canvas(client: TestClient, data: bytes, canvas: str, *, name: str, pasted: bool = False, **more: object):
+    params: dict[str, object] = {"name": name, "pasted": pasted, "canvas": canvas, **more}
+    return client.post("/api/attachments", params=params, content=data, headers=TAB)
+
+
+def test_a_file_laid_on_a_canvas_lands_beside_the_canvas_named_after_it(client: TestClient, filled: Path) -> None:
+    board = client.post("/api/canvases", json={"folder": "Home/Recipes", "name": "Board"}).json()["path"]
+    pasted = on_canvas(client, photo(), board, name="image.png", pasted=True)
+    assert pasted.status_code == 201, pasted.text
+    # Named as a picture pasted into a note is, after the canvas; no link (a card shows it there).
+    assert pasted.json()["path"] == "Home/Recipes/Attachments/Board 1.jpg"
+    assert pasted.json()["link"] == ""
+    dropped = on_canvas(client, pdf("menu"), board, name="Menu card.pdf")
+    assert dropped.status_code == 201, dropped.text
+    assert dropped.json()["path"] == "Home/Recipes/Attachments/Menu card.pdf"
+    assert (filled / "Home" / "Recipes" / "Attachments" / "Menu card.pdf").read_bytes() == pdf("menu")
+    settings(uploaded_name="{note}/{filename}")
+    again = on_canvas(client, pdf("other"), board, name="Plan.pdf")
+    assert again.json()["path"] == "Home/Recipes/Attachments/Board/Plan.pdf"
+
+
+def test_a_file_is_laid_only_on_a_canvas_one_may_write(client: TestClient, filled: Path) -> None:
+    board = client.post("/api/canvases", json={"folder": "Home", "name": "Board"}).json()["path"]
+    assert on_canvas(client, b"x", "Home/Shopping.md", name="a.png").json()["detail"]["code"] == "not_a_canvas"
+    assert on_canvas(client, b"x", "Home/Missing.canvas", name="a.png").json()["detail"]["code"] == "not_found"
+    assert on_canvas(client, b"x", board, name="a.png", note="Home/Shopping.md").json()["detail"]["code"] == "path_invalid"
+    assert on_canvas(client, b"x", board, name="a.png", folder="Home").json()["detail"]["code"] == "path_invalid"
+    assert upload(client, b"x", note=board).json()["detail"]["code"] == "not_a_note"
+    assert not (filled / "Home" / "Attachments").exists()
+    anna, rita, bob = person("anna"), person("rita"), person("bob")
+    assert anna.post("/api/spaces", json={"name": "Garden"}).status_code == 201
+    garden = anna.post("/api/canvases", json={"folder": "Garden", "name": "Beds"}).json()["path"]
+    join(anna, "Garden", "rita", "read")
+    for other, status in ((rita, 403), (bob, 404)):
+        refused = other.post("/api/attachments", params={"name": "a.png", "canvas": garden}, content=photo(), headers=TAB)
+        assert refused.status_code == status
+    assert not (filled / "Garden" / "Attachments").exists()
+    allowed = anna.post("/api/attachments", params={"name": "a.png", "canvas": garden}, content=photo(), headers=TAB)
+    assert allowed.status_code == 201 and allowed.json()["path"] == "Garden/Attachments/a.png"
 
 
 def test_the_limits_per_file_and_per_account_hold(client: TestClient, filled: Path) -> None:

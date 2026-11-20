@@ -19,12 +19,14 @@ type Props = {
   onDone?: () => void
   /** Its menus open upwards (a toolbar docked at the bottom). */
   up?: boolean
+  /** The paper's menu; not over a canvas, whose cards the paper would cover. */
+  paper?: boolean
   className?: string
 }
 
 const TOOL_SYMBOL: Record<ToolName, SymbolName> = { pen: 'pencil', marker: 'marker', eraser: 'eraser', lasso: 'lasso' }
 
-export function InkToolbar({ ink, tools, setTools, onDone, up = false, className = '' }: Props) {
+export function InkToolbar({ ink, tools, setTools, onDone, up = false, paper: withPaper = true, className = '' }: Props) {
   const { t } = useTranslation()
   const [open, setOpen] = useState<'eraser' | 'paper' | null>(null)
   const bar = useRef<HTMLDivElement>(null)
@@ -147,10 +149,12 @@ export function InkToolbar({ ink, tools, setTools, onDone, up = false, className
         ),
       )}
       {gap('g3')}
-      <span className="relative">
-        {button('paper', t('ink.paper'), <Symbol name="paper" className="h-4 w-4" />, () => setOpen(open === 'paper' ? null : 'paper'), { disabled: !writable })}
-        {open === 'paper' && menu(BACKGROUNDS.map((bg) => ({ id: bg, label: t(`ink.bg.${bg}`), on: ink.bg === bg, pick: () => paper(bg) })))}
-      </span>
+      {withPaper && (
+        <span className="relative">
+          {button('paper', t('ink.paper'), <Symbol name="paper" className="h-4 w-4" />, () => setOpen(open === 'paper' ? null : 'paper'), { disabled: !writable })}
+          {open === 'paper' && menu(BACKGROUNDS.map((bg) => ({ id: bg, label: t(`ink.bg.${bg}`), on: ink.bg === bg, pick: () => paper(bg) })))}
+        </span>
+      )}
       {button('undo', t('ink.undo'), <Symbol name="undo" className="h-4 w-4" />, ink.undo, { disabled: !writable || !ink.canUndo })}
       {button('redo', t('ink.redo'), <Symbol name="redo" className="h-4 w-4" />, ink.redo, { disabled: !writable || !ink.canRedo })}
       {ink.selection.length > 0 && (

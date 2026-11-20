@@ -34,6 +34,8 @@ export type CanvasCards = {
   target: (written: string) => { path: string; locked: boolean }
   /** A card just laid down from another space: where it leads, until the server knows it. */
   remember: (written: string, path: string) => void
+  /** A card's height as what it shows needs it (a PDF's pages): kept in the canvas, not a step to go back to. */
+  fit: (id: string, height: number) => void
   notes: NoteCache
   /** Where wiki links in text cards lead, asked from where the canvas lies. */
   links: LinkIndex

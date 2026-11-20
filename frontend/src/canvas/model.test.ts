@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   CanvasError,
+  PDF_SIZE,
+  pictureSize,
   EMPTY_CANVAS,
   addEdge,
   addNode,
@@ -228,5 +230,20 @@ describe('groups, bounds, colours, ids', () => {
     const ids = new Set(Array.from({ length: 200 }, () => newId(canvas)))
     expect(ids.size).toBe(200)
     for (const id of ids) expect(id).toMatch(/^[0-9a-f]{16}$/)
+  })
+})
+
+describe('the card of a file laid on the canvas', () => {
+  it('keeps a picture’s shape within reason', () => {
+    expect(pictureSize(1600, 900)).toEqual({ width: 480, height: 270 })
+    expect(pictureSize(900, 1600)).toEqual({ width: 270, height: 480 })
+    expect(pictureSize(200, 100)).toEqual({ width: 200, height: 100 })
+    expect(pictureSize(4000, 10)).toEqual({ width: 480, height: 36 })
+    expect(pictureSize(0, 0)).toEqual({ width: 320, height: 220 })
+    expect(pictureSize(Number.NaN, 5)).toEqual({ width: 320, height: 220 })
+  })
+
+  it('is a page of A4 for a PDF', () => {
+    expect(PDF_SIZE.height / PDF_SIZE.width).toBeCloseTo(297 / 210, 2)
   })
 })

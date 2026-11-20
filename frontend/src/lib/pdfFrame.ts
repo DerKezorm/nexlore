@@ -8,18 +8,32 @@ import type { Links } from '../api/client'
 
 export type Colours = { ground: string; panel: string; text: string; muted: string; accent: string; line: string }
 
-export type FrameTexts = { pages: string; contents: string; noContents: string; password: string; broken: string; page: string }
+export type FrameTexts = {
+  pages: string
+  contents: string
+  noContents: string
+  password: string
+  broken: string
+  page: string
+  /** Below the pages of a strip that shows only the first ones: `{{count}}` more in the reader. */
+  more?: string
+}
 
 export type ToFrame =
-  | { type: 'open'; data: ArrayBuffer; page: number; colours: Colours; texts: FrameTexts; sidebar: boolean; compact: boolean }
+  /** `strip`: the pages one below the other at the frame's width, at most that many, nothing to scroll (a canvas card). */
+  | { type: 'open'; data: ArrayBuffer; page: number; colours: Colours; texts: FrameTexts; sidebar: boolean; compact: boolean; strip?: number }
   | { type: 'go'; page: number }
   | { type: 'zoom'; to: 'in' | 'out' | 'width' }
   | { type: 'find'; query: string; previous: boolean; again: boolean }
   | { type: 'sidebar'; show: boolean }
   | { type: 'colours'; colours: Colours }
   | { type: 'data'; id: number; bytes: ArrayBuffer | null }
+  /** A strip drawn this much sharper than its width asks (the canvas zoomed in on it). */
+  | { type: 'sharp'; factor: number }
 
 export type FromFrame =
+  /** A strip's height in pixels at the frame's width, every page and the line below them. */
+  | { type: 'height'; height: number }
   | { type: 'ready' }
   | { type: 'loaded'; pages: number }
   | { type: 'page'; page: number }
@@ -68,6 +82,40 @@ export function linkedIn(links: Links | null): { path: string; title: string; pa
     byNote.set(link.path, entry)
   }
   return [...byNote.values()].map((entry) => ({ ...entry, pages: [...entry.pages].sort((a, b) => a - b) }))
+}
+
+/** The pages a strip shows at most: a long PDF is read in the reader, not on a card. */
+export const STRIP_PAGES = 30
+/** Room between two pages of a strip, and the height of the line below them that says how many more there are. */
+export const STRIP_GAP = 8
+export const STRIP_MORE = 36
+
+/**
+ * The pages of a strip at `width` pixels (each page its own shape, sizes in PDF points): the height of each, and of the
+ * whole strip, with the line for the pages it leaves out when there are `more`.
+ */
+export function stripLayout(sizes: readonly { width: number; height: number }[], width: number, more: number): { heights: number[]; total: number } {
+  const heights = sizes.map((size) => (width * size.height) / Math.max(size.width, 1))
+  const pages = heights.reduce((sum, height) => sum + height, 0) + STRIP_GAP * Math.max(0, heights.length - 1)
+  const total = pages + (more > 0 ? STRIP_GAP + STRIP_MORE : 0)
+  return { heights, total: Math.ceil(total) }
+}
+
+/** How much sharper a strip is drawn than its width asks: the screen's density and the zoom, within reason. */
+export function sharpness(density: number, zoom: number): number {
+  return Math.min(3, Math.max(1, density) * Math.max(1, zoom))
+}
+
+/** The bytes of a file pdf.js asked the page for (`data` from the frame), fetched from the app; null when refused. */
+export async function frameData(message: Extract<FromFrame, { type: 'data' }>): Promise<ArrayBuffer | null> {
+  const folder = DATA_FOLDERS[message.kind]
+  if (!folder || !plainName(message.name)) return null
+  try {
+    const response = await fetch(`/pdfjs/${folder}/${message.name}`)
+    return response.ok ? await response.arrayBuffer() : null
+  } catch {
+    return null
+  }
 }
 
 /**
