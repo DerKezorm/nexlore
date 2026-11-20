@@ -150,6 +150,11 @@ test('a drawing opened from outside goes back to the note that uses it', async (
     .toBe(1)
   // A new tab: no step back inside the app.
   const fresh = await page.context().newPage()
+  // Clicked before the notes that use it are known: it waits for them instead of going to the start.
+  await fresh.route('**/api/links?*', async (route) => {
+    await new Promise((done) => setTimeout(done, 1500))
+    await route.continue()
+  })
   await fresh.goto('/file/' + path.split('/').map(encodeURIComponent).join('/'))
   await expect(fresh.locator('[data-ink-page]')).toBeVisible()
   await fresh.locator('[data-ink-back]').click()

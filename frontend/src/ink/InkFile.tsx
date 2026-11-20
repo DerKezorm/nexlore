@@ -62,18 +62,19 @@ export default function InkFile({ path, fallback }: { path: string; fallback: (p
 
   // Back where the drawing was opened from (a note's block, a canvas, the sidebar); a page opened from outside, with no
   // step back inside the app, goes to the first note that uses the drawing, else to the start.
-  const leave = () => {
-    if (canGoBack()) navigate(-1)
-    else if (links?.backlinks.length) {
-      const first = links.backlinks[0].path
-      navigate(isCanvasPath(first) ? fileRoute(first) : noteUrl(first))
-    } else navigate('/')
+  // The notes that use it may still be on their way: then they are asked for first.
+  const leave = async () => {
+    if (canGoBack()) return navigate(-1)
+    const found = links ?? (await vaultApi.links(path).catch(() => null))
+    const first = found?.backlinks[0]?.path
+    if (first) navigate(isCanvasPath(first) ? fileRoute(first) : noteUrl(first))
+    else navigate('/')
   }
 
   if (ink.status === 'ready' && !ink.loaded) return <>{fallback(ink.problem === 'not_ink' ? null : ink.problem)}</>
   const name = path.slice(path.lastIndexOf('/') + 1)
   // Escape first lets go of a choice made with the lasso, and only then leaves.
-  const keys = inkKeys(ink, tools, setTools, { onShowAll: showAll, onEscape: leave })
+  const keys = inkKeys(ink, tools, setTools, { onShowAll: showAll, onEscape: () => void leave() })
   const recognised = typeof ink.loaded?.text === 'string' ? ink.loaded.text.trim() : ''
 
   return (
@@ -83,7 +84,7 @@ export default function InkFile({ path, fallback }: { path: string; fallback: (p
         <header className="flex items-center gap-2 border-b border-ink-700 px-4 py-2">
           <button
             type="button"
-            onClick={leave}
+            onClick={() => void leave()}
             title={t('ink.backHint')}
             data-ink-back=""
             className="inline-flex shrink-0 items-center gap-1 rounded-full border border-ink-700 py-1 pr-3 pl-2 text-xs text-mist-300 hover:bg-ink-850"

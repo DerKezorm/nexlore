@@ -1081,18 +1081,23 @@ function PenLayer({ ink, tools, drawing }: { ink: InkController; tools: ReturnTy
     },
     [flow],
   )
+  // Where ink is drawn once more, blended with the cards under it (`canvas.css`, only in the dark).
+  const [echo, setEcho] = useState<HTMLDivElement | null>(null)
   // Nothing drawn yet and no pen: nothing to lay over the cards.
   if (!drawing && !ink.strokes.length) return null
   return (
-    <div
-      className={'nl-pen-layer absolute inset-0 ' + (drawing ? '' : 'pointer-events-none')}
-      style={{ zIndex: 4 }}
-      data-pen={drawing ? 'on' : 'off'}
-      data-ink-layer={ink.path}
-      data-strokes={ink.strokes.length}
-    >
-      <InkSurface ink={ink} tools={tools} place={place} onPlace={onPlace} moves={drawing} draws={drawing} clear />
-    </div>
+    <>
+      <div ref={setEcho} className="nl-pen-echo pointer-events-none absolute inset-0" style={{ zIndex: 4 }} aria-hidden="true" />
+      <div
+        className={'nl-pen-layer absolute inset-0 ' + (drawing ? '' : 'pointer-events-none')}
+        style={{ zIndex: 4 }}
+        data-pen={drawing ? 'on' : 'off'}
+        data-ink-layer={ink.path}
+        data-strokes={ink.strokes.length}
+      >
+        <InkSurface ink={ink} tools={tools} place={place} onPlace={onPlace} moves={drawing} draws={drawing} clear echo={echo} />
+      </div>
+    </>
   )
 }
 

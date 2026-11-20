@@ -12,8 +12,10 @@
  * the pointer is lifted: one step back each.
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 import {
+  INK,
   LIMITS,
   eraseWhole,
   erasePart,
@@ -51,6 +53,11 @@ type Props = {
   onSize?: (width: number, height: number) => void
   /** Laid over something else (the cards of a canvas): no ground and no paper of its own, only the strokes. */
   clear?: boolean
+  /**
+   * A layer beside the surface (outside its stacking) that draws the strokes in ink once more, there to be blended
+   * with what lies under them: the canvas turns white ink dark on a light card in the dark (`canvas.css`).
+   */
+  echo?: HTMLElement | null
   className?: string
   children?: ReactNode
 }
@@ -65,7 +72,7 @@ type Gesture =
 /** Points closer than this on the screen add nothing to a stroke. */
 const MIN_STEP_PX = 1.2
 
-export function InkSurface({ ink, tools, place, onPlace, moves, draws, height, onSize, clear = false, className = '', children }: Props) {
+export function InkSurface({ ink, tools, place, onPlace, moves, draws, height, onSize, clear = false, echo = null, className = '', children }: Props) {
   const root = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ width: 0, height: height ?? 0 })
   const gesture = useRef<Gesture | null>(null)
@@ -329,6 +336,25 @@ export function InkSurface({ ink, tools, place, onPlace, moves, draws, height, o
         )}
       </svg>
       {children}
+      {echo && createPortal(<InkEcho strokes={shown} live={live} picked={ink.selection} viewBox={viewBoxOf(place, width, tall)} />, echo)}
     </div>
+  )
+}
+
+/** The strokes in ink only, for the layer beside the surface; picked ones dimmed as on the surface. */
+function InkEcho({ strokes, live, picked, viewBox }: { strokes: InkStroke[]; live: InkStroke | null; picked: readonly number[]; viewBox: string }) {
+  const chosen = new Set(picked)
+  const kept: InkStroke[] = []
+  const dimmed: number[] = []
+  strokes.forEach((stroke, index) => {
+    if (stroke.color !== INK) return
+    if (chosen.has(index)) dimmed.push(kept.length)
+    kept.push(stroke)
+  })
+  return (
+    <svg className="block h-full w-full select-none" viewBox={viewBox} preserveAspectRatio="xMinYMin slice" data-ink-echo="">
+      <Strokes strokes={kept} picked={dimmed} />
+      {live && live.color === INK && <StrokePath stroke={live} />}
+    </svg>
   )
 }

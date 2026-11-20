@@ -42,7 +42,7 @@ let host: HTMLDivElement | null = null
 
 type Shown = { surface: HTMLElement; onPlace: ReturnType<typeof vi.fn> }
 
-function show(ink: InkController, options: { tools?: Partial<Tools>; place?: Placement; moves?: boolean; draws?: boolean } = {}): Shown {
+function show(ink: InkController, options: { tools?: Partial<Tools>; place?: Placement; moves?: boolean; draws?: boolean; echo?: HTMLElement } = {}): Shown {
   host = document.createElement('div')
   document.body.append(host)
   const onPlace = vi.fn()
@@ -57,6 +57,7 @@ function show(ink: InkController, options: { tools?: Partial<Tools>; place?: Pla
         moves={options.moves ?? true}
         draws={options.draws ?? true}
         height={300}
+        echo={options.echo}
       />,
     )
   })
@@ -258,5 +259,25 @@ describe('the drawing surface', () => {
     expect(paper.getAttribute('x')).toBe('10')
     expect(paper.getAttribute('y')).toBe('20')
     expect(paper.getAttribute('height')).toBe('150')
+  })
+
+  it('beside a canvas it draws the strokes in ink once more in the echo, in its view, the chosen ones dimmed', () => {
+    const echo = document.createElement('div')
+    document.body.append(echo)
+    const strokes: InkStroke[] = [
+      { tool: 'pen', color: INK, size: 3, pts: [[0, 0, 0.5], [40, 40, 0.5]] },
+      { tool: 'pen', color: '#ff0000', size: 3, pts: [[0, 40, 0.5], [40, 0, 0.5]] },
+      { tool: 'pen', color: INK, size: 3, pts: [[10, 10, 0.5], [30, 10, 0.5]] },
+    ]
+    const { surface } = show(controller(strokes, [2]), { place: { x: 10, y: 20, z: 2 }, echo })
+    // On the surface all three, the two in ink marked; in the echo only those two, in the surface's view.
+    expect(surface.querySelectorAll('[data-strokes] path')).toHaveLength(3)
+    expect(surface.querySelectorAll('[data-strokes] path[data-ink]')).toHaveLength(2)
+    const twice = echo.querySelector('svg[data-ink-echo]')!
+    expect(twice.querySelectorAll('path')).toHaveLength(2)
+    expect(twice.querySelector('path[fill="#ff0000"], path[stroke="#ff0000"]')).toBeNull()
+    expect(twice.getAttribute('viewBox')).toBe(surface.querySelector('svg')!.getAttribute('viewBox'))
+    expect(twice.querySelectorAll('path[opacity]')).toHaveLength(1)
+    echo.remove()
   })
 })

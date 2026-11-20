@@ -9,13 +9,17 @@ import { INK, MARKER_OPACITY, bounds, strokeShape, type Box, type InkBackground,
 /** One stroke; drawn again only when it is another stroke (strokes are never changed in place once drawn). */
 export const StrokePath = memo(function StrokePath({ stroke, dim }: { stroke: InkStroke; dim?: boolean }) {
   const shape = strokeShape(stroke)
-  const color = stroke.color === INK ? 'currentColor' : stroke.color
+  const ink = stroke.color === INK
+  const color = ink ? 'currentColor' : stroke.color
+  // Ink is marked: over a canvas in the dark it is drawn in a layer of its own that turns it dark on light cards.
+  const mark = ink ? '' : undefined
   if (!shape.d) return null
   return shape.filled ? (
-    <path d={shape.d} fill={color} opacity={dim ? 0.55 : undefined} />
+    <path d={shape.d} fill={color} opacity={dim ? 0.55 : undefined} data-ink={mark} />
   ) : (
     <path
       d={shape.d}
+      data-ink={mark}
       fill="none"
       stroke={color}
       strokeWidth={shape.width}
