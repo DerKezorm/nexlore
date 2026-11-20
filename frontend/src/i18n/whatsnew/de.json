@@ -640,5 +640,17 @@
       "Weit herausgezoomt zeigt eine Karte, die am Bildschirm noch groß genug ist, weiter ihren Inhalt statt nur ihres Titels.",
       "Eine Zeichnung auf der Leinwand zeigt sich ganz auf ihrer Karte; ein Doppelklick öffnet sie zum Zeichnen."
     ]
+  },
+  "1.15.1": {
+    "lead": "Die eingebaute Anleitung erklärt jetzt Zeichnungen und Dateien auf der Leinwand.",
+    "sections": [
+      {
+        "title": "Anleitung zu Zeichnungen und zur Leinwand",
+        "where": "Bereich „nexlore“, Kapitel 08 und 14",
+        "body": "Kapitel 08 zeigt, wie du zeichnest, mit einer Zeichnung zum Ausprobieren; Kapitel 14 erklärt PDFs mit allen Seiten und das Hineinziehen von Dateien auf die Leinwand. Eine schon angelegte Anleitung bleibt, wie sie ist. Der Betreiber legt die neue unter Einstellungen › Server › Dateien daneben an."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": []
   }
 }

@@ -640,5 +640,17 @@
       "Zoomed far out, a card still big enough on the screen keeps showing what it holds instead of only its title.",
       "A drawing on the canvas shows whole on its card; a double click opens it for drawing."
     ]
+  },
+  "1.15.1": {
+    "lead": "The built-in guide now explains drawings and files on the canvas.",
+    "sections": [
+      {
+        "title": "Guide to drawings and the canvas",
+        "where": "Space “nexlore”, chapters 08 and 14",
+        "body": "Chapter 08 shows how to draw, with a drawing to try; chapter 14 explains PDFs with all their pages and dragging files onto the canvas. A guide made before stays as it is. The operator makes the new one next to it under Settings › Server › Files."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": []
   }
 }

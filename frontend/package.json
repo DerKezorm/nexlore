@@ -1,7 +1,7 @@
 {
   "name": "nexlore-frontend",
   "private": true,
-  "version": "1.15.0",
+  "version": "1.15.1",
   "type": "module",
   "scripts": {
     "dev": "node scripts/pdfjs-assets.mjs && vite",
