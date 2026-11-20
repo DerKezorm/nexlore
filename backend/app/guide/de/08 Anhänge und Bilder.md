@@ -17,6 +17,23 @@ Bilder und Dateien ziehst du in den Editor, fügst sie mit `Strg+V` ein oder wä
 
 Die Seite **Dateien** zeigt alle Anhänge eines Bereichs, auch die, die keine Notiz mehr benutzt.
 
+## Zeichnen
+
+Hier steht eine Zeichnung. Fahr mit der Maus darüber und klick auf **Zeichnen**, dann zeichne mit Stift, Maus oder Finger hinein.
+
+![[Skizze.svg]]
+
+Eine neue Zeichnung legst du im Editor über **Zeichnung** in der Werkzeugleiste an oder mit `/` und „Zeichnung“. Sie entsteht dort, wo der Cursor steht, und ist gleich zum Zeichnen offen.
+
+- **Werkzeuge:** Stift, Textmarker, Radierer und Auswählen, dazu Farben und Stärken. Die Farbe „Tinte“ folgt hell und dunkel. Ein zweiter Klick auf den Radierer wählt, ob er ganze Striche nimmt oder nur, was du überfährst. Mit Auswählen umfährst du Striche und verschiebst oder löschst sie.
+- **Papier:** leer, liniert, kariert oder Punkte.
+- **Fläche ohne Rand:** Leertaste oder rechte Maustaste gedrückt ziehen verschiebt, `Strg` und Mausrad zoomt, `Shift+1` zeigt alles. Ein Finger verschiebt, Stift und Maus zeichnen.
+- **Tasten:** `P` Stift, `M` Textmarker, `E` Radierer, `L` Auswählen, `Entf` löscht die Auswahl.
+- **Speichern** geschieht von selbst. `Strg+Z` nimmt zurück. **Fertig** oder `Esc` beendet das Zeichnen und merkt sich den Ausschnitt, den die Notiz zeigt; die Höhe in der Notiz ziehst du am unteren Rand.
+- **Groß öffnen** gibt der Zeichnung das ganze Fenster. Rechts steht, welche Notizen sie nutzen; **Zurück** oder `Esc` führt dorthin, woher du kamst.
+
+Jede Zeichnung ist eine SVG-Datei im Anhang-Ordner der Notiz. In Obsidian und jedem Bildbetrachter ist sie ein ganz normales Bild.
+
 ## PDFs lesen
 
 Ein Klick auf ein PDF öffnet es in nexlore, nicht als Download. Links stehen Bilder der Seiten und das Inhaltsverzeichnis des PDFs, oben blätterst du, zoomst und suchst im Text (`Strg+F`). Das Kettenglied kopiert einen Link auf die Seite, die du gerade siehst, etwa `[[Handbuch.pdf#page=3]]`: Ein Klick darauf öffnet das PDF genau dort.

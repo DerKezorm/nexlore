@@ -14,7 +14,8 @@ Rechtsklick auf einen Ordner oder einen Bereich in der Seitenleiste, dann **Neue
 
 - **Text:** Ein Doppelklick auf eine freie Stelle legt eine Textkarte an. Du schreibst darin wie in jeder Notiz, mit Links, Listen und Formeln.
 - **Notiz:** unten **Notiz**, oder eine Notiz aus der Seitenleiste auf die Leinwand ziehen. Die Karte zeigt die Notiz; ein Doppelklick öffnet sie rechts daneben zum Bearbeiten. Notizen und Bilder aus anderen Bereichen gehen auch; wer einen davon nicht lesen darf, sieht ihre Karte gesperrt.
-- **Bild oder Datei:** unten **Datei**. Bilder zeigen sich, andere Dateien als Kachel.
+- **Bild oder Datei:** unten **Datei**, oder Bilder und PDFs aus dem Explorer auf die Leinwand ziehen oder mit `Strg+V` einfügen; sie landen im Anhang-Ordner neben der Leinwand. Bilder zeigen sich in ihrem Seitenverhältnis, Zeichnungen ganz (ein Doppelklick öffnet sie zum Zeichnen), andere Dateien als Kachel.
+- **PDF:** zeigt seine Seiten untereinander, bis zu 30, und die Karte wird so hoch wie sie. **Nur erste Seite zeigen** über der gewählten Karte klappt ein langes PDF ein, **Alle Seiten zeigen** wieder auf. Ein Doppelklick öffnet das PDF zum Lesen.
 - **Link:** unten **Link** und eine Webadresse.
 - **Gruppe:** unten **Gruppe**. Was ganz in einer Gruppe liegt, wandert mit, wenn du sie verschiebst.
 
@@ -23,7 +24,7 @@ Rechtsklick auf einen Ordner oder einen Bereich in der Seitenleiste, dann **Neue
 - Karten ziehen, an der Ecke unten rechts die Größe ändern. Beim Ziehen rasten Kanten und Mitten an anderen Karten ein, mit gedrückter `Alt`-Taste nicht. Der Magnet oben rechts schaltet das Einrasten ganz ab.
 - Einen Pfeil ziehst du von einem Punkt am Rand einer Karte zu einer anderen; er läuft von selbst um Karten herum, die im Weg liegen. Ein Klick auf den Pfeil zeigt Farbe, Beschriftung und Spitzen.
 - Über einer gewählten Karte stehen Farbe, Bearbeiten und Entfernen; dasselbe bietet der Rechtsklick.
-- Weit herausgezoomt zeigen Karten nur noch ihren Titel.
+- Weit herausgezoomt zeigen Karten nur noch ihren Titel, außer sie sind am Bildschirm noch groß genug.
 
 ## Gemeinsam und unterwegs
 

@@ -17,6 +17,23 @@ Drag pictures and files into the editor, paste them with `Ctrl+V`, or pick them 
 
 The **Files** page lists every attachment of a space, those no note uses any more too.
 
+## Drawing
+
+Here is a drawing. Move the mouse over it and click **Draw**, then draw into it with a pen, the mouse or a finger.
+
+![[Sketch.svg]]
+
+You make a new drawing in the editor with **Drawing** in the toolbar, or with `/` and “Drawing”. It appears where the cursor is and is open for drawing at once.
+
+- **Tools:** Pen, Highlighter, Eraser and Choose, with colours and sizes. The colour “Ink” follows light and dark. Clicking the eraser a second time chooses whether it takes whole strokes or only what you go over. With Choose you draw around strokes and move or delete them.
+- **Paper:** plain, lined, squared or dotted.
+- **A surface without end:** dragging with Space or the right mouse button held moves it, `Ctrl` and the mouse wheel zoom, `Shift+1` shows everything. A finger moves, a pen and the mouse draw.
+- **Keys:** `P` pen, `M` highlighter, `E` eraser, `L` choose, `Delete` removes what is chosen.
+- **Saving** happens by itself. `Ctrl+Z` takes a step back. **Done** or `Esc` ends drawing and keeps the part the note shows; drag the lower edge for its height in the note.
+- **Open large** gives the drawing the whole window. On the right stand the notes that use it; **Back** or `Esc` takes you where you came from.
+
+Every drawing is an SVG file in the note's attachment folder. In Obsidian and any picture viewer it is an ordinary picture.
+
 ## Reading PDFs
 
 A click on a PDF opens it in nexlore instead of downloading it. On the left are pictures of the pages and the PDF's own contents; at the top you turn pages, zoom and find text (`Ctrl+F`). The chain link copies a link to the page you are looking at, such as `[[Manual.pdf#page=3]]`: a click on it opens the PDF right there.

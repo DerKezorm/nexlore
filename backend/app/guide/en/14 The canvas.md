@@ -14,7 +14,8 @@ Right-click a folder or a space in the sidebar, then **New canvas …**.
 
 - **Text:** a double click on an empty spot makes a text card. You write in it as in any note, with links, lists and formulas.
 - **Note:** **Note** at the bottom, or drag a note from the sidebar onto the canvas. The card shows the note; a double click opens it beside the canvas for editing. Notes and pictures from other spaces work too; whoever may not read one of them sees its card locked.
-- **Picture or file:** **File** at the bottom. Pictures show themselves, other files show as a tile.
+- **Picture or file:** **File** at the bottom, or drag pictures and PDFs from the explorer onto the canvas, or paste them with `Ctrl+V`; they go into the attachment folder next to the canvas. Pictures show in their own shape, drawings whole (a double click opens them for drawing), other files as a tile.
+- **PDF:** shows its pages one below the other, up to 30, and the card grows as tall as they are. **Show the first page only** above the chosen card folds a long PDF, **Show every page** unfolds it. A double click opens the PDF for reading.
 - **Link:** **Link** at the bottom and a web address.
 - **Group:** **Group** at the bottom. What lies wholly inside a group goes along when you move it.
 
@@ -23,7 +24,7 @@ Right-click a folder or a space in the sidebar, then **New canvas …**.
 - Drag cards, change their size at the lower right corner. While you drag, edges and middles snap to other cards, not with the `Alt` key held. The magnet at the top right turns snapping off.
 - You draw an arrow from a point on the edge of one card to another; it finds its own way around cards in between. A click on the arrow shows its colour, label and ends.
 - Above a chosen card stand colour, edit and remove; the right click offers the same.
-- Far out, cards show only their title.
+- Far out, cards show only their title, unless they are still big enough on the screen.
 
 ## Together and on the way
 
