@@ -22,8 +22,8 @@ describe('relativeTarget', () => {
 
 describe('files', () => {
   it('tells kinds by ending', () => {
-    expect(['a.PNG', 'b.webp', 'c.mp4', 'd.m4a', 'e.pdf', 'f.heic', 'g.svg'].map(fileKind)).toEqual([
-      'image', 'image', 'video', 'audio', 'pdf', 'other', 'other',
+    expect(['a.PNG', 'b.webp', 'c.mp4', 'd.m4a', 'e.pdf', 'f.heic', 'g.svg', 'h.SVG', 'i.svgz'].map(fileKind)).toEqual([
+      'image', 'image', 'video', 'audio', 'pdf', 'other', 'svg', 'svg', 'other',
     ])
   })
 

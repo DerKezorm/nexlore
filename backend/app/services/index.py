@@ -675,12 +675,13 @@ def record(
         names = Names(db, space.id, preload=False)
     analysis = prepared.analysis if prepared is not None else None
     _index_content(db, file, data, names if resolve_links else None, fresh=fresh, analysis=analysis)
-    # The text a version keeps: handed over, or read already (a canvas the scan read whole).
+    # The text a version keeps: handed over, or read already (a canvas the scan read whole). Whether a drawing: the
+    # features just found in it.
     if prepared is None:
         content: bytes | None = data
     else:
         content = zlib.decompress(prepared.compressed) if prepared.compressed is not None else None
-    if content is not None and versioned(rel, len(content)):
+    if content is not None and versioned(rel, len(content), file.features):
         if fresh:
             now = utcnow()
             db.connection().execute(

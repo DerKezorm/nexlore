@@ -47,7 +47,7 @@ from ..models import (
     Version,
     utcnow,
 )
-from . import canvas, covers, cursor, favorites, index, looks, mdparse, midword, paths, prepare, settings_service
+from . import canvas, covers, cursor, favorites, index, ink, looks, mdparse, midword, paths, prepare, settings_service
 
 logger = logging.getLogger("nexlore.vault")
 
@@ -261,9 +261,14 @@ def _not_too_large(data: bytes) -> None:
 
 
 def save(
-    rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str | None = None, strict: bool = False
+    rel: str, data: bytes, *, base_hash: str, actor: Actor, source: str | None = None, strict: bool = False,
+    drawing: bool = False,
 ) -> Saved:
     """Write a note the client had loaded as ``base_hash``. Changed in between: into a conflict copy instead.
+
+    ``drawing``: an ``.svg`` may be written too. Only the drawings' own route asks for it, with bytes it wrote itself
+    (``ink.write``); every other way in that saves text stays with notes and canvases, so no text from outside
+    becomes a picture somebody else's browser opens.
 
     ``strict`` (the iPhone app, which merges on its own copy): no conflict copy ever. A note that changed since is
     refused with ``stale`` and its hash (empty when the file is gone from the disk); a lock somebody holds does not
@@ -277,7 +282,7 @@ def save(
     _not_too_large(data)
     rel = _parse(rel)
     source = actor.writes_as(source)
-    if not paths.is_note(rel) and not paths.is_canvas(rel):
+    if not paths.is_note(rel) and not paths.is_canvas(rel) and not (drawing and paths.is_svg(rel)):
         raise VaultError("not_a_note", "only notes and canvases are saved this way")
     full = _full(rel)
     with index.guard, SessionLocal() as db:
@@ -383,6 +388,33 @@ def create_canvas(folder: str, name: str, *, actor: Actor, source: str | None = 
         db.refresh(file)
         db.expunge(file)
     logger.info("Canvas created file_id=%s", file.id)
+    return file
+
+
+def create_ink(rel: str, *, actor: Actor, source: str | None = None) -> File:
+    """A new, empty drawing at exactly ``rel``: the attachment folder's pattern chose the name
+    (``attachments.new_ink``), under the same lock, so the name is free. Folders on the way are made; a file there
+    after all is ``exists``, never overwritten."""
+    rel = _parse(rel)
+    if not paths.is_svg(rel):
+        raise VaultError("path_invalid", "a drawing ends in .svg")
+    space, *folders, name = rel.split("/")
+    clean = "/".join([space, *(_check_name(part) for part in folders), _check_name(name)])
+    if not _full(space).is_dir():
+        raise VaultError("not_found", "no such space", 404)
+    full = _full(clean)
+    data = ink.EMPTY.encode("utf-8")
+    with index.guard, SessionLocal() as db:
+        if live_by_key(db, clean) is not None or taken(full):
+            raise VaultError("exists", "a file of that name exists", 409)
+        stat = atomic_write(full, data)
+        file = index.record(db, clean, data, stat, source=actor.writes_as(source), author=actor.name,
+                            session=actor.client)
+        index.reresolve(db, file.space_id, [file.name_key])
+        db.commit()
+        db.refresh(file)
+        db.expunge(file)
+    logger.info("Drawing created file_id=%s", file.id)
     return file
 
 
@@ -499,10 +531,10 @@ def _move(source: Path, target: Path) -> None:
 
 
 def _keep_current(db: Session, file: File, full: Path) -> bool:
-    """Make sure what is on disk right now is kept: the newest version for a note or a canvas; any other file moves
-    into the trash folder whole, however large (a video is never read into memory for this). True when the file was
-    moved away already."""
-    if index.versioned(file.path, file.size):
+    """Make sure what is on disk right now is kept: the newest version for a note, a canvas or a drawing; any other
+    file moves into the trash folder whole, however large (a video is never read into memory for this). True when the
+    file was moved away already."""
+    if index.versioned(file.path, file.size, file.features):
         try:
             data = full.read_bytes()
         except FileNotFoundError:
@@ -694,7 +726,7 @@ def trash_path(entry_id: str) -> str:
 
 def _newest_content(db: Session, file: File) -> bytes | None:
     """What a trashed note or canvas, or a small file kept in the database before M3, holds."""
-    if index.versioned(file.path, file.size):
+    if index.versioned(file.path, file.size, file.features):
         version = db.scalar(
             select(Version).where(Version.file_id == file.id).order_by(Version.updated_at.desc(), Version.id.desc())
         )
@@ -713,7 +745,7 @@ def restore_trash(entry_id: str, *, actor: Actor) -> list[str]:
             waiting = trash_file(file.id)
             # A note comes back from its newest version, never from a file in the trash folder: one left there by a
             # file gone for good (Windows held it) can carry the same id, and would come back as this note.
-            keeps = index.versioned(file.path, file.size)
+            keeps = index.versioned(file.path, file.size, file.features)
             from_file = not keeps and waiting.is_file()
             data = None if from_file else _newest_content(db, file)
             if data is None and keeps and not file.is_note and waiting.is_file():

@@ -24,9 +24,11 @@ import i18n from '../i18n'
 
 /**
  * What an embedded file shows in place of its link. For a PDF `url` is its path in the vault: the editor's page fills
- * the holder with a reader (`editor/pdfWidgets.tsx`), at the page and the height the link names.
+ * the holder with a reader (`editor/pdfWidgets.tsx`), at the page and the height the link names. For an SVG (`ink`)
+ * too: the page fills it with the drawing's block, or with a link when the SVG is no drawing
+ * (`components/InkEmbeds.tsx`).
  */
-export type EmbedShown = { url: string; kind: 'image' | 'video' | 'audio' | 'pdf' }
+export type EmbedShown = { url: string; kind: 'image' | 'video' | 'audio' | 'pdf' | 'ink' }
 
 export type LinkHelpers = {
   /** Does a wiki link target (`Name`, `Folder/Name`, `Name#Heading`) point at an existing note or file? */
@@ -49,8 +51,19 @@ function pdfHolder(shown: EmbedShown, target: string): HTMLElement {
   return element
 }
 
+/** The holder of an embedded drawing; its block comes from the page, the editor never looks inside. */
+function inkHolder(shown: EmbedShown, target: string): HTMLElement {
+  const element = document.createElement('span')
+  element.className = 'nx-embed-ink'
+  element.setAttribute('data-ink', shown.url)
+  element.setAttribute('data-text', target.split('#')[0])
+  element.setAttribute('contenteditable', 'false')
+  return element
+}
+
 function mediaElement(shown: EmbedShown, width: string, target: string): HTMLElement {
   if (shown.kind === 'pdf') return pdfHolder(shown, target)
+  if (shown.kind === 'ink') return inkHolder(shown, target)
   const element = document.createElement(shown.kind === 'image' ? 'img' : shown.kind)
   element.className = 'nx-embed-media'
   element.setAttribute('src', shown.url)
@@ -157,9 +170,9 @@ function decorateBlock(state: EditorState, block: ProseNode, start: number, help
         hide(from, to)
         const width = sized ? label.trim().split('x')[0] : ''
         decorations.push(
-          media.kind === 'pdf'
-            ? // A reader keeps its own clicks and keys (its page field, its buttons): none of them edits the note.
-              Decoration.widget(to, () => mediaElement(media, width, target), { side: -1, key: `pdf:${media.url}:${target}`, stopEvent: () => true, ignoreSelection: true })
+          media.kind === 'pdf' || media.kind === 'ink'
+            ? // A reader or a drawing keeps its own clicks and keys (its buttons, its pen): none of them edits the note.
+              Decoration.widget(to, () => mediaElement(media, width, target), { side: -1, key: `${media.kind}:${media.url}:${target}`, stopEvent: () => true, ignoreSelection: true })
             : Decoration.widget(to, () => mediaElement(media, width, target), { side: -1, key: `embed:${media.url}:${width}` }),
         )
         continue

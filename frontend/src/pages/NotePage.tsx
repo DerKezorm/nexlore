@@ -70,6 +70,7 @@ import { LocalGraph } from '../components/LocalGraph'
 import { NoteEmbeds } from '../components/NoteEmbeds'
 import { ShareDialog } from '../components/ShareDialog'
 import { PdfEmbeds } from '../components/PdfEmbeds'
+import { InkEmbeds } from '../components/InkEmbeds'
 import { PdfView } from '../components/PdfView'
 import { pageOf } from '../lib/pdfFrame'
 import { askExport, type ExportMode } from '../lib/exportPdf'
@@ -1568,6 +1569,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
                 <PluginBlocks plugins={plugins} article={article} html={html} note={note} onOpen={open} onWritten={pluginWrote} />
                 <NoteEmbeds article={article} html={html} onOpen={open} />
                 <PdfEmbeds article={article} html={html} />
+                <InkEmbeds article={article} html={html} />
                 <BaseBlocks article={article} html={html} note={note.path} />
                 <FoldLayer article={article} html={html} path={note.path} />
                 <CommentLayer

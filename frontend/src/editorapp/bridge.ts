@@ -311,7 +311,8 @@ export function createBridge(host: HTMLElement, post: (message: Message) => void
       const name = target.split('#')[0].split('|')[0].trim()
       if (!isFileTarget(name)) return null
       const kind = fileKind(name)
-      if (kind === 'other') return null
+      // A drawing (`.svg`) is drawn by the app itself, not here: a chip, as any other file.
+      if (kind === 'other' || kind === 'svg') return null
       const url = asset(name)
       if (url === undefined) return undefined
       return url ? { url, kind } : null

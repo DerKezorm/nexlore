@@ -878,7 +878,11 @@
       "stale": "The note was changed elsewhere meanwhile.",
       "in_trash": "The note is in the trash.",
       "across_spaces": "Notes stay in their space.",
-      "skipped": "Skipped, because a change before it did not go through."
+      "skipped": "Skipped, because a change before it did not go through.",
+      "bad_ink": "The drawing holds data nexlore cannot read.",
+      "newer_ink": "The drawing was made by a newer nexlore.",
+      "not_utf8": "The file is not UTF-8.",
+      "not_a_drawing": "This file is no drawing."
     },
     "waitMinutes_one": "Too many attempts. Try again in a minute.",
     "waitMinutes_other": "Too many attempts. Try again in {{count}} minutes."
@@ -975,7 +979,8 @@
       "wikiLink": "Link to a note",
       "embed": "Embed a note",
       "attachment": "Picture or file",
-      "image": "Picture"
+      "image": "Picture",
+      "drawing": "Drawing"
     },
     "link": "Paste or type a link …",
     "code": {
@@ -2793,5 +2798,62 @@
     "cancel": "Cancel",
     "doneTitle": "Back to the app",
     "done": "The app takes over now. You can close this window."
+  },
+  "ink": {
+    "toolbar": "Pen tools",
+    "tool": {
+      "pen": "Pen",
+      "marker": "Highlighter",
+      "eraser": "Eraser",
+      "lasso": "Choose"
+    },
+    "eraserAgain": "press again to choose what it erases",
+    "eraserStroke": "Whole stroke",
+    "eraserPart": "Only what it passes over",
+    "eraserStrokeShort": "S",
+    "eraserPartShort": "P",
+    "color": {
+      "ink": "Ink (follows light and dark)",
+      "ef4444": "Red",
+      "f59e0b": "Orange",
+      "22c55e": "Green",
+      "3b82f6": "Blue",
+      "a855f7": "Purple",
+      "facc15": "Yellow"
+    },
+    "size": "Size {{size}}",
+    "paper": "Paper",
+    "bg": {
+      "none": "Plain",
+      "lines": "Lined",
+      "grid": "Squared",
+      "dots": "Dotted"
+    },
+    "undo": "Undo (Ctrl Z)",
+    "redo": "Redo (Ctrl Shift Z)",
+    "deleteChosen": "Delete the chosen strokes (Del)",
+    "done": "Done",
+    "saving": "Saving …",
+    "saved": "Saved",
+    "readOnly": "Read only",
+    "conflict": "The drawing changed in between: your change was saved as a conflict copy beside it.",
+    "showCopy": "Show the copy",
+    "locked": "{{name}} is drawing here. You see it as it is; it loads again when they save.",
+    "empty": "Nothing drawn yet",
+    "draw": "Draw",
+    "openLarge": "Open large",
+    "showAll": "Show all",
+    "showKept": "Show the kept view",
+    "showAllKey": "Show all (Shift 1)",
+    "moveHint": "Space or the right mouse button drag to move · Ctrl and the wheel zoom",
+    "pageHint": "An endless surface: Space or the right mouse button drag, or the wheel, to move; Ctrl and the wheel zoom; Shift 1 shows all",
+    "height": "Drag to change the height",
+    "zoomOut": "Smaller (Ctrl and the wheel)",
+    "zoomIn": "Larger",
+    "recognised": "Recognised text",
+    "strokes_one": "One stroke",
+    "strokes_other": "{{count}} strokes",
+    "cardHint": "Double click to draw",
+    "notDrawable": "This drawing cannot be drawn in here: {{reason}}"
   }
 }

@@ -23,6 +23,8 @@ from ..config import get_settings
 
 NOTE_SUFFIX = ".md"
 CANVAS_SUFFIX = ".canvas"
+#: A picture, and a drawing when it carries the mark (``ink.is_ink``): which one only its content says.
+SVG_SUFFIX = ".svg"
 #: Longest name of one part, in bytes of UTF-8. Most file systems stop at 255.
 MAX_PART_BYTES = 255
 #: Longest relative path, in characters.
@@ -204,6 +206,11 @@ def is_note(rel: str) -> bool:
 def is_canvas(rel: str) -> bool:
     """A canvas in the JSON Canvas format: kept as text with versions, like a note, but no note."""
     return rel.lower().endswith(CANVAS_SUFFIX)
+
+
+def is_svg(rel: str) -> bool:
+    """An SVG: a drawing of nexlore's or any other picture (``ink.is_ink`` tells them apart)."""
+    return rel.lower().endswith(SVG_SUFFIX)
 
 
 def stem(rel: str) -> str:

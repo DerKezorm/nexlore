@@ -1,6 +1,7 @@
 /**
  * The page of a file that is not a note: a picture, a video or a sound shows itself, anything else can be
- * downloaded; a PDF opens in nexlore's reader (`PdfFile`). The notes that link it are listed, and it can go to the
+ * downloaded; a PDF opens in nexlore's reader (`PdfFile`), a drawing (an SVG with strokes in it) on its surface
+ * (`ink/InkFile`). The notes that link it are listed, and it can go to the
  * trash. What the browser gets is decided by the server by the file's content (a PDF or an SVG is always a download;
  * the reader fetches the bytes and draws them in a frame of its own).
  */
@@ -22,6 +23,8 @@ import { useStore } from '../state/store'
 
 /** A canvas has a page of its own, loaded only when one is opened (React Flow and the editor come with it). */
 const CanvasPage = lazy(() => import('../canvas/CanvasPage'))
+/** So has a drawing; any other SVG shows the page every file has. */
+const InkFile = lazy(() => import('../ink/InkFile'))
 
 export function FilePage() {
   // Already decoded by the router.
@@ -35,10 +38,18 @@ export function FilePage() {
     )
   }
   if (fileKind(path) === 'pdf') return <PdfFile key={path} path={path} />
+  if (fileKind(path) === 'svg') {
+    return (
+      <Suspense fallback={<p className="m-auto text-sm text-mist-500">{t('common.loading')}</p>}>
+        <InkFile key={path} path={path} fallback={(problem) => <FileDetails path={path} problemWithDrawing={problem} />} />
+      </Suspense>
+    )
+  }
   return <FileDetails path={path} />
 }
 
-function FileDetails({ path }: { path: string }) {
+/** `problemWithDrawing`: an SVG that is a drawing nexlore cannot draw in, and why. */
+function FileDetails({ path, problemWithDrawing = null }: { path: string; problemWithDrawing?: string | null }) {
   const { t } = useTranslation()
   const { reload } = useStore()
   const navigate = useNavigate()
@@ -99,6 +110,11 @@ function FileDetails({ path }: { path: string }) {
             </button>
           </div>
 
+          {problemWithDrawing && (
+            <p className="rounded-xl border border-warn-500/30 bg-warn-500/10 px-4 py-2.5 text-sm text-warn-500" role="status">
+              {t('ink.notDrawable', { reason: errorText(problemWithDrawing) })}
+            </p>
+          )}
           {problem ? (
             <p className="rounded-xl border border-bad-500/30 bg-bad-500/10 px-4 py-2.5 text-sm text-bad-500" role="alert">
               {problem === 'not_found' ? t('file.notFound') : errorText(problem)}
@@ -113,7 +129,7 @@ function FileDetails({ path }: { path: string }) {
               {kind === 'image' && <img src={fileUrl(path)} alt={name} className="max-h-[70vh] max-w-full rounded-lg" />}
               {kind === 'video' && <video src={fileUrl(path)} controls preload="metadata" className="max-h-[70vh] max-w-full rounded-lg" />}
               {kind === 'audio' && <audio src={fileUrl(path)} controls preload="metadata" className="w-full max-w-md" />}
-              {(kind === 'pdf' || kind === 'other') && <p className="py-8 text-sm text-mist-500">{t('file.noPreview')}</p>}
+              {(kind === 'pdf' || kind === 'svg' || kind === 'other') && <p className="py-8 text-sm text-mist-500">{t('file.noPreview')}</p>}
             </section>
             )
           )}

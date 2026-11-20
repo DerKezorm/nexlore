@@ -406,6 +406,10 @@
   .nn-prose .nn-embed-pdf {
     @apply my-3 block;
   }
+  /* An SVG embedded in a note: a drawing's block (InkEmbeds) stands on its own; any other SVG stays a link in the line. */
+  .nn-prose .nn-embed-ink:has(> .nn-ink-block) {
+    @apply block;
+  }
   .nn-prose .nn-embedded {
     @apply my-3 block rounded-xl border border-ink-700 bg-ink-900/40 px-4 py-2;
   }

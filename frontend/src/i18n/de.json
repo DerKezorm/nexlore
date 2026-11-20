@@ -878,7 +878,11 @@
       "stale": "Die Notiz wurde inzwischen woanders geändert.",
       "in_trash": "Die Notiz liegt im Papierkorb.",
       "across_spaces": "Notizen bleiben in ihrem Bereich.",
-      "skipped": "Übersprungen, weil eine Änderung davor nicht ging."
+      "skipped": "Übersprungen, weil eine Änderung davor nicht ging.",
+      "bad_ink": "Die Zeichnung enthält Daten, die nexlore nicht lesen kann.",
+      "newer_ink": "Die Zeichnung stammt aus einem neueren nexlore.",
+      "not_utf8": "Die Datei ist nicht in UTF-8.",
+      "not_a_drawing": "Diese Datei ist keine Zeichnung."
     },
     "waitMinutes_one": "Zu viele Versuche. Noch einmal in einer Minute.",
     "waitMinutes_other": "Zu viele Versuche. Noch einmal in {{count}} Minuten."
@@ -975,7 +979,8 @@
       "wikiLink": "Link auf eine Notiz",
       "embed": "Notiz einbetten",
       "attachment": "Bild oder Datei",
-      "image": "Bild"
+      "image": "Bild",
+      "drawing": "Zeichnung"
     },
     "link": "Link einfügen oder tippen …",
     "code": {
@@ -2793,5 +2798,62 @@
     "cancel": "Abbrechen",
     "doneTitle": "Zurück zur App",
     "done": "Die App übernimmt jetzt. Du kannst dieses Fenster schließen."
+  },
+  "ink": {
+    "toolbar": "Werkzeuge des Stifts",
+    "tool": {
+      "pen": "Stift",
+      "marker": "Textmarker",
+      "eraser": "Radierer",
+      "lasso": "Auswählen"
+    },
+    "eraserAgain": "noch einmal klicken, um zu wählen, was er radiert",
+    "eraserStroke": "Ganzer Strich",
+    "eraserPart": "Nur was ich überfahre",
+    "eraserStrokeShort": "S",
+    "eraserPartShort": "T",
+    "color": {
+      "ink": "Tinte (folgt hell und dunkel)",
+      "ef4444": "Rot",
+      "f59e0b": "Orange",
+      "22c55e": "Grün",
+      "3b82f6": "Blau",
+      "a855f7": "Lila",
+      "facc15": "Gelb"
+    },
+    "size": "Stärke {{size}}",
+    "paper": "Papier",
+    "bg": {
+      "none": "Leer",
+      "lines": "Liniert",
+      "grid": "Kariert",
+      "dots": "Punkte"
+    },
+    "undo": "Rückgängig (Strg Z)",
+    "redo": "Wiederholen (Strg Umschalt Z)",
+    "deleteChosen": "Auswahl löschen (Entf)",
+    "done": "Fertig",
+    "saving": "Speichert …",
+    "saved": "Gespeichert",
+    "readOnly": "Nur lesen",
+    "conflict": "Die Zeichnung hat sich zwischendurch geändert: Deine Änderung liegt als Konfliktkopie daneben.",
+    "showCopy": "Kopie zeigen",
+    "locked": "{{name}} zeichnet hier gerade. Du siehst sie, wie sie ist; sie lädt neu, sobald gespeichert ist.",
+    "empty": "Noch nichts gezeichnet",
+    "draw": "Zeichnen",
+    "openLarge": "Groß öffnen",
+    "showAll": "Alles zeigen",
+    "showKept": "Gemerkten Ausschnitt zeigen",
+    "showAllKey": "Alles zeigen (Umschalt 1)",
+    "moveHint": "Leertaste oder rechte Maustaste ziehen verschiebt · Strg und Rad zoomt",
+    "pageHint": "Unendliche Fläche: Leertaste oder rechte Maustaste ziehen oder Mausrad verschiebt, Strg und Rad zoomt, Umschalt 1 zeigt alles",
+    "height": "Ziehen ändert die Höhe",
+    "zoomOut": "Kleiner (Strg und Rad)",
+    "zoomIn": "Größer",
+    "recognised": "Erkannter Text",
+    "strokes_one": "Ein Strich",
+    "strokes_other": "{{count}} Striche",
+    "cardHint": "Doppelklick zum Zeichnen",
+    "notDrawable": "In diese Zeichnung kann hier nicht gezeichnet werden: {{reason}}"
   }
 }

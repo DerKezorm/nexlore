@@ -67,6 +67,11 @@ export type Targets = {
    * (`PdfEmbeds`). Left out, the embed is a link to the PDF.
    */
   embedPdf?: (path: string, section: string, text: string) => string
+  /**
+   * An embedded SVG (`![[Sketch.svg]]`), which may be a drawing: in the app a holder the note page fills with the
+   * drawing's block (`InkEmbeds`), or with the link again when the SVG is no drawing. Left out, the embed is a link.
+   */
+  embedInk?: (path: string, section: string, text: string) => string
 }
 
 /** Marks a Markdown link that is shown as its text; the mark never survives into the page. */
@@ -99,6 +104,10 @@ export function appTargets(notePath: string | null, embeds = true): Targets {
     embedPdf: embeds
       ? (path, section, text) =>
           `<span class="nn-embed-pdf" data-pdf="${escape(path)}" data-section="${escape(section)}">${fileLink(path, text, { fileHref: fileRoute }, section)}</span>`
+      : undefined,
+    embedInk: embeds
+      ? (path, section, text) =>
+          `<span class="nn-embed-ink" data-ink="${escape(path)}" data-section="${escape(section)}">${fileLink(path, text, { fileHref: fileRoute })}</span>`
       : undefined,
   }
 }
@@ -180,6 +189,7 @@ function wikiLink(embed: boolean, inner: string, resolve: (target: string) => st
   const text = escape((width || label === undefined ? shown : label).trim() || target)
   if (path && !isNotePath(path)) {
     if (embed && fileKind(path) === 'pdf' && targets.embedPdf) return targets.embedPdf(path, section, text)
+    if (embed && fileKind(path) === 'svg' && targets.embedInk) return targets.embedInk(path, section, text)
     return embed ? embedded(path, text, width, targets) : fileLink(path, text, targets, section)
   }
   if (path && embed && targets.embedNote) return targets.embedNote(path, section, text)

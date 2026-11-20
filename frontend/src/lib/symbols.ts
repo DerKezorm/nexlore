@@ -109,6 +109,12 @@ export const SYMBOLS = {
   school: [{ d: 'M2.5 9 12 4.5 21.5 9 12 13.5z' }, { d: 'M6.5 11v4.5c0 1.5 2.5 3 5.5 3s5.5-1.5 5.5-3V11M21.5 9v5' }],
   archive: [{ d: 'M3.5 4.5h17v4h-17z' }, { d: 'M5 8.5v11h14v-11M10 12h4' }],
   leaf: [{ d: 'M5 19c0-8 5-13.5 15-14.5-1 10-6.5 15-14.5 15' }, { d: 'M5 19c3-4 6-7 9.5-9' }],
+  // The pen's tools (src/ink): a drawing, the highlighter, the eraser, the lasso and the paper behind.
+  draw: [{ d: 'M15.5 4.5l3 3L10 16H7v-3l8.5-8.5Z' }, { d: 'M3.5 20.5c2-1.5 3.5 0 5.5-.5s3-2 5-1.5' }],
+  marker: [{ d: 'M6 15l7-7 4 4-7 7H6z' }, { d: 'M13 8l2-2 4 4-2 2' }, { d: 'M4 21h8' }],
+  eraser: [{ d: 'M4 16l9-9 6 6-6 6H8z' }, { d: 'M9 11l6 6' }, { d: 'M13 19h7' }],
+  lasso: [{ d: 'M4 10c0-3 3.6-5.5 8-5.5s8 2.5 8 5.5-3.6 5.5-8 5.5c-1.2 0-2.3-.2-3.3-.5' }, { d: 'M8.7 15c-1.2 1.6-.6 3.8 1.3 5' }],
+  paper: [{ d: 'M4.5 4.5h15v15h-15z' }, { d: 'M4.5 9.5h15M4.5 14.5h15' }],
 } satisfies Record<string, Path[]>
 
 export type SymbolName = keyof typeof SYMBOLS

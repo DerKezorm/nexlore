@@ -13,7 +13,7 @@ import zlib
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import canvas, mdparse, paths, pdftext
+from . import canvas, ink, mdparse, paths, pdftext
 from . import tasks as tasks_service
 
 #: A note larger than this is kept and versioned, but not read for links, tags and search.
@@ -72,15 +72,21 @@ def is_pdf(rel: str) -> bool:
 
 
 def is_read_whole(rel: str) -> bool:
-    """Notes and PDFs are read for their text, canvases for their versions; every other file only hashed, piece by
-    piece."""
-    return paths.is_note(rel) or is_pdf(rel) or paths.is_canvas(rel)
+    """Notes and PDFs are read for their text, canvases for their versions, SVGs to see whether they are drawings;
+    every other file only hashed, piece by piece."""
+    return paths.is_note(rel) or is_pdf(rel) or paths.is_canvas(rel) or paths.is_svg(rel)
 
 
-def versioned(rel: str, size: int) -> bool:
-    """Whether a file keeps versions of its text: every note, and a canvas up to the size of a note. A larger canvas
-    is only hashed, as any other file (it is never read into memory whole)."""
-    return paths.is_note(rel) or (paths.is_canvas(rel) and size <= MAX_NOTE_BYTES)
+def versioned(rel: str, size: int, features: dict[str, int] | None = None) -> bool:
+    """Whether a file keeps versions of its text: every note, and a canvas or a drawing up to the size of a note. A
+    larger one is only hashed, as any other file (it is never read into memory whole). Whether an SVG is a drawing
+    only its content says: ``features`` as the index found them (``ink``), so the trash, which has no content to look
+    at, decides the same way as the scan did."""
+    if paths.is_note(rel):
+        return True
+    if size > MAX_NOTE_BYTES:
+        return False
+    return paths.is_canvas(rel) or (paths.is_svg(rel) and bool(features and features.get("ink")))
 
 
 def analyse(rel: str, data: bytes) -> Analysis:
@@ -90,6 +96,8 @@ def analyse(rel: str, data: bytes) -> Analysis:
         return result
     if paths.is_canvas(rel):
         return _analyse_canvas(result, data)
+    if paths.is_svg(rel):
+        return _analyse_ink(result, data)
     if not paths.is_note(rel):
         return result
     if len(data) > MAX_NOTE_BYTES:
@@ -136,6 +144,29 @@ def _analyse_canvas(result: Analysis, data: bytes) -> Analysis:
     return result
 
 
+def _analyse_ink(result: Analysis, data: bytes) -> Analysis:
+    """A drawing gets the feature ``ink`` (it keeps versions by it, ``versioned``), and its recognised text is
+    searched, as a PDF's text is. A drawing nexlore cannot read says why beside it; any other SVG stays a picture,
+    with nothing found in it."""
+    if not ink.is_ink(data):
+        return result
+    features = {"ink": 1}
+    result.features = features
+    if len(data) > MAX_NOTE_BYTES:
+        features["too_large"] = 1
+        return result
+    try:
+        drawing = ink.parse(data.decode("utf-8").removeprefix("\ufeff"))
+    except UnicodeDecodeError:
+        features["not_utf8"] = 1
+        return result
+    except ink.InkError as exc:
+        features[exc.code] = 1
+        return result
+    result.body = ink.text_of(drawing) or None
+    return result
+
+
 @dataclass(slots=True)
 class Prepared:
     rel: str
@@ -143,7 +174,7 @@ class Prepared:
     mtime_ns: int
     hash: str
     analysis: Analysis
-    #: The content as a version stores it, for notes and canvases (``versioned``).
+    #: The content as a version stores it, for notes, canvases and drawings (``versioned``).
     compressed: bytes | None
 
 
@@ -165,12 +196,12 @@ def prepare(root: str, rel: str) -> Prepared | None:
     """Read and take apart one file. None when it cannot be read (gone in between, no permission)."""
     full = os.path.join(root, *rel.split("/"))
     try:
-        # A PDF too large to be searched, or a canvas too large to be kept as text, is only hashed: it is never read
-        # into memory whole.
+        # A PDF too large to be searched, or a canvas or an SVG too large to be kept as text, is only hashed: it is
+        # never read into memory whole.
         if (
             not is_read_whole(rel)
             or (is_pdf(rel) and os.stat(full).st_size > pdftext.MAX_BYTES)
-            or (paths.is_canvas(rel) and os.stat(full).st_size > MAX_NOTE_BYTES)
+            or ((paths.is_canvas(rel) or paths.is_svg(rel)) and os.stat(full).st_size > MAX_NOTE_BYTES)
         ):
             hashed, stat = hash_file(full)
             features = {"pdf_too_large": 1} if is_pdf(rel) else None
@@ -181,7 +212,8 @@ def prepare(root: str, rel: str) -> Prepared | None:
             stat = os.fstat(handle.fileno())
     except OSError:
         return None
+    analysis = analyse(rel, data)
     return Prepared(
-        rel=rel, size=stat.st_size, mtime_ns=stat.st_mtime_ns, hash=digest(data), analysis=analyse(rel, data),
-        compressed=zlib.compress(data, 6) if versioned(rel, len(data)) else None,
+        rel=rel, size=stat.st_size, mtime_ns=stat.st_mtime_ns, hash=digest(data), analysis=analysis,
+        compressed=zlib.compress(data, 6) if versioned(rel, len(data), analysis.features) else None,
     )

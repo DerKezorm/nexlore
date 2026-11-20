@@ -115,6 +115,7 @@ export type EditorLabels = {
     embed: string
     attachment: string
     image: string
+    drawing: string
   }
 }
 
@@ -154,6 +155,11 @@ export type EditorOptions = {
   onChange: () => void
   /** Uploading and showing files; without it a pasted or dropped file is refused (`onFileRefused`). */
   files?: FileHelpers
+  /**
+   * A new drawing for this note (`/api/inks`): the text that embeds it, or null when none was made (the page says
+   * why). Without it neither "/" nor the toolbar offers one.
+   */
+  drawing?: () => Promise<string | null>
   onFileRefused?: () => void
   /** The note's folds (`editor/folds.ts`); without it nothing folds. */
   folds?: FoldStore
@@ -202,7 +208,7 @@ export type EditorCommand =
   | 'undo' | 'redo'
   | 'bold' | 'italic' | 'strike' | 'code' | 'highlight' | 'clear' | 'wikiLink' | 'link' | 'embed'
   | 'text' | 'h1' | 'h2' | 'h3' | 'quote' | 'bulletList' | 'orderedList' | 'taskList' | 'indent' | 'outdent'
-  | 'codeBlock' | 'math' | 'callout' | 'divider' | 'attachment' | 'selectAll' | 'moveUp' | 'moveDown'
+  | 'codeBlock' | 'math' | 'callout' | 'divider' | 'attachment' | 'drawing' | 'selectAll' | 'moveUp' | 'moveDown'
   | 'table' | 'rowBefore' | 'rowAfter' | 'colBefore' | 'colAfter' | 'deleteRow' | 'deleteCol' | 'deleteTable'
   | 'alignNone' | 'alignLeft' | 'alignCenter' | 'alignRight' | 'sortAsc' | 'sortDesc'
 
@@ -341,6 +347,33 @@ function insertedNodes(schema: Schema, done: (Inserted | null)[]): ProseNode[] {
 }
 
 /**
+ * An embed (`![[Sketch.svg]]`) as a paragraph of its own: in place of the empty paragraph the caret is in (with a new
+ * empty one after it for the caret), else after the block the caret is in. The caret never ends up in the embed, so
+ * what it shows comes at once instead of its text.
+ */
+export function insertEmbedBlock(view: EditorView, text: string): void {
+  const { state } = view
+  const { $from } = state.selection
+  const paragraph = state.schema.nodes.paragraph
+  const line = paragraph.create(null, state.schema.text(text))
+  try {
+    if ($from.parent.type === paragraph && $from.parent.content.size === 0) {
+      const start = $from.before()
+      const tr = state.tr.replaceWith(start, $from.after(), [line, paragraph.create()])
+      view.dispatch(tr.setSelection(TextSelection.create(tr.doc, start + line.nodeSize + 1)).scrollIntoView())
+      return
+    }
+    if ($from.parent.isTextblock && $from.depth > 0) {
+      view.dispatch(state.tr.insert($from.after(), line).scrollIntoView())
+      return
+    }
+  } catch {
+    // No paragraph may stand there (a table's cell): the text goes where the caret is.
+  }
+  view.dispatch(state.tr.insertText(text).scrollIntoView())
+}
+
+/**
  * Uploaded files at the caret, as inline content with their own marks. `replaceSelectionWith` gave a single node the
  * marks around the caret instead, and so took the link off a file's name: a PDF came in as its bare name.
  */
@@ -396,6 +429,14 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
   const listeners = new Set<() => void>()
   // Read only: the live preview then shows no syntax at the caret.
   let reading = !!options.readOnly
+  /** A new drawing made for the note, embedded where the caret is (or was, while the server made it). */
+  const newDrawing = async (view: EditorView) => {
+    if (!options.drawing || reading) return
+    const embed = await options.drawing()
+    if (!embed || view.isDestroyed) return
+    view.focus()
+    insertEmbedBlock(view, embed)
+  }
 
   const crepe = new Crepe({
     root: options.root,
@@ -494,6 +535,16 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
             .addGroup('obsidian', labels.slash.groupObsidian)
             .addItem('wiki-link', { label: labels.slash.wikiLink, icon: icon('[[ ]]'), onRun: (ctx: Ctx) => replaceBlock(ctx, () => ({ text: '[[', caret: 2 })) })
             .addItem('embed', { label: labels.slash.embed, icon: icon('![[ ]]'), onRun: (ctx: Ctx) => replaceBlock(ctx, () => ({ text: '![[', caret: 3 })) })
+          if (options.drawing) {
+            obsidianGroup.addItem('drawing', {
+              label: labels.slash.drawing,
+              icon: icon('✎'),
+              onRun: (ctx: Ctx) => {
+                replaceBlock(ctx, () => ({ text: '', caret: 0 }))
+                void newDrawing(ctx.get(editorViewCtx))
+              },
+            })
+          }
           if (pickable) {
             obsidianGroup.addItem('attachment', {
               label: labels.slash.attachment,
@@ -925,6 +976,8 @@ export async function createEditor(options: EditorOptions): Promise<NoteEditor> 
         return call(insertHrCommand.key)
       case 'attachment':
         return attach()
+      case 'drawing':
+        return void newDrawing(view)
       case 'selectAll':
         return view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)))
       case 'alignNone':

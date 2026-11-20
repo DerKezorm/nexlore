@@ -193,6 +193,7 @@ export function EditorToolbar({ editor, ai, mode, onMode, onHide, lines, onLines
     }, { active: status.table, menu: status.table }),
     gap('g6'),
     button('attachment', s('attachment'), 'clip', () => run('attachment')),
+    button('drawing', s('drawing'), 'draw', () => run('drawing')),
     button('embed', s('embed'), 'embed', () => run('embed')),
     ...(ai
       ? [

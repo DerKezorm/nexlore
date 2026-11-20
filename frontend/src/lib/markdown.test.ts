@@ -178,6 +178,20 @@ describe("Obsidian's own writing in the reading view", () => {
     expect(inside).toContain('class="nn-wikilink nn-filelink" data-file="S/Files/Doc.pdf"')
   })
 
+  it('embeds an SVG in a holder for a drawing, with the link inside; a plain link and a picture stay as they were', () => {
+    const svg = (target: string) => ({ 'Sketch.svg': 'S/Files/Sketch.svg', 'logo.png': 'S/Files/logo.png' })[target.split('#')[0]] ?? null
+    const html = renderMarkdown('![[Sketch.svg]]\n\nSee [[Sketch.svg]]. ![[logo.png]]', svg, 'S/Home.md')
+    expect(html).toContain(
+      '<span class="nn-embed-ink" data-ink="S/Files/Sketch.svg" data-section=""><a class="nn-wikilink nn-filelink" data-file="S/Files/Sketch.svg" href="/file/S/Files/Sketch.svg">Sketch.svg</a></span>',
+    )
+    expect(html.match(/nn-embed-ink/g)).toHaveLength(1)
+    expect(html).toContain('<img class="nn-embed"')
+    // Inside an embedded note, or on a public page, an SVG stays a link, as before.
+    const inside = renderMarkdown('![[Sketch.svg]]', svg, 'S/Home.md', appTargets('S/Home.md', false))
+    expect(inside).not.toContain('nn-embed-ink')
+    expect(inside).toContain('class="nn-wikilink nn-filelink" data-file="S/Files/Sketch.svg"')
+  })
+
   it('a link to a heading carries it, for the page to scroll to; one to a heading of the same note leads here', () => {
     const html = renderMarkdown('[[Plan#Next steps]] and [[#Here]]', plan, 'S/Home.md')
     expect(html).toContain('<a class="nn-wikilink" data-note="S/Plan.md" data-section="Next steps">Plan › Next steps</a>')

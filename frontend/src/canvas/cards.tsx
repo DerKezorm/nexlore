@@ -8,12 +8,14 @@ import { Handle, NodeResizer, Position, type Node, type NodeProps } from '@xyflo
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { fileUrl, linkTitleApi } from '../api/client'
+import { fileUrl, inkApi, linkTitleApi } from '../api/client'
 import { Symbol } from '../components/Symbol'
 import { createEditor, type NoteEditor } from '../editor/editor'
 import { editorLabels } from '../editor/labels'
 import { useEnrich } from '../lib/enrich'
 import { fileKind, isNotePath } from '../lib/files'
+import { readInk, type Ink } from '../lib/ink'
+import { InkPicture } from '../ink/paint'
 import { LinkIndex } from '../lib/links'
 import { noteSection, renderMarkdown } from '../lib/markdown'
 import { useAuth } from '../state/auth'
@@ -188,6 +190,8 @@ export function FileCard({ data, selected }: NodeProps<CardNode>) {
         <NoteBody node={node} path={path} from={from} />
       ) : kind === 'image' ? (
         <Picture node={node} path={path} name={name} from={from} />
+      ) : kind === 'svg' ? (
+        <Drawing node={node} path={path} name={name} from={from} />
       ) : (
         <div className="nl-card" data-title={name} {...colored(node)}>
           <div className="nl-card-body flex items-center gap-2">
@@ -270,6 +274,50 @@ function Picture({ node, path, name, from }: { node: CanvasNode; path: string; n
       <div className="nl-card-body">
         <img src={fileUrl(path)} alt={name} draggable={false} onError={() => setBroken(true)} />
         {from && <span className="nl-card-space nl-card-space-over" title={from}>{from}</span>}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * An SVG on a card: a drawing shows itself whole, to look at (a double click opens its page to draw); any other SVG
+ * is a file card, as before.
+ */
+function Drawing({ node, path, name, from }: { node: CanvasNode; path: string; name: string; from?: string }) {
+  const { t } = useTranslation()
+  const [ink, setInk] = useState<Ink | null | undefined>(undefined)
+  useEffect(() => {
+    let alive = true
+    inkApi.read(path).then(
+      (data) => alive && setInk(data.ink ? readInk(data.ink) : null),
+      () => alive && setInk(null),
+    )
+    return () => {
+      alive = false
+    }
+  }, [path])
+  if (ink === null) {
+    return (
+      <div className="nl-card" data-title={name} {...colored(node)}>
+        <div className="nl-card-body flex items-center gap-2">
+          <Symbol name="file" className="h-5 w-5 shrink-0 text-accent-400" />
+          <span className="truncate text-sm font-medium">{name}</span>
+          {from && <span className="nl-card-space" title={from}>{from}</span>}
+          <span className="ml-auto shrink-0 text-xs text-mist-500">{t('canvas.file')}</span>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="nl-card nl-drawing" data-title={name} data-ink-card={path} {...colored(node)}>
+      <div className="nl-card-head">
+        <Symbol name="draw" className="h-3.5 w-3.5 shrink-0" />
+        <b>{name}</b>
+        {from && <span className="nl-card-space" title={from}>{from}</span>}
+        <span className="ml-auto shrink-0">{t('ink.cardHint')}</span>
+      </div>
+      <div className="nl-card-body nl-drawing-body bg-ink-900">
+        {ink === undefined ? <p className="text-xs text-mist-500">{t('common.loading')}</p> : <InkPicture strokes={ink.strokes} bg={ink.bg} />}
       </div>
     </div>
   )

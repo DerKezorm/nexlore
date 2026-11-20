@@ -403,7 +403,8 @@ export function CanvasView({ canvas, apply: handUp, undo, redo, canUndo, canRedo
       // whoever may read that space and locked for anybody else.
       const written = writtenPath(cards.space, path)
       if (written === path) cards.remember(written, path)
-      const kind = isNotePath(path) ? 'note' : fileKind(path) === 'image' ? 'image' : 'file'
+      // A drawing (an SVG with strokes) shows itself on its card like a picture: it gets a picture's size.
+      const kind = isNotePath(path) ? 'note' : fileKind(path) === 'image' || fileKind(path) === 'svg' ? 'image' : 'file'
       place({ type: 'file', file: written }, DEFAULT_SIZE[kind], at)
     },
     [cards, place],

@@ -514,6 +514,34 @@ export const canvasApi = {
   create: (folder: string, name: string) => api<CanvasData>('/api/canvases', { method: 'POST', body: { folder, name } }),
 }
 
+/**
+ * A drawing (an `.svg` with its strokes in it) with its state. `ink` is null for any other SVG (`problem`
+ * `not_ink`): that stays a picture to download. `readonly`: shown, never saved (`problem` says why).
+ */
+export type InkData = {
+  path: string
+  ink: Record<string, unknown> | null
+  hash: string
+  size: number
+  modified: number
+  readonly: boolean
+  problem: string | null
+  lock: Lock | null
+}
+
+export const inkApi = {
+  read: (path: string) => api<InkData>('/api/ink', { query: { path } }),
+  state: (path: string) => api<{ hash: string; modified: number; lock: Lock | null }>('/api/ink/state', { query: { path } }),
+  /**
+   * The drawing as it came, with the strokes, background and view of now (fields not known here go back as they
+   * came). `length`: its size as text, for `keepalive` (browsers take only small bodies with it).
+   */
+  save: (path: string, ink: Record<string, unknown>, baseHash: string, keepalive = false, length = 0) =>
+    api<Saved>('/api/ink', { method: 'PUT', body: { path, ink, base_hash: baseHash }, keepalive: keepalive && length < 60_000 }),
+  /** A new, empty drawing in the note's attachment folder; `embed` is the text that shows it in the note. */
+  create: (note: string) => api<{ path: string; embed: string }>('/api/inks', { method: 'POST', body: { note } }),
+}
+
 // --- Accounts, rights, invitations -----------------------------------------------------------------------------------
 
 export type Account = {

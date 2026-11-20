@@ -20,7 +20,7 @@ export function editorLabels(t: (key: string) => string): EditorLabels {
       bulletList: s('bulletList'), orderedList: s('orderedList'), taskList: s('taskList'), code: s('code'),
       table: s('table'), math: s('math'), groupText: s('groupText'), groupList: s('groupList'),
       groupAdvanced: s('groupAdvanced'), groupObsidian: s('groupObsidian'), callout: s('callout'),
-      wikiLink: s('wikiLink'), embed: s('embed'), attachment: s('attachment'), image: s('image'),
+      wikiLink: s('wikiLink'), embed: s('embed'), attachment: s('attachment'), image: s('image'), drawing: s('drawing'),
     },
   }
 }

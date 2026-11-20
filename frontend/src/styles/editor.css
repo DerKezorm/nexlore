@@ -322,6 +322,23 @@
   width: 100%;
   max-width: 28rem;
 }
+/* A drawing embedded in the note (`![[Sketch.svg]]`): its block stands on its own; an SVG that is no drawing stays a
+ * link in the line. White space of the paragraph does not reach into it. */
+.nx-note-editor .nx-embed-ink:has(> .nn-ink-block) {
+  display: block;
+  white-space: normal;
+  cursor: default;
+}
+/* Crepe's reset (`.milkdown *`, `.milkdown button`) lies in no layer and so beats the block's own classes: inside
+ * the block they count again. */
+.milkdown .nx-embed-ink *,
+.milkdown .nx-embed-ink button {
+  margin: revert-layer;
+  padding: revert-layer;
+  border: revert-layer;
+  background: revert-layer;
+  box-shadow: revert-layer;
+}
 
 /* The file's line numbers (lineNumbers.ts): room between the grip and the text, the numbers in it. */
 .nx-note-editor[data-lines='on'] .milkdown .ProseMirror {

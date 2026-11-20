@@ -3,13 +3,18 @@
  * content what it hands out as what), and where a relative link in a note points.
  */
 
-export type FileKind = 'image' | 'video' | 'audio' | 'pdf' | 'other'
+/**
+ * `svg` may be a drawing (its strokes inside, `lib/ink.ts`): only the server knows by its content (`/api/ink`). Any
+ * other SVG is shown and handed out as before, as a file to download.
+ */
+export type FileKind = 'image' | 'video' | 'audio' | 'pdf' | 'svg' | 'other'
 
 const KINDS: [RegExp, FileKind][] = [
   [/\.(png|jpe?g|gif|webp|avif|bmp)$/i, 'image'],
   [/\.(mp4|mov|m4v|webm)$/i, 'video'],
   [/\.(mp3|m4a|ogg|oga|opus|wav|flac)$/i, 'audio'],
   [/\.pdf$/i, 'pdf'],
+  [/\.svg$/i, 'svg'],
 ]
 
 export function fileKind(path: string): FileKind {

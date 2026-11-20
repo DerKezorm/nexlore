@@ -134,6 +134,11 @@
     max-height: 100%;
     object-fit: contain;
   }
+  /* A drawing, whole, to look at: a double click opens its page. */
+  .nl-card.nl-drawing .nl-card-body {
+    padding: 0;
+    overflow: hidden;
+  }
   .nl-card.nl-link .nl-card-body {
     display: flex;
     flex-direction: column;

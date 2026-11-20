@@ -19,7 +19,8 @@ import { useTranslation } from 'react-i18next'
 import '@milkdown/crepe/theme/common/style.css'
 import '../styles/editor.css'
 
-import { ApiError, everydayApi, fileUrl, linkTitleApi, uploadFile, vaultApi, type Uploaded } from '../api/client'
+import { ApiError, everydayApi, fileUrl, inkApi, linkTitleApi, uploadFile, vaultApi, type Uploaded } from '../api/client'
+import { askToDraw } from '../lib/ink'
 import { clockTime, today as isoToday } from '../lib/everyday'
 import { TemplatePicker } from './TemplatePicker'
 import { createEditor, type AiScope, type EditorCommand, type FileHelpers, type NoteEditor as Engine } from '../editor/editor'
@@ -52,6 +53,7 @@ import { sourceEdit, sourceStatus, type SourceEdit } from '../lib/sourceTools'
 import { FindBar } from './FindBar'
 import { Properties } from './Properties'
 import { PdfWidgets } from '../editor/pdfWidgets'
+import { InkWidgets } from './InkEmbeds'
 
 export type EditorMode = 'visual' | 'source'
 
@@ -189,6 +191,21 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
 
   const latest = useRef({ onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed, comment: () => undefined as void })
   latest.current = { onChange, onLeave, onOpenLink, onFileRefused, onUploaded, onUploadFailed, comment: () => comment() }
+  /**
+   * A new drawing for this note, made by the server in its attachment folder (named like a pasted picture): its embed
+   * text, and its block opens for drawing as soon as it shows (`open`; the Markdown view shows no block). Null when
+   * none was made (the page says why).
+   */
+  const makeDrawing = async (open = true): Promise<string | null> => {
+    try {
+      const made = await inkApi.create(path)
+      if (open) askToDraw(made.path)
+      return made.embed
+    } catch (error) {
+      latest.current.onUploadFailed?.(error instanceof ApiError ? error.code : 'internal_error')
+      return null
+    }
+  }
   const linksRef = useRef(links)
   linksRef.current = links
   useEffect(() => {
@@ -253,6 +270,8 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
         if (found === null || found === undefined) return found
         const kind = fileKind(found)
         if (kind === 'pdf') return { url: found, kind }
+        // An SVG may be a drawing: the page asks the server and shows its block, or the link again.
+        if (kind === 'svg') return { url: found, kind: 'ink' }
         return kind === 'image' || kind === 'video' || kind === 'audio' ? { url: fileUrl(found), kind } : null
       },
     }
@@ -282,6 +301,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     }
     const started = body.current
     createEditor({
+      drawing: readOnly ? undefined : () => makeDrawing(),
       root,
       original: started,
       readOnly,
@@ -344,6 +364,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
           return sourceMoved()
         }
         if (command === 'attachment') return void attachInSource(field)
+        if (command === 'drawing') return void drawInSource(field)
         const change = sourceEdit(command, field.value, field.selectionStart, field.selectionEnd, option)
         if (change) writeSource(field, change)
         sourceMoved()
@@ -360,6 +381,16 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the upload reads the path when it runs
     [readOnly],
   )
+  /** A new drawing in the Markdown view: its embed on a line of its own at the caret. */
+  const drawInSource = async (field: HTMLTextAreaElement) => {
+    const embed = await makeDrawing(false)
+    if (!embed) return
+    field.focus()
+    const at = field.selectionEnd
+    const before = field.value.slice(0, at)
+    const words = (before && !before.endsWith('\n') ? '\n' : '') + embed + '\n'
+    writeSource(field, { from: at, to: at, insert: words, select: [at + words.length, at + words.length] })
+  }
   /** Files chosen in the Markdown view: uploaded for this note, their links at the caret. */
   const attachInSource = async (field: HTMLTextAreaElement) => {
     const chosen = await new Promise<File[]>((resolve) => {
@@ -614,6 +645,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
           { label: s('table'), onSelect: run('table') },
           { label: s('divider'), onSelect: run('divider') },
           { label: s('attachment'), symbol: 'clip', onSelect: run('attachment') },
+          { label: s('drawing'), symbol: 'draw', onSelect: run('drawing') },
         ],
       },
       'separator',
@@ -693,6 +725,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       entry('math', s('math'), 'sigma'),
       entry('divider', s('divider')),
       entry('attachment', s('attachment'), 'clip'),
+      entry('drawing', s('drawing'), 'draw'),
       entry('undo', t('toolbar.undo'), 'undo'),
       entry('redo', t('toolbar.redo'), 'redo'),
     ]
@@ -821,6 +854,7 @@ export const NoteEditor = forwardRef<EditorHandle, Props>(function NoteEditor(
       )}
       {menu.element}
       {mode !== 'source' && <PdfWidgets host={host} />}
+      {mode !== 'source' && <InkWidgets host={host} />}
       {viewing && (
         <ImageViewer pictures={viewing.pictures} start={viewing.start} archive={baseName(path).replace(/\.md$/i, '')} onClose={() => setViewing(null)} />
       )}
