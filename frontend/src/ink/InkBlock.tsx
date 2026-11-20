@@ -60,8 +60,12 @@ export default function InkBlock({ path, text, onOpen }: Props) {
     setPlace(fitted)
     setWhole(false)
     setEditing(true)
-    window.setTimeout(() => surface.current?.querySelector<HTMLElement>('[data-ink-surface]')?.focus({ preventScroll: true }))
   }
+  // Drawing begins with the keys on the surface, in the same render that shows it: a key pressed right after "Draw"
+  // (E for the eraser) reaches it, where a timer could still be waiting under load.
+  useLayoutEffect(() => {
+    if (editing) surface.current?.querySelector<HTMLElement>('[data-ink-surface]')?.focus({ preventScroll: true })
+  }, [editing])
   const done = () => {
     if (place) {
       const kept = changedView(ink.view, { x: place.x, y: place.y, z: place.z, h: place.h })
