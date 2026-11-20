@@ -258,3 +258,72 @@ def test_a_device_has_a_rate(world: dict[str, TestClient], monkeypatch: pytest.M
     braked = phone().get("/api/app/1/me", headers=bearer(key))
     assert braked.status_code == 429
     assert braked.json()["detail"]["code"] == "too_many" and braked.headers["retry-after"] == "60"
+
+
+def test_a_device_brings_in_another_device_of_its_account_under_a_key_of_its_own(world: dict[str, TestClient]) -> None:
+    phone_key = pair(world["anna"], "Anna's iPhone")
+    assert "devices" in phone().get("/api/app/1/me", headers=bearer(phone_key)).json()["features"]
+    brought = phone().post("/api/app/1/devices", json={"device": "Anna's iPad"}, headers=bearer(phone_key))
+    assert brought.status_code == 200, brought.text
+    assert brought.headers["cache-control"] == "no-store"
+    answer = brought.json()
+    pad_key = answer["key"]
+    assert pad_key.startswith("nxd_") and pad_key != phone_key
+    assert answer["account"]["name"] == "anna" and isinstance(answer["account"]["id"], int)
+    me = phone().get("/api/app/1/me", headers=bearer(pad_key)).json()
+    assert me["device"]["name"] == "Anna's iPad" and me["account"]["username"] == "anna"
+    assert {space["name"] for space in me["spaces"]} == {"Garden", "Shared"}
+    listed = world["anna"].get("/api/app-devices").json()
+    assert sorted(entry["name"] for entry in listed) == ["Anna's iPad", "Anna's iPhone"]
+    # Each goes alone: the iPad disconnected, the iPhone works on, and the other way round.
+    pad = next(entry for entry in listed if entry["name"] == "Anna's iPad")
+    assert world["anna"].delete(f"/api/app-devices/{pad['id']}").status_code == 204
+    assert phone().get("/api/app/1/me", headers=bearer(pad_key)).status_code == 401
+    assert phone().get("/api/app/1/me", headers=bearer(phone_key)).status_code == 200
+    with SessionLocal() as db:
+        assert db.scalar(select(AppDevice).where(AppDevice.key_hash == devices.digest(pad_key))) is None
+
+
+def test_bringing_in_a_device_needs_a_device_key_and_the_open_latch(world: dict[str, TestClient]) -> None:
+    key = pair(world["anna"])
+    assert phone().post("/api/app/1/devices", json={"device": "x"}).status_code == 401
+    assert phone().post("/api/app/1/devices", json={"device": "x"}, headers=bearer("nxd_nothing")).status_code == 401
+    # Not with the browser's cookie either.
+    assert world["anna"].post("/api/app/1/devices", json={"device": "x"}).status_code == 401
+    world["operator"].put("/api/app-pairing/allowed", json={"allowed": False})
+    closed = phone().post("/api/app/1/devices", json={"device": "x"}, headers=bearer(key))
+    assert closed.status_code == 403 and closed.json()["detail"]["code"] == "app_disabled"
+    world["operator"].put("/api/app-pairing/allowed", json={"allowed": True})
+    assert len(world["anna"].get("/api/app-devices").json()) == 1
+    # A disconnected device brings in nobody.
+    assert phone().delete("/api/app/1/device", headers=bearer(key)).status_code == 204
+    assert phone().post("/api/app/1/devices", json={"device": "x"}, headers=bearer(key)).status_code == 401
+    assert world["anna"].get("/api/app-devices").json() == []
+
+
+def test_a_device_brings_in_only_a_few_devices_an_hour(world: dict[str, TestClient],
+                                                       monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(devices, "SIBLINGS_PER_HOUR", 2)
+    key = pair(world["anna"])
+    brought = [phone().post("/api/app/1/devices", json={"device": name}, headers=bearer(key)) for name in ("one", "two")]
+    assert [answer.status_code for answer in brought] == [200, 200]
+    third = phone().post("/api/app/1/devices", json={"device": "three"}, headers=bearer(key))
+    assert third.status_code == 429
+    assert third.json()["detail"]["code"] == "too_many" and third.headers["retry-after"] == "3600"
+    # The count is the account's: a device brought in brings in no more this hour either.
+    again = phone().post("/api/app/1/devices", json={"device": "four"}, headers=bearer(brought[0].json()["key"]))
+    assert again.status_code == 429
+    assert len(world["anna"].get("/api/app-devices").json()) == 3
+    # Another account has its own.
+    bob_key = pair(world["bob"])
+    assert phone().post("/api/app/1/devices", json={"device": "Bob's iPad"}, headers=bearer(bob_key)).status_code == 200
+
+
+def test_a_device_name_is_cleaned_like_a_pairing(world: dict[str, TestClient]) -> None:
+    key = pair(world["anna"])
+    brought = phone().post("/api/app/1/devices", json={"device": "  Pad\u0000\n" + "x" * 150}, headers=bearer(key))
+    assert brought.status_code == 200, brought.text
+    new = phone().get("/api/app/1/me", headers=bearer(brought.json()["key"])).json()["device"]["name"]
+    assert new.startswith("Padx") and len(new) == devices.NAME_CHARS
+    empty = phone().post("/api/app/1/devices", json={}, headers=bearer(key)).json()["key"]
+    assert phone().get("/api/app/1/me", headers=bearer(empty)).json()["device"]["name"] == "iPhone"

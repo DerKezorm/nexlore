@@ -56,7 +56,7 @@ logger = logging.getLogger("nexlore.app")
 router = APIRouter(prefix="/api/app/1", tags=["app"])
 
 #: What this server offers the app; a word it does not know it skips, a missing one hides its button.
-FEATURES = ["changes", "batch", "files", "wait", "base"]
+FEATURES = ["changes", "batch", "files", "wait", "base", "devices"]
 #: How long ``/wait`` holds a request open.
 WAIT_SECONDS = 25.0
 #: How often ``/wait`` looks whether something was committed meanwhile; the database itself it asks every few seconds.
@@ -245,6 +245,20 @@ def me(found: Device) -> MeOut:
 def forget_device(found: Device) -> None:
     with SessionLocal() as db:
         devices.disconnect(db, found.account.id, found.device_id)
+
+
+@router.post("/devices", response_model=KeyOut, summary="A key of its own for another device of this account")
+def bring_in_device(found: Device, body: KeyIn | None = None) -> JSONResponse:
+    """The owner's iPad takes the iPhone's connection from iCloud and comes in under its own name with it
+    (``devices.sibling``). The answer is that of a pairing."""
+    with SessionLocal() as db:
+        try:
+            token, _row = devices.sibling(db, found, body.device if body else "")
+        except PairingError as exc:
+            raise _refused(exc.code, exc.text, exc.status, 3600 if exc.status == 429 else None) from exc
+    account = found.account
+    out = KeyOut(key=token, account=PairedAccount(id=account.id, name=account.display_name or account.name))
+    return JSONResponse(content=out.model_dump(), headers={"Cache-Control": "no-store"})
 
 
 # --- Fetching -----------------------------------------------------------------------------------------------------
@@ -832,6 +846,7 @@ PROMISED = (
     "/api/app/1/batch",
     "/api/app/1/changes",
     "/api/app/1/device",
+    "/api/app/1/devices",
     "/api/app/1/fetch",
     "/api/app/1/files",
     "/api/app/1/files/{file_id}",

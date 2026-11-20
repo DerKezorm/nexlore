@@ -48,6 +48,8 @@ CODE_LENGTH = 8
 PER_MINUTE = 600
 #: ``last_seen_at`` is written at most this often.
 SEEN_EVERY = timedelta(minutes=1)
+#: Devices one account may bring in through a device it has, per hour (``sibling``).
+SIBLINGS_PER_HOUR = 5
 
 
 class PairingError(Exception):
@@ -185,6 +187,33 @@ def make_device(db: Session, account: Account, name: str) -> tuple[str, AppDevic
     return key, row
 
 
+_siblings_lock = threading.Lock()
+_siblings: dict[int, deque[float]] = defaultdict(deque)
+
+
+def sibling(db: Session, found: Caller, name: str, now: float | None = None) -> tuple[str, AppDevice]:
+    """A key of its own for another device of the same account, asked for by a device it already has.
+
+    The app hands its connection to the owner's other devices through their iCloud Keychain; each of them takes it
+    once to come in under its own name, so it shows in the profile and can be disconnected alone, and keeps its own
+    bases. The new device has the same rights as the one asking, nothing more: a device can do all its account can
+    in ``/api/app/1`` anyway. At most ``SIBLINGS_PER_HOUR`` per account, so a key is no factory of keys."""
+    now = time.monotonic() if now is None else now
+    with _siblings_lock:
+        seen = _siblings[found.account.id]
+        while seen and now - seen[0] > 3600:
+            seen.popleft()
+        if len(seen) >= SIBLINGS_PER_HOUR:
+            raise PairingError("too_many", "Too many new devices in an hour. Try again later.", 429)
+        seen.append(now)
+    account = db.get(Account, found.account.id)
+    if account is None:
+        raise PairingError("not_signed_in", "No valid device key.", 401)
+    key, row = make_device(db, account, name)
+    logger.info("Device brought in by device_id=%s new device_id=%s", found.device_id, row.id)
+    return key, row
+
+
 def of_account(db: Session, account_id: int) -> list[AppDevice]:
     return list(db.scalars(select(AppDevice).where(AppDevice.account_id == account_id).order_by(AppDevice.id)))
 
@@ -251,3 +280,5 @@ def brake(device_id: int, now: float | None = None) -> bool:
 def forget() -> None:
     with _calls_lock:
         _calls.clear()
+    with _siblings_lock:
+        _siblings.clear()
