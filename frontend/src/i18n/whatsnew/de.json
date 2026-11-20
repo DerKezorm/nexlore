@@ -610,5 +610,35 @@
     ],
     "smallTitle": "Außerdem",
     "small": []
+  },
+  "1.15.0": {
+    "lead": "Zeichnen mit Stift, Maus oder Finger direkt in der Notiz, und eine Leinwand, auf die du PDFs und Bilder einfach hineinziehst.",
+    "sections": [
+      {
+        "title": "Zeichnungen in Notizen",
+        "where": "Editor, Werkzeugleiste › Zeichnung, oder / und „Zeichnung“",
+        "body": "Eine Zeichnung entsteht dort, wo der Cursor steht, und öffnet sich gleich zum Zeichnen: Stift, Marker, Radierer für ganze Striche oder Teile, Lasso zum Verschieben, Farben, Stärken und auf Wunsch Linien, Karos oder Punkte als Papier. Die Fläche ist unendlich; Leertaste oder rechte Maustaste verschieben, Strg und Mausrad zoomen, ein Finger verschiebt. Gespeichert wird von selbst, Strg Z nimmt zurück, und Fertig merkt sich den Ausschnitt, den die Notiz zeigt. Jede Zeichnung ist eine SVG-Datei im Anhang-Ordner der Notiz, also auch in Obsidian und jedem Bildbetrachter ein Bild."
+      },
+      {
+        "title": "Groß zeichnen",
+        "where": "Eine Zeichnung in der Notiz › Groß öffnen",
+        "body": "Die Zeichnung bekommt das ganze Fenster, mit denselben Werkzeugen. Rechts steht, welche Notizen sie nutzen; Zurück oder Esc führt dorthin, woher du kamst."
+      },
+      {
+        "title": "PDFs mit allen Seiten auf der Leinwand",
+        "where": "Leinwand, eine PDF-Karte",
+        "body": "Ein PDF auf der Leinwand zeigt seine Seiten untereinander in der Breite der Karte, bis zu 30, und die Karte wird so hoch wie die Seiten. Wird es zu lang, klappt „Nur erste Seite zeigen“ in der Leiste der Karte es auf die erste Seite ein; „Alle Seiten zeigen“ holt den Rest zurück. Ein Doppelklick öffnet wie bisher den Leser."
+      },
+      {
+        "title": "Dateien auf die Leinwand ziehen oder einfügen",
+        "where": "Leinwand, Dateien aus dem Explorer oder Strg V",
+        "body": "Bilder und PDFs aus dem Explorer, dem Finder oder der Zwischenablage landen im Anhang-Ordner der Leinwand und liegen als Karte dort, wo du sie losgelassen hast; mit Strg V in der Mitte des Bildes. Bilder behalten ihr Seitenverhältnis."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Weit herausgezoomt zeigt eine Karte, die am Bildschirm noch groß genug ist, weiter ihren Inhalt statt nur ihres Titels.",
+      "Eine Zeichnung auf der Leinwand zeigt sich ganz auf ihrer Karte; ein Doppelklick öffnet sie zum Zeichnen."
+    ]
   }
 }

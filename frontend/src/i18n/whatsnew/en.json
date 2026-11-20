@@ -610,5 +610,35 @@
     ],
     "smallTitle": "Also",
     "small": []
+  },
+  "1.15.0": {
+    "lead": "Draw with a pen, a mouse or a finger right in the note, and a canvas you simply drag PDFs and pictures onto.",
+    "sections": [
+      {
+        "title": "Drawings in notes",
+        "where": "Editor, toolbar › Drawing, or / and “Drawing”",
+        "body": "A drawing appears where the cursor is and opens for drawing at once: pen, highlighter, an eraser for whole strokes or parts, a lasso to move them, colours, sizes and, if you like, lines, squares or dots as paper. The surface has no end; Space or the right mouse button moves it, Ctrl and the wheel zoom, a finger moves it. It saves by itself, Ctrl Z takes a step back, and Done keeps the part the note shows. Every drawing is an SVG file in the note’s attachment folder, so in Obsidian and any picture viewer it is a picture."
+      },
+      {
+        "title": "Drawing large",
+        "where": "A drawing in the note › Open large",
+        "body": "The drawing gets the whole window, with the same tools. On the right stand the notes that use it; Back or Esc takes you where you came from."
+      },
+      {
+        "title": "PDFs with all their pages on the canvas",
+        "where": "Canvas, a PDF card",
+        "body": "A PDF on the canvas shows its pages one below the other at the card’s width, up to 30, and the card grows as tall as they are. When that gets too long, “Show the first page only” in the card’s toolbar folds it to its first page; “Show every page” brings the rest back. A double click opens the reader, as before."
+      },
+      {
+        "title": "Drag or paste files onto the canvas",
+        "where": "Canvas, files from the explorer or Ctrl V",
+        "body": "Pictures and PDFs from the explorer, the Finder or the clipboard go into the canvas’s attachment folder and lie as a card where you let go of them; with Ctrl V in the middle of the view. Pictures keep their shape."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "Zoomed far out, a card still big enough on the screen keeps showing what it holds instead of only its title.",
+      "A drawing on the canvas shows whole on its card; a double click opens it for drawing."
+    ]
   }
 }
