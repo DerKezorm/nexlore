@@ -2846,6 +2846,8 @@
     "showKept": "Show the kept view",
     "showAllKey": "Show all (Shift 1)",
     "moveHint": "Space or the right mouse button drag to move · Ctrl and the wheel zoom",
+    "back": "Back",
+    "backHint": "Back to where you came from (Esc)",
     "pageHint": "An endless surface: Space or the right mouse button drag, or the wheel, to move; Ctrl and the wheel zoom; Shift 1 shows all",
     "height": "Drag to change the height",
     "zoomOut": "Smaller (Ctrl and the wheel)",

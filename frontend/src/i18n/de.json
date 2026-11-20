@@ -2846,6 +2846,8 @@
     "showKept": "Gemerkten Ausschnitt zeigen",
     "showAllKey": "Alles zeigen (Umschalt 1)",
     "moveHint": "Leertaste oder rechte Maustaste ziehen verschiebt · Strg und Rad zoomt",
+    "back": "Zurück",
+    "backHint": "Zurück, wo du herkamst (Esc)",
     "pageHint": "Unendliche Fläche: Leertaste oder rechte Maustaste ziehen oder Mausrad verschiebt, Strg und Rad zoomt, Umschalt 1 zeigt alles",
     "height": "Ziehen ändert die Höhe",
     "zoomOut": "Kleiner (Strg und Rad)",

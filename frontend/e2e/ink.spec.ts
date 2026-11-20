@@ -121,7 +121,40 @@ test('a drawing made from the toolbar is drawn in, saved, there after a reload, 
   await expect(big.locator('[data-strokes] path')).toHaveCount(2)
   await expect.poll(async () => (await drawingOnDisk(page.request, path)).strokes.length, { timeout: 15_000 }).toBe(2)
   await expect(page.locator('[data-ink-page] [data-ink-saved="saved"]')).toBeVisible({ timeout: 10_000 })
+
+  // Back: the button leads to the note it was opened from, and so does Escape.
+  await page.locator('[data-ink-back]').click()
+  await expect(page).toHaveURL(/\/note\//)
+  await expect(page.locator(`[data-ink-block="${path}"]`)).toBeVisible()
+  await shown.hover()
+  await shown.locator('[data-ink-act="open"]').click()
+  await expect(page.locator('[data-ink-page]')).toBeVisible()
+  await big.focus()
+  await page.keyboard.press('Escape')
+  await expect(page).toHaveURL(/\/note\//)
   expect(problems).toEqual([])
+})
+
+test('a drawing opened from outside goes back to the note that uses it', async ({ page }) => {
+  const { note } = await makeNote(page.request)
+  await newLine(page, note)
+  const made = page.waitForResponse((response) => response.url().endsWith('/api/inks') && response.request().method() === 'POST')
+  await page.keyboard.type('/drawing')
+  await expect(page.locator('.milkdown-slash-menu').getByText('Drawing', { exact: true })).toBeVisible()
+  await page.keyboard.press('Enter')
+  const { path } = await (await made).json()
+  await expect(page.locator(`[data-ink-block="${path}"]`)).toBeVisible()
+  // The note with the embed is saved and indexed: the drawing knows where it is used.
+  await expect
+    .poll(async () => ((await (await page.request.get('/api/links', { params: { path } })).json()).backlinks ?? []).length, { timeout: 15_000 })
+    .toBe(1)
+  // A new tab: no step back inside the app.
+  const fresh = await page.context().newPage()
+  await fresh.goto('/file/' + path.split('/').map(encodeURIComponent).join('/'))
+  await expect(fresh.locator('[data-ink-page]')).toBeVisible()
+  await fresh.locator('[data-ink-back]').click()
+  await expect(fresh).toHaveURL(new RegExp(noteUrl(note).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$'))
+  await fresh.close()
 })
 
 test('"/" makes a drawing too, and the canvas shows one on its card', async ({ page }) => {
