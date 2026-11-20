@@ -10,10 +10,11 @@ import { ApiError, inkApi } from '../api/client'
 import { moveStrokes, type InkBackground, type InkStroke } from '../lib/ink'
 import { useInk, type InkController } from '../ink/useInk'
 import { writtenPath } from './context'
-import { carriedStrokes, inkLayerOf, layerBox, makeLayer, sameBox } from './inkLayer'
+import { carriedStrokes, hiddenStrokes, inkLayerOf, layerBox, makeLayer, sameBox } from './inkLayer'
 import { addNode, updateNodes, type Canvas, type CanvasNode } from './model'
 
 type Box = { x: number; y: number; width: number; height: number }
+const NONE: readonly Box[] = []
 
 type Args = {
   /** The canvas's path and space. */
@@ -27,18 +28,25 @@ type Args = {
   /** Whether the canvas may be changed now. */
   editable: boolean
   adjust: (change: (canvas: Canvas) => Canvas) => void
+  /** Where folded PDF cards hide their pages: strokes lying wholly there are neither shown nor touched. */
+  hidden?: readonly Box[]
 }
+
+/** Strokes that went along with moved cards: as they were, and as they are now (same order). */
+export type CarriedStrokes = { before: InkStroke[]; after: InkStroke[] }
 
 export type CanvasInk = {
   /** The drawing as the surface and the toolbar work with it. */
   ink: InkController
-  /** The strokes lying wholly on cards that moved by (`dx`, `dy`) go along, as one change of the drawing. */
-  carry: (boxes: Box[], dx: number, dy: number) => void
+  /** The strokes lying wholly on cards that moved by (`dx`, `dy`) go along, as one change of the drawing; which. */
+  carry: (boxes: Box[], dx: number, dy: number) => CarriedStrokes | null
+  /** Strokes as `from` turned into `to`, wherever they still are (a step back on the canvas takes them along). */
+  swap: (from: InkStroke[], to: InkStroke[]) => void
   /** Why the layer could not be made, if it could not. */
   failed: string | null
 }
 
-export function useCanvasInk({ path, space, layer, target, remember, editable, adjust }: Args): CanvasInk {
+export function useCanvasInk({ path, space, layer, target, remember, editable, adjust, hidden = NONE }: Args): CanvasInk {
   const found = layer?.file ? target(layer.file) : null
   // The layer's file gone from the disk: the next stroke makes a new one, and the card leads there.
   const [lost, setLost] = useState<string | null>(null)
@@ -108,23 +116,57 @@ export function useCanvasInk({ path, space, layer, target, remember, editable, a
   }, [layer, ready, editable, pending, strokes, adjust])
 
   const carry = useCallback(
-    (boxes: Box[], dx: number, dy: number) => {
-      if (!ready || ink.readonly || (!dx && !dy)) return
+    (boxes: Box[], dx: number, dy: number): CarriedStrokes | null => {
+      if (!ready || ink.readonly || (!dx && !dy)) return null
       const picked = carriedStrokes(ink.strokes, boxes)
-      if (picked.length) commitInk(moveStrokes(ink.strokes, picked, dx, dy))
+      if (!picked.length) return null
+      const next = moveStrokes(ink.strokes, picked, dx, dy)
+      commitInk(next)
+      return { before: picked.map((index) => ink.strokes[index]), after: picked.map((index) => next[index]) }
     },
     [ready, ink.readonly, ink.strokes, commitInk],
+  )
+
+  // Found by what they are, not by their place or the object: the drawing may have changed or been loaded again since.
+  const swap = useCallback(
+    (from: InkStroke[], to: InkStroke[]) => {
+      if (!ready || ink.readonly || !from.length) return
+      const wanted = new Map<string, number[]>()
+      from.forEach((stroke, index) => {
+        const key = JSON.stringify(stroke)
+        wanted.set(key, [...(wanted.get(key) ?? []), index])
+      })
+      let changed = false
+      const next = ink.strokes.map((stroke) => {
+        const found = wanted.get(JSON.stringify(stroke))
+        if (!found?.length) return stroke
+        changed = true
+        return to[found.shift()!]
+      })
+      if (changed) commitInk(next)
+    },
+    [ready, ink.readonly, ink.strokes, commitInk],
+  )
+
+  // Strokes under folded PDF pages: out of the surface's sight, and kept as they are whatever it commits.
+  const out = useMemo(() => {
+    const places = new Set(hidden.length ? hiddenStrokes(ink.strokes, hidden) : [])
+    return { strokes: ink.strokes.filter((_, index) => !places.has(index)), kept: ink.strokes.filter((_, index) => places.has(index)) }
+  }, [ink.strokes, hidden])
+  const commitShown = useCallback(
+    (strokes: InkStroke[], bg?: InkBackground) => commit(out.kept.length ? [...strokes, ...out.kept] : strokes, bg),
+    [commit, out.kept],
   )
 
   const shown = useMemo<InkController>(
     () => ({
       ...ink,
-      strokes: pending ?? ink.strokes,
-      commit,
+      strokes: pending ?? out.strokes,
+      commit: commitShown,
       // Drawn only where the canvas may be changed, and never into a layer in a space whoever looks may not read.
       readonly: !editable || !!found?.locked || (inkPath ? ink.readonly : false),
     }),
-    [ink, pending, commit, editable, found?.locked, inkPath],
+    [ink, pending, out.strokes, commitShown, editable, found?.locked, inkPath],
   )
-  return { ink: shown, carry, failed }
+  return { ink: shown, carry, swap, failed }
 }

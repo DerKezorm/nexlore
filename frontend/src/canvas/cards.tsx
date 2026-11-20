@@ -21,6 +21,7 @@ import { LinkIndex } from '../lib/links'
 import { noteSection, renderMarkdown } from '../lib/markdown'
 import { useAuth } from '../state/auth'
 import { useCards } from './context'
+import { isFolded } from './inkLayer'
 import { SIDES, colorOf, titleOf, type CanvasNode, type Side } from './model'
 
 export type CardData = { node: CanvasNode }
@@ -359,7 +360,7 @@ function PdfCard({ node, path, name, from }: { node: CanvasNode; path: string; n
         <span className="ml-auto shrink-0">{pages ? t('canvas.pdfPages', { count: pages }) : t('canvas.file')}</span>
       </div>
       <div ref={body} className="nl-card-body nl-pdf-body">
-        <PdfPages path={path} sharp={sharp} onHeight={grow} onPages={setPages} />
+        <PdfPages path={path} sharp={sharp} onHeight={grow} onPages={setPages} pages={isFolded(node) ? 1 : undefined} />
       </div>
     </div>
   )

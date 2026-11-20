@@ -57,7 +57,7 @@ import type { SymbolName } from '../lib/symbols'
 import { FileCard, GroupCard, LinkCard, OtherCard, TextCard, type CardNode } from './cards'
 import { useCards, writtenPath } from './context'
 import { AskDialog, PickDialog } from './dialogs'
-import { cardsOf, clampedPlacement, inkLayerOf, isInkLayer, placementOf, viewportOf } from './inkLayer'
+import { PAGES_FIELD, UNFOLDED_FIELD, cardsOf, clampedPlacement, foldedRegions, inkLayerOf, isFolded, isInkLayer, placementOf, viewportOf, wholeBox } from './inkLayer'
 import {
   PDF_SIZE,
   pictureSize,
@@ -83,7 +83,7 @@ import {
 } from './model'
 import { middleOf, pathOf, port, route, type Point } from './route'
 import { moving, snap } from './snap'
-import { useCanvasInk } from './useCanvasInk'
+import { useCanvasInk, type CarriedStrokes } from './useCanvasInk'
 
 /** Below this zoom a card shows only its title, as on the map. */
 export const FAR_ZOOM = 0.45
@@ -100,15 +100,17 @@ const KIND: Record<string, keyof typeof NODE_TYPES> = { text: 'text', file: 'fil
 type LineData = { edge: CanvasEdge; way: Point[] | null; from: Point; fromSide: Side; to: Point; toSide: Side }
 type LineEdgeType = Edge<LineData, 'line'>
 
-export type Apply = (next: Canvas, live?: boolean) => void
+/** What comes with a step besides the canvas: the strokes that went along with moved cards. */
+export type StepNote = { strokes?: CarriedStrokes }
+export type Apply = (next: Canvas, live?: boolean, note?: StepNote) => void
 
 type Props = {
   canvas: Canvas
   apply: Apply
   /** A change the canvas makes by itself, no step to go back to (`CanvasPage`). */
   adjust: (change: (canvas: Canvas) => Canvas) => void
-  undo: () => void
-  redo: () => void
+  undo: () => StepNote | undefined
+  redo: () => StepNote | undefined
   canUndo: boolean
   canRedo: boolean
   snapping: boolean
@@ -130,7 +132,7 @@ const DEFAULT_SIZE: Record<string, { width: number; height: number }> = {
   group: { width: 480, height: 320 },
 }
 
-export function CanvasView({ canvas, apply: handUp, adjust, undo, redo, canUndo, canRedo, snapping, setSnapping }: Props) {
+export function CanvasView({ canvas, apply: handUp, adjust, undo: stepBack, redo: stepForth, canUndo, canRedo, snapping, setSnapping }: Props) {
   const cards = useCards()
   const { t } = useTranslation()
   const flow = useReactFlow<CardNode, LineEdgeType>()
@@ -147,9 +149,9 @@ export function CanvasView({ canvas, apply: handUp, adjust, undo, redo, canUndo,
   const latest = useRef(canvas)
   latest.current = canvas
   // Two changes in one moment (Delete takes cards and lines apart) build on each other, not on the last drawing.
-  const apply = useCallback<Apply>((next, live) => {
+  const apply = useCallback<Apply>((next, live, note) => {
     latest.current = next
-    handUp(next, live)
+    handUp(next, live, note)
   }, [handUp])
   const editable = !cards.readonly
   const arrange = editable && !cards.touch
@@ -157,6 +159,11 @@ export function CanvasView({ canvas, apply: handUp, adjust, undo, redo, canUndo,
   // The pen: drawn over every card, in the canvas's own units (`inkLayer.ts`).
   const [pen, setPen] = useState(false)
   const [tools, setTools] = useTools()
+  // Where folded PDF cards hide their pages; the same list as long as they do not change.
+  const regions = foldedRegions(canvas.nodes)
+  const regionsKey = JSON.stringify(regions)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const hidden = useMemo(() => regions, [regionsKey])
   const layer = useCanvasInk({
     path: cards.path,
     space: cards.space,
@@ -165,6 +172,7 @@ export function CanvasView({ canvas, apply: handUp, adjust, undo, redo, canUndo,
     remember: cards.remember,
     editable,
     adjust,
+    hidden,
   })
   const drawing = pen && editable
   const startPen = useCallback(() => {
@@ -177,7 +185,18 @@ export function CanvasView({ canvas, apply: handUp, adjust, undo, redo, canUndo,
     selectStrokes([])
     setPen(false)
   }, [selectStrokes])
-  const { carry } = layer
+  const { carry, swap } = layer
+  // A step back or forth on the canvas takes the strokes that went along with it too.
+  const undo = useCallback(() => {
+    const note = stepBack()
+    if (note?.strokes) swap(note.strokes.after, note.strokes.before)
+    return note
+  }, [stepBack, swap])
+  const redo = useCallback(() => {
+    const note = stepForth()
+    if (note?.strokes) swap(note.strokes.before, note.strokes.after)
+    return note
+  }, [stepForth, swap])
   // Read only now (somebody else took the canvas): the pen ends.
   useEffect(() => {
     if (pen && !editable) setPen(false)
@@ -352,15 +371,18 @@ export function CanvasView({ canvas, apply: handUp, adjust, undo, redo, canUndo,
         drag.current = null
         setDragging(false)
         setGuides({ x: [], y: [] })
-        apply(latest.current)
-        // Strokes written on what moved go along: those lying wholly on the cards where they stood.
+        // Strokes written on what moved go along: those lying wholly on the cards where they stood (a folded PDF with
+        // all its pages); the step remembers them, so that going back takes them back too.
         const ended = latest.current.nodes.filter((node) => start.has(node.id) && !isInkLayer(node))
         const first = ended[0]
+        let note: StepNote | undefined
         if (first) {
           const from = start.get(first.id)!
-          const boxes = ended.map((node) => ({ x: start.get(node.id)!.x, y: start.get(node.id)!.y, width: node.width, height: node.height }))
-          carry(boxes, first.x - from.x, first.y - from.y)
+          const boxes = ended.map((node) => ({ ...wholeBox(node), x: start.get(node.id)!.x, y: start.get(node.id)!.y }))
+          const carried = carry(boxes, first.x - from.x, first.y - from.y)
+          if (carried) note = { strokes: carried }
         }
+        apply(latest.current, false, note)
       }
 
       if (sizes.size) {
@@ -637,6 +659,20 @@ export function CanvasView({ canvas, apply: handUp, adjust, undo, redo, canUndo,
         items.push({ label: t('canvas.openPage'), symbol: 'open', onSelect: () => cards.openFile(path) })
       } else items.push({ label: t('canvas.openPage'), symbol: 'open', onSelect: () => cards.openFile(path) })
       items.push({ label: t('canvas.reveal'), symbol: 'sidebar', onSelect: () => askFolder(path) })
+      // A long PDF folds to its first page; what is written on the others goes out of sight with them.
+      if (editable && fileKind(path) === 'pdf') {
+        const folded = isFolded(single)
+        items.push({
+          label: folded ? t('canvas.pdfAllPages') : t('canvas.pdfFirstPage'),
+          symbol: folded ? 'chevronDown' : 'chevronUp',
+          onSelect: () =>
+            apply(
+              updateNodes(latest.current, {
+                [single.id]: folded ? { [PAGES_FIELD]: undefined, [UNFOLDED_FIELD]: undefined } : { [PAGES_FIELD]: 1, [UNFOLDED_FIELD]: single.height },
+              }),
+            ),
+        })
+      }
     }
     if (single?.type === 'group' && editable) items.push({ label: t('canvas.rename'), symbol: 'pencil', onSelect: () => setAsking({ kind: 'group-label', id: single.id, initial: single.label ?? '' }) })
     if (editable && nodesNow.length) {

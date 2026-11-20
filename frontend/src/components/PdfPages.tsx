@@ -32,9 +32,11 @@ type Props = {
   onHeight: (height: number) => void
   /** The number of pages, once the PDF is open. */
   onPages?: (pages: number) => void
+  /** How many pages at most (a card folded to its first page: 1); without it `STRIP_PAGES`. */
+  pages?: number
 }
 
-export function PdfPages({ path, sharp, onHeight, onPages }: Props) {
+export function PdfPages({ path, sharp, onHeight, onPages, pages = STRIP_PAGES }: Props) {
   const { t } = useTranslation()
   const frame = useRef<HTMLIFrameElement>(null)
   const [failed, setFailed] = useState(false)
@@ -60,7 +62,7 @@ export function PdfPages({ path, sharp, onHeight, onPages }: Props) {
             const copy = data.slice(0)
             say(
               {
-                type: 'open', data: copy, page: 1, colours: colours(), sidebar: false, compact: true, strip: STRIP_PAGES,
+                type: 'open', data: copy, page: 1, colours: colours(), sidebar: false, compact: true, strip: pages,
                 texts: {
                   pages: t('pdf.pages'), contents: t('pdf.contents'), noContents: t('pdf.noContents'),
                   password: t('pdf.password'), broken: t('pdf.broken'), page: t('pdf.pageLabel'), more: t('pdf.morePages'),
@@ -90,7 +92,7 @@ export function PdfPages({ path, sharp, onHeight, onPages }: Props) {
     }
     // The texts count when the frame opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path])
+  }, [path, pages])
 
   // Sharper when the canvas zooms in; the frame draws again only for a change that shows.
   useEffect(() => {
@@ -101,7 +103,7 @@ export function PdfPages({ path, sharp, onHeight, onPages }: Props) {
   return (
     <iframe
       ref={frame}
-      key={path}
+      key={`${path}:${pages}`}
       src="/pdfview.html"
       sandbox="allow-scripts"
       title={t('pdf.frameTitle', { name })}

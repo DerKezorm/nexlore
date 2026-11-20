@@ -13,6 +13,9 @@ import { makeNode, type Canvas, type CanvasNode } from './model'
 
 /** The field that marks the layer's card. */
 export const INK_FIELD = 'nexloreInk'
+/** A PDF card folded to its first page: how many pages it shows (1), and how tall it was with all of them. */
+export const PAGES_FIELD = 'nexlorePages'
+export const UNFOLDED_FIELD = 'nexloreUnfolded'
 
 type Box = { x: number; y: number; width: number; height: number }
 /** React Flow's view: the shift in pixels and the zoom. */
@@ -99,6 +102,32 @@ export function makeLayer(canvas: Canvas, file: string, strokes: readonly InkStr
   const node = makeNode(canvas, { type: 'file', file }, layerBox(strokes))
   node[INK_FIELD] = true
   return node
+}
+
+// --- PDF cards folded to their first page ----------------------------------------------------------------------------
+
+export function isFolded(node: CanvasNode): boolean {
+  return node.type === 'file' && node[PAGES_FIELD] === 1 && typeof node[UNFOLDED_FIELD] === 'number'
+}
+
+/** The card as it lies with all its pages: a folded PDF card as tall as it was unfolded, any other as it is. */
+export function wholeBox(node: CanvasNode): Box {
+  const tall = isFolded(node) ? Math.max(node.height, node[UNFOLDED_FIELD] as number) : node.height
+  return { x: node.x, y: node.y, width: node.width, height: tall }
+}
+
+/** What folded PDF cards hide: below each, as far down as its pages went. Strokes written there are out of sight. */
+export function foldedRegions(nodes: readonly CanvasNode[]): Box[] {
+  return nodes
+    .filter(isFolded)
+    .map((node) => ({ node, whole: wholeBox(node) }))
+    .filter(({ node, whole }) => whole.height > node.height)
+    .map(({ node, whole }) => ({ x: node.x, y: node.y + node.height, width: node.width, height: whole.height - node.height }))
+}
+
+/** The places in `strokes` of those lying wholly in one of `regions` (`carriedStrokes`, by another name). */
+export function hiddenStrokes(strokes: readonly InkStroke[], regions: readonly Box[]): number[] {
+  return carriedStrokes(strokes, regions)
 }
 
 // --- Strokes that go along -------------------------------------------------------------------------------------------

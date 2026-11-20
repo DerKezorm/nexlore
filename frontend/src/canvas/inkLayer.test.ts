@@ -3,16 +3,22 @@ import { describe, expect, it } from 'vitest'
 import { toDrawing, type InkStroke } from '../lib/ink'
 import {
   INK_FIELD,
+  PAGES_FIELD,
+  UNFOLDED_FIELD,
   cardsOf,
   carriedStrokes,
   clampedPlacement,
+  foldedRegions,
+  hiddenStrokes,
   inkLayerOf,
+  isFolded,
   isInkLayer,
   layerBox,
   makeLayer,
   placementOf,
   sameBox,
   viewportOf,
+  wholeBox,
 } from './inkLayer'
 import { EMPTY_CANVAS, addNode, makeNode, parseCanvas, serializeCanvas, type Canvas, type CanvasNode } from './model'
 
@@ -113,5 +119,28 @@ describe('strokes that go along', () => {
     expect(carriedStrokes([across, between], [card, other])).toEqual([0])
     expect(carriedStrokes([across], [card])).toEqual([])
     expect(carriedStrokes([across], [])).toEqual([])
+  })
+})
+
+describe('a PDF folded to its first page', () => {
+  const pdf: CanvasNode = { id: 'p', type: 'file', file: 'A/x.pdf', x: 10, y: 20, width: 400, height: 300 }
+  const folded: CanvasNode = { ...pdf, [PAGES_FIELD]: 1, [UNFOLDED_FIELD]: 900 }
+
+  it('is folded only with both fields, and as a whole is as tall as it was unfolded', () => {
+    expect(isFolded(folded)).toBe(true)
+    expect(isFolded(pdf)).toBe(false)
+    expect(isFolded({ ...pdf, [PAGES_FIELD]: 1 })).toBe(false)
+    expect(wholeBox(folded)).toEqual({ x: 10, y: 20, width: 400, height: 900 })
+    expect(wholeBox(pdf)).toEqual({ x: 10, y: 20, width: 400, height: 300 })
+  })
+
+  it('hides what lies below it as far as its pages went, and the strokes wholly there', () => {
+    expect(foldedRegions([pdf, folded])).toEqual([{ x: 10, y: 320, width: 400, height: 600 }])
+    // Grown taller than it was unfolded (a wider card): nothing hidden.
+    expect(foldedRegions([{ ...folded, height: 950 }])).toEqual([])
+    const page1: InkStroke = { tool: 'pen', color: 'ink', size: 4, pts: [[50, 60, 0.5], [90, 80, 0.5]] }
+    const page3: InkStroke = { tool: 'pen', color: 'ink', size: 4, pts: [[50, 800, 0.5], [90, 820, 0.5]] }
+    const across: InkStroke = { tool: 'pen', color: 'ink', size: 4, pts: [[50, 300, 0.5], [90, 400, 0.5]] }
+    expect(hiddenStrokes([page1, page3, across], foldedRegions([folded]))).toEqual([1])
   })
 })

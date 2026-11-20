@@ -23,7 +23,7 @@ import { fileRoute } from '../lib/markdown'
 import { LinkIndex } from '../lib/links'
 import { folderOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
-import { CanvasView, type Apply } from './CanvasView'
+import { CanvasView, type Apply, type StepNote } from './CanvasView'
 import { CardsContext, targetOf, type CanvasCards, type NoteCache, type Targets } from './context'
 import { CanvasError, EMPTY_CANVAS, parseCanvas, serializeCanvas, updateNodes, type Canvas } from './model'
 import { NotePanel } from './NotePanel'
@@ -35,7 +35,8 @@ const STEPS = 100
 const SNAP_KEY = 'nexlore.canvas.snap'
 const TOUCH_HINT_KEY = 'nexlore.canvas.touchHint'
 
-type History = { past: Canvas[]; present: Canvas; future: Canvas[] }
+/** `pastNotes[i]`: the note of the step from `past[i]` onwards; `futureNotes[i]`: of the step into `future[i]`. */
+type History = { past: Canvas[]; present: Canvas; future: Canvas[]; pastNotes: (StepNote | undefined)[]; futureNotes: (StepNote | undefined)[] }
 
 function remembered(key: string, fallback: string): string {
   try {
@@ -89,7 +90,7 @@ export default function CanvasPage({ path }: { path: string }) {
     [path],
   )
   const file = useEditedFile(path, backend, role === 'write' || role === 'manage')
-  const [history, setHistory] = useState<History>({ past: [], present: EMPTY_CANVAS, future: [] })
+  const [history, setHistory] = useState<History>({ past: [], present: EMPTY_CANVAS, future: [], pastNotes: [], futureNotes: [] })
   const [unreadable, setUnreadable] = useState(false)
   // The state before a live change began (a card on its way, a text being typed): one step back goes there.
   const liveBase = useRef<Canvas | null>(null)
@@ -101,7 +102,7 @@ export default function CanvasPage({ path }: { path: string }) {
     if (!file.version) return
     try {
       const loaded = parseCanvas(file.content)
-      setHistory({ past: [], present: loaded, future: [] })
+      setHistory({ past: [], present: loaded, future: [], pastNotes: [], futureNotes: [] })
       setUnreadable(false)
     } catch (caught) {
       if (caught instanceof CanvasError) setUnreadable(true)
@@ -111,7 +112,7 @@ export default function CanvasPage({ path }: { path: string }) {
 
   const save = file.change
   const apply = useCallback<Apply>(
-    (next, live = false) => {
+    (next, live = false, note) => {
       const before = present.current
       present.current = next
       if (live) {
@@ -120,7 +121,14 @@ export default function CanvasPage({ path }: { path: string }) {
       } else {
         const base = liveBase.current ?? before
         liveBase.current = null
-        if (base !== next) setHistory((now) => ({ past: [...now.past, base].slice(-STEPS), present: next, future: [] }))
+        if (base !== next)
+          setHistory((now) => ({
+            past: [...now.past, base].slice(-STEPS),
+            pastNotes: [...now.pastNotes, note].slice(-STEPS),
+            present: next,
+            future: [],
+            futureNotes: [],
+          }))
       }
       if (next !== before) save(serializeCanvas(next))
     },
@@ -148,20 +156,39 @@ export default function CanvasPage({ path }: { path: string }) {
       if (next === before) return
       present.current = next
       if (liveBase.current) liveBase.current = change(liveBase.current)
-      setHistory((now) => ({ past: now.past.map(change), present: next, future: now.future.map(change) }))
+      setHistory((now) => ({ ...now, past: now.past.map(change), present: next, future: now.future.map(change) }))
       save(serializeCanvas(next))
     },
     [save],
   )
-  const undo = useCallback(() => {
+  // Each says what came with the step it took (strokes that went along), for the canvas to take them too.
+  const undo = useCallback((): StepNote | undefined => {
     const now = shown.current
     const back = now.past.at(-1)
-    if (back) step({ past: now.past.slice(0, -1), present: back, future: [now.present, ...now.future] })
+    if (!back) return undefined
+    const note = now.pastNotes.at(-1)
+    step({
+      past: now.past.slice(0, -1),
+      pastNotes: now.pastNotes.slice(0, -1),
+      present: back,
+      future: [now.present, ...now.future],
+      futureNotes: [note, ...now.futureNotes],
+    })
+    return note
   }, [step])
-  const redo = useCallback(() => {
+  const redo = useCallback((): StepNote | undefined => {
     const now = shown.current
     const forth = now.future[0]
-    if (forth) step({ past: [...now.past, now.present], present: forth, future: now.future.slice(1) })
+    if (!forth) return undefined
+    const note = now.futureNotes[0]
+    step({
+      past: [...now.past, now.present],
+      pastNotes: [...now.pastNotes, note],
+      present: forth,
+      future: now.future.slice(1),
+      futureNotes: now.futureNotes.slice(1),
+    })
+    return note
   }, [step])
 
   const [snapping, setSnappingState] = useState(() => remembered(SNAP_KEY, '1') === '1')

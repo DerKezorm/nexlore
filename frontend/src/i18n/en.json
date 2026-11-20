@@ -481,6 +481,8 @@
       "hint": "Draw anywhere. Space, the right button or a finger move the canvas; Ctrl and the wheel zoom; Esc ends.",
       "failed": "The pen could not start a drawing here: {{reason}}"
     },
+    "pdfFirstPage": "Show the first page only",
+    "pdfAllPages": "Show every page",
     "pdfPages_one": "One page",
     "pdfPages_other": "{{count}} pages",
     "uploading_one": "Laying a file on the canvas …",

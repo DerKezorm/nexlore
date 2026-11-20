@@ -481,6 +481,8 @@
       "hint": "Überall zeichnen. Leertaste, rechte Maustaste oder ein Finger verschieben die Leinwand; Strg und das Rad zoomen; Esc beendet.",
       "failed": "Der Stift konnte hier keine Zeichnung anlegen: {{reason}}"
     },
+    "pdfFirstPage": "Nur erste Seite zeigen",
+    "pdfAllPages": "Alle Seiten zeigen",
     "pdfPages_one": "Eine Seite",
     "pdfPages_other": "{{count}} Seiten",
     "uploading_one": "Eine Datei kommt auf die Leinwand …",

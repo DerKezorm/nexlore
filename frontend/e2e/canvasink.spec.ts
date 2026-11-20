@@ -199,6 +199,18 @@ test('strokes written on a picture go along when it is moved; others stay', asyn
   const strokes = await strokesOnDisk(page.request, drawing)
   expect(strokes[0].pts[1]).toEqual([200 + moved.x, 140 + moved.y, 0.5])
   expect(strokes[1].pts).toEqual(beside.pts)
+
+  // A step back takes the picture and the strokes on it back together; a step forth moves both again.
+  await page.keyboard.press('Control+z')
+  await expect.poll(async () => (await canvasOnDisk(page.request, path)).nodes.find((node) => node.id === 'a000000000000001')!.x, { timeout: 15_000 }).toBe(0)
+  await expect.poll(async () => (await strokesOnDisk(page.request, drawing))[0].pts, { timeout: 15_000 }).toEqual(on.pts)
+  expect((await canvasOnDisk(page.request, path)).nodes.find((node) => node.id === 'a000000000000001')!.x).toBe(0)
+  expect((await strokesOnDisk(page.request, drawing))[1].pts).toEqual(beside.pts)
+  await page.keyboard.press('Control+Shift+z')
+  await expect
+    .poll(async () => (await strokesOnDisk(page.request, drawing))[0].pts[0], { timeout: 15_000 })
+    .toEqual([60 + moved.x, 60 + moved.y, 0.5])
+  expect((await canvasOnDisk(page.request, path)).nodes.find((node) => node.id === 'a000000000000001')!.x).toBe(moved.x)
   const now = await svgBox(page.request, drawing)
   await expect
     .poll(async () => {
@@ -261,5 +273,79 @@ test('Ctrl V of a picture lays it on the canvas in its own shape, named after th
   await expect
     .poll(async () => (await canvasOnDisk(page.request, path)).nodes, { timeout: 15_000 })
     .toEqual([expect.objectContaining({ type: 'file', file: 'Attachments/Board 1.png', width: 400, height: 200 })])
+  expect(problems).toEqual([])
+})
+
+test('a PDF folds to its first page: what is written on the others goes out of sight, moves along, and comes back', async ({ page }) => {
+  const problems = collectProblems(page)
+  const { space, path } = await makeBoard(page.request)
+  const pdf = await page.request.post('/api/attachments', { params: { name: 'Three.pdf', canvas: path }, data: pdfOf(3), headers: TAB })
+  expect(pdf.status()).toBe(201)
+  const drawing = (await (await page.request.post('/api/inks', { data: { canvas: path }, headers: TAB })).json()).path
+  const empty = await (await page.request.get('/api/ink', { params: { path: drawing } })).json()
+  const first = { tool: 'pen', color: 'ink', size: 4, pts: [[40, 80, 0.5], [200, 120, 0.5]] }
+  const third = { tool: 'pen', color: '#e5484d', size: 4, pts: [[40, 760, 0.5], [200, 800, 0.5]] }
+  const ink = await page.request.put('/api/ink', { data: { path: drawing, ink: { v: 1, bg: 'none', strokes: [first, third] }, base_hash: empty.hash }, headers: TAB })
+  expect(ink.ok()).toBe(true)
+  await page.request.delete('/api/locks', { params: { path: drawing }, headers: TAB })
+  const box = await svgBox(page.request, drawing)
+  const content = JSON.stringify({
+    nodes: [
+      { id: 'c000000000000001', type: 'file', file: 'Attachments/Three.pdf', x: 0, y: 0, width: 420, height: 900 },
+      { id: 'b000000000000001', type: 'file', file: 'Attachments/Board 1.svg', x: box[0], y: box[1], width: box[2], height: box[3], nexloreInk: true },
+    ],
+    edges: [],
+  })
+  const state = await (await page.request.get('/api/canvas', { params: { path } })).json()
+  expect((await page.request.put('/api/canvas', { data: { path, content, base_hash: state.hash }, headers: TAB })).ok()).toBe(true)
+  await page.request.delete('/api/locks', { params: { path }, headers: TAB })
+
+  await open(page, space)
+  const card = page.locator('.react-flow__node[data-id="c000000000000001"]')
+  await expect(page.frameLocator('[data-testid="pdf-pages"]').locator('#strip canvas')).toHaveCount(3)
+  await expect(page.locator('.nl-pen-layer [data-strokes] path')).toHaveCount(2)
+  const tall = (await card.boundingBox())!
+  await card.click({ position: { x: tall.width / 2, y: 12 } })
+  await page.getByRole('button', { name: 'Show the first page only' }).click()
+
+  // One page shown, the card short, its height with all pages kept; the stroke on page three out of sight, in the file.
+  await expect(page.frameLocator('[data-testid="pdf-pages"]').locator('#strip canvas')).toHaveCount(1)
+  await expect
+    .poll(async () => (await canvasOnDisk(page.request, path)).nodes.find((node) => node.id === 'c000000000000001'), { timeout: 15_000 })
+    .toMatchObject({ nexlorePages: 1, height: expect.any(Number) })
+  await expect.poll(async () => (await canvasOnDisk(page.request, path)).nodes.find((node) => node.id === 'c000000000000001')!.height, { timeout: 15_000 }).toBeLessThan(450)
+  const folded = (await canvasOnDisk(page.request, path)).nodes.find((node) => node.id === 'c000000000000001') as Node & { nexloreUnfolded: number }
+  expect(folded.nexloreUnfolded).toBeGreaterThan(800)
+  await expect(page.locator('.nl-pen-layer [data-strokes] path')).toHaveCount(1)
+  expect(await strokesOnDisk(page.request, drawing)).toHaveLength(2)
+  // Drawing while it is folded keeps the stroke out of sight in the file.
+  await page.locator('[data-dock="pen"]').click()
+  const free = (await page.locator('.react-flow').boundingBox())!
+  await stroke(page, [free.x + free.width - 300, free.y + 120], [free.x + free.width - 160, free.y + 200])
+  await expect(page.locator('.nl-pen-layer [data-strokes] path')).toHaveCount(2)
+  await expect.poll(async () => (await strokesOnDisk(page.request, drawing)).length, { timeout: 15_000 }).toBe(3)
+  expect((await strokesOnDisk(page.request, drawing)).map((one) => one.pts[0])).toContainEqual([40, 760, 0.5])
+  await page.keyboard.press('Escape')
+  await expect(page.locator('[data-dock="pen"]')).toHaveAttribute('aria-pressed', 'false')
+
+  // Moved, the hidden stroke goes along with the card it belongs to.
+  const short = (await card.boundingBox())!
+  await stroke(page, [short.x + short.width / 2, short.y + 12], [short.x + short.width / 2 + 200, short.y + 12 + 100])
+  await expect
+    .poll(async () => (await canvasOnDisk(page.request, path)).nodes.find((node) => node.id === 'c000000000000001')!.x, { timeout: 15_000 })
+    .not.toBe(0)
+  const moved = (await canvasOnDisk(page.request, path)).nodes.find((node) => node.id === 'c000000000000001')!
+  await expect
+    .poll(async () => (await strokesOnDisk(page.request, drawing)).map((one) => one.pts[0]), { timeout: 15_000 })
+    .toEqual(expect.arrayContaining([[40 + moved.x, 80 + moved.y, 0.5], [40 + moved.x, 760 + moved.y, 0.5]]))
+
+  // Unfolded: all pages again, and the stroke on page three with them.
+  await card.click({ position: { x: short.width / 2, y: 12 } })
+  await page.getByRole('button', { name: 'Show every page' }).click()
+  await expect(page.frameLocator('[data-testid="pdf-pages"]').locator('#strip canvas')).toHaveCount(3)
+  await expect(page.locator('.nl-pen-layer [data-strokes] path')).toHaveCount(3)
+  await expect
+    .poll(async () => (await canvasOnDisk(page.request, path)).nodes.find((node) => node.id === 'c000000000000001'), { timeout: 15_000 })
+    .not.toHaveProperty('nexlorePages')
   expect(problems).toEqual([])
 })
