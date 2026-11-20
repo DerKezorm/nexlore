@@ -598,5 +598,17 @@
     ],
     "smallTitle": "Außerdem",
     "small": []
+  },
+  "1.14.0": {
+    "lead": "Die iPhone-App nimmt deine Server-Verbindung jetzt selbst aufs iPad mit.",
+    "sections": [
+      {
+        "title": "Weitere Geräte ohne neues Koppeln",
+        "where": "iPhone-App ab Version 1.2, Mein Konto › Sicherheit",
+        "body": "Hast du die App auf dem iPhone mit nexlore verbunden, findet dein iPad mit derselben Apple-ID die Verbindung im iCloud-Schlüsselbund und meldet sich damit einmal selbst an. Es bekommt dabei einen eigenen Geräteschlüssel, steht also unter seinem Namen in deinem Profil und lässt sich dort allein trennen. Ein Gerät holt höchstens fünf weitere je Stunde herein. Schaltet der Betreiber die App ab, geht auch das nicht."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": []
   }
 }

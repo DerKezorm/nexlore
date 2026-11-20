@@ -598,5 +598,17 @@
     ],
     "smallTitle": "Also",
     "small": []
+  },
+  "1.14.0": {
+    "lead": "The iPhone app now takes your server connection along to your iPad by itself.",
+    "sections": [
+      {
+        "title": "More devices without pairing again",
+        "where": "iPhone app from version 1.2, My account › Security",
+        "body": "Once the app on your iPhone is connected to nexlore, your iPad with the same Apple ID finds the connection in the iCloud Keychain and signs itself in with it once. It gets a device key of its own, so it shows under its own name in your profile and can be disconnected there alone. One device brings in at most five more an hour. If the operator switches the app off, this stops too."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": []
   }
 }
