@@ -85,8 +85,11 @@ import { middleOf, pathOf, port, route, type Point } from './route'
 import { moving, snap } from './snap'
 import { useCanvasInk, type CarriedStrokes } from './useCanvasInk'
 
-/** Below this zoom a card shows only its title, as on the map. */
+/** Below this zoom a card shows only its title, as on the map; */
 export const FAR_ZOOM = 0.45
+/** unless it is this big on the screen, in pixels (a picture or a PDF laid out large stays readable far out). */
+export const NEAR_WIDTH = 240
+export const NEAR_HEIGHT = 160
 /** How far the canvas zooms out and in (the pen's surface keeps to it too). */
 export const MIN_ZOOM = 0.05
 export const MAX_ZOOM = 4
@@ -138,6 +141,14 @@ export function CanvasView({ canvas, apply: handUp, adjust, undo: stepBack, redo
   const flow = useReactFlow<CardNode, LineEdgeType>()
   const { zoom } = useViewport()
   const menu = useContextMenu()
+  const far = zoom < FAR_ZOOM
+  // Far out, the cards big enough on the screen to be read: they keep what they show. The same list as long as it is.
+  const nearKey = far
+    ? canvas.nodes
+        .filter((node) => node.width * zoom >= NEAR_WIDTH && node.height * zoom >= NEAR_HEIGHT)
+        .map((node) => node.id)
+        .join(',')
+    : ''
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [guides, setGuides] = useState<{ x: number[]; y: number[] }>({ x: [], y: [] })
   const [asking, setAsking] = useState<Asking | null>(null)
@@ -220,6 +231,7 @@ export function CanvasView({ canvas, apply: handUp, adjust, undo: stepBack, redo
   }, [canvas])
 
   // The pen's layer is no card: it is drawn over all of them (`PenLayer`), never chosen, moved or carried.
+  const near = useMemo(() => new Set(nearKey ? nearKey.split(',') : []), [nearKey])
   const nodes = useMemo<CardNode[]>(
     () =>
       cardsOf(canvas.nodes).map((node) => ({
@@ -235,8 +247,9 @@ export function CanvasView({ canvas, apply: handUp, adjust, undo: stepBack, redo
         draggable: arrange && cards.editing !== node.id,
         connectable: arrange,
         ariaLabel: titleOf(node) || node.type,
+        className: near.has(node.id) ? 'nl-near' : undefined,
       })),
-    [canvas.nodes, selected, arrange, cards.editing],
+    [canvas.nodes, selected, arrange, cards.editing, near],
   )
 
   // Each line's way, worked out again whenever a card or a line changes. Groups stand in no way: lines run into
@@ -715,7 +728,6 @@ export function CanvasView({ canvas, apply: handUp, adjust, undo: stepBack, redo
     ])
   }
 
-  const far = zoom < FAR_ZOOM
   return (
     <div
       ref={wrapper}

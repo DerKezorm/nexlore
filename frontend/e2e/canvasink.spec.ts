@@ -349,3 +349,37 @@ test('a PDF folds to its first page: what is written on the others goes out of s
     .not.toHaveProperty('nexlorePages')
   expect(problems).toEqual([])
 })
+
+test('far out a card shows its title, but one still big on the screen keeps what it shows', async ({ page }) => {
+  const problems = collectProblems(page)
+  const { space, path } = await makeBoard(page.request)
+  const picture = await page.request.post('/api/attachments', {
+    params: { name: 'plan.png', canvas: path },
+    data: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAwAAAAICAIAAABChommAAAAFUlEQVR42mN8ViHCQAgwMRABhrciALQ1AYLyZG5iAAAAAElFTkSuQmCC', 'base64'),
+    headers: TAB,
+  })
+  expect(picture.status()).toBe(201)
+  const content = JSON.stringify({
+    nodes: [
+      { id: 'd000000000000001', type: 'file', file: 'Attachments/plan.png', x: 0, y: 0, width: 2400, height: 1600 },
+      { id: 'e000000000000001', type: 'text', text: 'Small', x: 2500, y: 0, width: 260, height: 120 },
+    ],
+    edges: [],
+  })
+  const state = await (await page.request.get('/api/canvas', { params: { path } })).json()
+  expect((await page.request.put('/api/canvas', { data: { path, content, base_hash: state.hash }, headers: TAB })).ok()).toBe(true)
+  await page.request.delete('/api/locks', { params: { path }, headers: TAB })
+  await open(page, space)
+  const big = page.locator('.react-flow__node[data-id="d000000000000001"]')
+  const small = page.locator('.react-flow__node[data-id="e000000000000001"]')
+  await expect(big.locator('img')).toBeVisible()
+  for (let step = 0; step < 30 && !(await page.locator('.nl-canvas.nl-far').count()); step++) {
+    await page.getByRole('button', { name: 'Zoom out' }).click()
+  }
+  await expect(page.locator('.nl-canvas')).toHaveClass(/nl-far/)
+  await expect(big).toHaveClass(/nl-near/)
+  await expect(big.locator('img')).toBeVisible()
+  await expect(small).not.toHaveClass(/nl-near/)
+  await expect(small.locator('.nl-card > *').first()).toBeHidden()
+  expect(problems).toEqual([])
+})

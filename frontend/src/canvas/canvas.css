@@ -181,11 +181,12 @@
     white-space: nowrap;
   }
 
-  /* Far out: a card shows its title only, the same size on the screen whatever the zoom (as on the map). */
-  .nl-canvas.nl-far .nl-card > * {
+  /* Far out: a card shows its title only, the same size on the screen whatever the zoom (as on the map); one still big
+     on the screen (`nl-near`, a picture or a PDF laid out large) keeps what it shows. */
+  .nl-canvas.nl-far .react-flow__node:not(.nl-near) .nl-card > * {
     visibility: hidden;
   }
-  .nl-canvas.nl-far .nl-card::after {
+  .nl-canvas.nl-far .react-flow__node:not(.nl-near) .nl-card::after {
     content: attr(data-title);
     position: absolute;
     inset: 0;
