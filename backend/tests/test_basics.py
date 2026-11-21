@@ -109,3 +109,27 @@ def test_the_pdf_frame_has_its_own_strict_policy_and_only_the_assets_open_to_it(
     # Nothing else is opened that way: not the start page, not the API.
     assert "access-control-allow-origin" not in client.get("/notes/x").headers
     assert "content-security-policy" not in client.get("/notes/x").headers
+
+
+def test_the_mark_and_the_icons_are_asked_for_again(tmp_path: Path) -> None:
+    """A kept old icon put the old mark on a freshly installed web app (seen with a sister app)."""
+    client = _built(tmp_path)
+    dist = tmp_path / "dist"
+    (dist / "icons").mkdir()
+    (dist / "icons" / "icon-192.png").write_bytes(b"made up")
+    (dist / "logo.svg").write_bytes(b"<svg/>")
+    for path in ("/icons/icon-192.png?v=2", "/logo.svg?v=2", "/manifest.webmanifest"):
+        if path == "/manifest.webmanifest":
+            (dist / "manifest.webmanifest").write_bytes(b'{"name": "nexlore"}')
+        answer = client.get(path)
+        assert answer.status_code == 200, path
+        assert answer.headers["cache-control"] == "no-cache", path
+
+
+def test_every_file_of_public_is_asked_for_again() -> None:
+    from app.main import _asked_again
+
+    public = Path(__file__).resolve().parents[2] / "frontend" / "public"
+    files = [p.relative_to(public).as_posix() for p in public.rglob("*") if p.is_file()]
+    left = [f for f in files if not _asked_again(f) and not f.startswith(("pdfjs/", "licenses/")) and f != "sw.js"]
+    assert files and not left, left

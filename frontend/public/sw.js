@@ -11,8 +11,9 @@
  *
  * Working offline is for later, first as a copy to read.
  */
-const CACHE = 'nexlore-app-v1'
-const SHELL = ['/', '/manifest.webmanifest', '/logo.svg', '/theme.js', '/icons/icon-192.png', '/icons/icon-512.png']
+const CACHE = 'nexlore-app-v2'
+// ?v=2 since the new mark: a new address passes old copies in the browser by. Raise it with a new mark.
+const SHELL = ['/', '/manifest.webmanifest', '/logo.svg?v=2', '/theme.js', '/icons/icon-192.png?v=2', '/icons/icon-512.png?v=2']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

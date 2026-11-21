@@ -226,6 +226,18 @@ class _AppFiles(StaticFiles):
         return response
 
 
+#: Files of frontend/public without a hash in their name that change with an update: the mark, the icons, the
+#: manifest and the theme script. They are asked for again before use (no-cache), like the service worker. Without
+#: that, Chrome installed a sister app's web app with the old icon from its own cache after a new mark, even after
+#: uninstalling it. test_basics.py checks that every file of public/ is covered.
+ALWAYS_ASK = frozenset({"logo.svg", "manifest.webmanifest", "theme.js"})
+ALWAYS_ASK_FOLDERS = ("icons/",)
+
+
+def _asked_again(path: str) -> bool:
+    return path in ALWAYS_ASK or path.startswith(ALWAYS_ASK_FOLDERS)
+
+
 def _mount_frontend(target: FastAPI, dist: Path) -> None:
     index = dist / "index.html"
     if not index.exists():
@@ -246,12 +258,15 @@ def _mount_frontend(target: FastAPI, dist: Path) -> None:
                 # The service worker: always the newest, and allowed to act for the whole app.
                 return FileResponse(candidate, media_type="text/javascript", headers={"Cache-Control": "no-cache"})
             if path.endswith(".webmanifest"):
-                return FileResponse(candidate, media_type="application/manifest+json")
+                return FileResponse(candidate, media_type="application/manifest+json",
+                                    headers={"Cache-Control": "no-cache"})
             if candidate == pdf_frame:
                 return FileResponse(candidate, media_type="text/html", headers={
                     "Content-Security-Policy": PDF_FRAME_POLICY, "X-Frame-Options": "SAMEORIGIN",
                     "Cache-Control": "no-cache",
                 })
+            if _asked_again(path):
+                return FileResponse(candidate, headers={"Cache-Control": "no-cache"})
             return FileResponse(candidate)
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
 

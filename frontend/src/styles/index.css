@@ -688,3 +688,25 @@
   pointer-events: none;
   background: radial-gradient(ellipse at 50% 45%, transparent 30%, var(--color-ink-950) 92%);
 }
+
+/* The colours of the mark (components/Logo.tsx), dark version first. The same values are in public/logo.svg and
+   scripts/app-icons.mjs. Not tokens for Tailwind classes. */
+:root {
+  --nl-logo-grund: #0a1615;
+  --nl-logo-rand: #2dd4bf;
+  --nl-logo-rand-deckung: 0.45;
+  --nl-logo-verlauf-1: #ccfbf1;
+  --nl-logo-verlauf-2: #2dd4bf;
+  --nl-logo-verlauf-3: #139486;
+  --nl-logo-akzent: #5eead4;
+}
+
+:root[data-theme='light'] {
+  --nl-logo-grund: #ffffff;
+  --nl-logo-rand: #1fb5a2;
+  --nl-logo-rand-deckung: 0.35;
+  --nl-logo-verlauf-1: #7fe0d0;
+  --nl-logo-verlauf-2: #1fb5a2;
+  --nl-logo-verlauf-3: #0b5f57;
+  --nl-logo-akzent: #0e8f82;
+}
