@@ -652,5 +652,20 @@
     ],
     "smallTitle": "Außerdem",
     "small": []
+  },
+  "1.16.0": {
+    "lead": "nexlore hat ein neues Zeichen: eine Lore mit einem kleinen Wissensnetz als Ladung.",
+    "sections": [
+      {
+        "title": "Neues Zeichen",
+        "where": "Kopfzeile, Anmeldung, Browser-Tab und Home-Bildschirm",
+        "body": "Die Lore mit dem Wissensnetz ersetzt die drei verbundenen Punkte, ein Wortspiel mit nex*lore*. Das Logo folgt dem hellen und dunklen Modus, der Browser-Tab folgt dem System. Auch die Symbole für den Home-Bildschirm sind neu."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Zeichen, Symbole, Manifest und das Skript für den Modus fragt der Browser jetzt vor dem Benutzen nach, und ihre Adressen tragen eine Fassung. So kommt ein neues Zeichen auch in einer installierten Web-App an.",
+      "Eine Zeichnung nimmt die Tastatur gleich beim Öffnen an."
+    ]
   }
 }

@@ -652,5 +652,20 @@
     ],
     "smallTitle": "Also",
     "small": []
+  },
+  "1.16.0": {
+    "lead": "nexlore has a new mark: a mine cart carrying a little web of knowledge.",
+    "sections": [
+      {
+        "title": "New mark",
+        "where": "Header, sign-in, browser tab and home screen",
+        "body": "The mine cart with its web of knowledge replaces the three linked dots, a play on nex*lore*. The logo follows light and dark mode, the browser tab follows your system. The icons for the home screen are new as well."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "The browser now asks before it uses the mark, the icons, the manifest and the theme script again, and their addresses carry a version, so a new mark reaches an installed web app too.",
+      "A drawing takes the keyboard as soon as it opens."
+    ]
   }
 }
