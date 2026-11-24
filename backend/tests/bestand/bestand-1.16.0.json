@@ -1,0 +1,125 @@
+{
+  "fassung": "1.16.0",
+  "oeffentliche_adresse": "https://lore.example.com",
+  "einrichtungscode": "test-setup-code",
+  "anbieter": {
+    "issuer": "https://sso.example.com",
+    "client_id": "nexlore-bestand",
+    "client_geheimnis": "bestand-client",
+    "kuerzel": "sso"
+  },
+  "raum": "Projekt",
+  "konten": [
+    {
+      "name": "betrieb",
+      "passwort": "bestand-betrieb-1",
+      "email": "betrieb@example.com",
+      "email_herkunft": "own",
+      "rolle": "operator",
+      "zweiter_faktor": "betrieb",
+      "wiederherstellung": "hry7e-nv4bj",
+      "anzeigename": "Betrieb"
+    },
+    {
+      "name": "erika-muster",
+      "passwort": "bestand-erika-1",
+      "email": "",
+      "email_herkunft": "",
+      "rolle": "member",
+      "anzeigename": ""
+    },
+    {
+      "name": "jonas",
+      "passwort": "bestand-jonas-1",
+      "email": "jonas@example.com",
+      "email_herkunft": "invite",
+      "rolle": "member",
+      "anzeigename": "Jonas Beispiel"
+    },
+    {
+      "name": "kim",
+      "passwort": "bestand-kim-1",
+      "email": "Kim@Example.org",
+      "email_herkunft": "operator",
+      "rolle": "member",
+      "anzeigename": ""
+    },
+    {
+      "name": "lou",
+      "passwort": "bestand-lou-1",
+      "email": "kim@example.org",
+      "email_herkunft": "operator",
+      "rolle": "member",
+      "anzeigename": ""
+    },
+    {
+      "name": "mona",
+      "passwort": "bestand-mona-1",
+      "email": "",
+      "email_herkunft": "",
+      "rolle": "member",
+      "zweiter_faktor": "mona",
+      "wiederherstellung": "kt29g-qx6dm",
+      "anzeigename": ""
+    },
+    {
+      "name": "sam",
+      "passwort": "bestand-sam-1",
+      "email": "sam@example.net",
+      "email_herkunft": "provider",
+      "rolle": "member",
+      "anzeigename": "",
+      "anbieter": {
+        "sub": "sub-sam",
+        "email": "sam@example.net",
+        "preferred_username": "sam"
+      }
+    },
+    {
+      "name": "robin.sso",
+      "passwort": "",
+      "email": "robin@example.net",
+      "email_herkunft": "provider",
+      "rolle": "operator",
+      "anzeigename": "",
+      "anbieter": {
+        "sub": "sub-robin",
+        "email": "robin@example.net",
+        "preferred_username": "robin.sso",
+        "name": "Robin"
+      }
+    },
+    {
+      "name": "max",
+      "passwort": "",
+      "email": "max@example.net",
+      "email_herkunft": "provider",
+      "rolle": "member",
+      "anzeigename": "",
+      "anbieter": {
+        "sub": "sub-max",
+        "email": "max@example.net",
+        "preferred_username": "max",
+        "name": "Max"
+      }
+    }
+  ],
+  "geloescht": {
+    "name": "weg",
+    "id": 10
+  },
+  "offen": {
+    "sitzung_erika": "bestand-erika-sitzung-005-festwert",
+    "iphone_mona": "nxd_bestand-mona-iphone-schluessel-021-festwert",
+    "token_jonas": "nxa_bestand-jonas-token-022-festwert",
+    "seite": "bestand-jonas-seite-023-festwert",
+    "einladung_raum": "bestand-offen-raum-024-festwert",
+    "einladung": "bestand-offen-036-festwert",
+    "adresslink_erika": "nxe_bestand-erika-adresse-037-festwert"
+  },
+  "tresor": {
+    "Projekt/Attachments/skizze.txt": "Skizze des Plans, 32 Bytes lang.",
+    "Projekt/Liste.md": "# Liste\n\n- Werkzeug\n- Leiter\n",
+    "Projekt/Plan.md": "# Plan\n\nErste Fassung vom Betrieb.\n\nErgänzt von Jonas.\n"
+  }
+}
