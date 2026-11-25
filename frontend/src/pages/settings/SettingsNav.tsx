@@ -1,7 +1,8 @@
 /**
- * The way through the settings, as in nexnotes: in the sidebar the account at the top, then the groups "My account"
- * and, for the operator, "Server", and "About nexlore" at the end. On a phone, which has no sidebar, a choice above
- * the content goes to the area chosen.
+ * The way through the settings, as in nexnotes. Where the page is wide enough (700 px of its own), a navigation on the
+ * left of the content: the account at the top, then the groups "My account" and, for the operator, "Server", and
+ * "About nexlore" at the end. Narrower, a choice above the content goes to the area chosen. The page's own width
+ * counts, not the window's: beside the sidebar a laptop is narrow too.
  */
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router-dom'
@@ -21,7 +22,7 @@ export function SettingsNav({ me, current }: { me: Account; current: AreaSlug })
   const groups = GROUPS.filter((group) => areas.some((area) => area.group === group))
   const shown = me.display_name || me.name
   return (
-    <nav aria-label={t('nav.settings')} className="px-2 py-3" data-testid="settings-nav">
+    <nav aria-label={t('nav.settings')} className="hidden w-56 shrink-0 @min-[700px]:sticky @min-[700px]:top-0 @min-[700px]:block" data-testid="settings-nav">
       <div className="mb-4 flex items-center gap-3 px-2.5">
         <Avatar account={me} className="h-10 w-10 shrink-0 text-base" />
         <div className="min-w-0">
@@ -68,14 +69,14 @@ export function SettingsNav({ me, current }: { me: Account; current: AreaSlug })
   )
 }
 
-/** The phone: one choice with the groups and "About nexlore". */
+/** The narrow page: one choice with the groups and "About nexlore". */
 export function SettingsJump({ me, current }: { me: Account; current: AreaSlug }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const areas = areasFor(me.role)
   const groups = GROUPS.filter((group) => areas.some((area) => area.group === group))
   return (
-    <label className="block" data-testid="settings-jump-row">
+    <label className="block @min-[700px]:hidden" data-testid="settings-jump-row">
       <span className="sr-only">{t('settings.jump')}</span>
       <select
         className="h-10 w-full rounded-[9px] border border-ink-700 bg-ink-850 px-3 text-sm text-mist-100"

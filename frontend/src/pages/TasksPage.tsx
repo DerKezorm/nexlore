@@ -14,7 +14,7 @@ import { useNarrow } from '../lib/useNarrow'
 import { Symbol } from '../components/Symbol'
 import { TaskRow } from '../components/TaskRow'
 import { errorText } from '../lib/errors'
-import { today as todayIso, whenOf } from '../lib/everyday'
+import { dayOf, today as todayIso, whenOf } from '../lib/everyday'
 import { noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
 
@@ -67,7 +67,7 @@ export function TasksPage() {
   const [notice, setNotice] = useState<string | null>(null)
   const today = todayIso()
   const small = useNarrow()
-  // "Next": the open tasks with a date, the soonest first, at the top of the sidebar (as "Due this month" in the
+  // "Next": the open tasks with a date (due, else scheduled, as the groups below count them), the soonest first, at the top of the sidebar (as "Due this month" in the
   // calendar). Their own question, whatever the list below shows.
   const [next, setNext] = useState<TaskItem[]>([])
   const loadNext = useCallback(() => {
@@ -75,8 +75,8 @@ export function TasksPage() {
       (answer) =>
         setNext(
           answer.items
-            .filter((item) => item.due)
-            .sort((a, b) => (a.due! < b.due! ? -1 : a.due! > b.due! ? 1 : 0))
+            .filter((item) => dayOf(item))
+            .sort((a, b) => dayOf(a)!.localeCompare(dayOf(b)!))
             .slice(0, NEXT),
         ),
       () => setNext([]),

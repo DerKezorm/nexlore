@@ -1,6 +1,7 @@
 /**
- * The settings in areas, as in nexnotes: the navigation sits in the sidebar between "New note" and the settings, with
- * "My account" for everybody and "Server" for the operator, "About nexlore" at the end. Every card of before (the tabs
+ * The settings in areas, as in nexnotes: the app's sidebar with the spaces stays on the left, the navigation of the
+ * settings stands in the page beside the content, with "My account" for everybody and "Server" for the operator,
+ * "About nexlore" at the end. Every card of before (the tabs
  * of the settings and of the own account, the account menu) has exactly one place, nothing got lost on the way, and
  * the addresses of before lead to the area that holds their cards now.
  */
@@ -41,6 +42,7 @@ vi.mock('../components/McpKeys', () => stubs('McpKeys'))
 vi.mock('../components/NotifySettings', () => stubs('NotifySettings'))
 vi.mock('../components/SecondFactor', () => stubs('SecondFactor'))
 vi.mock('./AboutPage', () => stubs('AboutArea'))
+vi.mock('../components/Sidebar', () => stubs('SpacesSidebar'))
 vi.mock('../api/client', async (original) => {
   const real = await original<typeof import('../api/client')>()
   return { ...real, authApi: { ...real.authApi, myProviders: async () => [] } }
@@ -107,13 +109,13 @@ afterEach(() => {
 })
 
 describe('the navigation', () => {
-  it('stands in the sidebar between "New note" and the way to the settings, both groups for the operator, About at the end', async () => {
+  it('stands in the page beside the content, the spaces stay in the sidebar, both groups for the operator, About at the end', async () => {
     await show('/settings')
-    const side = box.querySelector('[data-testid="settings-side"]')!
-    expect(side.querySelector('[data-testid="side-new-note"]')).not.toBeNull()
-    expect(side.querySelector('[data-testid="side-search"]')).not.toBeNull()
-    expect(side.querySelector('[data-testid="settings-link"]')?.getAttribute('href')).toBe('/settings')
-    expect(side.contains(nav())).toBe(true)
+    const side = box.querySelector('[data-card="SpacesSidebar"]')!
+    expect(side).not.toBeNull()
+    expect(side.contains(nav())).toBe(false)
+    expect(box.querySelector('main')!.contains(nav())).toBe(true)
+    expect(box.querySelector('main')!.querySelector('[data-testid="settings-jump"]')).not.toBeNull()
     expect([...nav().querySelectorAll('p[id^="settings-group-"]')].map((group) => group.textContent)).toEqual(['settings.groups.account', 'settings.groups.server'])
     expect(entries()).toEqual([...AREAS.map((area) => `/settings/${area.slug}`), '/settings/about'])
     expect(entries()).toEqual([

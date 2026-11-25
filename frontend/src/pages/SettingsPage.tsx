@@ -1,8 +1,9 @@
 /**
  * Settings in areas, as in nexnotes: "My account" (Profile, Security, Appearance, Notes, Spaces, Notifications, Plugins,
  * Connections) for every account, "Server" (General, Sign-in, Mail, Storage and backups, Public pages, AI, API and
- * plugins, Accounts, Log) for the operator, "About nexlore" for everyone at the end. The areas stand in the sidebar,
- * between "New note" and the way to the settings; each has its own address (`/settings/<slug>`, `settings/areas.ts`),
+ * plugins, Accounts, Log) for the operator, "About nexlore" for everyone at the end. As in nexnotes the app's sidebar
+ * with the spaces stays on the left; the areas have a navigation of their own in the page, beside the content (on a
+ * narrow page a choice above it). Each area has its own address (`/settings/<slug>`, `settings/areas.ts`),
  * `/settings` is the profile. An area someone may not open, or an address of before (`/account?tab=…`,
  * `/settings?tab=…&sub=…`, `/about`), leads on with the address replaced, so the navigation always marks where one is.
  * The cards themselves stay in their files; an area only picks them.
@@ -37,8 +38,7 @@ import { SpacesCard } from '../components/settings/SpacesCard'
 import { HomeSpaceCard, StartCard } from '../components/settings/StartCard'
 import { ThemesCard } from '../components/settings/ThemesCard'
 import { useServerSettings } from '../components/settings/useServerSettings'
-import { SideFrame } from '../components/SideFrame'
-import { useNarrow } from '../lib/useNarrow'
+import { SpacesSidebar } from '../components/Sidebar'
 import { AdminPluginsCard } from '../plugins/PluginSettings'
 import { useAuth } from '../state/auth'
 import { AboutArea } from './AboutPage'
@@ -51,7 +51,6 @@ export function SettingsPage() {
   const { me } = useAuth()
   const { area: asked } = useParams()
   const { search, hash } = useLocation()
-  const small = useNarrow()
   if (!me) return null
   const where = resolveArea(asked, me.role, search, hash)
   if ('redirect' in where) return <Navigate to={where.redirect} replace />
@@ -59,18 +58,21 @@ export function SettingsPage() {
   if (!area) return null
   return (
     <>
-      <SideFrame label={t('nav.settings')} testId="settings-side">
-        <SettingsNav me={me} current={area.slug} />
-      </SideFrame>
-      <main className="nn-scroll flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-4xl space-y-5 px-4 py-6 sm:px-6 sm:py-8" data-testid={`settings-area-${area.slug}`}>
-          {small && <SettingsJump me={me} current={area.slug} />}
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{t(`settings.areas.${area.key}.title`)}</h1>
-            <p className="mt-1 text-sm text-mist-400">{t(`settings.areas.${area.key}.text`)}</p>
-          </div>
-          <div className="space-y-6">
-            <AreaContent key={area.slug} area={area.slug} />
+      <SpacesSidebar />
+      <main className="nn-scroll @container flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+          <div className="flex flex-col gap-5 @min-[700px]:flex-row @min-[700px]:items-start @min-[700px]:gap-8">
+            <SettingsNav me={me} current={area.slug} />
+            <SettingsJump me={me} current={area.slug} />
+            <div className="min-w-0 flex-1 space-y-5" data-testid={`settings-area-${area.slug}`}>
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight">{t(`settings.areas.${area.key}.title`)}</h1>
+                <p className="mt-1 text-sm text-mist-400">{t(`settings.areas.${area.key}.text`)}</p>
+              </div>
+              <div className="space-y-6">
+                <AreaContent key={area.slug} area={area.slug} />
+              </div>
+            </div>
           </div>
         </div>
       </main>
