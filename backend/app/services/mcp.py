@@ -180,7 +180,9 @@ def caller_of_key(db: Session, key_id: int) -> Caller | None:
 
 def _caller(db: Session, key: McpKey, *, used: bool) -> Caller | None:
     account = db.get(Account, key.account_id)
-    if account is None or (account.locked_until is not None and account.locked_until > utcnow()):
+    if account is None or account.blocked_at is not None or (
+        account.locked_until is not None and account.locked_until > utcnow()
+    ):
         return None
     if totp.setup_required(db, account):
         # The operator requires a second factor this account has not set up: its keys wait like its sessions.

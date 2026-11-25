@@ -1,5 +1,5 @@
-"""Profile pictures (``services/avatars``): each account sets and removes its own; a picture is served only to those who
-may see it, and to anyone else exactly like a picture that is not there."""
+"""Profile pictures (``services/avatars``): each account sets and removes its own; every signed-in account of the
+server sees them (the shared account module, decision of 24.11.2026, the same in every nex app), nobody signed out."""
 
 from __future__ import annotations
 
@@ -30,6 +30,7 @@ async def set_avatar(request: Request, account: Account, db: DbSession) -> dict[
     assert row is not None
     row.avatar = picture
     row.avatar_at = utcnow()
+    row.avatar_source = ""
     db.commit()
     logger.info("Profile picture set name=%s", row.name)
     return account_view(row)
@@ -41,15 +42,18 @@ def remove_avatar(account: Account, db: DbSession) -> dict[str, Any]:
     assert row is not None
     row.avatar = None
     row.avatar_at = None
+    row.avatar_source = ""
     db.commit()
     return account_view(row)
 
 
-@router.get("/avatars/{account_id}", summary="A profile picture, for those who may see it")
+@router.get("/avatars/{account_id}", summary="A profile picture, for every signed-in account")
 def get_avatar(account_id: int, account: Account, db: DbSession) -> Response:
-    row = db.get(AccountRow, account_id) if avatars.may_see(db, account, account_id) else None
+    del account  # signed in is enough
+    row = db.get(AccountRow, account_id)
     picture = row.avatar if row is not None else None
     if not picture:
         raise error("not_found", "Not found.", 404)
     # The address carries the time it was set (?v=), so a new picture is a new address: kept long, but only here.
-    return Response(picture, media_type="image/webp", headers={"Cache-Control": "private, max-age=31536000, immutable"})
+    return Response(picture, media_type="image/webp", headers={"Cache-Control": "private, max-age=31536000, immutable",
+                                                               "X-Content-Type-Options": "nosniff"})

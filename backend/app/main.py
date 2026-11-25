@@ -22,7 +22,7 @@ from .config import get_settings
 from .db import SessionLocal, init_db
 from .errors import detail
 from .middleware import ForwardedSchemeMiddleware, GuardMiddleware, RequestContextMiddleware, unhandled_error
-from .routers import about, attachments, auth, drafts, everyday, graph, health, imports, members, oidc, shares
+from .routers import about, accounts, attachments, auth, drafts, everyday, graph, health, imports, members, oidc, shares
 from .routers import ai as ai_router
 from .routers import apitokens as apitokens_router
 from .routers import app1 as app1_router
@@ -48,6 +48,7 @@ from .routers import mcp as mcp_router
 from .routers import news as news_router
 from .routers import notify as notify_router
 from .routers import oauth as oauth_router
+from .routers import passkeys as passkeys_router
 from .routers import plugins as plugins_router
 from .routers import presence as presence_router
 from .routers import proposals as proposals_router
@@ -59,13 +60,28 @@ from .routers import totp as totp_router
 from .routers import v1 as v1_router
 from .routers import vault as vault_router
 from .security import HashingBusy, purge_sessions
-from .services import accounts, backups, graphstore, locales, logs, notify, oidc_store, settings_service, totp, watcher
+from .services import (
+    backups,
+    graphstore,
+    locales,
+    logs,
+    notify,
+    oidc_store,
+    post_store,
+    settings_service,
+    totp,
+    watcher,
+)
+from .services.konten_store import KontenStore
 from .vendor import nexoidc
+from .vendor.nexkonten import factor as konten_factor
+from .vendor.nexkonten import setup as konten_setup
 
 logger = logging.getLogger("nexlore")
 
 ROUTERS = [
-    health, about, locales_router, logs_router, auth, totp_router, oidc, members, settings_router, vault_router,
+    health, about, locales_router, logs_router, auth, totp_router, passkeys_router, oidc, accounts, members,
+    settings_router, vault_router,
     attachments, imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router, looks_router,
     ai_router, favorites_router, avatars_router, recent_router, themes_router, search_router, news_router,
     proposals_router, bases_router, canvas_router, ink_router, cleanup_router, inbox_router, feed_router,
@@ -94,6 +110,11 @@ async def _sweep_forever(stop: asyncio.Event) -> None:
     rounds = 0
     while not stop.is_set():
         totp.sweep()
+        # System mail waiting in the outbox goes out (the shared post module), in a thread: SMTP blocks.
+        try:
+            await asyncio.to_thread(post_store.run_due)
+        except Exception:
+            logger.exception("Outbox round failed")
         if rounds % 60 == 0:
             with SessionLocal() as db:
                 purge_sessions(db)
@@ -136,7 +157,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         graphstore.worker.start()
     logger.info("nexlore %s started vault=%s", __version__, settings.vault_dir)
     with SessionLocal() as db:
-        accounts.announce_setup_code(db)
+        konten_setup.announce_setup(KontenStore(db))
+    # NEXLORE_SECOND_FACTOR_OFF: a warning in the log while the emergency hammer holds.
+    konten_factor.announce_switched_off()
     try:
         yield
     finally:

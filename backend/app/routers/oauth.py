@@ -325,7 +325,9 @@ def consent(body: ConsentIn, request: Request, account: Account, db: DbSession) 
 def _account_may(db: Any, account_id: int) -> bool:
     """No new tokens for an account that is locked, gone, or still owes the second factor the operator requires."""
     account = db.get(AccountRow, account_id)
-    if account is None or (account.locked_until is not None and account.locked_until > utcnow()):
+    if account is None or account.blocked_at is not None or (
+        account.locked_until is not None and account.locked_until > utcnow()
+    ):
         return False
     return not totp.setup_required(db, account)
 

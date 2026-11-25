@@ -135,19 +135,26 @@ def reply(db: Session, file_id: int, thread_id: int, who: Who, body: str) -> Com
 def _tell(db: Session, file: File, comment: Comment, taking_part: set[int]) -> None:
     """Notifications (block Z2): who is named with @ and may read the note, and who takes part in the thread; never
     the author. Only the note's title and who wrote, never the comment's words."""
+    from ..models_accounts import FormerName
     from . import notify
 
     named = mentioned(comment.body)
     wanted: set[int] = set(taking_part)
+    called: set[int] = set()
     if named:
         for row in db.scalars(select(Account).where(func.lower(Account.name).in_(named))):
-            wanted.add(row.id)
+            called.add(row.id)
+        # An old name of a renamed account still reaches it (it stays reserved: nobody else can have it).
+        called.update(account_id for account_id in db.scalars(
+            select(FormerName.account_id).where(func.lower(FormerName.name).in_(named),
+                                                FormerName.account_id.is_not(None))) if account_id is not None)
+        wanted |= called
     wanted.discard(comment.account_id or -1)
     for account_id in sorted(wanted):
         reader = db.get(Account, account_id)
         if reader is None or not rights.at_least(rights.role_in(db, reader, file.space_id), rights.READ):
             continue
-        how = "names you in a comment on" if reader.name.casefold() in named else "answered in a thread on"
+        how = "names you in a comment on" if account_id in called else "answered in a thread on"
         notify.send(account_id, "mention", f"{comment.author} {how} {file.title or file.path}", "",
                     "/note/" + "/".join(quote(part) for part in file.path.split("/")))
 
@@ -211,21 +218,26 @@ def mentions_of(
     """Open threads in readable notes where somebody else named the account after it last opened the note."""
     if not readable:
         return []
-    pattern = f"%@{account.name}%"
+    from ..models_accounts import FormerName
+
+    # The current name and every former one: an old ``@name`` still reaches the account that had it.
+    names = {account.name.casefold()} | {
+        str(name).casefold() for name in db.scalars(select(FormerName.name).where(FormerName.account_id == account.id))
+    }
     rows = db.execute(
         select(Comment, File.path, File.title)
         .join(File, File.id == Comment.file_id)
         .where(
-            Comment.space_id.in_(readable), File.deleted_at.is_(None), Comment.body.ilike(pattern),
+            Comment.space_id.in_(readable), File.deleted_at.is_(None),
+            or_(*(Comment.body.ilike(f"%@{name}%") for name in sorted(names))),
             or_(Comment.account_id.is_(None), Comment.account_id != account.id),
         )
         .order_by(Comment.created_at.desc())
         .limit(200)
     ).all()
     out: list[dict[str, Any]] = []
-    name = account.name.casefold()
     for comment, path, title in rows:
-        if name not in mentioned(comment.body):
+        if not names & mentioned(comment.body):
             continue
         after = seen.get(comment.file_id, since)
         if comment.created_at <= after:

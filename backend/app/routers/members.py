@@ -24,10 +24,14 @@ from ..deps import Account, DbSession, OperatorAccount, client_ip
 from ..errors import detail, error
 from ..models import MANAGE, OPERATOR, SPACE_ROLES, Invite, Membership, Space
 from ..models import Account as AccountRow
-from ..security import MIN_PASSWORD, SESSION_COOKIE, brake, session_account
-from ..services import accounts, mailer, notices, paths, rights, settings_service
+from ..security import MIN_PASSWORD, SESSION_COOKIE, brake, hash_token, session_account
+from ..services import accounts, emailaddr, kontenpost, mailer, notices, paths, rights, settings_service
 from ..services.accounts import AccountError
-from .auth import check_password, fail, sign_in
+from ..services.konten_store import KontenStore
+from ..vendor import nexkonten
+from ..vendor.nexkonten import invites as konten_invites
+from ..vendor.nexkonten import resets
+from .auth import check_confirm, check_password, fail, sign_in
 
 logger = logging.getLogger("nexlore.auth")
 
@@ -88,19 +92,26 @@ def _others(db: DbSession, space_id: int, without: int) -> int:
 
 def _invite_view(invite: Invite, db: DbSession) -> dict[str, Any]:
     by = db.get(AccountRow, invite.created_by) if invite.created_by else None
+    space = db.get(Space, invite.space_id) if invite.space_id else None
     return {
         "id": invite.id,
         "role": invite.space_role,
+        "space": space.folder if space else None,
         "email": invite.email,
+        "display_name": invite.display_name or "",
         "by": by.name if by else None,
         "created_at": invite.created_at.isoformat(),
         "expires_at": invite.expires_at.isoformat(),
+        # Since konten 0.3.10: an expired invitation stays in the list, marked, until it is withdrawn.
+        "expired": accounts.expired(invite),
     }
 
 
 def _link(db: DbSession, request: Request, token: str) -> str:
-    base = settings_service.public_url(db) or str(request.base_url).rstrip("/")
-    return f"{base}/invite/{token}"
+    """The public address, else the one the inviting person opened nexlore under (konten 0.3.5,
+    ``invites.invite_link``)."""
+    return konten_invites.invite_link(settings_service.public_url(db), "/invite/", token,
+                                      request_base=str(request.base_url))
 
 
 # --- Members of a space ---------------------------------------------------------------------------------------------
@@ -121,7 +132,7 @@ def members(name: SpaceName, account: Account, db: DbSession) -> dict[str, Any]:
             {"name": person.name, "role": membership.role, "you": person.id == account.id}
             for membership, person in rows
         ],
-        "invites": [_invite_view(invite, db) for invite in invites if not accounts.expired(invite)],
+        "invites": [_invite_view(invite, db) for invite in invites],
         "role": rights.role_in(db, account, space.id),
     }
 
@@ -266,12 +277,25 @@ class InviteIn(BaseModel):
     role: str = Field(default="", max_length=16)
     days: int = 7
     email: str = Field(default="", max_length=255)
+    #: What the invited person is shown as (since the shared account module; the form fills it in, they may change it).
+    display_name: str = Field(default="", max_length=200)
     send: bool = False
 
 
 class AcceptIn(BaseModel):
-    name: str = Field(max_length=64)
+    #: The username (the field kept its name).
+    name: str | None = Field(default=None, max_length=64)
     password: str = Field(max_length=200)
+    #: Since the shared account module; a form of 1.16.0 sends neither: the username stands in for the display name,
+    #: and the address is the invitation's.
+    display_name: str | None = Field(default=None, max_length=200)
+    email: str | None = Field(default=None, max_length=255)
+    password_confirm: str | None = Field(default=None, max_length=200)
+
+
+class ResetIn(BaseModel):
+    password: str = Field(max_length=200)
+    password_confirm: str | None = Field(default=None, max_length=200)
 
 
 #: Invitation mails one account may send in an hour; invitations by name one account may hand out in an hour.
@@ -281,11 +305,11 @@ NAMES_PER_HOUR = 60
 
 def _create(db: DbSession, request: Request, by: AccountRow, space: Space | None, payload: InviteIn) -> dict:
     email = payload.email.strip()
-    if email and not accounts.EMAIL_PATTERN.match(email):
-        raise error("invalid_email", "This is not a mail address.", 422)
     if payload.send and not email:
         raise error("invalid_email", "Sending needs a mail address.", 422)
     if payload.send:
+        if not mailer.configured(db):
+            raise error("mail_off", "No mail server is set up.", 409)
         # A mail goes out under the operator's mail server: never with a link to an address the request made up
         # (the Host header), and not without end.
         if not settings_service.public_url(db):
@@ -295,9 +319,17 @@ def _create(db: DbSession, request: Request, by: AccountRow, space: Space | None
             raise error("too_many_attempts", "Too many invitation mails. Try again later.", 429)
         brake.failed(key)
     try:
+        # Into a space, people with an account may be invited by address too (they join with it).
+        email, shown = konten_invites.invite_values(
+            KontenStore(db), email=email, display_name=payload.display_name, existing_ok=space is not None,
+            public_url=settings_service.public_url(db), request_base=str(request.base_url),
+        )
+    except nexkonten.AccountError as exc:
+        raise fail(exc) from exc
+    try:
         invite, token = accounts.create_invite(
             db, by, space_id=space.id if space else None, space_role=payload.role if space else "",
-            days=payload.days, email=email,
+            days=payload.days, email=email, display_name=shown,
         )
     except AccountError as exc:
         raise fail(exc) from exc
@@ -305,8 +337,13 @@ def _create(db: DbSession, request: Request, by: AccountRow, space: Space | None
     sent = False
     if payload.send:
         try:
-            mailer.send_invite(db, email, link, by=by.name, space=space.folder if space else None)
+            language = mailer.language_for(db, by)
+            mailer.send_invite(db, email, link, by=by.display_name or by.name, space=space.folder if space else None,
+                               language=language, days=payload.days)
             sent = True
+            # Whoever comes through this link proved the address.
+            invite.mailed = True
+            db.commit()
         except mailer.MailError as exc:
             # The link was to go by mail only: kept, the invitation would stand without anybody holding its link.
             db.delete(invite)
@@ -323,7 +360,7 @@ def invite_to_space(name: SpaceName, payload: InviteIn, request: Request, accoun
     return _create(db, request, account, space, payload)
 
 
-@router.get("/invites", summary="Open invitations without a space (operator)")
+@router.get("/invites", summary="Open invitations without a space, the expired ones too (operator)")
 def list_invites(_operator: OperatorAccount, db: DbSession) -> list[dict[str, Any]]:
     return [_invite_view(invite, db) for invite in accounts.invites_of(db, space_id=None)]
 
@@ -350,22 +387,36 @@ def withdraw(invite_id: int, account: Account, db: DbSession) -> None:
 
 
 def _valid(db: DbSession, token: str) -> Invite:
-    row = accounts.find_invite(db, token)
+    row = accounts.find_invite(db, token, expired_too=True)
     if row is None:
         raise error("invite_invalid", "This invitation is not valid any more.", 404)
+    if accounts.expired(row):
+        # 1.16.0 said "not valid any more" (``invite_invalid``); the module's own code tells the page it ran out.
+        raise error("invite_invalid", "This invitation has expired.", 404, account_code="invite_expired")
     return row
 
 
 @router.get("/invite/{token}", summary="What an invitation offers (no sign-in needed)")
 def invite_state(token: Token, request: Request, db: DbSession) -> dict[str, Any]:
     row = _valid(db, token)
+    try:
+        form = konten_invites.invite_form(KontenStore(db), token)
+    except nexkonten.AccountError as exc:
+        raise fail(exc) from exc
     space = db.get(Space, row.space_id) if row.space_id else None
     signed_in = session_account(db, request.cookies.get(SESSION_COOKIE))
+    by = db.get(AccountRow, row.created_by) if row.created_by else None
     return {
         "space": space.folder if space else None,
         "role": row.space_role or None,
+        "by": (by.display_name or by.name) if by else None,
         "min_password": MIN_PASSWORD,
         "signed_in_as": signed_in.name if signed_in else None,
+        # The fields as the page fills them: the display name of the invitation, a username suggested from it.
+        "email": form.email,
+        "display_name": form.display_name,
+        "name": form.username,
+        "password": bool(settings_service.get(db, "password_login")),
     }
 
 
@@ -375,6 +426,9 @@ NAME_TRIES = 8
 
 @router.post("/invite/{token}", summary="Accept an invitation with a new account")
 def accept(token: Token, payload: AcceptIn, request: Request, response: Response, db: DbSession) -> dict[str, Any]:
+    """Through the shared account module (``invites.accept_invite``): display name, username, address, password. A
+    form of 1.16.0 (username and password only) still works: the username stands in for the display name, and the
+    invitation's address is taken as in 1.16.0."""
     # A name that is taken must be said, so the person can pick another; the brake keeps it from being a way to try
     # names one after another (one link took 60 tries without a pause).
     key = "invite-name:" + client_ip(request)
@@ -386,14 +440,38 @@ def accept(token: Token, payload: AcceptIn, request: Request, response: Response
             headers={"Retry-After": str(wait)},
         )
     check_password(payload.password)
+    check_confirm(payload.password, payload.password_confirm)
     if not settings_service.get(db, "password_login"):
         raise error("password_login_off", "Sign-in with a password is turned off.", 403)
+    store = KontenStore(db)
+    invitation = db.scalar(select(Invite).where(Invite.token_hash == hash_token(token)))
+    mailed_to = invitation.email if invitation is not None and invitation.mailed else ""
+    older = payload.display_name is None
     try:
-        account = accounts.accept_invite(db, token, payload.name, payload.password)
-    except AccountError as exc:
-        if exc.code == "name_taken":
+        name = payload.name
+        if name is None:
+            base = nexkonten.names.suggest_username(payload.display_name or "")
+            name = (nexkonten.names.free_username(store, base) if base
+                    else konten_invites.invite_form(store, token).username)
+        if payload.email is not None:
+            email = payload.email.strip()
+        else:
+            # The form of 1.16.0: the invitation's address, as 1.16.0 gave it, unless another account took it since.
+            email = invitation.email if invitation is not None else ""
+            if email and emailaddr.taken(db, email, 0):
+                email = ""
+        accepted = konten_invites.accept_invite(
+            store, token, display_name=payload.display_name or "", username=name, email=email,
+            password=payload.password, language="", mail=kontenpost.can_mail(db), older_request=older,
+            proven=bool(mailed_to and email.lower() == mailed_to.lower()),
+        )
+    except nexkonten.AccountError as exc:
+        if exc.code in ("email_taken", "invite_invalid", "username_taken", "display_name_taken"):
             brake.failed(key)
         raise fail(exc) from exc
+    kontenpost.queue(db, accepted.mail)
+    account = db.get(AccountRow, int(accepted.account.id))
+    assert account is not None
     return sign_in(db, request, response, account)
 
 
@@ -410,3 +488,43 @@ def join(token: Token, account: Account, db: DbSession) -> dict[str, Any]:
     except AccountError as exc:
         raise fail(exc) from exc
     return {"space": space.folder if space else None}
+
+
+# --- Reset links -------------------------------------------------------------------------------------------------
+
+
+@router.get("/reset/{token}", summary="Whom a reset link is for (no sign-in needed)")
+def reset_state(token: Token, db: DbSession) -> dict[str, Any]:
+    store = KontenStore(db)
+    try:
+        account = resets.reset_state(store, token, password_login=bool(settings_service.get(db, "password_login")))
+    except nexkonten.AccountError as exc:
+        raise fail(exc) from exc
+    found = store.find_reset(token)
+    return {
+        "name": account.display_name or account.username,
+        "username": account.username,
+        "min_password": MIN_PASSWORD,
+        "expires_at": found.expires_at.isoformat() if found else None,
+    }
+
+
+@router.post("/reset/{token}", status_code=204, summary="Set a new password with a reset link; signs in nowhere")
+def reset_password(token: Token, payload: ResetIn, request: Request, db: DbSession) -> None:
+    key = "reset:" + client_ip(request)
+    wait = brake.wait_seconds(key, NAME_TRIES)
+    if wait:
+        raise HTTPException(
+            status_code=429,
+            detail=detail("too_many_attempts", "Too many attempts. Try again later.", retry_after=wait),
+            headers={"Retry-After": str(wait)},
+        )
+    check_password(payload.password)
+    check_confirm(payload.password, payload.password_confirm)
+    try:
+        resets.use_reset(KontenStore(db), token, payload.password,
+                         password_login=bool(settings_service.get(db, "password_login")))
+    except nexkonten.AccountError as exc:
+        if exc.code in ("reset_invalid", "reset_expired"):
+            brake.failed(key)
+        raise fail(exc) from exc
