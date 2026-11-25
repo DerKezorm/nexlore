@@ -772,7 +772,8 @@
         "title": "Über nexlore",
         "text": "Version, Lizenz, Aktualisierungen und woraus nexlore gebaut ist."
       }
-    }
+    },
+    "things": "Notizen"
   },
   "errors": {
     "byCode": {
@@ -2133,29 +2134,6 @@
     "adminText": "Jedes Konto kann sich eine Adresse für seinen Kalender erzeugen, mit seinen offenen Aufgaben mit Termin. Die Aufgaben verlassen damit das Haus.",
     "allow": "Kalender-Abos erlauben",
     "allowHint": "Ausgeschaltet antworten alle Adressen, als gäbe es sie nicht."
-  },
-  "log": {
-    "title": "Log",
-    "text": "Die neuesten Zeilen des Server-Logs. Kennwörter, Schlüssel und Notiztexte stehen nie darin.",
-    "level": "Stufe",
-    "all": "Alle",
-    "search": "Enthält",
-    "refresh": "Neu laden",
-    "empty": "Keine Zeilen.",
-    "detail": "Ausführlichkeit",
-    "detailFixed": "Ausführlichkeit (fest per Umgebung)",
-    "modes": {
-      "quiet": "Ruhig",
-      "normal": "Normal",
-      "detailed": "Ausführlich (1 Stunde)",
-      "trace": "Alles (1 Stunde)"
-    },
-    "until": "Zurück auf Normal um {{time}}.",
-    "download": "Herunterladen",
-    "clear": "Leeren",
-    "clearTitle": "Log leeren?",
-    "clearText": "Alle Zeilen gehen, auch die älteren Dateien.",
-    "cleared": "Das Log ist leer."
   },
   "comments": {
     "title": "Kommentare",

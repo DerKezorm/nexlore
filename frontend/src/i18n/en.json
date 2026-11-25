@@ -772,7 +772,8 @@
         "title": "About nexlore",
         "text": "Version, licence, updates and what nexlore is built with."
       }
-    }
+    },
+    "things": "notes"
   },
   "errors": {
     "byCode": {
@@ -2133,29 +2134,6 @@
     "adminText": "Every account can make an address for its calendar, with its open tasks that have a date. The tasks leave the house that way.",
     "allow": "Allow calendar subscriptions",
     "allowHint": "Switched off, every address answers as if it did not exist."
-  },
-  "log": {
-    "title": "Log",
-    "text": "The newest lines of the server's log. Passwords, keys and note texts are never in it.",
-    "level": "Level",
-    "all": "All",
-    "search": "Contains",
-    "refresh": "Reload",
-    "empty": "No lines.",
-    "detail": "Detail",
-    "detailFixed": "Detail (fixed by the environment)",
-    "modes": {
-      "quiet": "Quiet",
-      "normal": "Normal",
-      "detailed": "Detailed (1 hour)",
-      "trace": "Everything (1 hour)"
-    },
-    "until": "Back to normal at {{time}}.",
-    "download": "Download",
-    "clear": "Clear",
-    "clearTitle": "Clear the log?",
-    "clearText": "Every line goes, the older files too.",
-    "cleared": "The log is empty."
   },
   "comments": {
     "title": "Comments",

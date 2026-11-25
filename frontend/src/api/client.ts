@@ -356,17 +356,6 @@ export const feedApi = {
   stop: () => api<void>('/api/me/calendar-feed', { method: 'DELETE' }),
 }
 
-export type LogLine = { time: string; level: string; logger: string; message: string; request_id: string | null; user: string | null }
-export type LogMode = { mode: string; until: string | null; fixed_by_env: boolean; modes: string[]; durations: number[] }
-
-/** The server's log, for the operator. */
-export const logsApi = {
-  read: (level?: string, search?: string) => api<LogLine[]>('/api/logs', { query: { level, search, limit: 300 } }),
-  mode: () => api<LogMode>('/api/logs/level'),
-  setMode: (mode: string, minutes: number) => api<LogMode>('/api/logs/level', { method: 'PUT', body: { mode, minutes } }),
-  clear: () => api<void>('/api/logs', { method: 'DELETE' }),
-}
-
 /** A space as one ZIP file: the browser downloads it with the session it has. */
 export function spaceZipUrl(space: string): string {
   return `/api/spaces/${encodeURIComponent(space)}/zip`
