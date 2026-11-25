@@ -1,9 +1,10 @@
 /**
- * The mail address of an account (issue #13), in the app as it runs: the mail server as a part of its own, an address
- * entered in the profile and confirmed by the link in a real mail, a locked field without a server, an address the
- * operator gives, and the sign-in provider: an account only through it follows it, a linked one keeps its own and is
+ * The mail address of an account (issue #13, since the shared account module "Email" in the profile), in the app as it
+ * runs: the mail server as a part of its own, an address entered in the profile (with the own password) and confirmed
+ * by the link in a real mail, an address that counts at once without a server, the operator who can only take an
+ * address away, and the sign-in provider: an account only through it follows it, a linked one keeps its own and is
  * offered the provider's, and an address never catches somebody else's first sign-in (no account is ever found by
- * its address).
+ * its address at a provider).
  * The mail server and the provider are the stand-ins of e2e/fake-postbox.mjs; nothing leaves the machine.
  */
 import { request, type Browser, type BrowserContext, type Page } from '@playwright/test'
@@ -73,6 +74,7 @@ async function newAccount(page: Page, name: string, baseURL: string): Promise<vo
   expect(invite.ok()).toBe(true)
   const token = new URL((await invite.json()).link).pathname.split('/').pop()!
   const outside = await request.newContext({ baseURL })
+  // The form of 1.16.0 (no display name): the username stands in for it (the shared account module, `older_request`).
   expect((await outside.post(`/api/invite/${token}`, { data: { name, password: PASSWORD }, headers: TAB })).ok()).toBe(true)
   await outside.dispose()
 }
@@ -85,8 +87,8 @@ async function signedOut(browser: Browser): Promise<{ context: BrowserContext; p
 async function signIn(browser: Browser, name: string): Promise<Page> {
   const { page } = await signedOut(browser)
   await page.goto('/login')
-  await page.getByLabel('Name').fill(name)
-  await page.getByLabel('Password').fill(PASSWORD)
+  await page.getByLabel('Username or email').fill(name)
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page).toHaveURL(/\/$/)
   return page
@@ -116,20 +118,30 @@ async function viaProvider(browser: Browser, claims: Record<string, unknown>): P
   return page
 }
 
-async function enter(page: Page, address: string): Promise<void> {
-  await page.goto('/account')
-  const part = page.getByTestId('mail-address')
-  await part.getByLabel('Mail address').fill(address)
-  await part.getByRole('button', { name: 'Confirm' }).click()
-  await expect(page.getByTestId('mail-waiting')).toContainText(address)
+/** The address field of the profile (the shared account module's "Email"). */
+function emailField(page: Page) {
+  return page.getByTestId('profile-card').getByLabel('Email', { exact: true })
+}
+
+/** A new address in the profile: "Save", then the own password; with a mail server it waits for its link. */
+async function enter(page: Page, address: string, { waits = true } = {}): Promise<void> {
+  await page.goto('/settings/profile')
+  await emailField(page).fill(address)
+  await page.getByTestId('profile-save').click()
+  const confirm = page.getByRole('dialog', { name: 'Confirm with your password.' })
+  await confirm.getByLabel('Current password').fill(PASSWORD)
+  await confirm.getByRole('button', { name: 'Save' }).click()
+  if (waits) await expect(page.getByTestId('email-pending')).toContainText(address)
 }
 
 async function confirmFrom(browser: Browser, address: string): Promise<string> {
   const mail = await mailTo(address)
-  const link = mail.body.match(/http:\/\/\S+\/confirm-email\/nxe_[A-Za-z0-9_-]+/)?.[0]
+  const link = mail.body.match(/http:\/\/\S+\/(?:email|confirm-email)\/[A-Za-z0-9_-]+/)?.[0]
   expect(link, mail.body).toBeTruthy()
   const { context, page } = await signedOut(browser)
   await page.goto(link!)
+  await expect(page.getByRole('heading', { name: 'Confirm the new address' })).toBeVisible()
+  await page.getByRole('button', { name: 'Confirm' }).click()
   await expect(page.getByRole('heading', { name: 'Address confirmed' })).toBeVisible()
   await context.close()
   return link!
@@ -156,6 +168,9 @@ test('the mail server is a part of its own and says what it is for', async ({ pa
   await card.getByLabel('Port').fill('2525')
   await card.getByLabel('Encryption').selectOption('none')
   await card.getByLabel('Sender address').fill('notes@example.com')
+  // Without encryption the card warns (the shared post module), and the name the mail goes out under is a field.
+  await expect(card.getByTestId('mail-unencrypted')).toBeVisible()
+  await expect(card.getByLabel('Sender name')).toHaveValue('')
   const saved = page.waitForResponse((answer) => answer.url().endsWith('/api/settings') && answer.request().method() === 'PUT')
   await card.getByRole('button', { name: 'Save' }).click()
   expect((await saved).ok()).toBe(true)
@@ -177,108 +192,96 @@ test('an address entered counts once the link in its mail is opened, and the lin
   const own = await signIn(browser, 'postie')
   const problems = collectProblems(own)
   await enter(own, 'postie@example.com')
-  // Waiting, it counts for nothing yet.
-  await expect(own.getByTestId('mail-status')).toHaveCount(0)
+  // Waiting, it counts for nothing yet: the field still has the address before (none).
+  await own.reload()
+  await expect(emailField(own)).toHaveValue('')
   const mail = await mailTo('postie@example.com')
-  expect(mail.subject).toBe('Confirm your mail address for nexlore')
+  expect(mail.subject).toContain('nexlore')
   const link = await confirmFrom(browser, 'postie@example.com')
   // A second time it does nothing.
   const { context, page: again } = await signedOut(browser)
   await again.goto(link)
   await expect(again.getByRole('heading', { name: 'Not confirmed' })).toBeVisible()
-  await expect(again.getByText('This link does not work any more.')).toBeVisible()
+  await expect(again.getByText('This link has been used already or is not valid any more.')).toBeVisible()
   await context.close()
   await own.reload()
-  await expect(own.getByTestId('mail-status')).toContainText('Confirmed: postie@example.com')
-  await expect(own.getByTestId('mail-status')).toContainText('entered by you')
-  await expect(own.getByTestId('mail-waiting')).toHaveCount(0)
+  await expect(emailField(own)).toHaveValue('postie@example.com')
+  await expect(own.getByTestId('email-pending')).toHaveCount(0)
   // Notifications by mail are open now, to this address.
   await own.goto('/account?tab=notify')
   await expect(own.getByText('To postie@example.com.')).toBeVisible()
-  // Cancelling a new one leaves the confirmed one; a phone shows it all without sideways scrolling.
+  // Withdrawing a new one leaves the confirmed one; a phone shows it all without sideways scrolling.
   await own.setViewportSize({ width: 390, height: 844 })
   await enter(own, 'postie.new@example.com')
   expect(await own.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
-  await own.getByTestId('mail-waiting').getByRole('button', { name: 'Cancel' }).click()
-  await expect(own.getByTestId('mail-waiting')).toHaveCount(0)
-  await expect(own.getByTestId('mail-status')).toContainText('Confirmed: postie@example.com')
+  await own.getByTestId('email-pending').getByRole('button', { name: 'Withdraw' }).click()
+  await expect(own.getByTestId('email-pending')).toHaveCount(0)
+  await own.reload()
+  await expect(emailField(own)).toHaveValue('postie@example.com')
   expect(problems).toEqual([])
 })
 
-test('without a mail server the field is locked and says why; the operator is shown where to set one up', async ({ page, browser, baseURL }) => {
+test('without a mail server an address counts at once; the notifications say there is no server', async ({ page, browser, baseURL }) => {
   await mailServer(page, false, baseURL!)
   await newAccount(page, 'nopost', baseURL!)
   const own = await signIn(browser, 'nopost')
-  await own.goto('/account')
-  const part = own.getByTestId('mail-address')
-  await expect(part.getByLabel('Mail address')).toBeDisabled()
-  await expect(part).toContainText('The operator has not set up a mail server')
-  await expect(part.getByRole('link', { name: 'Set up a mail server' })).toHaveCount(0)
+  await enter(own, 'nopost@example.com', { waits: false })
+  await expect(own.getByTestId('email-pending')).toHaveCount(0)
+  await own.reload()
+  await expect(emailField(own)).toHaveValue('nopost@example.com')
+  // No mail went out: there is no server.
+  expect(await mails()).toEqual([])
   await own.goto('/account?tab=notify')
   await expect(own.getByText('The operator has not set up a mail server.')).toBeVisible()
   await expect(own.getByTestId('notify-mail-fix')).toHaveCount(0)
-  // The operator sees the way to the server, in the profile and beside the notifications.
-  await page.goto('/account')
-  await page.getByTestId('mail-address').getByRole('link', { name: 'Set up a mail server' }).click()
-  await expect(page).toHaveURL(/\/settings\/mail$/)
+  // The operator sees the way to the server beside the notifications.
   await page.goto('/account?tab=notify')
   await expect(page.getByTestId('notify-mail-fix')).toHaveText('Set up a mail server')
-  // A server without the public address cannot send the link either, and says that instead.
-  await mailServer(page, true, baseURL!)
-  expect((await page.request.put('/api/settings', { data: { public_url: '' }, headers: TAB })).ok()).toBe(true)
-  await own.goto('/account')
-  await expect(own.getByTestId('mail-address')).toContainText("The operator has not entered nexlore's public address")
 })
 
-test('the operator gives an account an address; it counts at once and the account is told', async ({ page, browser, baseURL }) => {
+test('the operator never sets an address, only takes one away, with the own password', async ({ page, browser, baseURL }) => {
   await mailServer(page, false, baseURL!)
   await newAccount(page, 'given', baseURL!)
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/settings?tab=server&sub=accounts')
-  const row = page.locator('#accounts li').filter({ hasText: 'given' }).first()
-  await expect(row.getByTestId('account-mail')).toContainText('No mail address')
-  await row.getByRole('button', { name: 'Mail address' }).click()
-  const form = row.getByTestId('account-mail-form')
-  await form.getByLabel('Mail address for given').fill('given@example.com')
-  await form.getByLabel('Your own password').fill(OPERATOR.password)
-  await form.getByRole('button', { name: 'Save' }).click()
-  await expect(row.getByTestId('account-mail')).toContainText('given@example.com')
-  await expect(row.getByTestId('account-mail')).toContainText('entered by the operator')
-  // No mail went out: none was needed (and no server is there).
-  expect(await mails()).toEqual([])
   const own = await signIn(browser, 'given')
-  await own.setViewportSize({ width: 1440, height: 900 })
-  await own.getByRole('button', { name: /^New since your last visit/ }).click()
-  const notice = own.locator('[data-notice="operator_email"]')
-  await expect(notice).toContainText('set your mail address to given@example.com')
-  await notice.getByRole('link', { name: 'To the profile' }).click()
-  await expect(own.getByTestId('mail-status')).toContainText('Confirmed: given@example.com')
-  await expect(own.getByTestId('mail-status')).toContainText('entered by the operator')
+  await enter(own, 'given@example.com', { waits: false })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/settings/accounts')
+  const row = page.getByTestId('account-given')
+  await expect(row).toContainText('given@example.com')
+  await row.getByTestId('account-manage').click()
+  const manage = page.getByTestId('manage-dialog')
+  // No field to set one: the button only takes it away.
+  await expect(manage.getByRole('textbox')).toHaveCount(0)
+  await manage.getByRole('button', { name: 'Remove address' }).click()
+  const confirm = page.getByRole('dialog', { name: 'Remove address' })
+  await confirm.getByLabel('Current password').fill(OPERATOR.password)
+  await confirm.getByRole('button', { name: 'Remove address' }).click()
+  await expect(page.getByTestId('account-given')).not.toContainText('given@example.com')
+  // A script of 1.16.0 that sets an address is refused.
+  const id = (await (await own.request.get('/api/auth/me')).json()).id
+  const refused = await page.request.put(`/api/accounts/${id}/email`, { data: { address: 'other@example.com', current_password: OPERATOR.password }, headers: TAB })
+  expect(refused.ok()).toBe(false)
+  await own.reload()
+  await expect(emailField(own)).toHaveValue('')
 })
 
-test('an account only through the provider follows its address and cannot change it here', async ({ page, browser, baseURL }) => {
+test('an account only through the provider follows its address', async ({ page, browser, baseURL }) => {
   await mailServer(page, true, baseURL!)
   await provider(page)
   const clara = await viaProvider(browser, { sub: 'clara-1', email: 'clara@example.com', preferred_username: 'clara' })
   const problems = collectProblems(clara)
-  await clara.goto('/account')
-  const field = clara.getByTestId('mail-address').getByLabel('Mail address')
-  await expect(field).toHaveValue('clara@example.com')
-  await expect(field).toHaveAttribute('readonly', '')
-  await expect(clara.getByTestId('mail-address')).toContainText('Comes from Stand-in SSO and follows it at every sign-in.')
+  await clara.goto('/settings/profile')
+  await expect(emailField(clara)).toHaveValue('clara@example.com')
   // The provider changed it; the next sign-in brings it along.
   const later = await viaProvider(browser, { sub: 'clara-1', email: 'clara.new@example.com', preferred_username: 'clara' })
-  await later.goto('/account')
-  await expect(later.getByTestId('mail-address').getByLabel('Mail address')).toHaveValue('clara.new@example.com')
-  // The operator has no button for it either.
-  await page.goto('/settings?tab=server&sub=accounts')
-  const row = page.locator('#accounts li').filter({ hasText: 'clara.new@example.com' })
-  await expect(row.getByTestId('account-mail')).toContainText('clara.new@example.com')
-  await expect(row.getByRole('button', { name: 'Mail address' })).toHaveCount(0)
+  await later.goto('/settings/profile')
+  await expect(emailField(later)).toHaveValue('clara.new@example.com')
+  await page.goto('/settings/accounts')
+  await expect(page.getByTestId('account-clara')).toContainText('clara.new@example.com')
   expect(problems).toEqual([])
 })
 
-test('a linked account keeps its own address and is offered the provider\'s; unlinking keeps the own one', async ({ page, browser, baseURL }) => {
+test("a linked account keeps its own address and is offered the provider's, taken with the password", async ({ page, browser, baseURL }) => {
   await mailServer(page, true, baseURL!)
   await provider(page)
   await newAccount(page, 'linda', baseURL!)
@@ -292,41 +295,31 @@ test('a linked account keeps its own address and is offered the provider\'s; unl
   expect(started.ok()).toBe(true)
   await own.goto((await started.json()).url)
   await expect(own).toHaveURL(/\/settings\/security\?linked=standin/)
-  await own.goto('/account')
-  await expect(own.getByTestId('mail-status')).toContainText('Confirmed: linda@example.com')
+  await own.goto('/settings/profile')
+  await expect(emailField(own)).toHaveValue('linda@example.com')
   const offer = own.getByTestId('mail-offer')
-  await expect(offer).toContainText('Stand-in SSO knows you as linda.sso@example.com')
-  await offer.getByRole('button', { name: "Don't ask again" }).click()
+  await expect(offer).toContainText('Use the address from Stand-in SSO?')
+  await expect(offer).toContainText('linda.sso@example.com')
+  await offer.getByRole('button', { name: 'No, thanks' }).click()
   await expect(offer).toHaveCount(0)
   await own.reload()
-  // Not asked again, and nothing taken either: the own address still counts (checked first: it waits for the page).
-  await expect(own.getByTestId('mail-status')).toContainText('Confirmed: linda@example.com')
-  await expect(own.getByTestId('mail-status')).toContainText('entered by you')
+  // Not asked again, and nothing taken either: the own address still counts.
+  await expect(emailField(own)).toHaveValue('linda@example.com')
   await expect(own.getByTestId('mail-offer')).toHaveCount(0)
-  // A newer address at the provider is offered again, and taken on request.
+  // A newer address at the provider is offered again, and taken on request with the password (its link first).
   await (await viaProvider(browser, { sub: 'linda-1', email: 'linda.work@example.com', preferred_username: 'linda' })).context().close()
   await own.reload()
-  await own.getByTestId('mail-offer').getByRole('button', { name: 'Take it' }).click()
-  await expect(own.getByTestId('mail-status')).toContainText('Confirmed: linda.work@example.com')
-  await expect(own.getByTestId('mail-status')).toContainText('from Stand-in SSO')
-  // Unlinked, an address from the provider goes along with the link.
-  expect((await own.request.delete(`/api/oidc/${SLUG}/link`, { headers: TAB })).ok()).toBe(true)
+  await own.getByTestId('mail-offer').getByRole('button', { name: 'Use it' }).click()
+  const confirm = own.getByRole('dialog', { name: 'Confirm with your password.' })
+  await confirm.getByLabel('Current password').fill(PASSWORD)
+  await confirm.getByRole('button', { name: 'Use it' }).click()
+  await confirmFrom(browser, 'linda.work@example.com')
   await own.reload()
-  await expect(own.getByTestId('mail-address').getByLabel('Mail address')).toHaveValue('')
-  await expect(own.getByTestId('mail-status')).toHaveCount(0)
-  // An own one stays: entered and confirmed again, linked and unlinked, it is still there.
-  await enter(own, 'linda@example.com')
-  await confirmFrom(browser, 'linda@example.com')
-  const again = await own.request.post(`/api/oidc/${SLUG}/link`, { data: { password: PASSWORD }, headers: TAB })
-  await own.goto((await again.json()).url)
-  await expect(own).toHaveURL(/\/settings\/security\?linked=standin/)
-  expect((await own.request.delete(`/api/oidc/${SLUG}/link`, { headers: TAB })).ok()).toBe(true)
-  await own.goto('/account')
-  await expect(own.getByTestId('mail-status')).toContainText('Confirmed: linda@example.com')
+  await expect(emailField(own)).toHaveValue('linda.work@example.com')
   expect(problems).toEqual([])
 })
 
-test('an address nobody confirmed never catches somebody else\'s first sign-in through the provider', async ({ page, browser, baseURL }) => {
+test("an address nobody confirmed never catches somebody else's first sign-in through the provider", async ({ page, browser, baseURL }) => {
   await mailServer(page, true, baseURL!)
   await provider(page)
   await newAccount(page, 'mallory', baseURL!)

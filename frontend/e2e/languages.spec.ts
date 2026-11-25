@@ -38,8 +38,9 @@ test('the operator language is offered, falls back to English where it has no te
   try {
     const problems = collectProblems(page)
     await page.goto('/settings')
-    const select = page.getByLabel('Language of the interface')
-    await expect(select.locator('option')).toHaveText(['Deutsch', 'English', 'Español (added by the operator)'])
+    // The language is a field of the profile (the shared account module), empty follows the browser.
+    const select = page.getByTestId('profile-card').getByLabel('Language', { exact: true })
+    await expect(select.locator('option')).toHaveText(['As the browser', 'Deutsch', 'English', 'Español (added by the operator)'])
     // The interface speaks it at once, the account keeps it after: the reload below must not cut that off.
     const kept = page.waitForResponse((answer) => answer.url().endsWith('/api/me/language') && answer.request().method() === 'PUT')
     await select.selectOption('es')
@@ -48,7 +49,7 @@ test('the operator language is offered, falls back to English where it has no te
     const account = page.getByRole('link', { name: / · Ajustes$/ })
     await expect(account).toBeVisible()
     // Not in the Spanish file: English instead of a raw key.
-    await expect(page.getByRole('heading', { name: 'Language', level: 2, exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Profile', level: 2, exact: true })).toBeVisible()
     await page.reload()
     await expect(account).toBeVisible()
     await expect(page.locator('html')).toHaveAttribute('lang', 'es')
@@ -62,7 +63,8 @@ test('the operator language is offered, falls back to English where it has no te
 })
 
 test('the template downloads as the English texts with a _meta entry', async ({ page }) => {
-  await page.goto('/settings')
+  // Beside the languages the operator added (it stood beside the own language in the profile before).
+  await page.goto('/settings/general')
   const download = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download template' }).click()
   const file = await download
@@ -111,7 +113,7 @@ test('the language picked in the profile holds the first time, even when saving 
       ;(window as unknown as { langs: string[] }).langs = seen
       new MutationObserver(() => seen.push(document.documentElement.lang)).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
     })
-    const select = page.getByLabel('Language of the interface')
+    const select = page.getByTestId('profile-card').getByLabel('Language', { exact: true })
     await expect(select.locator('option[value="de"]')).toHaveCount(1)
     await select.selectOption('de')
     await expect.poll(async () => (await (await page.request.get('/api/auth/me')).json()).language).toBe('de')

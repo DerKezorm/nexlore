@@ -13,10 +13,11 @@ test('a display name set in the profile shows at the foot of the sidebar, on com
   await page.setViewportSize({ width: 1440, height: 900 })
   try {
     await page.goto('/account')
+    // The profile of the shared account module: one "Save" for display name, username and address.
     const field = page.getByLabel('Display name')
     await field.fill('Tess Ter')
-    await page.getByRole('button', { name: 'Save', exact: true }).click()
-    await expect(page.getByText('Display name saved.')).toBeVisible()
+    await page.getByTestId('profile-save').click()
+    await expect(page.getByText('Profile saved.')).toBeVisible()
     // The way to the settings shows it; the name to sign in with stays in the profile.
     await expect(accountLink(page, 'Tess Ter')).toBeVisible()
     await expect(page.getByTestId('settings-nav')).toContainText('Tess Ter')
@@ -37,8 +38,8 @@ test('a display name set in the profile shows at the foot of the sidebar, on com
     // Changed again while the app stays open: the comment shows the new name without loading the page again.
     await accountLink(page, 'Tess Ter').click()
     await page.getByLabel('Display name').fill('Tessa Ter')
-    await page.getByRole('button', { name: 'Save', exact: true }).click()
-    await expect(page.getByText('Display name saved.')).toBeVisible()
+    await page.getByTestId('profile-save').click()
+    await expect(page.getByText('Profile saved.')).toBeVisible()
     await page.goBack()
     await panel.getByRole('tab', { name: /Comments/ }).click()
     await expect(author).toHaveText('Tessa Ter')
