@@ -263,7 +263,14 @@ function ManageDialog({ row, listed, operatorHasPassword, mailServer, onClose, o
     note: fact.note ? t(fact.note) : undefined,
     testId: `fact-${fact.fact}`,
   }))
-  const groups = manageGroups(accountActions(listed, APP_CAPS, APP_OWN_ACTIONS))
+  // The last provider of an account without a password stays linked, as in 1.16.0: unlinking it would lock the account
+  // out, and the server refuses it anyway (``oidc_only_account``).
+  const lastLink = !listed.hasPassword && listed.providers.length <= 1
+  const groups = manageGroups(
+    accountActions(listed, APP_CAPS, APP_OWN_ACTIONS).filter(
+      (act) => !(lastLink && act.type === 'button' && act.name.startsWith('account.unlinkProvider')),
+    ),
+  )
 
   const start = (act: Extract<AccountAction, { type: 'button' }>) => {
     const base = act.name.split(':')[0]
