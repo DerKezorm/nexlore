@@ -154,9 +154,9 @@ def _tell(db: Session, file: File, comment: Comment, taking_part: set[int]) -> N
         reader = db.get(Account, account_id)
         if reader is None or not rights.at_least(rights.role_in(db, reader, file.space_id), rights.READ):
             continue
-        how = "names you in a comment on" if account_id in called else "answered in a thread on"
-        notify.send(account_id, "mention", f"{comment.author} {how} {file.title or file.path}", "",
-                    "/note/" + "/".join(quote(part) for part in file.path.split("/")))
+        said = notify.words("mention" if account_id in called else "answer", who=comment.author,
+                            note=file.title or file.path)
+        notify.send(account_id, "mention", said, "/note/" + "/".join(quote(part) for part in file.path.split("/")))
 
 
 def _one(db: Session, file_id: int, comment_id: int) -> Comment:

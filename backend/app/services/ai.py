@@ -310,7 +310,14 @@ def list_models(db: Session, url: str, key: str, *, trusted: bool = False) -> li
 
 
 def allowed(db: Session) -> bool:
+    """The operator's main switch (Server, AI provider): closed, no account uses AI."""
     return bool(settings_service.get(db, "ai_allowed"))
+
+
+def allowed_for(db: Session, row: AccountRow) -> bool:
+    """The main switch and the account's own right ("AI allowed" under Accounts, the shared account module 1.1.0):
+    AI works only where both are on."""
+    return allowed(db) and bool(getattr(row, "ai_allowed", True))
 
 
 MODES = ("own", "shared")
@@ -353,7 +360,7 @@ def access(db: Session, row: AccountRow) -> Access | None:
 
 def usable(db: Session, row: AccountRow) -> Access:
     """The access, or the reason there is none, in the order the person can do something about it."""
-    if not allowed(db):
+    if not allowed_for(db, row):
         raise AiError("ai_off", 403)
     found = access(db, row)
     if found is not None:
@@ -367,7 +374,7 @@ def usable(db: Session, row: AccountRow) -> Access:
 
 def ready(db: Session, row: AccountRow) -> bool:
     """Whether the editor and Lore offer AI to this account now."""
-    return allowed(db) and access(db, row) is not None
+    return allowed_for(db, row) and access(db, row) is not None
 
 
 def view(row: AccountRow) -> dict[str, Any]:

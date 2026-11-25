@@ -44,8 +44,8 @@ from app.db import SessionLocal, engine
 from app.main import app
 from app.models import Account
 from app.security import MAX_FAILURES, SESSION_COOKIE, brake
-from app.services import mailer, settings_service, totp
-from app.vendor import nexoidc
+from app.services import settings_service, totp
+from app.vendor import nexoidc, nexpost
 from app.vendor.nexoidc import attempt, protocol
 
 MANIFEST = json.loads(manifest_datei().read_text(encoding="utf-8"))
@@ -144,11 +144,12 @@ def post(monkeypatch):
     """Mail goes into a list instead of out; the fixture has a mail server and a public address."""
     gesendet: list[dict] = []
 
-    def senden(db, message):
-        body = message.get_body(("plain",))
-        gesendet.append({"an": str(message["To"]), "text": body.get_content() if body else str(message)})
+    def senden(settings, letter):
+        gesendet.append({"an": letter.to, "text": letter.text})
 
-    monkeypatch.setattr(mailer, "_send", senden)
+    # Every system mail leaves through the shared post module (post 1.1.0, nexlore's mailer is gone): caught where it
+    # goes out at once. The checks are the same.
+    monkeypatch.setattr(nexpost.send, "deliver", senden)
     return gesendet
 
 

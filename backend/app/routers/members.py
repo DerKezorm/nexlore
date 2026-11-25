@@ -25,7 +25,7 @@ from ..errors import detail, error
 from ..models import MANAGE, OPERATOR, SPACE_ROLES, Invite, Membership, Space
 from ..models import Account as AccountRow
 from ..security import MIN_PASSWORD, SESSION_COOKIE, brake, hash_token, session_account
-from ..services import accounts, emailaddr, kontenpost, mailer, notices, paths, rights, settings_service
+from ..services import accounts, emailaddr, kontenpost, notices, paths, rights, settings_service
 from ..services.accounts import AccountError
 from ..services.konten_store import KontenStore
 from ..vendor import nexkonten
@@ -148,6 +148,9 @@ def set_member(
     # The operator acting where it does not manage: allowed, but every member is told.
     beyond = rights.operator_powers(account) and not rights.at_least(own, MANAGE)
     target = accounts.by_name(db, person)
+    if target is not None and target.deleted_at is not None:
+        # Deleted (30 days to bring back): gone for everybody, like an unknown name.
+        target = None
     membership = db.get(Membership, (space.id, target.id)) if target is not None else None
     if membership is None and not beyond and (target is None or target.id != account.id):
         # A name brings an invitation, answered under "New"; unknown names get the same answer, the same work and
@@ -335,19 +338,22 @@ def _create(db: DbSession, request: Request, by: AccountRow, space: Space | None
     sent = False
     if payload.send:
         try:
-            language = mailer.language_for(db, by)
+            language = kontenpost.language_for(db, by)
             member = space is not None and emailaddr.taken(db, email, 0)
-            mailer.send_invite(db, email, link, by=by.display_name or by.name, space=space.folder if space else None,
-                               language=language, days=payload.days, member=member)
+            kontenpost.send_invite(db, email, link, by=by.display_name or by.name,
+                                   space=space.folder if space else None, language=language, days=payload.days,
+                                   member=member)
             sent = True
             # Whoever comes through this link proved the address.
             invite.mailed = True
             db.commit()
-        except mailer.MailError as exc:
+        except kontenpost.MailError as exc:
             # The link was to go by mail only: kept, the invitation would stand without anybody holding its link.
             db.delete(invite)
             db.commit()
-            raise error(exc.code, str(exc), 502) from exc
+            # The codes of 1.16.0: no server, an address the mail cannot go to, or the server did not take it.
+            code = exc.code if exc.code in ("mail_off", "invalid_email") else "mail_failed"
+            raise error(code, str(exc), 502) from exc
     return {**_invite_view(invite, db), "link": link, "sent": sent}
 
 

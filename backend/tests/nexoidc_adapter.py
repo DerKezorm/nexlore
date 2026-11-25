@@ -179,6 +179,19 @@ class Adapter(StandardAdapter):
             "DELETE", f"/api/accounts/{account_id}", json={"current_password": self.password_for(OPERATOR_NAME)}
         )
         assert answer.status_code == 204, answer.text
+        # Since konten 1.1.0 the route deletes for 30 days to bring back; for good (rows, links, the way back in the
+        # same commit) at the housekeeping after them (``main._purge_deleted_accounts``).
+        from datetime import timedelta
+
+        from app.main import _purge_deleted_accounts
+        from app.models import Account
+
+        with SessionLocal() as db:
+            row = db.get(Account, account_id)
+            assert row is not None and row.deleted_at is not None
+            row.deleted_at = row.deleted_at - timedelta(days=31)
+            db.commit()
+        _purge_deleted_accounts()
 
     def legacy_setup(
         self, *, issuer: str, client_id: str, client_secret: str, label: str, subjects: dict[str, str]

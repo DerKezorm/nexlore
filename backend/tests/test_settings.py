@@ -16,7 +16,7 @@ from app.config import get_settings
 from app.db import SessionLocal
 from app.models import Account, AuthSession, Setting
 from app.security import decrypt_secret
-from app.services import backups, mailer, settings_service
+from app.services import backups, kontenpost, settings_service
 from app.vendor import nexsicherung
 
 from .conftest import PASSWORD, make_account, sign_in
@@ -29,11 +29,12 @@ class FakeSmtp:
     fail = False
 
     def __init__(self, host: str, port: int, timeout: float = 0, context: Any = None) -> None:
+        # The shared post module connects without ``with``: a refusing server says no right here.
+        if FakeSmtp.fail:
+            raise smtplib.SMTPConnectError(421, b"mail.example.com says no to secret@example.com")
         self.host, self.port = host, port
 
     def __enter__(self) -> Self:
-        if FakeSmtp.fail:
-            raise smtplib.SMTPConnectError(421, b"mail.example.com says no to secret@example.com")
         return self
 
     def __exit__(self, *_: object) -> None:
@@ -47,6 +48,12 @@ class FakeSmtp:
 
     def send_message(self, message: EmailMessage) -> None:
         FakeSmtp.sent.append(message)
+
+    def quit(self) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
 
 
 @pytest.fixture
@@ -143,7 +150,7 @@ def test_a_failing_mail_server_says_so_without_its_answer(
     failed = client.post("/api/settings/mail-test", json={"to": "dora@example.com"})
     assert failed.status_code == 502 and failed.json()["detail"]["code"] == "mail_failed"
     # The server's answer can quote addresses; only its kind goes to the log.
-    assert "secret@example.com" not in caplog.text and "SMTPConnectError" in caplog.text
+    assert "secret@example.com" not in caplog.text and "reason=mail_refused" in caplog.text
     smtp.fail = False
     assert client.post("/api/settings/mail-test", json={"to": "dora@example.com"}).status_code == 204
     assert client.post("/api/settings/mail-test", json={"to": "not an address"}).status_code == 422
@@ -151,9 +158,9 @@ def test_a_failing_mail_server_says_so_without_its_answer(
 
 def test_mail_off_without_a_server() -> None:
     with SessionLocal() as db:
-        assert mailer.configured(db) is False
-        with pytest.raises(mailer.MailError) as caught:
-            mailer.send_test(db, "dora@example.com")
+        assert kontenpost.configured(db) is False
+        with pytest.raises(kontenpost.MailError) as caught:
+            kontenpost.send_test(db, "dora@example.com")
     assert caught.value.code == "mail_off"
 
 

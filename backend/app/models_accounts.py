@@ -77,6 +77,9 @@ class MailOutbox(Base):
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     sent_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     error: Mapped[str] = mapped_column(String(500), default="")
+    #: A letter that may go out only once (post 1.1.0: ``daily:<account>:<day>``); empty for every other one. The
+    #: letter's headers stand in its JSON (``letter_data``).
+    key: Mapped[str | None] = mapped_column(String(200), nullable=True, unique=True, index=True)
 
 
 class PasswordReset(Base):

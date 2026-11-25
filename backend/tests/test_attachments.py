@@ -91,6 +91,17 @@ def settings(**values: object) -> None:
         settings_service.save(db, values)
 
 
+def limit_of(name: str, megabytes: int) -> None:
+    """The storage limit of one account (the shared account module 1.1.0: per account, set under Accounts)."""
+    from app.models import Account
+
+    with SessionLocal() as db:
+        row = db.scalar(select(Account).where(Account.name == name))
+        assert row is not None
+        row.storage_limit = megabytes * 1024 * 1024
+        db.commit()
+
+
 def test_a_pasted_picture_lands_beside_the_note_named_after_it(client: TestClient, filled: Path) -> None:
     answer = upload(client, photo(), pasted=True)
     assert answer.status_code == 201, answer.text
@@ -194,7 +205,8 @@ def test_the_limits_per_file_and_per_account_hold(client: TestClient, filled: Pa
                            content=iter([b"\x00" * 600_000, b"\x00" * 600_000]), headers=TAB)
     assert streamed.status_code == 413 and streamed.json()["detail"]["code"] == "too_large"
     assert not (filled / "Home" / "Attachments").exists()
-    settings(upload_max_mb=10, quota_mb=1)
+    settings(upload_max_mb=10)
+    limit_of("tester", 1)
     assert upload(client, b"a" * 700_000, name="one.bin").status_code == 201
     over = upload(client, b"b" * 700_000, name="two.bin")
     assert over.status_code == 413 and over.json()["detail"]["code"] == "quota_exceeded"
@@ -212,7 +224,7 @@ def test_two_uploads_at_once_do_not_share_the_space_left(client: TestClient, fil
     from app.services import attachments
     from app.services.vault import Actor
 
-    settings(quota_mb=1)
+    limit_of("tester", 1)
     actor = Actor(name="tester", client="tab-aaaaaaaa")
     # Both planned before either is finished: each saw the whole megabyte free.
     plans, received = [], []
@@ -469,7 +481,7 @@ def test_an_upload_beyond_the_space_left_stops_before_a_byte_is_stored(client: T
     from app.services import attachments
     from app.services.vault import Actor
 
-    settings(quota_mb=1)
+    limit_of("tester", 1)
     plan = attachments.plan(
         note="Home/Shopping.md", folder=None, name="huge.bin", pasted=False, actor=Actor(name="tester", client="tab-a")
     )

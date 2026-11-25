@@ -1,4 +1,6 @@
-"""The operator's list of accounts: roles, names, addresses, blocking, deleting, reset links.
+"""The operator's list of accounts: roles, names, addresses, blocking, deleting (30 days to bring back), storage limit
+and the right to AI per account, reset links. The functions of the shared account module (``nexkonten.manage``, konten
+1.1.0): several operators, never on one's own account, never the last operator who can sign in.
 
 The operator sees name, address, way of signing in, role, spaces, uploaded storage and last use; never a title or a
 word of somebody else's notes, and never sets somebody else's password (a reset link lets the person set their own)
@@ -18,15 +20,13 @@ from sqlalchemy import func, select
 
 from ..deps import DbSession, OperatorAccount, confirm_operator
 from ..errors import error
-from ..models import OPERATOR, ROLES, File, Membership, OidcLink, OidcProvider, Space, utcnow
+from ..models import OPERATOR, ROLES, File, Membership, OidcLink, OidcProvider, Space
 from ..models import Account as AccountRow
-from ..models_accounts import FormerName
 from ..security import end_all_sessions
-from ..services import accounts, kontenpost, settings_service, totp
+from ..services import accounts, kontenpost, settings_service
 from ..services.konten_store import KontenStore
-from ..services.oidc_store import mirror_legacy
 from ..vendor import nexkonten
-from ..vendor.nexkonten import invites, profiles, resets
+from ..vendor.nexkonten import invites, manage, profiles, resets
 from ..vendor.nexkonten import login as konten_login
 from .auth import OperatorConfirmIn, account_view, fail
 
@@ -55,6 +55,22 @@ class NameIn(BaseModel):
 class DisplayNameIn(BaseModel):
     display_name: str = Field(max_length=200)
     current_password: str = Field(default="", max_length=200)
+
+
+#: The largest storage limit the page offers: 1 PB (the field takes GB).
+LIMIT_MAX = 1024**5
+
+
+class LimitIn(BaseModel):
+    #: Bytes; None removes the limit.
+    limit: int | None = Field(default=None, ge=1, le=LIMIT_MAX)
+    current_password: str = Field(default="", max_length=200)
+
+
+class RightIn(BaseModel):
+    #: A right of nexlore per account (konten 1.1.0): ``ai``.
+    right: str = Field(max_length=16)
+    allowed: bool
 
 
 class AccountEmailIn(BaseModel):
@@ -106,6 +122,11 @@ def _listed(db: DbSession, row: AccountRow, linked: dict[int, list[dict[str, Any
         "locked": accounts.is_locked(row),
         "blocked": row.blocked_at is not None,
         "blocked_at": row.blocked_at.isoformat() if row.blocked_at else None,
+        "deleted": row.deleted_at is not None,
+        "deleted_at": row.deleted_at.isoformat() if row.deleted_at else None,
+        "purge_at": manage.purge_at(row.deleted_at).isoformat() if row.deleted_at else None,
+        "storage_limit": row.storage_limit,
+        "ai_allowed": bool(row.ai_allowed),
         "has_password": bool(row.password_hash),
         "providers": linked.get(row.id, []),
         "storage_used": storage.get(row.name, 0),
@@ -149,26 +170,37 @@ def delete_impact(account_id: int, _operator: OperatorAccount, db: DbSession) ->
     return {"spaces": spaces, "alone": _alone_in(db, row.id)}
 
 
-@router.delete("/{account_id}", status_code=204, summary="Delete an account for good")
+def _manage(work: Any) -> None:
+    try:
+        work()
+    except nexkonten.AccountError as exc:
+        raise fail(exc) from exc
+
+
+@router.delete("/{account_id}", status_code=204, summary="Delete an account (30 days to bring it back)")
 def delete_account(
     account_id: int, payload: OperatorConfirmIn, request: Request, operator: OperatorAccount, db: DbSession,
 ) -> None:
-    """Its rights go with it; its notes stay where they are. A space it was the only member of has no members any
-    more and so belongs to the operator (who runs the disk it lies on anyway). Its name stays reserved for ever: the
-    history keeps it as the author of versions, uploads and comments, and nobody else may take them over."""
+    """Gone for everybody at once and shut out (the shared account module 1.1.0); for 30 days the operator brings it
+    back with everything. Then it goes for good (``manage.purge_due`` in the housekeeping): its rights go with it, its
+    notes stay where they are, a space it was the only member of belongs to the operator, and its name stays reserved
+    for ever."""
     confirm_operator(request, db, operator, payload.current_password)
-    if account_id == operator.id:
-        raise error("cannot_delete_self", "You cannot delete your own account.", 409)
     row = _row(db, account_id)
-    name = row.name
-    db.add(FormerName(account_id=None, name=name))
-    db.delete(row)
-    # The account's links and old subject go with it: the way back and its fingerprint follow in the same commit
-    # (module 1.0.10), or the next start takes the stale fingerprint for a change of the older version.
-    mirror_legacy(db)
-    db.commit()
-    totp.forget_account(account_id)
-    logger.warning("Account deleted name=%s by=%s", name, operator.name)
+    _manage(lambda: manage.remove(KontenStore(db), row.id, actor_id=operator.id, actor_confirmed=True))
+    logger.warning("Account deleted name=%s by=%s", row.name, operator.name)
+
+
+@router.post("/{account_id}/restore", summary="Bring a deleted account back while its 30 days run")
+def restore_account(
+    account_id: int, payload: OperatorConfirmIn, request: Request, operator: OperatorAccount, db: DbSession,
+) -> dict[str, Any]:
+    confirm_operator(request, db, operator, payload.current_password)
+    row = _row(db, account_id)
+    _manage(lambda: manage.restore(KontenStore(db), row.id, actor_id=operator.id, actor_confirmed=True))
+    db.refresh(row)
+    logger.warning("Account restored name=%s by=%s", row.name, operator.name)
+    return _one(db, row)
 
 
 @router.post("/{account_id}/sign-out", status_code=204, summary="End every session of an account")
@@ -185,14 +217,8 @@ def block_account(
     """Sessions, paired devices, API tokens, MCP keys and the calendar address count for nothing while it is blocked
     (``security.account_out`` and the checks of each way in); its rights and notes stay."""
     confirm_operator(request, db, operator, payload.current_password)
-    if account_id == operator.id:
-        raise error("cannot_block_self", "You cannot block yourself.", 409)
     row = _row(db, account_id)
-    if row.blocked_at is None:
-        row.blocked_at = utcnow()
-        db.commit()
-        end_all_sessions(db, row.id)
-        totp.forget_account(row.id)
+    _manage(lambda: manage.block(KontenStore(db), row.id, actor_id=operator.id, actor_confirmed=True))
     logger.warning("Account blocked name=%s by=%s", row.name, operator.name)
 
 
@@ -200,19 +226,14 @@ def block_account(
 def unblock_account(
     account_id: int, payload: OperatorConfirmIn, request: Request, operator: OperatorAccount, db: DbSession,
 ) -> None:
+    """The sessions from before the block do not come back to life."""
     confirm_operator(request, db, operator, payload.current_password)
     row = _row(db, account_id)
-    if row.blocked_at is not None:
-        # The sessions from before the block do not come back to life.
-        end_all_sessions(db, row.id)
-        row.blocked_at = None
-        row.failed_logins = 0
-        row.locked_until = None
-        db.commit()
+    _manage(lambda: manage.unblock(KontenStore(db), row.id, actor_id=operator.id, actor_confirmed=True))
     logger.warning("Account unblocked name=%s by=%s", row.name, operator.name)
 
 
-@router.put("/{account_id}/role", summary="Make an account operator or member")
+@router.put("/{account_id}/role", summary="Make an account operator or member (several operators may be)")
 def set_role(
     account_id: int, payload: RoleIn, request: Request, operator: OperatorAccount, db: DbSession,
 ) -> dict[str, Any]:
@@ -220,11 +241,35 @@ def set_role(
     if payload.role not in ROLES:
         raise error("invalid_role", "Unknown role.", 422)
     row = _row(db, account_id)
-    if row.id == operator.id and payload.role != OPERATOR:
-        raise error("cannot_demote_self", "You cannot take the operator role from yourself.", 409)
-    row.role = payload.role
-    db.commit()
+    if row.id == operator.id and payload.role == OPERATOR:
+        return _one(db, row)
+    _manage(lambda: manage.set_role(KontenStore(db), row.id, payload.role == OPERATOR, actor_id=operator.id,
+                                    actor_confirmed=True))
+    db.refresh(row)
     logger.warning("Role changed name=%s role=%s by=%s", row.name, payload.role, operator.name)
+    return _one(db, row)
+
+
+@router.put("/{account_id}/storage-limit", summary="How much the account may upload (None: no limit)")
+def set_storage_limit(account_id: int, payload: LimitIn, request: Request, operator: OperatorAccount,
+                      db: DbSession) -> dict[str, Any]:
+    confirm_operator(request, db, operator, payload.current_password)
+    row = _row(db, account_id)
+    _manage(lambda: manage.set_storage_limit(KontenStore(db), row.id, payload.limit, actor_id=operator.id,
+                                             actor_confirmed=True))
+    db.refresh(row)
+    logger.info("Storage limit set name=%s limit=%s by=%s", row.name, payload.limit or "none", operator.name)
+    return _one(db, row)
+
+
+@router.put("/{account_id}/right", summary="A right of nexlore for the account (AI in its notes)")
+def set_right(account_id: int, payload: RightIn, operator: OperatorAccount, db: DbSession) -> dict[str, Any]:
+    """A tick in "Manage", saved at once without the password (the module's rule for rights)."""
+    row = _row(db, account_id)
+    _manage(lambda: manage.set_right(KontenStore(db), row.id, payload.right, payload.allowed, actor_id=operator.id))
+    db.refresh(row)
+    logger.info("Right changed name=%s right=%s allowed=%s by=%s", row.name, payload.right, payload.allowed,
+                operator.name)
     return _one(db, row)
 
 

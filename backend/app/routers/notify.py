@@ -13,7 +13,7 @@ from ..errors import error
 from ..models import OPERATOR
 from ..models import Account as AccountRow
 from ..security import brake
-from ..services import mailer, notify
+from ..services import kontenpost, notify
 
 router = APIRouter(prefix="/api/me/notify", tags=["notify"])
 
@@ -24,7 +24,7 @@ def _view(db: Any, account: AccountRow) -> dict[str, Any]:
         "choices": notify.choices(account),
         # The address itself goes out never again: it may carry a token. Only where it points.
         "webhook": {"set": bool(hook), "host": urlsplit(hook).hostname or "" if hook else ""},
-        "email": {"possible": mailer.configured(db) and bool(account.email), "server": mailer.configured(db),
+        "email": {"possible": kontenpost.configured(db) and bool(account.email), "server": kontenpost.configured(db),
                   "address": account.email or ""},
         "operator": account.role == OPERATOR,
     }
@@ -76,6 +76,6 @@ def test(account: Account, db: DbSession) -> dict[str, str]:
     row = db.get(AccountRow, account.id)
     assert row is not None
     mine = notify.choices(row)
-    if not row.notify_webhook_enc and not (mine["email"] and row.email and mailer.configured(db)):
+    if not row.notify_webhook_enc and not (mine["email"] and row.email and kontenpost.configured(db)):
         raise error("notify_no_way", "Give a webhook address or switch mail on first.", 409)
-    return notify.deliver(row.id, "test", "nexlore test", "Notifications from nexlore reach you here.", "/account")
+    return notify.deliver(row.id, "test", notify.words("test"), "/settings/notifications", at_once=True)

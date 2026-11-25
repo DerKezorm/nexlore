@@ -15,6 +15,7 @@ from typing import Any, ClassVar
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     DateTime,
     Float,
@@ -33,6 +34,16 @@ from sqlalchemy.types import TypeDecorator
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+def _default_storage_limit(context: Any) -> int | None:
+    """The storage limit a new account starts with: the server's setting ``quota_mb`` (0: none), read on the
+    connection that inserts it."""
+    from .services.konten_wanderung import megabytes
+
+    raw = context.connection.exec_driver_sql("SELECT value FROM settings WHERE key = 'quota_mb'").scalar()
+    found = megabytes(raw)
+    return found * 1024 * 1024 if found > 0 else None
 
 
 class UtcDateTime(TypeDecorator[datetime]):
@@ -463,6 +474,18 @@ class Account(Base):
     #: Blocked by the operator (the shared account module): out on every way in at once. None for every account of
     #: 1.16.0, which knew no blocking.
     blocked_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: Deleted by the operator (the shared account module 1.1.0): gone for everybody at once, its things kept; for 30
+    #: days the operator brings it back, then it goes for good (``manage.purge_due``). None for every account of
+    #: 1.16.0, which deleted for good at once.
+    deleted_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: How many bytes the account may upload (vault and trash), None for no limit (the shared account module 1.1.0).
+    #: The migration to 1.1.0 gives every account the server's limit of before (``quota_mb``); a new account starts
+    #: with that setting as well (``_default_storage_limit``).
+    storage_limit: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=lambda context:
+                                                      _default_storage_limit(context))
+    #: The account may use AI in its notes (the shared account module 1.1.0, "KI erlaubt"); allowed from the start.
+    #: The operator's switch ``ai_allowed`` stays the main one: AI works only where both are on.
+    ai_allowed: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
     #: The account's own AI service for its notes (``services/ai.py``): an OpenAI-shaped address, the model, the key
     #: encrypted with the server secret, and whether the account switched it on. Off and empty from the start.
     ai_url: Mapped[str] = mapped_column(String(500), default="")

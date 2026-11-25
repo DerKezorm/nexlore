@@ -69,8 +69,7 @@ def invite(db: Session, space: Space, target: Account | None, role: str, by: Acc
     if news:
         from . import notify
 
-        notify.send(target.id, "invite", f"{by.name} invites you into {space.folder}", "Answer under New in nexlore.",
-                    "/")
+        notify.send(target.id, "invite", notify.words("invite", who=by.name, space=space.folder), "/")
 
 
 def tell(db: Session, space: Space, kind: str, actor: Account, subject: str, role: str = "",

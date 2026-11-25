@@ -8,7 +8,6 @@ import logging
 import threading
 import time
 from datetime import UTC, datetime, timedelta
-from email.message import EmailMessage
 from typing import Any, Self
 
 import pytest
@@ -17,7 +16,7 @@ from fastapi.testclient import TestClient
 from app.db import SessionLocal
 from app.models import Account, SpaceNotice
 from app.security import brake
-from app.services import logs, mailer, notify, settings_service, updates
+from app.services import kontenpost, logs, notify, settings_service, updates
 
 from .conftest import join
 from .test_notify import HOOK, Sent, hooked, sent  # noqa: F401  (the fixture is used by name)
@@ -79,7 +78,7 @@ def test_invitations_by_name_have_an_hourly_limit_for_known_and_unknown_names(cl
 def test_an_invitation_mail_needs_the_public_address_and_has_a_limit(client: TestClient, account: Account,
                                                                      monkeypatch: pytest.MonkeyPatch) -> None:
     mails: list[str] = []
-    monkeypatch.setattr(mailer, "send_invite", lambda _db, to, link, **_: mails.append(link))
+    monkeypatch.setattr(kontenpost, "send_invite", lambda _db, to, link, **_: mails.append(link))
     anna = person("anna")
     assert anna.post("/api/spaces", json={"name": "Mail"}).status_code == 201
     asked = {"email": "guest@example.com", "send": True, "role": "read"}
@@ -103,7 +102,7 @@ def test_one_account_gets_at_most_sixty_notifications_an_hour(client: TestClient
     hooked(carl)
     me = carl.get("/api/auth/me").json()["id"]
     for number in range(70):
-        notify.send(me, "mention", f"Mention {number}", "x")
+        notify.send(me, "mention", notify.words("mention", who="bob", note=f"Note {number}"))
     assert len(sent.posts) == 60
 
 
@@ -145,12 +144,18 @@ def test_the_webhook_test_has_an_hourly_limit(client: TestClient, account: Accou
     brake.forget()
 
 
-def test_a_mail_subject_is_one_line_whatever_the_title(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    built: list[EmailMessage] = []
-    monkeypatch.setattr(mailer, "_send", lambda _db, message: built.append(message))
+def test_a_mail_subject_is_one_line_whatever_the_title(client: TestClient, account: Account) -> None:
+    from app.vendor import nexpost
+
     with SessionLocal() as db:
-        notify._mail(db, "carl@example.com", "Line\none\r\x00two three\x85four", "message", "")
-    assert built[0]["Subject"] == "Line one two three four"
+        row = db.get(Account, account.id)
+        assert row is not None
+        row.email = "carl@example.com"
+        said = notify.words("mention", who="bob", note="Line\none\r\x00two three\x85four")
+        letter = notify._letter(db, row, said, "")
+    assert letter.subject == "bob names you in a comment on Line one two three four"
+    message = nexpost.send.message(nexpost.MailSettings(host="smtp.example.com", sender="lore@example.com"), letter)
+    assert message["Subject"] == "bob names you in a comment on Line one two three four"
 
 
 # --- The update check ---------------------------------------------------------------------------------------------------

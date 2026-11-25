@@ -54,6 +54,8 @@ from .routers import presence as presence_router
 from .routers import proposals as proposals_router
 from .routers import recent as recent_router
 from .routers import search as search_router
+from .routers import server_mail as server_mail_router
+from .routers import server_signin as server_signin_router
 from .routers import settings as settings_router
 from .routers import themes as themes_router
 from .routers import totp as totp_router
@@ -81,7 +83,7 @@ logger = logging.getLogger("nexlore")
 
 ROUTERS = [
     health, about, locales_router, logs_router, auth, totp_router, passkeys_router, oidc, accounts, members,
-    settings_router, vault_router,
+    settings_router, server_signin_router, server_mail_router, vault_router,
     attachments, imports, backups_router, shares, graph, everyday, mcp_router, drafts, plugins_router, looks_router,
     ai_router, favorites_router, avatars_router, recent_router, themes_router, search_router, news_router,
     proposals_router, bases_router, canvas_router, ink_router, cleanup_router, inbox_router, feed_router,
@@ -104,9 +106,17 @@ def _write_log_mode(mode: str, until: datetime | None) -> None:
         settings_service.save(db, {"log_mode": mode, "log_mode_until": until.isoformat() if until else None})
 
 
+def _purge_deleted_accounts() -> None:
+    from .vendor.nexkonten import manage
+
+    with SessionLocal() as db:
+        manage.purge_due(KontenStore(db))
+
+
 async def _sweep_forever(stop: asyncio.Event) -> None:
     """Enrolments and sign-ins waiting for their second factor run out; what ran out goes from memory, ended
-    sessions from the database once an hour (they stayed until someone showed them again)."""
+    sessions from the database once an hour (they stayed until someone showed them again), and so do accounts deleted
+    30 days ago (the shared account module, ``manage.purge_due``)."""
     rounds = 0
     while not stop.is_set():
         totp.sweep()
@@ -118,6 +128,10 @@ async def _sweep_forever(stop: asyncio.Event) -> None:
         if rounds % 60 == 0:
             with SessionLocal() as db:
                 purge_sessions(db)
+            try:
+                await asyncio.to_thread(_purge_deleted_accounts)
+            except Exception:
+                logger.exception("Removing deleted accounts for good failed")
         rounds += 1
         try:
             await asyncio.wait_for(stop.wait(), 60)

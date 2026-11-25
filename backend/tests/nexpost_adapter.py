@@ -105,3 +105,38 @@ class Adapter(StandardAdapter):
         found = [letter for letter in caught.letters if letter.kind == "new_sign_in"]
         assert found, "no mail about a new sign-in"
         return found[0]
+
+    # --- since post 1.1.0 --------------------------------------------------------------------------------------------
+
+    mail_prefix = "/api/server/mail"
+
+    def account(self, address: str, *, language: str, name: str, confirmed: bool) -> Any:
+        """An account of nexlore with this address (``Store.recipient`` takes its id)."""
+        import secrets
+
+        from app.db import SessionLocal
+        from app.models import MEMBER, Account
+
+        with SessionLocal() as db:
+            row = Account(name=f"p{secrets.token_hex(4)}", display_name=name, email=address, email_confirmed=confirmed,
+                          language=language, role=MEMBER)
+            db.add(row)
+            db.commit()
+            return row.id
+
+    def client(self, role: str) -> Any:
+        """nexlore's TestClient (``nexpost.api.router`` under ``/api/server/mail``), as nobody, a member or the
+        operator."""
+        import secrets
+
+        from fastapi.testclient import TestClient
+
+        from app.main import app
+        from app.models import MEMBER, OPERATOR
+        from tests.conftest import make_account, sign_in
+
+        browser = TestClient(app, base_url="https://lore.example.com", headers={"X-Nexlore-Client": "tab-contract"})
+        if role != "anonymous":
+            row = make_account(f"{role[:3]}{secrets.token_hex(3)}", OPERATOR if role == "operator" else MEMBER)
+            sign_in(browser, row)
+        return browser

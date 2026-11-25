@@ -35,7 +35,9 @@ _COMBO = re.compile(
 )
 
 DEFAULTS: dict[str, Any] = {
-    "mode": "dark",
+    #: Light, dark or as the system (the shared account module's theme, plan "Einstellungen": "as the system" from the
+    #: start; accounts of before that never chose keep dark, ``konten_wanderung``).
+    "mode": "system",
     #: ``nexlore``, a theme that comes along (``services/themes.BUILT_IN``) or ``t:<id>`` of a stored one.
     "theme": "nexlore",
     #: Take the theme a space sets for its notes.

@@ -13,6 +13,11 @@ a second start finds nothing to do.
   the history (versions, uploads, comments, moves, decisions, plugins, notices) are reserved for ever, like every
   former name from now on: nobody inherits another person's history, uploads or mentions (draft, "Alte
   Benutzernamen").
+- Once more for the shared account module 1.1.0 (``SETTING_110``): every address that counts is proven, so the box
+  "Address not confirmed yet" shows only for one entered from now on (plan "Einstellungen", E23); every account gets
+  the server's storage limit of before (``quota_mb``, 0 for none) as its own (E24); "AI allowed" per account starts
+  allowed (the column's default); an account that never chose light or dark keeps the dark look nexlore gave it
+  until now (the start for a new account is "as the system").
 """
 
 from __future__ import annotations
@@ -29,6 +34,9 @@ logger = logging.getLogger("nexlore.db")
 #: The setting that says the one-time steps ran (their version).
 SETTING = "konten_migrated"
 VERSION = 1
+#: The setting that says the one-time steps of the shared account module 1.1.0 ran.
+SETTING_110 = "konten_110_migrated"
+MB = 1024 * 1024
 
 #: Where 1.16.0 keeps a username as text: (table, column).
 NAME_COLUMNS = (
@@ -81,6 +89,44 @@ def _once(connection: Connection) -> None:
                 proven or 0, len(gone))
 
 
+def megabytes(raw: object) -> int:
+    """``quota_mb`` as the settings table holds it (a JSON number SQLite reads back as a number, or its text)."""
+    try:
+        value = json.loads(raw) if isinstance(raw, str) else raw
+        return max(int(value), 0) if value is not None and not isinstance(value, bool) else 0  # type: ignore[call-overload]
+    except (TypeError, ValueError):
+        return 0
+
+
+def _once_110(connection: Connection) -> None:
+    done = connection.execute(text("SELECT value FROM settings WHERE key = :key"), {"key": SETTING_110}).first()
+    if done is not None:
+        return
+    proven = connection.execute(
+        text("UPDATE accounts SET email_proven = 1 WHERE email <> '' AND email_confirmed = 1 AND email_proven = 0")
+    ).rowcount
+    raw = connection.execute(text("SELECT value FROM settings WHERE key = 'quota_mb'")).scalar()
+    quota = megabytes(raw)
+    limited = 0
+    if quota > 0:
+        limited = connection.execute(text("UPDATE accounts SET storage_limit = :limit"), {"limit": quota * MB}).rowcount
+    kept_dark = 0
+    for account_id, raw_look in connection.execute(text("SELECT id, appearance FROM accounts")).all():
+        try:
+            look = json.loads(raw_look) if raw_look else {}
+        except (TypeError, ValueError):
+            look = {}
+        if not isinstance(look, dict) or "mode" in look:
+            continue
+        connection.execute(text("UPDATE accounts SET appearance = :look WHERE id = :id"),
+                           {"look": json.dumps({**look, "mode": "dark"}), "id": account_id})
+        kept_dark += 1
+    connection.execute(text("INSERT INTO settings (key, value) VALUES (:key, :value)"),
+                       {"key": SETTING_110, "value": json.dumps(1)})
+    logger.info("Accounts taken over for the account module 1.1.0: proven addresses=%s, storage limits=%s, "
+                "kept dark=%s", proven or 0, limited or 0, kept_dark)
+
+
 def run(engine: Engine) -> None:
     with engine.begin() as connection:
         missing = [row[0] for row in connection.execute(text("SELECT id FROM auth_sessions WHERE uid IS NULL"))]
@@ -108,3 +154,4 @@ def run(engine: Engine) -> None:
             # does not read the whole history under the write lock.
             connection.execute(text(f'CREATE INDEX IF NOT EXISTS "ix_{table}_{column}_name" ON "{table}" ("{column}")'))
         _once(connection)
+        _once_110(connection)

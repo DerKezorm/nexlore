@@ -180,7 +180,7 @@ def caller_of_key(db: Session, key_id: int) -> Caller | None:
 
 def _caller(db: Session, key: McpKey, *, used: bool) -> Caller | None:
     account = db.get(Account, key.account_id)
-    if account is None or account.blocked_at is not None or (
+    if account is None or account.blocked_at is not None or account.deleted_at is not None or (
         account.locked_until is not None and account.locked_until > utcnow()
     ):
         return None
@@ -304,8 +304,7 @@ def add_request(db: Session, caller: Caller, tool: str, arguments: dict[str, obj
     logger.info("MCP request made request_id=%s tool=%s key_id=%s", row.id, tool, caller.key_id)
     from . import notify
 
-    notify.send(caller.account.id, "approval", f"{caller.key_name} waits for your approval", f"Tool: {tool}",
-                "/requests", 4)
+    notify.send(caller.account.id, "approval", notify.words("approval", key=caller.key_name, tool=tool), "/requests", 4)
     return row
 
 

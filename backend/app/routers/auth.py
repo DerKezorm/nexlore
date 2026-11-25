@@ -58,7 +58,6 @@ from ..services import (
     kontenpost,
     locales,
     lore,
-    mailer,
     settings_service,
     totp,
 )
@@ -287,7 +286,7 @@ def sign_in(db: DbSession, request: Request, response: Response, account: Accoun
     """The session starts. ``tell``: a sign-in by its owner (password, provider, passkey), not right after a setup
     or an invitation; from a browser that never signed in as the account, a confirmed address hears of it ("A new
     sign-in", unless the person turned that off)."""
-    mailer.note_browser_language(account, request.headers.get("accept-language", ""))
+    kontenpost.note_browser_language(account, request.headers.get("accept-language", ""))
     known = bool(browser_mark(db, request, account.id))
     token = start_session(db, account, client_ip(request), request.headers.get("user-agent", ""), via,
                           remember=remember)
@@ -482,7 +481,7 @@ def me(account: Account, db: DbSession, request: Request) -> dict[str, Any]:
     return {
         **account_view(account, db),
         "shares_allowed": bool(settings_service.get(db, "shares_allowed")),
-        "mail": mailer.configured(db),
+        "mail": kontenpost.configured(db),
         # Why the profile cannot send a confirmation now (empty: it can): no mail server, or no public address.
         "email_confirm": emailaddr.cannot_mail(db),
         "min_password": MIN_PASSWORD,
@@ -496,7 +495,7 @@ def me(account: Account, db: DbSession, request: Request) -> dict[str, Any]:
         # The editor offers AI only when the operator allows it and the account switched its own service on.
         "ai_ready": ai.ready(db, account),
         # Frag Lore shows in the header whenever the operator allows AI; without a service it says what is missing.
-        "ai_allowed": ai.allowed(db),
+        "ai_allowed": ai.allowed_for(db, account),
         # Frag Lore shows only where the operator switched it on and an AI service is ready for this account.
         "lore_allowed": lore.allowed(db),
         "lore": lore.ready(db, account),

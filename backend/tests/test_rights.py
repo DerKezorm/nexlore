@@ -284,6 +284,16 @@ def test_deleting_the_only_member_hands_the_space_to_the_operator(world: World) 
     ids = {row["name"]: row["id"] for row in world.operator.get("/api/accounts").json()}
     gone = world.operator.request("DELETE", f"/api/accounts/{ids['anna']}", json={"current_password": PASSWORD})
     assert gone.status_code == 204
+    # For 30 days she can come back with her spaces; then she goes for good (the shared account module 1.1.0).
+    assert "Private" not in names(world.operator)
+    from datetime import timedelta
+
+    from app.main import _purge_deleted_accounts
+
+    with SessionLocal() as db:
+        db.get(Account, ids["anna"]).deleted_at -= timedelta(days=31)  # type: ignore[union-attr, operator]
+        db.commit()
+    _purge_deleted_accounts()
     assert "Private" in names(world.operator)
 
 

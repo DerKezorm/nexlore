@@ -19,7 +19,8 @@ from app.db import SessionLocal
 from app.models import SIGN_IN_OIDC, Account, OidcLink
 from app.models_accounts import MailOutbox
 from app.security import hash_token
-from app.services import accounts, mailer
+from app.services import accounts
+from app.vendor import nexpost
 
 from .conftest import PASSWORD, make_account
 from .oidc_helpers import UI, FakeProvider, add_provider, error_in, fresh_browser, location, sign_in_via_oidc
@@ -41,17 +42,17 @@ class Postbox:
         self.sent: list[Any] = []
         self.down = False
 
-        def send(_db: Any, message: Any) -> None:
+        def send(_settings: Any, letter: Any) -> None:
             if self.down:
-                raise mailer.MailError("mail_failed", "refused")
-            self.sent.append(message)
+                raise nexpost.MailError("mail_unreachable", "refused")
+            self.sent.append(letter)
 
-        monkeypatch.setattr(mailer, "_send", send)
+        # What goes out at once leaves through the shared post module (post 1.1.0).
+        monkeypatch.setattr(nexpost.send, "deliver", send)
 
     @property
     def mails(self) -> list[dict[str, str]]:
-        found = [{"to": str(message["To"]), "text": message.get_body(("plain",)).get_content()}
-                 for message in self.sent]
+        found = [{"to": letter.to, "text": letter.text} for letter in self.sent]
         with SessionLocal() as db:
             for row in db.query(MailOutbox).order_by(MailOutbox.id):
                 letter = json.loads(row.letter)

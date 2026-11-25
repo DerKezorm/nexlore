@@ -2,7 +2,8 @@
 target-version = "py313"
 line-length = 120
 # The shared modules and their contract tests are copied in unchanged and linted at their source.
-extend-exclude = ["app/vendor/nexoidc", "tests/nexoidc", "app/vendor/nexlog", "tests/nexlog", "app/vendor/nexsicherung",
+extend-exclude = ["app/vendor/nexoidc", "tests/nexoidc", "app/vendor/nexkonten", "tests/nexkonten", "app/vendor/nexpost",
+                  "tests/nexpost", "app/vendor/nexlog", "tests/nexlog", "app/vendor/nexsicherung",
                   "tests/nexsicherung", "app/vendor/nexschluessel", "tests/nexschluessel"]
 
 [tool.ruff.lint]

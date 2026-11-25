@@ -119,8 +119,8 @@ def _aware(moment: datetime) -> datetime:
 
 
 def account_out(account: Account | None) -> bool:
-    """Blocked by the operator (or gone): no session, no token, no key counts for it."""
-    return account is None or account.blocked_at is not None
+    """Blocked or deleted by the operator (or gone): no session, no token, no key counts for it."""
+    return account is None or account.blocked_at is not None or account.deleted_at is not None
 
 
 def session_account(db: Session, token: str | None) -> Account | None:

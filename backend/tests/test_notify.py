@@ -14,7 +14,8 @@ from fastapi.testclient import TestClient
 
 from app.db import SessionLocal
 from app.models import Account
-from app.services import index, mailer, notify, settings_service, updates
+from app.services import index, notify, settings_service, updates
+from app.vendor import nexpost
 
 from .conftest import join
 from .test_mcp import call, switch, value
@@ -36,11 +37,19 @@ class Sent:
             self.posts.append((url, body))
             return self.status
 
-        def mail(_db: Any, message: Any) -> None:
-            self.mails.append(message)
+        def mail(_settings: Any, letter: Any) -> None:
+            self.mails.append(letter)
 
+        def queued(store: Any, letter: Any) -> int | str:
+            # A notification waits in the outbox of the post module; the test takes it as sent.
+            self.mails.append(letter)
+            return real_queue(store, letter)
+
+        real_queue = nexpost.outbox.queue
         monkeypatch.setattr(notify, "_post", post)
-        monkeypatch.setattr(mailer, "_send", mail)
+        # Every system mail goes through the shared post module (post 1.1.0): at once or into its outbox.
+        monkeypatch.setattr(nexpost.send, "deliver", mail)
+        monkeypatch.setattr(nexpost.outbox, "queue", queued)
 
     def titles(self) -> list[str]:
         return [body["title"] for _, body in self.posts]
@@ -115,7 +124,7 @@ def test_mail_only_with_the_operators_server_and_an_address(client: TestClient, 
     assert anna.get("/api/me/notify").json()["email"]["possible"] is True
     anna.put("/api/me/notify", json={"webhook": ""})
     assert anna.post("/api/me/notify/test").json() == {"email": "ok"}
-    assert sent.mails[-1]["To"] == "anna@example.com"
+    assert sent.mails[-1].to == "anna@example.com"
 
 
 # --- What sets them off ------------------------------------------------------------------------------------------------
@@ -227,7 +236,7 @@ def test_operators_hear_of_the_disk_and_a_new_version_once(client: TestClient, a
 
 def test_a_failed_backup_tells_the_operators(client: TestClient, account: Account, sent: Sent) -> None:
     hooked(client)
-    notify.operators("A backup of nexlore failed", "x")
+    notify.operators(notify.words("backup_failed"))
     assert sent.titles() == ["A backup of nexlore failed"]
 
 
@@ -235,5 +244,5 @@ def test_server_troubles_never_reach_a_member(client: TestClient, account: Accou
     anna = person("anna")
     hooked(anna)
     anna_id = anna.get("/api/auth/me").json()["id"]
-    notify.send(anna_id, "operator", "The disk of nexlore runs full", "x")
+    notify.send(anna_id, "operator", notify.words("disk_low"))
     assert sent.posts == []

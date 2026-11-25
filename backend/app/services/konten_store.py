@@ -47,6 +47,7 @@ from ..models import (
     AppPairing,
     AuthSession,
     McpKey,
+    OidcProvider,
     utcnow,
 )
 from ..models import Invite as InviteRow
@@ -57,6 +58,7 @@ from ..security import (
     MAX_FAILURES,
     decrypt_secret,
     encrypt_secret,
+    end_all_sessions,
     hash_password,
     hash_token,
     server_key,
@@ -199,7 +201,7 @@ class KontenStore:
             email_source=PROVIDER if (row.email and row.email_source == PROVIDER) else "",
             pending_email=self._waiting(row),
             has_password=row.sign_in == SIGN_IN_PASSWORD and bool(row.password_hash),
-            blocked=row.blocked_at is not None,
+            blocked=row.blocked_at is not None or row.deleted_at is not None,
             operator=row.role == OPERATOR,
             picture=picture,
             language=row.language or "",
@@ -209,7 +211,19 @@ class KontenStore:
             # declined.
             declined_email=row.provider_email_off or "",
             password_changed_at=row.password_changed_at,
+            blocked_at=row.blocked_at,
+            deleted_at=row.deleted_at,
+            theme=self._theme(row),
+            storage_limit=row.storage_limit,
+            rights=frozenset({"ai"} if row.ai_allowed else set()),
         )
+
+    @staticmethod
+    def _theme(row: Account) -> str:
+        """Light, dark or as the system, as the account chose it (``appearance.mode``); "" while it chose nothing."""
+        look = row.appearance if isinstance(row.appearance, dict) else {}
+        mode = look.get("mode")
+        return mode if mode in nexkonten.profiles.THEMES else ""
 
     @staticmethod
     def _offered(row: Account) -> str:
@@ -967,6 +981,112 @@ class KontenStore:
             self.db.flush()
 
     # --- Transaction ---------------------------------------------------------------------------------------------
+    # --- 1.1.0: the operator's functions, the theme, the sign-in settings -------------------------------------------
+    def active_operators(self) -> int:
+        return int(self.db.scalar(
+            select(func.count()).select_from(Account)
+            .where(Account.role == OPERATOR, Account.blocked_at.is_(None), Account.deleted_at.is_(None))
+        ) or 0)
+
+    def set_operator(self, account_id: AccountId, operator: bool) -> None:
+        row = self._row(account_id)
+        if row is not None:
+            row.role = OPERATOR if operator else MEMBER
+            self._flush()
+
+    def set_blocked(self, account_id: AccountId, at: datetime | None) -> None:
+        row = self._row(account_id)
+        if row is None:
+            return
+        row.blocked_at = at
+        if at is None:
+            row.failed_logins = 0
+            row.locked_until = None
+        self._flush()
+
+    def set_deleted(self, account_id: AccountId, at: datetime | None) -> None:
+        row = self._row(account_id)
+        if row is not None:
+            row.deleted_at = at
+            self._flush()
+
+    def shut_out(self, account_id: AccountId) -> None:
+        """What blocking did in 1.16.0: every browser session, the OAuth connectors and the paired iPhones end, the
+        marks of known browsers are worthless, a sign-in waiting for its code goes. API tokens, MCP keys made by hand
+        and the calendar address stay and are refused while the account is out (``security.account_out``)."""
+        from ..vendor.nexkonten import factor
+        from . import totp
+
+        end_all_sessions(self.db, int(account_id))
+        totp.forget_account(int(account_id))
+        factor.drop_waiting(int(account_id))
+
+    def deleted_before(self, moment: datetime) -> list[AccountId]:
+        return list(self.db.scalars(
+            select(Account.id).where(Account.deleted_at.is_not(None), Account.deleted_at <= moment)
+        ))
+
+    def purge_account(self, account_id: AccountId) -> None:
+        """What deleting did in 1.16.0, now after the 30 days: the row goes with its rights, sessions, keys and links;
+        its notes stay where they are, and a space it was the only member of belongs to the operator. Its name stays
+        reserved for ever (the history keeps it)."""
+        from . import totp
+        from .oidc_store import mirror_legacy
+
+        row = self._row(account_id)
+        if row is None:
+            return
+        self.db.add(FormerName(account_id=None, name=row.name))
+        self.db.delete(row)
+        # The account's links and old subject go with it: the way back and its fingerprint follow in the same commit.
+        mirror_legacy(self.db)
+        self._flush()
+        totp.forget_account(int(account_id))
+
+    def set_storage_limit(self, account_id: AccountId, limit: int | None) -> None:
+        row = self._row(account_id)
+        if row is not None:
+            row.storage_limit = limit
+            self._flush()
+
+    def set_right(self, account_id: AccountId, right: str, allowed: bool) -> None:
+        row = self._row(account_id)
+        if row is not None and right == "ai":
+            row.ai_allowed = allowed
+            self._flush()
+
+    def set_theme(self, account_id: AccountId, theme: str) -> None:
+        row = self._row(account_id)
+        if row is None:
+            return
+        look = dict(row.appearance) if isinstance(row.appearance, dict) else {}
+        look["mode"] = theme
+        row.appearance = look
+        self._flush()
+
+    def sign_in_settings(self) -> nexkonten.model3.SignInSettings:
+        from . import settings_service
+
+        return nexkonten.model3.SignInSettings(
+            password_login=bool(settings_service.get(self.db, "password_login")),
+            factor_required=self.factor_required(),
+            passkeys_allowed=self.passkeys_allowed(),
+        )
+
+    def save_sign_in_settings(self, settings: nexkonten.model3.SignInSettings) -> None:
+        from . import settings_service
+
+        settings_service.save(self.db, {
+            "password_login": settings.password_login,
+            SWITCH_FACTOR_REQUIRED: settings.factor_required,
+            SWITCH_PASSKEYS: settings.passkeys_allowed,
+        }, commit=False)
+
+    def active_providers(self) -> int:
+        return int(self.db.scalar(
+            select(func.count()).select_from(OidcProvider).where(OidcProvider.enabled.is_(True))
+        ) or 0)
+
     def commit(self) -> None:
         self.db.commit()
 

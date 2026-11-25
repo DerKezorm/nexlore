@@ -437,13 +437,8 @@ class NexloreHooks(nexsicherung.AppHooks):
     def tell(self, event: str, details: dict[str, Any]) -> None:
         from . import notify
 
-        if event == "backup_failed":
-            notify.operators("A backup of nexlore failed", "The scheduled backup did not finish; the log says why.",
-                             STORAGE_PAGE, 5)
-        elif event == "restore_failed":
-            notify.operators("A restore of nexlore failed",
-                             "The backup could not be restored at the start; nexlore runs with the data from before.",
-                             STORAGE_PAGE, 5)
+        if event in ("backup_failed", "restore_failed"):
+            notify.operators(notify.words(event), STORAGE_PAGE, 5)
 
 
 def configure() -> NexloreHooks:

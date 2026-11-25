@@ -256,7 +256,7 @@ class SqlStore:
         return AccountState(
             id=row.id,
             name=row.name,
-            blocked=row.blocked_at is not None,
+            blocked=row.blocked_at is not None or row.deleted_at is not None,
             has_password=row.sign_in == SIGN_IN_PASSWORD and bool(row.password_hash),
             has_second_factor=bool(row.totp_secret_enc),
         )

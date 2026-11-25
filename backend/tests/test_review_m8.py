@@ -252,7 +252,7 @@ def _state_of(account_id: int) -> tuple[object, ...]:
         row = db.get(Account, account_id)
         if row is None:
             return ("gone",)
-        return (row.role, row.password_hash, row.totp_secret_enc)
+        return (row.role, row.password_hash, row.totp_secret_enc, row.deleted_at is not None)
 
 
 def _failures(account_id: int) -> int:

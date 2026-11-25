@@ -249,7 +249,10 @@ def test_the_operator_manages_accounts(client: TestClient, operator: Account) ->
     assert anna_client.get("/api/auth/me").status_code == 401
     assert client.put(f"/api/accounts/{anna.id}/role", json={"role": "operator", "current_password": PASSWORD}).json()["role"] == OPERATOR
     assert client.request("DELETE", f"/api/accounts/{anna.id}", json={"current_password": PASSWORD}).status_code == 204
-    assert [row["name"] for row in client.get("/api/accounts").json()] == ["tester"]
+    # Deleted with 30 days to bring her back (the shared account module 1.1.0): listed as deleted, out at once.
+    assert [(row["name"], row["deleted"]) for row in client.get("/api/accounts").json()] == [
+        ("tester", False), ("anna", True)]
+    assert anna_client.get("/api/auth/me").status_code == 401
 
 
 def test_changes_without_the_tab_header_are_refused_even_with_a_session(client: TestClient) -> None:

@@ -1,30 +1,35 @@
-"""nexlore's side of the shared post module ``vendor/nexpost``: the ``Store`` over the operator's settings
-(``smtp_*`` as 1.16.0 kept them, the password sealed as before) and the table ``mail_outbox``, and the worker that
-sends what waits.
+"""nexlore's side of the shared post module ``vendor/nexpost`` (post 1.1.0): the ``Store`` over the operator's
+settings (``smtp_*`` as 1.16.0 kept them, the password sealed as before) and the table ``mail_outbox``, and the round
+that sends what waits.
 
-System mail (an invitation, a link for a new password, a confirmation link, notices about the account) goes into the
-outbox with the request that causes it and out within a minute (``run_due``, from the minute loop in ``main``); a
-mail that does not go out is tried again after 1, 5, 15, 60 and 180 minutes, then given up. An invitation and the
-test mail still go out at once: the operator sees the server's answer.
+Every system mail of nexlore goes through post: the mails about an account, an invitation, the test mail, and the
+letters of nexlore itself (notifications to an account, notices to the operators; ``services/notify``). What waits in
+the outbox goes out right after the commit that put it there (``AppConfig.outbox_runner``, a thread of the module) and
+again in the minute loop of ``main``; a mail that does not go out is tried again after 1, 5, 15, 60 and 180 minutes,
+then given up. An invitation, the test mail and "Forgot your password?" go out at once (``outbox.deliver_now``): the
+person sees the server's answer.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, event, func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..models import utcnow
+from ..config import get_settings
+from ..models import Account, utcnow
 from ..models_accounts import MailOutbox
 from ..security import decrypt_secret, encrypt_secret
 from ..vendor import nexpost
-from ..vendor.nexpost import Letter, MailSettings, MailStatus, OutboxItem
+from ..vendor.nexpost import Letter, MailSettings, MailStatus, OutboxItem, Recipient
 from . import settings_service
 
 logger = logging.getLogger("nexlore.mail")
@@ -42,11 +47,12 @@ def _logo() -> bytes | None:
 
 
 def configure() -> None:
-    nexpost.configure(nexpost.AppConfig(app_name="nexlore", display_name="nexlore", logo=_logo(),
-                                        logger_name="nexlore.mail"))
-
-
-configure()
+    """The module knows nexlore's name, logo and round. Without background work (the tests) nothing runs after a
+    commit; the mail waits for the minute loop or the test's own round."""
+    nexpost.configure(nexpost.AppConfig(
+        app_name="nexlore", display_name="nexlore", logo=_logo(), logger_name="nexlore.mail",
+        outbox_runner=None if get_settings().disable_background else run_due,
+    ))
 
 
 def _aware(moment: datetime | None) -> datetime | None:
@@ -93,17 +99,33 @@ class PostStore:
             changes["smtp_password_enc"] = encrypt_secret(password) if password else ""
         settings_service.save(self.db, changes, commit=False)
 
+    def _keyed(self, key: str) -> int | None:
+        return self.db.scalar(select(MailOutbox.id).where(MailOutbox.key == key))
+
     def add_to_outbox(self, letter: Letter, now: datetime) -> int:
-        row = MailOutbox(letter=json.dumps(letter.__dict__), created_at=now, next_at=now)
-        self.db.add(row)
-        self.db.flush()
+        if letter.key:
+            held = self._keyed(letter.key)
+            if held is not None:
+                return held
+        row = MailOutbox(letter=json.dumps(nexpost.model.letter_data(letter)), created_at=now, next_at=now,
+                         key=letter.key or None)
+        try:
+            # Two requests with the same key at once: the unique index lets one in, the other takes its row.
+            with self.db.begin_nested():
+                self.db.add(row)
+                self.db.flush()
+        except IntegrityError:
+            held = self._keyed(letter.key)
+            if held is None:
+                raise
+            return held
         return row.id
 
     @staticmethod
     def _item(row: MailOutbox) -> OutboxItem:
         return OutboxItem(
             id=row.id,
-            letter=Letter(**json.loads(row.letter)),
+            letter=nexpost.model.letter_from(json.loads(row.letter)),
             created_at=_aware(row.created_at) or utcnow(),
             next_at=_aware(row.next_at) or utcnow(),
             attempts=row.attempts,
@@ -152,11 +174,48 @@ class PostStore:
             last_error_at=_moment(values.get("mail_last_error_at")),
         )
 
+    def waiting(self) -> int:
+        return int(self.db.scalar(
+            select(func.count()).select_from(MailOutbox)
+            .where(MailOutbox.sent_at.is_(None), MailOutbox.next_at.is_not(None))
+        ) or 0)
+
+    def on_commit(self, callback: Callable[[], None]) -> None:
+        """Once, after this transaction's commit; a rollback drops it. The listeners stay on the session (removing one
+        while SQLAlchemy runs its listeners breaks the commit); what they call waits in ``pending``."""
+        pending: list[Callable[[], None]] = self.db.info.setdefault("nexpost_pending", [])
+        if not self.db.info.get("nexpost_listening"):
+            event.listen(self.db, "after_commit", _committed)
+            event.listen(self.db, "after_soft_rollback", _rolled_back)
+            self.db.info["nexpost_listening"] = True
+        pending.append(callback)
+
+    def recipient(self, account: object) -> Recipient | None:
+        """The address nexlore writes to: the account's address that counts, in its language (``kontenpost``)."""
+        from . import kontenpost
+
+        row = self.db.get(Account, int(account)) if str(account).isdigit() else None  # type: ignore[call-overload]
+        if row is None or not row.email or not row.email_confirmed:
+            return None
+        return Recipient(row.email, kontenpost.language_for(self.db, row), row.display_name or row.name, "")
+
     def commit(self) -> None:
         self.db.commit()
 
     def rollback(self) -> None:
         self.db.rollback()
+
+
+def _committed(session: Session) -> None:
+    pending: list[Callable[[], None]] = session.info.get("nexpost_pending", [])
+    session.info["nexpost_pending"] = []
+    for callback in pending:
+        callback()
+
+
+def _rolled_back(session: Session, previous: Any) -> None:
+    if not getattr(previous, "nested", False):  # a savepoint's rollback leaves the transaction alive
+        session.info["nexpost_pending"] = []
 
 
 @contextmanager
@@ -175,3 +234,6 @@ def run_due() -> int:
         store.db.execute(delete(MailOutbox).where(MailOutbox.created_at < limit, MailOutbox.next_at.is_(None)))
         store.commit()
     return sent
+
+
+configure()

@@ -17,7 +17,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, object_session
 
 from ..models import SIGN_IN_OIDC, Account, OidcLink
-from . import mailer, settings_service
+from . import kontenpost, settings_service
 
 logger = logging.getLogger("nexlore.email")
 
@@ -80,7 +80,7 @@ def taken(db: Session, address: str, but: int) -> bool:
 
 def cannot_mail(db: Session) -> str:
     """Why no confirmation can go out, as an error code, or empty when it can."""
-    if not mailer.configured(db):
+    if not kontenpost.configured(db):
         return "mail_off"
     if not settings_service.public_url(db):
         # A link in a mail never points to an address the request made up (the same rule as for invitations).

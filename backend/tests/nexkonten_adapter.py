@@ -394,8 +394,8 @@ class Adapter(StandardAdapter):
 
     def forgot_through_route(self, typed: str, *, mail_fails: bool) -> tuple[list[str], int]:
         """``POST /api/auth/forgot`` with a mail server and the public address, the work after the answer run at once
-        (``FORGOT_AT_ONCE``). nexlore sends a mail at once through its own mailer (``mailer._send``, which its
-        notifications use too), so that is where it is caught, or made to fail."""
+        (``FORGOT_AT_ONCE``). nexlore sends it at once through the shared post module (``nexpost.send.deliver``), so
+        that is where it is caught, or made to fail."""
         from fastapi.testclient import TestClient
         from sqlalchemy import func, select
 
@@ -404,7 +404,8 @@ class Adapter(StandardAdapter):
         from app.models_accounts import MailOutbox
         from app.routers import auth as auth_router
         from app.security import brake
-        from app.services import mailer, settings_service
+        from app.services import settings_service
+        from app.vendor import nexpost
 
         with SessionLocal() as db:
             settings_service.save(db, {"smtp_host": "smtp.example.com", "smtp_from": "lore@example.com",
@@ -413,18 +414,19 @@ class Adapter(StandardAdapter):
         brake.forget()
         sent: list[str] = []
 
-        def send(_db: Any, message: Any) -> None:
+        def send(_settings: Any, letter: Any) -> None:
             if mail_fails:
-                raise mailer.MailError("mail_failed", "The mail server cannot be reached.")
-            sent.append(str(message["To"]))
+                raise nexpost.MailError("mail_unreachable", "The mail server cannot be reached.")
+            sent.append(letter.to)
 
-        real, mailer._send = mailer._send, send
+        # At once through the shared post module (post 1.1.0), never through the outbox.
+        real, nexpost.send.deliver = nexpost.send.deliver, send
         was, auth_router.FORGOT_AT_ONCE = auth_router.FORGOT_AT_ONCE, True
         try:
             answer = TestClient(app, base_url=BASE, headers=TAB).post("/api/auth/forgot", json={"name": typed})
         finally:
             auth_router.FORGOT_AT_ONCE = was
-            mailer._send = real
+            nexpost.send.deliver = real
         assert answer.status_code == 202, answer.text
         with SessionLocal() as db:
             after = int(db.scalar(select(func.count()).select_from(MailOutbox)) or 0)
@@ -446,3 +448,48 @@ class Adapter(StandardAdapter):
                 assert row is not None
                 browser.cookies.set(SESSION_COOKIE, start_session(db, row, "127.0.0.1", "contract"))
         return browser.get(f"/api/avatars/{owner}").status_code
+
+    # --- since konten 1.1.0 ------------------------------------------------------------------------------------------
+
+    def age_deletion(self, account_id: Any, days: int) -> None:
+        """``accounts.deleted_at`` moved ``days`` back, as if they had passed."""
+        from app.db import SessionLocal
+        from app.models import Account
+
+        with SessionLocal() as db:
+            row = db.get(Account, account_id)
+            assert row is not None and row.deleted_at is not None
+            row.deleted_at = row.deleted_at - timedelta(days=days)
+            db.commit()
+
+    def provider_active(self, on: bool) -> None:
+        """One active provider in nexlore's own table of the module oidc (``oidc_providers``), or none."""
+        from sqlalchemy import delete
+
+        from app.db import SessionLocal
+        from app.models import OidcProvider
+
+        with SessionLocal() as db:
+            db.execute(delete(OidcProvider))
+            if on:
+                db.add(OidcProvider(slug="probe", label="Probe", issuer="https://auth.example.com/application/o/lore/",
+                                    client_id="lore", enabled=True))
+            db.commit()
+
+    def readiness(self, operator: Any) -> dict[str, Any]:
+        """``GET /api/server/sign-in/readiness`` as the operator, over https."""
+        from fastapi.testclient import TestClient
+
+        from app.db import SessionLocal
+        from app.main import app
+        from app.models import Account
+        from app.security import SESSION_COOKIE, start_session
+
+        browser = TestClient(app, base_url=BASE, headers=TAB)
+        with SessionLocal() as db:
+            row = db.get(Account, operator)
+            assert row is not None
+            browser.cookies.set(SESSION_COOKIE, start_session(db, row, "127.0.0.1", "contract"))
+        answer = browser.get("/api/server/sign-in/readiness")
+        assert answer.status_code == 200, answer.text
+        return answer.json()
