@@ -96,7 +96,7 @@ export function NotifySettings() {
           {/* Locked, it says where that is changed: the address in the profile, the server with the operator. */}
           {!view.email.possible && (view.email.server || me?.role === 'operator') && (
             <Link
-              to={view.email.server ? '/account#mail' : '/settings?tab=server&sub=mail'}
+              to={view.email.server ? '/settings/profile#mail' : '/settings/mail'}
               className="-mt-2 block text-xs text-accent-400 underline underline-offset-2"
               data-testid="notify-mail-fix"
             >

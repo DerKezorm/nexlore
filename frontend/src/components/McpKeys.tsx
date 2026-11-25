@@ -80,7 +80,7 @@ export function McpKeys() {
         <p className="text-sm text-mist-500" data-testid="mcp-off">
           {t('mcp.off')}{' '}
           {me?.role === 'operator' && (
-            <Link to="/settings?tab=server&sub=extensions#mcp" className="text-accent-400 hover:underline">
+            <Link to="/settings/extensions#mcp" className="text-accent-400 hover:underline">
               {t('mcp.offOperator')}
             </Link>
           )}

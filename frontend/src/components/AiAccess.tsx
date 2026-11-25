@@ -65,7 +65,7 @@ export function AiAccess() {
         <p className="text-sm text-mist-500" data-testid="ai-off">
           {t('ai.off')}{' '}
           {me?.role === 'operator' && (
-            <Link to="/settings?tab=server&sub=extensions#ai" className="text-accent-400 hover:underline">
+            <Link to="/settings/extensions#ai" className="text-accent-400 hover:underline">
               {t('ai.offOperator')}
             </Link>
           )}

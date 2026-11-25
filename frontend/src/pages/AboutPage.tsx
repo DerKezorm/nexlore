@@ -14,6 +14,7 @@ import { WhatsNewWindow } from '../components/WhatsNew'
 import { Button, Card, Feedback, Toggle } from '../components/settings/ui'
 import { errorText } from '../lib/errors'
 import { useWhatsNew } from '../lib/whatsNew'
+import { useInstall } from '../lib/install'
 import { useAuth } from '../state/auth'
 
 const PARTS = [
@@ -60,7 +61,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-export function AboutPage() {
+export function AboutArea() {
   const { t, i18n } = useTranslation()
   const { me } = useAuth()
   const operator = me?.role === 'operator'
@@ -103,16 +104,16 @@ export function AboutPage() {
 
   const latest = updates?.latest?.replace(/^v/, '')
   return (
-    <main className="nn-scroll flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-2xl space-y-6 px-6 py-8">
+    <div className="space-y-6">
         <div className="flex items-center gap-3">
           <Logo className="h-10 w-10" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">nexlore</h1>
+            <h2 className="text-xl font-bold tracking-tight">nexlore</h2>
             <p className="text-sm text-mist-500">{t('about.subtitle')}</p>
           </div>
         </div>
         <Feedback problem={problem} />
+        <InstallCard />
         {about && (
           <dl className="rounded-2xl border border-ink-700 bg-ink-900 px-5 py-2" data-testid="about-facts">
             <Row label={t('about.version')}>
@@ -208,8 +209,23 @@ export function AboutPage() {
             ))}
           </ul>
         </Card>
-      </div>
       {reading && entry && me && <WhatsNewWindow version={me.version} entry={entry} onClose={() => setReading(false)} />}
-    </main>
+    </div>
+  )
+}
+
+/** Installing nexlore as an app, where the browser offers it (on an iPhone: how, through Safari). */
+function InstallCard() {
+  const { t } = useTranslation()
+  const install = useInstall()
+  if (!install.can) return null
+  return (
+    <Card symbol="phone" title={t('install.menu')} text={t('install.text')} id="install">
+      {install.can === 'prompt' ? (
+        <Button onClick={() => void install.install()}>{t('install.install')}</Button>
+      ) : (
+        <p className="text-sm text-mist-400">{t('install.ios')}</p>
+      )}
+    </Card>
   )
 }

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError, mcpApi, type McpRequest } from '../api/client'
+import { SpacesSidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { errorText } from '../lib/errors'
 import { formatDate } from '../lib/markdown'
@@ -128,6 +129,8 @@ export function McpRequestsPage() {
   const waiting = requests?.filter((request) => request.status === 'waiting') ?? []
   const decided = requests?.filter((request) => request.status !== 'waiting') ?? []
   return (
+    <>
+      <SpacesSidebar />
     <main className="nn-scroll flex-1 overflow-y-auto">
       <div className="mx-auto max-w-2xl space-y-4 px-6 py-8">
         <div>
@@ -153,5 +156,6 @@ export function McpRequestsPage() {
         )}
       </div>
     </main>
+    </>
   )
 }

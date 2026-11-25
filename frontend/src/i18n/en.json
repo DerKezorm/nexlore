@@ -700,22 +700,80 @@
       "deleteTitle": "Delete the space {{space}}?",
       "deleteText": "Every note and file of the space goes into the trash, and the space disappears for all its members. From the trash it comes back with its members for 30 days."
     },
-    "tabs": {
-      "general": "General",
-      "looks": "Look",
-      "spaces": "Spaces",
+    "groups": {
+      "account": "My account",
       "server": "Server"
     },
-    "parts": {
-      "accounts": "Accounts",
-      "signin": "Sign-in",
-      "shares": "Public pages",
-      "extensions": "AI, API and plugins",
-      "files": "Files",
-      "backups": "Backups",
-      "languages": "Languages",
-      "log": "Log",
-      "mail": "Mail server"
+    "jump": "Choose an area",
+    "areas": {
+      "profile": {
+        "title": "Profile",
+        "text": "Picture, name, mail address and language of your account."
+      },
+      "security": {
+        "title": "Security",
+        "text": "Password, second factor, sign-in providers and signing out everywhere."
+      },
+      "appearance": {
+        "title": "Appearance",
+        "text": "Themes, light or dark, fonts and your own CSS snippets."
+      },
+      "notes": {
+        "title": "Notes",
+        "text": "Where you start, the editor, the space for daily notes and your own keys."
+      },
+      "spaces": {
+        "title": "Spaces",
+        "text": "Your spaces and who works in them with you."
+      },
+      "notifications": {
+        "title": "Notifications",
+        "text": "When and how nexlore lets you know."
+      },
+      "plugins": {
+        "title": "Plugins",
+        "text": "Which plugins you use for yourself."
+      },
+      "connections": {
+        "title": "Connections",
+        "text": "iPhone app, API tokens, AI in notes, AI from outside and the calendar feed."
+      },
+      "general": {
+        "title": "General",
+        "text": "Files, link titles, own CSS, languages and the guide."
+      },
+      "signIn": {
+        "title": "Sign-in",
+        "text": "How people sign in: password, second factor and providers."
+      },
+      "mail": {
+        "title": "Mail",
+        "text": "The mail server for invitations, notifications and confirmations."
+      },
+      "storage": {
+        "title": "Storage and backups",
+        "text": "Backups of the server, to download and restore."
+      },
+      "shares": {
+        "title": "Public pages",
+        "text": "What can be seen without signing in."
+      },
+      "extensions": {
+        "title": "AI, API and plugins",
+        "text": "AI for everyone, API tokens, the iPhone app, AI from outside, the calendar feed and plugins."
+      },
+      "accounts": {
+        "title": "Accounts",
+        "text": "Who uses nexlore, and all spaces with their rights."
+      },
+      "log": {
+        "title": "Log",
+        "text": "What happened on the server."
+      },
+      "about": {
+        "title": "About nexlore",
+        "text": "Version, licence, updates and what nexlore is built with."
+      }
     }
   },
   "errors": {
@@ -1101,13 +1159,6 @@
     }
   },
   "account": {
-    "tabs": {
-      "profile": "Profile",
-      "security": "Security",
-      "ai": "Connections",
-      "plugins": "Plugins",
-      "notify": "Notifications"
-    },
     "profile": {
       "displayName": "Display name",
       "displayHint": "How others see you. Empty shows your user name {{name}}; you still sign in with it.",
@@ -1198,7 +1249,8 @@
       "never": "Not seen yet",
       "disconnect": "Disconnect",
       "disconnectNamed": "Disconnect {{name}}"
-    }
+    },
+    "signOutText": "Signs you out in this browser. Other devices stay signed in."
   },
   "members": {
     "title": "Members of {{space}}",
@@ -1639,7 +1691,10 @@
       "done": "done",
       "cancelled": "cancelled",
       "non_task": "not a task"
-    }
+    },
+    "next": "Next",
+    "nextNone": "Nothing with a date is open.",
+    "views": "Views"
   },
   "newNote": {
     "title": "New note in “{{folder}}”",

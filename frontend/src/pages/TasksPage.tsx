@@ -9,6 +9,8 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 import { ApiError, everydayApi, type TaskCounts, type TaskItem, type TaskMark, type TaskQuery, type TaskWhen, type Toggled } from '../api/client'
+import { SideFrame } from '../components/SideFrame'
+import { useNarrow } from '../lib/useNarrow'
 import { Symbol } from '../components/Symbol'
 import { TaskRow } from '../components/TaskRow'
 import { errorText } from '../lib/errors'
@@ -23,6 +25,8 @@ type Chip = 'open' | TaskWhen | 'done' | 'cancelled'
 const CHIPS: Chip[] = ['open', 'overdue', 'today', 'week', 'later', 'none', 'done', 'cancelled']
 const GROUPS: TaskWhen[] = ['overdue', 'today', 'week', 'later', 'none']
 const PAGE = 200
+/** How many tasks "Next" shows. */
+const NEXT = 6
 const GROUP_KEY = 'nexlore.tasks.group'
 
 /** Characters every task list has: the filter shows only when a space has more to tell apart. */
@@ -62,6 +66,23 @@ export function TasksPage() {
   const [problem, setProblem] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const today = todayIso()
+  const small = useNarrow()
+  // "Next": the open tasks with a date, the soonest first, at the top of the sidebar (as "Due this month" in the
+  // calendar). Their own question, whatever the list below shows.
+  const [next, setNext] = useState<TaskItem[]>([])
+  const loadNext = useCallback(() => {
+    everydayApi.tasks({ today, status: 'open', limit: 100 }).then(
+      (answer) =>
+        setNext(
+          answer.items
+            .filter((item) => item.due)
+            .sort((a, b) => (a.due! < b.due! ? -1 : a.due! > b.due! ? 1 : 0))
+            .slice(0, NEXT),
+        ),
+      () => setNext([]),
+    )
+  }, [today])
+  useEffect(() => loadNext(), [loadNext])
   // Only the newest answer counts: chips clicked through fast must not show an older filter's tasks.
   const asked = useRef(0)
 
@@ -134,6 +155,7 @@ export function TasksPage() {
     )
     // The counts change, and a ticked task leaves "open": the list is loaded again, as long as it was.
     void load(items.length)
+    loadNext()
   }
 
   const problemWhileTicking = (code: string) => {
@@ -175,27 +197,74 @@ export function TasksPage() {
   }, [chip, group, items, today])
 
   return (
+    <>
+    {!small && (
+      <SideFrame label={t('tasks.title')} testId="tasks-side">
+        <div className="px-2 py-3">
+          <p className="px-2.5 pb-1.5 text-[11px] font-semibold tracking-wider text-mist-500 uppercase">{t('tasks.next')}</p>
+          {next.length === 0 ? (
+            <p className="px-2.5 pb-2 text-sm text-mist-500">{t('tasks.nextNone')}</p>
+          ) : (
+            <ul className="mb-2" data-testid="tasks-next">
+              {next.map((task) => (
+                <TaskRow
+                  key={`${task.id}:${task.raw}`}
+                  task={task}
+                  today={today}
+                  readOnly={readOnlyIn.has(task.path.split('/')[0])}
+                  onToggled={toggled}
+                  onProblem={problemWhileTicking}
+                />
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 px-2.5 pb-1.5 text-[11px] font-semibold tracking-wider text-mist-500 uppercase">{t('tasks.views')}</p>
+          <div className="space-y-0.5" role="group" aria-label={t('tasks.title')}>
+            {CHIPS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setChip(key)}
+                aria-pressed={chip === key}
+                className={
+                  'flex w-full items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-left text-sm transition-colors ' +
+                  (chip === key ? 'bg-accent-500/15 font-medium text-accent-400' : 'text-mist-300 hover:bg-ink-850 hover:text-mist-100')
+                }
+              >
+                <span className="min-w-0 flex-1 truncate">{t(`tasks.filter.${key}`)}</span>
+                {counts && (
+                  <span className={'tabular-nums text-xs ' + (key === 'overdue' && counts.overdue > 0 && chip !== key ? 'text-bad-500' : 'opacity-80')}>{counts[key]}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </SideFrame>
+    )}
     <main className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="tasks-page">
       <div className="flex flex-wrap items-center gap-2 border-b border-ink-700 px-3 py-3 sm:px-4">
         <h1 className="mr-2 text-lg font-semibold text-mist-100">{t('tasks.title')}</h1>
-        <div className="-mx-1 flex max-w-full gap-1.5 overflow-x-auto px-1 pb-0.5" role="group" aria-label={t('tasks.title')}>
-          {CHIPS.map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setChip(key)}
-              aria-pressed={chip === key}
-              className={
-                'shrink-0 rounded-full border px-3 py-1 text-xs whitespace-nowrap ' +
-                (chip === key ? 'border-accent-500/50 bg-accent-500/15 text-accent-400' : 'border-ink-700 text-mist-400 hover:bg-ink-850') +
-                (key === 'overdue' && counts && counts.overdue > 0 && chip !== key ? ' text-bad-500' : '')
-              }
-            >
-              {t(`tasks.filter.${key}`)}
-              {counts && <span className="ml-1 tabular-nums opacity-80">{counts[key]}</span>}
-            </button>
-          ))}
-        </div>
+        {/* On a phone the views stand here as chips; from 768 pixels on they are the menu of the sidebar. */}
+        {small && (
+          <div className="-mx-1 flex max-w-full gap-1.5 overflow-x-auto px-1 pb-0.5" role="group" aria-label={t('tasks.title')}>
+            {CHIPS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setChip(key)}
+                aria-pressed={chip === key}
+                className={
+                  'shrink-0 rounded-full border px-3 py-1 text-xs whitespace-nowrap ' +
+                  (chip === key ? 'border-accent-500/50 bg-accent-500/15 text-accent-400' : 'border-ink-700 text-mist-400 hover:bg-ink-850') +
+                  (key === 'overdue' && counts && counts.overdue > 0 && chip !== key ? ' text-bad-500' : '')
+                }
+              >
+                {t(`tasks.filter.${key}`)}
+                {counts && <span className="ml-1 tabular-nums opacity-80">{counts[key]}</span>}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="flex flex-wrap items-end gap-2 border-b border-ink-700 px-3 py-2 sm:px-4">
         <label className="min-w-0 flex-1 basis-40 text-xs text-mist-500">
@@ -351,5 +420,6 @@ export function TasksPage() {
         <p className="px-3 pt-2 text-xs text-mist-600">{t('tasks.hint')}</p>
       </div>
     </main>
+    </>
   )
 }

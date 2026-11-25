@@ -115,7 +115,7 @@ export function ApiTokens() {
         <p className="text-sm text-mist-500" data-testid="api-tokens-off">
           {t('apiTokens.off')}{' '}
           {me?.role === 'operator' && (
-            <Link to="/settings?tab=server&sub=extensions#api-tokens" className="text-accent-400 hover:underline">
+            <Link to="/settings/extensions#api-tokens" className="text-accent-400 hover:underline">
               {t('apiTokens.offOperator')}
             </Link>
           )}

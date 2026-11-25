@@ -5,10 +5,8 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
 import { AuthFrame } from './components/AuthFrame'
 import { SecondFactor } from './components/SecondFactor'
-import { AccountPage } from './pages/AccountPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { CleanupPage } from './pages/CleanupPage'
-import { AboutPage } from './pages/AboutPage'
 import { AppConnectPage } from './pages/AppConnectPage'
 import { ConnectPage } from './pages/ConnectPage'
 import { McpRequestsPage } from './pages/McpRequestsPage'
@@ -21,7 +19,7 @@ import { InvitePage } from './pages/InvitePage'
 import { LoginPage } from './pages/LoginPage'
 import { NotePage } from './pages/NotePage'
 import { PublicPage } from './pages/PublicPage'
-import { SettingsPage } from './pages/SettingsPage'
+import { FormerAboutAddress, FormerAccountAddress, SettingsPage } from './pages/SettingsPage'
 import { SetupPage } from './pages/SetupPage'
 import { TasksPage } from './pages/TasksPage'
 import { LorePage } from './pages/LorePage'
@@ -108,8 +106,10 @@ export default function App() {
         <Route path="capture" element={<CaptureRoute />} />
         <Route path="file/*" element={<FilePage />} />
         <Route path="settings" element={<SettingsPage />} />
-        <Route path="account" element={<AccountPage />} />
-        <Route path="about" element={<AboutPage />} />
+        <Route path="settings/:area" element={<SettingsPage />} />
+        {/* The addresses of before: the server still sends people to /account and /about. */}
+        <Route path="account" element={<FormerAccountAddress />} />
+        <Route path="about" element={<FormerAboutAddress />} />
         <Route path="requests" element={<McpRequestsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

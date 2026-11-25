@@ -1,11 +1,12 @@
 /**
- * The own account, in tabs like the settings: Profile (name, picture), Security (password,
- * second factor, the link to the provider, the paired iPhones, signing out everywhere), AI (AI in notes, keys for AI from outside) and
- * Plugins. The tab stands in the address (`?tab=`); the old anchors (`#ai`, `#mcp`, `#plugins`) still lead there.
+ * The areas of "My account" in the settings: Profile (name, picture, mail address, the language, signing out),
+ * Security (password, second factor, the link to the provider, signing out everywhere), Notifications, Plugins and
+ * Connections (paired iPhones, API tokens, AI in notes, keys for AI from outside, the calendar feed). Which one shows
+ * is chosen by the settings page (`SettingsPage.tsx`); the addresses of the tabs before lead there (`areas.ts`).
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLocation, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { ApiError, authApi, type MyProvider } from '../api/client'
 import { Field, Problem } from '../components/AuthFrame'
@@ -17,25 +18,25 @@ import { MailAddress } from '../components/MailAddress'
 import { McpKeys } from '../components/McpKeys'
 import { NotifySettings } from '../components/NotifySettings'
 import { CalendarFeed } from '../components/settings/CalendarFeed'
+import { LanguageCard } from '../components/settings/LanguageCard'
 import { SecondFactor } from '../components/SecondFactor'
 import { MyPluginsCard } from '../plugins/PluginSettings'
 import { Symbol, type SymbolName } from '../components/Symbol'
-import { TabRow, type Tab } from '../components/TabRow'
 import { errorText } from '../lib/errors'
 import { rememberName } from '../lib/people'
 import { useAuth } from '../state/auth'
 import { oidcErrorKey } from '../vendor/nexoidc/oidc'
 import { MIN_PASSWORD } from './SetupPage'
+import type { AccountSlug } from './settings/areas'
 
-type Part = 'profile' | 'security' | 'notify' | 'ai' | 'plugins'
-const PARTS: Part[] = ['profile', 'security', 'notify', 'ai', 'plugins']
-const ANCHORS: Record<string, Part> = { '#ai': 'ai', '#mcp': 'ai', '#api-tokens': 'ai', '#calendar': 'ai', '#plugins': 'plugins' }
+/** The areas of the own account this page draws; the others ("Appearance", "Notes", "Spaces") are cards of their own. */
+export type AccountPart = Extract<AccountSlug, 'profile' | 'security' | 'notifications' | 'plugins' | 'connections'>
 
 function code(error: unknown): string {
   return error instanceof ApiError ? error.code : 'internal_error'
 }
 
-export function AccountPage() {
+export function AccountArea({ part }: { part: AccountPart }) {
   const { t } = useTranslation()
   const { me, refresh } = useAuth()
   const [shownAs, setShownAs] = useState(me?.display_name ?? '')
@@ -45,12 +46,7 @@ export function AccountPage() {
   useEffect(() => {
     void loadProviders()
   }, [])
-  const [params, setParams] = useSearchParams()
-  const { hash } = useLocation()
-  const asked = params.get('tab') as Part | null
-  // Back from the provider (linking the account): its answer stands on the security tab.
-  const part: Part =
-    asked && PARTS.includes(asked) ? asked : (ANCHORS[hash] ?? (params.get('linked') || params.get('error') ? 'security' : 'profile'))
+  const [params] = useSearchParams()
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [again, setAgain] = useState('')
@@ -72,13 +68,6 @@ export function AccountPage() {
 
   if (!me) return null
 
-  const tabs: Tab<Part>[] = [
-    { value: 'profile', label: t('account.tabs.profile'), symbol: 'users' },
-    { value: 'security', label: t('account.tabs.security'), symbol: 'shield' },
-    { value: 'notify', label: t('account.tabs.notify'), symbol: 'info' },
-    { value: 'ai', label: t('account.tabs.ai'), symbol: 'plug' },
-    { value: 'plugins', label: t('account.tabs.plugins'), symbol: 'plug' },
-  ]
 
   const run = async (action: () => Promise<unknown>, success: string) => {
     setBusy(true)
@@ -97,21 +86,7 @@ export function AccountPage() {
   }
 
   return (
-    <main className="nn-scroll flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-2xl space-y-6 px-6 py-8">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{t('account.title')}</h1>
-        </div>
-        <TabRow
-          tabs={tabs}
-          active={part}
-          onChange={(value) => {
-            setDone(null)
-            setProblem(null)
-            setParams(value === 'profile' ? {} : { tab: value }, { replace: true })
-          }}
-          label={t('account.title')}
-        />
+    <div className="space-y-6">
         <div aria-live="polite">
           <Problem text={problem} />
           {(done ?? (linkedShown && linkedLabel ? t('account.linked', { name: linkedLabel }) : null)) && (
@@ -122,7 +97,7 @@ export function AccountPage() {
         </div>
 
         {part === 'profile' && (
-          <Section symbol="users" title={t('account.tabs.profile')}>
+          <Section symbol="users" title={t('settings.areas.profile.title')}>
             <div className="mb-5 flex flex-wrap items-center gap-4">
               <Avatar account={me} className="h-20 w-20 text-3xl" />
               <div className="space-y-2">
@@ -206,6 +181,8 @@ export function AccountPage() {
             </dl>
           </Section>
         )}
+        {part === 'profile' && <LanguageCard />}
+        {part === 'profile' && <SignOutCard />}
 
         {part === 'security' && (
           <>
@@ -323,8 +300,6 @@ export function AccountPage() {
               </Section>
             )}
 
-            <AppDevices />
-
             <Section symbol="lock" title={t('account.sessions.title')}>
               <p className="mb-3 text-sm text-mist-400">{t('account.sessions.text')}</p>
               <button
@@ -339,18 +314,38 @@ export function AccountPage() {
           </>
         )}
 
-        {part === 'ai' && (
+        {part === 'connections' && (
           <>
+            <AppDevices />
             <ApiTokens />
             <AiAccess />
             <McpKeys />
             <CalendarFeed />
           </>
         )}
-        {part === 'notify' && <NotifySettings />}
+        {part === 'notifications' && <NotifySettings />}
         {part === 'plugins' && <MyPluginsCard />}
-      </div>
-    </main>
+    </div>
+  )
+}
+
+/** Signing out of this browser: in the profile, where the account menu had it before. */
+function SignOutCard() {
+  const { t } = useTranslation()
+  const { signOut } = useAuth()
+  const navigate = useNavigate()
+  return (
+    <Section symbol="logOut" title={t('account.signOut')}>
+      <p className="mb-3 text-sm text-mist-400">{t('account.signOutText')}</p>
+      <button
+        type="button"
+        data-testid="sign-out"
+        onClick={() => void signOut().then(() => navigate('/login', { replace: true }))}
+        className="inline-flex items-center gap-2 rounded-full border border-ink-700 px-4 py-1.5 text-sm hover:bg-ink-850"
+      >
+        <Symbol name="logOut" /> {t('account.signOut')}
+      </button>
+    </Section>
   )
 }
 

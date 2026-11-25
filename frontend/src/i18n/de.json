@@ -700,22 +700,80 @@
       "deleteTitle": "Den Bereich {{space}} löschen?",
       "deleteText": "Alle Notizen und Dateien des Bereichs gehen in den Papierkorb, und der Bereich verschwindet für alle Mitglieder. Aus dem Papierkorb kommt er 30 Tage lang samt Mitgliedern zurück."
     },
-    "tabs": {
-      "general": "Allgemein",
-      "looks": "Aussehen",
-      "spaces": "Bereiche",
+    "groups": {
+      "account": "Mein Konto",
       "server": "Server"
     },
-    "parts": {
-      "accounts": "Konten",
-      "signin": "Anmeldung",
-      "shares": "Öffentliche Seiten",
-      "extensions": "KI, API und Plugins",
-      "files": "Dateien",
-      "backups": "Sicherung",
-      "languages": "Sprachen",
-      "log": "Log",
-      "mail": "Mailserver"
+    "jump": "Bereich wählen",
+    "areas": {
+      "profile": {
+        "title": "Profil",
+        "text": "Bild, Name, Mailadresse und Sprache deines Kontos."
+      },
+      "security": {
+        "title": "Sicherheit",
+        "text": "Passwort, zweiter Faktor, Anmeldeanbieter und das Abmelden überall."
+      },
+      "appearance": {
+        "title": "Darstellung",
+        "text": "Themes, hell oder dunkel, Schriften und eigene CSS-Schnipsel."
+      },
+      "notes": {
+        "title": "Notizen",
+        "text": "Wo du startest, der Editor, der Bereich für Tagesnotizen und eigene Tasten."
+      },
+      "spaces": {
+        "title": "Bereiche",
+        "text": "Deine Bereiche und wer darin mitarbeitet."
+      },
+      "notifications": {
+        "title": "Benachrichtigungen",
+        "text": "Wann und wie nexlore dir Bescheid gibt."
+      },
+      "plugins": {
+        "title": "Plugins",
+        "text": "Welche Plugins du für dich nutzt."
+      },
+      "connections": {
+        "title": "Verbindungen",
+        "text": "iPhone-App, API-Token, KI in Notizen, KI von außen und das Kalender-Abo."
+      },
+      "general": {
+        "title": "Allgemein",
+        "text": "Dateien, Link-Titel, eigenes CSS, Sprachen und die Anleitung."
+      },
+      "signIn": {
+        "title": "Anmeldung",
+        "text": "Wie man sich anmeldet: Passwort, zweiter Faktor und Anbieter."
+      },
+      "mail": {
+        "title": "Mail",
+        "text": "Der Mailserver für Einladungen, Benachrichtigungen und Bestätigungen."
+      },
+      "storage": {
+        "title": "Speicher und Sicherung",
+        "text": "Sicherungen des Servers, zum Herunterladen und Wiederherstellen."
+      },
+      "shares": {
+        "title": "Öffentliche Seiten",
+        "text": "Was ohne Anmeldung zu sehen ist."
+      },
+      "extensions": {
+        "title": "KI, API und Plugins",
+        "text": "KI für alle, API-Token, die iPhone-App, KI von außen, das Kalender-Abo und Plugins."
+      },
+      "accounts": {
+        "title": "Konten",
+        "text": "Wer nexlore nutzt, und alle Bereiche mit ihren Rechten."
+      },
+      "log": {
+        "title": "Log",
+        "text": "Was auf dem Server geschehen ist."
+      },
+      "about": {
+        "title": "Über nexlore",
+        "text": "Version, Lizenz, Aktualisierungen und woraus nexlore gebaut ist."
+      }
     }
   },
   "errors": {
@@ -1101,13 +1159,6 @@
     }
   },
   "account": {
-    "tabs": {
-      "profile": "Profil",
-      "security": "Sicherheit",
-      "ai": "Verbindungen",
-      "plugins": "Plugins",
-      "notify": "Benachrichtigungen"
-    },
     "profile": {
       "displayName": "Anzeigename",
       "displayHint": "So sehen dich andere. Leer zeigt deinen Benutzernamen {{name}}; mit ihm meldest du dich weiter an.",
@@ -1198,7 +1249,8 @@
       "never": "Noch nicht gesehen",
       "disconnect": "Trennen",
       "disconnectNamed": "{{name}} trennen"
-    }
+    },
+    "signOutText": "Meldet dich in diesem Browser ab. Andere Geräte bleiben angemeldet."
   },
   "members": {
     "title": "Mitglieder von {{space}}",
@@ -1639,7 +1691,10 @@
       "done": "erledigt",
       "cancelled": "abgebrochen",
       "non_task": "keine Aufgabe"
-    }
+    },
+    "next": "Als Nächstes",
+    "nextNone": "Nichts mit Datum offen.",
+    "views": "Ansichten"
   },
   "newNote": {
     "title": "Neue Notiz in „{{folder}}“",

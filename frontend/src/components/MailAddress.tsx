@@ -109,7 +109,7 @@ export function MailAddress({ me, run, busy, provider }: { me: Me; run: Run; bus
             <>
               {' '}
               <Link
-                to={locked === 'mail_off' ? '/settings?tab=server&sub=mail' : '/settings?tab=server&sub=signin'}
+                to={locked === 'mail_off' ? '/settings/mail' : '/settings/sign-in'}
                 className="text-accent-400 underline underline-offset-2"
               >
                 {t(locked === 'mail_off' ? 'account.profile.emailSetServer' : 'account.profile.emailSetPublicUrl')}

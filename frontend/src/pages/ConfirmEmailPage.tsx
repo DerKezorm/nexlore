@@ -36,7 +36,7 @@ export function ConfirmEmailPage() {
     >
       {state.kind === 'failed' && <Problem text={errorText(state.code)} />}
       <Link
-        to="/account"
+        to="/settings/profile"
         className="mt-4 inline-flex h-10 items-center rounded-full bg-accent-500 px-4 text-sm font-semibold text-on-accent hover:bg-accent-400"
       >
         {t('confirmEmail.toApp')}

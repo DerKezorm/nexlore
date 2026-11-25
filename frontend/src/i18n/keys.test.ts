@@ -34,6 +34,10 @@ describe('translation keys used in the code', () => {
     const composed = [
       ...['nav.graph', 'nav.notes', 'nav.files', 'nav.settings'],
       ...['folders', 'tags', 'topics'].map((cloud) => `graph.cloud.${cloud}`),
+      // The areas of the settings and their groups (pages/settings/areas.ts).
+      ...['profile', 'security', 'appearance', 'notes', 'spaces', 'notifications', 'plugins', 'connections', 'general', 'signIn', 'mail', 'storage', 'shares', 'extensions', 'accounts', 'log', 'about']
+        .flatMap((area) => [`settings.areas.${area}.title`, `settings.areas.${area}.text`]),
+      ...['account', 'server'].map((group) => `settings.groups.${group}`),
       ...['pending', 'saving', 'saved', 'failed', 'refreshed'].map((state) => `note.save.${state}`),
       // The symbols and colours to choose for a space or folder, as the server lists them (services/looks.py).
       ...['folder', 'book', 'server', 'cooking', 'travel', 'tool', 'star', 'heart', 'home', 'work', 'code', 'music', 'image',

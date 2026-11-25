@@ -431,7 +431,7 @@ export function McpCard({ settings, onChange }: { settings: ServerSettings; onCh
       {/* Where it goes on: the keys belong to the accounts, not to this card. */}
       <p className="mt-3 text-sm text-mist-400" data-testid="mcp-where-keys">
         {settings.mcp_allowed ? t('admin.mcp.keysWhere') : t('admin.mcp.keysLater')}{' '}
-        <Link to="/account#mcp" className="text-accent-400 hover:underline">
+        <Link to="/settings/connections#mcp" className="text-accent-400 hover:underline">
           {t('admin.mcp.keysLink')}
         </Link>
       </p>
@@ -715,7 +715,7 @@ export function AiCard({ settings, onChange }: { settings: ServerSettings; onCha
       {!shared && (
         <p className="mt-3 text-sm text-mist-400" data-testid="ai-where-access">
           {t('admin.ai.where')}{' '}
-          <Link to="/account#ai" className="text-accent-400 hover:underline">
+          <Link to="/settings/connections#ai" className="text-accent-400 hover:underline">
             {t('admin.ai.whereLink')}
           </Link>
         </p>
@@ -960,7 +960,7 @@ export function MailCard({ settings, onChange }: { settings: ServerSettings; onC
       {!settings.public_url && (
         <p className="mb-4 text-xs text-mist-500" data-testid="mail-public-url">
           {t('admin.mail.publicUrlMissing')}{' '}
-          <Link to="/settings?tab=server&sub=signin" className="text-accent-400 underline underline-offset-2">
+          <Link to="/settings/sign-in" className="text-accent-400 underline underline-offset-2">
             {t('admin.mail.publicUrlSet')}
           </Link>
         </p>
