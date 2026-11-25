@@ -10,10 +10,7 @@ import {
   adminApi,
   aiApi,
   apiTokensApi,
-  authApi,
   mcpApi,
-  type AdminAccount,
-  type LinkedProvider,
   type AdminSpace,
   type AiMode,
   type AiModel,
@@ -22,15 +19,13 @@ import {
   type Backup,
   type BackupCheck,
   type FileSettings,
-  type Invite,
   type McpTools,
-  type NewInvite,
   type ServerSettings,
   type ShareInfo,
   shareApi,
 } from '../../api/client'
 import { pastedExample } from '../../lib/pastedName'
-import { resetAddedLanguages, languageOptions, type LanguageOption } from '../../i18n'
+import { downloadTemplate, resetAddedLanguages, languageOptions, type LanguageOption } from '../../i18n'
 import { AI_PROVIDERS } from '../../lib/aiProviders'
 import { formatDate, formatDay } from '../../lib/markdown'
 import { useAuth } from '../../state/auth'
@@ -39,10 +34,8 @@ import { noteUrl } from '../../lib/vault'
 import { ConfirmDialog } from '../ConfirmDialog'
 import { Symbol } from '../Symbol'
 import { MembersDialog } from '../MembersDialog'
-import { Button, Card, CopyLink, Feedback, Input, Select, Toggle } from './ui'
+import { Button, Card, Feedback, Input, Select, Toggle } from './ui'
 import { useAction } from './useAction'
-
-const DAYS = ['1', '7', '30'] as const
 
 function size(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
@@ -51,313 +44,8 @@ function size(bytes: number): string {
 
 // --- Accounts and invitations ---------------------------------------------------------------------------------------
 
-export function AccountsCard() {
-  const { t } = useTranslation()
-  const { me, refresh } = useAuth()
-  const [accounts, setAccounts] = useState<AdminAccount[]>([])
-  const [invites, setInvites] = useState<Invite[]>([])
-  const [days, setDays] = useState<(typeof DAYS)[number]>('7')
-  const [email, setEmail] = useState('')
-  const [send, setSend] = useState(false)
-  const [made, setMade] = useState<NewInvite | null>(null)
-  const [password, setPassword] = useState<{ id: number; value: string } | null>(null)
-  // The address field of one account (issue #13): what the operator enters counts at once.
-  const [mailFor, setMailFor] = useState<{ id: number; value: string } | null>(null)
-  const [removing, setRemoving] = useState<AdminAccount | null>(null)
-  const [resetting, setResetting] = useState<AdminAccount | null>(null)
-  const [promoting, setPromoting] = useState<AdminAccount | null>(null)
-  // "Unlink": an account's link to one provider, taken with the operator's own password (the account is told nothing
-  // it has to answer; it links again in its profile).
-  const [unlinking, setUnlinking] = useState<{ account: AdminAccount; provider: LinkedProvider } | null>(null)
-  // Acting on another account asks for the operator's own password once more; one signing in through the provider
-  // has none here and is not asked.
-  const [own, setOwn] = useState('')
-  const asks = me?.sign_in === 'password'
-  const ownField = asks && (
-    <Input label={t('admin.accounts.yourPassword')} value={own} onChange={setOwn} type="password" autoComplete="current-password" className="mt-3" />
-  )
-  const { busy, problem, done, run } = useAction()
-
-  const load = useCallback(async () => {
-    setAccounts(await adminApi.accounts())
-    setInvites(await authApi.invites())
-  }, [])
-  const ask = (open: () => void) => {
-    setOwn('')
-    open()
-  }
-
-  useEffect(() => {
-    void run(load)
-  }, [run, load])
-
-  return (
-    <Card id="accounts" symbol="users" title={t('admin.accounts.title')} text={t('admin.accounts.text')}>
-      <ul className="divide-y divide-ink-700 rounded-xl border border-ink-700">
-        {accounts.map((account) => (
-          <li key={account.id} className="flex flex-wrap items-center gap-2 px-4 py-3 text-sm">
-            <span className="min-w-0 flex-1">
-              <span className="font-medium">
-                {account.display_name || account.name}
-                {account.display_name && <span className="ml-1 text-xs font-normal text-mist-500">@{account.name}</span>}
-              </span>
-              <span className="ml-2 text-xs text-mist-500">
-                {t(`account.role.${account.role}`)} · {t(`admin.accounts.signIn.${account.sign_in}`)} ·{' '}
-                {account.last_seen_at ? formatDate(account.last_seen_at) : t('admin.accounts.never')}
-                {account.two_factor && ` · ${t('admin.accounts.twoFactor')}`}
-                {account.locked && ` · ${t('admin.accounts.locked')}`}
-              </span>
-              <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-mist-400" data-testid="account-mail">
-                {account.email ? (
-                  <>
-                    {account.email}
-                    <span className="rounded-full bg-ok-500/10 px-2 text-ok-500">{t('admin.accounts.emailConfirmed')}</span>
-                    {account.email_source && (
-                      <span className="rounded-full bg-ink-850 px-2 text-mist-300">
-                        {t(`account.profile.emailSource.${account.email_source}`, {
-                          provider: account.providers.map((entry) => entry.label).join(', ') || t('account.profile.providerFallback'),
-                        })}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-mist-500">{t('admin.accounts.noAddress')}</span>
-                )}
-                {account.email_pending && (
-                  <span className="rounded-full bg-warn-500/10 px-2 text-warn-500">
-                    {t('admin.accounts.emailWaits', { address: account.email_pending })}
-                  </span>
-                )}
-              </span>
-              {account.providers.length > 0 && (
-                <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs" data-testid="account-providers">
-                  {account.providers.map((entry) => (
-                    <span key={entry.id} className="rounded-full border border-accent-500/40 px-2 text-accent-400">
-                      {entry.label}
-                    </span>
-                  ))}
-                </span>
-              )}
-            </span>
-            <span className="flex flex-wrap gap-1.5">
-              {account.sign_in !== 'oidc' && (
-                <Button small onClick={() => ask(() => setMailFor({ id: account.id, value: account.email }))}>
-                  {t('admin.accounts.email')}
-                </Button>
-              )}
-              {account.id !== me?.id && (
-              <>
-                <Button small onClick={() => ask(() => setPromoting(account))}>
-                  {account.role === 'operator' ? t('admin.accounts.makeMember') : t('admin.accounts.makeOperator')}
-                </Button>
-                <Button small onClick={() => ask(() => setPassword({ id: account.id, value: '' }))}>
-                  {t('admin.accounts.newPassword')}
-                </Button>
-                <Button small busy={busy} onClick={() => void run(() => adminApi.signOutAccount(account.id), t('admin.accounts.signedOut'))}>
-                  {t('admin.accounts.signOut')}
-                </Button>
-                {account.two_factor && (
-                  <Button small onClick={() => ask(() => setResetting(account))}>
-                    {t('admin.accounts.resetFactor')}
-                  </Button>
-                )}
-                {/* The last link of an account without a password stays: it would lock the account out. */}
-                {!(account.sign_in === 'oidc' && account.providers.length === 1) && account.providers.map((entry) => (
-                  <Button key={entry.id} small onClick={() => ask(() => setUnlinking({ account, provider: entry }))}>
-                    {account.providers.length > 1
-                      ? t('admin.accounts.unlinkFrom', { name: entry.label })
-                      : t('admin.accounts.unlink')}
-                  </Button>
-                ))}
-                <Button small danger onClick={() => ask(() => setRemoving(account))}>
-                  {t('admin.accounts.delete')}
-                </Button>
-              </>
-              )}
-            </span>
-            {mailFor?.id === account.id && (
-              <form
-                className="flex w-full flex-wrap items-end gap-2 pt-2"
-                data-testid="account-mail-form"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  void run(async () => {
-                    await adminApi.setEmail(account.id, mailFor.value.trim(), own)
-                    setMailFor(null)
-                    setOwn('')
-                    await load()
-                    if (account.id === me?.id) await refresh()
-                  }, t('admin.accounts.emailSaved'))
-                }}
-              >
-                <Input
-                  label={t('admin.accounts.emailFor', { name: account.display_name || account.name })}
-                  value={mailFor.value}
-                  onChange={(value) => setMailFor({ id: account.id, value })}
-                  type="email"
-                  autoComplete="off"
-                  className="min-w-56 flex-1"
-                />
-                {asks && (
-                  <Input label={t('admin.accounts.yourPassword')} value={own} onChange={setOwn} type="password" autoComplete="current-password" className="min-w-48 flex-1" />
-                )}
-                <Button type="submit" primary busy={busy}>
-                  {t('admin.accounts.emailSave')}
-                </Button>
-                <Button onClick={() => setMailFor(null)}>{t('admin.accounts.emailCancel')}</Button>
-                <p className="w-full text-xs text-mist-500">
-                  {account.id === me?.id
-                    ? t('admin.accounts.emailOwnHint')
-                    : t('admin.accounts.emailHint', { name: account.display_name || account.name })}
-                </p>
-              </form>
-            )}
-            {password?.id === account.id && (
-              <form
-                className="flex w-full flex-wrap items-end gap-2 pt-2"
-                onSubmit={(event) => {
-                  event.preventDefault()
-                  void run(async () => {
-                    await adminApi.setPassword(account.id, password.value, own)
-                    setPassword(null)
-                    setOwn('')
-                  }, t('admin.accounts.passwordSet'))
-                }}
-              >
-                <Input label={t('admin.accounts.newPassword')} value={password.value} onChange={(value) => setPassword({ id: account.id, value })} type="password" autoComplete="new-password" className="flex-1" />
-                {asks && (
-                  <Input label={t('admin.accounts.yourPassword')} value={own} onChange={setOwn} type="password" autoComplete="current-password" className="flex-1" />
-                )}
-                <Button type="submit" primary busy={busy}>
-                  {t('common.save')}
-                </Button>
-              </form>
-            )}
-          </li>
-        ))}
-      </ul>
-
-      <h3 className="mt-5 text-sm font-semibold">{t('admin.accounts.inviteTitle')}</h3>
-      <p className="text-xs text-mist-500">{t('admin.accounts.inviteText')}</p>
-      <form
-        className="mt-2 grid gap-2 sm:grid-cols-3"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void run(async () => {
-            setMade(await authApi.invite(Number(days), email.trim(), send))
-            await load()
-          })
-        }}
-      >
-        <Select
-          label={t('members.invite.valid')}
-          value={days}
-          options={DAYS.map((value) => ({ value, label: t('members.invite.days', { count: Number(value) }) }))}
-          onChange={setDays}
-        />
-        <Input label={t('members.invite.email')} value={email} onChange={setEmail} type="email" className="sm:col-span-2" hint={me?.mail ? undefined : t('members.invite.noMail')} />
-        {me?.mail && (
-          <label className="flex items-center gap-2 text-xs text-mist-400 sm:col-span-3">
-            <input type="checkbox" checked={send} onChange={(event) => setSend(event.target.checked)} className="accent-accent-500" />
-            {t('members.invite.send')}
-          </label>
-        )}
-        <div className="sm:col-span-3">
-          <Button type="submit" primary busy={busy}>
-            {t('members.invite.create')}
-          </Button>
-        </div>
-      </form>
-      {made && (
-        <div className="mt-3 space-y-1">
-          <CopyLink link={made.link} label={t('members.invite.copy')} />
-          <p className="text-xs text-mist-500">{made.sent ? t('members.invite.sent', { email: made.email }) : t('members.invite.once')}</p>
-        </div>
-      )}
-      {invites.length > 0 && (
-        <ul className="mt-3 divide-y divide-ink-700 rounded-xl border border-ink-700 text-xs">
-          {invites.map((invite) => (
-            <li key={invite.id} className="flex items-center gap-3 px-4 py-2">
-              <span className="flex-1">
-                {invite.email || t('admin.accounts.noEmail')} · {t('members.invite.until', { when: formatDay(invite.expires_at) })}
-              </span>
-              <Button small danger busy={busy} onClick={() => void run(async () => {
-                await authApi.withdrawInvite(invite.id)
-                await load()
-              })}>
-                {t('members.invite.withdraw')}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <Feedback problem={problem} done={done} />
-      <ConfirmDialog
-        open={removing !== null}
-        title={t('admin.accounts.deleteTitle', { name: removing?.name ?? '' })}
-        confirm={t('admin.accounts.delete')}
-        danger
-        busy={busy}
-        onCancel={() => setRemoving(null)}
-        onConfirm={() => void run(async () => {
-          await adminApi.deleteAccount(removing!.id, own)
-          setRemoving(null)
-          await load()
-        })}
-      >
-        {t('admin.accounts.deleteText')}
-        {ownField}
-      </ConfirmDialog>
-      <ConfirmDialog
-        open={resetting !== null}
-        title={t('admin.accounts.resetTitle', { name: resetting?.name ?? '' })}
-        confirm={t('admin.accounts.resetFactor')}
-        danger
-        busy={busy}
-        onCancel={() => setResetting(null)}
-        onConfirm={() => void run(async () => {
-          await adminApi.resetSecondFactor(resetting!.id, own)
-          setResetting(null)
-          await load()
-        }, t('admin.accounts.resetDone'))}
-      >
-        {t('admin.accounts.resetText')}
-        {ownField}
-      </ConfirmDialog>
-      <ConfirmDialog
-        open={promoting !== null}
-        title={t(promoting?.role === 'operator' ? 'admin.accounts.memberTitle' : 'admin.accounts.operatorTitle', { name: promoting?.name ?? '' })}
-        confirm={promoting?.role === 'operator' ? t('admin.accounts.makeMember') : t('admin.accounts.makeOperator')}
-        busy={busy}
-        onCancel={() => setPromoting(null)}
-        onConfirm={() => void run(async () => {
-          await adminApi.setRole(promoting!.id, promoting!.role === 'operator' ? 'member' : 'operator', own)
-          setPromoting(null)
-          await load()
-        })}
-      >
-        {t(promoting?.role === 'operator' ? 'admin.accounts.memberText' : 'admin.accounts.operatorText')}
-        {ownField}
-      </ConfirmDialog>
-      <ConfirmDialog
-        open={unlinking !== null}
-        title={t('admin.accounts.unlinkTitle', { name: unlinking?.account.name ?? '', provider: unlinking?.provider.label ?? '' })}
-        confirm={t('admin.accounts.unlink')}
-        danger
-        busy={busy}
-        onCancel={() => setUnlinking(null)}
-        onConfirm={() => void run(async () => {
-          await adminApi.unlinkAccount(unlinking!.account.id, unlinking!.provider.id, own)
-          setUnlinking(null)
-          await load()
-        }, t('admin.accounts.unlinked'))}
-      >
-        {t('admin.accounts.unlinkText', { provider: unlinking?.provider.label ?? '' })}
-        {ownField}
-      </ConfirmDialog>
-    </Card>
-  )
-}
+/** The operator's list of accounts: the shared account module's (konten 0.3.9/0.3.10), in its own file. */
+export { AccountsCard } from '../../pages/settings/AccountsList'
 
 // --- Every space ----------------------------------------------------------------------------------------------------
 
@@ -1358,6 +1046,10 @@ export function LanguagesCard() {
         </label>
         <Button type="submit" primary busy={busy}>
           {t('admin.languages.upload')}
+        </Button>
+        {/* The English texts as a file to translate (was beside the own language in the profile). */}
+        <Button onClick={downloadTemplate}>
+          <Symbol name="download" /> {t('settings.language.template')}
         </Button>
       </form>
       <Feedback problem={problem} done={done} />

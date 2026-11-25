@@ -28,6 +28,8 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
   const [inviteRole, setInviteRole] = useState<Role>('write')
   const [days, setDays] = useState<(typeof DAYS)[number]>('7')
   const [email, setEmail] = useState('')
+  // What the invited one is shown as (the shared account module: the operator gives a display name, never a username).
+  const [shownAs, setShownAs] = useState('')
   const [send, setSend] = useState(false)
   const [made, setMade] = useState<NewInvite | null>(null)
   const { busy, problem, run } = useAction()
@@ -162,7 +164,7 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
             })
           }}
         >
-          <Input label={t('members.addName')} value={person} onChange={setPerson} className="min-w-40 flex-1" />
+          <Input label={t('account.username')} value={person} onChange={setPerson} className="min-w-40 flex-1" />
           <Select label={t('members.role')} value={personRole} options={roleOptions} onChange={setPersonRole} />
           <Button type="submit" busy={busy}>
             {manages ? t('members.inviteName') : t('members.add')}
@@ -179,7 +181,7 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
               onSubmit={(event) => {
                 event.preventDefault()
                 void run(async () => {
-                  setMade(await authApi.inviteToSpace(space, inviteRole, Number(days), email.trim(), send))
+                  setMade(await authApi.inviteToSpace(space, inviteRole, Number(days), email.trim(), send, shownAs.trim()))
                   await load()
                 })
               }}
@@ -192,6 +194,7 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
                 onChange={setDays}
               />
               <Input label={t('members.invite.email')} value={email} onChange={setEmail} type="email" hint={me?.mail ? undefined : t('members.invite.noMail')} />
+              <Input label={t('account.displayName')} value={shownAs} onChange={setShownAs} className="sm:col-span-2" />
               {me?.mail && (
                 <label className="flex items-center gap-2 text-xs text-mist-400 sm:col-span-2">
                   <input type="checkbox" checked={send} onChange={(event) => setSend(event.target.checked)} className="accent-accent-500" />
@@ -216,7 +219,9 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
                   <li key={invite.id} className="flex flex-wrap items-center gap-3 px-4 py-2">
                     <span className="flex-1">
                       {t(`roles.${invite.role}`)}
-                      {invite.email && ` · ${invite.email}`} · {t('members.invite.until', { when: formatDay(invite.expires_at) })}
+                      {invite.display_name && ` · ${invite.display_name}`}
+                      {invite.email && ` · ${invite.email}`} ·{' '}
+                      {invite.expired ? t('account.inviteExpired') : t('members.invite.until', { when: formatDay(invite.expires_at) })}
                     </span>
                     <Button small danger busy={busy} onClick={() => void run(async () => {
                       await authApi.withdrawInvite(invite.id)
