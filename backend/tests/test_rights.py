@@ -212,7 +212,8 @@ def test_an_invitation_into_a_space(world: World, client: TestClient) -> None:
     assert link.startswith("http://testserver/invite/")
     stranger = TestClient(app, base_url="http://testserver", headers={"X-Nexlore-Client": "tab-stranger"})
     offer = stranger.get(f"/api/invite/{token}").json()
-    assert offer == {"space": "Shared", "role": "write", "min_password": 12, "signed_in_as": None}
+    assert offer == {"space": "Shared", "role": "write", "min_password": 12, "signed_in_as": None, "by": "anna",
+                     "display_name": "", "email": "", "name": "", "password": True}
     joined = stranger.post(f"/api/invite/{token}", json={"name": "dora", "password": "a long enough password"})
     assert joined.status_code == 200 and joined.json()["name"] == "dora" and joined.json()["role"] == "member"
     assert names(stranger) == ["Shared"]
@@ -246,7 +247,8 @@ def test_an_expired_invitation_is_not_valid(world: World) -> None:
         db.commit()
     assert world.bob.get(f"/api/invite/{token}").status_code == 404
     assert world.bob.post(f"/api/invite/{token}/join").status_code == 404
-    assert world.anna.get("/api/spaces/Shared/members").json()["invites"] == []
+    # Listed, marked, until withdrawn (konten 0.3.10).
+    assert [entry["expired"] for entry in world.anna.get("/api/spaces/Shared/members").json()["invites"]] == [True]
 
 
 def test_invitations_are_checked(world: World) -> None:

@@ -192,6 +192,9 @@ keeps (nexlore thins old versions out: the last day completely, then one per hou
 - `author` is null for changes from outside and for notes nexlore found as they were. `email` is the confirmed mail
   address of the account; other accounts' addresses only for the operator's token (nexlore shows them nowhere else
   either), null without one.
+- When an account changes its username, every version it made carries the new name from then on (the history stays
+  with the account; the old name stays reserved for it and nobody else can take it). Commits a mirror made before keep
+  the old name; a `.mailmap` in the mirror joins the two.
 - Notes in the trash and their versions are left out. Attachments have no versions.
 
 ### `GET /api/v1/versions/812/content`

@@ -226,7 +226,8 @@ def test_mcp_marks_hits_so_that_bold_text_stays_readable_and_refuses_an_unknown_
 # --- Acts on another account ask for the operator's password once more ------------------
 
 ACTS = {
-    "password": ("PUT", "/api/accounts/{id}/password", {"password": "a brand new password"}),
+    # The operator no longer sets a password (410); the link for a new one asks the same.
+    "reset link": ("POST", "/api/accounts/{id}/reset-link", {}),
     "role": ("PUT", "/api/accounts/{id}/role", {"role": "operator"}),
     "second factor": ("POST", "/api/accounts/{id}/totp/reset", {}),
     "delete": ("DELETE", "/api/accounts/{id}", {}),
@@ -274,8 +275,10 @@ def test_the_operator_acts_on_another_account_only_with_the_password_once_more(
     assert _failures(operator.id) == 3
     assert client.get("/api/auth/me").status_code == 200
     done = client.request(method, url, json={**body, "current_password": PASSWORD})
-    assert done.status_code in (200, 204)
-    assert _state_of(anna_id) != before
+    assert done.status_code in (200, 201, 204)
+    if act != "reset link":
+        # A link changes nothing yet: the person sets the password with it.
+        assert _state_of(anna_id) != before
     assert _failures(operator.id) == 0
 
 

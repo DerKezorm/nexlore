@@ -204,7 +204,7 @@ def test_only_a_tag_that_reads_as_a_version_is_taken(monkeypatch: pytest.MonkeyP
 
 
 @pytest.mark.parametrize(("shown", "status"), [
-    ("Anna", 409), ("ANNA", 409), ("Anna Garten", 409), (chr(0x202E) + "Bob Admin", 422), ("zero\u200bwidth", 422),
+    ("Anna", 409), ("ANNA", 409), ("Anna Garten", 409), (chr(0x202E) + "Bob Admin", 200), ("zero\u200bwidth", 200),
     ("Bob Builder", 200),
 ])
 def test_a_display_name_never_passes_for_another_account(client: TestClient, account: Account, shown: str,
@@ -212,7 +212,12 @@ def test_a_display_name_never_passes_for_another_account(client: TestClient, acc
     anna = person("anna")
     assert anna.put("/api/me/profile", json={"display_name": "Anna Garten"}).status_code == 200
     bob = person("bob")
-    assert bob.put("/api/me/profile", json={"display_name": shown}).status_code == status
+    answer = bob.put("/api/me/profile", json={"display_name": shown})
+    assert answer.status_code == status
+    if status == 200:
+        # The shared account module drops what nobody can see instead of refusing it: what stays reads as it shows.
+        stored = answer.json()["display_name"]
+        assert chr(0x202E) not in stored and "\u200b" not in stored
 
 
 # --- The log ------------------------------------------------------------------------------------------------------------

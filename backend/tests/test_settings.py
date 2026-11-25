@@ -115,8 +115,10 @@ def test_an_invitation_goes_out_by_mail(client: TestClient, operator: Account, s
     ).json()
     assert made["sent"] is True
     [message] = smtp.sent
-    assert message["To"] == "dora@example.com" and message["From"] == "notes@example.com"
-    assert made["link"] in message.get_content() and '"Team"' in message.get_content()
+    assert message["To"] == "dora@example.com" and message["From"] == "nexlore <notes@example.com>"
+    # The letter of the shared post module (text and HTML), naming the space.
+    text = message.get_body(("plain",)).get_content()
+    assert made["link"] in text and "Team" in text
     assert smtp.logins == [("notes", "mail password")] and smtp.tls == [True]
 
 
