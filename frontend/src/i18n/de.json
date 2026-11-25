@@ -682,13 +682,8 @@
   "settings": {
     "title": "Einstellungen",
     "language": {
-      "title": "Sprache",
-      "text": "Englisch und Deutsch bringt nexlore mit. Der Betreiber kann weitere als JSON-Dateien in data/locales ablegen; was einer Datei fehlt, erscheint auf Englisch.",
-      "choose": "Sprache der Oberfläche",
       "added": "vom Betreiber ergänzt",
-      "template": "Vorlage herunterladen",
-      "templateHint": "Die englischen Texte als Datei zum Übersetzen. Als data/locales/<code>.json ablegen, zum Beispiel es.json oder pt-BR.json.",
-      "textMember": "Englisch und Deutsch bringt nexlore mit; weitere Sprachen kann der Betreiber ergänzen."
+      "template": "Vorlage herunterladen"
     },
     "spaces": {
       "title": "Bereiche und Rechte",
@@ -1128,24 +1123,16 @@
     "manage": "Verwalten"
   },
   "auth": {
-    "name": "Name",
-    "nameHint": "2 bis 64 Zeichen: Kleinbuchstaben, Ziffern, Punkte, Striche oder Unterstriche. Damit meldest du dich an.",
     "password": "Passwort",
-    "passwordAgain": "Passwort noch einmal",
     "passwordHint_one": "Mindestens {{count}} Zeichen.",
     "passwordHint_other": "Mindestens {{count}} Zeichen.",
-    "mismatch": "Die beiden Passwörter sind nicht gleich.",
     "login": {
       "title": "Anmelden",
       "text": "Willkommen zurück bei nexlore.",
       "submit": "Anmelden"
     },
     "setup": {
-      "title": "nexlore einrichten",
-      "text": "Das Konto, das du jetzt anlegst, gehört dem Betreiber: Es führt diesen Server, lädt andere ein und stellt alles ein.",
       "submit": "Konto anlegen",
-      "code": "Einrichtungscode",
-      "codeHint": "Steht im Log des Servers: docker logs nexlore (Zeile „The setup code is …“), oder NEXLORE_SETUP_TOKEN, wenn du einen gesetzt hast.",
       "version": "Version {{version}}"
     },
     "invite": {
@@ -1154,7 +1141,6 @@
       "intoNexlore": "Zu nexlore.",
       "invalidTitle": "Diese Einladung gilt nicht",
       "invalidText": "Sie wurde schon benutzt, ist abgelaufen oder wurde zurückgezogen. Bitte um eine neue.",
-      "toLogin": "Zur Anmeldung",
       "join": "Als {{name}} beitreten",
       "haveAccount": "Du bist als {{name}} angemeldet und hast schon ein Konto.",
       "create": "Konto anlegen",
@@ -1178,52 +1164,16 @@
   },
   "me": {
     "profile": {
-      "displayName": "Anzeigename",
-      "displayHint": "So sehen dich andere. Leer zeigt deinen Benutzernamen {{name}}; mit ihm meldest du dich weiter an.",
-      "displaySave": "Speichern",
-      "displaySaved": "Anzeigename gespeichert.",
-      "name": "Name",
-      "role": "Rolle",
       "email": "E-Mail",
-      "upload": "Bild hochladen",
-      "change": "Anderes Bild",
       "remove": "Entfernen",
       "saved": "Bild gespeichert.",
       "removed": "Bild entfernt.",
-      "hint": "Ein Foto vom Handy oder von der Kamera. Es wird quadratisch zugeschnitten, und von der Datei bleibt nur das Bild: kein Ort, kein Gerät.",
-      "emailTitle": "Mailadresse",
-      "emailHint": "Für Einladungen und Benachrichtigungen per Mail. Andere sehen sie nicht. Sie gilt, sobald du den Link in der Mail öffnest, die wir dir schicken.",
-      "emailConfirm": "Bestätigen",
-      "emailRemove": "Entfernen",
-      "emailSent": "Mail an {{address}} geschickt. Öffne den Link darin.",
-      "emailSame": "Diese Adresse hast du schon.",
-      "emailRemoved": "Mailadresse entfernt.",
-      "emailConfirmed": "Bestätigt",
-      "emailSource": {
-        "own": "selbst eingetragen",
-        "operator": "vom Betreiber eingetragen",
-        "invite": "aus der Einladung",
-        "provider": "von {{provider}}"
-      },
-      "emailWaitTitle": "Wartet auf Bestätigung.",
-      "emailWait": "Wir haben einen Link an {{address}} geschickt. Er gilt 24 Stunden. Keine Mail da? Sieh im Spam nach.",
-      "emailResend": "Noch einmal schicken",
-      "emailResent": "Noch einmal geschickt.",
-      "emailCancel": "Abbrechen",
-      "emailCancelled": "Die Adresse wartet nicht mehr.",
-      "emailOffer": "{{provider}} kennt dich als {{address}}. Soll nexlore diese Adresse nehmen?",
       "emailTake": "Übernehmen",
       "emailTaken": "Adresse übernommen.",
       "emailDecline": "Nicht mehr fragen",
       "emailDeclined": "nexlore fragt nicht mehr nach dieser Adresse.",
-      "emailProviderOnly": "Kommt von {{provider}} und folgt ihm bei jeder Anmeldung. Ändern kannst du sie dort.",
-      "emailNoServer": "Der Betreiber hat keinen Mailserver eingetragen, darum kann nexlore keine Bestätigung schicken. Bis dahin kann nur der Betreiber dir eine Adresse eintragen.",
-      "emailNoPublicUrl": "Der Betreiber hat die öffentliche Adresse von nexlore nicht eingetragen, darum kann nexlore keine Bestätigung schicken. Bis dahin kann nur der Betreiber dir eine Adresse eintragen.",
-      "emailSetServer": "Mailserver eintragen",
-      "emailSetPublicUrl": "Öffentliche Adresse eintragen",
       "providerFallback": "dem Anmeldedienst"
     },
-    "menu": "Konto von {{name}}",
     "role": {
       "operator": "Betreiber",
       "member": "Mitglied"
@@ -1234,16 +1184,12 @@
     "title": "Mein Konto",
     "linked": "Dein Konto ist mit {{name}} verknüpft.",
     "password": {
-      "title": "Passwort",
       "current": "Jetziges Passwort",
       "new": "Neues Passwort",
       "submit": "Passwort ändern",
       "done": "Passwort geändert. Andere Browser müssen sich neu anmelden."
     },
     "sessions": {
-      "title": "Andere Browser",
-      "text": "Meldet dich überall ab außer hier, etwa nach einem verlorenen Handy.",
-      "submit": "Überall sonst abmelden",
       "done": "Alle anderen Browser sind abgemeldet."
     },
     "unlinked": "Nicht mehr mit {{name}} verknüpft.",
@@ -1281,7 +1227,6 @@
     "remove": "{{name}} entfernen",
     "removeShort": "Entfernen",
     "none": "Noch keine Mitglieder.",
-    "addName": "Name eines Kontos",
     "role": "Recht",
     "add": "Hinzufügen",
     "invite": {
@@ -1344,51 +1289,6 @@
     "title": "Server",
     "text": "Diesen Teil siehst nur du als Betreiber.",
     "accounts": {
-      "title": "Konten",
-      "text": "Alle, die sich hier anmelden können.",
-      "signIn": {
-        "password": "Passwort",
-        "oidc": "Anbieter"
-      },
-      "never": "nie angemeldet",
-      "locked": "nach falschen Passwörtern eine Weile gesperrt",
-      "makeMember": "Zum Mitglied machen",
-      "makeOperator": "Zum Betreiber machen",
-      "newPassword": "Neues Passwort",
-      "passwordSet": "Passwort gesetzt. Das Konto wurde überall abgemeldet.",
-      "signOut": "Abmelden",
-      "signedOut": "Überall abgemeldet.",
-      "yourPassword": "Dein eigenes Passwort",
-      "operatorTitle": "{{name}} zum Betreiber machen?",
-      "operatorText": "Ein Betreiber sieht alle Konten und alle Einstellungen und kann Sicherungen zurückspielen.",
-      "memberTitle": "{{name}} zum Mitglied machen?",
-      "memberText": "Ein Mitglied behält seine Bereiche und Rechte, ohne die Einstellungen des Servers.",
-      "delete": "Löschen",
-      "deleteTitle": "Das Konto {{name}} löschen?",
-      "deleteText": "Seine Rechte gehen mit, seine Notizen bleiben, wo sie sind. Ein Bereich, in dem es allein war, gehört dann dir.",
-      "inviteTitle": "Zu nexlore einladen",
-      "inviteText": "Ohne Bereich: Das neue Konto legt eigene Bereiche an oder wird später zu anderen hinzugefügt.",
-      "noEmail": "keine Adresse",
-      "twoFactor": "zweiter Faktor an",
-      "resetFactor": "Zweiten Faktor zurücksetzen",
-      "resetTitle": "Den zweiten Faktor von {{name}} zurücksetzen?",
-      "resetText": "Für ein verlorenes Handy. Das Konto wird überall abgemeldet und meldet sich mit dem Passwort allein an, bis es einen neuen einrichtet.",
-      "resetDone": "Zweiter Faktor zurückgesetzt. Das Konto wurde überall abgemeldet.",
-      "email": "Mailadresse",
-      "emailFor": "Mailadresse für {{name}}",
-      "emailHint": "Gilt sofort, ohne Bestätigung. {{name}} sieht unter Neuigkeiten, dass du sie gesetzt hast. Leer lassen und speichern entfernt sie.",
-      "emailOwnHint": "Gilt sofort, ohne Bestätigung. Leer lassen und speichern entfernt sie.",
-      "emailSave": "Speichern",
-      "emailCancel": "Abbrechen",
-      "emailSaved": "Mailadresse gespeichert.",
-      "noAddress": "Keine Mailadresse",
-      "emailWaits": "wartet auf Bestätigung: {{address}}",
-      "emailConfirmed": "bestätigt",
-      "unlink": "Verknüpfung lösen",
-      "unlinkFrom": "Verknüpfung mit {{name}} lösen",
-      "unlinkTitle": "Verknüpfung von {{name}} mit {{provider}} lösen?",
-      "unlinkText": "Das Konto kann sich dann nicht mehr über {{provider}} anmelden, bis es sich in seinem Profil wieder verknüpft.",
-      "unlinked": "Verknüpfung gelöst.",
       "withdrawn": "Einladung zurückgenommen.",
       "spacesFact": "Bereiche",
       "storageFact": "Hochgeladen",
@@ -1952,18 +1852,11 @@
     "toCatalog": "Zum Katalog unter Server → KI, API und Plugins"
   },
   "twofactor": {
-    "title": "Zweiter Faktor",
-    "lead": "Neben dem Passwort ein Code aus einer App auf dem Handy (jede Authenticator-App, die einen QR-Code nimmt). Wiederherstellungscodes auf Papier bringen dich hinein, wenn das Handy weg ist.",
     "provider": "Du meldest dich über den Anbieter an; dort gilt sein zweiter Faktor.",
-    "off": "Aus.",
-    "on_one": "An. Noch {{count}} Wiederherstellungscode.",
-    "on_other": "An. Noch {{count}} Wiederherstellungscodes.",
-    "enable": "Einrichten",
     "scan": "Scanne diesen Code mit der App oder tippe den Schlüssel darunter ein. Dann gib den Code ein, den die App zeigt, und dein Passwort.",
     "qr": "QR-Code für die Authenticator-App",
     "secret": "Schlüssel zum Eintippen:",
     "code": "Code aus der App",
-    "codeHint": "Sechs Ziffern. Oder einer deiner Wiederherstellungscodes.",
     "passwordHint": "Zeigt, dass du selbst an der Tastatur sitzt.",
     "confirm": "Einschalten",
     "codesTitle": "Deine Wiederherstellungscodes",
@@ -2817,9 +2710,7 @@
     "morePages": "Weitere Seiten im Leser: {{pages}}"
   },
   "confirmEmail": {
-    "busy": "Wird bestätigt …",
     "title": "Adresse bestätigt",
-    "text": "{{email}} gilt jetzt für dein Konto {{name}}. Einladungen und Benachrichtigungen per Mail gehen ab jetzt dorthin.",
     "failed": "Nicht bestätigt",
     "toApp": "Zu nexlore"
   },
