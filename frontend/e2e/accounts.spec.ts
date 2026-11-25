@@ -305,3 +305,40 @@ test('naming an account invites it, and it joins only by accepting under New', a
   await news.getByRole('button', { name: 'Accept' }).click()
   await expect(person.getByTestId('sidebar-tree').getByText('Orchard', { exact: true })).toBeVisible()
 })
+
+test('the operator never sets a password: a link lets the person set a new one, and signing in works with it', async ({ page, browser }) => {
+  // An account of its own, through an invitation into nexlore (the form of 1.16.0: the username stands for the display name).
+  const headers = { 'X-Nexlore-Client': 'tab-e2ereset0' }
+  const invite = await page.request.post('/api/invites', { data: { days: 1 }, headers })
+  const token = new URL((await invite.json()).link).pathname.split('/').pop()!
+  const outside = await stranger(browser)
+  expect((await outside.request.post(`/api/invite/${token}`, { data: { name: 'resa', password: 'the first password of resa' }, headers })).ok()).toBe(true)
+  await page.goto('/settings/accounts')
+  const row = page.getByTestId('account-resa')
+  await row.getByTestId('account-manage').click()
+  const manage = page.getByTestId('manage-dialog')
+  // No button sets a password; the link is the way, with the operator's own password.
+  await expect(manage.getByRole('button', { name: /Set password|New password/ })).toHaveCount(0)
+  await manage.getByRole('button', { name: 'Link for a new password' }).click()
+  const dialog = page.getByTestId('reset-link-dialog')
+  await dialog.getByLabel('Current password').fill(OPERATOR.password)
+  await dialog.getByRole('button', { name: 'Create link' }).click()
+  const link = await dialog.getByTestId('reset-link').getByRole('textbox').inputValue()
+  expect(link).toContain('/reset/')
+  // The person opens it, sets a new password, and signs in with it.
+  const person = await stranger(browser)
+  await person.goto(new URL(link).pathname)
+  await person.getByLabel('Password', { exact: true }).fill('the new password of resa')
+  await person.getByLabel('Repeat password').fill('the new password of resa')
+  await person.getByRole('button', { name: 'Set the password' }).click()
+  await expect(person.getByRole('heading', { name: 'Password set' })).toBeVisible()
+  await person.goto('/login')
+  await person.getByLabel('Username or email').fill('resa')
+  await person.getByLabel('Password', { exact: true }).fill('the new password of resa')
+  await person.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await expect(person).toHaveURL(/\/$/)
+  // A script of 1.16.0 that sets a password hears that this way is gone.
+  const id = (await (await person.request.get('/api/auth/me')).json()).id
+  const gone = await page.request.put(`/api/accounts/${id}/password`, { data: { password: 'a password set by hand', current_password: OPERATOR.password }, headers })
+  expect(gone.status()).toBe(410)
+})
