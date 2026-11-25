@@ -4,7 +4,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { AppShell } from './components/AppShell'
 import { AuthFrame } from './components/AuthFrame'
-import { SecondFactor } from './components/SecondFactor'
+import { SecondFactor } from './pages/settings/SecondFactorBoxes'
 import { CalendarPage } from './pages/CalendarPage'
 import { CleanupPage } from './pages/CleanupPage'
 import { AppConnectPage } from './pages/AppConnectPage'
@@ -14,19 +14,17 @@ import { CaptureRoute } from './pages/CaptureRoute'
 import { FilePage } from './pages/FilePage'
 import { FilesPage } from './pages/FilesPage'
 import { GraphPage } from './pages/GraphPage'
-import { ConfirmEmailPage } from './pages/ConfirmEmailPage'
-import { InvitePage } from './pages/InvitePage'
-import { LoginPage } from './pages/LoginPage'
+import { EmailPage, ForgotPage, InvitePage, LoginPage, ResetPage, SetupPage } from './pages/AuthPages'
 import { NotePage } from './pages/NotePage'
 import { PublicPage } from './pages/PublicPage'
 import { FormerAboutAddress, FormerAccountAddress, SettingsPage } from './pages/SettingsPage'
-import { SetupPage } from './pages/SetupPage'
 import { TasksPage } from './pages/TasksPage'
 import { LorePage } from './pages/LorePage'
 import { SearchPage } from './pages/SearchPage'
 import { useAuth } from './state/auth'
 import { signedOutHere } from './api/client'
 import { StoreProvider } from './state/store'
+import { TextLink } from './vendor/nexui'
 
 /** The app itself only for a signed-in account; everybody else goes to the sign-in, and back here afterwards. */
 function SignedIn({ children }: { children: ReactNode }) {
@@ -54,9 +52,9 @@ function SecondFactorFirst() {
   return (
     <AuthFrame title={t('twofactor.requiredTitle')} text={t('twofactor.requiredText')}>
       {me && <SecondFactor me={me} />}
-      <button type="button" onClick={() => void signOut()} className="mt-5 w-full text-center text-xs text-mist-500 hover:text-mist-300">
-        {t('account.signOut')}
-      </button>
+      <div className="text-center">
+        <TextLink onClick={() => void signOut()}>{t('me.signOut')}</TextLink>
+      </div>
     </AuthFrame>
   )
 }
@@ -67,7 +65,11 @@ export default function App() {
       <Route path="login" element={<LoginPage />} />
       <Route path="setup" element={<SetupPage />} />
       <Route path="invite/:token" element={<InvitePage />} />
-      <Route path="confirm-email/:token" element={<ConfirmEmailPage />} />
+      <Route path="forgot" element={<ForgotPage />} />
+      <Route path="reset/:token" element={<ResetPage />} />
+      <Route path="email/:token" element={<EmailPage />} />
+      {/* The confirmation links 1.16.0 mailed: the same page. */}
+      <Route path="confirm-email/:token" element={<EmailPage />} />
       <Route path="s/:token/*" element={<PublicPage />} />
       {/* A connector signing in for MCP (block Y): the account first, then this page, without the app around it. */}
       <Route

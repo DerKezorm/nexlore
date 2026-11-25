@@ -1,22 +1,24 @@
-/** The frame of the pages before signing in: the logo, one card, the switch for light and dark. */
+/**
+ * The frame of the pages before signing in: the logo, one card, the switch for light and dark. The card is the shared
+ * kit's (`AuthCard`, bauplaene/ui), the same as in every nex app; the colours are nexlore's.
+ */
 import { useId, type ReactNode } from 'react'
 
+import { AuthCard } from '../vendor/nexui'
 import { Logo } from './Logo'
 import { ThemeSwitcher } from './ThemeSwitcher'
 
-export function AuthFrame({ title, text, children }: { title: string; text?: string; children: ReactNode }) {
+export function AuthFrame({ title, text, children, footer }: { title: string; text?: string; children: ReactNode; footer?: ReactNode }) {
   return (
     <div className="nn-scroll flex min-h-dvh flex-col overflow-y-auto">
       <header className="flex items-center justify-between px-5 py-4">
         <Logo withWordmark />
         <ThemeSwitcher />
       </header>
-      <main className="flex flex-1 items-start justify-center px-4 pt-[8vh] pb-10">
-        <div className="w-full max-w-sm rounded-2xl border border-ink-700 bg-ink-900 p-6 shadow-xl">
-          <h1 className="text-xl font-bold tracking-tight">{title}</h1>
-          {text && <p className="mt-1 text-sm text-mist-500">{text}</p>}
-          <div className="mt-5">{children}</div>
-        </div>
+      <main className="flex flex-1 items-start justify-center px-4 pt-[6vh] pb-10">
+        <AuthCard title={title} subtitle={text} footer={footer}>
+          {children}
+        </AuthCard>
       </main>
     </div>
   )
