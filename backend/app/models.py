@@ -736,6 +736,9 @@ class McpKey(Base):
     refresh_old_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     #: When the connector signed in: its refresh tokens run out REFRESH_DAYS later, refreshed or not.
     signed_in_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: Set when the operator locked the key (the shared key module, "API-Schlüssel aller Konten"); it then answers like
+    #: none until unlocked. None for every key of 1.16.0, which knew no lock for MCP keys.
+    blocked_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
 
 class ApiToken(Base):

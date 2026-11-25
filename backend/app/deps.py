@@ -114,6 +114,9 @@ def client_ip(request: Request) -> str:
 SETUP_ONLY_PATHS = {
     "/api/auth/me", "/api/auth/logout", "/api/auth/totp/begin", "/api/auth/totp/setup", "/api/auth/totp/confirm",
     "/api/auth/passkeys", "/api/auth/passkeys/begin", "/api/auth/passkeys/finish",
+    # The shared key module: an account that owes its second factor still makes keys; they rest until it has one
+    # (``authenticate`` refuses them), and the card says so.
+    "/api/connections/keys",
 }
 
 

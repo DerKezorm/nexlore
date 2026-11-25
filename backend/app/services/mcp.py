@@ -163,7 +163,7 @@ def authenticate(db: Session, token: str | None) -> Caller | None:
     if not token or not token.startswith(TOKEN_PREFIX) or len(token) > 200:
         return None
     key = db.scalar(select(McpKey).where(McpKey.token_hash == digest(token)))
-    if key is None or (key.expires_at is not None and key.expires_at <= utcnow()):
+    if key is None or key.blocked_at is not None or (key.expires_at is not None and key.expires_at <= utcnow()):
         # A connector's access token runs out after an hour; the connector refreshes it.
         return None
     if key.kind == "oauth" and not settings_service.get(db, "mcp_oauth_allowed"):
@@ -175,7 +175,7 @@ def authenticate(db: Session, token: str | None) -> Caller | None:
 def caller_of_key(db: Session, key_id: int) -> Caller | None:
     """The caller behind a key as it stands now, for a request its account approves: the same checks as a call."""
     key = db.get(McpKey, key_id)
-    return None if key is None else _caller(db, key, used=False)
+    return None if key is None or key.blocked_at is not None else _caller(db, key, used=False)
 
 
 def _caller(db: Session, key: McpKey, *, used: bool) -> Caller | None:

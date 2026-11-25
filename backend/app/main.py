@@ -33,6 +33,7 @@ from .routers import bases as bases_router
 from .routers import canvas as canvas_router
 from .routers import cleanup as cleanup_router
 from .routers import comments as comments_router
+from .routers import connections as connections_router
 from .routers import covers as covers_router
 from .routers import export as export_router
 from .routers import favorites as favorites_router
@@ -89,7 +90,7 @@ ROUTERS = [
     proposals_router, bases_router, canvas_router, ink_router, cleanup_router, inbox_router, feed_router,
     comments_router, presence_router, linktitle_router, oauth_router, notify_router, apitokens_router, v1_router,
     lore_router,
-    export_router, covers_router, app_pairing_router, app1_router,
+    export_router, covers_router, app_pairing_router, app1_router, connections_router,
 ]
 
 
