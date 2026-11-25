@@ -1,6 +1,6 @@
 # Anbindung des Kontenmoduls (`nexkonten`) an nexlore
 
-Stand 24.11.2026, Zweig `konten`. Vorbereitung, noch nichts angebunden. Maßgeblich sind der Entwurf in nexlore
+Plan vom 24.11.2026, gebaut am 25.11.2026 auf den Modulen 1.0.0 (Abschnitt 0). Maßgeblich sind der Entwurf in nexlore
 (`Development/nexapps/Baupläne/Entwurf Konten, Einrichtung und Anmeldung.md`) und die Schnittstelle des Moduls
 (`bauplaene/konten/SCHNITTSTELLE.md`, Zweig `konten`, Fassung 0.1.0). Vorbild für Aufbau und Oberfläche ist der Plan von
 nexnotes (`nexnotes/docs/konten-anbindung.md`, Zweig `konten`); dieser Plan nennt Gleiches kurz und das Eigene
@@ -11,6 +11,63 @@ für alles, was Menschen in nexlore tun**: Autor jeder Version (und damit jedes 
 jedes hochgeladenen Anhangs (Speichergrenze), Autor von Kommentaren, `@name` in Kommentaren, wer gelöscht, verschoben,
 übernommen, installiert hat. `models.py:393-395` sagt es selbst: „The key wherever a name is kept (versions,
 comments, locks)“. Ein Umbenennen ohne Vorbereitung nähme jedem Konto seine Geschichte und seinen Speicherverbrauch.
+
+## 0. Was gebaut ist / was fehlt
+
+Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
+`konten` (`3c55402`): **`konten` 1.0.0, `ui` 1.0.0, `oidc` 1.1.2, `post` 1.0.0**, kopiert mit `tools/sync.py copy`,
+`check` grün. App-Version unverändert 1.16.0, kein Release. Die Abschnitte 1 bis 13 unten sind der Plan vom 24.11.2026
+(gegen konten 0.1.0/0.2.x); wo der Bau davon abweicht, steht es hier.
+
+**Gebaut (Backend):**
+
+| Teil | Wo |
+|---|---|
+| Store | `services/konten_store.py` (Store, FactorStore, PasskeyStore, SessionStore, PictureStore über `accounts`, `invites`, `auth_sessions`, `app_devices`, `api_tokens`, `mcp_keys` und die neuen Tabellen); alte Fehlerkennungen `OLD_CODES` (`invalid_email`, `name_taken`, `invalid_name`), daneben `account_code` |
+| Neue Spalten | `accounts`: `email_confirmed` (1), `email_proven` (0), `provider_email_from`, `totp_pending`, `totp_pending_until`, `password_changed_at` (leer = unbekannt), `passkey_handle`, `device_key`, `new_sign_in_mail` (1), `new_password_origin`, `password_reset_notice`, `browser_language`, `avatar_source`, `blocked_at`; `auth_sessions`: `uid`, `remember` (1), `stage` (`full`), `kind` (`browser`); `invites`: `display_name`, `mailed` (0) |
+| Neue Tabellen | `models_accounts.py`: `former_names`, `setup_claims`, `passkeys`, `failed_unknown`, `mail_outbox`, `password_resets` |
+| Wartende Adresse | bleibt in `accounts.email_pending*` wie in 1.16.0 (Hash ohne Präfix-Prüfung): offene Bestätigungslinks von 1.16.0 gelten über `POST /api/email/confirm`, neue über `/api/email/{token}` |
+| Wanderung | `services/konten_wanderung.py` aus `db.init_db`: `uid` für alte Sitzungen, eindeutiger Index auf `lower(name)` erst nach Zählen, Indizes auf `lower(email)`, `former_names`, `versions.author`, `files.owner`, `comments.author`; **einmal** (Einstellung `konten_migrated`): Adressen mit Herkunft `own` gelten als **per Link bewiesen** (alle zählen), und **Namen gelöschter Konten aus der Geschichte** (`versions.author`, `files.owner`, `files.deleted_by`, `move_jobs.author`, `comments.author`/`resolved_by`, `proposals.decided_by`, `plugins.installed_by`, `space_notices.actor` ohne Konto) kommen als reserviert nach `former_names` (Frage 2 des Plans) |
+| Umbenennen | `KontenStore.set_username` zieht in derselben Transaktion `versions.author`, `files.owner`, `files.deleted_by`, `move_jobs.author`, `comments.author`/`resolved_by`, `proposals.decided_by`, `plugins.installed_by`, `space_notices.actor` (und `subject` der Betreiber-Mitteilungen) mit; der alte Name bleibt für immer reserviert (`former_names`). Erwähnungen (`@alt`) finden das Konto auch über frühere Namen (`services/comments.py`). Git-Spiegel liefert danach den neuen Namen (`docs/api.md`) |
+| Löschen | endgültig wie bisher; der Name kommt als reserviert nach `former_names` (behebt, dass ein neues Konto die Geschichte eines gelöschten erbte) |
+| Anmelden | `POST /api/auth/login` über `login.sign_in` (Bremse des Moduls, bekannter Browser über `sessions.known_mark`, Cookies von 1.16.0 werden eine Fassung lang mitgelesen), Feld `name` bis 255, `remember`, Mail „Neue Anmeldung“ mit Knopf auf `/settings/security` |
+| Einrichtung | `POST /api/setup` über `setup.setup` (`display_name`, `name`, `email`, `password_confirm` neu; das Formular von 1.16.0 ohne Anzeigenamen nimmt den Benutzernamen) |
+| Passwort vergessen | `POST /api/auth/forgot`, `forgot_in_background`, sofort über `kontenpost.deliver_now` → `mailer.deliver_letter` → `mailer._send` (nie die Outbox) |
+| Einladung | `GET/POST /api/invite/{token}` über `invite_form`/`accept_invite` (das Formular von 1.16.0 geht weiter: Anzeigename = Benutzername, Adresse der Einladung, wenn sie frei ist), `POST /api/invites` und `POST /api/spaces/{name}/invites` mit `display_name`; Link über `invites.invite_link(..., request_base=…)`; Listen liefern abgelaufene mit `expired`; Mail an ein bestehendes Konto mit `member=True` (post 1.0.0); `…/join` und Einladung per Name bleiben nexlores eigene |
+| Reset-Link | `GET/POST /api/reset/{token}`; Betreiber `POST /api/accounts/{id}/reset-link`; `PUT /api/accounts/{id}/password` antwortet **410 `use_reset_link`** |
+| Profil | `PUT /api/me/profile` (`name`, `email`, `password` neu), `PUT/DELETE /api/me/email` mit Passwort, `POST /api/me/email/resend`, `DELETE /api/me/email/pending`, `POST/DELETE /api/me/email/provider` (übernehmen mit Passwort, „Nein, danke“), `PUT /api/me/new-sign-in-mail` |
+| Sitzungen | `GET /api/auth/sessions` (Browser und gekoppelte iPhones), `DELETE /api/auth/sessions/{uid}`, `GET /api/auth/access` (Geräte, API-Tokens, MCP-Schlüssel, Kalenderadresse, Passkeys), `POST /api/auth/access/disconnect`, `/seen`, `POST /api/me/password-reset-notice/seen` |
+| Betreiber | `routers/accounts.py`: Liste mit `email_duplicate`, `passkeys`, `blocked`, `spaces`, `storage_used`; `impact` (Bereiche, in denen das Konto allein ist), Löschen, Sperren/Entsperren, Rolle, Name, Anzeigename, Adresse nur entfernen (`DELETE …/email`; `PUT …/email` nur noch leer, sonst 409 `not_allowed`), Faktor-Reset mit Übersicht |
+| Sperren (neu) | `blocked_at`; gesperrt zählt keine Sitzung, kein API-Token, kein MCP-Schlüssel, kein OAuth-Token, kein gekoppeltes iPhone, keine Kalenderadresse, kein Anbieter (`account_state.blocked`); Anmelden mit richtigem Passwort sagt `account_blocked` |
+| Zweiter Faktor, Passkeys | `routers/totp.py` und `routers/passkeys.py` wie nexnotes; Nothammer `NEXLORE_SECOND_FACTOR_OFF` |
+| Bestätigen | `deps.confirm_operator`: Betreiber ohne Passwort mit frischer Anbieter-Anmeldung (5 Minuten) statt gar nicht (Lücke L1, Entwurf); Bremse `confirm:<Konto>` des Moduls |
+| Profilbilder | alle angemeldeten Konten sehen sie (`GET /api/avatars/{id}`), Anbieterbild über `oidc` 1.1.x |
+| OIDC | `services/oidc_store.py`: Namensregeln und belegte Namen aus dem Modul, Anzeigename aus dem Claim, Bild, Adresse über `profiles.provider_email` |
+| Mail | `services/post_store.py` (Outbox, Minutenrunde in `main`), `services/kontenpost.py`, `services/mailer.py` (Briefe von post, Sprache des Kontos) |
+| Notfallbefehl | `python -m app.emergency reset-link <Benutzername oder E-Mail> [--days 1/7/30]` |
+| Einstellungen | `passkeys_allowed`, `smtp_sender_name`, `mail_last_*` |
+
+**Frontend:** `pages/AuthPages.tsx` (Einrichtung, Anmelden, Passwort vergessen, Neues Passwort, E-Mail-Link,
+Einladung), `pages/settings/AccountCards.tsx`, `SecondFactorBoxes.tsx`, `SecurityBoxes.tsx` (Profil und Sicherheit aus
+`PAGES`), `pages/settings/AccountsList.tsx` und `accountList.ts` (Kontenliste 0.3.9/0.3.10 mit „Verwalten“, CAPS:
+alles an außer `restore` und `inviteRole`), Karte „Alle Bereiche“ bleibt darunter; Bausatz `ui` in nexlores Türkis
+(`styles/index.css`, `--nexui-*` hell und dunkel), `lucide-react` nur für Bausatz und Kontoseiten; eigene Kontotexte
+unter `me.*`.
+
+**Tests und Läufe (25.11.2026 abends, Testplatz):** Backend `pytest -q -n 2` 2192 grün, 9 übersprungen (darin
+Vertrag `tests/nexkonten`, `tests/nexpost`, `tests/nexoidc` und Test „Bestand“ zusammen 410 grün, 2 übersprungen:
+Einladung mit festem Benutzernamen; „Bestand“ 40 grün, nur die Marken `KOMMT` entfernt); `ruff check` sauber; Frontend
+`vitest --maxWorkers=2` 605 grün in 81 Dateien, `npm run build`, `npm run lint`, `tsc -b` sauber. Playwright angepasst,
+nicht ausgeführt (`e2e/accounts.spec.ts`, `email.spec.ts`, `firststep.spec.ts`, `twofactor.spec.ts`,
+`nexoidc.spec.ts`, `languages.spec.ts`, `people.spec.ts`, `global-setup.ts`, `playwright.config.ts`).
+
+**Abweichungen vom Modul (bewusst):** Sofort-Mails („Passwort vergessen“, Einladung, Testmail) gehen über nexlores
+`mailer._send` (dieselbe Stelle wie die Benachrichtigungen), nicht über `nexpost.send.deliver`; der Brief ist der des
+Moduls. Deshalb fängt `nexpost.testing.catch_mail` nur, was in die Outbox geht. „Überall sonst abmelden“ beendet wie in
+1.16.0 auch die per OAuth verbundenen MCP-Konnektoren.
+
+**Fehlt noch:** Sichtprüfung, Playwright-Lauf (zentral), nexlore-ios (Name beim Laden auffrischen), Seite für eine
+frische Anbieter-Anmeldung vor Betreiber-Handlungen (`fresh_sign_in_required` zeigt bisher nur den Fehlertext).
 
 ## 1. Bestand heute (1.16.0)
 
