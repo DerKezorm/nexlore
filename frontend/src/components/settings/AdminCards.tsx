@@ -27,6 +27,7 @@ import {
 import { pastedExample } from '../../lib/pastedName'
 import { downloadTemplate, resetAddedLanguages, languageOptions, type LanguageOption } from '../../i18n'
 import { AI_PROVIDERS } from '../../lib/aiProviders'
+import { errorText } from '../../lib/errors'
 import { formatDate, formatDay } from '../../lib/markdown'
 import { useAuth } from '../../state/auth'
 import { useStore } from '../../state/store'
@@ -628,6 +629,7 @@ export function MailCard({ settings, onChange }: { settings: ServerSettings; onC
     smtp_user: settings.smtp_user,
     smtp_password: '',
     smtp_from: settings.smtp_from,
+    smtp_sender_name: settings.smtp_sender_name ?? '',
   })
   // The own address, when there is one: a test usually goes to oneself.
   const [to, setTo] = useState(me?.email ?? '')
@@ -687,7 +689,10 @@ export function MailCard({ settings, onChange }: { settings: ServerSettings; onC
           type="password"
           placeholder={settings.smtp_password_set ? t('admin.mail.passwordKept') : ''}
         />
-        <Input label={t('admin.mail.from')} value={form.smtp_from} onChange={(smtp_from) => setForm({ ...form, smtp_from })} placeholder="notes@example.com" className="sm:col-span-2" />
+        <Input label={t('admin.mail.from')} value={form.smtp_from} onChange={(smtp_from) => setForm({ ...form, smtp_from })} placeholder="notes@example.com" />
+        {/* The name system mail goes out under (the shared post module); empty: nexlore. */}
+        <Input label={t('mail.senderName')} value={form.smtp_sender_name} onChange={(smtp_sender_name) => setForm({ ...form, smtp_sender_name })} placeholder="nexlore" hint={t('mail.senderNameHint')} />
+        {form.smtp_security === 'none' && <p className="text-xs text-warn-500 sm:col-span-2" data-testid="mail-unencrypted">{t('mail.warningUnencrypted')}</p>}
         <div className="sm:col-span-2">
           <Button type="submit" primary busy={busy}>
             {t('common.save')}
@@ -706,6 +711,13 @@ export function MailCard({ settings, onChange }: { settings: ServerSettings; onC
           {t('admin.mail.test')}
         </Button>
       </form>
+      {(settings.mail_last_ok_at || settings.mail_last_error) && (
+        <p className="mt-3 text-xs text-mist-500" data-testid="mail-status">
+          {settings.mail_last_ok_at && t('mail.lastOk', { when: formatDate(settings.mail_last_ok_at) })}
+          {settings.mail_last_ok_at && settings.mail_last_error ? ' · ' : ''}
+          {settings.mail_last_error && settings.mail_last_error_at && t('mail.lastError', { when: formatDate(settings.mail_last_error_at), error: errorText(settings.mail_last_error) })}
+        </p>
+      )}
       <Feedback problem={problem} done={done} />
     </Card>
   )

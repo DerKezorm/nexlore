@@ -33,6 +33,8 @@ import {
   slugFromLabel,
   type AuthentikAddress,
 } from '../../vendor/nexoidc/oidc'
+import { SecondFactorOffNotice } from '../../pages/settings/SecurityBoxes'
+import { useAuth } from '../../state/auth'
 import { ConfirmDialog } from '../ConfirmDialog'
 import { Symbol } from '../Symbol'
 import { Button, Card, CopyLink, Feedback, Input, Toggle } from './ui'
@@ -68,6 +70,7 @@ export function SignInCard({
   anyActive: boolean
 }) {
   const { t } = useTranslation()
+  const { me } = useAuth()
   const [address, setAddress] = useState(settings.public_url)
   // The authentik card may have saved an address meanwhile.
   useEffect(() => setAddress(settings.public_url), [settings.public_url])
@@ -99,6 +102,8 @@ export function SignInCard({
   return (
     <Card id="sign-in" symbol="shield" title={t('oidc.admin.signInTitle')}>
       <div className="space-y-3">
+        {/* NEXLORE_SECOND_FACTOR_OFF: said plainly here and in the own account, as long as it holds. */}
+        <SecondFactorOffNotice on={me?.second_factor_off} />
         <Toggle
           label={t('oidc.admin.password')}
           hint={t('oidc.admin.passwordHint')}
@@ -128,10 +133,12 @@ export function SignInCard({
         </form>
         <Toggle
           label={t('admin.signIn.twoFactor')}
-          hint={t('admin.signIn.twoFactorHint')}
+          hint={`${t('account.factorRequiredSwitchHint')} ${t('admin.signIn.twoFactorHint')}`}
           checked={settings.two_factor_required}
           onChange={(value) => save({ two_factor_required: value })}
         />
+        {/* Passkeys may be added and used to sign in (the shared account module, on from the start). */}
+        <Toggle label={t('account.passkeysAllowed')} checked={settings.passkeys_allowed !== false} onChange={(value) => save({ passkeys_allowed: value })} />
       </div>
       <Feedback problem={problem} done={done} />
       <ConfirmDialog
