@@ -2,14 +2,19 @@
 (``nexkonten.Mail``), this builds the link from the public address and the token and puts the letter into the outbox
 (``services/post_store.py``). The language is the account's, else its browser's at the last sign-in, else the first
 operator's, else English (``mailer.language_for``).
+
+A letter put into the outbox goes out at once in a thread of its own (``nudge``): the person waits for a confirmation
+link, as 1.16.0 sent it at once; the minute loop in ``main`` only tries again what did not go out.
 """
 
 from __future__ import annotations
 
 import logging
+import threading
 
 from sqlalchemy.orm import Session
 
+from ..config import get_settings
 from ..models import Account
 from ..vendor import nexkonten, nexpost
 from . import mailer, settings_service
@@ -67,4 +72,21 @@ def queue(db: Session, mail: nexkonten.Mail | None, *, by: str = "", where: str 
         return False
     nexpost.outbox.queue(PostStore(db), letter)
     db.commit()
+    nudge()
     return True
+
+
+def nudge() -> None:
+    """The outbox goes out now, in a thread (SMTP blocks), instead of at the next round of the minute loop. Only where
+    the background work runs at all (not in the tests, which read the outbox)."""
+    if get_settings().disable_background:
+        return
+    from .post_store import run_due
+
+    def work() -> None:
+        try:
+            run_due()
+        except Exception:
+            logger.exception("Outbox round failed")
+
+    threading.Thread(target=work, name="nexlore-outbox", daemon=True).start()
