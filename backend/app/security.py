@@ -11,17 +11,17 @@ import os
 import secrets
 import threading
 import time
-from datetime import timedelta
+from datetime import UTC, datetime
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from .config import get_settings
-from .models import SESSION_VIA_PASSWORD, Account, AppDevice, AuthSession, McpKey, utcnow
+from .models import SESSION_VIA_PASSWORD, SESSION_VIA_PROVIDER, Account, AppDevice, AuthSession, McpKey, utcnow
 
 SESSION_COOKIE = "nexlore_session"
 MIN_PASSWORD = 12
@@ -82,42 +82,72 @@ def new_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def start_session(db: Session, account: Account, ip: str, user_agent: str, via: str = SESSION_VIA_PASSWORD) -> str:
-    """Creates a browser session and returns the token for the cookie. ``via``: how it began (``SESSION_VIA_*``)."""
-    token = new_token()
-    db.add(
-        AuthSession(
-            token_hash=hash_token(token),
-            account_id=account.id,
-            expires_at=utcnow() + timedelta(days=get_settings().session_days),
-            ip=ip[:64],
-            user_agent=user_agent[:255],
-            via=via,
-        )
+def start_session(db: Session, account: Account, ip: str, user_agent: str, via: str = SESSION_VIA_PASSWORD, *,
+                  remember: bool = True) -> str:
+    """Creates a browser session (the shared account module, ``sessions.start``) and returns the token for the
+    cookie. ``via``: how it began (``SESSION_VIA_*``; a provider that checks the second factor itself is
+    ``SESSION_VIA_PROVIDER``). ``remember``: "Stay signed in", 30 days from the last use; without it at most 12 hours
+    and a cookie that ends with the browser (``session_cookie_age``)."""
+    from .services.konten_store import KontenStore
+    from .vendor.nexkonten import sessions
+
+    started = sessions.start(
+        KontenStore(db),
+        account.id,
+        cookie_name=SESSION_COOKIE,
+        secure=False,
+        remember=remember,
+        provider_checked=via == SESSION_VIA_PROVIDER,
+        label=user_agent[:255],
+        address=ip[:64],
     )
     account.last_seen_at = utcnow()
     db.commit()
-    return token
+    return started.token
+
+
+def session_cookie_age(remember: bool) -> int | None:
+    """How long the browser keeps the session cookie: "Stay signed in" outlives the session (the server decides),
+    otherwise the cookie ends with the browser."""
+    from .vendor.nexkonten import sessions
+
+    return sessions.REMEMBER_COOKIE_DAYS * 86400 if remember else None
+
+
+def _aware(moment: datetime) -> datetime:
+    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
+
+
+def account_out(account: Account | None) -> bool:
+    """Blocked by the operator (or gone): no session, no token, no key counts for it."""
+    return account is None or account.blocked_at is not None
 
 
 def session_account(db: Session, token: str | None) -> Account | None:
+    """The account of a browser session (``sessions.current``: run out is out, "Stay signed in" slides), or None.
+    A blocked account is out at once."""
     if not token:
         return None
-    session = db.scalar(select(AuthSession).where(AuthSession.token_hash == hash_token(token)))
-    if session is None:
-        return None
-    now = utcnow()
-    if session.expires_at <= now:
-        db.delete(session)
+    from .services.konten_store import KontenStore
+    from .vendor.nexkonten import model2, sessions
+
+    row = db.scalar(select(AuthSession).where(AuthSession.token_hash == hash_token(token)))
+    if row is not None and _aware(row.expires_at) <= utcnow():
+        # A session that ran out goes at its next showing (and in the hourly sweep).
+        db.delete(row)
         db.commit()
         return None
-    account = db.get(Account, session.account_id)
-    if account is None:
+    session = sessions.current(KontenStore(db), token)
+    if session is None or session.kind != model2.KIND_BROWSER:
+        if db.dirty:
+            db.commit()
         return None
-    # Only every few minutes: the interface asks often.
-    if (now - session.last_seen_at).total_seconds() > 300:
-        session.last_seen_at = now
-        account.last_seen_at = now
+    account = db.get(Account, int(session.account_id))
+    if account is None or account_out(account):
+        return None
+    if db.dirty or db.new:
+        # ``current`` wrote the last use (at most every five minutes); the account's last use goes with it.
+        account.last_seen_at = utcnow()
         db.commit()
     return account
 
@@ -130,6 +160,14 @@ def session_via(db: Session, token: str | None) -> str:
     return found or SESSION_VIA_PASSWORD
 
 
+def session_uid(db: Session, token: str | None) -> str:
+    """The id of the session of this cookie in the list "Signed-in devices", "" for none."""
+    if not token:
+        return ""
+    row = db.scalar(select(AuthSession).where(AuthSession.token_hash == hash_token(token)))
+    return (row.uid or f"s{row.id}") if row is not None else ""
+
+
 def end_session(db: Session, token: str | None) -> None:
     if token:
         db.execute(delete(AuthSession).where(AuthSession.token_hash == hash_token(token)))
@@ -140,13 +178,15 @@ def end_all_sessions(db: Session, account_id: int, except_token: str | None = No
     """Every browser session of the account but ``except_token``, and every connector that signed in over OAuth: a
     new password or "sign out everywhere" is what one does when the account was taken, and a connector's refresh
     token would have kept the taker in. Paired iPhones go too: they act with a session's rights. Keys made by hand in
-    the interface stay; they are revoked there."""
+    the interface stay; they are revoked there. The browsers known before are forgotten too (their marks); the one
+    that stays gets a new one from the caller."""
     statement = delete(AuthSession).where(AuthSession.account_id == account_id)
     if except_token:
         statement = statement.where(AuthSession.token_hash != hash_token(except_token))
     db.execute(statement)
     db.execute(delete(McpKey).where(McpKey.account_id == account_id, McpKey.kind == "oauth"))
     db.execute(delete(AppDevice).where(AppDevice.account_id == account_id))
+    db.execute(update(Account).where(Account.id == account_id).values(device_key=secrets.token_urlsafe(24)))
     db.commit()
 
 
@@ -203,9 +243,13 @@ class Brake:
             self._fails.pop(key, None)
 
     def forget(self) -> None:
-        """For the tests."""
+        """For the tests: this brake and the one of the shared account module (sign-in, forgotten password, setup
+        code, every door)."""
+        from .vendor.nexkonten.brake import BRAKE
+
         with self._lock:
             self._fails.clear()
+        BRAKE.forget()
 
 
 brake = Brake()
@@ -222,13 +266,18 @@ def _server_key() -> bytes:
     return hashlib.sha256(b"nexlore-secrets:" + secret).digest()
 
 
+def server_key() -> bytes:
+    """The key derived from the server's secret, for marks only the server can make (a keyed hash)."""
+    return _server_key()
+
+
 DEVICE_COOKIE = "nexlore_device"
 DEVICE_DAYS = 365
 
 
 def device_token(account_id: int) -> str:
-    """A browser that signed in once as this account: it may still sign in while the account is locked against the
-    rest of the world. Signed with the server's key; nothing about it is stored."""
+    """The cookie of a known browser as 1.16.0 made it (one account, signed with the server's key); read for one
+    version by ``routers/auth.browser_mark`` so that owners stay known. New marks come from the shared module."""
     nonce = secrets.token_urlsafe(12)
     mark = hashlib.sha256(_server_key() + f"device:{account_id}:{nonce}".encode()).hexdigest()[:32]
     return f"{account_id}.{nonce}.{mark}"

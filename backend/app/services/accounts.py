@@ -22,11 +22,9 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from .. import __version__
-from ..config import get_settings
 from ..models import (
     MANAGE,
     MEMBER,
-    OPERATOR,
     ROLES,
     SIGN_IN_PASSWORD,
     SPACE_ROLES,
@@ -88,40 +86,20 @@ def create_with_password(db: Session, name: str, password: str, role: str = MEMB
     return account
 
 
-#: One setup at a time: two at once each counted no account yet and made two operators.
-_setup_lock = threading.Lock()
-_generated_code: str | None = None
-
-
 def setup_code() -> str:
-    """What the first account must bring: ``NEXLORE_SETUP_TOKEN``, else a code made at start and written to the log.
-    Whoever reaches a fresh instance first would otherwise become its operator."""
-    global _generated_code
-    given = get_settings().setup_token.strip()
-    if given:
-        return given
-    if _generated_code is None:
-        _generated_code = "-".join(secrets.token_hex(2).upper() for _ in range(3))
-    return _generated_code
+    """What the first account must bring: ``NEXLORE_SETUP_TOKEN`` (16 characters at least), else a code made at start
+    and written to the log (the shared account module, ``setup.setup_code``)."""
+    from ..vendor.nexkonten import setup
+
+    return setup.setup_code()
 
 
 def announce_setup_code(db: Session) -> None:
-    """At start, while nobody has set nexlore up: the code in the log, where only whoever runs the server reads it."""
-    if count(db) == 0:
-        if get_settings().setup_token.strip():
-            logger.warning("nexlore is not set up yet. Open it and give NEXLORE_SETUP_TOKEN as the setup code.")
-        else:
-            logger.warning("nexlore is not set up yet. The setup code is %s (new at every start until set up).",
-                           setup_code())
+    """At start, while nobody has set nexlore up: the code in the log (the shared account module)."""
+    from ..vendor.nexkonten import setup
+    from .konten_store import KontenStore
 
-
-def create_operator(db: Session, name: str, password: str, code: str) -> Account:
-    with _setup_lock:
-        if count(db) > 0:
-            raise AccountError("already_set_up", "nexlore is already set up.", 409)
-        if not secrets.compare_digest(code.strip().upper().encode(), setup_code().upper().encode()):
-            raise AccountError("setup_code_wrong", "The setup code is wrong. It is in the server's log.", 403)
-        return create_with_password(db, name, password, OPERATOR)
+    setup.announce_setup(KontenStore(db))
 
 
 @lru_cache(maxsize=1)
@@ -205,25 +183,17 @@ def change_password(db: Session, account: Account, current: str, new: str) -> No
     if not verify_password(current, account.password_hash):
         raise AccountError("wrong_password", "The current password is wrong.", 401)
     account.password_hash = hash_password(new)
+    account.password_changed_at = utcnow()
     db.commit()
     logger.info("Password changed name=%s", account.name)
-
-
-def set_password(db: Session, account: Account, new: str) -> None:
-    """The operator gives an account a new password (it forgot its own); it signs in with a password from now on."""
-    account.password_hash = hash_password(new)
-    account.sign_in = SIGN_IN_PASSWORD
-    account.failed_logins = 0
-    account.locked_until = None
-    db.commit()
-    logger.info("Password set by the operator name=%s", account.name)
 
 
 # --- Invitations ---------------------------------------------------------------------------------------------------
 
 
 def create_invite(
-    db: Session, by: Account, *, space_id: int | None, space_role: str, days: int, email: str = ""
+    db: Session, by: Account, *, space_id: int | None, space_role: str, days: int, email: str = "",
+    display_name: str = "", commit: bool = True,
 ) -> tuple[Invite, str]:
     if days not in INVITE_DAYS:
         raise AccountError("invalid_days", "Choose 1, 7 or 30 days.", 422)
@@ -234,10 +204,13 @@ def create_invite(
     token = secrets.token_urlsafe(24)
     invite = Invite(
         token_hash=hash_token(token), space_id=space_id, space_role=space_role, email=email.strip()[:255],
-        created_by=by.id, expires_at=utcnow() + timedelta(days=days),
+        display_name=display_name[:80], created_by=by.id, expires_at=utcnow() + timedelta(days=days),
     )
     db.add(invite)
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     logger.info("Invite created by=%s space_id=%s role=%s", by.name, space_id, space_role or "-")
     return invite, token
 
@@ -246,13 +219,14 @@ def expired(invite: Invite) -> bool:
     return invite.expires_at <= utcnow()
 
 
-def find_invite(db: Session, token: str) -> Invite | None:
-    """A usable invitation: not run out, and into a space only while the one who made it still manages the space
-    (a manager who lost the right must not keep bringing people in with an old link)."""
+def find_invite(db: Session, token: str, *, expired_too: bool = False) -> Invite | None:
+    """A usable invitation: not run out (``expired_too`` gives one that ran out as well, so that its page says
+    "expired"), and into a space only while the one who made it still manages the space (a manager who lost the right
+    must not keep bringing people in with an old link)."""
     from . import rights
 
     invite = db.scalar(select(Invite).where(Invite.token_hash == hash_token(token)))
-    if invite is None or invite.expires_at <= utcnow():
+    if invite is None or (not expired_too and invite.expires_at <= utcnow()):
         return None
     if invite.space_id is not None:
         creator = db.get(Account, invite.created_by) if invite.created_by else None
@@ -298,34 +272,10 @@ def redeem(db: Session, invite: Invite, account: Account, *, consumed: bool = Fa
     logger.info("Invite used name=%s space_id=%s", account.name, invite.space_id)
 
 
-def accept_invite(db: Session, token: str, name: str, password: str) -> Account:
-    invite = find_invite(db, token)
-    if invite is None:
-        raise AccountError("invite_invalid", "This invitation is not valid any more.", 404)
-    check_name(db, name)
-    # The invitation goes before the account comes, in one transaction: two requests with the same link at the same
-    # moment make one account, not two.
-    if not consume(db, invite):
-        db.rollback()
-        raise AccountError("invite_invalid", "This invitation is not valid any more.", 404)
-    try:
-        account = create_with_password(db, name, password, commit=False)
-    except AccountError:
-        db.rollback()
-        raise
-    # The invitation went to this address, so it reached its owner; unless another account holds it already.
-    if invite.email and not account.email:
-        from .emailaddr import INVITE, taken
-
-        if not taken(db, invite.email, account.id or -1):
-            account.email = invite.email
-            account.email_source = INVITE
-    redeem(db, invite, account, consumed=True)
-    return account
-
-
 def invites_of(db: Session, *, space_id: int | None, all_spaces: bool = False) -> list[Invite]:
-    query = select(Invite).where(Invite.expires_at > utcnow())
+    """Every invitation not yet used or withdrawn, the expired ones too: the lists show them as "Expired" until
+    withdrawn (konten 0.3.9/0.3.10, ``OPEN_INVITES``, ``ListedInvite.expired``)."""
+    query = select(Invite)
     if not all_spaces:
         query = query.where(Invite.space_id.is_(None) if space_id is None else Invite.space_id == space_id)
     return list(db.scalars(query.order_by(Invite.created_at)))
