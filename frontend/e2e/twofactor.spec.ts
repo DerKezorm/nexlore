@@ -5,6 +5,7 @@
  * so the operator's own sign-in stays as the other tests expect it.
  */
 import { request, type Browser, type Page } from '@playwright/test'
+import { signOut } from './account'
 import { expect, test } from './fixtures'
 import { createHmac } from 'node:crypto'
 
@@ -89,8 +90,7 @@ test('an account sets up its second factor and signs in with it', async ({ page,
   await expect(section).toContainText('On. 8 recovery codes left.')
 
   // Signing in now takes two steps; a wrong code is refused, a recovery code goes through once.
-  await own.getByRole('button', { name: 'Account of factor' }).click()
-  await own.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await signOut(own)
   // Signed out once the login page is there; going there before (a slow CI machine did) finds the session alive.
   await expect(own).toHaveURL(/\/login(\?|$)/)
   await signIn(own, 'factor')
@@ -115,8 +115,8 @@ test('the operator requires it only with one of their own, and resets it for an 
   await expect(page.getByText('Set up your own second factor first, on your account page.')).toBeVisible()
   await expect(toggle).not.toBeChecked()
 
-  // The accounts are one tab further along.
-  await page.getByRole('tab', { name: 'Accounts' }).click()
+  // The accounts are an area of their own, further down the settings' navigation.
+  await page.getByTestId('settings-nav').getByRole('link', { name: 'Accounts' }).click()
   const row = page.getByRole('listitem').filter({ hasText: /^factor/ })
   await expect(row).toContainText('second factor on')
   await row.getByRole('button', { name: 'Reset second factor' }).click()

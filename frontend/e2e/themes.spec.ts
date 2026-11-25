@@ -100,7 +100,7 @@ test('own CSS waits for the operator, refuses what could load from elsewhere, an
   await page.goto('/settings?tab=looks')
   const snippets = page.getByTestId('snippets')
   await expect(snippets).toContainText('The operator has not allowed own CSS')
-  await page.goto('/settings?tab=server&sub=extensions')
+  await page.goto('/settings/general')
   // The switch shows at once and saves after; going to another page before that would cut the save off.
   const saved = page.waitForResponse((answer) => answer.url().endsWith('/api/settings') && answer.request().method() === 'PUT')
   await page.locator('#css').getByRole('checkbox', { name: 'Allow own CSS' }).click()
@@ -124,7 +124,7 @@ test('own CSS waits for the operator, refuses what could load from elsewhere, an
   expect((await off).ok()).toBe(true)
   await page.goto('/note/Zyx/Palette.md')
   await expect(page.locator('article.nn-prose h1')).not.toHaveCSS('letter-spacing', '3px')
-  await page.goto('/settings?tab=server&sub=extensions')
+  await page.goto('/settings/general')
   await page.locator('#css').getByRole('checkbox', { name: 'Allow own CSS' }).click()
   // The refused snippet answered 422, as it should; the browser logs that answer.
   expect(problems.filter((problem) => !problem.includes('status of 422'))).toEqual([])

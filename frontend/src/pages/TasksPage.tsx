@@ -214,6 +214,7 @@ export function TasksPage() {
                   readOnly={readOnlyIn.has(task.path.split('/')[0])}
                   onToggled={toggled}
                   onProblem={problemWhileTicking}
+                  testId="next-task"
                 />
               ))}
             </ul>

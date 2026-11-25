@@ -35,6 +35,7 @@ import { Symbol, type SymbolName } from './Symbol'
 import { NameDialog } from './NameDialog'
 import { askExport } from '../lib/exportPdf'
 import { askCoverflow } from '../lib/coverflow'
+import { askPalette } from '../lib/commands'
 import { OpenDrafts } from './OpenDrafts'
 import { SettingsCorner, SideTop } from './SideFrame'
 
@@ -975,8 +976,11 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           </button>
         </div>
       )}
-      {/* "New note" and the search at the top, the way to the settings at the foot, as in nexnotes (SideFrame). */}
-      <SideTop />
+      {/* "New note" and the search at the top, the way to the settings at the foot, as in nexnotes (SideFrame). In the
+          phone's sheet the header has all three already: the list keeps the room. */}
+      <div className="hidden md:block">
+        <SideTop />
+      </div>
       {(news.count > 0 || news.mentions.length > 0 || news.notices.length > 0 || news.requests.length > 0) && (
         <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-news">
           <div className="flex items-center gap-2 px-2">
@@ -1174,7 +1178,20 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           {t('menu.copied', { text: copied })}
         </p>
       )}
-      <SettingsCorner />
+      {/* On a phone the header has no room for the commands and the cover flow: they wait here, in the sheet. */}
+      {sheet && (
+        <div className="flex shrink-0 gap-1 border-t border-ink-700/80 p-2 sm:hidden" data-testid="sheet-tools">
+          <button type="button" onClick={askPalette} className="flex flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-mist-300 hover:bg-ink-850">
+            <Symbol name="command" /> {t('palette.menu')}
+          </button>
+          <button type="button" onClick={() => askCoverflow(activeFolder ?? (activeNote ? folderOf(activeNote) : ''))} className="flex flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-mist-300 hover:bg-ink-850">
+            <Symbol name="coverflow" /> {t('coverflow.browse')}
+          </button>
+        </div>
+      )}
+      <div className="hidden md:block">
+        <SettingsCorner />
+      </div>
       {menu.element}
       {grouping && (
         <NameDialog

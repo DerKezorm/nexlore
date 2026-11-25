@@ -216,7 +216,7 @@ test('without a service Lore says what is missing and where to put it in', async
   await page.goto('/lore')
   await expect(page.getByTestId('lore-no-thread')).toContainText('Lore has no thread right now')
   await page.getByRole('link', { name: 'Set up an AI service' }).click()
-  await expect(page).toHaveURL(/\/account\?tab=ai#ai$/)
+  await expect(page).toHaveURL(/\/settings\/connections#ai$/)
   // With AI not allowed at all, the header has no entry.
   await page.request.put('/api/settings', { headers: TAB, data: { ai_allowed: false } })
   await page.goto('/')

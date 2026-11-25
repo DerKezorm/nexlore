@@ -7,7 +7,7 @@
  */
 import { type APIRequestContext, type Page } from '@playwright/test'
 import { expect, test } from './fixtures'
-import { shownRow } from './tree'
+import { clickRow, row, shownRow } from './tree'
 
 const TAB = { 'X-Nexlore-Client': 'tab-e2e-canvas00' }
 
@@ -407,8 +407,9 @@ test('a note from another space lies on the canvas with that space in front, and
   const fold = async (open: boolean) => {
     await tree.evaluate((element) => element.scrollTo(0, 0))
     const button = await shownRow(page, other)
-    if ((await button.getAttribute('aria-expanded')) !== String(open)) await button.click()
-    await expect(button).toHaveAttribute('aria-expanded', String(open))
+    // Found and clicked in one step: the drawn rows move under the test while other spaces come and go.
+    if ((await button.getAttribute('aria-expanded')) !== String(open)) await clickRow(page, other)
+    await expect(row(page, other)).toHaveAttribute('aria-expanded', String(open))
   }
   await fold(true)
   for (let step = 0; step < 40 && !(await note.isVisible()); step++) {

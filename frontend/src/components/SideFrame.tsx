@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router-dom'
 
 import { askCapture } from '../lib/capture'
-import { askNewNoteHere } from '../lib/newNote'
+import { askNewNoteHere, useNewNoteTarget } from '../lib/newNote'
 import { askSearch } from '../lib/shell'
 import { useAuth } from '../state/auth'
 import { Avatar } from './Avatar'
@@ -20,6 +20,7 @@ import { Symbol } from './Symbol'
 /** "New note" and the search, at the top of a sidebar. A long press or a right click on "New note" captures quickly. */
 export function SideTop({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation()
+  const target = useNewNoteTarget()
   const press = useRef<{ timer: number; long: boolean }>({ timer: 0, long: false })
   const start = () => {
     window.clearTimeout(press.current.timer)
@@ -49,7 +50,7 @@ export function SideTop({ compact = false }: { compact?: boolean }) {
   if (compact)
     return (
       <>
-        <button type="button" {...newNote} aria-label={t('sidebar.newNote')} title={t('sidebar.newNoteShortcut')} data-testid="side-new-note" className="rounded-lg bg-accent-500 p-2 text-on-accent hover:bg-accent-400">
+        <button type="button" {...newNote} disabled={!target} aria-label={t('sidebar.newNote')} title={target ? t('sidebar.newNoteShortcut') : t('today.none')} data-testid="side-new-note" className="rounded-lg bg-accent-500 p-2 text-on-accent hover:bg-accent-400 disabled:opacity-40">
           <Symbol name="plus" className="h-4 w-4" />
         </button>
         <button type="button" onClick={askSearch} aria-label={t('search.button')} title={`${t('search.button')} (${t('search.shortcut')})`} data-testid="side-search" className="rounded-lg p-2 text-mist-400 hover:bg-ink-850 hover:text-mist-100">
@@ -62,15 +63,18 @@ export function SideTop({ compact = false }: { compact?: boolean }) {
       <button
         type="button"
         {...newNote}
-        title={t('sidebar.newNoteShortcut')}
+        disabled={!target}
+        aria-label={t('sidebar.newNote')}
+        title={target ? t('sidebar.newNoteShortcut') : t('today.none')}
         data-testid="side-new-note"
-        className="flex h-10 w-full items-center justify-center gap-2 rounded-[9px] bg-accent-500 px-4 text-sm font-semibold text-on-accent hover:bg-accent-400"
+        className="flex h-10 w-full items-center justify-center gap-2 rounded-[9px] bg-accent-500 px-4 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-40"
       >
         <Symbol name="plus" /> {t('sidebar.newNote')}
       </button>
       <button
         type="button"
         onClick={askSearch}
+        aria-label={t('search.button')}
         title={`${t('search.button')} (${t('search.shortcut')})`}
         data-testid="side-search"
         className="flex h-10 w-full items-center gap-2 rounded-[9px] border border-ink-700 bg-ink-850 px-3 text-sm text-mist-500 hover:text-mist-100"

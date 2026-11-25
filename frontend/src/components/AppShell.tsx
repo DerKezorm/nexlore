@@ -8,7 +8,7 @@ import { errorText } from '../lib/errors'
 import { homeSpace, openSpaceOf, today as isoToday } from '../lib/everyday'
 import { isNotePath } from '../lib/files'
 import { fileRoute } from '../lib/markdown'
-import { NEW_NOTE_EVENT, NEW_NOTE_HERE_EVENT } from '../lib/newNote'
+import { NEW_NOTE_EVENT, NEW_NOTE_HERE_EVENT, setNewNoteTarget } from '../lib/newNote'
 import { askCapture, CAPTURE_EVENT, takeCapture } from '../lib/capture'
 import { askCoverflow } from '../lib/coverflow'
 import { askNoteList, askPanelToggle, askSidebarToggle, hasSidebar, narrow, SEARCH_EVENT } from '../lib/shell'
@@ -198,6 +198,7 @@ export function AppShell() {
     return path ? folderOf(path) : ''
   }
   newNoteAt.current = newNoteTarget
+  useEffect(() => setNewNoteTarget(newNoteTarget), [newNoteTarget])
   // A note named by the minute (lib/zettel.ts), where a new note goes, opened for writing.
   const makeZettel = async () => {
     const folder = newNoteAt.current
@@ -387,15 +388,16 @@ export function AppShell() {
             <Symbol name="search" />
           </button>
           {/* "New note" and the search stand at the top of the sidebar from 768 pixels on (as in nexnotes); a phone has
-              no sidebar column and keeps them here. The corner: the commands and the cover flow, on a phone the way
-              to the settings too. Light or dark is chosen under Settings, Appearance. */}
+              no sidebar column and keeps them here. The corner: the commands and the cover flow (on a phone they sit at
+              the foot of the sidebar's sheet, the header has no room for them beside the places), on a phone the way
+              to the settings. Light or dark is chosen under Settings, Appearance. */}
           <button
             type="button"
             onClick={askPalette}
             aria-label={t('palette.menu')}
             title={`${t('palette.menu')} (${shownCombo('Ctrl P', undefined, i18n.language)})`}
             data-testid="open-palette"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-mist-400 hover:bg-ink-850 hover:text-mist-100"
+            className="hidden h-8 w-8 shrink-0 place-items-center rounded-full text-mist-400 hover:bg-ink-850 hover:text-mist-100 sm:grid"
           >
             <Symbol name="command" />
           </button>
@@ -405,7 +407,7 @@ export function AppShell() {
             aria-label={t('coverflow.browse')}
             title={t('coverflow.browseHint')}
             data-testid="open-coverflow"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-mist-400 hover:bg-ink-850 hover:text-mist-100"
+            className="hidden h-8 w-8 shrink-0 place-items-center rounded-full text-mist-400 hover:bg-ink-850 hover:text-mist-100 sm:grid"
           >
             <Symbol name="coverflow" />
           </button>

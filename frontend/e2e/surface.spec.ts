@@ -39,7 +39,7 @@ test('the tabs of the panel scroll in themselves; the app never moves sideways (
 test('on a phone the themes card keeps its words readable and properties their values (P8.1, P1.3)', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 800 })
   await page.goto('/settings?tab=looks')
-  const title = page.getByTestId('themes').getByRole('heading', { name: 'Themes' })
+  const title = page.getByTestId('themes').getByRole('heading', { name: 'Themes', exact: true })
   await expect(title).toBeVisible()
   expect((await title.boundingBox())!.width).toBeGreaterThan(60)
   const text = page.getByTestId('themes').locator('p').first()

@@ -27,7 +27,8 @@ test.describe('a German browser', () => {
 
   test('gets German', async ({ page }) => {
     await page.goto('/settings')
-    await expect(page.getByRole('heading', { name: 'Einstellungen', level: 1 })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Profil', level: 1 })).toBeVisible()
+    await expect(page.getByTestId('settings-nav')).toContainText('Mein Konto')
     await expect(page.locator('html')).toHaveAttribute('lang', 'de')
   })
 })
@@ -43,16 +44,13 @@ test('the operator language is offered, falls back to English where it has no te
     const kept = page.waitForResponse((answer) => answer.url().endsWith('/api/me/language') && answer.request().method() === 'PUT')
     await select.selectOption('es')
     expect((await kept).ok()).toBe(true)
-    // The settings sit in the account menu: its link says it in Spanish.
-    const account = page.getByRole('banner').getByRole('button', { name: /^Account of / })
-    await account.click()
-    await expect(page.getByRole('link', { name: 'Ajustes' })).toBeVisible()
-    await page.keyboard.press('Escape')
+    // The way to the settings at the foot of the sidebar says it in Spanish.
+    const account = page.getByRole('link', { name: / · Ajustes$/ })
+    await expect(account).toBeVisible()
     // Not in the Spanish file: English instead of a raw key.
     await expect(page.getByRole('heading', { name: 'Language', level: 2, exact: true })).toBeVisible()
     await page.reload()
-    await account.click()
-    await expect(page.getByRole('link', { name: 'Ajustes' })).toBeVisible()
+    await expect(account).toBeVisible()
     await expect(page.locator('html')).toHaveAttribute('lang', 'es')
     // The choice went with the account: a fresh browser of the same account starts in Spanish too.
     expect((await (await page.request.get('/api/auth/me')).json()).language).toBe('es')
@@ -96,7 +94,7 @@ test('a file of the operator for English lays its words over the shipped ones (P
   }
 })
 
-test('the language picked in the account menu holds the first time, even when saving it takes a while', async ({ page }) => {
+test('the language picked in the profile holds the first time, even when saving it takes a while', async ({ page }) => {
   const headers = { 'X-Nexlore-Client': 'tab-e2elanguage' }
   try {
     await page.request.put('/api/me/language', { data: { language: 'en' }, headers })
@@ -106,21 +104,20 @@ test('the language picked in the account menu holds the first time, even when sa
       await new Promise((resolve) => setTimeout(resolve, 800))
       await route.continue()
     })
-    await page.goto('/')
+    await page.goto('/settings/profile')
     await expect(page.locator('html')).toHaveAttribute('lang', 'en')
     await page.evaluate(() => {
       const seen: string[] = []
       ;(window as unknown as { langs: string[] }).langs = seen
       new MutationObserver(() => seen.push(document.documentElement.lang)).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
     })
-    await page.getByRole('banner').getByRole('button', { name: /^Account of / }).click()
-    const select = page.locator('select').filter({ has: page.locator('option[value="de"]') })
+    const select = page.getByLabel('Language of the interface')
     await expect(select.locator('option[value="de"]')).toHaveCount(1)
     await select.selectOption('de')
     await expect.poll(async () => (await (await page.request.get('/api/auth/me')).json()).language).toBe('de')
     await page.waitForTimeout(1500)
     expect(await page.evaluate(() => (window as unknown as { langs: string[] }).langs)).toEqual(['de'])
-    await expect(page.getByRole('link', { name: 'Mein Konto' })).toBeVisible()
+    await expect(page.getByTestId('settings-nav')).toContainText('Mein Konto')
   } finally {
     await page.request.put('/api/me/language', { data: { language: '' }, headers })
   }

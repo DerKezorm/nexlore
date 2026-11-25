@@ -8,7 +8,7 @@ import { expect, test } from './fixtures'
 test('an iPhone pairs with the short code and goes when disconnected', async ({ page, playwright, baseURL }) => {
   const phone = await playwright.request.newContext({ baseURL })
   try {
-    await page.goto('/account?tab=security')
+    await page.goto('/settings/connections')
     const card = page.locator('#app-devices')
     await card.getByRole('button', { name: 'Connect the iPhone app' }).click()
     await expect(card.getByRole('img', { name: 'QR code to connect the iPhone app' })).toBeVisible()
@@ -42,7 +42,7 @@ test('the sign-in page asks first and then hands the app its link', async ({ pag
   await page.getByRole('button', { name: 'Connect iPhone' }).click()
   const pairing = (await (await made).json()) as { link: string; id: string }
   expect(pairing.link).toMatch(/^nexlore:\/\/connect\?address=[^&]+&pairing=[^&]+&secret=[^&]+$/)
-  await page.goto('/account?tab=security')
+  await page.goto('/settings/connections')
   // Nobody picked it up: the pairing waits, and the page withdraws nothing it did not show.
   const state = await page.request.get(`/api/app-pairing/${pairing.id}`)
   expect(((await state.json()) as { state: string }).state).toBe('waiting')

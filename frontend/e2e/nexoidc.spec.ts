@@ -77,7 +77,7 @@ test('33: sign-in through the provider button ends in a session', async ({ page,
   await row.getByRole('button', { name: 'Link' }).click()
   await row.getByLabel('Password').fill(PASSWORD)
   await row.getByRole('button', { name: 'Link' }).click()
-  await expect(ossie).toHaveURL(/\/account\?linked=standin33/)
+  await expect(ossie).toHaveURL(/\/settings\/security\?linked=standin33/)
   // The provider by the name on its button, not by the short name in the address.
   await expect(ossie.getByText('Your account is linked to Stand-in 33.')).toBeVisible()
   await expect(ossie.getByTestId('my-providers').locator('li').filter({ hasText: 'Stand-in 33' })).toContainText('Linked')
@@ -361,7 +361,7 @@ test('40: keys of an account that must still set up a second factor carry the hi
   const hint = 'Works only once you set up a second factor.'
   const tokens = page.locator('#api-tokens')
   await expect(tokens).toContainText(hint)
-  await expect(tokens.getByRole('link', { name: 'Set it up' })).toHaveAttribute('href', '/account?tab=security')
+  await expect(tokens.getByRole('link', { name: 'Set it up' })).toHaveAttribute('href', '/settings/security')
   await expect(page.locator('#mcp')).toContainText(hint)
   await expect(page.locator('#calendar')).toContainText(hint)
   // Making a token is still possible; the token in the list carries the hint, too.

@@ -25,6 +25,7 @@ import { TasksPage } from './pages/TasksPage'
 import { LorePage } from './pages/LorePage'
 import { SearchPage } from './pages/SearchPage'
 import { useAuth } from './state/auth'
+import { signedOutHere } from './api/client'
 import { StoreProvider } from './state/store'
 
 /** The app itself only for a signed-in account; everybody else goes to the sign-in, and back here afterwards. */
@@ -36,7 +37,7 @@ function SignedIn({ children }: { children: ReactNode }) {
   if (status === 'setup') return <Navigate to="/setup" replace />
   if (status === 'signedOut') {
     const here = location.pathname + location.search
-    return <Navigate to={here === '/' ? '/login' : `/login?next=${encodeURIComponent(here)}`} replace />
+    return <Navigate to={here === '/' || signedOutHere() ? '/login' : `/login?next=${encodeURIComponent(here)}`} replace />
   }
   if (status === 'error') return <p className="p-6 text-sm text-bad-500">{t('errors.byCode.internal_error')}</p>
   if (me?.second_factor_setup_required) return <SecondFactorFirst />

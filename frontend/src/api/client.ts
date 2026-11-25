@@ -34,6 +34,12 @@ export function setSignedOut(value: boolean): void {
   signedOut = value
 }
 
+/** Whether the account signed itself out here (not a session that ran out): then the sign-in page asks for nothing
+ * to come back to, the place one left from was the settings. */
+export function signedOutHere(): boolean {
+  return signedOut
+}
+
 function randomId(): string {
   const bytes = new Uint8Array(12)
   crypto.getRandomValues(bytes)

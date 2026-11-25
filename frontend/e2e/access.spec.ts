@@ -39,7 +39,7 @@ async function contrast(page: Page, fore: string, back: string): Promise<number>
 test('small text, white on the accent and the edges of fields reach their contrast in both modes (P8.11, P8.12)', async ({ page }) => {
   await page.goto('/settings')
   // The account's own look first: set later, it would switch the mode back between two readings.
-  await expect(page.getByRole('tablist', { name: 'Settings' })).toBeVisible()
+  await expect(page.getByTestId('settings-nav')).toBeVisible()
   await page.waitForLoadState('networkidle')
   for (const mode of ['dark', 'light'] as const) {
     // Mode and colours in one step, so nothing of the page comes in between.
@@ -129,8 +129,10 @@ test('closing the new note dialog gives the focus back to its button (P8.13)', a
 })
 
 test('tabs answer the arrows and only the chosen one stands in the Tab order (P8.14)', async ({ page }) => {
-  await page.goto('/settings')
-  const tabs = page.getByRole('tablist', { name: 'Settings' }).getByRole('tab')
+  // The settings are areas with links now (as in nexnotes); the tabs of a note's column answer the same keys.
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/note/Heath/Heather.md')
+  const tabs = page.getByTestId('note-panel').getByRole('tablist').first().getByRole('tab')
   await tabs.first().focus()
   await page.keyboard.press('ArrowRight')
   await expect(tabs.nth(1)).toBeFocused()

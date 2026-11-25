@@ -30,6 +30,7 @@ export function TaskRow({
   readOnly = false,
   onToggled,
   onProblem,
+  testId = 'task-row',
 }: {
   task: TaskItem
   today: string
@@ -38,6 +39,8 @@ export function TaskRow({
   readOnly?: boolean
   onToggled: (task: TaskItem, result: Toggled) => void
   onProblem: (code: string) => void
+  /** Another name where the same task also stands in a list of its own (the tasks' sidebar, "Next"). */
+  testId?: string
 }) {
   const { t, i18n } = useTranslation()
   const [busy, setBusy] = useState(false)
@@ -65,7 +68,7 @@ export function TaskRow({
     iso === today ? t('tasks.today') : atNoon(iso).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' })
 
   return (
-    <li className="group flex items-start gap-3 rounded-xl px-2 py-2 hover:bg-ink-850 sm:px-3" data-testid="task-row">
+    <li className="group flex items-start gap-3 rounded-xl px-2 py-2 hover:bg-ink-850 sm:px-3" data-testid={testId}>
       <button
         type="button"
         onClick={() => void tick()}

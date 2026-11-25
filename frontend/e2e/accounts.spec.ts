@@ -6,6 +6,7 @@
 import { type Browser, type Page } from '@playwright/test'
 import { expect, test } from './fixtures'
 
+import { accountLink, signOut } from './account'
 import { OPERATOR } from './global-setup'
 
 test.skip(!!process.env.E2E_BASE_URL, 'makes accounts; not against a running instance')
@@ -45,7 +46,7 @@ async function accept(browser: Browser, link: string, name: string): Promise<Pag
   await page.getByLabel('Password', { exact: true }).fill('a long enough password')
   await page.getByLabel('Password again').fill('a long enough password')
   await page.getByRole('button', { name: 'Create account' }).click()
-  await expect(page.getByRole('button', { name: `Account of ${name}` })).toBeVisible()
+  await expect(accountLink(page, name)).toBeVisible()
   return page
 }
 
@@ -63,8 +64,7 @@ test('without a session the app sends to the sign-in and back', async ({ browser
   // The setup is done: its page leads to the app.
   await page.goto('/setup')
   await expect(page).toHaveURL(/\/$/)
-  await page.getByRole('button', { name: `Account of ${OPERATOR.name}` }).click()
-  await page.getByRole('button', { name: 'Sign out' }).click()
+  await signOut(page)
   await expect(page).toHaveURL(/\/login$/)
   await page.goto('/')
   await expect(page).toHaveURL(/\/login$/)
@@ -177,19 +177,20 @@ test('the sign-in page opens without a single console error', async ({ browser }
   expect(problems).toEqual([])
 })
 
-test('the own account comes in tabs, and a profile picture goes up, shows in the account menu and goes again', async ({ page }) => {
+test('the own account is in areas of the settings, and a profile picture goes up, shows at the foot of the sidebar and goes again', async ({ page }) => {
   // One red pixel (a PNG): the server draws a square of it anew.
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==', 'base64')
   await page.goto('/account')
-  const tabs = page.getByRole('tablist', { name: 'My account' })
-  await expect(tabs.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page).toHaveURL(/\/settings\/profile$/)
+  const nav = page.getByTestId('settings-nav')
+  await expect(nav.getByRole('link', { name: 'Profile' })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('button', { name: 'Change password' })).toHaveCount(0)
-  await tabs.getByRole('tab', { name: 'Security' }).click()
-  await expect(page).toHaveURL(/\/account\?tab=security$/)
+  await nav.getByRole('link', { name: 'Security' }).click()
+  await expect(page).toHaveURL(/\/settings\/security$/)
   await expect(page.getByTestId('second-factor')).toBeVisible()
-  await tabs.getByRole('tab', { name: 'Profile' }).click()
+  await nav.getByRole('link', { name: 'Profile' }).click()
 
-  const menu = page.getByRole('banner').getByRole('button', { name: `Account of ${OPERATOR.name}` })
+  const menu = accountLink(page, OPERATOR.name)
   await expect(menu.getByTestId('avatar-letter')).toHaveText(OPERATOR.name.slice(0, 1).toUpperCase())
   await page.getByLabel('Upload a picture').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: png })
   await expect(page.getByText('Picture saved.')).toBeVisible()
@@ -203,9 +204,10 @@ test('the own account comes in tabs, and a profile picture goes up, shows in the
   await page.getByRole('button', { name: 'Remove' }).click()
   await expect(page.getByText('Picture removed.')).toBeVisible()
   await expect(menu.getByTestId('avatar-letter')).toBeVisible()
-  // The old anchors lead to their tab.
+  // The old anchors lead to their area.
   await page.goto('/account#mcp')
-  await expect(tabs.getByRole('tab', { name: 'Connections' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page).toHaveURL(/\/settings\/connections#mcp$/)
+  await expect(nav.getByRole('link', { name: 'Connections' })).toHaveAttribute('aria-current', 'page')
 })
 
 test('a reader sees what changed since the last visit, proposes a change, and the writer takes it over', async ({ page, browser }) => {
@@ -244,9 +246,8 @@ test('a reader sees what changed since the last visit, proposes a change, and th
   await page.getByTestId('compare-dialog').getByRole('button', { name: 'Take over' }).click()
   await expect(page.getByText('Proposal taken over.')).toBeVisible()
   await expect(page.locator('article')).toContainText('A third one, from nora.')
-  // The reader learns what became of it.
+  // The reader learns what became of it, in the sidebar (there is no account menu any more).
   await reader.goto('/note')
-  await reader.getByRole('button', { name: 'Account of nora' }).click()
   await expect(reader.getByTestId('menu-proposals')).toContainText(`Taken over by ${OPERATOR.name}`)
 })
 

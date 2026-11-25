@@ -16,7 +16,7 @@ const TAB = { 'X-Nexlore-Client': 'tab-e2e-start' }
 test('a note as the start page opens once per tab, the map stays one click away', async ({ page, context }) => {
   const problems = collectProblems(page)
   try {
-    await page.goto('/settings')
+    await page.goto('/settings/notes')
     const card = page.locator('#start')
     await expect(card.getByRole('radio', { name: 'The map' })).toBeChecked()
     await card.getByRole('radio', { name: 'One note' }).check()

@@ -59,7 +59,7 @@ test('the account connects its own service, and the switch goes on only with a c
   await card.getByRole('button', { name: 'Save' }).click()
   await expect(card.getByLabel('Services in your own network')).toHaveValue('127.0.0.1:8478')
   await card.getByRole('link', { name: 'Go to my access' }).click()
-  await expect(page).toHaveURL(/\/account#ai$/)
+  await expect(page).toHaveURL(/\/settings\/connections#ai$/)
 
   const access = page.locator('section#ai')
   // A tile fills in the address and says where the key comes from.

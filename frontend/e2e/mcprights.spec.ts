@@ -83,7 +83,7 @@ test('rights per tool are set under the key and kept', async ({ page }) => {
   expect(problems).toEqual([])
 })
 
-test('a request waits in the menu and the news, and approving runs exactly it', async ({ page, playwright, baseURL }) => {
+test('a request waits under New in the sidebar, and approving runs exactly it', async ({ page, playwright, baseURL }) => {
   const problems = collectProblems(page)
   await openMcp(page)
   const key = await makeKey(page, 'Y asker')
@@ -93,16 +93,13 @@ test('a request waits in the menu and the news, and approving runs exactly it', 
   const declined = await tool(program, key.token, 'create_note', { folder: 'Zoo', title: 'Never made', content: 'x' })
 
   await page.goto('/')
-  await page.getByRole('banner').getByRole('button', { name: /^Account of / }).click()
-  const entry = page.getByTestId('menu-requests')
-  await expect(entry).toContainText('Approvals')
-  await expect(entry).toContainText('2')
-  await page.keyboard.press('Escape')
+  // There is no account menu any more: the requests wait under New, each a line of its own.
   const news = page.getByTestId('sidebar-news')
   if ((await news.getByRole('button', { name: /New since your last visit/ }).getAttribute('aria-expanded')) !== 'true') {
     await news.getByRole('button', { name: /New since your last visit/ }).click()
   }
   await expect(news).toContainText('Y asker wants to: Make a note')
+  await expect(news.locator('[data-request]')).toHaveCount(2)
 
   await page.goto('/requests')
   const first = page.getByTestId(`request-${asked.value.request}`)

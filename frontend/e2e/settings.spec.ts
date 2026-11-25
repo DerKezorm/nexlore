@@ -1,6 +1,8 @@
 /**
- * The settings in tabs: General first, Spaces, and Server with a row of its own for the operator; the tab is in the
- * address. An account that is not the operator neither sees Server nor reaches it by the address.
+ * The settings in areas, as in nexnotes: the spaces' sidebar stays on the left, the areas have a navigation of their
+ * own beside the content, "My account" for everybody and "Server" for the operator, each area at its own address. An
+ * account that is not the operator neither sees Server nor reaches it by the address; the addresses of the tabs
+ * before lead to their area.
  */
 import { request } from '@playwright/test'
 import { expect, test } from './fixtures'
@@ -9,32 +11,48 @@ test.skip(!!process.env.E2E_BASE_URL, 'makes an account; not against a running i
 
 const TAB = { 'X-Nexlore-Client': 'tab-e2e-sett0' }
 
-test('the settings are in tabs, and the address says which', async ({ page }) => {
+const MINE = ['Profile', 'Security', 'Appearance', 'Notes', 'Spaces', 'Notifications', 'Plugins', 'Connections']
+const SERVER = ['General', 'Sign-in', 'Mail', 'Storage and backups', 'Public pages', 'AI, API and plugins', 'Accounts', 'Log']
+
+test('the settings are in areas beside the content, and the address says which', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/settings')
-  const tabs = page.getByRole('tablist', { name: 'Settings' })
-  await expect(tabs.getByRole('tab')).toHaveText(['General', 'Look', 'Spaces', 'Server'])
-  await expect(tabs.getByRole('tab', { name: 'General' })).toHaveAttribute('aria-selected', 'true')
+  const nav = page.getByTestId('settings-nav')
+  await expect(nav.getByRole('link')).toHaveText([...MINE, ...SERVER, 'About nexlore'])
+  await expect(nav.getByRole('link', { name: 'Profile' })).toHaveAttribute('aria-current', 'page')
+  // The spaces stay in the sidebar, with "New note", the search and the way back here.
+  await expect(page.getByTestId('sidebar')).toBeVisible()
+  await expect(page.getByTestId('sidebar').getByTestId('settings-link')).toHaveAttribute('aria-current', 'page')
   await expect(page.getByLabel('Language of the interface')).toBeVisible()
   await expect(page.locator('#backups')).toHaveCount(0)
 
-  await tabs.getByRole('tab', { name: 'Server' }).click()
-  await expect(page).toHaveURL(/\/settings\?tab=server$/)
-  const parts = page.getByRole('tablist', { name: 'Server' })
-  await expect(parts.getByRole('tab')).toHaveText(['Accounts', 'Sign-in', 'Mail server', 'Public pages', 'AI, API and plugins', 'Files', 'Backups', 'Languages', 'Log'])
+  await nav.getByRole('link', { name: 'Accounts' }).click()
+  await expect(page).toHaveURL(/\/settings\/accounts$/)
   await expect(page.locator('#accounts')).toBeVisible()
 
-  await parts.getByRole('tab', { name: 'Backups' }).click()
-  await expect(page).toHaveURL(/\/settings\?tab=server&sub=backups$/)
+  await nav.getByRole('link', { name: 'Storage and backups' }).click()
+  await expect(page).toHaveURL(/\/settings\/storage$/)
   await expect(page.locator('#backups')).toBeVisible()
   await expect(page.locator('#accounts')).toHaveCount(0)
 
-  // Straight from the address, as the sidebar's "Members and settings" goes.
+  // The address of a tab before, as a saved link goes: to its area.
   await page.goto('/settings?tab=spaces')
+  await expect(page).toHaveURL(/\/settings\/spaces$/)
   await expect(page.locator('#spaces')).toBeVisible()
   await expect(page.getByLabel('Language of the interface')).toHaveCount(0)
 })
 
-test('an account that is not the operator sees no Server tab, not even by the address', async ({ page, browser, baseURL }) => {
+test('on a narrow page a choice above the content goes to the areas', async ({ page }) => {
+  await page.setViewportSize({ width: 900, height: 900 })
+  await page.goto('/settings/mail')
+  const jump = page.getByTestId('settings-jump')
+  await expect(jump).toBeVisible()
+  await expect(page.getByTestId('settings-nav')).toBeHidden()
+  await jump.selectOption('log')
+  await expect(page).toHaveURL(/\/settings\/log$/)
+})
+
+test('an account that is not the operator sees no Server, not even by the address', async ({ page, browser, baseURL }) => {
   const invite = await page.request.post('/api/invites', { data: { days: 1 }, headers: TAB })
   expect(invite.ok()).toBe(true)
   const token = new URL((await invite.json()).link).pathname.split('/').pop()!
@@ -43,16 +61,18 @@ test('an account that is not the operator sees no Server tab, not even by the ad
   const member = await browser.newContext({ storageState: await outside.storageState() })
   await outside.dispose()
   const tab = await member.newPage()
+  await tab.setViewportSize({ width: 1440, height: 900 })
   await tab.goto('/settings?tab=server&sub=backups')
-  const tabs = tab.getByRole('tablist', { name: 'Settings' })
-  await expect(tabs.getByRole('tab')).toHaveText(['General', 'Look', 'Spaces'])
-  await expect(tabs.getByRole('tab', { name: 'General' })).toHaveAttribute('aria-selected', 'true')
+  await expect(tab).toHaveURL(/\/settings\/profile$/)
+  await expect(tab.getByTestId('settings-nav').getByRole('link')).toHaveText([...MINE, 'About nexlore'])
   await expect(tab.locator('#backups')).toHaveCount(0)
+  await tab.goto('/settings/storage')
+  await expect(tab).toHaveURL(/\/settings\/profile$/)
   await member.close()
 })
 
 test('the operator makes the guide again, and it opens at its start note', async ({ page }) => {
-  await page.goto('/settings?tab=server&sub=files')
+  await page.goto('/settings/general')
   const card = page.locator('#guide')
   await card.getByLabel('Language').selectOption('en')
   await card.getByRole('button', { name: 'Make the guide again' }).click()

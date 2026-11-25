@@ -20,10 +20,11 @@ test('a token made on the account page works for a program until the operator bl
     await card.getByRole('checkbox', { name: 'Accounts may make API tokens' }).check()
     expect((await saved).status()).toBe(200)
 
-    // The account: at the top of Connections, above MCP.
+    // The account: in Connections, after the iPhone app (devices are connections, as in nexnotes), above MCP.
     await page.goto('/account?tab=ai')
     const own = page.locator('#api-tokens')
-    await expect(page.locator('section').first()).toHaveAttribute('id', 'api-tokens')
+    await expect(page.locator('section').first()).toHaveAttribute('id', 'app-devices')
+    await expect(page.locator('section').nth(1)).toHaveAttribute('id', 'api-tokens')
     await own.getByRole('button', { name: 'New token' }).click()
     await own.getByLabel('Name, so you know it again').fill('n8n')
     await own.getByRole('radio', { name: /^Write/ }).check()

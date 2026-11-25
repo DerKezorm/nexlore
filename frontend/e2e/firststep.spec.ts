@@ -4,6 +4,7 @@
  * nothing goes out that only meets 401.
  */
 import { request, type Browser, type Page } from '@playwright/test'
+import { signOut } from './account'
 import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'makes accounts of its own')
@@ -96,10 +97,10 @@ test('after signing out from an open note nothing goes out that meets 401 (P1.23
   await expect(other.locator('.nn-prose')).toBeVisible()
   const refused: string[] = []
   other.on('response', (answer) => answer.status() === 401 && refused.push(answer.url()))
-  await other.getByRole('button', { name: /^Account of / }).click()
-  await other.getByRole('button', { name: 'Sign out', exact: true }).click()
+  // To the settings with the picture at the foot of the sidebar, and out (there is no account menu any more).
+  await signOut(other)
   await expect(other).toHaveURL(/\/login/)
-  // Long enough for the polls of the note and the account menu to have come round once more.
+  // Long enough for the polls of the note and the sidebar to have come round once more.
   await other.waitForTimeout(6_000)
   expect(refused).toEqual([])
   await other.context().close()

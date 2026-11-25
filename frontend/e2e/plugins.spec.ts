@@ -42,7 +42,7 @@ test('the operator lets plugins out in the settings, the account switches them o
     await expect(card.getByText(/let out/)).toBeVisible()
     // What comes next: every account switches it on for itself, over there.
     await expect(card.getByTestId(`plugin-next-${id}`)).toContainText('every account can now switch it on')
-    await expect(card.getByRole('link', { name: 'Go there' })).toHaveAttribute('href', '/account#plugins')
+    await expect(card.getByRole('link', { name: 'Go there' })).toHaveAttribute('href', '/settings/plugins')
   }
   // Where each shows up, and an example where one helps.
   await expect(page.getByTestId('plugin-howto-toc')).toContainText('beside every note in the tab “Plugins”')
