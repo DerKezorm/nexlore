@@ -23,7 +23,8 @@ test('the settings are in areas beside the content, and the address says which',
   // The spaces stay in the sidebar, with "New note", the search and the way back here.
   await expect(page.getByTestId('sidebar')).toBeVisible()
   await expect(page.getByTestId('sidebar').getByTestId('settings-link')).toHaveAttribute('aria-current', 'page')
-  await expect(page.getByLabel('Language of the interface')).toBeVisible()
+  // The language is a field of the profile since the shared account module (`account.language`).
+  await expect(page.getByLabel('Language', { exact: true })).toBeVisible()
   await expect(page.locator('#backups')).toHaveCount(0)
 
   await nav.getByRole('link', { name: 'Accounts' }).click()
