@@ -1358,63 +1358,6 @@
       "left_one": "Ein Ordner behält seinen Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}",
       "left_other": "{{count}} Ordner behalten ihren Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}"
     },
-    "backups": {
-      "title": "Sicherung",
-      "text": "Notizen, Dateien, Papierkorb und Datenbank in einem Archiv.",
-      "schedule": "Automatisch",
-      "every": {
-        "off": "nie",
-        "daily": "jede Nacht",
-        "weekly": "jede Woche"
-      },
-      "keep": "Aufbewahren",
-      "make": "Jetzt sichern",
-      "made": "Sicherung erstellt.",
-      "notes_one": "{{count}} Notiz",
-      "notes_other": "{{count}} Notizen",
-      "kind": {
-        "manual": "von Hand",
-        "scheduled": "geplant",
-        "update": "vor einer Wiederherstellung"
-      },
-      "check": "Prüfen",
-      "restore": "Wiederherstellen",
-      "download": "Herunterladen",
-      "password": "Dein Passwort",
-      "downloaded": "Die Sicherung wird gespeichert.",
-      "delete": "Löschen",
-      "none": "Noch keine Sicherung.",
-      "usable": "Das Archiv ist vollständig und lesbar.",
-      "damaged": "Das Archiv ist beschädigt. Es lässt sich nicht wiederherstellen.",
-      "would": "Eine Wiederherstellung würde {{add}} Dateien hinzufügen, {{change}} ändern und {{remove}} entfernen.",
-      "restarting": "nexlore startet mit der Sicherung neu. Gleich neu anmelden.",
-      "restartingWait": "Die Seite wartet und führt zur Anmeldung, sobald nexlore wieder da ist.",
-      "upload": "Sicherung hochladen",
-      "uploaded": "hochgeladen",
-      "uploadedHint": "Hochgeladen. Sie steht jetzt in der Liste: erst prüfen, dann wiederherstellen.",
-      "confirm": {
-        "restore": {
-          "title": "Diese Sicherung wiederherstellen?",
-          "text": "Der jetzige Stand wird vorher gesichert. Danach startet nexlore neu, und alle melden sich neu an.",
-          "button": "Wiederherstellen"
-        },
-        "download": {
-          "title": "Diese Sicherung herunterladen?",
-          "text": "Sie enthält alle Notizen, Dateien und Konten und den Schlüssel des Servers. Sie ist nicht verschlüsselt.",
-          "button": "Herunterladen"
-        },
-        "delete": {
-          "title": "Diese Sicherung löschen?",
-          "text": "Sie lässt sich nicht zurückholen.",
-          "button": "Löschen"
-        },
-        "upload": {
-          "title": "Sicherung hochladen?",
-          "text": "Die Datei kommt in die Liste der Sicherungen. Wiederhergestellt wird erst, wenn du es dort bestätigst.",
-          "button": "Hochladen"
-        }
-      }
-    },
     "languages": {
       "title": "Sprachen",
       "text": "Eigene Übersetzungen, aus der Vorlage unter Sprache. Eine Datei für de oder en ersetzt nur die Texte, die sie enthält; alle anderen bleiben, wie sie ausgeliefert sind.",
@@ -2819,5 +2762,15 @@
   "emailLink": {
     "title": "Neue Adresse bestätigen",
     "submit": "Bestätigen"
+  },
+  "storage": {
+    "holds": "Notizen, Dateien, Papierkorb und Datenbank in einem Archiv.",
+    "counts": "{{notes}}, {{files}}",
+    "notes_one": "{{count}} Notiz",
+    "notes_other": "{{count}} Notizen",
+    "files_one": "{{count}} Datei",
+    "files_other": "{{count}} Dateien",
+    "would": "Eine Wiederherstellung würde {{add}} Dateien hinzufügen, {{change}} ändern und {{remove}} entfernen.",
+    "trash": "Papierkorb"
   }
 }

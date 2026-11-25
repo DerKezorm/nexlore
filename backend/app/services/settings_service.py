@@ -14,9 +14,13 @@ from ..models import Setting
 DEFAULTS: dict[str, Any] = {
     "log_mode": "normal",
     "log_mode_until": None,
-    #: off | daily | weekly. Daily in the night unless the operator decides otherwise (review before 1.0.0, P1.24).
+    #: off | daily | weekly | monthly. Daily in the night unless the operator decides otherwise (review before 1.0.0,
+    #: P1.24).
     "backup_schedule": "daily",
     "backup_keep": 7,
+    #: The time of day of a scheduled backup (the shared module sicherung), in the server's zone; the night's hour
+    #: nexlore used before.
+    "backup_time": "03:00",
     #: Where uploaded files go, next to the note they belong to. Only a name, never a path.
     "attachment_folder": "Attachments",
     #: How a picture pasted into a note is named: ``{note}``, ``{date}``, ``{time}``, ``{n}``, ``{n:3}``; ``/`` makes

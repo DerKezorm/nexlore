@@ -1358,63 +1358,6 @@
       "left_one": "One folder kept its name because one with the new name stands beside it: {{list}}",
       "left_other": "{{count}} folders kept their name because one with the new name stands beside them: {{list}}"
     },
-    "backups": {
-      "title": "Backups",
-      "text": "Notes, files, the trash and the database in one archive.",
-      "schedule": "Automatically",
-      "every": {
-        "off": "never",
-        "daily": "every night",
-        "weekly": "every week"
-      },
-      "keep": "Keep",
-      "make": "Back up now",
-      "made": "Backup made.",
-      "notes_one": "{{count}} note",
-      "notes_other": "{{count}} notes",
-      "kind": {
-        "manual": "by hand",
-        "scheduled": "scheduled",
-        "update": "before a restore"
-      },
-      "check": "Check",
-      "restore": "Restore",
-      "download": "Download",
-      "password": "Your password",
-      "downloaded": "The backup is being saved.",
-      "delete": "Delete",
-      "none": "No backups yet.",
-      "usable": "The archive is complete and readable.",
-      "damaged": "The archive is damaged. It cannot be restored.",
-      "would": "A restore would add {{add}}, change {{change}} and remove {{remove}} files.",
-      "restarting": "nexlore restarts with the backup. Sign in again in a moment.",
-      "restartingWait": "This page waits and goes to the sign-in as soon as nexlore is back.",
-      "upload": "Upload a backup",
-      "uploaded": "uploaded",
-      "uploadedHint": "Uploaded. It is in the list now: check it first, then restore.",
-      "confirm": {
-        "restore": {
-          "title": "Restore this backup?",
-          "text": "The current state is backed up first. nexlore then restarts, and everybody signs in again.",
-          "button": "Restore"
-        },
-        "download": {
-          "title": "Download this backup?",
-          "text": "It holds every note, file and account and the key of the server. It is not encrypted.",
-          "button": "Download"
-        },
-        "delete": {
-          "title": "Delete this backup?",
-          "text": "It cannot be brought back.",
-          "button": "Delete"
-        },
-        "upload": {
-          "title": "Upload a backup?",
-          "text": "The file joins the list of backups. Nothing is restored until you confirm it there.",
-          "button": "Upload"
-        }
-      }
-    },
     "languages": {
       "title": "Languages",
       "text": "Own translations, from the template under Language. A file for de or en replaces only the texts it holds; all others stay as shipped.",
@@ -2819,5 +2762,15 @@
   "emailLink": {
     "title": "Confirm the new address",
     "submit": "Confirm"
+  },
+  "storage": {
+    "holds": "Notes, files, the trash and the database in one archive.",
+    "counts": "{{notes}}, {{files}}",
+    "notes_one": "{{count}} note",
+    "notes_other": "{{count}} notes",
+    "files_one": "{{count}} file",
+    "files_other": "{{count}} files",
+    "would": "A restore would add {{add}} files, change {{change}} and remove {{remove}}.",
+    "trash": "Trash"
   }
 }

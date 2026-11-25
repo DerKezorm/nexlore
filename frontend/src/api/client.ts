@@ -925,29 +925,11 @@ export type AuthentikResult = {
   /** With the reason `public_url_needed`: what the card shows about the address. */
   address?: AuthentikAddress | null
 }
-export type Backup = { name: string; size: number; created: string; kind: string; note: string; notes: number; files: number; version: string; uploaded?: boolean }
-
 /** The password for an upload rides in a header, as base64 of its UTF-8: a header carries no umlauts. */
 export function passwordHeader(password: string): string {
   let bytes = ''
   for (const byte of new TextEncoder().encode(password)) bytes += String.fromCharCode(byte)
   return btoa(bytes)
-}
-export type BackupCheck = {
-  name: string
-  usable: boolean
-  database_ok: boolean
-  files_ok: boolean
-  damaged: string[]
-  version: string
-  created: string
-  kind: string
-  notes: number
-  files: number
-  would_add: number
-  would_change: number
-  would_remove: number
-  examples: { add: string[]; change: string[]; remove: string[] }
 }
 export type AddedLanguage = { code: string; name: string; keys: number }
 
@@ -1255,27 +1237,7 @@ export const adminApi = {
   /** "Use it only": saves the address; 409 `public_url_change` asks first (`count`, `address`, `hand`), `confirm` answers. */
   saveAuthentikAddress: (public_url: string, confirm = false) =>
     api<AuthentikAddress>('/api/oidc/authentik/address', { method: 'POST', body: { public_url, confirm } }),
-  backups: () => api<Backup[]>('/api/backups'),
-  makeBackup: (note: string) => api<{ name: string }>('/api/backups', { method: 'POST', body: { note } }),
-  checkBackup: (name: string) => api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/check`, { method: 'POST' }),
-  restoreBackup: (name: string, password: string) =>
-    api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/restore`, { method: 'POST', body: { password } }),
-  deleteBackup: (name: string, password: string) =>
-    api<void>(`/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE', body: { password } }),
-  /** The archive itself; the password is asked again (empty for an account that signs in through the provider). */
-  downloadBackup: (name: string, password: string) =>
-    api<Blob>(`/api/backups/${encodeURIComponent(name)}/download`, { method: 'POST', body: { password }, blob: true }),
-  /** A backup from elsewhere (a move to a new server): the ZIP as the body, the password once more in a header. */
-  uploadBackup: async (file: Blob, password: string): Promise<{ name: string }> => {
-    const response = await fetch('/api/backups/upload', {
-      method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/zip', 'X-Nexlore-Client': tabId(), 'X-Nexlore-Password': passwordHeader(password) },
-      body: file,
-    })
-    const data = await response.json().catch(() => null)
-    if (!response.ok) throw new ApiError(response.status, typeof data?.detail?.code === 'string' ? data.detail.code : 'internal_error')
-    return data as { name: string }
-  },
+
   /** The JSON file itself as the body. */
   uploadLanguage: async (code: string, file: Blob): Promise<AddedLanguage> => {
     const response = await fetch(`/api/locales/${encodeURIComponent(code)}`, {

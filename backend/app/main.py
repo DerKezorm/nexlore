@@ -128,6 +128,11 @@ async def _sweep_forever(stop: asyncio.Event) -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     logs.setup()
+    # The shared backup module on this data folder (a test may have moved it since the import); a staged restore is
+    # swapped in before anything opens the database.
+    backups.configure()
+    # What a stopped copy left (hidden parts, empty archives under the module's names) goes first.
+    backups.tidy_at_start()
     backups.apply_pending()
     init_db()
     # The single sign-in provider of the settings becomes the entry "oidc" of the list, once (backup first).
@@ -135,6 +140,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # The TLS context of the sign-in module is read once, in a thread, so that the first sign-in does not wait for it.
     await nexoidc.warm()
     private.tighten_all()
+    backups.warn_at_start()
+    # A restore that failed at this start: the operators hear it once (the page says it too).
+    backups.report_failed_restore()
     logs.attach_store(_read_log_mode, _write_log_mode)
     logs.apply_stored_mode()
     settings = get_settings()

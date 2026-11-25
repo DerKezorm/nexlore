@@ -62,7 +62,7 @@ class SettingsIn(BaseModel):
     password_login: bool | None = None
     two_factor_required: bool | None = None
     shares_allowed: bool | None = None
-    backup_schedule: Literal["off", "daily", "weekly"] | None = None
+    backup_schedule: Literal["off", "daily", "weekly", "monthly"] | None = None
     backup_keep: int | None = Field(default=None, ge=1, le=365)
     smtp_host: str | None = Field(default=None, max_length=255)
     smtp_port: int | None = Field(default=None, ge=1, le=65535)

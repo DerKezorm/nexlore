@@ -12,10 +12,10 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from app.db import SessionLocal
 from app.main import app
 from app.models import Account
-from app.services import backups
+from app.services import backup_hooks, backups
+from app.vendor import nexsicherung
 
 from .conftest import PASSWORD, make_account, sign_in
 
@@ -48,7 +48,7 @@ def test_an_uploaded_backup_joins_the_list_checks_whole_and_restores(client: Tes
     answer = client.post("/api/backups/upload", content=archive, headers=_header())
     assert answer.status_code == 201, answer.text
     name = answer.json()["name"]
-    assert name.endswith("-upload.zip") and backups.NAME.match(name)
+    assert name.endswith("-upload.zip") and nexsicherung.current().name_pattern.match(name)
     listed = {entry["name"]: entry for entry in client.get("/api/backups").json()}
     assert listed[name]["uploaded"] is True and listed[name]["note"] == "before the move"
     assert client.post(f"/api/backups/{name}/check").json()["usable"] is True
@@ -137,5 +137,4 @@ def test_backups_to_keep_go_up_to_365_as_the_interface_offers(client: TestClient
     assert answer.status_code == status, answer.text
     if status == 200:
         assert answer.json()["backup_keep"] == value
-        with SessionLocal() as db:
-            assert backups.keep(db) == value
+        assert backup_hooks.NexloreHooks().load_schedule().keep == value

@@ -17,6 +17,7 @@ from app.db import SessionLocal
 from app.main import ROUTERS, app
 from app.models import Account, McpKey
 from app.services import backups, index, logs, mcp, settings_service
+from app.vendor import nexsicherung
 
 from .conftest import PASSWORD, make_account, sign_in
 
@@ -189,14 +190,16 @@ def test_a_restore_that_fails_half_way_puts_the_vault_back_as_it_was(
 
     monkeypatch.setattr(os, "rename", rename)
     monkeypatch.setattr(shutil, "move", move)
-    with pytest.raises(OSError):
-        backups.apply_pending()
+    # The shared backup module: the start goes on with the data from before, the staged files are set aside.
+    assert backups.apply_pending() is False
     monkeypatch.undo()
     after = {path.relative_to(vault).as_posix(): path.read_bytes() for path in vault.rglob("*") if path.is_file()}
     assert after == now
-    pending = backups.pending_folder() / "vault"
-    assert {path.relative_to(pending).as_posix(): path.read_bytes() for path in pending.rglob("*") if path.is_file()} == staged
-    # And a later start that can move everything restores the backup.
+    failed = nexsicherung.restore.failed_folder() / "vault"
+    assert {path.relative_to(failed).as_posix(): path.read_bytes() for path in failed.rglob("*") if path.is_file()} == staged
+    # And restoring it again, at a start that can move everything, brings the backup back.
+    manual = next(entry.name for entry in backups.entries() if entry.kind == backups.MANUAL)
+    backups.stage_restore(manual)
     assert backups.apply_pending() is True
     assert (vault / "B" / "n.md").read_bytes() == b"backup B\n"
 

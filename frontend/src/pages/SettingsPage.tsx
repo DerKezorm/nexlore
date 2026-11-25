@@ -16,7 +16,6 @@ import {
   AiCard,
   AllSpacesCard,
   ApiTokensCard,
-  BackupsCard,
   CssCard,
   FilesSettingsCard,
   GuideCard,
@@ -45,6 +44,7 @@ import { AboutArea } from './AboutPage'
 import { AccountArea } from './AccountPage'
 import { areaPath, findArea, formerAccountAddress, resolveArea, type AreaSlug, type ServerSlug } from './settings/areas'
 import { SettingsJump, SettingsNav } from './settings/SettingsNav'
+import { StorageArea } from './settings/StorageArea'
 
 export function SettingsPage() {
   const { t } = useTranslation()
@@ -135,7 +135,7 @@ function ServerArea({ area }: { area: ServerSlug }) {
       // Its own area since issue #13: it carries invitations, notifications and the links confirming an address.
       return settings && <MailCard settings={settings} onChange={setSettings} />
     case 'storage':
-      return settings && <BackupsCard settings={settings} onChange={setSettings} />
+      return <StorageArea />
     case 'shares':
       return settings && <SharesCard settings={settings} onChange={setSettings} />
     case 'extensions':

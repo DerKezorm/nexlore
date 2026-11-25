@@ -17,7 +17,7 @@ const stubs = vi.hoisted(() => (...names: string[]) =>
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }) }))
 vi.mock('../components/settings/AdminCards', async (original) => ({
   ...(await original()),
-  ...stubs('AccountsCard', 'AiCard', 'AllSpacesCard', 'ApiTokensCard', 'BackupsCard', 'CssCard', 'FilesSettingsCard', 'GuideCard', 'LanguagesCard', 'MailCard', 'McpCard', 'SharesCard'),
+  ...stubs('AccountsCard', 'AiCard', 'AllSpacesCard', 'ApiTokensCard', 'CssCard', 'FilesSettingsCard', 'GuideCard', 'LanguagesCard', 'MailCard', 'McpCard', 'SharesCard'),
 }))
 vi.mock('../components/settings/AppearanceCard', () => stubs('AppearanceCard'))
 vi.mock('../components/settings/AppPairingSwitch', () => stubs('AppPairingSwitch'))
@@ -26,6 +26,7 @@ vi.mock('../components/settings/EditorCard', () => stubs('EditorCard'))
 vi.mock('../components/settings/KeysCard', () => stubs('KeysCard'))
 vi.mock('../components/settings/LinkTitleSwitch', () => stubs('LinkTitleSwitch'))
 vi.mock('../components/settings/LogCard', () => stubs('LogCard'))
+vi.mock('./settings/StorageArea', () => stubs('StorageArea'))
 vi.mock('../components/settings/SignInCards', () => stubs('SignInPart'))
 vi.mock('../components/settings/SnippetsCard', () => stubs('SnippetsCard'))
 vi.mock('../components/settings/SpacesCard', () => stubs('SpacesCard'))
@@ -149,7 +150,7 @@ describe('nothing got lost', () => {
     'StartCard', 'EditorCard', 'HomeSpaceCard', 'KeysCard', 'ThemesCard', 'AppearanceCard', 'SnippetsCard', 'SpacesCard',
     // Settings: Server
     'AccountsCard', 'AllSpacesCard', 'SignInPart', 'MailCard', 'SharesCard', 'ApiTokensCard', 'AppPairingSwitch', 'McpCard', 'CalendarFeedSwitch',
-    'LinkTitleSwitch', 'AiCard', 'CssCard', 'AdminPluginsCard', 'LogCard', 'FilesSettingsCard', 'GuideCard', 'BackupsCard', 'LanguagesCard',
+    'LinkTitleSwitch', 'AiCard', 'CssCard', 'AdminPluginsCard', 'LogCard', 'FilesSettingsCard', 'GuideCard', 'StorageArea', 'LanguagesCard',
     // My account
     'ProfileCard', 'SignOutCard', 'SecurityCard', 'AppDevices', 'NotifySettings', 'ApiTokens', 'AiAccess', 'McpKeys', 'CalendarFeed', 'MyPluginsCard',
     // About
@@ -177,7 +178,7 @@ describe('nothing got lost', () => {
       general: ['FilesSettingsCard', 'LinkTitleSwitch', 'CssCard', 'LanguagesCard', 'GuideCard'],
       'sign-in': ['SignInPart'],
       mail: ['MailCard'],
-      storage: ['BackupsCard'],
+      storage: ['StorageArea'],
       shares: ['SharesCard'],
       extensions: ['AiCard', 'ApiTokensCard', 'AppPairingSwitch', 'McpCard', 'CalendarFeedSwitch', 'AdminPluginsCard'],
       accounts: ['AccountsCard', 'AllSpacesCard'],
