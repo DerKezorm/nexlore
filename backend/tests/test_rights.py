@@ -383,8 +383,8 @@ def test_an_invitation_is_used_once_even_at_the_same_moment(world: World, monkey
     both_found = threading.Barrier(2, timeout=10)
     found = accounts.find_invite
 
-    def find_then_wait(db, token):  # type: ignore[no-untyped-def]
-        invite = found(db, token)
+    def find_then_wait(db, token, **options):  # type: ignore[no-untyped-def]
+        invite = found(db, token, **options)
         # Both requests hold a valid invitation before either uses it: the worst timing, every time.
         both_found.wait()
         return invite
@@ -392,12 +392,16 @@ def test_an_invitation_is_used_once_even_at_the_same_moment(world: World, monkey
     monkeypatch.setattr(accounts, "find_invite", find_then_wait)
     results: list[str] = []
 
+    from app.services.konten_store import KontenStore
+    from app.vendor import nexkonten
+
     def take(name: str) -> None:
         with SessionLocal() as db:
             try:
-                accounts.accept_invite(db, token, name, "a long enough password")
+                nexkonten.invites.accept_invite(KontenStore(db), token, display_name=name, username=name, email="",
+                                                password="a long enough password")
                 results.append("ok")
-            except accounts.AccountError as exc:
+            except nexkonten.AccountError as exc:
                 results.append(exc.code)
 
     threads = [threading.Thread(target=take, args=(name,)) for name in ("racer-one", "racer-two")]

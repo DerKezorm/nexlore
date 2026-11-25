@@ -142,15 +142,18 @@ def deliver_letter(db: Session, letter: object) -> None:
 
 
 def send_invite(db: Session, to: str, link: str, *, by: str, space: str | None, language: str = "en",
-                days: int = 0) -> None:
+                days: int = 0, member: bool = False) -> None:
     """The invitation, at once: the shared post module's letter (logo, text and HTML) in the receiver's language,
-    naming the space it leads into."""
+    naming the space it leads into; ``member``: the address belongs to an account already, which joins with it (post
+    1.0.0)."""
     from ..vendor import nexpost
 
     values: dict[str, object] = {"by": _one_line(by),
                                  "valid": nexpost.letters.validity(language, days=days) if days else ""}
     if space:
         values["space"] = _one_line(space)
+        if member:
+            values["member"] = "yes"
     try:
         letter = nexpost.letters.compose("invite", to, language=language, values=values, link=link)
     except nexpost.MailError as exc:

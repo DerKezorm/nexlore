@@ -13,7 +13,7 @@ from PIL import Image
 from app.main import app
 from app.services import avatars
 
-from .conftest import join, make_account, sign_in
+from .conftest import make_account, sign_in
 
 
 def person(name: str) -> TestClient:
@@ -82,20 +82,19 @@ def test_only_pictures_come_in(client: TestClient, account: object) -> None:
     assert anna.put("/api/auth/avatar", content=photo(kind="WEBP")).status_code == 200
 
 
-def test_seen_by_the_account_the_operator_and_those_who_share_a_space_nobody_else(
+def test_seen_by_every_signed_in_account_and_nobody_signed_out(
     client: TestClient, account: object, vault: Path
 ) -> None:
-    anna, bob, carl = person("anna"), person("bob"), person("carl")
+    """The shared account module (decision of 24.11.2026): every signed-in account of the server sees the pictures,
+    in every nex app the same; 1.16.0 showed them only to those sharing a space."""
+    anna, bob = person("anna"), person("bob")
     assert anna.put("/api/auth/avatar", content=photo()).status_code == 200
     address = f"/api/avatars/{me(anna)['id']}"
     assert client.get(address).status_code == 200  # the operator
-    # bob shares nothing with anna yet: the same answer as for an account without a picture.
-    assert bob.get(address).status_code == 404
-    assert bob.get(address).json() == bob.get(f"/api/avatars/{me(carl)['id']}").json()
-    assert anna.post("/api/spaces", json={"name": "Garden"}).status_code == 201
-    join(anna, "Garden", "bob", "read")
     assert bob.get(address).status_code == 200
-    assert carl.get(address).status_code == 404
+    assert bob.get(address).headers["x-content-type-options"] == "nosniff"
+    signed_out = TestClient(client.app, headers={"X-Nexlore-Client": "tab-nobody000"})
+    assert signed_out.get(address).status_code == 401
     # Removed: gone for everyone.
     assert anna.delete("/api/auth/avatar").json()["avatar"] is None
     assert anna.get(address).status_code == 404

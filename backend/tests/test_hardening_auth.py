@@ -13,6 +13,7 @@ from app.config import get_settings
 from app.main import app
 from app.security import DEVICE_COOKIE, brake
 from app.services import accounts
+from app.vendor.nexkonten import brake as konten_brake
 
 from .conftest import PASSWORD, SETUP_CODE, make_account
 
@@ -48,8 +49,10 @@ def test_guessing_the_setup_code_is_braked(client: TestClient) -> None:
 def test_without_a_given_token_nexlore_makes_a_code_and_writes_it_to_the_log(
     client: TestClient, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
+    from app.vendor.nexkonten import setup as konten_setup
+
     monkeypatch.setattr(get_settings(), "setup_token", "")
-    monkeypatch.setattr(accounts, "_generated_code", None)
+    konten_setup.forget_generated_code()
     code = accounts.setup_code()
     assert len(code) == 14 and code == accounts.setup_code()
     from app.db import SessionLocal
@@ -57,7 +60,8 @@ def test_without_a_given_token_nexlore_makes_a_code_and_writes_it_to_the_log(
     with caplog.at_level(logging.WARNING, logger="nexlore.auth"), SessionLocal() as db:
         accounts.announce_setup_code(db)
     assert code in caplog.text
-    made = client.post("/api/setup", json={"name": "boss", "password": GOOD, "code": code.lower()})
+    made = client.post("/api/setup", json={"display_name": "Boss", "name": "boss", "password": GOOD,
+                                           "code": code.lower()})
     assert made.status_code == 200
 
 
@@ -119,14 +123,18 @@ def test_sixty_wrong_passwords_at_once_count_no_more_than_the_lock_allows(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     make_account("anna")
+    from app.services.konten_store import KontenStore
+
     counted: list[int] = []
-    original = accounts.note_failure
+    original = KontenStore.note_failure
 
-    def counting(db, account) -> None:  # type: ignore[no-untyped-def]
-        counted.append(1)
-        original(db, account)
+    def counting(store, account_id) -> None:  # type: ignore[no-untyped-def]
+        # Failures counted at the account (the shared account module); one without an account is the dummy work.
+        if account_id is not None:
+            counted.append(1)
+        original(store, account_id)
 
-    monkeypatch.setattr(accounts, "note_failure", counting)
+    monkeypatch.setattr(KontenStore, "note_failure", counting)
     start = threading.Barrier(30)
 
     def one(number: int) -> None:
@@ -140,7 +148,8 @@ def test_sixty_wrong_passwords_at_once_count_no_more_than_the_lock_allows(
     for thread in threads:
         thread.join()
     brake.forget()
-    assert len(counted) == 10
+    # The shared module's brake holds the account after five counted attempts already; never more than the lock.
+    assert 1 <= len(counted) <= 10
 
 
 def test_behind_a_proxy_nexlore_was_not_told_about_a_stranger_does_not_freeze_everybody(client: TestClient) -> None:
@@ -179,9 +188,12 @@ def test_ports_and_spellings_of_one_address_are_one_sender(client: TestClient, m
     assert normal_address("2001:db8::1") == normal_address("[2001:db8::2]:443") == "2001:db8::/64"
     monkeypatch.setattr(get_settings(), "trusted_proxies", "10.9.0.0/16")
     proxy = fresh("10.9.0.1")
-    answers = [proxy.post("/api/auth/login", json={"name": "nobody", "password": "x"},
-                          headers={"X-Forwarded-For": f"7.7.7.7:{4000 + n}"}).status_code for n in range(7)]
-    assert answers[-1] == 429
+    # Another name each time, so that only the sender's count fills (konten 0.3.10: while only the count of a name
+    # waits the answer is 401 like a wrong password; 429 only once the sender's own count is full).
+    free = konten_brake.FREE["sender"]
+    answers = [proxy.post("/api/auth/login", json={"name": f"nobody{n}", "password": "x"},
+                          headers={"X-Forwarded-For": f"7.7.7.7:{4000 + n}"}).status_code for n in range(free + 1)]
+    assert answers[:free] == [401] * free and answers[-1] == 429
     brake.forget()
 
 

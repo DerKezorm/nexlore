@@ -395,14 +395,12 @@ def test_the_waiting_address_still_takes_its_link(bestand):
 # --- What the module brings (strict xfail) -------------------------------------------------------------------------------
 
 
-@KOMMT
 @pytest.mark.parametrize("konto", EINDEUTIGE_ADRESSE, ids=lambda k: k["name"])
 def test_after_the_change_a_unique_address_signs_in(bestand, konto):
     """Rule 2 of the draft: the confirmed addresses of nexlore count, in any case."""
     anmelden(browser(), konto, konto["email"].upper())
 
 
-@KOMMT
 @pytest.mark.parametrize("eingabe", ["jonas", "JONAS@example.com"])
 def test_after_the_change_a_forgotten_password_goes_by_mail(bestand, post, eingabe):
     with SessionLocal() as db:
@@ -419,7 +417,6 @@ def test_a_shared_address_never_gets_a_link_by_mail(bestand, post):
     assert post == []
 
 
-@KOMMT
 def test_after_the_change_the_operator_makes_a_link_instead_of_a_password(bestand, anbieter):
     klient = browser()
     anmelden(klient, next(k for k in KONTEN if k["name"] == "betrieb"))
@@ -429,7 +426,6 @@ def test_after_the_change_the_operator_makes_a_link_instead_of_a_password(bestan
     assert "/reset/" in antwort.json()["link"]
 
 
-@KOMMT
 def test_after_the_change_a_renamed_account_keeps_its_history(bestand):
     """Renaming (draft: everyone in the profile) must not take away what 1.16.0 keys by the name: the authors of
     versions (and so of the Git mirror), uploads counted against the quota, comments, mentions."""

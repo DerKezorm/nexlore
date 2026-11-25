@@ -338,8 +338,9 @@ def _create(db: DbSession, request: Request, by: AccountRow, space: Space | None
     if payload.send:
         try:
             language = mailer.language_for(db, by)
+            member = space is not None and emailaddr.taken(db, email, 0)
             mailer.send_invite(db, email, link, by=by.display_name or by.name, space=space.folder if space else None,
-                               language=language, days=payload.days)
+                               language=language, days=payload.days, member=member)
             sent = True
             # Whoever comes through this link proved the address.
             invite.mailed = True

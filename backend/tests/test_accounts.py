@@ -139,8 +139,9 @@ def test_the_brake_holds_a_guesser_back(client: TestClient) -> None:
     for _ in range(5):
         assert client.post("/api/auth/login", json={"name": "anna", "password": "wrong password"}).status_code == 401
     held = client.post("/api/auth/login", json={"name": "anna", "password": PASSWORD})
-    # Even the right password waits: otherwise the brake would tell when a guess was right.
-    assert held.status_code == 429 and int(held.headers["Retry-After"]) > 0
+    # Even the right password is not checked while the account's count waits (the shared module, konten 0.3.10): the
+    # answer is the one of a wrong password, which tells nobody that the name exists or that a guess was right.
+    assert held.status_code == 401 and held.json()["detail"]["code"] == "wrong_credentials"
 
 
 def test_the_account_locks_after_ten_failures_from_anywhere(client: TestClient) -> None:
@@ -191,7 +192,8 @@ def test_password_sign_in_off_keeps_the_operator_in(client: TestClient) -> None:
     refused = client.post("/api/auth/login", json={"name": "anna", "password": PASSWORD})
     assert refused.status_code == 403 and refused.json()["detail"]["code"] == "password_login_off"
     assert client.post("/api/auth/login", json={"name": "boss", "password": PASSWORD}).status_code == 200
-    assert client.get("/api/auth/methods").json() == {"password": False, "providers": []}
+    assert client.get("/api/auth/methods").json() == {"password": False, "providers": [], "passkeys": True,
+                                                       "forgot_mail": False}
 
 
 def test_changing_the_password_ends_the_other_sessions(client: TestClient) -> None:
@@ -237,10 +239,12 @@ def test_the_operator_manages_accounts(client: TestClient, operator: Account) ->
     anna_client = TestClient(client.app, headers={"X-Nexlore-Client": "tab-anna00000"})
     sign_in(anna_client, anna)
     assert anna_client.get("/api/accounts").status_code == 403
-    assert client.put(f"/api/accounts/{anna.id}/password", json={"password": GOOD, "current_password": PASSWORD}).status_code == 204
-    # A new password from the operator ends the account's sessions.
-    assert anna_client.get("/api/auth/me").status_code == 401
-    sign_in(anna_client, anna)
+    # The operator no longer sets a password (one version long 410 with the way to go), it makes a link.
+    gone = client.put(f"/api/accounts/{anna.id}/password", json={"password": GOOD, "current_password": PASSWORD})
+    assert gone.status_code == 410 and gone.json()["detail"]["code"] == "use_reset_link"
+    made = client.post(f"/api/accounts/{anna.id}/reset-link", json={"current_password": PASSWORD})
+    assert made.status_code == 201 and "/reset/" in made.json()["link"] and made.json()["sent"] is False
+    assert anna_client.get("/api/auth/me").status_code == 200
     assert client.post(f"/api/accounts/{anna.id}/sign-out").status_code == 204
     assert anna_client.get("/api/auth/me").status_code == 401
     assert client.put(f"/api/accounts/{anna.id}/role", json={"role": "operator", "current_password": PASSWORD}).json()["role"] == OPERATOR

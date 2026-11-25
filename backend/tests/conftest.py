@@ -26,7 +26,7 @@ os.environ["NEXLORE_ARGON2_PARALLELISM"] = "1"
 os.environ["NEXLORE_UPDATE_URL"] = "http://127.0.0.1:9/releases/latest"
 os.environ["NEXLORE_SECRET_KEY"] = "test-secret-key-for-the-test-run-only"
 # The code the first account brings (otherwise one made at start and written to the log).
-SETUP_CODE = "test-setup-code"
+SETUP_CODE = "test-setup-code-of-the-tests"
 os.environ["NEXLORE_SETUP_TOKEN"] = SETUP_CODE
 
 import shutil  # noqa: E402
@@ -45,11 +45,48 @@ from app.services import ai, apitokens, devices, graphstore, mcp, notify, totp, 
 
 # Notifications go out at once in the tests, so that a test sees them (block Z2).
 notify.INLINE = True
+# "Forgot your password?" does its work after the answer, in a thread; in the tests before it, so that a test sees the
+# mail (the answer is the same either way).
+from app.routers import auth as _auth_router  # noqa: E402
+
+_auth_router.FORGOT_AT_ONCE = True
 # Every AI service in the tests stands at one public address; the tests of the address rules put in their own.
 ai.resolver = lambda host, port: ["93.184.216.34"]
 
 DATA_DIR = _DATA
 VAULT = Path(_DATA) / "vault"
+
+
+# The contract tests of the shared modules (``tests/nexoidc``, ``tests/nexkonten``, ``tests/nexpost``) bring their own
+# ``conftest.py`` (unchanged from the modules, guarded by checksums). pytest loads them all as ``conftest``; whichever
+# came last stands in ``sys.modules``, and ``from conftest import ...`` of a contract test then found another one's.
+# While collecting and before every test ``sys.modules["conftest"]`` points to the ``conftest.py`` nearest to the test.
+_CONFTESTS: dict[Path, object] = {}
+
+
+def pytest_plugin_registered(plugin: object, manager: object) -> None:
+    path = getattr(plugin, "__file__", None)
+    if path and Path(path).name == "conftest.py":
+        _CONFTESTS[Path(path).resolve().parent] = plugin
+
+
+def _nearest_conftest(path: Path) -> None:
+    import sys
+
+    for folder in [Path(path).resolve(), *Path(path).resolve().parents]:
+        module = _CONFTESTS.get(folder)
+        if module is not None:
+            sys.modules["conftest"] = module  # type: ignore[assignment]
+            return
+
+
+def pytest_collectstart(collector: pytest.Collector) -> None:
+    if isinstance(collector, pytest.Module):
+        _nearest_conftest(collector.path)
+
+
+def pytest_runtest_setup(item: pytest.Item) -> None:
+    _nearest_conftest(item.path)
 
 
 def _empty_vault() -> None:
