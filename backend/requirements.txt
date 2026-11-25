@@ -20,3 +20,6 @@ segno==1.6.6
 tinycss2==1.5.1
 typst==0.15.0
 certifi==2026.10.19
+# Passkeys (konten 0.3.x, WebAuthn): the version the shared account module is tested with (its manifest test asks).
+webauthn==3.0.1
+cbor2==6.3.0

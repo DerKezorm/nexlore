@@ -109,6 +109,16 @@ DEFAULTS: dict[str, Any] = {
     "smtp_user": "",
     "smtp_password_enc": "",
     "smtp_from": "",
+    #: The name the system mail goes out under; empty: "nexlore" (the shared post module).
+    "smtp_sender_name": "",
+    #: The last mail that went out, the last error and when (the operator's mail card; the shared post module).
+    "mail_last_ok_at": "",
+    "mail_last_error": "",
+    "mail_last_error_at": "",
+    #: Passkeys may be added and used to sign in (the shared account module, part 2): on from the start.
+    "passkeys_allowed": True,
+    #: The one-time steps for the shared account module ran (``services/konten_wanderung``); never set by hand.
+    "konten_migrated": 0,
 }
 
 
@@ -126,7 +136,7 @@ def get_all(db: Session) -> dict[str, Any]:
     return values
 
 
-def save(db: Session, changes: dict[str, Any]) -> None:
+def save(db: Session, changes: dict[str, Any], *, commit: bool = True) -> None:
     for key, value in changes.items():
         if key not in DEFAULTS:
             raise KeyError(key)
@@ -135,7 +145,10 @@ def save(db: Session, changes: dict[str, Any]) -> None:
             db.add(Setting(key=key, value=value))
         else:
             row.value = value
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
 
 
 def normalize_public_url(value: str) -> str:
