@@ -29,7 +29,7 @@ export function SettingsNav({ me, current }: { me: Account; current: AreaSlug })
           <p className="truncate font-semibold text-mist-100" title={shown}>
             {shown}
           </p>
-          <p className="text-xs text-mist-500">{t(`account.role.${me.role}`)}</p>
+          <p className="text-xs text-mist-500">{t(`me.role.${me.role}`)}</p>
         </div>
       </div>
       {groups.map((group) => (

@@ -12,24 +12,42 @@
  * comes from outside the code.
  *
  * The texts of sign-in through providers (`oidc.…`) come with the shared module `vendor/nexoidc`, the same words in
- * every nex app; they are merged in here, `{{app}}` says "nexlore".
+ * every nex app; they are merged in here, `{{app}}` says "nexlore". So are those of accounts (`account.…`, the shared
+ * module `vendor/nexkonten`, whose namespace nexlore leaves alone: its own account texts are under `me.…`) and of
+ * system mail (`mail.…`, `vendor/nexpost`).
  */
 
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
+import { kontenVariables } from '../vendor/nexkonten/konten'
+import kontenEn from '../vendor/nexkonten/konten.en.json'
+import { postVariables } from '../vendor/nexpost/post'
+import postEn from '../vendor/nexpost/post.en.json'
 import oidcEn from '../vendor/nexoidc/oidc.en.json'
 import { oidcVariables, oidcWording } from '../vendor/nexoidc/oidc'
 import ownEn from './en.json'
 
-/** nexlore's own English texts with the shared sign-in texts. */
-export const en: Texts = { ...ownEn, ...oidcWording(oidcEn, { singleAccount: false, invitations: true }) }
+/** nexlore's own English texts with the shared texts of sign-in, accounts and system mail. */
+export const en: Texts = { ...ownEn, ...oidcWording(oidcEn, { singleAccount: false, invitations: true }), ...kontenEn, ...postEn }
 /** What `{{app}}` stands for in the shared texts. */
 export const APP_NAME = 'nexlore'
 
 async function german(): Promise<{ default: Texts }> {
-  const [own, oidc] = await Promise.all([import('./de.json'), import('../vendor/nexoidc/oidc.de.json')])
-  return { default: { ...own.default, ...oidcWording(oidc.default, { singleAccount: false, invitations: true }) } }
+  const [own, oidc, konten, post] = await Promise.all([
+    import('./de.json'),
+    import('../vendor/nexoidc/oidc.de.json'),
+    import('../vendor/nexkonten/konten.de.json'),
+    import('../vendor/nexpost/post.de.json'),
+  ])
+  return {
+    default: {
+      ...own.default,
+      ...oidcWording(oidc.default, { singleAccount: false, invitations: true }),
+      ...konten.default,
+      ...post.default,
+    },
+  }
 }
 
 type Texts = Record<string, unknown>
@@ -149,7 +167,10 @@ export async function startI18n(): Promise<void> {
     resources: { en: { translation: en } },
     lng: FALLBACK,
     fallbackLng: FALLBACK,
-    interpolation: { escapeValue: false, defaultVariables: oidcVariables(APP_NAME) },
+    interpolation: {
+      escapeValue: false,
+      defaultVariables: { ...oidcVariables(APP_NAME), ...postVariables(APP_NAME), ...kontenVariables(APP_NAME) },
+    },
     returnNull: false,
   })
   const wanted = storedLanguage() ?? browserLanguage()

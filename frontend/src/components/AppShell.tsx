@@ -271,7 +271,7 @@ export function AppShell() {
       go('go.tasks', t('palette.goTo', { place: t('nav.tasks') }), '/tasks', 'tasks'),
       go('go.files', t('palette.goTo', { place: t('nav.files') }), '/files', 'files'),
       go('go.settings', t('palette.goTo', { place: t('nav.settings') }), '/settings', 'settings'),
-      go('go.account', t('palette.goTo', { place: t('account.page') }), '/settings/profile', 'users'),
+      go('go.account', t('palette.goTo', { place: t('me.page') }), '/settings/profile', 'users'),
       {
         id: 'app.theme',
         label: storedTheme() === 'light' ? t('palette.dark') : t('palette.light'),

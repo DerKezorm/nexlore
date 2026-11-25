@@ -50,7 +50,10 @@
     "loading": "Lädt …",
     "cancel": "Abbrechen",
     "save": "Speichern",
-    "saved": "Gespeichert."
+    "saved": "Gespeichert.",
+    "done": "Fertig",
+    "copy": "Kopieren",
+    "copied": "Kopiert"
   },
   "palette": {
     "title": "Befehle",
@@ -1142,7 +1145,8 @@
       "text": "Das Konto, das du jetzt anlegst, gehört dem Betreiber: Es führt diesen Server, lädt andere ein und stellt alles ein.",
       "submit": "Konto anlegen",
       "code": "Einrichtungscode",
-      "codeHint": "Steht im Log des Servers: docker logs nexlore (Zeile „The setup code is …“), oder NEXLORE_SETUP_TOKEN, wenn du einen gesetzt hast."
+      "codeHint": "Steht im Log des Servers: docker logs nexlore (Zeile „The setup code is …“), oder NEXLORE_SETUP_TOKEN, wenn du einen gesetzt hast.",
+      "version": "Version {{version}}"
     },
     "invite": {
       "title": "Du bist eingeladen",
@@ -1155,10 +1159,24 @@
       "haveAccount": "Du bist als {{name}} angemeldet und hast schon ein Konto.",
       "create": "Konto anlegen",
       "already": "Schon ein Konto?",
-      "signIn": "Erst anmelden"
+      "signIn": "Erst anmelden",
+      "expiredTitle": "Einladung abgelaufen",
+      "expiredText": "Diese Einladung ist abgelaufen. Bitte um eine neue.",
+      "noWay": "Gerade lässt sich hier kein Konto anlegen. Frag den Betreiber."
+    },
+    "backToLogin": "Zur Anmeldung",
+    "reset": {
+      "text": "Für {{name}}. Alle Anmeldungen im Browser enden; danach meldest du dich mit dem neuen Passwort an und siehst, welche Geräte noch Zugriff haben.",
+      "submit": "Passwort setzen",
+      "doneTitle": "Passwort gesetzt",
+      "doneText": "Melde dich jetzt mit dem neuen Passwort an.",
+      "expiredTitle": "Link abgelaufen",
+      "expiredText": "Dieser Link ist abgelaufen. Bitte den Betreiber um einen neuen.",
+      "invalidTitle": "Link nicht gültig",
+      "invalidText": "Dieser Link wurde schon benutzt oder durch einen neueren ersetzt."
     }
   },
-  "account": {
+  "me": {
     "profile": {
       "displayName": "Anzeigename",
       "displayHint": "So sehen dich andere. Leer zeigt deinen Benutzernamen {{name}}; mit ihm meldest du dich weiter an.",
@@ -1250,7 +1268,9 @@
       "disconnect": "Trennen",
       "disconnectNamed": "{{name}} trennen"
     },
-    "signOutText": "Meldet dich in diesem Browser ab. Andere Geräte bleiben angemeldet."
+    "signOutText": "Meldet dich in diesem Browser ab. Andere Geräte bleiben angemeldet.",
+    "profileSaved": "Profil gespeichert.",
+    "languageBrowser": "Wie der Browser"
   },
   "members": {
     "title": "Mitglieder von {{space}}",
@@ -1368,7 +1388,13 @@
       "unlinkFrom": "Verknüpfung mit {{name}} lösen",
       "unlinkTitle": "Verknüpfung von {{name}} mit {{provider}} lösen?",
       "unlinkText": "Das Konto kann sich dann nicht mehr über {{provider}} anmelden, bis es sich in seinem Profil wieder verknüpft.",
-      "unlinked": "Verknüpfung gelöst."
+      "unlinked": "Verknüpfung gelöst.",
+      "withdrawn": "Einladung zurückgenommen.",
+      "spacesFact": "Bereiche",
+      "storageFact": "Hochgeladen",
+      "removeWhat": "Rechte gehen mit, Notizen bleiben; ein Bereich, in dem es allein war, gehört dann dir.",
+      "removeAlone_one": "Allein ist es in diesem Bereich: {{spaces}}.",
+      "removeAlone_other": "Allein ist es in diesen Bereichen: {{spaces}}."
     },
     "spaces": {
       "title": "Alle Bereiche",
@@ -2920,5 +2946,9 @@
     "strokes_other": "{{count}} Striche",
     "cardHint": "Doppelklick zum Zeichnen",
     "notDrawable": "In diese Zeichnung kann hier nicht gezeichnet werden: {{reason}}"
+  },
+  "emailLink": {
+    "title": "Neue Adresse bestätigen",
+    "submit": "Bestätigen"
   }
 }

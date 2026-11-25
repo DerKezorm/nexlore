@@ -50,7 +50,10 @@
     "loading": "Loading …",
     "cancel": "Cancel",
     "save": "Save",
-    "saved": "Saved."
+    "saved": "Saved.",
+    "done": "Done",
+    "copy": "Copy",
+    "copied": "Copied"
   },
   "palette": {
     "title": "Commands",
@@ -1142,7 +1145,8 @@
       "text": "The account you make now is the operator's: it runs this server, invites others and sets things up.",
       "submit": "Create account",
       "code": "Setup code",
-      "codeHint": "In the server's log: docker logs nexlore (a line saying \"The setup code is …\"), or NEXLORE_SETUP_TOKEN if you set one."
+      "codeHint": "In the server's log: docker logs nexlore (a line saying \"The setup code is …\"), or NEXLORE_SETUP_TOKEN if you set one.",
+      "version": "Version {{version}}"
     },
     "invite": {
       "title": "You are invited",
@@ -1155,10 +1159,24 @@
       "haveAccount": "You are signed in as {{name}} and have an account already.",
       "create": "Create account",
       "already": "Have an account already?",
-      "signIn": "Sign in first"
+      "signIn": "Sign in first",
+      "expiredTitle": "Invitation expired",
+      "expiredText": "This invitation has run out. Ask for a new one.",
+      "noWay": "No account can be made here right now. Ask the operator."
+    },
+    "backToLogin": "To the sign-in",
+    "reset": {
+      "text": "For {{name}}. Every sign-in in a browser ends; then you sign in with the new password and see which devices still have access.",
+      "submit": "Set the password",
+      "doneTitle": "Password set",
+      "doneText": "Sign in with your new password now.",
+      "expiredTitle": "Link expired",
+      "expiredText": "This link has run out. Ask the operator for a new one.",
+      "invalidTitle": "Link not valid",
+      "invalidText": "This link has been used already or was replaced by a newer one."
     }
   },
-  "account": {
+  "me": {
     "profile": {
       "displayName": "Display name",
       "displayHint": "How others see you. Empty shows your user name {{name}}; you still sign in with it.",
@@ -1250,7 +1268,9 @@
       "disconnect": "Disconnect",
       "disconnectNamed": "Disconnect {{name}}"
     },
-    "signOutText": "Signs you out in this browser. Other devices stay signed in."
+    "signOutText": "Signs you out in this browser. Other devices stay signed in.",
+    "profileSaved": "Profile saved.",
+    "languageBrowser": "As the browser"
   },
   "members": {
     "title": "Members of {{space}}",
@@ -1368,7 +1388,13 @@
       "unlinkFrom": "Unlink from {{name}}",
       "unlinkTitle": "Unlink {{name}} from {{provider}}?",
       "unlinkText": "The account can no longer sign in through {{provider}} until it links itself again in its profile.",
-      "unlinked": "Unlinked."
+      "unlinked": "Unlinked.",
+      "withdrawn": "Invitation withdrawn.",
+      "spacesFact": "Spaces",
+      "storageFact": "Uploaded",
+      "removeWhat": "Its rights go with it, its notes stay; a space it was alone in is yours then.",
+      "removeAlone_one": "It is alone in this space: {{spaces}}.",
+      "removeAlone_other": "It is alone in these spaces: {{spaces}}."
     },
     "spaces": {
       "title": "All spaces",
@@ -2920,5 +2946,9 @@
     "strokes_other": "{{count}} strokes",
     "cardHint": "Double click to draw",
     "notDrawable": "This drawing cannot be drawn in here: {{reason}}"
+  },
+  "emailLink": {
+    "title": "Confirm the new address",
+    "submit": "Confirm"
   }
 }
