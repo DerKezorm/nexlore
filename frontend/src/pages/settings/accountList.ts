@@ -1,24 +1,20 @@
 /** nexlore's side of the operator's account list of the shared account module (konten 0.3.9/0.3.10): what its server
  * can do, and its rows as the module knows them. */
 import type { AdminAccount } from '../../api/client'
-import type { AccountCaps, ListedAccount, OwnAction } from '../../vendor/nexkonten/konten'
+import { capsOf, type AccountCaps, type ListedAccount, type OwnAction } from '../../vendor/nexkonten/konten'
 
-/** What nexlore's server can do for the operator (`ACCOUNT_CAPS`). Deleting is for good in nexlore, so there is
- * nothing to bring back (`restore` off); an invitation into nexlore has no role, rights come per space
- * (`inviteRole` off). */
-export const APP_CAPS: AccountCaps = {
+/** What nexlore's server can do for the operator: its own switches, the module's standard ones (several operators,
+ * blocking, deleting with 30 days to bring back) and its features (storage limit and AI per account, konten 1.1.0).
+ * An invitation into nexlore has no role, rights come per space (`inviteRole` off). */
+export const APP_CAPS: AccountCaps = capsOf('nexlore', {
   rename: true,
-  roles: true,
   inviteRole: false,
   emailRemove: true,
   resetLink: true,
   factorReset: true,
   signOut: true,
   unlink: true,
-  blocking: true,
-  remove: true,
-  restore: false,
-}
+})
 
 /** nexlore has no act of its own in the dialog "Manage": its spaces and their rights are the card "All spaces" below
  * the list. */
@@ -47,8 +43,11 @@ export function listedOf(row: AdminAccount, ownId: number | undefined): ListedAc
     blocked: row.blocked ?? false,
     blockedAt: row.blocked_at ?? null,
     locked: row.locked,
-    deletedAt: null,
-    purgeAt: null,
+    deletedAt: row.deleted_at ?? null,
+    purgeAt: row.purge_at ?? null,
+    storageLimit: row.storage_limit ?? null,
+    storageUsed: row.storage_used ?? 0,
+    rights: row.ai_allowed === false ? [] : ['ai'],
     lastSeenAt: row.last_seen_at,
     picture: avatarUrl(row.id, row.avatar),
   }

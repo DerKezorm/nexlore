@@ -636,6 +636,23 @@ def resend_own_email(account: Account, db: DbSession) -> dict[str, Any]:
     return account_view(row, db)
 
 
+@router.post("/me/email/prove", summary="Mail a link to the own address, to show it is the account's (konten 1.1.0)")
+def prove_own_email(account: Account, db: DbSession) -> dict[str, Any]:
+    """The box "Address not confirmed yet" of the profile: an address entered from now on without a link counts, but
+    is not proven until its owner opens one."""
+    if not kontenpost.can_mail(db):
+        raise error("mail_off", "No mail server is set up.", 409)
+    try:
+        mail = profiles.prove_email(KontenStore(db), account.id)
+    except nexkonten.AccountError as exc:
+        raise fail(exc) from exc
+    if not kontenpost.queue(db, mail):
+        raise error("mail_failed", "The mail server did not take the mail.", 502)
+    row = db.get(AccountRow, account.id)
+    assert row is not None
+    return account_view(row, db)
+
+
 @router.delete("/me/email/pending", summary="Forget the address that waits for its confirmation")
 def cancel_own_email(account: Account, db: DbSession) -> dict[str, Any]:
     profiles.withdraw_email_change(KontenStore(db), account.id)

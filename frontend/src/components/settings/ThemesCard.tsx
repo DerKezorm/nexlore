@@ -9,7 +9,9 @@ import { ApiError, themesApi, type ThemeList, type ThemeRow } from '../../api/cl
 import { errorText } from '../../lib/errors'
 import { applyThemeColours, NEXLORE_COLOURS, readThemeFile, themeFile, TOKEN_GROUPS, weakSpots, type Colours, type Palette, type Token } from '../../lib/themes'
 import { useAuth } from '../../state/auth'
-import { Symbol } from '../Symbol'
+import { SwatchBook as Swatches } from 'lucide-react'
+
+import { Button, Buttons, Card } from '../../vendor/nexui'
 import { CalloutsEditor } from './CalloutsEditor'
 import type { Callouts } from '../../lib/callouts'
 
@@ -47,7 +49,6 @@ export function ThemesCard() {
   const [mode, setMode] = useState<'dark' | 'light'>('dark')
   const [problem, setProblem] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const file = useRef<HTMLInputElement>(null)
   const chosen = me?.appearance?.theme ?? 'nexlore'
 
   const load = useCallback(async () => {
@@ -148,17 +149,15 @@ export function ThemesCard() {
   const weak = draft ? weakSpots(draft.colours) : []
 
   return (
-    <section className="space-y-4 rounded-2xl border border-ink-700 bg-ink-850/60 p-5" data-testid="themes">
-      <div className="flex flex-wrap items-start gap-3">
-        <span className="rounded-lg bg-accent-500/10 p-2 text-accent-400"><Symbol name="star" /></span>
-        <div className="min-w-0 flex-[1_1_14rem]">
-          <h2 className="font-semibold text-mist-100">{t('themes.title')}</h2>
-          <p className="text-sm text-mist-400">{t('themes.text')}</p>
-        </div>
-        <input ref={file} type="file" accept="application/json,.json" className="hidden" onChange={(event) => void takeIn(event.target.files?.[0])} aria-label={t('themes.import')} />
-        <button type="button" onClick={() => file.current?.click()} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-800">{t('themes.import')}</button>
-        <button type="button" onClick={() => edit(null)} className="rounded-full bg-accent-500 px-3 py-1 text-sm font-semibold text-on-accent hover:bg-accent-400">{t('themes.new')}</button>
-      </div>
+    <Card id="themes" icon={Swatches} title={t('themes.title')} subtitle={t('themes.text')} testId="themes">
+      <Buttons>
+        <Button kind="secondary" icon="Upload" accept="application/json,.json" onFile={(chosen) => void takeIn(chosen)} testId="theme-import">
+          {t('themes.import')}
+        </Button>
+        <Button kind="primary" icon="Plus" onClick={() => edit(null)} testId="theme-new">
+          {t('themes.new')}
+        </Button>
+      </Buttons>
 
       {draft ? (
         <div className="space-y-3 rounded-xl border border-ink-700 bg-ink-900 p-4" data-testid="theme-editor">
@@ -244,6 +243,6 @@ export function ThemesCard() {
         )
       )}
       {problem && <p role="alert" className="text-sm text-bad-500">{problem}</p>}
-    </section>
+    </Card>
   )
 }

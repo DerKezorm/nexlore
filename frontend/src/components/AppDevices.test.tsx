@@ -55,7 +55,7 @@ async function click(element: Element | null | undefined): Promise<void> {
 }
 
 function button(shown: HTMLElement, text: string): HTMLButtonElement | undefined {
-  return [...shown.querySelectorAll('button')].find((candidate) => candidate.textContent === text)
+  return [...shown.querySelectorAll('button')].find((candidate) => candidate.textContent?.trim() === text)
 }
 
 async function tick(ms: number): Promise<void> {
@@ -85,7 +85,7 @@ describe('the iPhone app on the account page', () => {
     calls.disconnect.mockResolvedValue()
     const shown = await show()
     const rows = shown.querySelectorAll('[data-testid="app-device"]')
-    expect([...rows].map((row) => row.querySelector('.font-medium')?.textContent)).toEqual(['Pocket', 'Tablet'])
+    expect([...rows].map((row) => row.querySelector('[data-testid="app-device-name"]')?.textContent)).toEqual(['Pocket', 'Tablet'])
     expect(rows[0].textContent).toContain('me.app.never')
     expect(rows[1].textContent).toContain('me.app.seen')
     calls.devices.mockResolvedValueOnce([])

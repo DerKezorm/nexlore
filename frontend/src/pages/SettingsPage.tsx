@@ -1,53 +1,26 @@
 /**
- * Settings in areas, as in nexnotes: "My account" (Profile, Security, Appearance, Notes, Spaces, Notifications, Plugins,
- * Connections) for every account, "Server" (General, Sign-in, Mail, Storage and backups, Public pages, AI, API and
- * plugins, Accounts, Log) for the operator, "About nexlore" for everyone at the end. As in nexnotes the app's sidebar
- * with the spaces stays on the left; the areas have a navigation of their own in the page, beside the content (on a
- * narrow page a choice above it). Each area has its own address (`/settings/<slug>`, `settings/areas.ts`),
- * `/settings` is the profile. An area someone may not open, or an address of before (`/account?tab=…`,
- * `/settings?tab=…&sub=…`, `/about`), leads on with the address replaced, so the navigation always marks where one is.
- * The cards themselves stay in their files; an area only picks them.
+ * Settings (plan "Einstellungen") in the frame of the ui kit: `SettingsLayout` with `SettingsNav` (the account at the
+ * top, "Mein Konto", "Server" for the operator, "Über nexlore" set apart at the end) and one `SettingsPage` per area:
+ * its title, one line, then only cards. As before the app's sidebar with the spaces stays on the left. Each area has
+ * its own address (`/settings/<slug>`, `settings/areas.ts`); `/settings` alone is the list on a phone and the profile
+ * beside the navigation on a wider page. An area someone may not open, or an address of before (`/account?tab=…`,
+ * `/settings?tab=…&sub=…`, `/settings/extensions`, `/about`), leads on with the address replaced, so the navigation
+ * always marks where one is. The cards of an area are chosen in `settings/SettingsAreas.tsx`.
  */
 import { useTranslation } from 'react-i18next'
-import { Navigate, useLocation, useParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 
-import {
-  AccountsCard,
-  AiCard,
-  AllSpacesCard,
-  ApiTokensCard,
-  CssCard,
-  FilesSettingsCard,
-  GuideCard,
-  LanguagesCard,
-  MailCard,
-  McpCard,
-  SharesCard,
-} from '../components/settings/AdminCards'
-import { AppearanceCard } from '../components/settings/AppearanceCard'
-import { AppPairingSwitch } from '../components/settings/AppPairingSwitch'
-import { CalendarFeedSwitch } from '../components/settings/CalendarFeed'
-import { EditorCard } from '../components/settings/EditorCard'
-import { KeysCard } from '../components/settings/KeysCard'
-import { LinkTitleSwitch } from '../components/settings/LinkTitleSwitch'
-import { LogCard } from '../components/settings/LogCard'
-import { SignInPart } from '../components/settings/SignInCards'
-import { SnippetsCard } from '../components/settings/SnippetsCard'
-import { SpacesCard } from '../components/settings/SpacesCard'
-import { HomeSpaceCard, StartCard } from '../components/settings/StartCard'
-import { ThemesCard } from '../components/settings/ThemesCard'
-import { useServerSettings } from '../components/settings/useServerSettings'
+import { Avatar } from '../components/Avatar'
 import { SpacesSidebar } from '../components/Sidebar'
-import { AdminPluginsCard } from '../plugins/PluginSettings'
 import { useAuth } from '../state/auth'
-import { AboutArea } from './AboutPage'
-import { AccountArea } from './AccountPage'
-import { areaPath, findArea, formerAccountAddress, resolveArea, type AreaSlug, type ServerSlug } from './settings/areas'
-import { SettingsJump, SettingsNav } from './settings/SettingsNav'
-import { StorageArea } from './settings/StorageArea'
+import { areaText, languageOf, NEXUI_TEXTS, NexuiLanguage, SettingsLayout, SettingsNav, SettingsPage as Area, type SettingsGroup } from '../vendor/nexui'
+import { ABOUT_AREA, areaPath, areasFor, findArea, formerAccountAddress, GROUPS, resolveArea, type Area as AreaInfo } from './settings/areas'
+import { AreaContent } from './settings/SettingsAreas'
+
+const APP = 'nexlore'
 
 export function SettingsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { me } = useAuth()
   const { area: asked } = useParams()
   const { search, hash } = useLocation()
@@ -56,111 +29,50 @@ export function SettingsPage() {
   if ('redirect' in where) return <Navigate to={where.redirect} replace />
   const area = findArea(where.area)
   if (!area) return null
+  const things = t('settings.things')
+  const kit = NEXUI_TEXTS[languageOf(i18n.language)]
+  const words = (info: AreaInfo) => {
+    const shared = areaText(kit, info.slug, { app: APP, things })
+    if (!info.own) return shared ?? { title: info.slug, text: '' }
+    return { title: shared?.title || t(`settings.areas.${info.key}.title`), text: t(`settings.areas.${info.key}.text`) }
+  }
+  const groups: SettingsGroup[] = GROUPS.map((group) => ({
+    id: group,
+    areas: areasFor(me.role)
+      .filter((entry) => entry.group === group)
+      .map((entry) => ({ slug: entry.slug, icon: entry.icon, href: areaPath(entry.slug), title: entry.own ? words(entry).title : undefined })),
+  }))
+  const shown = me.display_name || me.name
+  const own = area.own ? words(area) : null
   return (
     <>
       <SpacesSidebar />
-      <main className="nn-scroll @container flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-          <div className="flex flex-col gap-5 @min-[700px]:flex-row @min-[700px]:items-start @min-[700px]:gap-8">
-            <SettingsNav me={me} current={area.slug} />
-            <SettingsJump me={me} current={area.slug} />
-            <div className="min-w-0 flex-1 space-y-5" data-testid={`settings-area-${area.slug}`}>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">{t(`settings.areas.${area.key}.title`)}</h1>
-                <p className="mt-1 text-sm text-mist-400">{t(`settings.areas.${area.key}.text`)}</p>
-              </div>
-              <div className="space-y-6">
-                <AreaContent key={area.slug} area={area.slug} />
-              </div>
-            </div>
-          </div>
-        </div>
+      <main className="nn-scroll flex-1 overflow-y-auto">
+        <NexuiLanguage language={i18n.language}>
+          <SettingsLayout
+            list={asked === undefined}
+            back="/settings"
+            link={Link}
+            nav={
+              <SettingsNav
+                app={APP}
+                things={things}
+                groups={groups}
+                about={{ href: areaPath(ABOUT_AREA.slug), slug: ABOUT_AREA.slug }}
+                current={area.slug}
+                account={{ name: shown, role: t(`me.role.${me.role}`), picture: <Avatar account={me} className="h-10 w-10 shrink-0 text-base" /> }}
+                link={Link}
+              />
+            }
+          >
+            <Area slug={area.slug} app={APP} things={things} title={own?.title} subtitle={own?.text}>
+              <AreaContent key={area.slug} area={area.slug} />
+            </Area>
+          </SettingsLayout>
+        </NexuiLanguage>
       </main>
     </>
   )
-}
-
-function AreaContent({ area }: { area: AreaSlug }) {
-  switch (area) {
-    case 'profile':
-    case 'security':
-    case 'notifications':
-    case 'plugins':
-    case 'connections':
-      return <AccountArea part={area} />
-    case 'appearance':
-      return (
-        <>
-          {/* The themes first: the fonts and sizes below them fill a screen, and the themes were lost under them. */}
-          <ThemesCard />
-          <AppearanceCard />
-          <SnippetsCard />
-        </>
-      )
-    case 'notes':
-      return (
-        <>
-          <StartCard />
-          <EditorCard />
-          <HomeSpaceCard />
-          <KeysCard />
-        </>
-      )
-    case 'spaces':
-      return <SpacesCard />
-    case 'about':
-      return <AboutArea />
-    default:
-      return <ServerArea area={area} />
-  }
-}
-
-/** One area of the server, for the operator. */
-function ServerArea({ area }: { area: ServerSlug }) {
-  const [settings, setSettings] = useServerSettings()
-  switch (area) {
-    case 'general':
-      return (
-        <>
-          <FilesSettingsCard />
-          {settings && <LinkTitleSwitch settings={settings} onChange={setSettings} />}
-          {settings && <CssCard settings={settings} onChange={setSettings} />}
-          <LanguagesCard />
-          <GuideCard />
-        </>
-      )
-    case 'sign-in':
-      return settings && <SignInPart settings={settings} onChange={setSettings} />
-    case 'mail':
-      // Its own area since issue #13: it carries invitations, notifications and the links confirming an address.
-      return settings && <MailCard settings={settings} onChange={setSettings} />
-    case 'storage':
-      return <StorageArea />
-    case 'shares':
-      return settings && <SharesCard settings={settings} onChange={setSettings} />
-    case 'extensions':
-      return (
-        settings && (
-          <>
-            <AiCard settings={settings} onChange={setSettings} />
-            <ApiTokensCard settings={settings} onChange={setSettings} />
-            <AppPairingSwitch settings={settings} onChange={setSettings} />
-            <McpCard settings={settings} onChange={setSettings} />
-            <CalendarFeedSwitch settings={settings} onChange={setSettings} />
-            <AdminPluginsCard settings={settings} onChange={setSettings} />
-          </>
-        )
-      )
-    case 'accounts':
-      return (
-        <>
-          <AccountsCard />
-          <AllSpacesCard />
-        </>
-      )
-    case 'log':
-      return <LogCard />
-  }
 }
 
 /** `/account` of before: the server still sends people there (notifications, the way back from a provider). */

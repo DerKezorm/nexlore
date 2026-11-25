@@ -15,7 +15,7 @@ import { createRoot } from 'react-dom/client'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { AccountArea, type AccountPart } from './pages/AccountPage'
+import { AreaContent } from './pages/settings/SettingsAreas'
 import { APP_CAPS as SHOWN_CAPS, APP_OWN_ACTIONS } from './pages/settings/accountList'
 import { AccountsCard } from './pages/settings/AccountsList'
 import { APP_PAGES as SHOWN_PAGES } from './pages/settings/accountPages'
@@ -85,12 +85,12 @@ const APP_RENDER: Partial<Record<keyof typeof SCREENS, () => Promise<Shown>>> = 
   reset: () => show('/reset/:token', '/reset/abcdefghijklmnopqrstuvwxyz', 'ResetPage', {
     reset: { name: 'Anna', min_password: PASSWORD_MIN, expires_at: '2026-12-01T00:00:00Z' },
   }),
-  profile: () => show('/settings/profile', '/settings/profile', createElement(AccountArea as ComponentType<{ part: AccountPart }>, { part: 'profile' }), { me: ME }),
+  profile: () => show('/settings/profile', '/settings/profile', createElement(AreaContent as ComponentType<{ area: string }>, { area: 'profile' }), { me: ME }),
 }
 
 // nexlore (since 0.3.8): the page "Security" of an account with a password.
 const APP_PAGE_RENDER: { security?: () => Promise<Shown> } = {
-  security: () => show('/settings/security', '/settings/security', createElement(AccountArea as ComponentType<{ part: AccountPart }>, { part: 'security' }), { me: ME }),
+  security: () => show('/settings/security', '/settings/security', createElement(AreaContent as ComponentType<{ area: string }>, { area: 'security' }), { me: ME }),
 }
 
 // nexlore (since 0.3.8): the text keys of the buttons nexlore words itself, by their role in BUTTONS.

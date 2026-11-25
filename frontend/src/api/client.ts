@@ -629,6 +629,14 @@ export type AdminAccount = Account & {
   blocked_at?: string | null
   /** Bytes of the files the account uploaded. */
   storage_used?: number
+  /** Deleted with 30 days to bring it back (konten 1.1.0), and when it goes for good. */
+  deleted?: boolean
+  deleted_at?: string | null
+  purge_at?: string | null
+  /** How many bytes it may upload; null: no limit. */
+  storage_limit?: number | null
+  /** It may use AI in its notes (while the operator's main switch is on). */
+  ai_allowed?: boolean
 }
 /** What deleting an account takes away: its rights in so many spaces, and the spaces where it was alone (they become
  * the operator's). */
@@ -1203,6 +1211,15 @@ export const adminApi = {
   impact: (id: number) => api<AccountImpact>(`/api/accounts/${id}/impact`),
   block: (id: number, current_password: string) => api<void>(`/api/accounts/${id}/block`, { method: 'POST', body: { current_password } }),
   unblock: (id: number, current_password: string) => api<void>(`/api/accounts/${id}/unblock`, { method: 'POST', body: { current_password } }),
+  /** A deleted account back, while its 30 days run (konten 1.1.0). */
+  restore: (id: number, current_password: string) =>
+    api<AdminAccount>(`/api/accounts/${id}/restore`, { method: 'POST', body: { current_password } }),
+  /** The account's storage limit in bytes; null removes it. */
+  setStorageLimit: (id: number, limit: number | null, current_password: string) =>
+    api<AdminAccount>(`/api/accounts/${id}/storage-limit`, { method: 'PUT', body: { limit, current_password } }),
+  /** A right of nexlore for the account (``ai``), saved at once. */
+  setRight: (id: number, right: string, allowed: boolean) =>
+    api<AdminAccount>(`/api/accounts/${id}/right`, { method: 'PUT', body: { right, allowed } }),
   /** A one-time link with which the person sets a new password themselves; the operator never sets one. */
   resetLink: (id: number, days: number, current_password: string) =>
     api<{ link: string | null; sent?: boolean; expires_at: string }>(`/api/accounts/${id}/reset-link`, { method: 'POST', body: { days, current_password } }),

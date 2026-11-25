@@ -1,49 +1,56 @@
 /**
- * The areas of the settings, as in nexnotes, each with its own address (`/settings/<slug>`): "My account" for every
- * account, "Server" for the operator only, and "About nexlore" (`/settings/about`) for everyone at the end of the
- * navigation, outside the groups. `/settings` is the profile. The addresses of before (`/account?tab=…` with its
- * anchors, `/settings?tab=…&sub=…`, `/about`) lead to the area that holds their cards now: the server sends some of them
- * in notifications, and saved links keep working.
+ * The areas of the settings, each with its own address (`/settings/<slug>`, plan "Einstellungen"): "Mein Konto" for
+ * every account (Profile, Security, Appearance, nexlore's own Notes, Spaces and Plugins, Notifications, Connections),
+ * "Server" for the operator only (General, Sign-in, Mail, Storage and backups, nexlore's own AI provider, Plugins and
+ * Public pages, Accounts, Log), and "Über nexlore" (`/settings/about`) for everyone, set apart at the end. Titles and
+ * lines of the shared areas come from the ui kit (`areaText`), nexlore's own keep theirs.
+ *
+ * `/settings` alone is the list on a phone and the profile beside it on a wider page. The addresses of before lead to
+ * the area that holds their cards now: `/account?tab=…` with its anchors, `/settings?tab=…&sub=…`, `/about`, and the
+ * area "AI, API and plugins" (`/settings/extensions`), which went to AI provider, General › Interfaces and Plugins.
+ * The server sends some of them in notifications, and saved links keep working.
  */
+import { BookOpen, FolderTree, Globe, Puzzle, Sparkles } from 'lucide-react'
+
 import type { Account } from '../../api/client'
-import type { SymbolName } from '../../components/Symbol'
+import type { IconLike } from '../../vendor/nexui'
 
 type Role = Account['role']
 
-export type AccountSlug = 'profile' | 'security' | 'appearance' | 'notes' | 'spaces' | 'notifications' | 'plugins' | 'connections'
-export type ServerSlug = 'general' | 'sign-in' | 'mail' | 'storage' | 'shares' | 'extensions' | 'accounts' | 'log'
+export type AccountSlug = 'profile' | 'security' | 'appearance' | 'notes' | 'spaces' | 'plugins' | 'notifications' | 'connections'
+export type ServerSlug = 'general' | 'sign-in' | 'mail' | 'storage' | 'ai-provider' | 'server-plugins' | 'shares' | 'accounts' | 'log'
 export type AreaSlug = AccountSlug | ServerSlug | 'about'
 export type AreaGroup = 'account' | 'server'
 
-export type Area = { slug: AreaSlug; group: AreaGroup; symbol: SymbolName; key: string }
+/** `own`: an area of nexlore alone, its title and line under `settings.areas.<key>` of nexlore's words. The rest take
+ * theirs from the kit; "KI-Anbieter" only its title. */
+export type Area = { slug: AreaSlug; group: AreaGroup; icon: IconLike; own?: boolean; key: string }
 
-/**
- * In the order of the navigation; `key` names the texts `settings.areas.<key>.title` and `.text`. Where an area is
- * also in nexnotes it has its name and place; the areas only nexlore has stand after them in their group.
- */
+/** In the order of the navigation (plan "Einstellungen", "Reihenfolge Mein Konto" and "Reihenfolge Server"). */
 export const AREAS: Area[] = [
-  { slug: 'profile', group: 'account', symbol: 'user', key: 'profile' },
-  { slug: 'security', group: 'account', symbol: 'shieldCheck', key: 'security' },
-  { slug: 'appearance', group: 'account', symbol: 'palette', key: 'appearance' },
-  { slug: 'notes', group: 'account', symbol: 'note', key: 'notes' },
-  { slug: 'spaces', group: 'account', symbol: 'space', key: 'spaces' },
-  { slug: 'notifications', group: 'account', symbol: 'bell', key: 'notifications' },
-  { slug: 'plugins', group: 'account', symbol: 'puzzle', key: 'plugins' },
-  { slug: 'connections', group: 'account', symbol: 'plug', key: 'connections' },
-  { slug: 'general', group: 'server', symbol: 'sliders', key: 'general' },
-  { slug: 'sign-in', group: 'server', symbol: 'key', key: 'signIn' },
-  { slug: 'mail', group: 'server', symbol: 'mail', key: 'mail' },
-  { slug: 'storage', group: 'server', symbol: 'hardDrive', key: 'storage' },
-  { slug: 'shares', group: 'server', symbol: 'globe', key: 'shares' },
-  { slug: 'extensions', group: 'server', symbol: 'sparkle', key: 'extensions' },
-  { slug: 'accounts', group: 'server', symbol: 'users', key: 'accounts' },
-  { slug: 'log', group: 'server', symbol: 'scrollText', key: 'log' },
+  { slug: 'profile', group: 'account', icon: 'UserRound', key: 'profile' },
+  { slug: 'security', group: 'account', icon: 'ShieldCheck', key: 'security' },
+  { slug: 'appearance', group: 'account', icon: 'Palette', key: 'appearance' },
+  { slug: 'notes', group: 'account', icon: BookOpen, own: true, key: 'notes' },
+  { slug: 'spaces', group: 'account', icon: FolderTree, own: true, key: 'spaces' },
+  { slug: 'plugins', group: 'account', icon: Puzzle, own: true, key: 'plugins' },
+  { slug: 'notifications', group: 'account', icon: 'Bell', key: 'notifications' },
+  { slug: 'connections', group: 'account', icon: 'Plug', key: 'connections' },
+  { slug: 'general', group: 'server', icon: 'SlidersHorizontal', key: 'general' },
+  { slug: 'sign-in', group: 'server', icon: 'KeyRound', key: 'signIn' },
+  { slug: 'mail', group: 'server', icon: 'Mail', key: 'mail' },
+  { slug: 'storage', group: 'server', icon: 'HardDrive', key: 'storage' },
+  { slug: 'ai-provider', group: 'server', icon: Sparkles, own: true, key: 'aiProvider' },
+  { slug: 'server-plugins', group: 'server', icon: Puzzle, own: true, key: 'serverPlugins' },
+  { slug: 'shares', group: 'server', icon: Globe, own: true, key: 'shares' },
+  { slug: 'accounts', group: 'server', icon: 'Users', key: 'accounts' },
+  { slug: 'log', group: 'server', icon: 'ScrollText', key: 'log' },
 ]
 
 export const GROUPS: AreaGroup[] = ['account', 'server']
 
-/** "About nexlore": an area of every account, below the groups (its `group` only says who may open it). */
-export const ABOUT_AREA: Area = { slug: 'about', group: 'account', symbol: 'info', key: 'about' }
+/** "Über nexlore": an area of every account, below the groups (its `group` only says who may open it). */
+export const ABOUT_AREA: Area = { slug: 'about', group: 'account', icon: 'Info', key: 'about' }
 
 export function findArea(slug: AreaSlug): Area | undefined {
   return slug === ABOUT_AREA.slug ? ABOUT_AREA : AREAS.find((area) => area.slug === slug)
@@ -84,11 +91,22 @@ const FORMER_PART: Record<string, AreaSlug> = {
   signin: 'sign-in',
   mail: 'mail',
   shares: 'shares',
-  extensions: 'extensions',
+  extensions: 'ai-provider',
   files: 'general',
   backups: 'storage',
   languages: 'general',
   log: 'log',
+}
+
+/** Where the cards of the area "AI, API and plugins" (`/settings/extensions`, until the settings pass) went, by the
+ * anchor of the card: the AI for everybody under AI provider, the interfaces under General, plugins of their own. */
+const FORMER_EXTENSIONS: Record<string, AreaSlug> = {
+  '#ai': 'ai-provider',
+  '#api-tokens': 'general',
+  '#mcp': 'general',
+  '#app-pairing': 'general',
+  '#calendar': 'general',
+  '#plugins': 'server-plugins',
 }
 
 /** Keeps the answer of a provider after linking (`?linked=`, `?error=`): it belongs to Security. */
@@ -113,7 +131,8 @@ export function formerAccountAddress(search: string, hash: string): string {
 
 /**
  * Where an address of the settings leads: the area itself, or the address to go to instead (an address of before, an
- * area the account may not open, which goes to the profile).
+ * area the account may not open, which goes to the profile). `/settings` alone shows the profile (and on a phone the
+ * list).
  */
 export function resolveArea(asked: string | undefined, role: Role | undefined, search: string, hash = ''): { area: AreaSlug } | { redirect: string } {
   const allowed = areasFor(role)
@@ -125,10 +144,13 @@ export function resolveArea(asked: string | undefined, role: Role | undefined, s
     const tab = params.get('tab')
     if (tab === null) return { area: 'profile' }
     const sub = params.get('sub')
-    // The server's "AI" stood in its part "AI, API and plugins" under an anchor of its own.
-    const former = tab === 'server' && sub ? FORMER_PART[sub] : FORMER_TAB[tab]
+    const former = tab === 'server' && sub ? (sub === 'extensions' && FORMER_EXTENSIONS[hash]) || FORMER_PART[sub] : FORMER_TAB[tab]
     if (former && open(former)) return { redirect: areaPath(former) + hash }
     return { redirect: areaPath('profile') }
+  }
+  if (asked === 'extensions') {
+    const former = FORMER_EXTENSIONS[hash] ?? 'ai-provider'
+    return { redirect: open(former) ? areaPath(former) + hash : areaPath('profile') }
   }
   if (asked === ABOUT_AREA.slug || open(asked as AreaSlug)) return { area: asked as AreaSlug }
   return { redirect: areaPath('profile') }

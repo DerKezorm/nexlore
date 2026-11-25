@@ -16,7 +16,9 @@ import { AI_PROVIDERS } from '../lib/aiProviders'
 import { errorText, serviceSaid } from '../lib/errors'
 import { formatDate } from '../lib/markdown'
 import { useAuth } from '../state/auth'
-import { Symbol } from './Symbol'
+import { Sparkles } from 'lucide-react'
+
+import { Card } from '../vendor/nexui'
 
 export function AiAccess() {
   const { t } = useTranslation()
@@ -58,33 +60,27 @@ export function AiAccess() {
   if (!state) return null
   if (!state.allowed)
     return (
-      <section id="ai" className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="ai-title">
-        <h2 id="ai-title" className="mb-1 flex items-center gap-2 font-semibold">
-          <Symbol name="sparkle" className="h-4 w-4 text-mist-500" /> {t('ai.title')}
-        </h2>
-        <p className="text-sm text-mist-500" data-testid="ai-off">
+      <Card id="ai" icon={Sparkles} title={t('ai.title')}>
+        <p className="m-0 text-sm text-[var(--nexui-text-muted)]" data-testid="ai-off">
           {t('ai.off')}{' '}
           {me?.role === 'operator' && (
-            <Link to="/settings/extensions#ai" className="text-accent-400 hover:underline">
+            <Link to="/settings/ai-provider" className="text-accent-400 hover:underline">
               {t('ai.offOperator')}
             </Link>
           )}
         </p>
-      </section>
+      </Card>
     )
 
   if (state.mode === 'shared')
     return (
-      <section id="ai" className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="ai-title">
-        <h2 id="ai-title" className="mb-1 flex items-center gap-2 font-semibold">
-          <Symbol name="sparkle" className="h-4 w-4 text-accent-400" /> {t('ai.title')}
-        </h2>
+      <Card id="ai" icon={Sparkles} title={t('ai.title')}>
         <p className="rounded-xl border border-accent-500/30 bg-accent-500/10 px-3 py-2 text-sm text-mist-200" data-testid="ai-shared-info">
           {state.shared.complete ? t('ai.sharedInfo', { model: state.shared.model }) : t('ai.sharedIncomplete')}
         </p>
         <p className="mt-3 text-xs text-mist-500">{t('ai.whereItGoes')}</p>
         <AiEvents />
-      </section>
+      </Card>
     )
 
   const { access } = state
@@ -99,11 +95,7 @@ export function AiAccess() {
     })
 
   return (
-    <section id="ai" className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="ai-title">
-      <h2 id="ai-title" className="mb-1 flex items-center gap-2 font-semibold">
-        <Symbol name="sparkle" className="h-4 w-4 text-accent-400" /> {t('ai.title')}
-      </h2>
-      <p className="mb-4 text-sm text-mist-500">{t('ai.text')}</p>
+    <Card id="ai" icon={Sparkles} title={t('ai.title')} subtitle={t('ai.text')}>
 
       <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label={t('ai.tiles')}>
         {AI_PROVIDERS.map((provider) => (
@@ -220,7 +212,7 @@ export function AiAccess() {
       {problem && <p role="alert" className="mt-3 rounded-lg border border-bad-500/30 bg-bad-500/10 px-3 py-2 text-sm text-bad-500">{errorText(problem)}{said}</p>}
       {done && <p role="status" className="mt-3 text-sm text-accent-400">{done}</p>}
       <AiEvents />
-    </section>
+    </Card>
   )
 }
 

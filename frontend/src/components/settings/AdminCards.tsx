@@ -2,6 +2,7 @@
  * The operator's part of the settings: accounts and invitations, every space (rights only, never contents),
  * sign-in and the provider, public pages, mail, files, languages.
  */
+import { Gauge, SlidersHorizontal } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -9,13 +10,11 @@ import { Link } from 'react-router-dom'
 import {
   adminApi,
   aiApi,
-  apiTokensApi,
   mcpApi,
   type AdminSpace,
   type AiMode,
   type AiModel,
   type AiShared,
-  type AnyApiToken,
   type FileSettings,
   type McpTools,
   type ServerSettings,
@@ -25,12 +24,10 @@ import {
 import { pastedExample } from '../../lib/pastedName'
 import { downloadTemplate, resetAddedLanguages, languageOptions, type LanguageOption } from '../../i18n'
 import { AI_PROVIDERS } from '../../lib/aiProviders'
-import { errorText } from '../../lib/errors'
-import { formatDate, formatDay } from '../../lib/markdown'
+import { formatDay } from '../../lib/markdown'
 import { useAuth } from '../../state/auth'
 import { useStore } from '../../state/store'
 import { noteUrl } from '../../lib/vault'
-import { ConfirmDialog } from '../ConfirmDialog'
 import { Symbol } from '../Symbol'
 import { MembersDialog } from '../MembersDialog'
 import { Button, Card, Feedback, Input, Select, Toggle } from './ui'
@@ -89,7 +86,9 @@ export function AllSpacesCard() {
 
 // --- AI from outside (MCP, M7) ----------------------------------------------------------------------------------------
 
-export function McpCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
+/** What the operator sets for MCP beyond the switch (which stands in "Schnittstellen"): the highest level of a key, the
+ * connectors that sign in by OAuth, the tools no account may use. Shown under the switch "MCP-Zugang". */
+export function McpSettings({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
   const { t } = useTranslation()
   const { problem, run } = useAction()
   const save = (change: Partial<ServerSettings>) => {
@@ -97,28 +96,17 @@ export function McpCard({ settings, onChange }: { settings: ServerSettings; onCh
     void run(async () => onChange(await adminApi.saveSettings(change))).then((ok) => ok || onChange(settings))
   }
   return (
-    <Card id="mcp" symbol="key" title={t('admin.mcp.title')} text={t('admin.mcp.text')}>
-      <Toggle label={t('admin.mcp.allow')} hint={t('admin.mcp.allowHint')} checked={settings.mcp_allowed} onChange={(value) => save({ mcp_allowed: value })} />
+    <div className="flex flex-col gap-3" data-testid="mcp-settings">
       <Select
         label={t('admin.mcp.maxLevel')}
         value={settings.mcp_max_level}
         options={(['read', 'draft', 'write'] as const).map((value) => ({ value, label: t(`mcp.level.${value}`) }))}
         onChange={(value) => save({ mcp_max_level: value })}
-        className="mt-3"
       />
-      <div className="mt-3">
-        <Toggle label={t('admin.mcp.oauth')} hint={t('admin.mcp.oauthHint')} checked={settings.mcp_oauth_allowed} onChange={(value) => save({ mcp_oauth_allowed: value })} />
-      </div>
+      <Toggle label={t('admin.mcp.oauth')} hint={t('admin.mcp.oauthHint')} checked={settings.mcp_oauth_allowed} onChange={(value) => save({ mcp_oauth_allowed: value })} />
       <BlockedTools />
-      {/* Where it goes on: the keys belong to the accounts, not to this card. */}
-      <p className="mt-3 text-sm text-mist-400" data-testid="mcp-where-keys">
-        {settings.mcp_allowed ? t('admin.mcp.keysWhere') : t('admin.mcp.keysLater')}{' '}
-        <Link to="/settings/connections#mcp" className="text-accent-400 hover:underline">
-          {t('admin.mcp.keysLink')}
-        </Link>
-      </p>
       <Feedback problem={problem} />
-    </Card>
+    </div>
   )
 }
 
@@ -163,94 +151,6 @@ function BlockedTools() {
       ))}
       <Feedback problem={problem} />
     </details>
-  )
-}
-
-// --- API tokens for programs (n8n, nexdeck) ------------------------------------------------------------------------
-
-/** The switch for API tokens, and every token there is: who made it, its level, when it was used; blocked for good
- * on request (every way out needs a latch). Never the token itself. */
-export function ApiTokensCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
-  const { t } = useTranslation()
-  const { busy, problem, run } = useAction()
-  const [tokens, setTokens] = useState<AnyApiToken[] | null>(null)
-  const [blocking, setBlocking] = useState<AnyApiToken | null>(null)
-  const load = useCallback(() => apiTokensApi.every().then(setTokens, () => setTokens(null)), [])
-  useEffect(() => {
-    void load()
-  }, [load])
-  const save = (change: Partial<ServerSettings>) => {
-    onChange({ ...settings, ...change })
-    void run(async () => onChange(await adminApi.saveSettings(change))).then((ok) => ok || onChange(settings))
-  }
-  return (
-    <Card id="api-tokens" symbol="key" title={t('admin.apiTokens.title')} text={t('admin.apiTokens.text')}>
-      <Toggle
-        label={t('admin.apiTokens.allow')}
-        hint={t('admin.apiTokens.allowHint')}
-        checked={settings.api_tokens_allowed}
-        onChange={(value) => save({ api_tokens_allowed: value })}
-      />
-      {tokens && tokens.length > 0 && (
-        <div className="nn-scroll mt-3 overflow-x-auto">
-          <table className="w-full text-left text-sm" data-testid="admin-api-tokens">
-            <thead className="text-xs text-mist-500">
-              <tr>
-                <th className="py-1.5 pr-3 font-medium">{t('admin.apiTokens.account')}</th>
-                <th className="py-1.5 pr-3 font-medium">{t('admin.apiTokens.token')}</th>
-                <th className="py-1.5 pr-3 font-medium">{t('admin.apiTokens.level')}</th>
-                <th className="py-1.5 pr-3 font-medium">{t('admin.apiTokens.spaces')}</th>
-                <th className="py-1.5 pr-3 font-medium">{t('admin.apiTokens.used')}</th>
-                <th className="py-1.5" />
-              </tr>
-            </thead>
-            <tbody>
-              {tokens.map((token) => (
-                <tr key={token.id} className="border-t border-ink-700">
-                  <td className="py-1.5 pr-3">{token.account}</td>
-                  <td className="py-1.5 pr-3">
-                    {token.name} <code className="font-mono text-xs text-mist-500">{token.prefix}…</code>
-                  </td>
-                  <td className="py-1.5 pr-3">{t(`apiTokens.level.${token.level}`)}</td>
-                  <td className="py-1.5 pr-3">
-                    {token.spaces === null ? t('admin.apiTokens.allSpaces') : t('admin.apiTokens.someSpaces', { count: token.spaces })}
-                  </td>
-                  <td className="py-1.5 pr-3 text-mist-400">{token.last_used_at ? formatDate(token.last_used_at) : t('mcp.unused')}</td>
-                  <td className="py-1.5 text-right">
-                    {token.blocked ? (
-                      <span className="text-xs text-bad-500">{t('admin.apiTokens.blocked')}</span>
-                    ) : (
-                      <Button small danger onClick={() => setBlocking(token)} label={t('admin.apiTokens.blockNamed', { name: token.name, account: token.account })}>
-                        {t('admin.apiTokens.block')}
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <p className="mt-3 text-xs text-mist-500">{t('admin.apiTokens.offHint')}</p>
-      <Feedback problem={problem} />
-      <ConfirmDialog
-        open={blocking !== null}
-        title={t('admin.apiTokens.blockTitle', { name: blocking?.name ?? '', account: blocking?.account ?? '' })}
-        confirm={t('admin.apiTokens.block')}
-        danger
-        busy={busy}
-        onCancel={() => setBlocking(null)}
-        onConfirm={() =>
-          void run(async () => {
-            await apiTokensApi.block(blocking!.id)
-            setBlocking(null)
-            await load()
-          })
-        }
-      >
-        {t('admin.apiTokens.blockText')}
-      </ConfirmDialog>
-    </Card>
   )
 }
 
@@ -610,113 +510,24 @@ export function SharesCard({ settings, onChange }: { settings: ServerSettings; o
   )
 }
 
-// --- Mail -----------------------------------------------------------------------------------------------------------
-
-export function MailCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
+/** "Funktionen für alle Konten" (plan "Einstellungen", Allgemein 2): what the operator opens for every account. In
+ * nexlore: the calendar subscriptions (the switch stood in "AI, API and plugins" before). */
+export function FeaturesCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
   const { t } = useTranslation()
-  const { me, refresh } = useAuth()
-  const [form, setForm] = useState({
-    smtp_host: settings.smtp_host,
-    smtp_port: String(settings.smtp_port),
-    smtp_security: settings.smtp_security,
-    smtp_user: settings.smtp_user,
-    smtp_password: '',
-    smtp_from: settings.smtp_from,
-    smtp_sender_name: settings.smtp_sender_name ?? '',
-  })
-  // The own address, when there is one: a test usually goes to oneself.
-  const [to, setTo] = useState(me?.email ?? '')
-  const { busy, problem, done, run } = useAction()
-
+  const { problem, run } = useAction()
+  const save = (value: boolean) => {
+    onChange({ ...settings, calendar_feed_allowed: value })
+    void run(async () => onChange(await adminApi.saveSettings({ calendar_feed_allowed: value }))).then((ok) => ok || onChange(settings))
+  }
   return (
-    <Card id="mail" symbol="mail" title={t('admin.mail.title')} text={t('admin.mail.text')}>
-      {/* What it is for: invitations alone was all it once said, and the notifications and confirmations it also
-          carries went unseen (issue #13). */}
-      <ul className="mb-4 space-y-1 text-sm text-mist-300" data-testid="mail-uses">
-        {(['usesInvites', 'usesNotify', 'usesConfirm'] as const).map((key) => (
-          <li key={key} className="flex gap-2">
-            <Symbol name="check" className="mt-0.5 h-4 w-4 shrink-0 text-accent-400" />
-            {t(`admin.mail.${key}`)}
-          </li>
-        ))}
-      </ul>
-      {!settings.public_url && (
-        <p className="mb-4 text-xs text-mist-500" data-testid="mail-public-url">
-          {t('admin.mail.publicUrlMissing')}{' '}
-          <Link to="/settings/sign-in" className="text-accent-400 underline underline-offset-2">
-            {t('admin.mail.publicUrlSet')}
-          </Link>
-        </p>
-      )}
-      <form
-        className="grid gap-2 sm:grid-cols-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const { smtp_password, smtp_port, ...rest } = form
-          void run(async () => {
-            onChange(await adminApi.saveSettings({ ...rest, smtp_port: Number(smtp_port) || 587, ...(smtp_password ? { smtp_password } : {}) }))
-            setForm((current) => ({ ...current, smtp_password: '' }))
-            await refresh()
-          }, t('common.saved'))
-        }}
-      >
-        <Input label={t('admin.mail.host')} value={form.smtp_host} onChange={(smtp_host) => setForm({ ...form, smtp_host })} placeholder="mail.example.com" />
-        <div className="grid grid-cols-2 gap-2">
-          <Input label={t('admin.mail.port')} value={form.smtp_port} onChange={(smtp_port) => setForm({ ...form, smtp_port })} type="number" />
-          <Select
-            label={t('admin.mail.security')}
-            value={form.smtp_security}
-            options={[
-              { value: 'starttls', label: 'STARTTLS' },
-              { value: 'tls', label: 'TLS' },
-              { value: 'none', label: t('admin.mail.none') },
-            ]}
-            onChange={(smtp_security) => setForm({ ...form, smtp_security })}
-          />
-        </div>
-        <Input label={t('admin.mail.user')} value={form.smtp_user} onChange={(smtp_user) => setForm({ ...form, smtp_user })} />
-        <Input
-          label={t('admin.mail.password')}
-          value={form.smtp_password}
-          onChange={(smtp_password) => setForm({ ...form, smtp_password })}
-          type="password"
-          placeholder={settings.smtp_password_set ? t('admin.mail.passwordKept') : ''}
-        />
-        <Input label={t('admin.mail.from')} value={form.smtp_from} onChange={(smtp_from) => setForm({ ...form, smtp_from })} placeholder="notes@example.com" />
-        {/* The name system mail goes out under (the shared post module); empty: nexlore. */}
-        <Input label={t('mail.senderName')} value={form.smtp_sender_name} onChange={(smtp_sender_name) => setForm({ ...form, smtp_sender_name })} placeholder="nexlore" hint={t('mail.senderNameHint')} />
-        {form.smtp_security === 'none' && <p className="text-xs text-warn-500 sm:col-span-2" data-testid="mail-unencrypted">{t('mail.warningUnencrypted')}</p>}
-        <div className="sm:col-span-2">
-          <Button type="submit" primary busy={busy}>
-            {t('common.save')}
-          </Button>
-        </div>
-      </form>
-      <form
-        className="mt-4 flex flex-wrap items-end gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void run(() => adminApi.mailTest(to.trim()), t('admin.mail.testSent'))
-        }}
-      >
-        <Input label={t('admin.mail.testTo')} value={to} onChange={setTo} type="email" className="min-w-60 flex-1" />
-        <Button type="submit" busy={busy}>
-          {t('admin.mail.test')}
-        </Button>
-      </form>
-      {(settings.mail_last_ok_at || settings.mail_last_error) && (
-        <p className="mt-3 text-xs text-mist-500" data-testid="mail-status">
-          {settings.mail_last_ok_at && t('mail.lastOk', { when: formatDate(settings.mail_last_ok_at) })}
-          {settings.mail_last_ok_at && settings.mail_last_error ? ' · ' : ''}
-          {settings.mail_last_error && settings.mail_last_error_at && t('mail.lastError', { when: formatDate(settings.mail_last_error_at), error: errorText(settings.mail_last_error) })}
-        </p>
-      )}
-      <Feedback problem={problem} done={done} />
+    <Card id="features" icon={SlidersHorizontal} title={t('admin.features.title')} text={t('admin.features.text')}>
+      <div id="calendar-feed">
+        <Toggle label={t('feed.allow')} hint={t('feed.allowHint')} checked={settings.calendar_feed_allowed} onChange={save} />
+      </div>
+      <Feedback problem={problem} />
     </Card>
   )
 }
-
-// --- Files ----------------------------------------------------------------------------------------------------------
 
 export function FilesSettingsCard() {
   const { t } = useTranslation()
@@ -736,7 +547,7 @@ export function FilesSettingsCard() {
   if (!values) return null
   const renamed = values.attachment_folder.trim() !== stored
   return (
-    <Card id="files" symbol="clip" title={t('admin.files.title')} text={t('admin.files.text')}>
+    <Card id="limits" icon={Gauge} title={t('admin.files.limitsTitle')} text={`${t('admin.files.text')} ${t('admin.files.perAccount')}`}>
       <form
         className="grid gap-2 sm:grid-cols-3"
         onSubmit={(event) => {

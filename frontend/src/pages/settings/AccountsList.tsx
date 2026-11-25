@@ -47,6 +47,8 @@ import {
   RESET_DAYS_DEFAULT,
   RESET_LINK_DIALOG,
   removeLines,
+  STORAGE_LIMIT_DIALOG,
+  storageFact,
   USERNAME_MAX,
   type AccountAction,
   type BadgeShown,
@@ -54,7 +56,7 @@ import {
   type ListedAccount,
   type ListedInvite,
 } from '../../vendor/nexkonten/konten'
-import { Avatar, Badge, Button, ButtonGroup, Card, CheckboxRow, ConfirmDialog, Dialog, Facts, Field, Notice, Row, Rows, SelectField, type IconName } from '../../vendor/nexui'
+import { Avatar, Badge, Button, ButtonGroup, Buttons, Card, CheckboxRow, ConfirmDialog, Dialog, Facts, Field, Notice, Row, Rows, SelectField, type IconName } from '../../vendor/nexui'
 import { APP_CAPS, APP_OWN_ACTIONS, listedOf } from './accountList'
 
 /** One running action at a time, with its problem as a sentence and an optional success line. */
@@ -248,9 +250,11 @@ function ManageDialog({ row, listed, operatorHasPassword, mailServer, onClose, o
   const [naming, setNaming] = useState<'name' | 'display_name' | null>(null)
   const [resetting, setResetting] = useState(false)
 
+  const [limiting, setLimiting] = useState(false)
   const own: FactShown[] = [
     { fact: 'spaces', label: 'admin.accounts.spacesFact', raw: String(row.spaces ?? 0) },
-    ...(row.storage_used !== undefined ? [{ fact: 'storage', label: 'admin.accounts.storageFact', raw: bytes(row.storage_used, lang) }] : []),
+    // The storage of the account against its own limit (konten 1.1.0, set right here with "Storage limit").
+    storageFact(listed, (value) => bytes(value, lang)),
   ]
   const facts = accountFacts(listed, own).map((fact) => ({
     label: t(fact.label),
@@ -277,6 +281,7 @@ function ManageDialog({ row, listed, operatorHasPassword, mailServer, onClose, o
     if (base === 'account.changeUsername') return setNaming('name')
     if (base === 'account.changeDisplayName') return setNaming('display_name')
     if (base === 'account.resetLink') return setResetting(true)
+    if (base === 'account.storageLimit') return setLimiting(true)
     if (base === 'account.remove') {
       return void adminApi.impact(row.id).then(
         (impact) => setPending({ action: act, impact }),
@@ -308,7 +313,19 @@ function ManageDialog({ row, listed, operatorHasPassword, mailServer, onClose, o
                     {t(act.label, act.values)}
                   </Button>
                 ) : (
-                  <CheckboxRow key={act.name} label={t(act.label)} checked={act.checked} onChange={() => undefined} />
+                  <CheckboxRow
+                    key={act.name}
+                    label={t(act.label)}
+                    checked={act.checked}
+                    disabled={action.busy || !act.right}
+                    onChange={(on) =>
+                      act.right &&
+                      void action.run(async () => {
+                        await adminApi.setRight(row.id, act.right as string, on)
+                        onChanged()
+                      })
+                    }
+                  />
                 ),
               )}
             </ButtonGroup>
@@ -332,6 +349,7 @@ function ManageDialog({ row, listed, operatorHasPassword, mailServer, onClose, o
       )}
       {naming && <NameDialog row={row} field={naming} operatorHasPassword={operatorHasPassword} onClose={() => setNaming(null)} onSaved={onChanged} />}
       {resetting && <ResetLinkDialog row={row} name={name} mailServer={mailServer} operatorHasPassword={operatorHasPassword} onClose={() => setResetting(false)} />}
+      {limiting && <StorageLimitDialog row={row} name={name} operatorHasPassword={operatorHasPassword} onClose={() => setLimiting(false)} onSaved={onChanged} />}
     </>
   )
 }
@@ -406,6 +424,7 @@ function ConfirmAct({ row, name, pending, operatorHasPassword, onCancel, onDone 
           if (base === 'account.unlinkProvider' && act.provider) await adminApi.unlinkAccount(row.id, Number(act.provider.id), password)
           if (base === 'account.block') await adminApi.block(row.id, password)
           if (base === 'account.unblock') await adminApi.unblock(row.id, password)
+          if (base === 'account.restore') await adminApi.restore(row.id, password)
           if (base === 'account.remove') {
             await adminApi.deleteAccount(row.id, password)
             gone = true
@@ -621,6 +640,54 @@ function InviteDialog({ onClose, onMade }: { onClose: () => void; onMade: () => 
           </div>
         </form>
       )}
+    </Dialog>
+  )
+}
+
+
+/** "Storage limit" of the dialog "Manage" (konten 1.1.0, ``STORAGE_LIMIT_DIALOG``): the limit in GB, with the operator's
+ * own password; "Remove the limit" lets the account upload without one. */
+function StorageLimitDialog({ row, name, operatorHasPassword, onClose, onSaved }: {
+  row: AdminAccount
+  name: string
+  operatorHasPassword: boolean
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const { t, i18n } = useTranslation()
+  const [value, setValue] = useState(row.storage_limit ? String(Math.round((row.storage_limit / 1024 ** 3) * 100) / 100) : '')
+  const [password, setPassword] = useState('')
+  const action = useAct()
+  const save = (limit: number | null) =>
+    void action.run(async () => {
+      await adminApi.setStorageLimit(row.id, limit, password)
+      onSaved()
+      onClose()
+    })
+  const gigabytes = Number(value.replace(',', '.'))
+  const valid = Number.isFinite(gigabytes) && gigabytes > 0
+  return (
+    <Dialog title={t(STORAGE_LIMIT_DIALOG.title, { name })} onClose={onClose} closeLabel={t('common.close')} testId="storage-limit-dialog">
+      <form
+        className="flex flex-col gap-4"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (valid) save(Math.round(gigabytes * 1024 ** 3))
+        }}
+      >
+        <p className="m-0 text-sm">{t(STORAGE_LIMIT_DIALOG.used, { used: bytes(row.storage_used ?? 0, i18n.language) })}</p>
+        <Field label={t(STORAGE_LIMIT_DIALOG.field)} inputMode="decimal" value={value} onChange={(event) => setValue(event.target.value)} data-testid="storage-limit-field" />
+        {operatorHasPassword && (
+          <Field label={t('account.currentPassword')} type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+        )}
+        <Said problem={action.problem} />
+        <Buttons end>
+          {row.storage_limit ? (
+            <AccountButton name={STORAGE_LIMIT_DIALOG.remove} disabled={action.busy || (operatorHasPassword && !password)} onClick={() => save(null)} />
+          ) : null}
+          <AccountButton name={STORAGE_LIMIT_DIALOG.save} type="submit" disabled={action.busy || !valid || (operatorHasPassword && !password)} />
+        </Buttons>
+      </form>
     </Dialog>
   )
 }

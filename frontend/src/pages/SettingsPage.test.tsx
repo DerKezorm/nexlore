@@ -17,17 +17,16 @@ const stubs = vi.hoisted(() => (...names: string[]) =>
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }) }))
 vi.mock('../components/settings/AdminCards', async (original) => ({
   ...(await original()),
-  ...stubs('AccountsCard', 'AiCard', 'AllSpacesCard', 'ApiTokensCard', 'CssCard', 'FilesSettingsCard', 'GuideCard', 'LanguagesCard', 'MailCard', 'McpCard', 'SharesCard'),
+  ...stubs('AccountsCard', 'AiCard', 'AllSpacesCard', 'CssCard', 'FeaturesCard', 'FilesSettingsCard', 'GuideCard', 'LanguagesCard', 'McpSettings', 'SharesCard'),
 }))
 vi.mock('../components/settings/AppearanceCard', () => stubs('AppearanceCard'))
-vi.mock('../components/settings/AppPairingSwitch', () => stubs('AppPairingSwitch'))
 vi.mock('../components/settings/CalendarFeed', () => stubs('CalendarFeedSwitch', 'CalendarFeed'))
 vi.mock('../components/settings/EditorCard', () => stubs('EditorCard'))
+vi.mock('../components/settings/InstallCard', () => stubs('InstallCard'))
 vi.mock('../components/settings/KeysCard', () => stubs('KeysCard'))
 vi.mock('../components/settings/LinkTitleSwitch', () => stubs('LinkTitleSwitch'))
 vi.mock('../components/settings/LogCard', () => stubs('LogCard'))
 vi.mock('./settings/StorageArea', () => stubs('StorageArea'))
-vi.mock('../components/settings/SignInCards', () => stubs('SignInPart'))
 vi.mock('../components/settings/SnippetsCard', () => stubs('SnippetsCard'))
 vi.mock('../components/settings/SpacesCard', () => stubs('SpacesCard'))
 vi.mock('../components/settings/StartCard', () => stubs('HomeSpaceCard', 'StartCard'))
@@ -36,17 +35,19 @@ vi.mock('../components/settings/useServerSettings', () => ({ useServerSettings: 
 vi.mock('../plugins/PluginSettings', () => stubs('AdminPluginsCard', 'MyPluginsCard'))
 vi.mock('../components/AiAccess', () => stubs('AiAccess'))
 vi.mock('../components/AppDevices', () => stubs('AppDevices'))
-vi.mock('../components/ApiTokens', () => stubs('ApiTokens'))
-vi.mock('../components/McpKeys', () => stubs('McpKeys'))
 vi.mock('../components/NotifySettings', () => stubs('NotifySettings'))
-// Profile and security as the shared account module lays them out (the cards of the profile and of the password, the
-// second factor and the sessions, and signing out); the notices above them show nothing here.
-vi.mock('./settings/AccountCards', () => ({ ...stubs('ProfileCard', 'SecurityCard', 'SignOutCard'), AccountNotices: () => null }))
+// The cards of the shared modules: the account module's (profile, security, sign-out, look, what the operator sees,
+// the page Sign-in), the key module's, the mail module's.
+vi.mock('./settings/AccountCards', () => ({ ...stubs('ProfileCard', 'SecurityCard'), AccountNotices: () => null }))
+vi.mock('../vendor/nexkonten/AccountCards', () => stubs('AppearanceCard', 'SignOutCard', 'WhatYouSeeCard'))
+vi.mock('../vendor/nexkonten/SignInPage', () => stubs('SignInPage'))
+vi.mock('../vendor/nexschluessel', () => stubs('ApiKeysCard', 'ToolsCard', 'InterfacesCard', 'AllKeysCard'))
+vi.mock('../vendor/nexpost/MailCard', () => stubs('MailCard'))
 vi.mock('./AboutPage', () => stubs('AboutArea'))
 vi.mock('../components/Sidebar', () => stubs('SpacesSidebar'))
 vi.mock('../api/client', async (original) => {
   const real = await original<typeof import('../api/client')>()
-  return { ...real, authApi: { ...real.authApi, myProviders: async () => [] } }
+  return { ...real, authApi: { ...real.authApi, myProviders: async () => [] }, aboutApi: { ...real.aboutApi, about: async () => ({ repo_url: 'https://example.com/nexlore' }) } }
 })
 
 const asked = vi.hoisted(() => ({ role: 'operator' as 'operator' | 'member' }))
@@ -116,16 +117,17 @@ describe('the navigation', () => {
     expect(side).not.toBeNull()
     expect(side.contains(nav())).toBe(false)
     expect(box.querySelector('main')!.contains(nav())).toBe(true)
-    expect(box.querySelector('main')!.querySelector('[data-testid="settings-jump"]')).not.toBeNull()
-    expect([...nav().querySelectorAll('p[id^="settings-group-"]')].map((group) => group.textContent)).toEqual(['settings.groups.account', 'settings.groups.server'])
+    expect([...nav().querySelectorAll('[data-group]')].map((group) => group.getAttribute('data-group'))).toEqual(['account', 'server'])
     expect(entries()).toEqual([...AREAS.map((area) => `/settings/${area.slug}`), '/settings/about'])
+    // The order of the plan "Einstellungen": Profile, Security, Appearance, nexlore's own, Notifications, Connections;
+    // General, Sign-in, Mail, Storage, nexlore's own (AI provider, Plugins, Public pages), Accounts, Log.
     expect(entries()).toEqual([
-      '/settings/profile', '/settings/security', '/settings/appearance', '/settings/notes', '/settings/spaces', '/settings/notifications',
-      '/settings/plugins', '/settings/connections', '/settings/general', '/settings/sign-in', '/settings/mail', '/settings/storage',
-      '/settings/shares', '/settings/extensions', '/settings/accounts', '/settings/log', '/settings/about',
+      '/settings/profile', '/settings/security', '/settings/appearance', '/settings/notes', '/settings/spaces', '/settings/plugins',
+      '/settings/notifications', '/settings/connections', '/settings/general', '/settings/sign-in', '/settings/mail', '/settings/storage',
+      '/settings/ai-provider', '/settings/server-plugins', '/settings/shares', '/settings/accounts', '/settings/log', '/settings/about',
     ])
     expect(current()).toBe('/settings/profile')
-    expect(box.querySelector('h1')?.textContent).toBe('settings.areas.profile.title')
+    expect(box.querySelector('h1')?.textContent).toBe('Profile')
     await hide()
   })
 
@@ -133,8 +135,8 @@ describe('the navigation', () => {
     asked.role = 'member'
     await show('/settings')
     expect(entries()).toEqual([
-      '/settings/profile', '/settings/security', '/settings/appearance', '/settings/notes', '/settings/spaces', '/settings/notifications',
-      '/settings/plugins', '/settings/connections', '/settings/about',
+      '/settings/profile', '/settings/security', '/settings/appearance', '/settings/notes', '/settings/spaces', '/settings/plugins',
+      '/settings/notifications', '/settings/connections', '/settings/about',
     ])
     await hide()
   })
@@ -148,13 +150,16 @@ describe('nothing got lost', () => {
   const BEFORE = [
     // Settings: General, Look, Spaces
     'StartCard', 'EditorCard', 'HomeSpaceCard', 'KeysCard', 'ThemesCard', 'AppearanceCard', 'SnippetsCard', 'SpacesCard',
-    // Settings: Server
-    'AccountsCard', 'AllSpacesCard', 'SignInPart', 'MailCard', 'SharesCard', 'ApiTokensCard', 'AppPairingSwitch', 'McpCard', 'CalendarFeedSwitch',
+    // Settings: Server (the switches of API tokens, the iPhone app and MCP are in "Schnittstellen" now, the calendar
+    // feed's in "Funktionen für alle Konten", every token of every account in "API-Schlüssel aller Konten")
+    'AccountsCard', 'AllSpacesCard', 'SignInPage', 'MailCard', 'SharesCard', 'InterfacesCard', 'FeaturesCard', 'AllKeysCard',
     'LinkTitleSwitch', 'AiCard', 'CssCard', 'AdminPluginsCard', 'LogCard', 'FilesSettingsCard', 'GuideCard', 'StorageArea', 'LanguagesCard',
-    // My account
-    'ProfileCard', 'SignOutCard', 'SecurityCard', 'AppDevices', 'NotifySettings', 'ApiTokens', 'AiAccess', 'McpKeys', 'CalendarFeed', 'MyPluginsCard',
-    // About
-    'AboutArea',
+    // My account (the own API tokens and MCP keys are the key module's two cards now)
+    'ProfileCard', 'SignOutCard', 'SecurityCard', 'AppDevices', 'NotifySettings', 'ApiKeysCard', 'ToolsCard', 'AiAccess', 'CalendarFeed', 'MyPluginsCard',
+    // Installing moved from About to Connections; About
+    'InstallCard', 'AboutArea',
+    // New in the settings pass: "Aussehen" first under Appearance, "What you see" under Accounts
+    'AppearanceCard', 'WhatYouSeeCard',
   ]
 
   it('gives every card of before exactly one place', async () => {
@@ -169,19 +174,20 @@ describe('nothing got lost', () => {
     expect(seen).toEqual({
       profile: ['ProfileCard', 'SignOutCard'],
       security: ['SecurityCard'],
-      appearance: ['ThemesCard', 'AppearanceCard', 'SnippetsCard'],
+      appearance: ['AppearanceCard', 'ThemesCard', 'AppearanceCard', 'SnippetsCard'],
       notes: ['StartCard', 'EditorCard', 'HomeSpaceCard', 'KeysCard'],
       spaces: ['SpacesCard'],
-      notifications: ['NotifySettings'],
       plugins: ['MyPluginsCard'],
-      connections: ['AppDevices', 'ApiTokens', 'AiAccess', 'McpKeys', 'CalendarFeed'],
-      general: ['FilesSettingsCard', 'LinkTitleSwitch', 'CssCard', 'LanguagesCard', 'GuideCard'],
-      'sign-in': ['SignInPart'],
+      notifications: ['NotifySettings'],
+      connections: ['AppDevices', 'InstallCard', 'AiAccess', 'CalendarFeed', 'ApiKeysCard', 'ToolsCard'],
+      general: ['FilesSettingsCard', 'FeaturesCard', 'InterfacesCard', 'LanguagesCard', 'LinkTitleSwitch', 'CssCard', 'GuideCard'],
+      'sign-in': ['SignInPage'],
       mail: ['MailCard'],
       storage: ['StorageArea'],
+      'ai-provider': ['AiCard'],
+      'server-plugins': ['AdminPluginsCard'],
       shares: ['SharesCard'],
-      extensions: ['AiCard', 'ApiTokensCard', 'AppPairingSwitch', 'McpCard', 'CalendarFeedSwitch', 'AdminPluginsCard'],
-      accounts: ['AccountsCard', 'AllSpacesCard'],
+      accounts: ['AccountsCard', 'WhatYouSeeCard', 'AllKeysCard', 'AllSpacesCard'],
       log: ['LogCard'],
       about: ['AboutArea'],
     })
@@ -221,8 +227,14 @@ describe('the addresses of before', () => {
     ['/settings?tab=server&sub=signin', '/settings/sign-in'],
     ['/settings?tab=server&sub=mail', '/settings/mail'],
     ['/settings?tab=server&sub=shares', '/settings/shares'],
-    ['/settings?tab=server&sub=extensions', '/settings/extensions'],
-    ['/settings?tab=server&sub=extensions#ai', '/settings/extensions#ai'],
+    ['/settings?tab=server&sub=extensions', '/settings/ai-provider'],
+    ['/settings?tab=server&sub=extensions#ai', '/settings/ai-provider#ai'],
+    ['/settings?tab=server&sub=extensions#mcp', '/settings/general#mcp'],
+    ['/settings?tab=server&sub=extensions#plugins', '/settings/server-plugins#plugins'],
+    ['/settings/extensions', '/settings/ai-provider'],
+    ['/settings/extensions#api-tokens', '/settings/general#api-tokens'],
+    ['/settings/extensions#app-pairing', '/settings/general#app-pairing'],
+    ['/settings/extensions#calendar', '/settings/general#calendar'],
     ['/settings?tab=server&sub=files', '/settings/general'],
     ['/settings?tab=server&sub=backups', '/settings/storage'],
     ['/settings?tab=server&sub=languages', '/settings/general'],

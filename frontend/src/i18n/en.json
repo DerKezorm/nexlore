@@ -1195,9 +1195,9 @@
     },
     "unlinked": "No longer linked to {{name}}.",
     "app": {
-      "title": "iPhone app",
+      "title": "Devices",
       "text": "Connected iPhones have the same rights as this browser. An iPhone is disconnected here, by signing out everywhere else, or by a new password.",
-      "connect": "Connect the iPhone app",
+      "connect": "Connect an iPhone or iPad",
       "scan": "Open the iPhone's camera and point it at the code.",
       "orType": "Or type the address and the code into the app.",
       "address": "Address",
@@ -1295,7 +1295,8 @@
       "storageFact": "Uploaded",
       "removeWhat": "Its rights go with it, its notes stay; a space it was alone in is yours then.",
       "removeAlone_one": "It is alone in this space: {{spaces}}.",
-      "removeAlone_other": "It is alone in these spaces: {{spaces}}."
+      "removeAlone_other": "It is alone in these spaces: {{spaces}}.",
+      "whatYouSee": "As the operator you see names, sign-in, roles, storage and the spaces with their members, but never a title or a word of somebody else’s notes."
     },
     "spaces": {
       "title": "All spaces",
@@ -1318,7 +1319,7 @@
     },
     "mail": {
       "title": "Mail server",
-      "text": "nexlore sends its mail through it. Without a server nothing goes out.",
+      "text": "The mail server nexlore sends invitations through, links to confirm an address and for a new password, notices about signing in, notifications and notices to the operator.",
       "host": "Server",
       "port": "Port",
       "security": "Encryption",
@@ -1356,7 +1357,9 @@
       "renamed_one": "One folder renamed.",
       "renamed_other": "{{count}} folders renamed.",
       "left_one": "One folder kept its name because one with the new name stands beside it: {{list}}",
-      "left_other": "{{count}} folders kept their name because one with the new name stands beside them: {{list}}"
+      "left_other": "{{count}} folders kept their name because one with the new name stands beside them: {{list}}",
+      "limitsTitle": "Limits",
+      "perAccount": "Storage per account is set under “Accounts”."
     },
     "languages": {
       "title": "Languages",
@@ -1479,6 +1482,10 @@
       "text": "Accounts connect the own iPhone app to nexlore. It can do nothing the browser cannot. On from the start.",
       "allow": "The iPhone app may connect",
       "hint": "Off, no device gets in any more and none can be connected anew. Connected devices stay and work again when you switch it on."
+    },
+    "features": {
+      "title": "Features for all accounts",
+      "text": "What every account may use on this server."
     }
   },
   "today": {
@@ -1626,7 +1633,16 @@
     "install": "Install",
     "later": "Don't ask again",
     "menu": "Install as an app",
-    "notNow": "Not now"
+    "notNow": "Not now",
+    "card": {
+      "title": "Install on this device",
+      "installed": "nexlore runs installed on this device.",
+      "asked": "The browser asked; if you said yes, nexlore is on your home screen now.",
+      "ios": "In Safari, tap “Share”, then “Add to Home Screen”.",
+      "safari": "In Safari, choose File, then “Add to Dock”.",
+      "firefox": "Firefox cannot install web apps. Use Chrome, Edge or Safari for that.",
+      "other": "Your browser offers it in its menu, as “Install app” or “Add to home screen”."
+    }
   },
   "mcp": {
     "title": "AI from outside (MCP)",
@@ -2446,7 +2462,8 @@
     "off": "The operator has not switched API tokens on. Ask them if you want to connect nexlore with n8n or nexdeck.",
     "offOperator": "Switch them on under Settings → Server → AI, API and plugins.",
     "whatItDoes": "What the API does",
-    "whatItDoesText": "Every request carries the token in the header Authorization: Bearer, the answers are JSON. Writing needs the level Write and the right in the space."
+    "whatItDoesText": "Every request carries the token in the header Authorization: Bearer, the answers are JSON. Writing needs the level Write and the right in the space.",
+    "spaces": "Spaces"
   },
   "lore": {
     "title": "Ask Lore",

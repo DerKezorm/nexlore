@@ -13,7 +13,7 @@ import { ApiError, appApi, type AppDevice, type AppPairing, type AppPairingState
 import { minutesLeft } from '../lib/appPairing'
 import { errorText } from '../lib/errors'
 import { formatDate } from '../lib/markdown'
-import { Symbol } from './Symbol'
+import { Box, Button, Buttons, Card, Facts, Notice, Row, Rows } from '../vendor/nexui'
 
 /** How often the open card asks whether the app has come. */
 export const POLL_MS = 2000
@@ -106,105 +106,87 @@ export function AppDevices() {
   }
 
   return (
-    <section id="app-devices" className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
-      <h2 className="mb-4 flex items-center gap-2 font-semibold">
-        <Symbol name="phone" className="h-4 w-4 text-accent-400" /> {t('me.app.title')}
-      </h2>
-      <p className="mb-3 text-sm text-mist-400">{t('me.app.text')}</p>
-      {problem && (
-        <p role="alert" className="mb-3 rounded-lg border border-bad-500/30 bg-bad-500/10 px-3 py-2 text-sm text-bad-500">
-          {problem}
-        </p>
-      )}
+    <Card id="devices" icon="Smartphone" title={t('me.app.title')} subtitle={t('me.app.text')} testId="app-devices-card">
+      {problem && <Notice tone="danger">{problem}</Notice>}
       {devices && devices.length > 0 && (
-        <ul className="mb-3 divide-y divide-ink-800 rounded-xl border border-ink-800" data-testid="app-devices">
+        <Rows testId="app-devices">
           {devices.map((device) => (
-            <li key={device.id} className="flex flex-wrap items-center gap-3 px-3 py-2.5 text-sm" data-testid="app-device">
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium">{device.name}</span>
-                <span className="block text-xs text-mist-500">
-                  {device.last_seen_at ? t('me.app.seen', { when: formatDate(device.last_seen_at) }) : t('me.app.never')}
-                </span>
-              </span>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void disconnect(device)}
-                aria-label={t('me.app.disconnectNamed', { name: device.name })}
-                className="rounded-full border border-ink-700 px-3 py-1 text-xs hover:bg-ink-850 disabled:opacity-50"
-              >
-                {t('me.app.disconnect')}
-              </button>
-            </li>
+            <Row
+              key={device.id}
+              icon="Smartphone"
+              name={<span data-testid="app-device-name">{device.name}</span>}
+              detail={device.last_seen_at ? t('me.app.seen', { when: formatDate(device.last_seen_at) }) : t('me.app.never')}
+              testId="app-device"
+              action={
+                <Button kind="danger" size="sm" icon="Unlink" disabled={busy} aria-label={t('me.app.disconnectNamed', { name: device.name })} onClick={() => void disconnect(device)}>
+                  {t('me.app.disconnect')}
+                </Button>
+              }
+            />
           ))}
-        </ul>
+        </Rows>
       )}
       {!pairing && (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void start()}
-          className="rounded-full bg-accent-500 px-4 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-50"
-        >
-          {t('me.app.connect')}
-        </button>
+        <Buttons>
+          <Button kind="primary" icon="Smartphone" disabled={busy} onClick={() => void start()} testId="app-connect">
+            {t('me.app.connect')}
+          </Button>
+        </Buttons>
       )}
       {pairing && state && (
-        <div className="rounded-xl border border-ink-700 bg-ink-850 p-4" data-testid="app-pairing" data-state={state.state}>
-          {state.state === 'connected' ? (
-            <p className="text-sm text-ok-500" role="status">
-              {t('me.app.connected', { name: state.device })}
-            </p>
-          ) : state.state === 'expired' ? (
-            <p className="text-sm text-mist-300" role="status">
-              {t('me.app.expired')}
-            </p>
-          ) : (
-            <div className="flex flex-wrap items-start gap-5">
-              <div
-                className="w-44 shrink-0 overflow-hidden rounded-lg bg-white p-1"
-                role="img"
-                aria-label={t('me.app.qr')}
-                // Drawn by the server from the pairing's link, nothing else in it.
-                dangerouslySetInnerHTML={{ __html: pairing.qr_svg }}
-              />
-              <div className="min-w-0 flex-1 space-y-2 text-sm">
-                <p className="text-mist-300">{t('me.app.scan')}</p>
-                <p className="text-mist-400">{t('me.app.orType')}</p>
-                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-                  <dt className="text-mist-500">{t('me.app.address')}</dt>
-                  <dd className="break-all font-mono text-xs text-mist-100" data-testid="app-pairing-address">
-                    {pairing.address}
-                  </dd>
-                  <dt className="text-mist-500">{t('me.app.code')}</dt>
-                  <dd className="font-mono text-lg tracking-widest text-mist-100" data-testid="app-pairing-code">
-                    {pairing.code}
-                  </dd>
-                </dl>
-                <p className="text-xs text-mist-500">{t('me.app.left', { count: minutesLeft(pairing.expires_at, now) })}</p>
+        <Box title={t('me.app.connect')} testId="app-pairing-box">
+          <div data-testid="app-pairing" data-state={state.state}>
+            {state.state === 'connected' ? (
+              <p className="m-0 text-sm text-[var(--nexui-ok)]" role="status">
+                {t('me.app.connected', { name: state.device })}
+              </p>
+            ) : state.state === 'expired' ? (
+              <p className="m-0 text-sm" role="status">
+                {t('me.app.expired')}
+              </p>
+            ) : (
+              <div className="flex flex-wrap items-start gap-5">
+                <div
+                  className="w-44 shrink-0 overflow-hidden rounded-lg bg-white p-1"
+                  role="img"
+                  aria-label={t('me.app.qr')}
+                  // Drawn by the server from the pairing's link, nothing else in it.
+                  dangerouslySetInnerHTML={{ __html: pairing.qr_svg }}
+                />
+                <div className="min-w-0 flex-1 space-y-2 text-sm">
+                  <p className="m-0">{t('me.app.scan')}</p>
+                  <p className="m-0 text-[var(--nexui-text-muted)]">{t('me.app.orType')}</p>
+                  <Facts
+                    items={[
+                      { label: t('me.app.address'), value: <span className="font-mono text-xs break-all" data-testid="app-pairing-address">{pairing.address}</span> },
+                      { label: t('me.app.code'), value: <span className="font-mono text-lg tracking-widest" data-testid="app-pairing-code">{pairing.code}</span> },
+                    ]}
+                  />
+                  <p className="m-0 text-xs text-[var(--nexui-text-muted)]">{t('me.app.left', { count: minutesLeft(pairing.expires_at, now) })}</p>
+                </div>
               </div>
-            </div>
-          )}
-          <div className="mt-3 flex flex-wrap gap-2">
+            )}
+          </div>
+          <Buttons>
             {state.state === 'expired' && (
-              <button
-                type="button"
+              <Button
+                kind="primary"
+                icon="RefreshCw"
                 disabled={busy}
                 onClick={() => {
                   close()
                   void start()
                 }}
-                className="rounded-full bg-accent-500 px-4 py-1.5 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-50"
               >
                 {t('me.app.again')}
-              </button>
+              </Button>
             )}
-            <button type="button" onClick={close} className="rounded-full border border-ink-700 px-4 py-1.5 text-sm hover:bg-ink-850">
+            <Button kind="secondary" icon="X" onClick={close}>
               {state.state === 'waiting' ? t('me.app.cancel') : t('me.app.close')}
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Buttons>
+        </Box>
       )}
-    </section>
+    </Card>
   )
 }

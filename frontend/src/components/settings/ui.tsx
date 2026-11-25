@@ -1,51 +1,98 @@
-/** Small pieces the settings cards share: the card, a switch row, fields, buttons. */
-import { useId, useState, type ReactNode } from 'react'
+/**
+ * The pieces nexlore's own settings cards are built from, all from the ui kit (`vendor/nexui`, plan "Einstellungen":
+ * "Gleiches Aussehen kommt nur aus dem Bausatz"): the card (`Card`, with its `id` as `data-card`), on or off as a tick
+ * (`CheckboxRow`, never a switch), fields (`Field`, `SelectField`), buttons in three kinds and two sizes, always with a
+ * symbol and words (`Button`), a value to copy (`CopyRow`). The names stay those nexlore's cards used before, so a card
+ * changes its look, not its code.
+ */
+import {
+  Bell,
+  BookOpen,
+  Calendar,
+  Check,
+  Code,
+  Folder,
+  Globe,
+  HardDrive,
+  History,
+  Home,
+  Info,
+  Key,
+  Keyboard,
+  Link,
+  Mail,
+  Paperclip,
+  Pencil,
+  Plug,
+  RefreshCw,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  Trash2,
+  Upload,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
+import type { ReactNode } from 'react'
 
-import { Symbol, type SymbolName } from '../Symbol'
+import { Button as KitButton, Card as KitCard, CheckboxRow, CopyRow, Field, SelectField, type IconLike } from '../../vendor/nexui'
+import type { SymbolName } from '../Symbol'
 
-export function Card({ symbol, title, text, children, id }: { symbol: SymbolName; title: string; text?: string; children: ReactNode; id?: string }) {
+/** The symbols nexlore's cards named, as the kit's (lucide) icons. */
+const SYMBOL_ICON: Partial<Record<SymbolName, LucideIcon>> = {
+  bell: Bell,
+  book: BookOpen,
+  calendar: Calendar,
+  clip: Paperclip,
+  code: Code,
+  folder: Folder,
+  globe: Globe,
+  hardDrive: HardDrive,
+  history: History,
+  home: Home,
+  info: Info,
+  key: Key,
+  keyboard: Keyboard,
+  link: Link,
+  mail: Mail,
+  pencil: Pencil,
+  phone: Smartphone,
+  plug: Plug,
+  refresh: RefreshCw,
+  shield: ShieldCheck,
+  space: Folder,
+  sparkle: Sparkles,
+  trash: Trash2,
+  upload: Upload,
+  users: Users,
+}
+
+export function Card({ symbol, icon, title, text, children, id, testId }: {
+  symbol?: SymbolName
+  icon?: IconLike
+  title: string
+  text?: ReactNode
+  children?: ReactNode
+  id?: string
+  testId?: string
+}) {
   return (
-    <section id={id} aria-labelledby={id ? `${id}-title` : undefined} className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
-      <div className="mb-4 flex gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-500/12 text-accent-400">
-          <Symbol name={symbol} />
-        </span>
-        <div>
-          <h2 id={id ? `${id}-title` : undefined} className="font-semibold">
-            {title}
-          </h2>
-          {text && <p className="text-sm text-mist-500">{text}</p>}
-        </div>
-      </div>
+    <KitCard id={id} icon={icon ?? (symbol && SYMBOL_ICON[symbol]) ?? Info} title={title} subtitle={text} testId={testId}>
       {children}
-    </section>
+    </KitCard>
   )
 }
 
-/** A switch with its name and a line of explanation; the whole row is the label. */
-export function Toggle({ label, hint, checked, onChange, disabled = false }: { label: string; hint?: string; checked: boolean; onChange: (value: boolean) => void; disabled?: boolean }) {
-  const hintId = useId()
-  return (
-    <label className="flex items-center justify-between gap-4 rounded-xl border border-ink-700 bg-ink-850 px-4 py-3 text-sm">
-      <span>
-        <span className="font-medium">{label}</span>
-        {hint && (
-          <span id={hintId} className="block text-xs text-mist-500">
-            {hint}
-          </span>
-        )}
-      </span>
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        aria-label={label}
-        aria-describedby={hint ? hintId : undefined}
-        onChange={(event) => onChange(event.target.checked)}
-        className="h-5 w-5 shrink-0 accent-accent-500"
-      />
-    </label>
-  )
+/** On or off with its name and a line of explanation: a tick, never a switch. */
+export function Toggle({ label, hint, checked, onChange, disabled = false, testId }: {
+  label: string
+  hint?: ReactNode
+  checked: boolean
+  onChange: (value: boolean) => void
+  disabled?: boolean
+  testId?: string
+}) {
+  return <CheckboxRow label={label} hint={hint} checked={checked} onChange={onChange} disabled={disabled} testId={testId} />
 }
 
 export function Input({
@@ -57,59 +104,55 @@ export function Input({
   hint,
   className = '',
   autoComplete = 'off',
+  action,
+  testId,
 }: {
   label: string
   value: string
   onChange: (value: string) => void
   type?: string
   placeholder?: string
-  hint?: string
+  hint?: ReactNode
   className?: string
   autoComplete?: string
+  /** The field's own button, level with the field (`Field action`). */
+  action?: ReactNode
+  testId?: string
 }) {
-  const hintId = useId()
   return (
-    <div className={'text-sm ' + className}>
-      <label className="block">
-        <span className="text-xs font-medium text-mist-400">{label}</span>
-        <input
-          type={type}
-          value={value}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          aria-describedby={hint ? hintId : undefined}
-          onChange={(event) => onChange(event.target.value)}
-          className="mt-1 h-9 w-full rounded-lg border border-ink-700 bg-ink-850 px-3 text-sm outline-none focus:border-accent-500"
-        />
-      </label>
-      {hint && (
-        <span id={hintId} className="mt-1 block text-xs text-mist-500">
-          {hint}
-        </span>
-      )}
+    <div className={className}>
+      <Field
+        label={label}
+        value={value}
+        type={type}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        hints={hint ? [hint] : []}
+        action={action}
+        data-testid={testId}
+        onChange={(event) => onChange(event.target.value)}
+      />
     </div>
   )
 }
 
-export function Select<T extends string>({ label, value, options, onChange, className = '' }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (value: T) => void; className?: string }) {
+export function Select<T extends string>({ label, value, options, onChange, className = '', hint }: {
+  label: string
+  value: T
+  options: { value: T; label: string }[]
+  onChange: (value: T) => void
+  className?: string
+  hint?: ReactNode
+}) {
   return (
-    <label className={'block text-sm ' + className}>
-      <span className="text-xs font-medium text-mist-400">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value as T)}
-        className="mt-1 h-9 w-full rounded-lg border border-ink-700 bg-ink-850 px-2 text-sm"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className={className}>
+      <SelectField label={label} value={value} options={options} hints={hint ? [hint] : []} onChange={(event) => onChange(event.target.value as T)} />
+    </div>
   )
 }
 
+/** A button of the kit: `primary` (at most one per card), `danger` for what removes or ends something, else
+ * secondary; `small` is the kit's `sm` (rows, lists, tables). Always a symbol and words. */
 export function Button({
   children,
   onClick,
@@ -119,6 +162,9 @@ export function Button({
   type = 'button',
   small = false,
   label,
+  icon,
+  disabled = false,
+  testId,
 }: {
   children: ReactNode
   onClick?: () => void
@@ -128,49 +174,37 @@ export function Button({
   type?: 'button' | 'submit'
   small?: boolean
   label?: string
+  icon?: IconLike
+  disabled?: boolean
+  testId?: string
 }) {
-  const look = primary
-    ? 'bg-accent-500 font-semibold text-on-accent hover:bg-accent-400'
-    : danger
-      ? 'border border-ink-700 text-mist-300 hover:border-bad-500/50 hover:text-bad-500'
-      : 'border border-ink-700 text-mist-300 hover:bg-ink-850'
   return (
-    <button
+    <KitButton
+      kind={primary ? 'primary' : danger ? 'danger' : 'secondary'}
+      size={small ? 'sm' : 'md'}
+      icon={icon ?? (danger ? Trash2 : Check)}
       type={type}
-      onClick={onClick}
-      disabled={busy}
+      busy={busy}
+      disabled={disabled}
       aria-label={label}
-      className={`inline-flex items-center gap-1.5 rounded-full ${small ? 'px-2.5 py-0.5 text-xs' : 'px-3.5 py-1.5 text-sm'} ${look} disabled:opacity-50`}
+      testId={testId}
+      onClick={onClick}
     >
       {children}
-    </button>
+    </KitButton>
   )
 }
 
 export function Feedback({ problem, done }: { problem: string | null; done?: string | null }) {
   return (
     <div aria-live="polite">
-      {problem && <p className="mt-3 text-sm text-bad-500">{problem}</p>}
-      {done && <p className="mt-3 text-sm text-ok-500">{done}</p>}
+      {problem && <p className="m-0 text-sm text-[var(--nexui-danger)]">{problem}</p>}
+      {done && <p className="m-0 text-sm text-[var(--nexui-ok)]">{done}</p>}
     </div>
   )
 }
 
-/** A link that is shown once: the field to copy from, and the button that copies. */
+/** A link that is shown once, to copy (`CopyRow` of the kit). */
 export function CopyLink({ link, label }: { link: string; label: string }) {
-  const [copied, setCopied] = useState(false)
-  return (
-    <div className="flex items-center gap-2 rounded-xl border border-accent-500/40 bg-accent-500/10 p-2">
-      <input readOnly value={link} aria-label={label} onFocus={(event) => event.target.select()} className="min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none" />
-      <button
-        type="button"
-        onClick={() => {
-          void navigator.clipboard?.writeText(link).then(() => setCopied(true))
-        }}
-        className="shrink-0 rounded-full bg-accent-500 px-3 py-1 text-xs font-semibold text-on-accent hover:bg-accent-400"
-      >
-        {copied ? '✓' : label}
-      </button>
-    </div>
-  )
+  return <CopyRow value={link} label={label} />
 }

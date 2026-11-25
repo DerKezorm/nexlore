@@ -1195,9 +1195,9 @@
     },
     "unlinked": "Nicht mehr mit {{name}} verknüpft.",
     "app": {
-      "title": "iPhone-App",
+      "title": "Geräte",
       "text": "Verbundene iPhones haben dieselben Rechte wie dieser Browser. Getrennt wird ein iPhone hier, mit „Überall sonst abmelden“ oder mit einem neuen Passwort.",
-      "connect": "iPhone-App verbinden",
+      "connect": "iPhone oder iPad verbinden",
       "scan": "Öffne die Kamera des iPhones und richte sie auf den Code.",
       "orType": "Oder tippe in der App die Adresse und den Code ein.",
       "address": "Adresse",
@@ -1295,7 +1295,8 @@
       "storageFact": "Hochgeladen",
       "removeWhat": "Rechte gehen mit, Notizen bleiben; ein Bereich, in dem es allein war, gehört dann dir.",
       "removeAlone_one": "Allein ist es in diesem Bereich: {{spaces}}.",
-      "removeAlone_other": "Allein ist es in diesen Bereichen: {{spaces}}."
+      "removeAlone_other": "Allein ist es in diesen Bereichen: {{spaces}}.",
+      "whatYouSee": "Als Betreiber siehst du Namen, Anmeldung, Rollen, Speicher und die Bereiche mit ihren Mitgliedern, aber nie einen Titel oder ein Wort aus fremden Notizen."
     },
     "spaces": {
       "title": "Alle Bereiche",
@@ -1318,7 +1319,7 @@
     },
     "mail": {
       "title": "Mailserver",
-      "text": "Darüber verschickt nexlore Mails. Ohne Server geht keine hinaus.",
+      "text": "Der Mailserver, über den nexlore Einladungen, Links zum Bestätigen einer Adresse und für ein neues Passwort, Hinweise zur Anmeldung, Benachrichtigungen und Hinweise an den Betreiber verschickt.",
       "host": "Server",
       "port": "Port",
       "security": "Verschlüsselung",
@@ -1356,7 +1357,9 @@
       "renamed_one": "Ein Ordner umbenannt.",
       "renamed_other": "{{count}} Ordner umbenannt.",
       "left_one": "Ein Ordner behält seinen Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}",
-      "left_other": "{{count}} Ordner behalten ihren Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}"
+      "left_other": "{{count}} Ordner behalten ihren Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}",
+      "limitsTitle": "Grenzen",
+      "perAccount": "Speicher je Konto setzt du unter „Konten“."
     },
     "languages": {
       "title": "Sprachen",
@@ -1479,6 +1482,10 @@
       "text": "Konten verbinden die eigene iPhone-App mit nexlore. Sie kann nichts, was der Browser nicht auch kann. Ab Werk an.",
       "allow": "Die iPhone-App darf sich verbinden",
       "hint": "Ausgeschaltet kommt kein Gerät mehr herein und keines kann neu verbunden werden. Verbundene Geräte bleiben und gehen wieder, wenn du einschaltest."
+    },
+    "features": {
+      "title": "Funktionen für alle Konten",
+      "text": "Was jedes Konto auf diesem Server nutzen darf."
     }
   },
   "today": {
@@ -1626,7 +1633,16 @@
     "install": "Installieren",
     "later": "Nicht mehr fragen",
     "menu": "Als App installieren",
-    "notNow": "Jetzt nicht"
+    "notNow": "Jetzt nicht",
+    "card": {
+      "title": "Auf diesem Gerät installieren",
+      "installed": "nexlore läuft auf diesem Gerät als App.",
+      "asked": "Der Browser hat gefragt; wenn du zugestimmt hast, liegt nexlore jetzt auf deinem Startbildschirm.",
+      "ios": "In Safari auf „Teilen“ tippen, dann „Zum Home-Bildschirm“.",
+      "safari": "In Safari „Ablage“ wählen, dann „Zum Dock hinzufügen“.",
+      "firefox": "Firefox kann keine Web-Apps installieren. Dafür Chrome, Edge oder Safari nehmen.",
+      "other": "Dein Browser bietet es in seinem Menü an, als „App installieren“ oder „Zum Startbildschirm hinzufügen“."
+    }
   },
   "mcp": {
     "title": "KI von außen (MCP)",
@@ -2446,7 +2462,8 @@
     "off": "Der Betreiber hat API-Token nicht eingeschaltet. Frag ihn, wenn du nexlore mit n8n oder nexdeck verbinden willst.",
     "offOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins.",
     "whatItDoes": "Was die API kann",
-    "whatItDoesText": "Jede Anfrage trägt das Token in der Kopfzeile Authorization: Bearer, die Antworten sind JSON. Schreiben braucht die Stufe Schreiben und das Recht im Bereich."
+    "whatItDoesText": "Jede Anfrage trägt das Token in der Kopfzeile Authorization: Bearer, die Antworten sind JSON. Schreiben braucht die Stufe Schreiben und das Recht im Bereich.",
+    "spaces": "Bereiche"
   },
   "lore": {
     "title": "Frag Lore",
