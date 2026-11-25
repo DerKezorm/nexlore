@@ -11,6 +11,8 @@ vi.mock('../../api/client', async (original) => ({
   ...(await original<typeof import('../../api/client')>()),
   adminApi: { saveSettings: (...args: unknown[]) => save(...args) },
 }))
+// The card says when the emergency hammer is down (`me.second_factor_off`); here nobody is signed in.
+vi.mock('../../state/auth', () => ({ useAuth: () => ({ me: null }) }))
 
 import { SignInCard } from './SignInCards'
 

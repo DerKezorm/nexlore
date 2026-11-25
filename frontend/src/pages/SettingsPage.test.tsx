@@ -24,7 +24,6 @@ vi.mock('../components/settings/AppPairingSwitch', () => stubs('AppPairingSwitch
 vi.mock('../components/settings/CalendarFeed', () => stubs('CalendarFeedSwitch', 'CalendarFeed'))
 vi.mock('../components/settings/EditorCard', () => stubs('EditorCard'))
 vi.mock('../components/settings/KeysCard', () => stubs('KeysCard'))
-vi.mock('../components/settings/LanguageCard', () => stubs('LanguageCard'))
 vi.mock('../components/settings/LinkTitleSwitch', () => stubs('LinkTitleSwitch'))
 vi.mock('../components/settings/LogCard', () => stubs('LogCard'))
 vi.mock('../components/settings/SignInCards', () => stubs('SignInPart'))
@@ -37,10 +36,11 @@ vi.mock('../plugins/PluginSettings', () => stubs('AdminPluginsCard', 'MyPluginsC
 vi.mock('../components/AiAccess', () => stubs('AiAccess'))
 vi.mock('../components/AppDevices', () => stubs('AppDevices'))
 vi.mock('../components/ApiTokens', () => stubs('ApiTokens'))
-vi.mock('../components/MailAddress', () => stubs('MailAddress'))
 vi.mock('../components/McpKeys', () => stubs('McpKeys'))
 vi.mock('../components/NotifySettings', () => stubs('NotifySettings'))
-vi.mock('../components/SecondFactor', () => stubs('SecondFactor'))
+// Profile and security as the shared account module lays them out (the cards of the profile and of the password, the
+// second factor and the sessions, and signing out); the notices above them show nothing here.
+vi.mock('./settings/AccountCards', () => ({ ...stubs('ProfileCard', 'SecurityCard', 'SignOutCard'), AccountNotices: () => null }))
 vi.mock('./AboutPage', () => stubs('AboutArea'))
 vi.mock('../components/Sidebar', () => stubs('SpacesSidebar'))
 vi.mock('../api/client', async (original) => {
@@ -141,15 +141,17 @@ describe('the navigation', () => {
 
 describe('nothing got lost', () => {
   /** Every card of before: the four tabs of the settings with the nine parts of the server, the five tabs of the own
-   * account, the language of the account menu and About. */
+   * account, the language of the account menu and About. Since the shared account module the profile card holds the
+   * name, the address and the language (the template of a language moved to "Languages" of the server), the
+   * security card the password, the second factor and the sessions, and signing out has a card of its own. */
   const BEFORE = [
     // Settings: General, Look, Spaces
-    'LanguageCard', 'StartCard', 'EditorCard', 'HomeSpaceCard', 'KeysCard', 'ThemesCard', 'AppearanceCard', 'SnippetsCard', 'SpacesCard',
+    'StartCard', 'EditorCard', 'HomeSpaceCard', 'KeysCard', 'ThemesCard', 'AppearanceCard', 'SnippetsCard', 'SpacesCard',
     // Settings: Server
     'AccountsCard', 'AllSpacesCard', 'SignInPart', 'MailCard', 'SharesCard', 'ApiTokensCard', 'AppPairingSwitch', 'McpCard', 'CalendarFeedSwitch',
     'LinkTitleSwitch', 'AiCard', 'CssCard', 'AdminPluginsCard', 'LogCard', 'FilesSettingsCard', 'GuideCard', 'BackupsCard', 'LanguagesCard',
     // My account
-    'MailAddress', 'SecondFactor', 'AppDevices', 'NotifySettings', 'ApiTokens', 'AiAccess', 'McpKeys', 'CalendarFeed', 'MyPluginsCard',
+    'ProfileCard', 'SignOutCard', 'SecurityCard', 'AppDevices', 'NotifySettings', 'ApiTokens', 'AiAccess', 'McpKeys', 'CalendarFeed', 'MyPluginsCard',
     // About
     'AboutArea',
   ]
@@ -164,8 +166,8 @@ describe('nothing got lost', () => {
     }
     expect(Object.values(seen).flat().sort()).toEqual([...BEFORE].sort())
     expect(seen).toEqual({
-      profile: ['MailAddress', 'LanguageCard'],
-      security: ['SecondFactor'],
+      profile: ['ProfileCard', 'SignOutCard'],
+      security: ['SecurityCard'],
       appearance: ['ThemesCard', 'AppearanceCard', 'SnippetsCard'],
       notes: ['StartCard', 'EditorCard', 'HomeSpaceCard', 'KeysCard'],
       spaces: ['SpacesCard'],
@@ -186,12 +188,10 @@ describe('nothing got lost', () => {
 
   it('keeps the parts of the account page itself: profile, password, signing out everywhere, and signing out from the menu', async () => {
     await show('/settings/profile')
-    expect(box.textContent).toContain('account.profile.displayName')
-    expect(box.querySelector('[data-testid="sign-out"]')).not.toBeNull()
+    expect(cards()).toEqual(['ProfileCard', 'SignOutCard'])
     await hide()
     await show('/settings/security')
-    expect(box.textContent).toContain('account.password.title')
-    expect(box.textContent).toContain('account.sessions.title')
+    expect(cards()).toEqual(['SecurityCard'])
     await hide()
   })
 })
