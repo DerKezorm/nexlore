@@ -223,6 +223,10 @@ def adopt() -> list[str]:
     from ..db import SessionLocal
 
     with SessionLocal() as db:
-        done = nexki.settings.adopt(KiStore(db), CONFIG)
+        # A database of an older version (it has accounts) knew "own" as its way when never stored (1.16.0's
+        # ``ai.mode``): it stays "Jedes Konto selbst" though nobody set up an own service yet (K2, K-9); a new
+        # installation (no account yet) starts with the operator's service for all.
+        older = db.scalar(select(func.count()).select_from(Account)) > 0
+        done = nexki.settings.adopt(KiStore(db), CONFIG, older_mode="own" if older else None)
         db.commit()
     return done
