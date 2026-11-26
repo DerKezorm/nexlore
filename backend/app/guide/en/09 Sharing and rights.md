@@ -38,7 +38,7 @@ The operator can also enter an address for you under **Settings → Server → A
 
 Under **My account → Security → Sign-in providers** every sign-in service the operator set up has a line: **Link** asks for your password once more and takes you there, after that its button on the sign-in page leads into your account; **Unlink** takes the link away again. nexlore never finds your account by your mail address: whoever has the same address at a sign-in service is not you here until you link yourself.
 
-For mail to go out, the operator enters a server under **Settings → Server → Mail server**. Without one the field in the profile is locked and says why.
+For mail to go out, the operator enters a server under **Settings → Server → Mail**. Without one the field in the profile is locked and says why.
 
 ## Notifications
 

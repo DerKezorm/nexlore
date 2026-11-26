@@ -4,14 +4,14 @@ Zurück zu [[00 Willkommen|Willkommen]].
 
 ## Sicherung
 
-Der Betreiber stellt unter Einstellungen → Server → Sicherung ein, wie oft nexlore sichert und wie viele Sicherungen es behält. Eine Sicherung enthält alle Notizen, Anhänge und die Datenbank. Wiederherstellen zeigt vorher, was hinzukäme, was sich änderte und was wegfiele.
+Der Betreiber stellt unter Einstellungen → Server → Speicher und Sicherung ein, wie oft nexlore sichert und wie viele Sicherungen es behält. Eine Sicherung enthält alle Notizen, Anhänge und die Datenbank. Wiederherstellen zeigt vorher, was hinzukäme, was sich änderte und was wegfiele.
 
 > [!warning] Eine Sicherung auf demselben Server ist keine Sicherung
 > Lade Sicherungen herunter oder sichere den Datenordner zusätzlich woanders hin.
 
 ## Den ganzen Server umziehen
 
-Auf einen neuen Server ziehst du mit einer Sicherung um: auf dem alten unter Einstellungen → Server → Sicherung eine Sicherung **Herunterladen**, auf dem neuen nexlore einrichten und dort mit **Sicherung hochladen** das ZIP wählen. Es steht dann als „hochgeladen“ in der Liste; **Prüfen**, dann **Wiederherstellen**. Nach dem Neustart meldest du dich mit deinem alten Konto an, und alle Bereiche, Notizen, Anhänge und Konten sind da.
+Auf einen neuen Server ziehst du mit einer Sicherung um: auf dem alten unter Einstellungen → Server → Speicher und Sicherung eine Sicherung **Herunterladen**, auf dem neuen nexlore einrichten und dort mit **Sicherung hochladen** das ZIP wählen. Es steht dann als „hochgeladen“ in der Liste; **Prüfen**, dann **Wiederherstellen**. Nach dem Neustart meldest du dich mit deinem alten Konto an, und alle Bereiche, Notizen, Anhänge und Konten sind da.
 
 ## Einen Bereich umziehen
 

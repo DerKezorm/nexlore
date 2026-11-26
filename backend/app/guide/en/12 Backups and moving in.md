@@ -4,14 +4,14 @@ Back to [[00 Welcome|Welcome]].
 
 ## Backups
 
-Under Settings → Server → Backups the operator sets how often nexlore backs up and how many backups it keeps. A backup holds every note, every attachment and the database. Restoring shows first what would come in, what would change and what would go.
+Under Settings → Server → Storage and backups the operator sets how often nexlore backs up and how many backups it keeps. A backup holds every note, every attachment and the database. Restoring shows first what would come in, what would change and what would go.
 
 > [!warning] A backup on the same server is no backup
 > Download backups, or copy the data folder somewhere else as well.
 
 ## Moving the whole server
 
-You move to a new server with a backup: on the old one, under Settings → Server → Backups, **Download** a backup; set up nexlore on the new one and choose the ZIP there with **Upload a backup**. It then appears in the list as "uploaded"; **Check**, then **Restore**. After the restart you sign in with your old account, and every space, note, attachment and account is there.
+You move to a new server with a backup: on the old one, under Settings → Server → Storage and backups, **Download** a backup; set up nexlore on the new one and choose the ZIP there with **Upload a backup**. It then appears in the list as "uploaded"; **Check**, then **Restore**. After the restart you sign in with your old account, and every space, note, attachment and account is there.
 
 ## Moving a space
 

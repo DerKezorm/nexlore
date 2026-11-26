@@ -19,7 +19,6 @@ from ..errors import error
 from ..services.schluessel_store import CONFIG, SchluesselStore, nexschluessel, old_id, old_refusal
 
 keys = nexschluessel.keys
-API_PREFIX = CONFIG.kinds[0].prefix
 
 logger = logging.getLogger("nexlore.api")
 
@@ -90,7 +89,7 @@ def own_tokens(account: Account, db: DbSession) -> TokensOut:
 def make_token(body: TokenIn, account: Account, db: DbSession) -> MadeOut:
     store = SchluesselStore(db)
     if not store.switch("api"):
-        raise error("api_off", "The operator has not switched API tokens on.", 403)
+        raise error("api_off", "The operator has not switched the programming interface (API) on.", 403)
     try:
         made = keys.make(store, CONFIG, account.id, kind="api", name=body.name.strip() or "API", right=body.level,
                          areas=body.spaces, days=body.days)
@@ -129,9 +128,9 @@ class AnyTokenOut(BaseModel):
 
 
 def _any(entry: dict) -> AnyTokenOut:
-    # Since schluessel E36 the operator sees no start of a key: the old field stays, with the kind's prefix alone.
+    # Since schluessel E36 the operator sees no start of a key: the old field stays, empty (plan E40).
     return AnyTokenOut(id=old_id(entry["id"], "api"), account=entry["account"]["name"], name=entry["name"],
-                       level=entry["right"], prefix=API_PREFIX, spaces=entry["areas"],
+                       level=entry["right"], prefix="", spaces=entry["areas"],
                        created_at=entry["created_at"], last_used_at=entry["last_used_at"],
                        expires_at=entry["expires_at"], blocked=entry["blocked"])
 

@@ -263,7 +263,7 @@
     "newName": "Mein Schnipsel",
     "name": "Name des Schnipsels",
     "css": "CSS des Schnipsels",
-    "notAllowed": "Der Betreiber hat eigenes CSS nicht freigegeben (Einstellungen → Server → KI, API und Plugins).",
+    "notAllowed": "Der Betreiber hat eigenes CSS nicht freigegeben (Einstellungen → Server → Allgemein, Karte „Eigenes CSS“).",
     "problem": "Zeile {{line}}: {{what}} ist hier nicht erlaubt.",
     "rules": "Erlaubt: Regeln, @media und @supports. Abgewiesen: url(), @import, @font-face und alles andere, was etwas nachladen könnte."
   },
@@ -734,7 +734,7 @@
       },
       "connections": {
         "title": "Verbindungen",
-        "text": "iPhone-App, API-Token, KI in Notizen, KI von außen und das Kalender-Abo."
+        "text": "Geräte, andere Apps, API-Schlüssel und KI-Werkzeuge, die mit deinen Notizen arbeiten."
       },
       "general": {
         "title": "Allgemein",
@@ -755,10 +755,6 @@
       "shares": {
         "title": "Öffentliche Seiten",
         "text": "Was ohne Anmeldung zu sehen ist."
-      },
-      "extensions": {
-        "title": "KI, API und Plugins",
-        "text": "KI für alle, API-Token, die iPhone-App, KI von außen, das Kalender-Abo und Plugins."
       },
       "accounts": {
         "title": "Konten",
@@ -869,7 +865,7 @@
       "own_second_factor_first": "Richte zuerst deinen eigenen zweiten Faktor ein, auf deiner Kontoseite.",
       "use_disable": "Schalte deinen eigenen zweiten Faktor auf deiner Kontoseite aus.",
       "ai_off": "KI in Notizen ist auf diesem Server aus.",
-      "ai_not_on": "Schalte KI erst unter Mein Konto ein.",
+      "ai_not_on": "Schalte KI erst unter Mein Konto → Verbindungen → KI in Notizen ein.",
       "ai_incomplete": "Erst Adresse und Modell speichern.",
       "ai_address_missing": "Gib die Adresse des Dienstes an.",
       "ai_address_invalid": "Gib eine Adresse an, die mit http:// oder https:// beginnt.",
@@ -905,15 +901,15 @@
       "request_changed": "Diese Anfrage passt nicht zu dem, was gefragt wurde; nichts wurde ausgeführt.",
       "notify_no_way": "Gib erst eine Webhook-Adresse an oder schalte Mail ein.",
       "webhook_invalid": "Gib eine Adresse wie https://example.com/hook an.",
-      "api_off": "Der Betreiber hat API-Token nicht eingeschaltet.",
-      "too_many_tokens": "Ein Konto hat höchstens 20 Token.",
+      "api_off": "Der Betreiber hat die Programmschnittstelle (API) nicht eingeschaltet.",
+      "too_many_tokens": "Ein Konto hat höchstens 20 API-Schlüssel.",
       "setup_code_wrong": "Der Einrichtungscode stimmt nicht. Er steht im Log des Servers: docker logs nexlore.",
       "operator_network": "Die Einstellungen des Betreibers sind nur aus dem Heimnetz erreichbar.",
       "bad_date": "Dieses Datum gibt es nicht.",
       "display_name_taken": "Ein anderes Konto heißt schon so.",
       "display_name_invalid": "Ein Anzeigename darf keine Steuer- oder unsichtbaren Zeichen enthalten.",
-      "public_url_missing": "Für Mails braucht nexlore seine öffentliche Adresse; der Betreiber trägt sie unter Einstellungen ein.",
-      "ai_address_private": "Diese Adresse liegt im eigenen Netz. Der Betreiber erlaubt solche Dienste einzeln, unter Einstellungen, KI in Notizen.",
+      "public_url_missing": "Für Mails braucht nexlore seine öffentliche Adresse; der Betreiber trägt sie unter Einstellungen → Server → Anmeldung ein.",
+      "ai_address_private": "Diese Adresse liegt im eigenen Netz. Der Betreiber erlaubt solche Dienste einzeln, unter Einstellungen → Server → KI-Anbieter.",
       "ai_address_refused": "An diese Adresse schickt nexlore nichts.",
       "ai_hosts_invalid": "Ein Host je Eintrag, etwa 192.168.1.20 oder ollama.lan:11434.",
       "bad_canvas": "Das ist keine Leinwand, die nexlore behalten kann (JSON Canvas).",
@@ -943,7 +939,7 @@
       "not_signed_in": "Dieses Gerät ist nicht mehr angemeldet. Verbinde es neu.",
       "app_disabled": "Der Betreiber hat die iPhone-App abgeschaltet.",
       "too_many": "Zu viele Anfragen. Kurz warten und noch einmal.",
-      "app_address_missing": "nexlore kennt seine Adresse nicht. Der Betreiber trägt sie in den Einstellungen ein.",
+      "app_address_missing": "nexlore kennt seine Adresse nicht. Der Betreiber trägt sie unter Einstellungen → Server → Anmeldung ein.",
       "app_too_many_pairings": "Es warten schon fünf Codes. Schließe einen oder warte, bis er abläuft.",
       "app_pairing_unknown": "Diesen Code gibt es nicht oder er gilt nicht mehr.",
       "cursor_expired": "Der Abgleich fängt von vorn an.",
@@ -1379,14 +1375,7 @@
       "added": "Sprache hinzugefügt. Sie wirkt, sobald eine Seite neu geladen wird."
     },
     "mcp": {
-      "title": "KI von außen (MCP)",
-      "text": "Ab Werk aus. Eingeschaltet legt jedes Konto eigene Schlüssel an; ein Schlüssel sieht nie mehr als sein Konto.",
-      "allow": "MCP erlauben",
-      "allowHint": "Programme von außen erreichen Notizen mit einem Schlüssel je Konto.",
       "maxLevel": "Höchste Stufe eines Schlüssels",
-      "keysWhere": "Schlüssel legt jedes Konto selbst an, unter Mein Konto → Verbindungen → KI von außen, samt den Zeilen zum Einfügen ins Programm.",
-      "keysLater": "Sobald es an ist, legt jedes Konto seine Schlüssel unter Mein Konto an.",
-      "keysLink": "Zu meinen Schlüsseln",
       "oauth": "Konnektoren dürfen sich anmelden",
       "oauthHint": "Programme tragen nexlore mit seiner Adresse ein und melden sich über eine Seite von nexlore an (OAuth). Dafür muss nexlore per HTTPS erreichbar sein.",
       "blocked": "Für alle gesperrte Werkzeuge",
@@ -1416,7 +1405,7 @@
       "uploadText": "Sobald du es freigibst, läuft dieses Plugin für alle, die es einschalten. Über WebRTC könnte es die Notizen, die es gezeigt bekommt, nach draußen schicken. Lade nur Code hoch, den du gelesen hast oder dessen Urheber du vertraust.",
       "uploadConfirm": "Trotzdem hochladen",
       "upload": "Hochladen",
-      "nextStep": "Freigegeben: Jetzt kann jedes Konto es für sich einschalten, unter Mein Konto → Plugins für mich.",
+      "nextStep": "Freigegeben: Jetzt kann jedes Konto es für sich einschalten, unter Mein Konto → Plugins.",
       "toMine": "Dorthin",
       "enableMine": "Für mich einschalten",
       "enabledMine": "Für dich an"
@@ -1433,7 +1422,7 @@
       "mode": "Wer bringt den KI-Dienst mit?",
       "modes": {
         "own": "Jeder für sich",
-        "ownText": "Jedes Konto trägt unter Mein Konto seinen eigenen Dienst ein. Wer keinen hat, kann Lore nicht fragen.",
+        "ownText": "Jedes Konto trägt unter Mein Konto → Verbindungen → KI in Notizen seinen eigenen Dienst ein. Wer keinen hat, kann Lore nicht fragen.",
         "shared": "Einer für alle",
         "sharedText": "Du trägst hier einen Dienst ein, alle Konten nutzen ihn. Eigene Zugänge der Konten ruhen."
       },
@@ -1458,37 +1447,11 @@
       "made": "Bereich „{{space}}“ angelegt.",
       "open": "Öffnen"
     },
-    "apiTokens": {
-      "title": "API-Token",
-      "text": "Konten verbinden nexlore mit Programmen wie n8n oder nexdeck. Ein Token darf nie mehr als sein Konto und löscht, verschiebt und teilt nichts. Ab Werk aus.",
-      "allow": "Konten dürfen API-Token anlegen",
-      "allowHint": "Jedes Konto legt eigene Token unter Mein Konto → Verbindungen an.",
-      "account": "Konto",
-      "token": "Token",
-      "level": "Stufe",
-      "spaces": "Bereiche",
-      "used": "Zuletzt",
-      "allSpaces": "alle",
-      "someSpaces_one": "{{count}} Bereich",
-      "someSpaces_other": "{{count}} Bereiche",
-      "blocked": "gesperrt",
-      "block": "Sperren",
-      "blockNamed": "Token {{name}} von {{account}} sperren",
-      "blockTitle": "Token „{{name}}“ von {{account}} sperren?",
-      "blockText": "Das Token antwortet danach wie keines, für immer. Das Konto sieht es als „vom Betreiber gesperrt“ und kann ein neues anlegen, solange API-Token eingeschaltet sind.",
-      "offHint": "Schaltest du API-Token ab, antwortet jedes Token mit 401. Die Token bleiben stehen und gehen wieder, wenn du einschaltest."
-    },
     "providers": {
       "order": "{{name}} verschieben: ziehen oder die Pfeiltasten",
       "coupled": "über die Kopplung",
       "copy": "Kopieren",
       "more": "Mehr"
-    },
-    "app": {
-      "title": "iPhone-App",
-      "text": "Konten verbinden die eigene iPhone-App mit nexlore. Sie kann nichts, was der Browser nicht auch kann. Ab Werk an.",
-      "allow": "Die iPhone-App darf sich verbinden",
-      "hint": "Ausgeschaltet kommt kein Gerät mehr herein und keines kann neu verbunden werden. Verbundene Geräte bleiben und gehen wieder, wenn du einschaltest."
     },
     "features": {
       "title": "Funktionen für alle Konten",
@@ -1685,7 +1648,7 @@
       "write": "Ändert Notizen direkt: jede Änderung eine Version, eine Konfliktkopie, wenn sich die Notiz inzwischen geändert hat."
     },
     "off": "Der Betreiber hat KI von außen nicht eingeschaltet, deshalb gibt es hier keine Schlüssel.",
-    "offOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins.",
+    "offOperator": "Einschalten unter Einstellungen → Server → Allgemein, Karte „Schnittstellen“.",
     "nextStep": "Als Nächstes: Adresse und Schlüssel in dein KI-Programm eintragen. Programme, die eine mcp.json lesen (etwa Cursor oder die .mcp.json eines Projekts), nehmen das JSON unten; Claude Code nimmt den Befehl. Andere fragen in ihren eigenen Einstellungen nach denselben zwei Dingen. Der Schlüssel gilt, bis du ihn widerrufst.",
     "recipeJson": "JSON im mcp.json-Format",
     "copyNamed": "Kopieren: {{what}}",
@@ -1816,7 +1779,7 @@
     },
     "none": "Der Betreiber hat noch kein Plugin freigegeben. Sobald er eins freigibt, schaltest du es hier für dich ein.",
     "noneOperator": "Noch ist kein Plugin installiert und freigegeben. Vier geprüfte liegen im Katalog bereit: Inhaltsverzeichnis, Abfrage, Kanban und Wiederentdecken.",
-    "toCatalog": "Zum Katalog unter Server → KI, API und Plugins"
+    "toCatalog": "Zum Katalog unter Server → Plugins"
   },
   "twofactor": {
     "provider": "Du meldest dich über den Anbieter an; dort gilt sein zweiter Faktor.",
@@ -2087,7 +2050,7 @@
     "title": "Kalender-Abo",
     "text": "Deine offenen Aufgaben mit Termin als Adresse, die dein Kalender abonniert (Internet-Kalender, ICS). Er fragt sie etwa stündlich neu ab.",
     "closed": "Der Betreiber hat Kalender-Abos nicht eingeschaltet.",
-    "closedOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins, Karte Kalender-Abos.",
+    "closedOperator": "Einschalten unter Einstellungen → Server → Allgemein, Karte „Funktionen für alle Konten“.",
     "none": "Noch keine Adresse.",
     "active": "Eine Adresse ist aktiv. Sie wird nur einmal gezeigt; eine neue ersetzt sie.",
     "make": "Adresse erzeugen",
@@ -2153,7 +2116,7 @@
     "title": "KI in Notizen",
     "text": "Dein eigener KI-Dienst korrigiert, formuliert um, übersetzt, fasst zusammen und schreibt im Editor. Den Schlüssel bezahlst du selbst; ein Ergebnis steht immer erst neben dem Text und ändert nichts, bis du es übernimmst.",
     "off": "Der Betreiber hat KI in Notizen nicht eingeschaltet.",
-    "offOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins.",
+    "offOperator": "Einschalten unter Einstellungen → Server → KI-Anbieter.",
     "tiles": "Adresse eines Dienstes eintragen",
     "getKey": "Schlüssel bei {{name}} holen",
     "address": "Adresse (jeder Dienst mit der üblichen Chat-Schnittstelle)",
@@ -2381,7 +2344,7 @@
   "connect": {
     "title": "{{name}} möchte nexlore nutzen",
     "text": "Angemeldet als {{account}}. Danach geht es zurück zu {{host}}.",
-    "after": "Das Programm steht danach unter Mein Konto, Verbindungen wie ein Schlüssel, mit denselben Rechten je Werkzeug. Dort trennst du es jederzeit.",
+    "after": "Das Programm steht danach unter Mein Konto → Verbindungen → KI-Werkzeuge (MCP), mit denselben Rechten je Werkzeug wie ein Schlüssel. Dort trennst du es jederzeit.",
     "allow": "Erlauben",
     "decline": "Ablehnen",
     "failed": "Diese Anmeldung geht nicht weiter",
@@ -2415,7 +2378,7 @@
       "approval": "Freigaben für KI-Programme",
       "tasks": "Aufgaben des Tages",
       "operator": "Ärger mit dem Server",
-      "tokens": "API-Token laufen ab"
+      "tokens": "API-Schlüssel laufen ab"
     },
     "occasionHint": {
       "mention": "Jemand nennt dich mit @ in einem Kommentar oder antwortet in einem Faden, an dem du teilnimmst.",
@@ -2423,7 +2386,7 @@
       "approval": "Ein KI-Programm wartet auf dein Ja.",
       "tasks": "Einmal am Tag zur Uhrzeit unten: was heute fällig oder überfällig ist.",
       "operator": "Für Betreiber: eine Sicherung ist gescheitert, eine neuere Version ist da, die Platte läuft voll.",
-      "tokens": "Sieben Tage bevor eines deiner API-Token abläuft, einmal je Token."
+      "tokens": "Sieben Tage bevor einer deiner API-Schlüssel abläuft, einmal je Schlüssel."
     },
     "tasksTime": "Uhrzeit für die Aufgaben des Tages",
     "emailNoAddressLink": "Im Profil eintragen",
@@ -2434,42 +2397,10 @@
     "link": "Jetzt einrichten"
   },
   "apiTokens": {
-    "title": "API-Token",
-    "text": "Für Programme wie n8n oder nexdeck. Ein Token darf, was du darfst, beschränkt auf seine Stufe und seine Bereiche. Löschen, Verschieben und Teilen gehen nie über ein Token.",
-    "none": "Noch keine Token.",
-    "new": "Neues Token",
-    "name": "Name, damit du es wiedererkennst",
-    "levelTitle": "Stufe",
     "level": {
       "read": "Lesen",
       "write": "Schreiben"
     },
-    "levelText": {
-      "read": "Bereiche, Notizen, Suche, Aufgaben, Zahlen. Ändert nichts.",
-      "write": "Dazu Notizen anlegen und ändern, anhängen, Tagesnotiz, Eingang, Aufgaben abhaken. Jede Änderung wird eine Version mit der Quelle „Programm (API)“. Nie löschen, verschieben oder teilen."
-    },
-    "where": "Bereiche",
-    "lifetime": "Läuft ab",
-    "lifetimeDays": {
-      "30": "in 30 Tagen",
-      "90": "in 90 Tagen",
-      "365": "in einem Jahr"
-    },
-    "lifetimeNever": "nie",
-    "make": "Anlegen",
-    "shownOnce": "Token „{{name}}“ angelegt. Es steht nur jetzt hier. Kopier es in dein Programm; nexlore speichert nur eine Prüfsumme.",
-    "header": "Als Kopfzeile in n8n (HTTP Request, Header Auth) oder nexdeck",
-    "tryIt": "Zum Ausprobieren",
-    "never": "läuft nie ab",
-    "runsOut": "läuft am {{day}} ab",
-    "ranOut": "abgelaufen am {{day}}",
-    "blocked": "vom Betreiber gesperrt",
-    "delete": "Löschen",
-    "deleteNamed": "Token {{name}} löschen",
-    "off": "Der Betreiber hat API-Token nicht eingeschaltet. Frag ihn, wenn du nexlore mit n8n oder nexdeck verbinden willst.",
-    "offOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins.",
-    "whatItDoes": "Was die API kann",
-    "whatItDoesText": "Jede Anfrage trägt das Token in der Kopfzeile Authorization: Bearer, die Antworten sind JSON. Schreiben braucht die Stufe Schreiben und das Recht im Bereich.",
     "spaces": "Bereiche"
   },
   "lore": {
@@ -2718,7 +2649,7 @@
   "appConnect": {
     "title": "iPhone verbinden",
     "text": "Angemeldet als {{account}}. Das Gerät „{{device}}“ möchte sich verbinden.",
-    "rights": "Es bekommt dieselben Rechte wie dieser Browser. Trennen kannst du es jederzeit unter Mein Konto, Sicherheit.",
+    "rights": "Es bekommt dieselben Rechte wie dieser Browser. Trennen kannst du es jederzeit unter Mein Konto → Verbindungen → Geräte.",
     "confirm": "iPhone verbinden",
     "cancel": "Abbrechen",
     "doneTitle": "Zurück zur App",

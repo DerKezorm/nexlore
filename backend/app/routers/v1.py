@@ -64,7 +64,7 @@ def caller(request: Request) -> Caller:
         raise error("origin_refused", "The API is for programs, not web pages.", 403)
     with SessionLocal() as db:
         if not apitokens.allowed(db):
-            raise error("api_off", "The operator has not switched API tokens on.", 401)
+            raise error("api_off", "The operator has not switched the programming interface (API) on.", 401)
         found = apitokens.authenticate(db, _token(request))
     if found is None:
         raise error("token_invalid", "No valid API token.", 401)

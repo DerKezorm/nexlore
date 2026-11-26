@@ -251,7 +251,7 @@ export function MyPluginsCard() {
         </h2>
         <p className="text-sm text-mist-500">{me?.role === 'operator' ? t('plugins.noneOperator') : t('plugins.none')}</p>
         {me?.role === 'operator' && (
-          <Link to="/settings/extensions" className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent-500/50 px-3 py-1 text-sm text-accent-300 hover:bg-accent-500/10">
+          <Link to="/settings/server-plugins" className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent-500/50 px-3 py-1 text-sm text-accent-300 hover:bg-accent-500/10">
             {t('plugins.toCatalog')}
           </Link>
         )}

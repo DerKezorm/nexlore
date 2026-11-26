@@ -38,7 +38,7 @@ Der Betreiber kann dir unter **Einstellungen → Server → Konten** auch selbst
 
 Unter **Mein Konto → Sicherheit → Anmeldeanbieter** hat jeder Anmeldedienst, den der Betreiber eingerichtet hat, eine Zeile: **Verknüpfen** fragt noch einmal nach deinem Passwort und führt dich dorthin, danach führt sein Knopf auf der Anmeldeseite in dein Konto; **Lösen** nimmt die Verknüpfung wieder weg. nexlore findet dein Konto nie über deine Mailadresse: Wer bei einem Anmeldedienst dieselbe Adresse hat, ist hier erst du, wenn du dich verknüpft hast.
 
-Damit Mails hinausgehen, trägt der Betreiber unter **Einstellungen → Server → Mailserver** einen Server ein. Ohne ihn ist das Feld im Profil gesperrt und sagt warum.
+Damit Mails hinausgehen, trägt der Betreiber unter **Einstellungen → Server → Mail** einen Server ein. Ohne ihn ist das Feld im Profil gesperrt und sagt warum.
 
 ## Benachrichtigungen
 

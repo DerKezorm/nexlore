@@ -230,7 +230,7 @@ function NoThread({ why }: { why: 'off' | 'loreOff' | 'shared' | 'own' }) {
           </Link>
         )}
         {why !== 'own' && me?.role === 'operator' && (
-          <Link to="/settings/extensions#ai" className="mt-5 inline-block rounded-full border border-accent-500/50 px-4 py-2 text-sm text-accent-400">
+          <Link to="/settings/ai-provider" className="mt-5 inline-block rounded-full border border-accent-500/50 px-4 py-2 text-sm text-accent-400">
             {t('lore.toSettings')}
           </Link>
         )}

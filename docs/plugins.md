@@ -5,7 +5,7 @@ They run locked up in the browser and can do only what their manifest asks for.
 
 ## Installing and using
 
-The operator installs plugins under Settings, Plugins, from the catalog that comes with nexlore:
+The operator installs plugins under Settings, Server, Plugins, from the catalog that comes with nexlore:
 
 | Plugin | What it does | May |
 |---|---|---|

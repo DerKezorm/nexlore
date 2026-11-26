@@ -215,7 +215,7 @@ _OLD_TEXTS = {
         "too_many_keys": ("too_many_tokens", "An account holds at most 20 tokens.", 409),
         "right_invalid": ("invalid_input", "No such level.", 422),
         "days_invalid": ("invalid_input", "A token runs out after 30, 90 or 365 days, or never.", 422),
-        "api_off": ("api_off", "The operator has not switched API tokens on.", 403),
+        "api_off": ("api_off", "The operator has not switched the programming interface (API) on.", 403),
     },
     "mcp": {
         "too_many_keys": ("too_many_keys", "An account holds at most 20 keys.", 409),

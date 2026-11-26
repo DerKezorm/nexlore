@@ -63,12 +63,12 @@
     "sections": [
       {
         "title": "API-Token für Programme",
-        "where": "Kontomenü, Mein Konto, Verbindungen, API-Token",
+        "where": "Kontomenü, Mein Konto, Verbindungen, API-Schlüssel",
         "body": "Leg für jedes Programm ein eigenes Token an: Lesen oder Schreiben, für alle deine Bereiche oder nur einzelne, und auf Wunsch mit Ablauf nach 30 Tagen, 90 Tagen oder einem Jahr. Das Token steht nur einmal da, mit der Kopfzeile für n8n und einem Befehl zum Ausprobieren. Was ein Programm schreibt, wird eine Version mit der Quelle „Programm (API)“; hat sich die Notiz inzwischen geändert oder bearbeitet sie gerade jemand, landet der Text in einer Konfliktkopie."
       },
       {
         "title": "Der Betreiber hält den Riegel",
-        "where": "Einstellungen, Server, KI, API und Plugins, API-Token",
+        "where": "Einstellungen, Server, Allgemein, Schnittstellen",
         "body": "API-Token sind ab Werk aus. Der Betreiber schaltet sie ein, sieht jedes Token mit Konto, Stufe und letzter Nutzung, nie das Token selbst, und kann eines für immer sperren. Schaltet er ab, antwortet jedes Token mit 401, bis er wieder einschaltet."
       }
     ],
@@ -110,12 +110,12 @@
       },
       {
         "title": "KI-Dienste im eigenen Netz, mit Namen",
-        "where": "Einstellungen, Server, KI, API und Plugins, KI in Notizen",
+        "where": "Einstellungen, Server, KI-Anbieter",
         "body": "Mitglieder dürfen jeden öffentlichen KI-Dienst nutzen. Ein Dienst im eigenen Netz (etwa Ollama zu Hause) geht, sobald du seinen Host unter Dienste im eigenen Netz einträgst; jede andere Adresse dort wird abgelehnt, so erreicht niemand über nexlore deinen Router oder dein NAS. Nutzen Mitglieder schon einen zu Hause, trag ihn dort ein."
       },
       {
         "title": "Sicherungen fragen nach deinem Passwort",
-        "where": "Einstellungen, Server, Sicherung",
+        "where": "Einstellungen, Server, Speicher und Sicherung",
         "body": "Eine Sicherung löschen und zu einer zurückgehen fragt jetzt noch einmal dein Passwort, wie schon das Herunterladen. Sicherungen, Datenbank und Log kann nur noch nexlores eigener Nutzer lesen."
       },
       {
@@ -208,12 +208,12 @@
     "sections": [
       {
         "title": "Sicherung hochladen, auf einen neuen Server umziehen",
-        "where": "Einstellungen, Server, Sicherung, „Sicherung hochladen“",
+        "where": "Einstellungen, Server, Speicher und Sicherung, „Sicherung hochladen“",
         "body": "Auf dem alten Server eine Sicherung herunterladen, auf dem neuen nexlore einrichten und dort die ZIP-Datei hochladen: Sie steht dann als „hochgeladen“ in der Liste, du prüfst sie und stellst sie wieder her. Nach dem Neustart meldest du dich mit deinem alten Konto an, alle Bereiche, Notizen, Anhänge und Konten sind da. Hochladen fragt wie Herunterladen nach deinem Passwort, und das automatische Aufräumen lässt hochgeladene Sicherungen stehen."
       },
       {
         "title": "Die Sicherungskarte, neu aufgeräumt",
-        "where": "Einstellungen, Server, Sicherung",
+        "where": "Einstellungen, Server, Speicher und Sicherung",
         "body": "Zeitplan, wie viele Sicherungen bleiben, Hochladen und „Jetzt sichern“ stehen in einer Zeile. Jede Sicherung hat kleine Knöpfe zum Prüfen, Herunterladen, Wiederherstellen und Löschen; nach dem Passwort fragt ein eigenes Fenster. Aufbewahren lassen sich jetzt bis zu 365 Sicherungen. Eine Notiz zu einer neuen Sicherung gibt es nicht mehr, die Notizen alter Sicherungen stehen weiter in der Liste."
       }
     ],
@@ -232,7 +232,7 @@
       },
       {
         "title": "Ein KI-Dienst für alle",
-        "where": "Einstellungen, Server, KI, API und Plugins, KI in Notizen",
+        "where": "Einstellungen, Server, KI-Anbieter",
         "body": "Der Betreiber schaltet Frag Lore ein und legt fest, ob jedes Konto einen eigenen KI-Dienst mitbringt oder einer für alle dient, etwa Ollama zu Hause. Mit einem für alle und einem Modell für Bedeutung findet Lore auch Notizen, die deine Frage mit anderen Worten sagen, und der Reiter Links neben einer Notiz zeigt die ähnlichsten Notizen."
       },
       {
@@ -487,7 +487,7 @@
       },
       {
         "title": "Für Betreiber",
-        "where": "Einstellungen, Server, KI, API und Plugins, iPhone-App",
+        "where": "Einstellungen, Server, Allgemein, Schnittstellen",
         "body": "Ab Werk dürfen sich Konten mit der App verbinden. Hier schaltest du das für alle ab. Die App spricht mit nexlore unter /api/app/1; beschrieben ist das in docs/api.md."
       }
     ],
@@ -573,7 +573,7 @@
     "sections": [
       {
         "title": "Versionen über die API",
-        "where": "GET /api/v1/versions mit einem API-Token",
+        "where": "GET /api/v1/versions mit einem API-Schlüssel",
         "body": "Die Route liefert alle Versionen seit einem Zeitpunkt: welche Notiz, wann, wer, und ob die Änderung in nexlore gemacht wurde oder von außen kam, etwa über Syncthing. Ein Programm merkt sich, wo es aufgehört hat, und bekommt beim nächsten Mal genau das, was danach kam. Den Text jeder Version gibt es Byte für Byte. Mailadressen anderer Konten sieht nur ein Token des Betreibers."
       },
       {
@@ -604,7 +604,7 @@
     "sections": [
       {
         "title": "Weitere Geräte ohne neues Koppeln",
-        "where": "iPhone-App ab Version 1.2, Mein Konto › Sicherheit",
+        "where": "iPhone-App ab Version 1.2, Mein Konto › Verbindungen › Geräte",
         "body": "Hast du die App auf dem iPhone mit nexlore verbunden, findet dein iPad mit derselben Apple-ID die Verbindung im iCloud-Schlüsselbund und meldet sich damit einmal selbst an. Es bekommt dabei einen eigenen Geräteschlüssel, steht also unter seinem Namen in deinem Profil und lässt sich dort allein trennen. Ein Gerät holt höchstens fünf weitere je Stunde herein. Schaltet der Betreiber die App ab, geht auch das nicht."
       }
     ],

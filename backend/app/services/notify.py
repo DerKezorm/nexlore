@@ -119,10 +119,11 @@ TEXTS: dict[str, dict[str, tuple[str, str]]] = {
         "de": ("nexlore {version} ist erschienen", "Eine neuere Version von nexlore ist erschienen."),
     },
     "token_expiring": {
-        "en": ("The API token {name} runs out on {day}",
-               "Make a new one under My account, Connections, and put it where the old one is used."),
+        "en": ("The API key {name} runs out on {day}",
+               "Make a new one under My account → Connections → API keys, and put it where the old one is used."),
         "de": ("Der API-Schlüssel {name} läuft am {day} ab",
-               "Leg unter Mein Konto, Verbindungen einen neuen an und setz ihn dort ein, wo der alte benutzt wird."),
+               ("Leg unter Mein Konto → Verbindungen → API-Schlüssel einen neuen an und setz ihn dort ein, wo der "
+                "alte benutzt wird.")),
     },
 }
 #: The last line of every notification mail, and the word on its button.

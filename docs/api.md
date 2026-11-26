@@ -1,7 +1,7 @@
 # The API for programs: `/api/v1`
 
-Programs such as n8n, nexdeck or a script of your own use nexlore over plain HTTP and JSON, with an API token. A token
-acts as the account that made it and never sees more: the same rights as the interface, and less if the token is
+Programs such as n8n, nexdeck or a script of your own use nexlore over plain HTTP and JSON, with an API key. A key
+acts as the account that made it and never sees more: the same rights as the interface, and less if the key is
 limited to some spaces. It reads, and with the level Write it makes and changes notes. It never deletes, moves,
 renames, shares or touches members: no route for that exists here.
 
@@ -11,21 +11,22 @@ nexlore's own iPhone app has a way in of its own as well, `/api/app/1`, describe
 
 ## Switching it on
 
-API tokens are off until the operator opens them: Settings, Server, AI, API and plugins, card "API tokens". While
-they are off, no account can make a token (the account page says so). There the operator also sees every token (whose
-it is, its level, when it was last used, never the token itself) and may block one for good. Switched off again, every
-token answers `401 api_off`; the tokens stay and work again when switched on.
+The API is off until the operator opens it: Settings, Server, General, card "Interfaces", "Programming interface
+(API) for members". While it is off, no account can make an API key (the account page says so). Under Settings,
+Server, Accounts, card "API keys of all accounts", the operator sees every key (whose it is, its level, when it was
+last used, never the key itself) and may lock and unlock one. Switched off again, every key answers `401 api_off`;
+the keys stay and work again when switched on.
 
-Then every account makes its tokens on its account page: My account, Connections, card "API tokens".
+Then every account makes its API keys on its account page: My account, Connections, card "API keys".
 
-- **Name**, to tell tokens apart.
+- **Name**, to tell keys apart.
 - **Level**: Read (spaces, notes, search, links, tasks, numbers) or Write (also makes and changes notes, appends, the
   daily note, the inbox, ticks tasks off).
 - **Spaces**: all the account may read, later ones too, or only the ones chosen.
 - **Runs out**: in 30 days, 90 days, a year, or never (the default). A week before, the list marks it and the account
-  gets a notification (occasion "API tokens run out", on by default, see My account, Notifications).
+  gets a notification (occasion "API keys run out", on by default, see My account, Notifications).
 
-The token is `nxa_` and 43 more characters, shown once. nexlore keeps only its SHA-256 and its first characters.
+The key is `nxa_` and 43 more characters, shown once. nexlore keeps only its SHA-256 and its first characters.
 
 ## Calling
 
@@ -53,7 +54,7 @@ Every error has the same shape:
 
 | Status | Code | Meaning |
 |---|---|---|
-| 401 | `api_off` | The operator has switched API tokens off. |
+| 401 | `api_off` | The operator has switched the programming interface (API) off. |
 | 401 | `token_invalid` | No token, an unknown one, one that ran out or was blocked, or its account is locked. |
 | 403 | `origin_refused` | The request came from a web page. |
 | 403 | `read_only_token` | A write with a token of the level Read. |

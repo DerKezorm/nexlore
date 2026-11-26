@@ -63,12 +63,12 @@
     "sections": [
       {
         "title": "API tokens for programs",
-        "where": "Account menu, My account, Connections, API tokens",
+        "where": "Account menu, My account, Connections, API keys",
         "body": "Make a token of its own for each program: read or write, for all your spaces or only some, and if you like running out after 30 days, 90 days or a year. The token is shown once, with the header line for n8n and a command to try it. What a program writes becomes a version with the source “Program (API)”; when the note changed meanwhile or somebody is editing it, the text goes into a conflict copy."
       },
       {
         "title": "The operator holds the latch",
-        "where": "Settings, Server, AI, API and plugins, API tokens",
+        "where": "Settings, Server, General, Interfaces",
         "body": "API tokens are off by default. The operator switches them on, sees every token with its account, level and last use, never the token itself, and can block one for good. Switched off, every token answers 401 until they are switched on again."
       }
     ],
@@ -110,12 +110,12 @@
       },
       {
         "title": "AI services in your own network, by name",
-        "where": "Settings, Server, AI, API and plugins, AI in notes",
+        "where": "Settings, Server, AI provider",
         "body": "Members may use any public AI service. A service in your own network (Ollama at home, for example) works once you list its host under Services in your own network; every other address there is refused, so nobody can reach your router or NAS through nexlore. If your members already use one at home, add it there."
       },
       {
         "title": "Backups ask for your password",
-        "where": "Settings, Server, Backups",
+        "where": "Settings, Server, Storage and backups",
         "body": "Deleting a backup and going back to one now ask for your password once more, as downloading did. Backups, the database and the log are readable only for nexlore's own user."
       },
       {
@@ -208,12 +208,12 @@
     "sections": [
       {
         "title": "Upload a backup, move to a new server",
-        "where": "Settings, Server, Backups, \"Upload a backup\"",
+        "where": "Settings, Server, Storage and backups, \"Upload a backup\"",
         "body": "Download a backup on the old server, set up nexlore on the new one and upload the ZIP there: it appears in the list as \"uploaded\", you check it and restore it. After the restart you sign in with your old account, and every space, note, attachment and account is there. Uploading asks for your password like downloading, and the automatic clean-up leaves uploaded backups alone."
       },
       {
         "title": "The backups card, tidied up",
-        "where": "Settings, Server, Backups",
+        "where": "Settings, Server, Storage and backups",
         "body": "The schedule, how many backups stay, uploading and \"Back up now\" share one row. Every backup has small buttons to check, download, restore and delete it; a window of its own asks for the password. Up to 365 backups can be kept now. A note for a new backup is gone; the notes of older backups still show in the list."
       }
     ],
@@ -232,7 +232,7 @@
       },
       {
         "title": "One AI service for everybody",
-        "where": "Settings, Server, AI, API and plugins, AI in notes",
+        "where": "Settings, Server, AI provider",
         "body": "The operator switches Ask Lore on and chooses whether every account brings its own AI service or one service serves all, such as Ollama at home. With one for all and a model for meaning, Lore also finds notes that say your question in other words, and the tab Links beside a note shows the notes most like it."
       },
       {
@@ -487,7 +487,7 @@
       },
       {
         "title": "For operators",
-        "where": "Settings, Server, AI, API and plugins, iPhone app",
+        "where": "Settings, Server, General, Interfaces",
         "body": "Out of the box, accounts may connect the app. This is where you turn it off for everyone. The app talks to nexlore under /api/app/1, described in docs/api.md."
       }
     ],
@@ -573,7 +573,7 @@
     "sections": [
       {
         "title": "Versions through the API",
-        "where": "GET /api/v1/versions with an API token",
+        "where": "GET /api/v1/versions with an API key",
         "body": "The route lists every version since a moment: which note, when, who, and whether the change was made in nexlore or came from outside, through Syncthing for example. A program remembers where it stopped and next time gets exactly what came after. The text of each version comes byte for byte. Other accounts' mail addresses are shown only to the operator's token."
       },
       {
@@ -604,7 +604,7 @@
     "sections": [
       {
         "title": "More devices without pairing again",
-        "where": "iPhone app from version 1.2, My account › Security",
+        "where": "iPhone app from version 1.2, My account › Connections › Devices",
         "body": "Once the app on your iPhone is connected to nexlore, your iPad with the same Apple ID finds the connection in the iCloud Keychain and signs itself in with it once. It gets a device key of its own, so it shows under its own name in your profile and can be disconnected there alone. One device brings in at most five more an hour. If the operator switches the app off, this stops too."
       }
     ],

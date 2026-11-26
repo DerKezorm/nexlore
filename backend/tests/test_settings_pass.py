@@ -265,8 +265,8 @@ def test_the_old_key_ways_answer_as_before_through_the_key_module(client: TestCl
     assert client.post(f"/api/connections/admin/keys/api-{token['id']}/unblock").status_code == 200
     listed = [row for row in client.get("/api/admin/api-tokens").json() if row["id"] == token["id"]]
     assert listed and listed[0]["blocked"] is False and listed[0]["account"] == "anna"
-    # The operator sees no start of a key (schluessel E36): the old field holds the bare prefix.
-    assert listed[0]["prefix"] == "nxa_"
+    # The operator sees no start of a key (schluessel E36): the old field stays, empty (plan E40).
+    assert listed[0]["prefix"] == ""
     # Revoking twice: the second answers as the old way did.
     assert anna.delete(f"/api/api-tokens/{token['id']}").status_code == 204
     again = anna.delete(f"/api/api-tokens/{token['id']}")
