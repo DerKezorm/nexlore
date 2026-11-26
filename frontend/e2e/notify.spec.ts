@@ -32,3 +32,13 @@ test('a webhook gets the test, and occasions are kept', async ({ page, request }
     await page.request.put('/api/me/notify', { data: { webhook: '', choices: { tasks: false } }, headers: TAB })
   }
 })
+
+test('"iPhone and iPad" says the app gets nothing and leads to its card under Connections', async ({ page }) => {
+  await page.goto('/settings/notifications')
+  const row = page.locator('#notify-ways').getByTestId('notify-devices-box')
+  await expect(row).toContainText('iPhone and iPad')
+  await expect(row).toContainText('gets no notifications from nexlore')
+  await row.getByTestId('notify-devices').click()
+  await expect(page).toHaveURL(/\/settings\/connections#devices$/)
+  await expect(page.getByTestId('app-devices-card')).toBeVisible()
+})

@@ -1,6 +1,7 @@
 /**
  * My account › Notifications (block Z2, plan "Einstellungen"): first "Auf welchem Weg" of the ui kit (`NotifyWays`:
- * mail, when the operator set up a mail server and the account has an address, with its tick and the test), then
+ * mail, when the operator set up a mail server and the account has an address, with its tick and the test; "iPhone
+ * and iPad" with the way to Connections, saying that the app gets no notifications, since nexlore sends no pushes), then
  * nexlore's own cards: "Worüber du hörst" (the occasions) and "Webhook" (always possible). Saved at once; the test goes
  * out at once. The webhook address is shown once while typing and afterwards only by its host: it may carry a token.
  */
@@ -74,6 +75,7 @@ export function NotifySettings() {
       <NotifyWays
         subtitle={t('notify.waysText')}
         mail={view.email.possible ? { address: view.email.address, confirmed: me?.email_proven !== false, href: '/settings/profile#mail' } : undefined}
+        devices={{ href: '/settings/connections#devices', note: t('notify.devicesNote') }}
       >
         <Toggle
           label={t('notify.email')}

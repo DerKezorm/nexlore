@@ -2342,6 +2342,7 @@
   },
   "notify": {
     "ways": "Where notifications go",
+    "devicesNote": "The iPhone and iPad app gets no notifications from nexlore; it is connected under “Connections”.",
     "waysText": "A webhook of your choosing, for example a notification inbox like nexsift, and mail when the operator set up a mail server.",
     "webhook": "Webhook address",
     "webhookSave": "Save",
