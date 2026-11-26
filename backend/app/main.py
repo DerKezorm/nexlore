@@ -263,6 +263,10 @@ for module in ROUTERS:
 # The shared MCP module (mcp 1.1.0): ``POST /api/mcp``, OAuth for programs, the pages under ``/api/connections/mcp``.
 app.include_router(mcp_router.module_router)
 # The shared AI module (ki 0.1.0): Server › KI-Anbieter (``/api/server/ai``) and Mein Konto › KI (``/api/me/ai``).
+# TODO ki 0.1.0: the module's body ``ModelsIn`` takes the name of nexlore's own (``POST /api/ai/models`` of 1.16.0), and
+# its router takes no schema names (E53): the module's gets a name of its own here, so nexlore's keeps its name.
+KiModelsIn = type("KiModelsIn", (ki_api.ModelsIn,), {"__module__": __name__})
+ki_api.ModelsIn = KiModelsIn  # type: ignore[misc]
 app.include_router(ki_api.router(config=ki_store.CONFIG, store=ki_store.store, account=require_account,
                                  operator=require_operator))
 
