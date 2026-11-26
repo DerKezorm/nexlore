@@ -64,18 +64,23 @@ test('rights per tool are set under the key and kept', async ({ page }) => {
   // "Rechte je Werkzeug" of the shared module mcp 1.1.0.
   await row.getByRole('button', { name: 'Rights per tool' }).click()
   const box = page.getByTestId('tool-rights-dialog')
-  const right = (tool: string) => box.locator(`[data-tool="${tool}"]`).filter({ visible: true }).getByTestId('tool-right')
+  // mcp 1.1.2: rows instead of a table, and every choice saves at once (MCP 21).
+  const right = (tool: string) => box.getByTestId('tool-rights-table').locator(`[data-tool="${tool}"]`).getByTestId('tool-right')
   // A new key may use everything of its level at once (decision 3); reading cannot be asked for.
   await expect(right('create_note').getByRole('radio', { name: 'Allow' })).toHaveAttribute('aria-checked', 'true')
   await expect(right('trash_note').getByRole('radio', { name: 'Allow' })).toHaveAttribute('aria-checked', 'true')
   await expect(right('read_note').getByRole('radio', { name: 'Ask' })).toBeDisabled()
   // Blocked by the operator: cannot be chosen.
   await expect(right('delete_space').getByRole('radio', { name: 'Allow' })).toBeDisabled()
+  const saving = () => page.waitForResponse((answer) => /\/api\/connections\/mcp\/keys\/.+\/rights$/.test(answer.url()) && answer.request().method() === 'PUT')
+  let saved = saving()
   await right('create_note').getByRole('radio', { name: 'Ask' }).click()
-  await right('trash_note').getByRole('radio', { name: 'Deny' }).click()
-  const saved = page.waitForResponse((answer) => /\/api\/connections\/mcp\/keys\/.+\/rights$/.test(answer.url()) && answer.request().method() === 'PUT')
-  await box.getByTestId('tool-rights-save').click()
   expect((await saved).status()).toBe(200)
+  saved = saving()
+  await right('trash_note').getByRole('radio', { name: 'Deny' }).click()
+  expect((await saved).status()).toBe(200)
+  await expect(box.getByTestId('tool-rights-saved')).toHaveText('Saved.')
+  await box.getByTestId('tool-rights-close').click()
   await page.reload()
   await page.locator('[data-card="ai-tools"]').getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'Y rights' }).getByRole('button', { name: 'Rights per tool' }).click()
   await expect(right('create_note').getByRole('radio', { name: 'Ask' })).toHaveAttribute('aria-checked', 'true')

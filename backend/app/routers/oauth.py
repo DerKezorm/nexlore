@@ -3,17 +3,18 @@
 PKCE and changing refresh tokens, and revoking (RFC 7009), all under ``/api/oauth`` as before, so that a connected
 program refreshes at the address it knows.
 
-Since mcp 1.1.1 the module checks return addresses as strictly as nexlore did (a plain host or an IP, no
-``*.example.com``, no look-alike letters), checks the digest of a request's arguments when it is allowed, and takes
-JSON at the token endpoint: those hulls are gone. Two ways stay nexlore's small hulls over the module, for what they
-answered before and the module answers otherwise (E55): ``POST /api/oauth/register`` says 403 ``access_denied`` while
-connectors are off (the module: 404, as for all its OAuth ways), and the consent of before, ``GET``/``POST
-/api/oauth/authorize``, over ``nexmcp.oauth.consent_info``/``consent``: the fields of before in its answer
-(``client_name``, ``max_level``, ``spaces``) and in its body (``approve``, ``spaces``), which the module's
-``ConsentInfo``/``ConsentIn`` do not carry, and its refusals (``mcp_off`` 403 while connectors are off,
-``oauth_client``, ``oauth_redirect``, ``oauth_pkce``, ``oauth_response_type`` 400, ``level_not_allowed`` 403,
-``invalid_input`` 422). The answer of ``GET`` carries the fields of before and the module's; ``POST`` takes the fields
-of before and the module's (``allow``, ``areas``, ``options``, ``resource``).
+Since mcp 1.1.1 the module checks return addresses as strictly as nexlore did, checks the digest of a request's
+arguments when it is allowed, and takes JSON at the token endpoint; since 1.1.2 it answers 403 ``mcp_off`` while MCP is
+off (``oauth_off_status``/``oauth_off_code``), takes ``approve`` and names ``client_name``. Two ways still stay
+nexlore's small hulls over the module, for what they answered before and the module answers otherwise (E55, measured
+against the tests of before): ``POST /api/oauth/register`` says 403 ``access_denied`` also while MCP is on and only the
+connectors are off (the module: 404 there), and the consent of before, ``GET``/``POST /api/oauth/authorize``, over
+``nexmcp.oauth.consent_info``/``consent``: the fields ``max_level`` and ``spaces`` in its answer and ``spaces`` in its
+body, which the module's ``ConsentInfo``/``ConsentIn`` do not carry, ``level_not_allowed`` 403 for a level above the
+operator's (the module: 422), and its other refusals (``mcp_off`` 403 while connectors are off, ``oauth_client``,
+``oauth_redirect``, ``oauth_pkce``, ``oauth_response_type`` 400, ``invalid_input`` 422). The answer of ``GET`` carries
+the fields of before and the module's; ``POST`` takes the fields of before and the module's (``allow``, ``areas``,
+``options``, ``resource``).
 """
 
 from __future__ import annotations
