@@ -92,7 +92,15 @@ test('the operator adds a language with its code and "Upload language", sees it 
     await expect(card).toContainText('Language added.')
     const chip = card.getByTestId('language-eo')
     await expect(chip).toContainText('Esperanto (eo)')
+    // Removing asks first (sprachen 1.0.1): cancelled, the language stays; confirmed, it goes.
     await chip.getByRole('button', { name: 'Remove Esperanto' }).click()
+    const asked = page.getByTestId('language-remove-dialog')
+    await expect(asked).toBeVisible()
+    await asked.getByRole('button', { name: 'Cancel' }).click()
+    await expect(asked).toHaveCount(0)
+    await expect(chip).toBeVisible()
+    await chip.getByRole('button', { name: 'Remove Esperanto' }).click()
+    await page.getByTestId('language-remove-dialog').getByRole('button', { name: 'Remove language' }).click()
     await expect(card.getByTestId('language-eo')).toHaveCount(0)
   } finally {
     await page.request.delete('/api/locales/eo', { headers })
