@@ -159,7 +159,7 @@ function ConnectionsArea() {
       <InstallCard />
       <AiAccess />
       <CalendarFeed />
-      <ApiKeysCard request={request} things={t('settings.things')} words={words} docsHref={docs} operator={me?.role === 'operator'} language={i18n.language} />
+      <ApiKeysCard request={request} things={t('settings.things')} thingsDative={t('settings.thingsDative')} words={words} docsHref={docs} operator={me?.role === 'operator'} language={i18n.language} />
       <ToolsCard request={request} words={words} language={i18n.language} extra={(key) => <McpToolRights entry={key} />}>
         <McpRecipes />
       </ToolsCard>

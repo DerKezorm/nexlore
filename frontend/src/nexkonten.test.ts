@@ -192,8 +192,10 @@ function leaves(tree: Tree, prefix = ''): [string, string][] {
   })
 }
 
-// Every value a text of the module asks for (since 0.3.10 also name, day and providers, the words of 0.3.9).
-const values = { username: 'kim', email: 'kim@example.com', provider: 'Pocket ID', name: 'Kim', day: '25.11.2026', providers: 'Pocket ID, Entra', address: 'https://notes.example.com', used: '1 GB', limit: '5 GB', things: 'Notizen', variable: 'NEXAPP_TRUSTED_PROXIES', networks: '0.0.0.0/0', proxy: '172.18.0.2', proxies: '172.18.0.0/16' }
+// Every value a text of the module asks for (since 0.3.10 also name, day and providers, the words of 0.3.9; since 1.1.0
+// address, used, limit, things, variable, networks, proxy, proxies; since E34 thingsDative beside things; since E36 trusts). The
+// module's own test tests/test_template_values.py turns red when a text asks for one this line does not give.
+const values = { username: 'kim', email: 'kim@example.com', provider: 'Pocket ID', name: 'Kim', day: '25.11.2026', providers: 'Pocket ID, Entra', address: 'https://notes.example.com', used: '1 GB', limit: '5 GB', things: 'Notizen', thingsDative: 'Notizen', variable: 'NEXAPP_TRUSTED_PROXIES', networks: '0.0.0.0/0', proxy: '172.18.0.2', proxies: '172.18.0.0/16', trusts: 'Der Anbieter prüft den zweiten Faktor selbst' }
 const fill: Record<string, string | number> = { ...kontenVariables(APP_NAME), ...values }
 /** Plural keys (``days_one``, ``recoveryLeft_other``) are asked by their base with a count that picks them. */
 const PLURAL = /_(one|other)$/

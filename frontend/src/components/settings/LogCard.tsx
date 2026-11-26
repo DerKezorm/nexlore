@@ -14,5 +14,5 @@ const request: LogRequest = <T,>(path: string, init: Parameters<LogRequest>[1] =
 
 export function LogCard() {
   const { t } = useTranslation()
-  return <SharedLogCard request={request} base="/api/logs" things={t('settings.things')} />
+  return <SharedLogCard request={request} base="/api/logs" things={t('settings.things')} thingsDative={t('settings.thingsDative')} />
 }

@@ -1021,6 +1021,17 @@ class KontenStore:
         totp.forget_account(int(account_id))
         factor.drop_waiting(int(account_id))
 
+    def on_shut_out(self, account: KontoAccount) -> None:
+        """Blocked or deleted (konten 1.1.0, E38). nexlore sends no pushes and syncs nothing in the background for an
+        account; what reaches an account from outside (webhook, mail of a notification, the tasks of the day, a key
+        running out) asks ``notify.reaches`` at the moment it goes, so nothing goes while the account is out. The
+        webhook, the choices and the calendar address stay for its return."""
+        logger.info("Account out: notifications held account_id=%s", account.id)
+
+    def on_back(self, account: KontoAccount) -> None:
+        """Unblocked or brought back: notifications reach it again, by the same check; nothing to start."""
+        logger.info("Account back: notifications reach it again account_id=%s", account.id)
+
     def deleted_before(self, moment: datetime) -> list[AccountId]:
         return list(self.db.scalars(
             select(Account.id).where(Account.deleted_at.is_not(None), Account.deleted_at <= moment)

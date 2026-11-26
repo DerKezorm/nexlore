@@ -462,6 +462,21 @@ class Adapter(StandardAdapter):
             row.deleted_at = row.deleted_at - timedelta(days=days)
             db.commit()
 
+    def push_ready(self, account_id: Any) -> bool | None:
+        """nexlore has no pushes; what goes out to an account is a notification by webhook or mail. The account gets a
+        webhook (once), and the answer is whether a notification would reach it now (``notify.reaches``)."""
+        from app.db import SessionLocal
+        from app.models import Account
+        from app.services import notify
+
+        with SessionLocal() as db:
+            row = db.get(Account, account_id)
+            assert row is not None
+            if not notify.webhook_of(row):
+                notify.set_webhook(row, "https://hooks.example.com/nexlore")
+                db.commit()
+            return notify.reaches(row)
+
     def provider_active(self, on: bool) -> None:
         """One active provider in nexlore's own table of the module oidc (``oidc_providers``), or none."""
         from sqlalchemy import delete

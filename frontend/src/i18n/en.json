@@ -781,7 +781,8 @@
         "text": "Which plugins this server has and who may use them."
       }
     },
-    "things": "notes"
+    "things": "notes",
+    "thingsDative": "notes"
   },
   "errors": {
     "byCode": {

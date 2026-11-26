@@ -19,6 +19,7 @@ from ..errors import error
 from ..services.schluessel_store import CONFIG, SchluesselStore, nexschluessel, old_id, old_refusal
 
 keys = nexschluessel.keys
+API_PREFIX = CONFIG.kinds[0].prefix
 
 logger = logging.getLogger("nexlore.api")
 
@@ -128,8 +129,9 @@ class AnyTokenOut(BaseModel):
 
 
 def _any(entry: dict) -> AnyTokenOut:
+    # Since schluessel E36 the operator sees no start of a key: the old field stays, with the kind's prefix alone.
     return AnyTokenOut(id=old_id(entry["id"], "api"), account=entry["account"]["name"], name=entry["name"],
-                       level=entry["right"], prefix=entry["prefix"], spaces=entry["areas"],
+                       level=entry["right"], prefix=API_PREFIX, spaces=entry["areas"],
                        created_at=entry["created_at"], last_used_at=entry["last_used_at"],
                        expires_at=entry["expires_at"], blocked=entry["blocked"])
 

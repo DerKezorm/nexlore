@@ -232,6 +232,17 @@ def _letter(db: Session, account: Account, said: Words, url: str) -> Any:
     )
 
 
+def reaches(account: Account | None) -> bool:
+    """Whether a notification would go out to the account now: it is not out (blocked or deleted, konten E38) and has
+    a way (a webhook, or mail with an address and the operator's mail server)."""
+    if account is None or account_out(account):
+        return False
+    if webhook_of(account):
+        return True
+    with SessionLocal() as db:
+        return bool(choices(account)["email"] and account.email and kontenpost.configured(db))
+
+
 def deliver(account_id: int, event: str, said: Words, path: str = "", priority: int = 3, *,
             at_once: bool = False) -> dict[str, str]:
     """Send one notification now, through every way the account has. Returns how each went (for the test button).
@@ -243,7 +254,8 @@ def deliver(account_id: int, event: str, said: Words, path: str = "", priority: 
     title, message = said.render("en")
     with SessionLocal() as db:
         account = db.get(Account, account_id)
-        if account is None:
+        if account is None or account_out(account):
+            # Out since it was handed on (blocked or deleted, konten E38): nothing goes to it.
             return outcome
         mine = choices(account)
         hook = webhook_of(account)

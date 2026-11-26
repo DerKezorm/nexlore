@@ -30,9 +30,10 @@ export function SettingsPage() {
   const area = findArea(where.area)
   if (!area) return null
   const things = t('settings.things')
+  const thingsDative = t('settings.thingsDative')
   const kit = NEXUI_TEXTS[languageOf(i18n.language)]
   const words = (info: AreaInfo) => {
-    const shared = areaText(kit, info.slug, { app: APP, things })
+    const shared = areaText(kit, info.slug, { app: APP, things, thingsDative })
     if (!info.own) return shared ?? { title: info.slug, text: '' }
     return { title: shared?.title || t(`settings.areas.${info.key}.title`), text: t(`settings.areas.${info.key}.text`) }
   }
@@ -57,6 +58,7 @@ export function SettingsPage() {
               <SettingsNav
                 app={APP}
                 things={things}
+                thingsDative={thingsDative}
                 groups={groups}
                 about={{ href: areaPath(ABOUT_AREA.slug), slug: ABOUT_AREA.slug }}
                 current={area.slug}
@@ -65,7 +67,7 @@ export function SettingsPage() {
               />
             }
           >
-            <Area slug={area.slug} app={APP} things={things} title={own?.title} subtitle={own?.text}>
+            <Area slug={area.slug} app={APP} things={things} thingsDative={thingsDative} title={own?.title} subtitle={own?.text}>
               <AreaContent key={area.slug} area={area.slug} />
             </Area>
           </SettingsLayout>

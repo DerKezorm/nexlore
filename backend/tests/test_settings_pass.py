@@ -276,6 +276,8 @@ def test_the_old_key_ways_answer_as_before_through_the_key_module(client: TestCl
     assert client.post(f"/api/connections/admin/keys/api-{token['id']}/unblock").status_code == 200
     listed = [row for row in client.get("/api/admin/api-tokens").json() if row["id"] == token["id"]]
     assert listed and listed[0]["blocked"] is False and listed[0]["account"] == "anna"
+    # The operator sees no start of a key (schluessel E36): the old field holds the bare prefix.
+    assert listed[0]["prefix"] == "nxa_"
     # Revoking twice: the second answers as the old way did.
     assert anna.delete(f"/api/api-tokens/{token['id']}").status_code == 204
     again = anna.delete(f"/api/api-tokens/{token['id']}")
@@ -326,3 +328,24 @@ def test_a_deleted_account_keeps_its_memberships_out_of_sight_until_it_comes_bac
     _purge_deleted_accounts()
     with SessionLocal() as db:
         assert db.get(Membership, (space_id, anna_id)) is None
+
+
+def test_nothing_goes_out_to_an_account_while_it_is_out(client: TestClient, operator: Account,
+                                                       monkeypatch: pytest.MonkeyPatch) -> None:
+    sent: list[str] = []
+    monkeypatch.setattr(notify, "_post", lambda url, body: sent.append(url) or 200)
+    person("anna")
+    anna_id = row_of("anna").id
+    with SessionLocal() as db:
+        notify.set_webhook(db.get(Account, anna_id), "https://hooks.example.com/anna")  # type: ignore[arg-type]
+        db.commit()
+    said = notify.words("test")
+    assert notify.deliver(anna_id, "test", said) == {"webhook": "ok"} and len(sent) == 1
+    confirm = {"current_password": PASSWORD}
+    assert client.post(f"/api/accounts/{anna_id}/block", json=confirm).status_code in (200, 204)
+    # Handed on before the block, delivered after it: nothing goes, the webhook stays for its return.
+    assert notify.deliver(anna_id, "test", said) == {} and len(sent) == 1
+    with SessionLocal() as db:
+        assert notify.webhook_of(db.get(Account, anna_id)) == "https://hooks.example.com/anna"  # type: ignore[arg-type]
+    assert client.post(f"/api/accounts/{anna_id}/unblock", json=confirm).status_code in (200, 204)
+    assert notify.deliver(anna_id, "test", said) == {"webhook": "ok"} and len(sent) == 2
