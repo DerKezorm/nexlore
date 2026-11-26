@@ -1,17 +1,15 @@
 /** Days, times and sizes as the account pages write them (the operator's list of accounts, the devices, passkeys). */
+import { formatDay, formatMoment } from '../vendor/nexui'
 
-/** A day: "20.11.2026" in German, "Nov 20, 2026" otherwise. */
+
+/** A day in the one form of every nex app (E65, ui 1.1.2): "20.11.2026" in German, "20/11/2026" in English. */
 export function day(value: string | number | Date, lang: string): string {
-  const date = new Date(value)
-  if (lang.startsWith('de')) return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-  return date.toLocaleDateString(lang, { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatDay(new Date(value), lang)
 }
 
-/** A day with the time: "20.11.2026, 08:14" or "Nov 20, 2026, 8:14 AM". */
+/** A moment (E65): "heute, 08:14", "gestern, 08:14", else "20.11.2026, 08:14". */
 export function dayTime(value: string | number | Date, lang: string): string {
-  const date = new Date(value)
-  const time = date.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
-  return `${day(date, lang)}, ${time}`
+  return formatMoment(new Date(value), lang)
 }
 
 const UNITS = ['B', 'KB', 'MB', 'GB', 'TB']

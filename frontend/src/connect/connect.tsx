@@ -5,7 +5,6 @@
  * (`/connect/app`) and the return (`/connect/return`). nexlore is only the host: nexnotes puts notes into its spaces
  * (`notes.add`), so the one card is nexnotes' (V20). The partners' marks are the module's (V21).
  */
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router-dom'
 
@@ -15,14 +14,12 @@ import { connectRequest, leave } from './request'
 /** Mein Konto › Verbindungen, place 3: the cards of the other nex apps in use. */
 export function AppsArea() {
   const { t, i18n } = useTranslation()
-  const when = useCallback((iso: string, language: string) => new Date(iso).toLocaleString(language), [])
   return (
     <ConnectionsArea
       app="nexlore"
       request={connectRequest}
       areaWord={t('apiTokens.spaces')}
       language={i18n.language}
-      when={when}
       navigate={(address) => leave.to(address)}
     />
   )

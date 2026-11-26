@@ -3,7 +3,6 @@
  * person to, `/oauth/authorize`, without the app around it) and the page of one waiting request
  * (`/mcp/requests/<id>`, where the bell and the card "KI-Werkzeuge (MCP)" lead).
  */
-import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router-dom'
 
@@ -30,10 +29,9 @@ export function McpRequestRoute() {
   const { id = '' } = useParams()
   const { i18n } = useTranslation()
   const words = useMcpWords()
-  const when = useCallback((iso: string) => new Date(iso).toLocaleString(i18n.language), [i18n.language])
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6">
-      <RequestPage request={mcpRequest} id={id} words={words} language={i18n.language} when={when} onDecided={() => void refreshNews()} />
+      <RequestPage request={mcpRequest} id={id} words={words} language={i18n.language} onDecided={() => void refreshNews()} />
     </div>
   )
 }

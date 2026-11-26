@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { tabId } from '../api/client'
 import { useWhatsNew } from '../lib/whatsNew'
 import { useAuth } from '../state/auth'
-import { AboutPage, Notice } from '../vendor/nexui'
+import { AboutPage, formatMoment, Notice } from '../vendor/nexui'
 import { useUpdates, useUpdatesTexts, whatGoesOut, type Fetcher } from '../vendor/nexupdates'
 
 const PARTS = [
@@ -46,7 +46,8 @@ export function AboutArea() {
   const { t, i18n } = useTranslation()
   const { me } = useAuth()
   const operator = me?.role === 'operator'
-  const when = useCallback((iso: string) => new Date(iso).toLocaleString(i18n.language), [i18n.language])
+  // The one form of every nex app (E65, ui 1.1.2).
+  const when = useCallback((iso: string) => formatMoment(iso, i18n.language), [i18n.language])
   const state = useUpdates({ fetcher, operator, when, language: i18n.language })
   const words = useUpdatesTexts(i18n.language)
   // The written text of the running version, to read again at any time.

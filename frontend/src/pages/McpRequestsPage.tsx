@@ -12,6 +12,7 @@ import { Symbol } from '../components/Symbol'
 import { errorText } from '../lib/errors'
 import { formatDate } from '../lib/markdown'
 import { REQUESTS_EVENT } from '../lib/mcpRequests'
+import { formatMoment } from '../vendor/nexui'
 
 /** Long texts (a whole note, a file as base64) are cut for the list; the full text runs all the same. */
 const SHOWN = 600
@@ -61,7 +62,7 @@ function Request({ request, onChange }: { request: McpRequest; onChange: () => v
         <span className="text-mist-500">
           {t('requests.from', { key: request.key_name, when: formatDate(request.created_at) })}
           {/* Ahead, not past: formatDate would call every time to come "today". */}
-          {waiting && ` · ${t('requests.until', { when: new Date(request.expires_at).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }) })}`}
+          {waiting && ` · ${t('requests.until', { when: formatMoment(request.expires_at, i18n.language) })}`}
         </span>
       </div>
       <h2 id={`request-${request.id}-title`} className="mt-2 font-semibold">

@@ -2,7 +2,7 @@
  * Which cards each area of the settings shows, in the order of the plan "Einstellungen": the shared ones from the
  * modules first (or at their fixed places), nexlore's own after them. Every area holds only cards.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
@@ -159,8 +159,8 @@ function useDocs(): string | undefined {
  * went out. */
 function AiArea() {
   const { i18n } = useTranslation()
-  const when = useCallback((iso: string) => new Date(iso).toLocaleString(i18n.language), [i18n.language])
-  return <AiAccountArea request={aiRequest} app="nexlore" language={i18n.language} when={when} />
+  // Times in the one form of the module (E65, ui 1.1.2).
+  return <AiAccountArea request={aiRequest} app="nexlore" language={i18n.language} />
 }
 
 /** Devices, installing, the other nex apps, nexlore's calendar feed, then API keys and AI tools (MCP); AI in notes is
