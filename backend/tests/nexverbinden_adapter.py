@@ -68,12 +68,25 @@ class Adapter(StandardAdapter):
         index.scan()
         self._session = SessionLocal()
         self.store = VerbindenStore(self._session)
+        from app.routers import verbinden as verbinden_routes
+
+        self.ended: list[tuple[Any, str]] = []
+        self._listener = lambda account_id, partner: self.ended.append((account_id, partner))
+        verbinden_routes.LISTENERS.append(self._listener)
 
     def stop(self) -> None:
+        from app.routers import verbinden as verbinden_routes
+
         for client in self.clients.values():
             client.close()
         self.clients = {}
         self._session.close()
+        if self._listener in verbinden_routes.LISTENERS:
+            verbinden_routes.LISTENERS.remove(self._listener)
+
+    def disconnected(self) -> list[tuple[Any, str]]:
+        """Every call of nexlore's ``on_disconnected`` (``routers/verbinden._disconnected``), in order."""
+        return list(self.ended)
 
     def asgi(self) -> Any:
         from app.main import app

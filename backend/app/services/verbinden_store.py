@@ -238,6 +238,10 @@ class VerbindenStore:
     def local_allowed(self) -> bool:
         return bool(settings_service.get(self.db, "connections_local_network"))
 
+    def set_local_allowed(self, on: bool) -> None:
+        """The hook "Verbindungen ins eigene Netz" of the card "Andere nex-Apps" (0.1.4): the same setting."""
+        settings_service.save(self.db, {"connections_local_network": bool(on)}, commit=False)
+
     def seal(self, text: str) -> str:
         return encrypt_secret(text, SEAL_CONTEXT)
 

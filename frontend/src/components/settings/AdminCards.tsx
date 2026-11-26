@@ -208,7 +208,7 @@ export function SharesCard({ settings, onChange }: { settings: ServerSettings; o
 export function FeaturesCard({ settings, onChange }: { settings: ServerSettings; onChange: (next: ServerSettings) => void }) {
   const { t } = useTranslation()
   const { problem, run } = useAction()
-  const save = (change: Pick<ServerSettings, 'calendar_feed_allowed'> | Pick<ServerSettings, 'connections_local_network'>) => {
+  const save = (change: Pick<ServerSettings, 'calendar_feed_allowed'>) => {
     onChange({ ...settings, ...change })
     void run(async () => onChange(await adminApi.saveSettings(change))).then((ok) => ok || onChange(settings))
   }
@@ -217,9 +217,6 @@ export function FeaturesCard({ settings, onChange }: { settings: ServerSettings;
       <div id="calendar-feed">
         <Toggle label={t('feed.allow')} hint={t('feed.allowHint')} checked={settings.calendar_feed_allowed} onChange={(value) => save({ calendar_feed_allowed: value })} />
       </div>
-      {/* The shared module verbinden asks other nex apps only on the internet, unless the operator opens the own network
-          (as in nexnotes and nextasks). */}
-      <Toggle label={t('admin.features.localNetwork')} hint={t('admin.features.localNetworkHint')} checked={Boolean(settings.connections_local_network)} onChange={(value) => save({ connections_local_network: value })} testId="feature-local-network" />
       <Feedback problem={problem} />
     </Card>
   )

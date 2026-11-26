@@ -7,6 +7,10 @@ operator's switch and addresses, and the token, revoke and retire routes between
 
 from __future__ import annotations
 
+import logging
+from collections.abc import Callable
+from typing import Any
+
 from fastapi import HTTPException, Request
 
 from ..db import SessionLocal
@@ -16,6 +20,8 @@ from ..services import settings_service
 from ..services.verbinden_store import CONFIG, VerbindenStore
 from ..vendor.nexverbinden import Refused
 from ..vendor.nexverbinden import api as verbinden_api
+
+logger = logging.getLogger("nexlore.connect")
 
 
 def store(db: DbSession) -> VerbindenStore:
@@ -33,5 +39,17 @@ def _error(refusal: Refused) -> Exception:
     return HTTPException(status_code=refusal.status, detail=detail(refusal.code, refusal.message, **values))
 
 
+#: Who else hears of the end of a connection (the contract tests of the module: ``disconnected()``).
+LISTENERS: list[Callable[[Any, str], None]] = []
+
+
+def _disconnected(_data: Any, account_id: Any, partner: str) -> None:
+    """A connection ended, here by "Trennen" or by the partner (0.1.4, V-13). nexlore keeps nothing of its own for a
+    connection (it is only the host), so there is nothing to clear; the log says it."""
+    logger.info("Connection with another nex app ended partner=%s", partner)
+    for listener in LISTENERS:
+        listener(account_id, partner)
+
+
 router = verbinden_api.router(config=CONFIG, store=store, account=require_account, operator=require_operator,
-                              address=_address, error=_error, tags=["connect"])
+                              address=_address, error=_error, on_disconnected=_disconnected, tags=["connect"])
