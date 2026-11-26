@@ -390,7 +390,7 @@ export function AppShell() {
           {/* "New note" and the search stand at the top of the sidebar from 768 pixels on (as in nexnotes); a phone has
               no sidebar column and keeps them here. The corner: the commands and the cover flow (on a phone they sit at
               the foot of the sidebar's sheet, the header has no room for them beside the places), on a phone the way
-              to the settings. Light or dark is chosen under Settings, Appearance. */}
+              to the settings. Light or dark is chosen under My account › Appearance. */}
           <button
             type="button"
             onClick={askPalette}

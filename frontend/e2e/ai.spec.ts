@@ -51,7 +51,7 @@ test('the account connects its own service, and the switch goes on only with a c
   const problems = collectProblems(page)
   await page.goto('/account?tab=ai')
   await expect(page.getByTestId('ai-off')).toContainText('has not switched on AI in notes')
-  await page.getByTestId('ai-off').getByRole('link', { name: /Switch it on under Settings/ }).click()
+  await page.getByTestId('ai-off').getByRole('link', { name: /Switch it on under Server › AI provider/ }).click()
   const card = page.locator('#ai')
   await card.getByRole('checkbox', { name: /Allow AI in notes/ }).check()
   // The stand-in runs on this machine: allowed only once the operator names it (review before 1.0.0).

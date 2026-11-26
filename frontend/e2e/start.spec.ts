@@ -1,4 +1,4 @@
-/** The start page of the account: chosen under Settings → General, taken once per tab from the first page. */
+/** The start page of the account: chosen under My account › Notes, taken once per tab from the first page. */
 import { type Page } from '@playwright/test'
 import { expect, test } from './fixtures'
 
