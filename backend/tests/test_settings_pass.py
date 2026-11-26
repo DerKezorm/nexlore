@@ -482,3 +482,7 @@ def test_the_security_answer_says_whether_a_passkey_can_be_added(client: TestCli
     with SessionLocal() as db:
         settings_service.save(db, {"public_url": "https://lore.example.com"})
     assert client.get("/api/auth/me").json()["passkeys_can_add"] is True
+    # A public address set counts alone, and only with https: on localhost too (konten c0b07ab).
+    with SessionLocal() as db:
+        settings_service.save(db, {"public_url": "http://localhost:8471"})
+    assert on_localhost.get("/api/auth/me").json()["passkeys_can_add"] is False

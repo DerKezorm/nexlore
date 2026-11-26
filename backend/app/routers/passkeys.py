@@ -43,10 +43,10 @@ class RemoveIn(BaseModel):
 
 
 def can_add(request: Request, db: DbSession) -> bool:
-    """Since konten E49: whether the box "Passkeys" offers "Add a passkey" (a public https address, or the page on
-    localhost); the same inputs as ``_party``."""
-    base = settings_service.public_url(db) or str(request.base_url).rstrip("/")
-    return passkeys.can_add(base, origin=request.headers.get("origin", ""), request_url=str(request.url))
+    """Since konten E49: whether the box "Passkeys" offers "Add a passkey": the public address set counts alone and
+    only with https; without one, the page on localhost (konten ``c0b07ab``)."""
+    return passkeys.can_add(settings_service.public_url(db) or "", origin=request.headers.get("origin", ""),
+                            request_url=str(request.url))
 
 
 def _party(request: Request, db: DbSession) -> passkeys.Party:

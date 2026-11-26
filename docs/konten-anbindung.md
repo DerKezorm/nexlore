@@ -17,7 +17,7 @@ comments, locks)“. Ein Umbenennen ohne Vorbereitung nähme jedem Konto seine G
 ### Durchgang „Einstellungen“ (25./26.11.2026)
 
 Nach dem Bauplan in nexlore `Development/nexapps/Baupläne/Bauplan Einstellungen.md` (samt E1 bis E38). Module aus
-`bauplaene-stand` `1ce1a8f` (je `tools/sync.py copy`, `check` grün, Vorlagen mit Kopfzeile `// Vorlage <Paket>
+`bauplaene-stand` `c0b07ab` (je `tools/sync.py copy`, `check` grün, Vorlagen mit Kopfzeile `// Vorlage <Paket>
 <Fassung>`): **`ui` 1.1.0, `log` 1.0.0, `sicherung` 1.0.1, `konten` 1.1.0, `oidc` 1.2.0, `post` 1.1.0,
 `schluessel` 1.0.0**. App-Version unverändert 1.16.0, kein Release.
 
@@ -58,7 +58,7 @@ Nacharbeit nach E44 und E39: Gelöschte Mitglieder zählen in den Rechten nicht 
 Texte (Oberfläche, Anleitung, „Was ist neu“-Orte, README, docs, Mails, API-Meldungen) zeigen auf die neuen Orte und
 Wörter; Wächter `tests/test_references.py`. Alter Betreiberweg `/api/admin/api-tokens`: `prefix` leer (E40).
 
-Gemeinsame Runde (E45 bis E49): Module aus `bauplaene-stand` `1ce1a8f`; Hell/Dunkel nach konten E45
+Gemeinsame Runde (E45 bis E49): Module aus `bauplaene-stand` `c0b07ab`; Hell/Dunkel nach konten E45
 (`theme_default_before="dark"`, `adopt_theme` in `/api/auth/me`, neue Konten `system`); Ortsangaben mit „›“ (E46);
 angeglichen an nexnotes: Theme-Kacheln, Grenzen, Sprachen, Tastenkürzel, Bereich löschen, Plugins.
 
