@@ -2,7 +2,8 @@
 
 The contract tests in ``backend/tests/nexki/`` run the module inside nexlore: the store over nexlore's own fields
 (``services/ki_store.py``), the module's routes ``/api/server/ai`` and ``/api/me/ai``, a task of a button in a note
-through nexlore's own route ``POST /api/ai/run`` (``services/ai.run`` asks through ``nexki.ask``). The database is the
+through nexlore's own function behind ``POST /api/ai/run`` (``services/ai.run`` asks through ``nexki.ask``; the route
+keeps its codes of before, E55). The database is the
 test session's (``tests/conftest.py`` empties it before every test). nexlore had both ways before (``ai_mode``:
 ``own`` and ``shared``), so both are older forms.
 """
@@ -98,7 +99,25 @@ class Adapter(StandardAdapter):
         return self.accounts[role].id
 
     def manual(self, role: str, text: str) -> Any:
-        return self.client(role).post("/api/ai/run", json={"task": "spelling", "text": text})
+        """A task of the buttons ("spelling") through nexlore's function behind ``POST /api/ai/run``. That route keeps
+        its codes of before (E55: ``ai_off`` 403, ``ai_not_on``, ``ai_shared_incomplete``); the contract reads the
+        module's, which the refusal carries (``AiError.module``) and which come back here in the module's form."""
+        import httpx
+
+        from app.db import SessionLocal
+        from app.models import Account
+        from app.services import ai
+
+        with SessionLocal() as db:
+            row = db.get(Account, self.accounts[role].id)
+            try:
+                written = ai.run(db, row, task="spelling", text=text)
+            except ai.AiError as refused:
+                if refused.module is None:
+                    return httpx.Response(refused.status, json={"detail": {"code": refused.code, **refused.values}})
+                head = {"Retry-After": "60"} if refused.module.code == "ai_too_often" else {}
+                return httpx.Response(refused.module.status, json={"detail": refused.module.as_dict()}, headers=head)
+        return httpx.Response(200, json={"text": written})
 
     def automatic(self, role: str, text: str) -> Any:
         # nexlore asks no chat model by itself (its search by meaning asks for vectors, which the module does not

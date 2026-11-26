@@ -90,6 +90,8 @@ class AiError(Exception):
         self.code = code
         self.status = status
         self.values = values
+        #: The module's refusal behind it (``nexki.AiRefused``), where the module refused.
+        self.module: Any = None
 
 
 # --- The access ------------------------------------------------------------------------------------------------------
@@ -324,8 +326,12 @@ MODES = ("own", "shared")
 
 
 def mode(db: Session) -> str:
-    found = str(settings_service.get(db, "ai_mode") or "own")
-    return found if found in MODES else "own"
+    """The way, as the module ki reads it: never stored is "shared" (K2; ``adopt`` writes "own" at the start where
+    accounts had their own access before)."""
+    from ..vendor import nexki
+    from . import ki_store
+
+    return nexki.settings.mode(ki_store.KiStore(db), ki_store.CONFIG)
 
 
 @dataclass(frozen=True)
@@ -373,8 +379,11 @@ def usable(db: Session, row: AccountRow) -> Access:
 
 
 def ready(db: Session, row: AccountRow) -> bool:
-    """Whether the editor and Lore offer AI to this account now."""
-    return allowed_for(db, row) and access(db, row) is not None
+    """Whether the editor and Lore offer AI to this account now: the module's chain of switches says yes."""
+    from ..vendor import nexki
+    from . import ki_store
+
+    return nexki.chain.reason(ki_store.KiStore(db), ki_store.CONFIG, row.id) is None
 
 
 def view(row: AccountRow) -> dict[str, Any]:
@@ -607,6 +616,10 @@ def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "",
     from ..vendor import nexki
     from . import ki_store
 
+    # The chain of switches first, as before: it stands above everything the person typed.
+    why = nexki.chain.reason(ki_store.KiStore(db), ki_store.CONFIG, row.id)
+    if why is not None:
+        raise older_refusal(db, nexki.AiRefused(why))
     text = (text or "").strip()
     if task != "write":
         if not text:
@@ -615,19 +628,56 @@ def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "",
             raise AiError("ai_text_too_short", min=MIN_WORDS)
     if len(text) > MAX_CHARS:
         raise AiError("ai_text_too_long", max=MAX_CHARS)
-    instruction_text, _kept_target, _temperature = _task(task, target, instruction)
+    instruction_text, kept_target, _temperature = _task(task, target, instruction)
     rules = RULES_WRITE if task == "write" else RULES
     # The note's text as material between marks, never as instructions (the module's frame and its rule).
     material, rule = nexki.frame(text if text else "(no material)")
+    store = ki_store.KiStore(db, target=kept_target)
     try:
-        answer = nexki.ask(ki_store.KiStore(db), ki_store.CONFIG, row.id, task,
+        answer = nexki.ask(store, ki_store.CONFIG, row.id, task,
                            system=f"{rules}\n\n{rule}\n\nTask: {instruction_text}", user=material)
     except nexki.AiRefused as exc:
-        raise AiError(exc.code, exc.status, **exc.values) from exc
+        raise older_refusal(db, exc) from exc
+    usage = answer.raw.get("usage") if isinstance(answer.raw, dict) else None
+    usage = usage if isinstance(usage, dict) else {}
+    if store.added is not None:
+        # The counts the list showed before (``GET /api/ai/events``); the module keeps none of its own.
+        store.added.tokens_in = _count(usage.get("prompt_tokens"))
+        store.added.tokens_out = _count(usage.get("completion_tokens"))
+        db.commit()
+    # Not the word for an access token in the log: the log's censor blacks out what follows it.
+    logger.info("The AI service did a task (%s, in %s, out %s)", task, usage.get("prompt_tokens", "?"),
+                usage.get("completion_tokens", "?"))
     written = unfence(answer.text.strip())[:MAX_OUT_CHARS]
     if not written:
         raise AiError("ai_empty", 502)
     return written
+
+
+def _count(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def older_refusal(db: Session, refused: Any) -> AiError:
+    """A refusal of the module under the code and status nexlore's route answered with before (E55): the chain's
+    ``ai_off`` of a closed lock, ``ai_not_allowed`` of the account and ``ai_switched_off`` of the person were
+    ``ai_off`` (403), ``ai_off`` and ``ai_not_on``; a service for all that is not complete was ``ai_shared_incomplete``.
+    Every other code is the module's, which nexlore's codes of before were already. The module's own refusal goes with
+    it (``module``), for the module's contract tests."""
+    code = refused.code
+    if code == "ai_off" and allowed(db) and mode(db) == "shared":
+        found = AiError("ai_shared_incomplete", 409)
+    elif code in ("ai_off", "ai_not_allowed"):
+        found = AiError("ai_off", 403)
+    elif code == "ai_switched_off":
+        found = AiError("ai_not_on", 409)
+    else:
+        found = AiError(code, refused.status, **refused.values)
+    found.module = refused
+    return found
 
 
 # --- A conversation whose answer flows (Frag Lore) ------------------------------------------------------------------
@@ -893,10 +943,7 @@ def events(db: Session, row: AccountRow) -> list[dict[str, Any]]:
     )
     out = []
     for event in rows:
-        try:
-            body = json.loads(decrypt_secret(event.body_enc, _event_context(row.id)) or "null")
-        except ValueError:
-            body = None
+        body = _body_of(event, row.id)
         out.append(
             {
                 "id": event.id,
@@ -911,6 +958,22 @@ def events(db: Session, row: AccountRow) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+def _body_of(event: AiEvent, account_id: int) -> Any:
+    """What went out, in the form the list showed before: the request as sent for a line of before (and Lore's), and
+    for a task of the buttons since the module (which keeps instructions and text, K15) the same two messages with the
+    model, as they went out."""
+    opened = decrypt_secret(event.body_enc, _event_context(account_id)) or decrypt_secret(
+        event.body_enc, f"{_key_context(account_id)}:events")
+    try:
+        kept = json.loads(opened or "null")
+    except ValueError:
+        return None
+    if not isinstance(kept, dict) or "user" not in kept:
+        return kept
+    return {"model": event.model, "messages": [{"role": "system", "content": kept.get("system", "")},
+                                               {"role": "user", "content": kept.get("user", "")}]}
 
 
 def clear_events(db: Session, row: AccountRow) -> int:

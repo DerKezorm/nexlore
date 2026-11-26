@@ -63,8 +63,12 @@ def _old_event_context(account_id: Any) -> str:
 class KiStore:
     """``nexki.Store`` over one session."""
 
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, *, target: str = "") -> None:
         self.db = db
+        #: The tone or the language of a task of the buttons, kept in the line of the list as before (``target``).
+        self.target = target[:64]
+        #: The line this store added last, for the counts of the answer that nexlore's list showed before.
+        self.added: AiEvent | None = None
 
     # --- the operator --------------------------------------------------------------------------------------------
 
@@ -173,10 +177,11 @@ class KiStore:
     # --- what went out -------------------------------------------------------------------------------------------
 
     def add_event(self, event: Event) -> None:
-        self.db.add(AiEvent(account_id=int(event.account_id), at=event.at, model=event.model[:200],
-                            task=event.task[:32], target="", body_enc=event.sent, to=event.to[:255],
-                            manual=event.manual, chars=event.chars, outcome=event.outcome[:64],
-                            error="" if event.outcome == "ok" else event.outcome[:64]))
+        self.added = AiEvent(account_id=int(event.account_id), at=event.at, model=event.model[:200],
+                             task=event.task[:32], target=self.target, body_enc=event.sent, to=event.to[:255],
+                             manual=event.manual, chars=event.chars, outcome=event.outcome[:64],
+                             error="" if event.outcome == "ok" else event.outcome[:64])
+        self.db.add(self.added)
         self.db.flush()
 
     def events(self, account_id: Any) -> list[Event]:

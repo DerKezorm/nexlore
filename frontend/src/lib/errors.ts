@@ -1,5 +1,6 @@
 /** The sentence for an error code from the server, in the page's language; an unknown code gets the general one. */
 import i18n from '../i18n'
+import { KI_TEXTS, refusalText } from '../vendor/nexki/ki'
 import { accountErrorKeyOf } from '../vendor/nexkonten/konten'
 import { mailErrorKey } from '../vendor/nexpost/post'
 import { oidcErrorKey } from '../vendor/nexoidc/oidc'
@@ -50,6 +51,10 @@ export function errorText(code: string, values: Record<string, unknown> = {}): s
   if (mail !== 'mail.error.unknown' && i18n.exists(mail)) return i18n.t(mail, values)
   const key = `errors.byCode.${code}`
   if (i18n.exists(key)) return i18n.t(key, values)
+  // The codes of the shared AI module that nexlore's routes of before pass on as they are (ai_https_required,
+  // ai_used_up, ai_day_used …) bring their sentences with the module (ki 0.1.0).
+  const kiTexts = KI_TEXTS[(i18n.language || 'en').slice(0, 2) as 'de' | 'en' | 'fr'] ?? KI_TEXTS.en
+  if (code.startsWith('ai_') && code in kiTexts.errors) return refusalText(kiTexts, { code, ...values }, 'nexlore')
   // The fixed codes of sign-in through a provider bring their sentences with the shared module (`oidc.error.*`).
   const signIn = oidcErrorKey(code)
   return signIn ? i18n.t(signIn) : i18n.t('errors.byCode.internal_error')

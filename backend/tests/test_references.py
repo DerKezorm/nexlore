@@ -18,7 +18,7 @@ OLD = (
     "KI, API und Plugins", "AI, API and plugins", "AI and plugins", "API-Token", "API token",
     "Server → Sicherung", "Server → Backups", "Server, Backups", "Settings, Backups", "Server, Sicherung",
     "Server → Mailserver", "Server → Mail server", "Mein Konto → Plugins für mich", "My account → Plugins for me",
-    "/settings/extensions",
+    "/settings/extensions", "Verbindungen › KI in Notizen", "Connections › AI in notes",
 )
 
 
@@ -71,8 +71,9 @@ def test_every_place_is_written_with_the_plans_separator(rule: re.Pattern[str]) 
 def test_the_places_begin_with_their_group() -> None:
     texts = _texts()
     words = "\n".join(texts["i18n/de.json"] + texts["i18n/en.json"])
-    for place in ("Mein Konto › Verbindungen › KI in Notizen", "Server › Allgemein › Schnittstellen", "Server › KI-Anbieter",
-                  "My account › Connections › AI in notes", "Server › General › Interfaces", "Server › AI provider"):
+    # KI under Mein Konto since the shared module ki 0.1.0 (E61).
+    for place in ("Mein Konto › KI", "Server › Allgemein › Schnittstellen", "Server › KI-Anbieter",
+                  "My account › AI", "Server › General › Interfaces", "Server › AI provider"):
         assert place in words, place
     assert "Einstellungen › " not in words and "Settings › " not in words
 
