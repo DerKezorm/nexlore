@@ -26,6 +26,23 @@ class Adapter(StandardAdapter):
     built_in: ClassVar[dict[str, str]] = {"de": "Deutsch", "en": "English"}
     public_read = True
     has_template = False
+    # The names nexlore's routes had before (routers/locales.py); nexlore describes its interface under
+    # /api/openapi.json, which only NEXLORE_API_DOCS opens: the adapter opens it for the test (see start).
+    openapi_path = "/api/openapi.json"
+    # Written out, not taken from the router: a change there must turn the contract test red.
+    operation_ids: ClassVar[dict[str, str]] = {
+        "list": "list_locales_api_locales_get",
+        "read": "read_locale_api_locales__code__get",
+        "upload": "upload_locale_api_locales__code__put",
+        "remove": "delete_locale_api_locales__code__delete",
+    }
+    summaries: ClassVar[dict[str, str]] = {
+        "list": "Languages the operator added",
+        "read": "The texts of one added language",
+        "upload": "Add or replace a language (operator)",
+        "remove": "Remove an added language (operator)",
+    }
+    schema_names: ClassVar[dict[str, str]] = {"LanguageEntry": "LocaleEntry", "LocaleEntry": "LocaleEntry"}
 
     def start(self) -> None:
         from app.config import get_settings
@@ -37,9 +54,26 @@ class Adapter(StandardAdapter):
         self._folder = Path(tempfile.mkdtemp(prefix="nexlore-locales-"))
         self._settings.locales_dir = self._folder
         locales.configure()
+        self._open_description()
+
+    def _open_description(self) -> None:
+        """The description nexlore serves with NEXLORE_API_DOCS (off in the tests): the app's own ``openapi()``."""
+        from fastapi.responses import JSONResponse
+
+        from app.main import app
+
+        self._added = not any(getattr(route, "path", "") == self.openapi_path for route in app.router.routes)
+        if self._added:
+            app.openapi_schema = None
+            app.add_route(self.openapi_path, lambda _request: JSONResponse(app.openapi()), include_in_schema=False)
 
     def stop(self) -> None:
+        from app.main import app
         from app.services import locales
+
+        if getattr(self, "_added", False):
+            app.router.routes[:] = [route for route in app.router.routes
+                                    if getattr(route, "path", "") != self.openapi_path]
 
         for client in self._clients:
             client.close()
