@@ -1,7 +1,7 @@
 /** Languages the operator adds on the server: offered, loaded, incomplete ones fall back to English. */
 
 import i18n, { changeLanguage, languageOptions, resetAddedLanguages, startI18n } from './index'
-import { templateFile, type Texts as SprachenTexts } from '../vendor/nexsprachen/sprachen'
+import { templateFile } from '../vendor/nexsprachen/sprachen'
 import { en } from './index'
 import ownEn from './en.json'
 
@@ -141,7 +141,7 @@ describe('added languages', () => {
 
 describe('the template', () => {
   it('is the English texts plus the _meta entry for the name', async () => {
-    const text = await templateFile(en as SprachenTexts).text()
+    const text = await templateFile(en).text()
     const template = JSON.parse(text)
     expect(template._meta).toEqual({ name: expect.any(String) })
     const { _meta, ...rest } = template

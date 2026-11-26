@@ -9,6 +9,7 @@ page makes the template from its English texts, so the server hands none out. Ea
 
 from __future__ import annotations
 
+import json
 import shutil
 import tempfile
 from pathlib import Path
@@ -17,6 +18,7 @@ from typing import Any, ClassVar
 from sprachen_contract import StandardAdapter
 
 TAB = {"X-Nexlore-Client": "tab-tests000"}
+FRONTEND = Path(__file__).resolve().parents[2] / "frontend" / "src"
 
 
 class Adapter(StandardAdapter):
@@ -81,6 +83,31 @@ class Adapter(StandardAdapter):
 
         found: dict[str, Any] = app.openapi()
         return found
+
+    def offered_template(self) -> dict[str, Any]:
+        """The template as the page offers it (sprachen 1.0.2): ``en`` of ``frontend/src/i18n/index.ts``, nexlore's own
+        English with the words of the modules oidc, konten and post laid over it in that order, through the module's
+        rule (``textsOnly`` on the page, ``texts_only`` here), with ``_meta``. ``oidcWording`` with
+        ``singleAccount: false, invitations: true`` only drops the groups ``single`` and ``noInvitations``."""
+        from app.vendor import nexsprachen
+
+        def read(path: str) -> dict[str, Any]:
+            found: dict[str, Any] = json.loads((FRONTEND / path).read_text(encoding="utf-8"))
+            return found
+
+        oidc = read("vendor/nexoidc/oidc.en.json")
+        if isinstance(oidc.get("oidc"), dict):
+            oidc["oidc"] = {key: value for key, value in oidc["oidc"].items() if key not in ("single", "noInvitations")}
+        english = {
+            **read("i18n/en.json"),
+            **oidc,
+            **read("vendor/nexkonten/konten.en.json"),
+            **read("vendor/nexpost/post.en.json"),
+        }
+        return {
+            "_meta": {"name": "Name of the language in itself, for example Nederlands"},
+            **nexsprachen.texts_only(english),
+        }
 
     def client(self, role: str) -> Any:
         from fastapi.testclient import TestClient

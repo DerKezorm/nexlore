@@ -22,7 +22,7 @@ import {
   SharesCard,
 } from '../../components/settings/AdminCards'
 import { LanguagesCard } from '../../vendor/nexsprachen/LanguagesCard'
-import type { Fetcher, Texts as SprachenTexts } from '../../vendor/nexsprachen/sprachen'
+import type { Fetcher } from '../../vendor/nexsprachen/sprachen'
 import { en, resetAddedLanguages } from '../../i18n'
 import { AppearanceCard as LookCard } from '../../components/settings/AppearanceCard'
 import { CalendarFeed } from '../../components/settings/CalendarFeed'
@@ -183,7 +183,7 @@ function ServerArea({ area }: { area: Exclude<AreaSlug, 'profile' | 'security' |
           <InterfacesCard request={request} docsHref={docs} language={i18n.language} after={settings ? { mcp: <McpSettings settings={settings} onChange={setSettings} /> } : undefined} />
           {/* Server › General › Languages from the shared module sprachen 1.0.0: the template from the page's English
               texts, a change makes the menus ask the server again. */}
-          <LanguagesCard app="nexlore" base="/api/locales" template={en as SprachenTexts} fetcher={languagesFetch} onChange={resetAddedLanguages} language={i18n.language} />
+          <LanguagesCard app="nexlore" base="/api/locales" template={en} fetcher={languagesFetch} onChange={resetAddedLanguages} language={i18n.language} />
           {settings && <LinkTitleSwitch settings={settings} onChange={setSettings} />}
           {settings && <CssCard settings={settings} onChange={setSettings} />}
           <GuideCard />
