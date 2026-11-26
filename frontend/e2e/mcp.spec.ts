@@ -38,7 +38,7 @@ test('a key made on the account page proposes a draft that the note takes over',
   expect(opened.ok()).toBe(true)
 
   // The card "KI-Werkzeuge (MCP)" of the shared key module, under My account › Connections.
-  await page.goto('/account?tab=ai')
+  await page.goto('/settings/connections')
   const tools = page.locator('[data-card="ai-tools"]')
   await tools.getByTestId('tools-new').click()
   const keyDialog = page.getByTestId('key-dialog')
@@ -105,7 +105,7 @@ test('a key made for one space sees no other', async ({ page, playwright, baseUR
     headers: { 'X-Nexlore-Client': 'tab-e2e-mcp0' },
   })
   expect(opened.ok()).toBe(true)
-  await page.goto('/account?tab=ai')
+  await page.goto('/settings/connections')
   const tools = page.locator('[data-card="ai-tools"]')
   await tools.getByTestId('tools-new').click()
   const dialog = page.getByTestId('key-dialog')
@@ -143,7 +143,7 @@ test('the operator switches MCP off again, and both pages say where it goes on',
   const closed = await page.request.put('/api/settings', { data: { mcp_allowed: false }, headers: { 'X-Nexlore-Client': 'tab-e2e-mcp0' } })
   expect(closed.ok()).toBe(true)
   // The account page says why there are no keys; the operator's switch is "MCP-Zugang" under Server › General.
-  await page.goto('/account?tab=ai')
+  await page.goto('/settings/connections')
   const tools = page.locator('[data-card="ai-tools"]')
   await expect(tools.getByTestId('tools-off')).toContainText('The operator has switched MCP access off.')
   await page.goto('/settings/extensions#mcp')

@@ -1,7 +1,9 @@
 /**
  * AI in notes through the interface, against a stand-in service (`e2e/fake-ai.mjs`, never a real model or key): the
- * operator allows it, the account connects its own service, the editor offers it in the toolbar and the context menu,
- * a result stands next to the text and changes nothing until it is taken over, and the account sees what went out.
+ * operator allows it under Server › KI-Anbieter and lets each account bring its own service, the account connects its
+ * own under Mein Konto › KI (both from the shared module ki), the editor offers it in the toolbar and the context
+ * menu, a result stands next to the text and changes nothing until it is taken over, and the account sees what went
+ * out.
  */
 import { type Page } from '@playwright/test'
 import { expect, test } from './fixtures'
@@ -47,40 +49,44 @@ async function select(page: Page, text: string) {
 
 const saved = (page: Page) => expect(page.getByRole('status').filter({ hasText: /^Saved$/ })).toBeVisible({ timeout: 10_000 })
 
-test('the account connects its own service, and the switch goes on only with a complete access', async ({ page }) => {
+test('the operator allows AI and lets each account bring its own; the account connects its service', async ({ page }) => {
   const problems = collectProblems(page)
-  await page.goto('/account?tab=ai')
-  await expect(page.getByTestId('ai-off')).toContainText('has not switched on AI in notes')
-  await page.getByTestId('ai-off').getByRole('link', { name: /Switch it on under Server › AI provider/ }).click()
-  const card = page.locator('#ai')
-  await card.getByRole('checkbox', { name: /Allow AI in notes/ }).check()
-  // The stand-in runs on this machine: allowed only once the operator names it (review before 1.0.0).
-  await card.getByLabel('Services in your own network').fill('127.0.0.1:8478')
-  await card.getByRole('button', { name: 'Save' }).click()
-  await expect(card.getByLabel('Services in your own network')).toHaveValue('127.0.0.1:8478')
-  await card.getByRole('link', { name: 'Go to my access' }).click()
-  await expect(page).toHaveURL(/\/settings\/connections#ai$/)
+  // Mein Konto › KI (the shared module ki): nothing allowed yet.
+  await page.goto('/settings/ai')
+  await expect(page.getByTestId('ki-me-state')).toContainText('Not ready')
+  await expect(page.getByTestId('ki-me-state')).toContainText('No AI is set up or allowed on this server.')
 
-  const access = page.locator('section#ai')
+  // Server › KI-Anbieter: the main switch, then "Each account itself" (a new installation starts with one for all).
+  await page.goto('/settings/ai-provider')
+  const operator = page.getByTestId('ki-operator')
+  await operator.getByTestId('ki-operator-enabled').check()
+  await expect(operator.getByTestId('ki-operator-enabled')).toBeChecked()
+  await operator.getByTestId('ki-operator-mode').getByRole('radio', { name: 'Each account itself' }).click()
+  await expect(operator.getByTestId('ki-operator-mode').getByRole('radio', { name: 'Each account itself' })).toHaveAttribute('aria-checked', 'true')
+  // The stand-in runs on this machine: an own access reaches it only once the operator lists it.
+  await operator.getByTestId('ki-operator-hosts').fill('127.0.0.1:8478')
+  await operator.getByTestId('ki-operator-hosts-save').click()
+  await page.reload()
+  await expect(page.getByTestId('ki-operator-hosts')).toHaveValue('127.0.0.1:8478')
+
+  await page.goto('/settings/ai')
+  const own = page.getByTestId('ki-me-own')
   // A tile fills in the address and says where the key comes from.
-  await access.getByRole('button', { name: 'OpenAI' }).click()
-  await expect(access.getByLabel(/^Address/)).toHaveValue('https://api.openai.com/v1/')
-  await expect(access.getByRole('link', { name: 'Get a key from OpenAI' })).toBeVisible()
-  // Not on before address and model are saved.
-  await expect(access.getByRole('checkbox', { name: /Use AI in my notes/ })).toBeDisabled()
-  await access.getByLabel(/^Address/).fill(SERVICE)
-  await access.getByLabel('Key', { exact: true }).fill('e2e-stand-in-key')
-  await access.getByRole('button', { name: 'Load the models' }).click()
-  await expect(access.getByTestId('ai-models-count')).toHaveText('1 model found: address and key are right.')
-  await expect(access.getByLabel('Model', { exact: true })).toHaveValue('stand-in')
-  await access.getByRole('button', { name: 'Save' }).click()
-  await expect(access.getByRole('status')).toHaveText('Saved.')
-  // The key is not shown again.
-  await expect(access.getByLabel('Key', { exact: true })).toHaveValue('')
-  await expect(access.getByLabel('Key', { exact: true })).toHaveAttribute('placeholder', 'saved, not shown again')
-  // It turns once the server said so.
-  await access.getByRole('checkbox', { name: /Use AI in my notes/ }).click()
-  await expect(access.getByRole('checkbox', { name: /Use AI in my notes/ })).toBeChecked()
+  await own.getByRole('radio', { name: 'OpenAI' }).click()
+  await expect(own.getByTestId('ki-me-own-url')).toHaveValue('https://api.openai.com/v1/')
+  await expect(own.getByRole('link', { name: 'Get a key at OpenAI' })).toBeVisible()
+  await own.getByTestId('ki-me-own-url').fill(SERVICE)
+  await own.getByTestId('ki-me-own-key').fill('e2e-stand-in-key')
+  await own.getByTestId('ki-me-own-load').click()
+  await own.getByTestId('ki-me-own-models').selectOption('stand-in')
+  await expect(own.getByTestId('ki-me-own-model')).toHaveValue('stand-in')
+  await own.getByTestId('ki-me-own-save').click()
+  // Saved complete, the AI is ready for this account; the key is not shown again.
+  await expect(page.getByTestId('ki-me-state')).toContainText('Ready')
+  await expect(page.getByTestId('ki-me-where')).toContainText('Your texts stay in the own network.')
+  await expect(page.getByTestId('ki-me-mine')).toBeChecked()
+  await expect(own.getByTestId('ki-me-own-key')).toHaveValue('')
+  await expect(own.getByTestId('ki-me-own-key')).toHaveAttribute('placeholder', 'Stays; type only to change it.')
   const me = await (await page.request.get('/api/auth/me')).json()
   expect(me.ai_ready).toBe(true)
   expect(problems).toEqual([])
@@ -104,9 +110,9 @@ test('a correction stands next to the text and changes only what was chosen when
   await expect(dialog).toHaveCount(0)
   await saved(page)
   expect(onDisk('Zoo/Ai.md')).toBe(before.replace('teh office', 'the office'))
-  // What went out: the rules, the task, and only the selection.
+  // What went out: the rules, the task, and only the selection, between the marks of the module's frame.
   const sent = await (await page.request.get('http://127.0.0.1:8478/last')).json()
-  expect(sent.messages[1].content).toBe('We meet on Thursday at teh office.')
+  expect(sent.messages[1].content.split('\n').slice(1, -1).join('\n')).toBe('We meet on Thursday at teh office.')
   expect(sent.messages[0].content).toContain('Never invent, drop or alter a fact')
   expect(problems).toEqual([])
 })
@@ -162,16 +168,19 @@ test('a summary goes in after the block with the caret, and a written text into 
 })
 
 test('the account sees what went out, word for word, and clears it; switched off, the editor offers no AI', async ({ page }) => {
-  await page.goto('/account?tab=ai')
-  const access = page.locator('section#ai')
-  await access.getByText('What went out').click()
-  const events = access.getByTestId('ai-events')
+  await page.goto('/settings/ai')
+  const events = page.getByTestId('ki-me-events')
   // Four answered, one turned down after it went out: that one is in the list too.
-  await expect(events.locator('li')).toHaveCount(5)
-  await events.locator('li').last().locator('summary').click()
-  await expect(events.locator('li').last().locator('pre')).toContainText('We meet on Thursday at teh office.')
-  await access.getByRole('button', { name: 'Clear the list now' }).click()
-  await expect(events.locator('li')).toHaveCount(0)
+  await expect(events.locator('tbody tr')).toHaveCount(5)
+  await expect(events.locator('tbody tr').filter({ hasText: 'Did not work' })).toHaveCount(1)
+  await events.locator('tbody tr').last().getByTestId('ki-me-event-show').click()
+  const shown = page.getByTestId('ki-me-event')
+  await expect(shown).toContainText('We meet on Thursday at teh office.')
+  await expect(shown).toContainText('Never invent, drop or alter a fact')
+  await shown.getByRole('button', { name: 'Close' }).first().click()
+  await page.getByTestId('ki-me-events-clear').click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Clear the list' }).click()
+  await expect(events).toHaveText('Nothing went out yet.')
 
   const closed = await page.request.put('/api/settings', { data: { ai_allowed: false }, headers: TAB })
   expect(closed.ok()).toBe(true)

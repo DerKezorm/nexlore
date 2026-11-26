@@ -20,9 +20,15 @@ function lore(body) {
   return null
 }
 
+/** The text between the two lines of the mark the shared module ki puts around material (`nexki.frame`). */
+function unframe(text) {
+  const lines = String(text).split('\n')
+  return lines.length >= 3 && lines[0].startsWith('TEXT-') && lines[0] === lines[lines.length - 1] ? lines.slice(1, -1).join('\n') : text
+}
+
 function answer(body) {
   const system = body.messages?.[0]?.content ?? ''
-  const text = body.messages?.[1]?.content ?? ''
+  const text = unframe(body.messages?.[1]?.content ?? '')
   const task = system.slice(system.lastIndexOf('Task:'))
   if (task.startsWith('Task: Correct spelling')) return text.replace(/\bteh\b/g, 'the')
   if (task.startsWith('Task: Rewrite')) return text.replace(/\bWe meet\b/, 'We will gather')

@@ -44,7 +44,7 @@ test('the calendar subscription is closed until the operator opens it, and its a
   const problems = collectProblems(page)
   // Closed as on a fresh server, whatever a test before left behind.
   expect((await page.request.put('/api/settings', { data: { calendar_feed_allowed: false }, headers: TAB })).ok()).toBe(true)
-  await page.goto('/account?tab=ai')
+  await page.goto('/settings/connections')
   const card = page.getByTestId('calendar-feed')
   await expect(card).toContainText('The operator has not switched calendar subscriptions on.')
   // The operator opens it under Server, General, "Funktionen für alle Konten".
@@ -55,7 +55,7 @@ test('the calendar subscription is closed until the operator opens it, and its a
   await toggle.click()
   await expect(toggle).toBeChecked()
   expect((await saved).ok()).toBe(true)
-  await page.goto('/account?tab=ai')
+  await page.goto('/settings/connections')
   await card.getByRole('button', { name: 'Make an address' }).click()
   const field = card.getByRole('textbox', { name: 'Copy' })
   await expect(field).toHaveValue(/\/api\/calendar\/feed\/nxc_[\w-]+\.ics$/)

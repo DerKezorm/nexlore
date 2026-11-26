@@ -59,7 +59,7 @@ test('rights per tool are set under the key and kept', async ({ page }) => {
   const problems = collectProblems(page)
   await openMcp(page)
   await makeKey(page, 'Y rights')
-  await page.goto('/account?tab=ai')
+  await page.goto('/settings/connections')
   const row = page.locator('[data-card="ai-tools"]').getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'Y rights' })
   // "Rechte je Werkzeug" of the shared module mcp 1.1.0.
   await row.getByRole('button', { name: 'Rights per tool' }).click()
@@ -160,7 +160,7 @@ test('a connector signs in on the consent page and gets a key of its own', async
   expect(spaces.failed).toBe(false)
   await program.dispose()
   await page.unroute('https://connector.example.com/**')
-  await page.goto('/account?tab=ai')
+  await page.goto('/settings/connections')
   const row = page.locator('[data-card="ai-tools"]').getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'Y connector' })
   await expect(row).toHaveAttribute('data-program', 'true')
   // The level chosen on the consent page, not more.

@@ -225,7 +225,7 @@ function NoThread({ why }: { why: 'off' | 'loreOff' | 'shared' | 'own' }) {
         <h1 className="mt-3 text-xl font-semibold">{t('lore.noThreadTitle')}</h1>
         <p className="mt-1 text-sm text-mist-500">{t(`lore.noThread.${why}`)}</p>
         {why === 'own' && (
-          <Link to="/settings/connections#ai" className="mt-5 inline-block rounded-full bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400">
+          <Link to="/settings/ai" className="mt-5 inline-block rounded-full bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400">
             {t('lore.setUp')}
           </Link>
         )}

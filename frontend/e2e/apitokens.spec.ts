@@ -23,7 +23,7 @@ test('a token made on the account page works for a program until the operator bl
     await expect(page.getByTestId('interfaces-api')).toBeChecked()
 
     // The account: in Connections, the devices first, the API keys after nexlore's own cards.
-    await page.goto('/account?tab=ai')
+    await page.goto('/settings/connections')
     await expect(page).toHaveURL(/\/settings\/connections/)
     const own = page.locator('[data-card="api-keys"]')
     await expect(page.locator('[data-card]').first()).toHaveAttribute('data-card', 'devices')
@@ -81,7 +81,7 @@ test('a token made on the account page works for a program until the operator bl
 
 test('without the operator the card says so and points the operator to the switch', async ({ page }) => {
   await page.request.put('/api/settings', { data: { api_tokens_allowed: false }, headers: TAB })
-  await page.goto('/account?tab=ai')
+  await page.goto('/settings/connections')
   await expect(page.getByTestId('api-keys-off')).toContainText('The operator has switched the programming interface off.')
   await expect(page.getByTestId('api-keys-off')).toContainText('Switch it on under Server › General › Interfaces.')
 })

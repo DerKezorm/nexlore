@@ -369,7 +369,7 @@ test('40: keys of an account that must still set up a second factor carry the hi
     const listing = (await response.json()) as Record<string, unknown>
     await route.fulfill({ response, json: { ...listing, keys_wait: true } })
   })
-  await page.goto('/account?tab=ai')
+  await page.goto('/settings/connections')
   const hint = 'Works only once you set up a second factor.'
   const tokens = page.locator('[data-card="api-keys"]')
   await expect(tokens).toContainText(hint)

@@ -30,7 +30,7 @@ test.afterEach(async ({ page }) => {
   await page.request.delete('/api/lore/conversations', { headers: TAB })
   await page.request.put('/api/me/appearance', { headers: TAB, data: { lore_hidden: [], panel_tab: 'links' } })
   await page.request.put('/api/ai/shared', { headers: TAB, data: { url: '', model: '', key: '' } })
-  await page.request.put('/api/settings', { headers: TAB, data: { ai_allowed: before.ai_allowed, ai_mode: 'own', lore_allowed: false } })
+  await page.request.put('/api/settings', { headers: TAB, data: { ai_allowed: before.ai_allowed, ai_mode: before.ai_mode, lore_allowed: false } })
   await page.evaluate(() => {
     localStorage.removeItem('nexlore.loreOpen')
     sessionStorage.removeItem('nexlore.loreConversation')
@@ -205,7 +205,8 @@ test('with a model for meaning, a note shows the notes most like it', async ({ p
   const first = page.getByTestId('similar-notes').locator('button[data-note]').first()
   await expect(first).toHaveAttribute('data-note', /glasswing/i)
   await expect(page.getByTestId('similar-notes').locator('button[data-note="Zyx/Lore/Glasswing drill.md"]')).toHaveCount(0)
-  await page.goto('/settings?tab=server&sub=extensions#ai')
+  // Server › KI-Anbieter, nexlore's card "Frag Lore und Bedeutung" below the module's.
+  await page.goto('/settings/ai-provider')
   await expect(page.getByTestId('ai-meaning-progress')).toContainText(/notes read in/)
   await page.request.put('/api/ai/shared', { headers: TAB, data: { embed_model: '' } })
 })
@@ -216,7 +217,8 @@ test('without a service Lore says what is missing and where to put it in', async
   await page.goto('/lore')
   await expect(page.getByTestId('lore-no-thread')).toContainText('Lore has no thread right now')
   await page.getByRole('link', { name: 'Set up an AI service' }).click()
-  await expect(page).toHaveURL(/\/settings\/connections#ai$/)
+  // Mein Konto › KI (the shared module ki).
+  await expect(page).toHaveURL(/\/settings\/ai$/)
   // With AI not allowed at all, the header has no entry.
   await page.request.put('/api/settings', { headers: TAB, data: { ai_allowed: false } })
   await page.goto('/')
@@ -266,8 +268,8 @@ test('switched off by the operator, Lore shows nowhere and the page says why', a
   await page.goto('/lore')
   await expect(page.getByTestId('lore-no-thread')).toContainText('has not switched on Ask Lore')
   // The operator switches it on in the card.
-  await page.goto('/settings?tab=server&sub=extensions#ai')
-  await page.locator('#ai').getByRole('checkbox', { name: /Allow Ask Lore/ }).check()
+  await page.goto('/settings/ai-provider')
+  await page.locator('#lore').getByRole('checkbox', { name: /Allow Ask Lore/ }).check()
   await expect.poll(async () => (await (await page.request.get('/api/auth/me')).json()).lore).toBe(true)
   await page.goto('/')
   await expect(page.getByTestId('lore-fab')).toBeVisible()
