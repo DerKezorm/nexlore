@@ -1349,8 +1349,8 @@
       "text": "Wohin Hochgeladenes kommt und wie viel es belegen darf.",
       "folder": "Ordner für Anhänge",
       "perFile": "Größte Datei (MB)",
-      "quota": "Platz je Konto (MB)",
-      "quotaHint": "0 heißt ohne Grenze.",
+      "quota": "Speicher für neue Konten (MB)",
+      "quotaHint": "Die Vorgabe für jedes neue Konto. Leer heißt ohne Grenze.",
       "strip": "Ort und Gerät aus Fotos entfernen",
       "stripHint": "Beim Hochladen, aus Bildern und Videos. Das Bild selbst bleibt, wie es ist.",
       "pasted": "Name eingefügter Bilder",
@@ -1366,7 +1366,7 @@
       "left_one": "Ein Ordner behält seinen Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}",
       "left_other": "{{count}} Ordner behalten ihren Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}",
       "limitsTitle": "Grenzen",
-      "perAccount": "Speicher je Konto setzt du unter „Konten“."
+      "perAccount": "Die Grenze eines Kontos setzt du unter „Konten“, „Verwalten“."
     },
     "languages": {
       "title": "Sprachen",

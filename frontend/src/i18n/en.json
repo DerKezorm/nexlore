@@ -1349,8 +1349,8 @@
       "text": "Where uploads go and how much they may take.",
       "folder": "Attachment folder",
       "perFile": "Largest file (MB)",
-      "quota": "Space per account (MB)",
-      "quotaHint": "0 is no limit.",
+      "quota": "Storage for new accounts (MB)",
+      "quotaHint": "What every new account starts with. Empty means no limit.",
       "strip": "Remove place and device from photos",
       "stripHint": "On upload, from pictures and videos. The picture itself stays as it is.",
       "pasted": "Name of pasted pictures",
@@ -1366,7 +1366,7 @@
       "left_one": "One folder kept its name because one with the new name stands beside it: {{list}}",
       "left_other": "{{count}} folders kept their name because one with the new name stands beside them: {{list}}",
       "limitsTitle": "Limits",
-      "perAccount": "Storage per account is set under “Accounts”."
+      "perAccount": "The limit of one account is set under “Accounts”, “Manage”."
     },
     "languages": {
       "title": "Languages",

@@ -568,7 +568,8 @@ export function FilesSettingsCard() {
       >
         <Input label={t('admin.files.folder')} value={values.attachment_folder} onChange={(attachment_folder) => setValues({ ...values, attachment_folder })} />
         <Input label={t('admin.files.perFile')} value={String(values.upload_max_mb)} onChange={(value) => setValues({ ...values, upload_max_mb: Number(value) || 1 })} type="number" />
-        <Input label={t('admin.files.quota')} value={String(values.quota_mb)} onChange={(value) => setValues({ ...values, quota_mb: Number(value) || 0 })} type="number" hint={t('admin.files.quotaHint')} />
+        {/* Plan E44: the start of every new account; empty (stored as 0, as before) is no limit. */}
+        <Input label={t('admin.files.quota')} value={values.quota_mb ? String(values.quota_mb) : ''} onChange={(value) => setValues({ ...values, quota_mb: Math.max(0, Math.floor(Number(value))) || 0 })} type="number" hint={t('admin.files.quotaHint')} testId="limits-new-accounts" />
         {renamed && (
           <div className="sm:col-span-3">
             <Toggle
