@@ -16,23 +16,43 @@ comments, locks)“. Ein Umbenennen ohne Vorbereitung nähme jedem Konto seine G
 
 ### Durchgang „Module“ (26.11.2026)
 
-Module aus `bauplaene-module` (Zweig `einst-module`, 21844cf, sicherung de70ac2), je `tools/sync.py copy`, `check` ok.
-App-Version unverändert 1.16.0, kein Release.
+Module aus `bauplaene-module` (Zweig `einst-module`), erst 21844cf/de70ac2, nachgezogen auf **9bc9f73** (mcp 1.1.1,
+ki 0.1.1, updates 0.1.2, verbinden 0.1.3), je `tools/sync.py copy`, `check` aller zwölf Module ok. App-Version
+unverändert 1.16.0, kein Release.
 
 | Modul | Fassung | was die App gebaut hat | alte Wege als Hüllen | Umwege |
 |---|---|---|---|---|
 | ui | 1.1.1 | `AboutPage showUpdates` | – | – |
 | sicherung | 1.0.4 | Zeit in Klammern (E62), Fenster „Jetzt sichern“ mit Notiz (E63, e2e `backups.spec.ts`), gesperrte Archive (E64) | `/api/backups` wie bisher | – |
 | schluessel | 1.1.0 | `ai_allowed` im Store (MCP-Entscheidung 10, über `nexki.chain.for_programs`); Vorlage von Hand | `/api/api-tokens`, `/api/mcp/keys` | – |
-| updates | 0.1.1 | `services/updates.py` konfiguriert das Modul (Schalter `update_check`, `notify_version`, Glocke `notify.operators`, Wörter des Moduls DE/EN), `run_forever` beim Start, Kästchen bei der Einrichtung (U1), Über-Seite mit `useUpdates`; Projektseite leer (U18) | `/api/about…` mit den Namen von 1.16.0 (E53) | – |
-| mcp | 1.1.0 | `services/mcp_store.py` (Store über `mcp_keys`, `oauth_clients`, `oauth_codes`, `mcp_requests`, neu `mcp_spent`; Spalten `mcp_keys.refreshed_at`, `oauth_codes.resource/extras`, `mcp_requests.decided_by/summary/dangerous`); `routers/mcp.py` `CONFIG` mit allen 57 Werkzeugen von 1.16.0 (Namen, Schemas, Gruppen, Stufen), Antworten von vorher (404 aus, `key_invalid`, 16 MB, 100/50 Rückfragen, 6 MB); Wanderung `mcp_110_migrated`: alte Schlüssel und Programme bekommen die alten Vorgaben (ändern fragt, riskant verbietet) als eigene Rechte; `mcp_requests` ohne Verknüpfung zum Schlüssel neu gebaut (Rückfrage überlebt den Widerruf); Oberfläche `ToolRights`, `PendingRequests`, `McpOperatorSettings`, `ConsentPage` (`/oauth/authorize`), `RequestPage` (`/mcp/requests/<id>`), `RequestBellRow` in „Neu“ | `/api/mcp/keys`, `/api/mcp/tools`, `/api/mcp/blocked`, `PUT /api/mcp/keys/{id}/rights`, `/api/mcp/requests…` (über das Modul, alte Form und Kennungen); `/api/oauth/authorize` (E53/E55), `/register`, `/token` | `TODO mcp 1.1.0`: Hüllen für Zustimmung, Registrierung, Token; Prüfsumme beim Erlauben im Store (Fragen 1 bis 4) |
-| ki | 0.1.0 | `services/ki_store.py` (Store über `ai_*` der Einstellungen und Konten, neu `ai_shared_api`, Brems-Tageswerte, `Account.ai_api`, `ai_mine_off`, `ai_events.to/manual/chars/outcome`), `adopt` beim Start, Wege `/api/server/ai`, `/api/me/ai`, `ai.run` über `nexki.ask` mit `frame`; Bereich „KI“ unter Mein Konto (E61) mit `AiAccountArea`, Server › KI-Anbieter mit `AiProviderArea` und nexlores Karte „Frag Lore und Bedeutung“ (`LoreCard`); Lore (Streaming, Werkzeuge) und Vektoren bleiben nexlores Abruf (K12) | `/api/ai…` | Fragen 8 bis 11: zwei Moduldateien nicht committet (Hook), 20 alte KI-Tests rot |
-| verbinden | 0.1.1 | nicht begonnen | – | Frage 12 |
+| updates | 0.1.2 | `services/updates.py` konfiguriert das Modul (Schalter `update_check`, `notify_version`, Glocke `notify.operators`, Wörter des Moduls DE/EN), `run_forever` beim Start, Kästchen bei der Einrichtung (U1), Über-Seite mit `useUpdates`; Projektseite leer (U18); 0.1.2: nexlore hat eine Glocke, nur der neue Fall der Vorlage übernommen | `/api/about…` mit den Namen von 1.16.0 (E53) | – |
+| mcp | 1.1.1 | `services/mcp_store.py` (Store über `mcp_keys`, `oauth_clients`, `oauth_codes`, `mcp_requests`, neu `mcp_spent`; Spalten `mcp_keys.refreshed_at`, `oauth_codes.resource/extras`, `mcp_requests.decided_by/summary/dangerous`); `routers/mcp.py` `CONFIG` mit allen 57 Werkzeugen von 1.16.0, Antworten von vorher; Wanderung `mcp_110_migrated` (alte Vorgaben als eigene Rechte); `mcp_requests` ohne Verknüpfung zum Schlüssel neu gebaut (MCP 23: Sicherung davor bleibt, Rückweg-Probe mit 1.16.0 grün, siehe unten); die Kennung des Schlüssels im Modul ist die des Schlüsselmoduls (`mcp-<n>`); `notify` an die Glocke und den Webhook (MCP 14), `LISTENERS` für den Vertrag; Oberfläche `ToolRights`, `PendingRequests`, `McpOperatorSettings`, `ConsentPage` (`/oauth/authorize`), `RequestPage` (`/mcp/requests/<id>`), `RequestBellRow` in „Neu“ | `/api/mcp/keys`, `/api/mcp/tools`, `/api/mcp/blocked`, `PUT /api/mcp/keys/{id}/rights`, `/api/mcp/requests…` (über das Modul, alte Form und Kennungen); kleine Hüllen nur noch `POST /api/oauth/register` (403 `access_denied` bei ausgeschalteten Programmen, das Modul sagt 404) und `GET`/`POST /api/oauth/authorize` (Felder `client_name`, `max_level`, `spaces`, `approve` und Kennungen von vorher, die das Modul nicht trägt) | keine (Rücksprungprüfung, Prüfsumme, Token-Weg mit JSON jetzt im Modul) |
+| ki | 0.1.1 | `services/ki_store.py` (Store über `ai_*` der Einstellungen und Konten, neu `ai_shared_api`, Brems-Tageswerte, `Account.ai_api`, `ai_mine_off` (K19), `ai_events.to/manual/chars/outcome`), `adopt` beim Start, Wege `/api/server/ai`, `/api/me/ai`, `ai.run` über `nexki.ask` mit `frame`; Bereich „KI“ unter Mein Konto (E61) mit `AiAccountArea`, Server › KI-Anbieter mit `AiProviderArea` und nexlores Karte „Frag Lore und Bedeutung“ (`LoreCard`); Lore (Streaming, Werkzeuge) und Vektoren bleiben nexlores Abruf (K12); `ModelsIn` des Moduls heißt `KiModelsIn` (`schema_names`) | `POST /api/ai/run` mit den Kennungen von vorher (`ai_off` 403 für Hauptschalter und „KI erlaubt“, `ai_not_on`, `ai_shared_incomplete`), die Liste `GET /api/ai/events` in ihrer Form (`target`, `tokens_in/out`, `body` mit `messages`); `/api/ai`, `/api/ai/shared…`, `/api/ai/models` | keine |
+| verbinden | 0.1.3 | neu: Tabellen `vb_*` (`models_verbinden.py`), `services/verbinden_store.py` (`AppConfig` mit `nxv_`/`nxvr_`/`nxvc_`, `in_use=("nexnotes",)`; Bereiche = Bereiche, in die das Konto schreiben darf), `routers/verbinden.py`; ein Token einer Verbindung öffnet in `/api/v1` nur `notes.add` (`POST /api/v1/notes`, dazu `GET /api/v1/me` und `/spaces`), nur in den gegebenen Bereichen, sonst 403 `purpose_missing`, eigener Schalter statt dem der API; Programmwege `/api/connect/token|revoke|retire` ohne Tab; `nxv_…` im Log geschwärzt; endgültig gelöschtes Konto beendet seine Verbindungen; Takt `retry_waiting` alle 5 Minuten; Schalter „Andere nex-Apps im eigenen Netz“ (`connections_local_network`) in „Funktionen für alle Konten“; Oberfläche: Karte nexnotes unter Mein Konto › Verbindungen (Platz 3), „Andere nex-Apps“ unter Server › Allgemein nach „Schnittstellen“ (V22), Seiten `/connect/app`, `/connect/return` | API-Schlüssel `nxa_` an `/api/v1` wie bisher; nexlore hatte keine Verbindung von Hand | – |
 
-Neu dazu: `tests/test_mcp_bestand.py` (Datenbank von 1.16.0 mit Schlüssel, Programm samt verbrauchtem Refresh-Token und
-wartender Rückfrage), `tests/test_program_paths.py` (Programme ohne Tab-Kopf an `/api/oauth/register|token|revoke`,
-`/api/mcp`; eine Seite ohne Tab bleibt 400), `tests/mcp_legacy.py`. Fragen und Modulfehler:
-`einst-fragen/nexlore-module.md`.
+**Runde 2** (AUFTRAG-RUNDE2): nexlore ist nur Gastgeberin (Teil B: nexnotes legt eine Notiz in nexlore an,
+`notes.add`, Test `tests/test_verbinden_host.py`); V20 (eine Karte nur für nexnotes, kein Start für andere), V22, V23
+(nexlore hat keine eigenen Teile in der Karte). **MCP 14:** eine wartende Rückfrage steht in der Glocke („Neu“,
+`RequestBellRow`) aus der Liste, die der Browser jede Minute fragt, und der Webhook hört sie einmal (Tests
+`test_notify.py`, `lib/news.test.ts`). **MCP 15:** Versionen tragen den Namen des Schlüssels (`versions.key_name`, neue
+Spalte), der Verlauf zeigt „MCP · <Schlüssel>“ wie nexnotes; Versionen von vorher und von Hand weiter „KI (MCP)“ bzw.
+ihre Quelle (Test `test_mcp_history.py`, e2e `mcp.spec.ts`).
+
+**MCP 23 Rückweg** (`einst-werkzeug/scratch/nexlore-module/rueckweg_mcp.sh`): Datenbank von 1.16.0 mit zwei Schlüsseln
+und je einer wartenden Rückfrage, Start dieser Fassung (Tabelle neu gebaut, Schlüssel B danach widerrufen, seine
+Rückfrage bleibt ohne Schlüssel), Kopie unter nexlore 1.16.0 (`nexlore-einst`, nur gestartet) mit uvicorn: Gesundheit
+200, `GET /api/mcp/requests` 200 mit beiden Rückfragen, kein Traceback; die Sicherung vor dem Neubau enthält die alte
+Tabelle mit `ON DELETE CASCADE`.
+
+Alte KI-Tests (`test_ai.py`, `test_ai_shared.py`) laufen über das Modul (dessen Transport, https im Internet, Notiz
+zwischen den Marken), mit diesen Änderungen aus Entscheidungen: neue Installation „Einer für alle“ (K2; Bestand mit
+eigenen Zugängen bleibt „Jedes Konto selbst“, im Test über `adopt`), OpenAI-Form nur mit `Authorization` (K9), „Was ging
+hinaus“ hält Anweisungen und Text statt des ganzen Rumpfs (K15). Playwright umgestellt (nicht ausgeführt):
+`ai.spec.ts`, `aishared.spec.ts`, `lore.spec.ts`, `mcp.spec.ts`, `apitokens.spec.ts`, `outward.spec.ts`,
+`mcprights.spec.ts`, `nexoidc.spec.ts`, Stand-in `fake-ai.mjs`.
+
+Neu dazu: `tests/test_mcp_bestand.py`, `tests/test_program_paths.py`, `tests/mcp_legacy.py`, `tests/test_verbinden_host.py`,
+`tests/test_mcp_history.py`. Fragen und Modulfehler: `einst-fragen/nexlore-module.md`.
 
 ### Durchgang „Einstellungen“ (25./26.11.2026)
 
