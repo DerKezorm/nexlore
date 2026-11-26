@@ -55,6 +55,14 @@ class Adapter(StandardAdapter):
         self.clients: dict[str, Any] = {}
         self.legacy: dict[str, str] = {}
         self.program: LegacyProgram | None = None
+        self._listen()
+
+    def _listen(self) -> None:
+        from app.routers import mcp as mcp_routes
+
+        self.heard: list[tuple[str, Any]] = []
+        self._listener = lambda event, found: self.heard.append((event, found.id))
+        mcp_routes.LISTENERS.append(self._listener)
 
     def start_older(self) -> None:
         """As 1.16.0 left it: an MCP key made in the interface, a connector with its refresh token, MCP opened by the
@@ -85,10 +93,29 @@ class Adapter(StandardAdapter):
         mcp_store.migrate(engine, GROUPS)
         self.legacy = {"hand": hand, "access": access}
         self.program = LegacyProgram(client.id, REDIRECT, refresh)
+        self._listen()
 
     def stop(self) -> None:
+        from app.routers import mcp as mcp_routes
+
         for client in self.clients.values():
             client.close()
+        if getattr(self, "_listener", None) in mcp_routes.LISTENERS:
+            mcp_routes.LISTENERS.remove(self._listener)
+
+    def notified(self) -> list[tuple[str, Any]]:
+        """Every call of nexlore's ``notify`` (``routers/mcp._notify``: the bell's list, webhook and mail), in order."""
+        return list(self.heard)
+
+    def change_arguments(self, request_id: Any, arguments: str) -> None:
+        from app.db import SessionLocal
+        from app.models import McpRequest
+
+        with SessionLocal() as db:
+            row = db.get(McpRequest, int(request_id))
+            assert row is not None
+            row.arguments = arguments
+            db.commit()
 
     def client(self, role: str) -> Any:
         from fastapi.testclient import TestClient

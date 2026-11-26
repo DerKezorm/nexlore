@@ -192,7 +192,7 @@ def test_arguments_changed_after_asking_are_refused(world: World) -> None:
 
 def test_arguments_changed_after_asking_never_run_on_the_modules_way_either(world: World) -> None:
     """The page of the shared module (``/api/connections/mcp``) allows through the same store: changed arguments end
-    the request as failed, nothing runs (TODO mcp 1.1.0: the module itself does not check the digest)."""
+    the request as failed, nothing runs (the module checks the digest since mcp 1.1.1)."""
     token = world.key("write", ask=True)
     number = ask_for_a_note(world, token)
     with SessionLocal() as db:

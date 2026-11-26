@@ -15,7 +15,6 @@ One class is both stores: ``nexschluessel.Store`` (``SchluesselStore``) and ``ne
 
 from __future__ import annotations
 
-import json
 import logging
 from collections.abc import Iterator
 from datetime import datetime, timedelta
@@ -65,7 +64,8 @@ class McpStore(SchluesselStore):
             return None
         account = found.account
         return Caller(
-            key_id=row.id,
+            # The key module's id (``mcp-<n>``, E33): the same key under one name on every page of both modules.
+            key_id=f"mcp-{row.id}",
             key_name=row.name,
             account_id=account.id,
             account_name=account.name,
@@ -282,14 +282,15 @@ class McpStore(SchluesselStore):
         if row is None:
             return None
         return ModuleRequest(
-            id=row.id, account_id=row.account_id, key_id=row.key_id, key_name=row.key_name, tool=row.tool,
+            id=row.id, account_id=row.account_id, key_id=f"mcp-{row.key_id}", key_name=row.key_name, tool=row.tool,
             arguments=row.arguments, digest=row.digest, status=row.status, created_at=row.created_at,
             expires_at=row.expires_at, decided_at=row.decided_at, decided_by=row.decided_by or "",
             result=row.result or None, summary=row.summary or "", dangerous=bool(row.dangerous),
         )
 
     def add_request(self, request: ModuleRequest) -> ModuleRequest:
-        row = McpRequest(account_id=int(request.account_id), key_id=int(request.key_id), key_name=request.key_name,
+        row = McpRequest(account_id=int(request.account_id), key_id=_key_number(request.key_id),
+                         key_name=request.key_name,
                          tool=request.tool, arguments=request.arguments, digest=request.digest, status=request.status,
                          created_at=request.created_at, expires_at=request.expires_at, summary=request.summary[:300],
                          dangerous=request.dangerous, result="")
@@ -312,33 +313,15 @@ class McpStore(SchluesselStore):
         query = select(func.count()).select_from(McpRequest).where(McpRequest.account_id == int(account_id),
                                                                    McpRequest.status == "waiting")
         if key_id is not None:
-            query = query.where(McpRequest.key_id == int(key_id))
+            query = query.where(McpRequest.key_id == _key_number(key_id))
         return int(self.db.scalar(query) or 0)
 
     def claim(self, request_id: Any, status: str, *, now: datetime, by: str = "") -> bool:
-        if status == "running" and not self._unchanged(request_id, now):
-            return False
         taken = self.db.execute(update(McpRequest).where(McpRequest.id == int(request_id),
                                                          McpRequest.status == "waiting")
                                 .values(status=status, decided_at=now, decided_by=by[:100]))
         self.db.expire_all()
         return bool(taken.rowcount == 1)
-
-    def _unchanged(self, request_id: Any, now: datetime) -> bool:
-        """Arguments that no longer match their digest never run: the request ends as failed (as in nexlore before;
-        TODO mcp 1.1.0: the module's ``approve`` keeps the digest but does not check it)."""
-        row = self.db.get(McpRequest, int(request_id))
-        if row is None or row.status != "waiting":
-            return True
-        try:
-            mcp.request_arguments(row)
-        except mcp.McpError as refusal:
-            self.db.execute(update(McpRequest).where(McpRequest.id == row.id, McpRequest.status == "waiting")
-                            .values(status="failed", decided_at=now, result=json.dumps({"message": refusal.text})))
-            self.db.commit()
-            logger.warning("MCP request changed after asking request_id=%s", row.id)
-            return False
-        return True
 
     def finish(self, request_id: Any, status: str, result: str | None, now: datetime) -> None:
         self.db.execute(update(McpRequest).where(McpRequest.id == int(request_id))

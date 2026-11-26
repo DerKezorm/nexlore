@@ -3,25 +3,24 @@
 PKCE and changing refresh tokens, and revoking (RFC 7009), all under ``/api/oauth`` as before, so that a connected
 program refreshes at the address it knows.
 
-Three ways stay nexlore's hulls over the module, for what they checked and answered before (E55; TODO mcp 1.1.0:
-the module's router takes neither the app's schema names nor its stricter return addresses): ``POST
-/api/oauth/register`` (403 ``access_denied`` while connectors are off, return addresses only with a host of plain
-letters, digits, dots and dashes, as before: no ``*.example.com``, no look-alike letters), ``POST /api/oauth/token``
-(a form, or JSON as before). And the consent of before, ``GET``/``POST /api/oauth/authorize``, as a thin hull over
-the module (``nexmcp.oauth.consent_info``/``consent``): its names in the API's description (``ConsentInfo``,
-``ConsentIn``; E53), its checks of the query and body and its refusals (E55: ``mcp_off`` 403 while connectors are
-off, ``oauth_client``, ``oauth_redirect``, ``oauth_pkce``, ``oauth_response_type`` 400, ``level_not_allowed`` 403,
+Since mcp 1.1.1 the module checks return addresses as strictly as nexlore did (a plain host or an IP, no
+``*.example.com``, no look-alike letters), checks the digest of a request's arguments when it is allowed, and takes
+JSON at the token endpoint: those hulls are gone. Two ways stay nexlore's small hulls over the module, for what they
+answered before and the module answers otherwise (E55): ``POST /api/oauth/register`` says 403 ``access_denied`` while
+connectors are off (the module: 404, as for all its OAuth ways), and the consent of before, ``GET``/``POST
+/api/oauth/authorize``, over ``nexmcp.oauth.consent_info``/``consent``: the fields of before in its answer
+(``client_name``, ``max_level``, ``spaces``) and in its body (``approve``, ``spaces``), which the module's
+``ConsentInfo``/``ConsentIn`` do not carry, and its refusals (``mcp_off`` 403 while connectors are off,
+``oauth_client``, ``oauth_redirect``, ``oauth_pkce``, ``oauth_response_type`` 400, ``level_not_allowed`` 403,
 ``invalid_input`` 422). The answer of ``GET`` carries the fields of before and the module's; ``POST`` takes the fields
-of before (``approve``, ``spaces``) and the module's (``allow``, ``areas``, ``options``, ``resource``).
+of before and the module's (``allow``, ``areas``, ``options``, ``resource``).
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import re
 from typing import Any
-from urllib.parse import parse_qsl, urlsplit
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse
@@ -44,36 +43,11 @@ def base_url(request: Request, db: Any) -> str:
     return settings_service.public_url(db) or str(request.base_url).rstrip("/")
 
 
-LOOPBACK = ("localhost", "127.0.0.1", "[::1]")
 #: The largest body a program sends to register or for tokens (the module's limit of a form).
 MAX_FORM = 16 * 1024
 #: Ways of the module this file answers itself.
-OWN_PATHS = ("/api/oauth/authorize", "/api/oauth/register", "/api/oauth/token")
+OWN_PATHS = ("/api/oauth/authorize", "/api/oauth/register")
 
-
-
-def valid_redirect(uri: Any) -> bool:
-    """HTTPS anywhere, or plain HTTP to the own machine; never a fragment, never a user in the address."""
-    if not isinstance(uri, str) or len(uri) > 2048 or any(ord(char) < 33 for char in uri):
-        return False
-    try:
-        # urlsplit throws on a broken bracket ("http://[::1/cb"), .port on a port that is not a number: both gave 500.
-        parts = urlsplit(uri)
-        hostname, _port = parts.hostname, parts.port
-    except ValueError:
-        return False
-    if parts.fragment or parts.username or parts.password or not hostname:
-        return False
-    # A name of letters, digits, dots and hyphens, or an address in brackets: no "*.example.com" or the like.
-    if not re.fullmatch(r"[a-z0-9.-]+|[0-9a-f:.]+", hostname):
-        return False
-    if parts.scheme == "https":
-        return True
-    host = parts.netloc.rsplit("@", 1)[-1].lower()
-    host = host if host.startswith("[") else host.split(":")[0]
-    if host.startswith("[::1]"):
-        host = "[::1]"
-    return parts.scheme == "http" and host in LOOPBACK
 
 
 def _oauth_answer(body: dict[str, Any], status: int = 200) -> JSONResponse:
@@ -104,40 +78,11 @@ async def register(request: Request) -> JSONResponse:
         except ValueError:
             return _oauth_answer({"error": "invalid_client_metadata", "error_description": "The body must be JSON."},
                                  400)
-        uris = body.get("redirect_uris") if isinstance(body, dict) else None
-        if isinstance(uris, list) and not all(valid_redirect(uri) for uri in uris):
-            return _oauth_answer({"error": "invalid_redirect_uri",
-                                  "error_description": "Give 1 to 10 redirect addresses: https, or http to localhost."},
-                                 400)
         try:
             made = nexmcp.oauth.register(store, CONFIG, body, client_ip(request), nexmcp_api._now())
         except nexmcp.OAuthError as refusal:
             return _oauth_answer(refusal.as_dict(), refusal.status)
     return _oauth_answer(made, 201)
-
-
-@router.post("/api/oauth/token", include_in_schema=False)
-async def token(request: Request) -> JSONResponse:
-    """The module's token endpoint; a program that sends JSON (taken before) is understood as well."""
-    from .mcp import CONFIG
-
-    raw = await _body(request)
-    if raw is None:
-        return _oauth_answer({"error": "invalid_request", "error_description": "The request is too large."}, 413)
-    try:
-        if request.headers.get("content-type", "").startswith("application/json"):
-            found = json.loads(raw or b"{}")
-            form = {key: str(value) for key, value in found.items()} if isinstance(found, dict) else {}
-        else:
-            form = dict(parse_qsl(raw.decode("utf-8"), keep_blank_values=True))
-    except (UnicodeDecodeError, ValueError):
-        return _oauth_answer({"error": "invalid_request", "error_description": "The body must be a form."}, 400)
-    with SessionLocal() as db:
-        store = McpStore(db, request)
-        try:
-            return _oauth_answer(nexmcp.oauth.token(store, CONFIG, form, base_url(request, db), nexmcp_api._now()))
-        except nexmcp.OAuthError as refusal:
-            return _oauth_answer(refusal.as_dict(), refusal.status)
 
 
 def forget() -> None:

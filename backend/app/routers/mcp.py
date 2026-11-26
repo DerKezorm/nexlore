@@ -16,6 +16,7 @@ from __future__ import annotations
 import json
 import logging
 import posixpath
+from collections.abc import Callable
 from datetime import datetime
 from typing import Annotated, Any
 
@@ -362,7 +363,7 @@ def _runner(tool: dict[str, Any]) -> Any:
 
     def run(ctx: Any, args: dict[str, Any]) -> Any:
         caller: Caller = ctx.caller.account
-        client = f"mcp-{ctx.caller.key_id}-{ctx.client}"
+        client = f"mcp-{caller.key_id}-{ctx.client}"
         if "run" in tool:
             who = Actor(name=caller.account.name, client=client, source=index.MCP)
             context = mcptools.Context(caller=caller, who=who, request=getattr(ctx.store, "http", None))
@@ -418,8 +419,16 @@ def _address(request: Request) -> str:
         return oauth.base_url(request, db)
 
 
+#: Who else hears of requests (the contract tests of the module: ``notified()``).
+LISTENERS: list[Callable[[str, Any], None]] = []
+
+
 def _notify(event: str, found: Any) -> None:
-    """A request waits: its account hears of it on its ways (webhook, mail), as before."""
+    """MCP 14: a request waits. The bell ("Neu" in the sidebar, ``RequestBellRow``) shows it from the list of waiting
+    requests, which the browser asks every minute; its account hears of it on its ways (webhook, mail), as before. A
+    decision needs no word: the bell's row goes with the next asking."""
+    for listener in LISTENERS:
+        listener(event, found)
     if event != "waiting":
         return
     from ..services import notify
@@ -429,9 +438,9 @@ def _notify(event: str, found: Any) -> None:
 
 
 #: The module's routes: ``POST /api/mcp``, OAuth for programs under ``/api/oauth`` and its metadata, the account's
-#: pages under ``/api/connections/mcp`` (rights per tool, requests) and the operator's. The consent of before
-#: (``GET``/``POST /api/oauth/authorize``), the registration and the token endpoint stay nexlore's hulls in
-#: ``routers/oauth.py``: their names and checks of before (E53, E55). TODO mcp 1.1.0 (see there).
+#: pages under ``/api/connections/mcp`` (rights per tool, requests) and the operator's; the token endpoint is the
+#: module's since mcp 1.1.1 (JSON too). The consent of before (``GET``/``POST /api/oauth/authorize``) and the
+#: registration stay nexlore's small hulls in ``routers/oauth.py`` for the fields and codes of before (E55).
 module_router = nexmcp_api.router(
     config=CONFIG, store=mcp_store.store, account=require_account, operator=require_operator, address=_address,
     sender=client_ip, notify=_notify,
