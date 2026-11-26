@@ -16,6 +16,10 @@ test('a backup is downloaded only with the password once more, and uploaded agai
   const card = page.locator('[data-card="backups"]')
   const rows = card.getByTestId('backup-list').locator('li')
   await card.getByRole('button', { name: 'Back up now' }).click()
+  // Since sicherung 1.0.3 (E63) a window asks for an optional note; the backup comes with "Back up".
+  const made = page.getByRole('dialog', { name: 'Back up now' })
+  await made.getByLabel('Note').fill('Before the e2e download')
+  await made.getByRole('button', { name: 'Back up', exact: true }).click()
   // Late in a full run the vault holds some 750 files; making the backup took 7 to 8 s once (05.10.2026).
   await expect(card.getByText('Backup created.')).toBeVisible({ timeout: 30_000 })
   const row = rows.filter({ hasText: 'by hand' }).first()
