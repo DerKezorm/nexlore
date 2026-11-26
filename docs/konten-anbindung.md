@@ -82,6 +82,10 @@ Einstellungen (18 Dateien) 74 von 74.
 ui `f4ab8ba` (E56, `Table` nimmt je Zeile nur `data-…`; nexlore übergibt dort nichts): ruff 0; pytest 2465 bestanden,
 3 übersprungen (11:44); lint 0; vitest 89 Dateien, 730 Tests; build 0.
 
+E57 (sprachen 1.0.1 mit Rückfrage beim Entfernen, konten 1.1.1, schluessel 1.0.1): ruff 0; pytest 2465 bestanden,
+3 übersprungen (11:42); lint 0; vitest 89 Dateien, 733 Tests; build 0; Playwright gezielt für die Einstellungen samt
+`languages.spec.ts` (18 Dateien) 74 von 74.
+
 
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
 `konten` (`3c55402`): **`konten` 1.0.0, `ui` 1.0.0, `oidc` 1.1.2, `post` 1.0.0**, kopiert mit `tools/sync.py copy`,
