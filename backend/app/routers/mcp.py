@@ -625,7 +625,8 @@ def _refused(exc: nexschluessel.KeyRefused) -> Exception:
     return error(code, text, status)
 
 
-@router.get("/api/mcp/keys", response_model=KeysOut)
+# The name and summary of before in the description (E53): the function was ``keys`` until the key module.
+@router.get("/api/mcp/keys", response_model=KeysOut, operation_id="keys_api_mcp_keys_get", summary="Keys")
 def keys_of_account(account: Account, db: DbSession) -> KeysOut:
     found = keys.listing(SchluesselStore(db), CONFIG, account.id)
     rows = {row.id: row for row in db.scalars(select(McpKey).where(McpKey.account_id == account.id))}

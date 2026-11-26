@@ -33,7 +33,10 @@ def _error(code: str, text: str, status: int) -> Exception:
 
 
 router = APIRouter()
+# The description of the interface keeps the names nexlore's own backup routes had (E53): the schemas of their bodies
+# in both routers, and the operationIds and summaries of the old routes.
 router.include_router(routes.router(operator=OperatorAccount, confirm=_confirm, error=_error,
-                                    prefix="/api/server/storage"))
+                                    prefix="/api/server/storage", schema_names=routes.FORMER_SCHEMAS))
 router.include_router(routes.legacy_router(prefix="/api/backups", password_header="x-nexlore-password",
-                                           operator=OperatorAccount, confirm=_confirm, error=_error))
+                                           operator=OperatorAccount, confirm=_confirm, error=_error,
+                                           **routes.former_names("/api/backups")))

@@ -15,9 +15,11 @@ import shutil
 import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from sicherung_contract import StandardAdapter
+
+from app.vendor.nexsicherung import routes
 
 TAB = {"X-Nexlore-Client": "tab-tests000"}
 
@@ -27,6 +29,19 @@ class Adapter(StandardAdapter):
     prefix = "/api/server/storage"
     legacy_prefix = "/api/backups"
     legacy_header = "x-nexlore-password"
+    # E53: the names nexlore's own backup routes had before the module, as given to the routers (routers/backups.py).
+    _names = routes.former_names("/api/backups")
+    operation_ids: ClassVar[dict[str, str]] = _names["operation_ids"]
+    summaries: ClassVar[dict[str, str]] = _names["summaries"]
+    schema_names: ClassVar[dict[str, str]] = _names["schema_names"]
+    openapi_path = "/api/openapi.json"
+
+    def description(self) -> dict[str, Any]:
+        """nexlore publishes its description only with NEXLORE_API_DOCS (off in the tests): its own app.openapi()."""
+        from app.main import app
+
+        found: dict[str, Any] = app.openapi()
+        return found
 
     def start(self) -> None:
         from fastapi.testclient import TestClient

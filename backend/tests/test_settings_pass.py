@@ -486,3 +486,17 @@ def test_the_security_answer_says_whether_a_passkey_can_be_added(client: TestCli
     with SessionLocal() as db:
         settings_service.save(db, {"public_url": "http://localhost:8471"})
     assert on_localhost.get("/api/auth/me").json()["passkeys_can_add"] is False
+
+
+def test_the_description_keeps_the_names_nexlores_own_routes_had() -> None:
+    """Plan E53: where nexlore's own routes are described (``/api/openapi.json`` with NEXLORE_API_DOCS), they keep the
+    operationIds, summaries and schema names of before; the modules' contract tests hold theirs."""
+    described = app.openapi()
+    keys = described["paths"]["/api/mcp/keys"]["get"]
+    assert (keys["operationId"], keys["summary"]) == ("keys_api_mcp_keys_get", "Keys")
+    note = described["paths"]["/api/plugins/note"]["put"]["requestBody"]["content"]["application/json"]["schema"]
+    assert note == {"$ref": "#/components/schemas/NoteIn"}
+    restore = described["paths"]["/api/backups/{name}/restore"]["post"]
+    assert (restore["operationId"], restore["summary"]) == ("restore_api_backups__name__restore_post", "Restore")
+    created = described["paths"]["/api/backups"]["post"]["requestBody"]["content"]["application/json"]["schema"]
+    assert created["$ref"].endswith("CreateIn")
