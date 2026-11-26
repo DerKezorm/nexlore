@@ -85,6 +85,9 @@ ui `f4ab8ba` (E56, `Table` nimmt je Zeile nur `data-…`; nexlore übergibt dort
 E57 (sprachen 1.0.1 mit Rückfrage beim Entfernen, konten 1.1.1, schluessel 1.0.1): ruff 0; pytest 2465 bestanden,
 3 übersprungen (11:42); lint 0; vitest 89 Dateien, 733 Tests; build 0; Playwright gezielt für die Einstellungen samt
 `languages.spec.ts` (18 Dateien) 74 von 74.
+E57 A4 (schluessel 1.0.2 aus `35ed594`: Platz in der Karte aller Schlüssel, nexlore legt dort nichts hin; Vorlage des
+Tests übernommen): ruff 0; pytest 2465 bestanden, 3 übersprungen (11:34); lint 0; vitest 89 Dateien, 734 Tests;
+build 0; Seite unverändert, deshalb kein Playwright.
 
 
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
