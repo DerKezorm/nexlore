@@ -126,6 +126,8 @@ def test_the_operator_lock_is_closed_from_the_start_and_stands_above_the_account
     assert anna.get("/api/auth/me").json()["ai_ready"] is False
     refused = anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE})
     assert (refused.status_code, refused.json()["detail"]["code"]) == (403, "ai_off")
+    # The lock is the first word, before anything about the text.
+    assert anna.post("/api/ai/run", json={"task": "spelling", "text": "Two words"}).json()["detail"]["code"] == "ai_off"
     assert anna.post("/api/ai/models", json={}).status_code == 403
     assert service.requests == []
     open_lock(client)
@@ -155,6 +157,13 @@ def test_the_access_keeps_its_key_to_itself_and_is_on_only_when_complete(
     assert service.last_body()["model"] == "model-b"
     # To the address checked for the name, the name kept in Host (review before 1.0.0).
     assert (sent.headers["host"], sent.url.path) == ("ai.example.test", "/v1/chat/completions")
+    # Switched off by the person: the route says so with its code of before, and nothing goes out.
+    count = len(service.requests)
+    assert anna.put("/api/ai", json={"active": False}).status_code == 200
+    refused = anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE})
+    assert (refused.status_code, refused.json()["detail"]["code"]) == (409, "ai_not_on")
+    assert len(service.requests) == count and anna.get("/api/auth/me").json()["ai_ready"] is False
+    assert anna.put("/api/ai", json={"active": True}).status_code == 200
     # An access that becomes incomplete switches itself off.
     assert anna.put("/api/ai", json={"url": ""}).json()["access"]["active"] is False
     assert anna.put("/api/ai", json={"url": "ftp://ai.example.test"}).json()["detail"]["code"] == "ai_address_invalid"
