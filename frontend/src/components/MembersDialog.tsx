@@ -3,7 +3,6 @@
  * opens it to reset rights of a space it does not read (then without inviting).
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { showModalOnce } from '../lib/dialog'
 
@@ -11,7 +10,7 @@ import { authApi, type Members, type NewInvite, type Role } from '../api/client'
 import { formatDay } from '../lib/markdown'
 import { useAuth } from '../state/auth'
 import { useStore } from '../state/store'
-import { Button, CopyLink, Feedback, Input, Select } from './settings/ui'
+import { Button, CopyLink, Feedback, Input, Select } from './dialogParts'
 import { useAction } from './settings/useAction'
 import { Person } from './Person'
 import { Symbol } from './Symbol'
@@ -203,8 +202,8 @@ export function MembersDialog({ space, onClose }: { space: string; onClose: () =
                 </label>
               )}
               <div className="sm:col-span-3">
-                <Button type="submit" primary busy={busy} icon={Link2}>
-                  {t('members.invite.create')}
+                <Button type="submit" primary busy={busy}>
+                  <Symbol name="link" /> {t('members.invite.create')}
                 </Button>
               </div>
             </form>

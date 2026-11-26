@@ -41,7 +41,7 @@ describe('the post texts', () => {
     it(`are all in the app in ${language}, word for word`, async () => {
       await changeLanguage(language)
       for (const [key, text] of leaves(tree as Tree)) {
-        const expected = text.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(fill[name] ?? ''))
+        const expected = text.replace(/\{\{(\w+)\}\}/g, (_, name: string) => fill[name] ?? '')
         expect(i18n.t(key, values), key).toBe(expected)
       }
     })

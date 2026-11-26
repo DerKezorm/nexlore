@@ -1,13 +1,11 @@
 /**
- * nexlore's own question before something goes, instead of the browser's `confirm`: the `ConfirmDialog` of the ui kit
- * (plan "Einstellungen", E31: the windows of the settings, and the same window wherever else it opens). Focus stays
- * inside, Escape and a click beside it cancel; "Cancel" and the button that does it, red where something goes.
+ * nexlore's own question before something goes, instead of the browser's `confirm`: a modal `<dialog>` (focus stays
+ * inside, Escape cancels), the safe choice focused first.
  */
-import { AlertTriangle, Check, Trash2 } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { ConfirmDialog as KitConfirmDialog } from '../vendor/nexui'
+import { Symbol } from './Symbol'
 
 type Props = {
   open: boolean
@@ -24,28 +22,57 @@ type Props = {
 
 export function ConfirmDialog({ open, title, children, confirm, danger = false, busy = false, onConfirm, onCancel }: Props) {
   const { t } = useTranslation()
-  if (!open) return null
+  const dialog = useRef<HTMLDialogElement>(null)
+  const cancel = useRef<HTMLButtonElement>(null)
+  // Its own id: two dialogs on one page must not both be named by the first one's title.
+  const titleId = useId()
+
+  useEffect(() => {
+    const element = dialog.current
+    if (!element) return
+    if (open && !element.open) {
+      element.showModal()
+      cancel.current?.focus()
+    } else if (!open && element.open) element.close()
+  }, [open])
+
   return (
-    <KitConfirmDialog
-      title={title}
-      confirm={{ label: confirm, kind: danger ? 'danger' : 'primary', icon: danger ? Trash2 : Check }}
-      cancel={t('common.cancel')}
-      closeLabel={t('common.close')}
-      busy={busy}
-      onConfirm={() => {
-        if (!busy) onConfirm()
-      }}
-      onCancel={() => {
+    <dialog
+      ref={dialog}
+      aria-labelledby={titleId}
+      onCancel={(event) => {
+        event.preventDefault()
         if (!busy) onCancel()
       }}
-      testId="confirm-dialog"
+      onClick={(event) => {
+        // A click on the backdrop (the dialog element itself, outside its box) cancels.
+        if (event.target === dialog.current && !busy) onCancel()
+      }}
+      className="m-auto w-[min(28rem,calc(100vw-2rem))] rounded-2xl border border-ink-700 bg-ink-900 p-0 text-mist-200 shadow-2xl backdrop:bg-scrim"
     >
-      {children && (
-        <div className="flex gap-2 text-sm text-[var(--nexui-text)]">
-          <AlertTriangle aria-hidden className={'mt-0.5 h-4 w-4 shrink-0 ' + (danger ? 'text-[var(--nexui-danger)]' : 'text-[var(--nexui-warn)]')} />
-          <div className="min-w-0">{children}</div>
+      <div className="p-5">
+        <h2 id={titleId} className="flex items-center gap-2 text-base font-semibold text-mist-100">
+          <Symbol name="alert" className={'h-4 w-4 ' + (danger ? 'text-bad-500' : 'text-warn-500')} />
+          {title}
+        </h2>
+        {children && <div className="mt-2 text-sm text-mist-400">{children}</div>}
+        <div className="mt-5 flex justify-end gap-2">
+          <button ref={cancel} type="button" disabled={busy} onClick={onCancel} className="rounded-full px-4 py-1.5 text-sm text-mist-300 hover:bg-ink-850">
+            {t('common.cancel')}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onConfirm}
+            className={
+              'rounded-full px-4 py-1.5 text-sm font-semibold disabled:opacity-50 ' +
+              (danger ? 'bg-bad-500 text-white hover:opacity-90' : 'bg-accent-500 text-on-accent hover:bg-accent-400')
+            }
+          >
+            {confirm}
+          </button>
         </div>
-      )}
-    </KitConfirmDialog>
+      </div>
+    </dialog>
   )
 }
