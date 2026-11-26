@@ -1029,6 +1029,8 @@ class VersionOut(BaseModel):
     source: str
     author: str | None
     size: int
+    #: The key or program an AI program wrote with (source ``mcp``, since MCP decision 15); None before and otherwise.
+    key_name: str | None = None
 
 
 @router.get("/versions", response_model=list[VersionOut])
@@ -1040,7 +1042,7 @@ def versions(path: PathQuery, account: Account) -> list[VersionOut]:
         raise _fail(exc) from exc
     return [
         VersionOut(id=row.id, path=row.path, created_at=row.created_at, updated_at=row.updated_at, source=row.source,
-                   author=row.author, size=row.size)
+                   author=row.author, size=row.size, key_name=row.key_name)
         for row in rows
     ]
 

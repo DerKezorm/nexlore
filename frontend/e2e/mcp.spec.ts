@@ -94,7 +94,8 @@ test('a key made on the account page proposes a draft that the note takes over',
   expect(onDisk('Zoo/Draft me.md')).toBe('# Draft me\r\n\r\nKept line.\r\nNew line.\r\n')
   await page.setViewportSize({ width: 1400, height: 900 })
   await page.getByRole('tab', { name: 'Versions' }).click()
-  await expect(page.getByText('AI (MCP)').first()).toBeVisible()
+  // MCP decision 15: the history names the key, as nexnotes does.
+  await expect(page.getByText('MCP · Agent').first()).toBeVisible()
   expect(problems).toEqual([])
 })
 

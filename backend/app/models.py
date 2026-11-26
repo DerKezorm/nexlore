@@ -350,6 +350,9 @@ class Version(Base):
     hash: Mapped[str] = mapped_column(String(64))
     size: Mapped[int] = mapped_column(Integer)
     content: Mapped[bytes] = mapped_column(LargeBinary)
+    #: The name of the key or program an AI program wrote with (source ``mcp``, MCP decision 15: "MCP · <key>" in the
+    #: history, as nexnotes shows it); empty for every other version and for those before.
+    key_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
 
 class Lock(Base):

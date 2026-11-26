@@ -629,6 +629,7 @@
       "restore": "zurückgeholt",
       "import": "importiert",
       "mcp": "KI (MCP)",
+      "mcpKey": "MCP · {{key}}",
       "plugin": "Plugin",
       "api": "Programm (API)"
     },

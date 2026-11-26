@@ -629,6 +629,7 @@
       "restore": "restored",
       "import": "imported",
       "mcp": "AI (MCP)",
+      "mcpKey": "MCP · {{key}}",
       "plugin": "plugin",
       "api": "Program (API)"
     },

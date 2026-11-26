@@ -364,11 +364,16 @@ def _runner(tool: dict[str, Any]) -> Any:
     def run(ctx: Any, args: dict[str, Any]) -> Any:
         caller: Caller = ctx.caller.account
         client = f"mcp-{caller.key_id}-{ctx.client}"
-        if "run" in tool:
-            who = Actor(name=caller.account.name, client=client, source=index.MCP)
-            context = mcptools.Context(caller=caller, who=who, request=getattr(ctx.store, "http", None))
-            return _translated(tool["run"])(context, dict(args))
-        return _translated(_call)(caller, client, name, dict(args))
+        # MCP decision 15: what this call writes stands in the history as "MCP · <key>".
+        named = index.VIA_KEY.set(ctx.caller.key_name)
+        try:
+            if "run" in tool:
+                who = Actor(name=caller.account.name, client=client, source=index.MCP)
+                context = mcptools.Context(caller=caller, who=who, request=getattr(ctx.store, "http", None))
+                return _translated(tool["run"])(context, dict(args))
+            return _translated(_call)(caller, client, name, dict(args))
+        finally:
+            index.VIA_KEY.reset(named)
 
     return run
 
