@@ -10,8 +10,8 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  // The shared modules are checked in their own repository and never changed here (as ruff leaves out backend/app/vendor).
-  { ignores: ['**/dist/**', '**/dist-editor/**', 'src/vendor/**'] },
+  // The shared sign-in module is copied in unchanged and linted at its source.
+  { ignores: ['**/dist/**', '**/dist-editor/**', 'src/vendor/nexoidc/**'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

@@ -18,8 +18,5 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["vite/client", "vitest/globals"]
   },
-  "include": ["src"],
-  // TODO sicherung 1.0.1: the module's own test has three unused parameters (questions file, module error); vitest
-  // still runs it, only the type check leaves it out until the module is fixed.
-  "exclude": ["src/vendor/nexsicherung/sicherung.test.tsx"]
+  "include": ["src"]
 }

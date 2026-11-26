@@ -16,8 +16,8 @@ comments, locks)“. Ein Umbenennen ohne Vorbereitung nähme jedem Konto seine G
 
 ### Durchgang „Einstellungen“ (25./26.11.2026)
 
-Nach dem Bauplan in nexlore `Development/nexapps/Baupläne/Bauplan Einstellungen.md` (samt E1 bis E34). Module aus
-`bauplaene-stand` `bef0132` (je `tools/sync.py copy`, `check` grün, Vorlagen mit Kopfzeile `// Vorlage <Paket>
+Nach dem Bauplan in nexlore `Development/nexapps/Baupläne/Bauplan Einstellungen.md` (samt E1 bis E38). Module aus
+`bauplaene-stand` `b0d3618` (je `tools/sync.py copy`, `check` grün, Vorlagen mit Kopfzeile `// Vorlage <Paket>
 <Fassung>`): **`ui` 1.1.0, `log` 1.0.0, `sicherung` 1.0.1, `konten` 1.1.0, `oidc` 1.2.0, `post` 1.1.0,
 `schluessel` 1.0.0**. App-Version unverändert 1.16.0, kein Release.
 
@@ -45,14 +45,14 @@ Neue Spalten (nur ergänzend, Sicherung davor wie bisher): `accounts.deleted_at`
 Kontos (E24), Bestand ohne Hell/Dunkel-Wahl behält „dunkel“. Gelöschte Konten sind überall draußen
 (`security.account_out`, Benachrichtigungen, Einladen per Name) und stehen in keiner Mitgliederliste, nicht im
 @-Vorschlag, bekommen kein Recht (E33); ihre Mitgliedschaften warten aufs Zurückholen und gehen beim endgültigen
-Löschen mit. Passwortfelder nur mit den Worten des Moduls (`FIELDS`). Browser-Mitteilungen (E34) hat nexlore nicht.
+Löschen mit. Passwortfelder nur mit den Worten des Moduls (`FIELDS`). Browser-Mitteilungen (E34) hat nexlore nicht. Seit E38 hört der Store
+`on_shut_out`/`on_back`; eine Benachrichtigung fragt beim Hinausgehen `notify.reaches` und erreicht ein
+gesperrtes oder gelöschtes Konto nie, Webhook und Wahl bleiben. Wort der App: `settings.things`/`settings.thingsDative`
+(Notizen/Notizen).
 
 Umwege: keine offenen (der Umweg für sicherung 1.0.0 entfiel mit 1.0.1). Fragen: `einst-fragen/nexlore.md`.
 
-Läufe am Ende (26.11.2026, `reihe.sh nexlore ende`): ruff 0; pytest 2342 bestanden, 3 übersprungen (11:13); lint 0;
-vitest 87 Dateien, 687 Tests; build 0. Playwright (`npm run e2e`): 334 von 336 bestanden (15,6 min); die zwei roten
-(`canvas.spec.ts:398`, `sidebar.spec.ts:328`, beide warten auf eine Zeile der Seitenleiste, die sich unter vielen
-Bereichen früherer Tests neu zeichnet) laufen allein je zweimal grün und berühren die Einstellungen nicht.
+LÄUFE_PLATZHALTER
 
 
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
