@@ -14,6 +14,26 @@ comments, locks)“. Ein Umbenennen ohne Vorbereitung nähme jedem Konto seine G
 
 ## 0. Was gebaut ist / was fehlt
 
+### Durchgang „Module“ (26.11.2026)
+
+Module aus `bauplaene-module` (Zweig `einst-module`, 21844cf, sicherung de70ac2), je `tools/sync.py copy`, `check` ok.
+App-Version unverändert 1.16.0, kein Release.
+
+| Modul | Fassung | was die App gebaut hat | alte Wege als Hüllen | Umwege |
+|---|---|---|---|---|
+| ui | 1.1.1 | `AboutPage showUpdates` | – | – |
+| sicherung | 1.0.4 | Zeit in Klammern (E62), Fenster „Jetzt sichern“ mit Notiz (E63, e2e `backups.spec.ts`), gesperrte Archive (E64) | `/api/backups` wie bisher | – |
+| schluessel | 1.1.0 | `ai_allowed` im Store (MCP-Entscheidung 10, über `nexki.chain.for_programs`); Vorlage von Hand | `/api/api-tokens`, `/api/mcp/keys` | – |
+| updates | 0.1.1 | `services/updates.py` konfiguriert das Modul (Schalter `update_check`, `notify_version`, Glocke `notify.operators`, Wörter des Moduls DE/EN), `run_forever` beim Start, Kästchen bei der Einrichtung (U1), Über-Seite mit `useUpdates`; Projektseite leer (U18) | `/api/about…` mit den Namen von 1.16.0 (E53) | – |
+| mcp | 1.1.0 | `services/mcp_store.py` (Store über `mcp_keys`, `oauth_clients`, `oauth_codes`, `mcp_requests`, neu `mcp_spent`; Spalten `mcp_keys.refreshed_at`, `oauth_codes.resource/extras`, `mcp_requests.decided_by/summary/dangerous`); `routers/mcp.py` `CONFIG` mit allen 57 Werkzeugen von 1.16.0 (Namen, Schemas, Gruppen, Stufen), Antworten von vorher (404 aus, `key_invalid`, 16 MB, 100/50 Rückfragen, 6 MB); Wanderung `mcp_110_migrated`: alte Schlüssel und Programme bekommen die alten Vorgaben (ändern fragt, riskant verbietet) als eigene Rechte; `mcp_requests` ohne Verknüpfung zum Schlüssel neu gebaut (Rückfrage überlebt den Widerruf); Oberfläche `ToolRights`, `PendingRequests`, `McpOperatorSettings`, `ConsentPage` (`/oauth/authorize`), `RequestPage` (`/mcp/requests/<id>`), `RequestBellRow` in „Neu“ | `/api/mcp/keys`, `/api/mcp/tools`, `/api/mcp/blocked`, `PUT /api/mcp/keys/{id}/rights`, `/api/mcp/requests…` (über das Modul, alte Form und Kennungen); `/api/oauth/authorize` (E53/E55), `/register`, `/token` | `TODO mcp 1.1.0`: Hüllen für Zustimmung, Registrierung, Token; Prüfsumme beim Erlauben im Store (Fragen 1 bis 4) |
+| ki | 0.1.0 | `services/ki_store.py` (Store über `ai_*` der Einstellungen und Konten, neu `ai_shared_api`, Brems-Tageswerte, `Account.ai_api`, `ai_mine_off`, `ai_events.to/manual/chars/outcome`), `adopt` beim Start, Wege `/api/server/ai`, `/api/me/ai`, `ai.run` über `nexki.ask` mit `frame`; Bereich „KI“ unter Mein Konto (E61) mit `AiAccountArea`, Server › KI-Anbieter mit `AiProviderArea` und nexlores Karte „Frag Lore und Bedeutung“ (`LoreCard`); Lore (Streaming, Werkzeuge) und Vektoren bleiben nexlores Abruf (K12) | `/api/ai…` | Fragen 8 bis 11: zwei Moduldateien nicht committet (Hook), 20 alte KI-Tests rot |
+| verbinden | 0.1.1 | nicht begonnen | – | Frage 12 |
+
+Neu dazu: `tests/test_mcp_bestand.py` (Datenbank von 1.16.0 mit Schlüssel, Programm samt verbrauchtem Refresh-Token und
+wartender Rückfrage), `tests/test_program_paths.py` (Programme ohne Tab-Kopf an `/api/oauth/register|token|revoke`,
+`/api/mcp`; eine Seite ohne Tab bleibt 400), `tests/mcp_legacy.py`. Fragen und Modulfehler:
+`einst-fragen/nexlore-module.md`.
+
 ### Durchgang „Einstellungen“ (25./26.11.2026)
 
 Nach dem Bauplan in nexlore `Development/nexapps/Baupläne/Bauplan Einstellungen.md` (samt E1 bis E38). Module aus
