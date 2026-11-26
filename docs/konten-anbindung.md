@@ -52,12 +52,13 @@ gesperrtes oder gelöschtes Konto nie, Webhook und Wahl bleiben. Wort der App: `
 
 Umwege: keine offenen (der Umweg für sicherung 1.0.0 entfiel mit 1.0.1). Fragen: `einst-fragen/nexlore.md`.
 
-Läufe am Ende (26.11.2026, Module `b0d3618`, `reihe.sh nexlore ende`): ruff 0; pytest 2347 bestanden, 3 übersprungen
-(11:14); lint 0; vitest 87 Dateien, 707 Tests; build 0. Playwright (`npm run e2e`): 334 von 336 (15,0 min). Rot waren
-`nexoidc.spec.ts:167` (Test 35 erwartete noch die Schrittliste hinter der Issuer-Frage, die das Modul seit E33 nicht
-mehr zeigt; zurück auf die ursprüngliche Prüfung, dazu „Token leer nach Erfolg“) und `sidebar.spec.ts:328` (wartet auf
-eine Zeile der Seitenleiste, die sich unter vielen Bereichen früherer Tests neu zeichnet; berührt die Einstellungen
-nicht). Danach `nexoidc.spec.ts` ganz und `sidebar.spec.ts:328` allein: 9 von 9 grün.
+Nacharbeit nach E44 und E39: Gelöschte Mitglieder zählen in den Rechten nicht (`rights.member_count`,
+`spaces_with_members`; ein Bereich, dessen einziges Mitglied gelöscht ist, ist für 30 Tage des Betreibers). Unter
+„Grenzen“ heißt das Feld „Speicher für neue Konten“ (leer = ohne Grenze, gespeichert wie bisher als `quota_mb`). Alle
+Texte (Oberfläche, Anleitung, „Was ist neu“-Orte, README, docs, Mails, API-Meldungen) zeigen auf die neuen Orte und
+Wörter; Wächter `tests/test_references.py`. Alter Betreiberweg `/api/admin/api-tokens`: `prefix` leer (E40).
+
+LÄUFE_PLATZHALTER
 
 
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
