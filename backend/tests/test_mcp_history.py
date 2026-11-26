@@ -6,13 +6,21 @@ only "AI (MCP)"."""
 from __future__ import annotations
 
 import zlib
+from pathlib import Path
 
+import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import select
 
 from app.db import SessionLocal
 from app.models import File, Version, utcnow
 
-from .test_mcp import World, call, value, world  # noqa: F401  (the fixture)
+from .test_mcp import World, call, value
+
+
+@pytest.fixture
+def world(client: TestClient, account: object, vault: Path) -> World:
+    return World(client, vault)
 
 
 def _history(world: World, path: str) -> list[dict]:
