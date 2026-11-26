@@ -200,12 +200,12 @@ def people(db: Session, space_id: int, words: str, limit: int = 8) -> list[str]:
     members = (
         select(Account.name)
         .join(Membership, Membership.account_id == Account.id)
-        .where(Membership.space_id == space_id)
+        .where(Membership.space_id == space_id, Account.deleted_at.is_(None))
     )
     names = set(db.scalars(members))
     if not names:
-        # A space without members is the operators'.
-        names = set(db.scalars(select(Account.name).where(Account.role == OPERATOR)))
+        # A space without members is the operators'. A deleted account is offered nowhere (plan E33).
+        names = set(db.scalars(select(Account.name).where(Account.role == OPERATOR, Account.deleted_at.is_(None))))
     folded = words.casefold()
     found = [name for name in names if folded in name.casefold()]
     found.sort(key=lambda name: (not name.casefold().startswith(folded), name.casefold()))

@@ -58,11 +58,13 @@ def _space(db: DbSession, account: AccountRow, name: str, *, operator_may: bool 
 
 
 def _members(db: DbSession, space_id: int) -> list[Any]:
+    """The members to show. A deleted account (30 days to bring back) keeps its membership for coming back, but is
+    shown nowhere, gets nothing and is given nothing (plan E33)."""
     return list(
         db.execute(
             select(Membership, AccountRow)
             .join(AccountRow, AccountRow.id == Membership.account_id)
-            .where(Membership.space_id == space_id)
+            .where(Membership.space_id == space_id, AccountRow.deleted_at.is_(None))
             .order_by(AccountRow.name)
         ).all()
     )
@@ -73,7 +75,9 @@ def _managers_left(db: DbSession, space_id: int, without: int) -> int:
         db.scalar(
             select(func.count())
             .select_from(Membership)
-            .where(Membership.space_id == space_id, Membership.role == MANAGE, Membership.account_id != without)
+            .join(AccountRow, AccountRow.id == Membership.account_id)
+            .where(Membership.space_id == space_id, Membership.role == MANAGE, Membership.account_id != without,
+                   AccountRow.deleted_at.is_(None))
         )
         or 0
     )
@@ -198,6 +202,9 @@ def set_member(
 @router.delete("/spaces/{name}/members/{person}", status_code=204, summary="Take an account out of the space")
 def remove_member(name: SpaceName, person: AccountName, account: Account, db: DbSession) -> None:
     target = accounts.by_name(db, person)
+    if target is not None and target.deleted_at is not None:
+        # Deleted (30 days to bring back): its membership waits for its return, out of sight like an unknown name.
+        target = None
     leaving = target is not None and target.id == account.id
     if leaving:
         space = rights.space_named(db, name)

@@ -282,3 +282,47 @@ def test_the_old_key_ways_answer_as_before_through_the_key_module(client: TestCl
     assert again.status_code == 404 and again.json()["detail"]["code"] == "not_found"
     assert anna.delete(f"/api/mcp/keys/{low.json()['key']['id']}").status_code == 204
     assert anna.get("/api/mcp/keys").json()["keys"] == []
+
+
+def test_a_deleted_account_keeps_its_memberships_out_of_sight_until_it_comes_back(
+    client: TestClient, operator: Account
+) -> None:
+    from app.models import MANAGE, Membership, Space
+    from app.services import comments
+
+    assert client.post("/api/spaces", json={"name": "Team"}).status_code == 201
+    person("anna")
+    anna_id = row_of("anna").id
+    with SessionLocal() as db:
+        space_id = db.scalar(select(Space.id).where(Space.folder == "Team"))
+        db.add(Membership(space_id=space_id, account_id=anna_id, role=MANAGE))
+        db.commit()
+
+    def shown() -> list[str]:
+        return [entry["name"] for entry in client.get("/api/spaces/Team/members").json()["members"]]
+
+    def offered() -> list[str]:
+        with SessionLocal() as db:
+            return comments.people(db, space_id, "")  # type: ignore[arg-type]
+
+    assert "anna" in shown() and "anna" in offered()
+    confirm = {"current_password": PASSWORD}
+    assert client.request("DELETE", f"/api/accounts/{anna_id}", json=confirm).status_code == 204
+    # Out of sight, offered for nobody's @, not to be given a right or taken out; the membership waits.
+    assert "anna" not in shown() and "anna" not in offered()
+    given = client.put("/api/spaces/Team/members/anna", json={"role": "read"})
+    assert given.status_code == 202 and given.json()["invited"] is True
+    assert client.delete("/api/spaces/Team/members/anna").status_code == 404
+    with SessionLocal() as db:
+        assert db.get(Membership, (space_id, anna_id)).role == MANAGE  # type: ignore[union-attr]
+    # Brought back: there again, with its right.
+    assert client.post(f"/api/accounts/{anna_id}/restore", json=confirm).status_code == 200
+    assert "anna" in shown()
+    # Gone for good: the memberships go with it.
+    assert client.request("DELETE", f"/api/accounts/{anna_id}", json=confirm).status_code == 204
+    with SessionLocal() as db:
+        db.get(Account, anna_id).deleted_at -= timedelta(days=31)  # type: ignore[union-attr, operator]
+        db.commit()
+    _purge_deleted_accounts()
+    with SessionLocal() as db:
+        assert db.get(Membership, (space_id, anna_id)) is None
