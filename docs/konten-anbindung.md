@@ -17,7 +17,7 @@ comments, locks)“. Ein Umbenennen ohne Vorbereitung nähme jedem Konto seine G
 ### Durchgang „Einstellungen“ (25./26.11.2026)
 
 Nach dem Bauplan in nexlore `Development/nexapps/Baupläne/Bauplan Einstellungen.md` (samt E1 bis E38). Module aus
-`bauplaene-stand` `6edff85` (je `tools/sync.py copy`, `check` grün, Vorlagen mit Kopfzeile `// Vorlage <Paket>
+`bauplaene-stand` `f4ab8ba` (je `tools/sync.py copy`, `check` grün, Vorlagen mit Kopfzeile `// Vorlage <Paket>
 <Fassung>`): **`ui` 1.1.0, `log` 1.0.0, `sicherung` 1.0.1, `konten` 1.1.0, `oidc` 1.2.0, `post` 1.1.0,
 `schluessel` 1.0.0**. App-Version unverändert 1.16.0, kein Release.
 
@@ -58,11 +58,11 @@ Nacharbeit nach E44 und E39: Gelöschte Mitglieder zählen in den Rechten nicht 
 Texte (Oberfläche, Anleitung, „Was ist neu“-Orte, README, docs, Mails, API-Meldungen) zeigen auf die neuen Orte und
 Wörter; Wächter `tests/test_references.py`. Alter Betreiberweg `/api/admin/api-tokens`: `prefix` leer (E40).
 
-Gemeinsame Runde (E45 bis E49): Module aus `bauplaene-stand` `6edff85`; Hell/Dunkel nach konten E45
+Gemeinsame Runde (E45 bis E49): Module aus `bauplaene-stand` `f4ab8ba`; Hell/Dunkel nach konten E45
 (`theme_default_before="dark"`, `adopt_theme` in `/api/auth/me`, neue Konten `system`); Ortsangaben mit „›“ (E46);
 angeglichen an nexnotes: Theme-Kacheln, Grenzen, Sprachen, Tastenkürzel, Bereich löschen, Plugins.
 
-Modul sprachen 1.0.0 (E51, `bauplaene-stand` `6edff85`): eigene Sprachen aus `vendor/nexsprachen`
+Modul sprachen 1.0.0 (E51, `bauplaene-stand` `f4ab8ba`): eigene Sprachen aus `vendor/nexsprachen`
 (`services/locales.py` konfiguriert es mit dem Ordner von vorher, `routers/locales.py` = `nexsprachen.api.router`),
 Karte „Sprachen“ und i18n-Helfer aus dem Modul; schluessel mit „Neuer MCP-Schlüssel“ als md secondary.
 
@@ -78,6 +78,9 @@ lint 0; vitest 88 Dateien, 728 Tests; build 0. Playwright nicht erneut (an der S
 Galerie-Funde Endlauf (Knopfgröße der Kontoknöpfe aus `buttonSize`, „Speicher für neue Konten (GB)“): ruff 0; pytest
 2465 bestanden, 3 übersprungen (11:04); lint 0; vitest 89 Dateien, 729 Tests; build 0; Playwright gezielt für die
 Einstellungen (18 Dateien) 74 von 74.
+
+ui `f4ab8ba` (E56, `Table` nimmt je Zeile nur `data-…`; nexlore übergibt dort nichts): ruff 0; pytest 2465 bestanden,
+3 übersprungen (11:44); lint 0; vitest 89 Dateien, 730 Tests; build 0.
 
 
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
