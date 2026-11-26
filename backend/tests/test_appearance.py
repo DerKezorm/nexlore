@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 
 from app.services import appearance
 
-
 #: The test account stands for an account of before 1.1.0 that chose no look: at its first load it takes nexlore's
 #: look of before, dark, once (konten E45, ``theme_default_before``); everything else is the defaults.
 BEFORE = {**appearance.DEFAULTS, "mode": "dark"}
