@@ -34,6 +34,8 @@ class Adapter(StandardAdapter):
     operation_ids: ClassVar[dict[str, str]] = _names["operation_ids"]
     summaries: ClassVar[dict[str, str]] = _names["summaries"]
     schema_names: ClassVar[dict[str, str]] = _names["schema_names"]
+    # The old routes check {name} with nexlore's pattern and length 64 again, before the password (former_names).
+    name_pattern = bool(_names.get("name_pattern"))
     openapi_path = "/api/openapi.json"
 
     def description(self) -> dict[str, Any]:

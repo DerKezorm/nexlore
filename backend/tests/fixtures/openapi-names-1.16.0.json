@@ -5,2053 +5,2895 @@
    "operationId": "delete_account_api_accounts__account_id__delete",
    "summary": "Delete an account for good",
    "body": "OperatorConfirmIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "DELETE /api/accounts/{account_id}/email": {
    "operationId": "remove_email_api_accounts__account_id__email_delete",
    "summary": "Take an account's address away (never set one)",
    "body": "OperatorConfirmIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "DELETE /api/admin/plugins/{plugin_id}": {
    "operationId": "admin_remove_api_admin_plugins__plugin_id__delete",
    "summary": "Admin Remove",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "plugin_id": {
+     "type": "string",
+     "pattern": "^[a-z][a-z0-9-]{1,31}$"
+    }
+   }
   },
   "DELETE /api/ai/events": {
    "operationId": "clear_api_ai_events_delete",
    "summary": "Clear the own list at once",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/api-tokens/{token_id}": {
    "operationId": "delete_token_api_api_tokens__token_id__delete",
    "summary": "Delete an own API token",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "token_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "DELETE /api/app-devices/{device_id}": {
    "operationId": "disconnect_api_app_devices__device_id__delete",
    "summary": "Disconnect a paired iPhone",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "device_id": {
+     "type": "integer"
+    }
+   }
   },
   "DELETE /api/app-pairing/{pairing_id}": {
    "operationId": "withdraw_api_app_pairing__pairing_id__delete",
    "summary": "Withdraw a pairing",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "pairing_id": {
+     "type": "string",
+     "maxLength": 32,
+     "minLength": 1
+    }
+   }
   },
   "DELETE /api/app/1/device": {
    "operationId": "forget_device_api_app_1_device_delete",
    "summary": "Disconnect this device",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/auth/avatar": {
    "operationId": "remove_avatar_api_auth_avatar_delete",
    "summary": "Remove the own profile picture",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/auth/passkeys/{uid}": {
    "operationId": "remove_api_auth_passkeys__uid__delete",
    "summary": "Remove a passkey; needs the password",
    "body": "RemoveIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "uid": {
+     "type": "string"
+    }
+   }
   },
   "DELETE /api/auth/sessions/{uid}": {
    "operationId": "end_one_session_api_auth_sessions__uid__delete",
    "summary": "Sign one browser or device of the own account out",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "uid": {
+     "type": "string"
+    }
+   }
   },
   "DELETE /api/backups/{name}": {
    "operationId": "delete_api_backups__name__delete",
    "summary": "Delete",
    "body": "app__routers__backups__PasswordIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string",
+     "pattern": "^nexlore-\\d{4}-\\d{2}-\\d{2}-\\d{6}(-\\d+)?(-upload)?\\.zip$",
+     "maxLength": 64
+    }
+   }
   },
   "DELETE /api/comments/{comment_id}": {
    "operationId": "remove_api_comments__comment_id__delete",
    "summary": "Take a comment back; the first one takes its thread along",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "comment_id": {
+     "type": "integer"
+    }
+   }
   },
   "DELETE /api/cover": {
    "operationId": "remove_cover_api_cover_delete",
    "summary": "Remove the cover picture of a space or folder",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/css-snippets/{snippet_id}": {
    "operationId": "remove_snippet_api_css_snippets__snippet_id__delete",
    "summary": "Remove an own CSS snippet",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "snippet_id": {
+     "type": "integer"
+    }
+   }
   },
   "DELETE /api/drafts/{draft_id}": {
    "operationId": "discard_api_drafts__draft_id__delete",
    "summary": "Discard",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "draft_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "DELETE /api/files": {
    "operationId": "delete_api_files_delete",
    "summary": "Delete",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/invites/{invite_id}": {
    "operationId": "withdraw_api_invites__invite_id__delete",
    "summary": "Withdraw an invitation",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "invite_id": {
+     "type": "integer"
+    }
+   }
   },
   "DELETE /api/locales/{code}": {
    "operationId": "delete_locale_api_locales__code__delete",
    "summary": "Remove an added language (operator)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "code": {
+     "type": "string"
+    }
+   }
   },
   "DELETE /api/locks": {
    "operationId": "unlock_api_locks_delete",
    "summary": "Unlock",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/logs": {
    "operationId": "clear_logs_api_logs_delete",
    "summary": "Clear the log",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/lore/conversations": {
    "operationId": "remove_all_api_lore_conversations_delete",
    "summary": "Remove every own conversation",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/lore/conversations/{conversation_id}": {
    "operationId": "remove_api_lore_conversations__conversation_id__delete",
    "summary": "Remove one of the own conversations",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "conversation_id": {
+     "type": "integer"
+    }
+   }
   },
   "DELETE /api/mcp/keys/{key_id}": {
    "operationId": "revoke_key_api_mcp_keys__key_id__delete",
    "summary": "Revoke Key",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "key_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "DELETE /api/me/calendar-feed": {
    "operationId": "feed_stop_api_me_calendar_feed_delete",
    "summary": "Stop the calendar subscription of the own account",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/me/email": {
    "operationId": "remove_own_email_api_me_email_delete",
    "summary": "Remove the own mail address (with the password)",
    "body": "PasswordOnlyIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/me/email/pending": {
    "operationId": "cancel_own_email_api_me_email_pending_delete",
    "summary": "Forget the address that waits for its confirmation",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/me/email/provider": {
    "operationId": "decline_provider_email_api_me_email_provider_delete",
    "summary": "Keep the own address and stop offering the provider's one",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/oidc/admin/accounts/{account_id}/links/{provider_id}": {
    "operationId": "operator_unlink_api_oidc_admin_accounts__account_id__links__provider_id__delete",
    "summary": "Operator: unlink an account from a provider (with the own password)",
    "body": "OperatorConfirmIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer",
+     "minimum": 1
+    },
+    "provider_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "DELETE /api/oidc/admin/providers/{provider_id}": {
    "operationId": "remove_provider_api_oidc_admin_providers__provider_id__delete",
    "summary": "Remove a provider with its links",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "provider_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "DELETE /api/oidc/{slug}/link": {
    "operationId": "unlink_api_oidc__slug__link_delete",
    "summary": "Unlink the own account from a provider",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "slug": {
+     "type": "string",
+     "maxLength": 40
+    }
+   }
   },
   "DELETE /api/presence": {
    "operationId": "gone_api_presence_delete",
    "summary": "This tab closed the note",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "DELETE /api/proposals/{proposal_id}": {
    "operationId": "withdraw_api_proposals__proposal_id__delete",
    "summary": "Take back an own proposal still waiting",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "proposal_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "DELETE /api/shares/{share_id}": {
    "operationId": "withdraw_api_shares__share_id__delete",
    "summary": "Withdraw a public page",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "share_id": {
+     "type": "integer"
+    }
+   }
   },
   "DELETE /api/spaces/{name}/members/{person}": {
    "operationId": "remove_member_api_spaces__name__members__person__delete",
    "summary": "Take an account out of the space",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string",
+     "maxLength": 255,
+     "minLength": 1
+    },
+    "person": {
+     "type": "string",
+     "maxLength": 64,
+     "minLength": 1
+    }
+   }
   },
   "DELETE /api/themes/{theme_id}": {
    "operationId": "remove_api_themes__theme_id__delete",
    "summary": "Remove an own theme (who chose it gets nexlore's look)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "theme_id": {
+     "type": "integer"
+    }
+   }
   },
   "DELETE /api/trash/{entry_id}": {
    "operationId": "purge_trash_api_trash__entry_id__delete",
    "summary": "Purge Trash",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "entry_id": {
+     "type": "string",
+     "pattern": "^[fg]-(note-)?[0-9a-f-]+$",
+     "maxLength": 64
+    }
+   }
   },
   "GET /api/about": {
    "operationId": "about_api_about_get",
    "summary": "About nexlore",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/about/updates": {
    "operationId": "update_state_api_about_updates_get",
    "summary": "Whether a newer nexlore is out (asked once a day)",
    "body": null,
-   "answer": "UpdatesOut"
+   "answer": "UpdatesOut",
+   "path": {}
   },
   "GET /api/accounts": {
    "operationId": "list_accounts_api_accounts_get",
    "summary": "All accounts, with spaces, storage and last use (no contents)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/accounts/{account_id}/impact": {
    "operationId": "delete_impact_api_accounts__account_id__impact_get",
    "summary": "What deleting the account takes away: names of spaces, numbers only",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "GET /api/accounts/{account_id}/totp/reset": {
    "operationId": "operator_reset_overview_api_accounts__account_id__totp_reset_get",
    "summary": "Operator: what a reset of the second factor takes away",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "GET /api/admin/api-tokens": {
    "operationId": "every_token_api_admin_api_tokens_get",
    "summary": "Every API token (operator)",
    "body": null,
-   "answer": "array of AnyTokenOut"
+   "answer": "array of AnyTokenOut",
+   "path": {}
   },
   "GET /api/admin/plugins": {
    "operationId": "admin_list_api_admin_plugins_get",
    "summary": "Admin List",
    "body": null,
-   "answer": "AdminPlugins"
+   "answer": "AdminPlugins",
+   "path": {}
   },
   "GET /api/admin/shares": {
    "operationId": "all_shares_api_admin_shares_get",
    "summary": "Every public page, for the operator",
    "body": null,
-   "answer": "array of ShareOut"
+   "answer": "array of ShareOut",
+   "path": {}
   },
   "GET /api/admin/spaces": {
    "operationId": "all_spaces_api_admin_spaces_get",
    "summary": "Every space with its members, for the operator (no contents)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/ai": {
    "operationId": "read_api_ai_get",
    "summary": "The AI service: allowed or not, own or the operator's, the access, what may be chosen",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/ai/events": {
    "operationId": "events_api_ai_events_get",
    "summary": "What went out to the own service, word for word, newest first (14 days)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/ai/shared": {
    "operationId": "shared_api_ai_shared_get",
    "summary": "The operator's service for every account, and how far notes are read in by meaning",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/api-tokens": {
    "operationId": "own_tokens_api_api_tokens_get",
    "summary": "The own API tokens",
    "body": null,
-   "answer": "TokensOut"
+   "answer": "TokensOut",
+   "path": {}
   },
   "GET /api/app-devices": {
    "operationId": "own_devices_api_app_devices_get",
    "summary": "The own paired iPhones",
    "body": null,
-   "answer": "array of DeviceOut"
+   "answer": "array of DeviceOut",
+   "path": {}
   },
   "GET /api/app-pairing/allowed": {
    "operationId": "latch_api_app_pairing_allowed_get",
    "summary": "Whether the iPhone app may be paired",
    "body": null,
-   "answer": "Latch"
+   "answer": "Latch",
+   "path": {}
   },
   "GET /api/app-pairing/{pairing_id}": {
    "operationId": "pairing_state_api_app_pairing__pairing_id__get",
    "summary": "Whether the app picked the key up",
    "body": null,
-   "answer": "PairingState"
+   "answer": "PairingState",
+   "path": {
+    "pairing_id": {
+     "type": "string",
+     "maxLength": 32,
+     "minLength": 1
+    }
+   }
   },
   "GET /api/app/1/changes": {
    "operationId": "changes_api_app_1_changes_get",
    "summary": "What changed since a cursor; 0 is the whole vault",
    "body": null,
-   "answer": "ChangesOut"
+   "answer": "ChangesOut",
+   "path": {}
   },
   "GET /api/app/1/files/{file_id}": {
    "operationId": "file_api_app_1_files__file_id__get",
    "summary": "A file as it is on disk; ETag is its hash, Range works",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "file_id": {
+     "type": "integer"
+    }
+   }
   },
   "GET /api/app/1/me": {
    "operationId": "me_api_app_1_me_get",
    "summary": "The account, this device, the spaces it reads, what is offered",
    "body": null,
-   "answer": "app__routers__app1__MeOut"
+   "answer": "app__routers__app1__MeOut",
+   "path": {}
   },
   "GET /api/app/1/notes/{file_id}/base": {
    "operationId": "base_api_app_1_notes__file_id__base_get",
    "summary": "A note's state with this hash: this device's base first, else from the versions",
    "body": null,
-   "answer": "BaseOut"
+   "answer": "BaseOut",
+   "path": {
+    "file_id": {
+     "type": "integer"
+    }
+   }
   },
   "GET /api/app/1/wait": {
    "operationId": "wait_api_app_1_wait_get",
    "summary": "Wait up to 25 s for the cursor to grow",
    "body": null,
-   "answer": "CursorOut"
+   "answer": "CursorOut",
+   "path": {}
   },
   "GET /api/attachments": {
    "operationId": "listing_api_attachments_get",
    "summary": "Listing",
    "body": null,
-   "answer": "AttachmentsOut"
+   "answer": "AttachmentsOut",
+   "path": {}
   },
   "GET /api/attachments/usage": {
    "operationId": "usage_api_attachments_usage_get",
    "summary": "Usage",
    "body": null,
-   "answer": "UsageOut"
+   "answer": "UsageOut",
+   "path": {}
   },
   "GET /api/auth/access": {
    "operationId": "remaining_access_api_auth_access_get",
    "summary": "What still has access after a password set through a link",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/auth/me": {
    "operationId": "me_api_auth_me_get",
    "summary": "The signed-in account, and what this server offers it",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/auth/methods": {
    "operationId": "methods_api_auth_methods_get",
    "summary": "How one can sign in here (no sign-in needed)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/auth/passkeys": {
    "operationId": "my_passkeys_api_auth_passkeys_get",
    "summary": "The own passkeys",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/auth/sessions": {
    "operationId": "my_sessions_api_auth_sessions_get",
    "summary": "Where the own account is signed in: browsers and paired devices",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/auth/totp/setup": {
    "operationId": "waiting_setup_api_auth_totp_setup_get",
    "summary": "The authenticator that waits for its first code, once more",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/avatars/{account_id}": {
    "operationId": "get_avatar_api_avatars__account_id__get",
    "summary": "A profile picture, for every signed-in account",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "GET /api/backups": {
    "operationId": "listing_api_backups_get",
    "summary": "Listing",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/bases/view": {
    "operationId": "view_file_api_bases_view_get",
    "summary": "One view of a .base file, with its rows",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/calendar": {
    "operationId": "calendar_api_calendar_get",
    "summary": "Daily notes and task counts for each day of a month",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/canvas": {
    "operationId": "read_api_canvas_get",
    "summary": "A canvas with its text, state and lock",
    "body": null,
-   "answer": "CanvasOut"
+   "answer": "CanvasOut",
+   "path": {}
   },
   "GET /api/canvas/state": {
    "operationId": "state_api_canvas_state_get",
    "summary": "How a canvas stands on disk, without its text",
    "body": null,
-   "answer": "CanvasStateOut"
+   "answer": "CanvasStateOut",
+   "path": {}
   },
   "GET /api/canvases/on": {
    "operationId": "lying_on_api_canvases_on_get",
    "summary": "The canvases a note, file or folder lies on",
    "body": null,
-   "answer": "LyingOnOut"
+   "answer": "LyingOnOut",
+   "path": {}
   },
   "GET /api/cleanup": {
    "operationId": "cleanup_api_cleanup_get",
    "summary": "Notes without a link in or out, and links that lead nowhere, in one space",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/comments": {
    "operationId": "listing_api_comments_get",
    "summary": "The threads of a note, open ones first",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/comments/people": {
    "operationId": "people_api_comments_people_get",
    "summary": "Who may read the note, for @names",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/cover": {
    "operationId": "get_cover_api_cover_get",
    "summary": "The cover picture of a space or folder",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/coverflow": {
    "operationId": "coverflow_api_coverflow_get",
    "summary": "One level of the vault as cards: the spaces, or a folder's subfolders and notes",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/css-snippets": {
    "operationId": "snippets_api_css_snippets_get",
    "summary": "The own CSS snippets, and whether the operator allows own CSS",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/drafts": {
    "operationId": "listing_api_drafts_get",
    "summary": "Listing",
    "body": null,
-   "answer": "array of DraftOut"
+   "answer": "array of DraftOut",
+   "path": {}
   },
   "GET /api/drafts/{draft_id}": {
    "operationId": "one_api_drafts__draft_id__get",
    "summary": "One",
    "body": null,
-   "answer": "DraftFull"
+   "answer": "DraftFull",
+   "path": {
+    "draft_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "GET /api/email/{token}": {
    "operationId": "email_link_state_api_email__token__get",
    "summary": "Which address a confirmation link confirms (no sign-in needed)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "token": {
+     "type": "string"
+    }
+   }
   },
   "GET /api/export/notes": {
    "operationId": "folder_notes_api_export_notes_get",
    "summary": "Folder Notes",
    "body": null,
-   "answer": "FolderNotesOut"
+   "answer": "FolderNotesOut",
+   "path": {}
   },
   "GET /api/favorites": {
    "operationId": "listing_api_favorites_get",
    "summary": "The own favorites that are there and may be read, in the order they were added",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/file": {
    "operationId": "file_api_file_get",
    "summary": "File",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/files/note-folder": {
    "operationId": "note_folder_api_files_note_folder_get",
    "summary": "Note Folder",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/files/own": {
    "operationId": "own_api_files_own_get",
    "summary": "Own",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/folder": {
    "operationId": "folder_api_folder_get",
    "summary": "Folder",
    "body": null,
-   "answer": "app__routers__vault__FolderOut"
+   "answer": "app__routers__vault__FolderOut",
+   "path": {}
   },
   "GET /api/folders/find": {
    "operationId": "find_folders_api_folders_find_get",
    "summary": "Find Folders",
    "body": null,
-   "answer": "array of FoundFolder"
+   "answer": "array of FoundFolder",
+   "path": {}
   },
   "GET /api/graph/across": {
    "operationId": "across_api_graph_across_get",
    "summary": "Across",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/graph/local": {
    "operationId": "local_api_graph_local_get",
    "summary": "Local",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/graph/locate": {
    "operationId": "locate_api_graph_locate_get",
    "summary": "Locate",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/graph/overview": {
    "operationId": "overview_api_graph_overview_get",
    "summary": "Overview",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/graph/tiles": {
    "operationId": "tiles_api_graph_tiles_get",
    "summary": "Tiles",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/health": {
    "operationId": "health_api_health_get",
    "summary": "Is nexlore running?",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/index": {
    "operationId": "index_status_api_index_get",
    "summary": "Index Status",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/index/progress": {
    "operationId": "index_progress_api_index_progress_get",
    "summary": "Index Progress",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/ink": {
    "operationId": "read_api_ink_get",
    "summary": "A drawing with its strokes, state and lock",
    "body": null,
-   "answer": "InkOut"
+   "answer": "InkOut",
+   "path": {}
   },
   "GET /api/ink/state": {
    "operationId": "state_api_ink_state_get",
    "summary": "How a drawing stands on disk, without its strokes",
    "body": null,
-   "answer": "InkStateOut"
+   "answer": "InkStateOut",
+   "path": {}
   },
   "GET /api/invite/{token}": {
    "operationId": "invite_state_api_invite__token__get",
    "summary": "What an invitation offers (no sign-in needed)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "token": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "maxLength": 64,
+     "minLength": 20
+    }
+   }
   },
   "GET /api/invites": {
    "operationId": "list_invites_api_invites_get",
    "summary": "Open invitations without a space, the expired ones too (operator)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/link-title": {
    "operationId": "title_api_link_title_get",
    "summary": "The title of a web page, for a link pasted into a note",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/links": {
    "operationId": "links_api_links_get",
    "summary": "Links",
    "body": null,
-   "answer": "app__routers__vault__LinksOut"
+   "answer": "app__routers__vault__LinksOut",
+   "path": {}
   },
   "GET /api/locales": {
    "operationId": "list_locales_api_locales_get",
    "summary": "Languages the operator added",
    "body": null,
-   "answer": "array of LocaleEntry"
+   "answer": "array of LocaleEntry",
+   "path": {}
   },
   "GET /api/locales/{code}": {
    "operationId": "read_locale_api_locales__code__get",
    "summary": "The texts of one added language",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "code": {
+     "type": "string"
+    }
+   }
   },
   "GET /api/logs": {
    "operationId": "read_logs_api_logs_get",
    "summary": "The newest lines",
    "body": null,
-   "answer": "array of LogEntry"
+   "answer": "array of LogEntry",
+   "path": {}
   },
   "GET /api/logs/level": {
    "operationId": "read_level_api_logs_level_get",
    "summary": "Which level applies",
    "body": null,
-   "answer": "LogMode"
+   "answer": "LogMode",
+   "path": {}
   },
   "GET /api/looks": {
    "operationId": "all_looks_api_looks_get",
    "summary": "The symbols and colours of every space and folder one may read, and those to choose",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/lore/conversations": {
    "operationId": "conversations_api_lore_conversations_get",
    "summary": "The own conversations, newest first; with note: those about that note",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/lore/conversations/{conversation_id}": {
    "operationId": "conversation_api_lore_conversations__conversation_id__get",
    "summary": "One of the own conversations",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "conversation_id": {
+     "type": "integer"
+    }
+   }
   },
   "GET /api/lore/similar": {
    "operationId": "similar_api_lore_similar_get",
    "summary": "The notes nearest in meaning to a note, among those one may read",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/mcp/keys": {
    "operationId": "keys_api_mcp_keys_get",
    "summary": "Keys",
    "body": null,
-   "answer": "KeysOut"
+   "answer": "KeysOut",
+   "path": {}
   },
   "GET /api/mcp/requests": {
    "operationId": "request_list_api_mcp_requests_get",
    "summary": "The own requests, waiting ones first",
    "body": null,
-   "answer": "array of RequestOut"
+   "answer": "array of RequestOut",
+   "path": {}
   },
   "GET /api/mcp/tools": {
    "operationId": "tool_list_api_mcp_tools_get",
    "summary": "Every tool with its group, level and description",
    "body": null,
-   "answer": "ToolsOut"
+   "answer": "ToolsOut",
+   "path": {}
   },
   "GET /api/me/calendar-feed": {
    "operationId": "feed_state_api_me_calendar_feed_get",
    "summary": "Whether the calendar subscription is open, and the account has an address",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/me/notify": {
    "operationId": "read_api_me_notify_get",
    "summary": "The own notifications",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/mentions": {
    "operationId": "unlinked_api_mentions_get",
    "summary": "Where other notes name this one without a link",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/news": {
    "operationId": "news_api_news_get",
    "summary": "Notes others changed since the account last opened them",
    "body": null,
-   "answer": "News"
+   "answer": "News",
+   "path": {}
   },
   "GET /api/note": {
    "operationId": "note_api_note_get",
    "summary": "Note",
    "body": null,
-   "answer": "app__routers__vault__NoteOut"
+   "answer": "app__routers__vault__NoteOut",
+   "path": {}
   },
   "GET /api/note/copies": {
    "operationId": "note_copies_api_note_copies_get",
    "summary": "Note Copies",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/note/state": {
    "operationId": "note_state_api_note_state_get",
    "summary": "Note State",
    "body": null,
-   "answer": "NoteStateOut"
+   "answer": "NoteStateOut",
+   "path": {}
   },
   "GET /api/notes/find": {
    "operationId": "find_notes_api_notes_find_get",
    "summary": "Find Notes",
    "body": null,
-   "answer": "array of app__routers__vault__Found"
+   "answer": "array of app__routers__vault__Found",
+   "path": {}
   },
   "GET /api/notices": {
    "operationId": "open_notices_api_notices_get",
    "summary": "Open invitations and what the operator changed",
    "body": null,
-   "answer": "array of NoticeOut"
+   "answer": "array of NoticeOut",
+   "path": {}
   },
   "GET /api/oauth/authorize": {
    "operationId": "consent_info_api_oauth_authorize_get",
    "summary": "What a program asks to sign in for",
    "body": null,
-   "answer": "ConsentInfo"
+   "answer": "ConsentInfo",
+   "path": {}
   },
   "GET /api/oidc/admin/providers": {
    "operationId": "admin_providers_api_oidc_admin_providers_get",
    "summary": "The provider list for the operator (never a secret)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/oidc/admin/providers/{provider_id}/impact": {
    "operationId": "provider_impact_api_oidc_admin_providers__provider_id__impact_get",
    "summary": "Who loses a link when the issuer changes or it goes",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "provider_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "GET /api/oidc/authentik/address": {
    "operationId": "authentik_address_api_oidc_authentik_address_get",
    "summary": "The public address, what the server sees and what authentik knows",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/oidc/authentik/blueprint": {
    "operationId": "authentik_blueprint_api_oidc_authentik_blueprint_get",
    "summary": "Download a blueprint that creates the same objects in authentik",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/oidc/callback": {
    "operationId": "legacy_callback_api_oidc_callback_get",
    "summary": "The return from the provider of the entry oidc (the address before the list)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/oidc/me": {
    "operationId": "my_providers_api_oidc_me_get",
    "summary": "The active providers and whether the own account is linked to each",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/oidc/providers": {
    "operationId": "public_providers_api_oidc_providers_get",
    "summary": "The active sign-in providers: slug and label (no sign-in needed)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/oidc/{slug}/callback": {
    "operationId": "callback_api_oidc__slug__callback_get",
    "summary": "The return from the provider (no sign-in needed)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "slug": {
+     "type": "string",
+     "maxLength": 40
+    }
+   }
   },
   "GET /api/oidc/{slug}/start": {
    "operationId": "start_api_oidc__slug__start_get",
    "summary": "Send the browser to the provider (no sign-in needed)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "slug": {
+     "type": "string",
+     "maxLength": 40
+    }
+   }
   },
   "GET /api/people": {
    "operationId": "people_api_people_get",
    "summary": "Display names for account names: of the own account and of those sharing a space",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/plugins": {
    "operationId": "mine_api_plugins_get",
    "summary": "Mine",
    "body": null,
-   "answer": "array of PluginOut"
+   "answer": "array of PluginOut",
+   "path": {}
   },
   "GET /api/plugins/query": {
    "operationId": "query_api_plugins_query_get",
    "summary": "Query",
    "body": null,
-   "answer": "array of Listed"
+   "answer": "array of Listed",
+   "path": {}
   },
   "GET /api/plugins/{plugin_id}/frame": {
    "operationId": "frame_api_plugins__plugin_id__frame_get",
    "summary": "Frame",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "plugin_id": {
+     "type": "string",
+     "pattern": "^[a-z][a-z0-9-]{1,31}$"
+    }
+   }
   },
   "GET /api/proposals": {
    "operationId": "overview_api_proposals_get",
    "summary": "Proposals waiting for the own answer, and what became of the own proposals",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/proposals/note": {
    "operationId": "for_note_api_proposals_note_get",
    "summary": "The open proposals for a note",
    "body": null,
-   "answer": "array of ProposalOut"
+   "answer": "array of ProposalOut",
+   "path": {}
   },
   "GET /api/public/{token}": {
    "operationId": "public_state_api_public__token__get",
    "summary": "What a public page shows (no sign-in)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "token": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "maxLength": 64,
+     "minLength": 20
+    }
+   }
   },
   "GET /api/public/{token}/file/{file_id}": {
    "operationId": "public_file_api_public__token__file__file_id__get",
    "summary": "A file a public note uses (no sign-in)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "token": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "maxLength": 64,
+     "minLength": 20
+    },
+    "file_id": {
+     "type": "integer"
+    }
+   }
   },
   "GET /api/public/{token}/page": {
    "operationId": "public_page_api_public__token__page_get",
    "summary": "One note of a public page (no sign-in)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "token": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "maxLength": 64,
+     "minLength": 20
+    }
+   }
   },
   "GET /api/recent": {
    "operationId": "listing_api_recent_get",
    "summary": "The notes opened last that are there and may be read",
    "body": null,
-   "answer": "array of RecentOut"
+   "answer": "array of RecentOut",
+   "path": {}
   },
   "GET /api/reset/{token}": {
    "operationId": "reset_state_api_reset__token__get",
    "summary": "Whom a reset link is for (no sign-in needed)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "token": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "maxLength": 64,
+     "minLength": 20
+    }
+   }
   },
   "GET /api/resolve": {
    "operationId": "resolve_api_resolve_get",
    "summary": "Resolve",
    "body": null,
-   "answer": "ResolveOut"
+   "answer": "ResolveOut",
+   "path": {}
   },
   "GET /api/resolve/many": {
    "operationId": "resolve_many_api_resolve_many_get",
    "summary": "Resolve Many",
    "body": null,
-   "answer": "ResolveManyOut"
+   "answer": "ResolveManyOut",
+   "path": {}
   },
   "GET /api/search": {
    "operationId": "search_api_search_get",
    "summary": "Search",
    "body": null,
-   "answer": "array of Hit"
+   "answer": "array of Hit",
+   "path": {}
   },
   "GET /api/search/notes": {
    "operationId": "search_notes_api_search_notes_get",
    "summary": "Notes that fit a search with operators, with their lines",
    "body": null,
-   "answer": "Page"
+   "answer": "Page",
+   "path": {}
   },
   "GET /api/settings": {
    "operationId": "read_api_settings_get",
    "summary": "Read",
    "body": null,
-   "answer": "SettingsOut"
+   "answer": "SettingsOut",
+   "path": {}
   },
   "GET /api/settings/files": {
    "operationId": "file_settings_api_settings_files_get",
    "summary": "File Settings",
    "body": null,
-   "answer": "FileSettings"
+   "answer": "FileSettings",
+   "path": {}
   },
   "GET /api/setup": {
    "operationId": "setup_state_api_setup_get",
    "summary": "Does nexlore still need its first account, and is this browser signed in?",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/shares": {
    "operationId": "listing_api_shares_get",
    "summary": "The public pages of a path, or of a space",
    "body": null,
-   "answer": "array of ShareOut"
+   "answer": "array of ShareOut",
+   "path": {}
   },
   "GET /api/shares/covers": {
    "operationId": "covers_api_shares_covers_get",
    "summary": "How many public pages show this note or folder, or something in it",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/spaces": {
    "operationId": "spaces_api_spaces_get",
    "summary": "Spaces",
    "body": null,
-   "answer": "array of app__routers__vault__SpaceOut"
+   "answer": "array of app__routers__vault__SpaceOut",
+   "path": {}
   },
   "GET /api/spaces/{name}/daily-guess": {
    "operationId": "daily_guess_api_spaces__name__daily_guess_get",
    "summary": "Daily notes the space's settings miss, and where they are",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string"
+    }
+   }
   },
   "GET /api/spaces/{name}/members": {
    "operationId": "members_api_spaces__name__members_get",
    "summary": "Who is in the space, and the open invitations",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string",
+     "maxLength": 255,
+     "minLength": 1
+    }
+   }
   },
   "GET /api/spaces/{name}/options": {
    "operationId": "get_options_api_spaces__name__options_get",
    "summary": "Where the daily notes and templates of a space live",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string"
+    }
+   }
   },
   "GET /api/spaces/{name}/report": {
    "operationId": "space_report_api_spaces__name__report_get",
    "summary": "Space Report",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string",
+     "maxLength": 255,
+     "minLength": 1
+    }
+   }
   },
   "GET /api/spaces/{name}/task-statuses": {
    "operationId": "get_task_statuses_api_spaces__name__task_statuses_get",
    "summary": "What the characters of a space's tasks mean, and from where",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string"
+    }
+   }
   },
   "GET /api/spaces/{name}/zip": {
    "operationId": "space_zip_api_spaces__name__zip_get",
    "summary": "Every note and file of a space the index knows, as one ZIP file",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string",
+     "maxLength": 255
+    }
+   }
   },
   "GET /api/tags": {
    "operationId": "tags_api_tags_get",
    "summary": "Tags",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/tags/notes": {
    "operationId": "tag_notes_api_tags_notes_get",
    "summary": "Tag Notes",
    "body": null,
-   "answer": "array of TagNote"
+   "answer": "array of TagNote",
+   "path": {}
   },
   "GET /api/tasks": {
    "operationId": "task_list_api_tasks_get",
    "summary": "Tasks across the spaces the account may read",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/templates": {
    "operationId": "template_list_api_templates_get",
    "summary": "The templates of a space",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/templates/preview": {
    "operationId": "template_preview_api_templates_preview_get",
    "summary": "A template with its placeholders filled, as a new note would start",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/themes": {
    "operationId": "listing_api_themes_get",
    "summary": "The themes that come along, the own ones and the ones others share",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/themes/{ref}": {
    "operationId": "one_api_themes__ref__get",
    "summary": "The colours of one theme",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "ref": {
+     "type": "string"
+    }
+   }
   },
   "GET /api/trash": {
    "operationId": "trash_api_trash_get",
    "summary": "Trash",
    "body": null,
-   "answer": "array of TrashOut"
+   "answer": "array of TrashOut",
+   "path": {}
   },
   "GET /api/v1/dashboard": {
    "operationId": "dashboard_api_v1_dashboard_get",
    "summary": "The numbers for a dashboard, in one request",
    "body": null,
-   "answer": "DashboardOut"
+   "answer": "DashboardOut",
+   "path": {}
   },
   "GET /api/v1/folder": {
    "operationId": "folder_api_v1_folder_get",
    "summary": "What lies directly in a space or folder",
    "body": null,
-   "answer": "app__routers__v1__FolderOut"
+   "answer": "app__routers__v1__FolderOut",
+   "path": {}
   },
   "GET /api/v1/folder/pdf": {
    "operationId": "folder_pdf_api_v1_folder_pdf_get",
    "summary": "Every note of a folder as one PDF, with contents",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/v1/links": {
    "operationId": "links_api_v1_links_get",
    "summary": "Where a note's links lead, and what links to it",
    "body": null,
-   "answer": "app__routers__v1__LinksOut"
+   "answer": "app__routers__v1__LinksOut",
+   "path": {}
   },
   "GET /api/v1/me": {
    "operationId": "me_api_v1_me_get",
    "summary": "The token's account, level and limits",
    "body": null,
-   "answer": "app__routers__v1__MeOut"
+   "answer": "app__routers__v1__MeOut",
+   "path": {}
   },
   "GET /api/v1/note": {
    "operationId": "note_api_v1_note_get",
    "summary": "A note: its text, tags, front matter and hash",
    "body": null,
-   "answer": "app__routers__v1__NoteOut"
+   "answer": "app__routers__v1__NoteOut",
+   "path": {}
   },
   "GET /api/v1/note/pdf": {
    "operationId": "note_pdf_api_v1_note_pdf_get",
    "summary": "A note as PDF, set as the app sets it",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "GET /api/v1/recent": {
    "operationId": "recent_api_v1_recent_get",
    "summary": "The notes changed last",
    "body": null,
-   "answer": "array of RecentNote"
+   "answer": "array of RecentNote",
+   "path": {}
   },
   "GET /api/v1/search": {
    "operationId": "search_api_v1_search_get",
    "summary": "Search with the operators of the search page: phrases, -left_out, OR, tag:, path:, file:, task:",
    "body": null,
-   "answer": "SearchOut"
+   "answer": "SearchOut",
+   "path": {}
   },
   "GET /api/v1/spaces": {
    "operationId": "spaces_api_v1_spaces_get",
    "summary": "The spaces the token may read",
    "body": null,
-   "answer": "array of app__routers__v1__SpaceOut"
+   "answer": "array of app__routers__v1__SpaceOut",
+   "path": {}
   },
   "GET /api/v1/tasks": {
    "operationId": "tasks_api_v1_tasks_get",
    "summary": "Tasks across the spaces the token may read",
    "body": null,
-   "answer": "TasksOut"
+   "answer": "TasksOut",
+   "path": {}
   },
   "GET /api/v1/templates": {
    "operationId": "templates_api_v1_templates_get",
    "summary": "The templates of a space",
    "body": null,
-   "answer": "array of TemplateOut"
+   "answer": "array of TemplateOut",
+   "path": {}
   },
   "GET /api/v1/versions": {
    "operationId": "versions_api_v1_versions_get",
    "summary": "The versions of notes since a moment: which note, when, who, from nexlore or from outside",
    "body": null,
-   "answer": "VersionsOut"
+   "answer": "VersionsOut",
+   "path": {}
   },
   "GET /api/v1/versions/{version_id}/content": {
    "operationId": "version_content_api_v1_versions__version_id__content_get",
    "summary": "The text of a version, byte for byte",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "version_id": {
+     "type": "integer"
+    }
+   }
   },
   "GET /api/versions": {
    "operationId": "versions_api_versions_get",
    "summary": "Versions",
    "body": null,
-   "answer": "array of VersionOut"
+   "answer": "array of VersionOut",
+   "path": {}
   },
   "GET /api/versions/{version_id}": {
    "operationId": "version_api_versions__version_id__get",
    "summary": "Version",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "version_id": {
+     "type": "integer"
+    }
+   }
   },
   "POST /api/about/updates/check": {
    "operationId": "check_now_api_about_updates_check_post",
    "summary": "Ask now, also with the daily check off",
    "body": null,
-   "answer": "UpdatesOut"
+   "answer": "UpdatesOut",
+   "path": {}
   },
   "POST /api/accounts/{account_id}/block": {
    "operationId": "block_account_api_accounts__account_id__block_post",
    "summary": "Block an account (out on every way in at once)",
    "body": "OperatorConfirmIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "POST /api/accounts/{account_id}/reset-link": {
    "operationId": "reset_link_api_accounts__account_id__reset_link_post",
    "summary": "A link with which the person sets a new password themselves (mailed, or shown once)",
    "body": "ResetLinkIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "POST /api/accounts/{account_id}/sign-out": {
    "operationId": "sign_out_account_api_accounts__account_id__sign_out_post",
    "summary": "End every session of an account",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "POST /api/accounts/{account_id}/totp/reset": {
    "operationId": "operator_reset_api_accounts__account_id__totp_reset_post",
    "summary": "Operator: take the second factor of a locked-out account",
    "body": "FactorResetIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "POST /api/accounts/{account_id}/unblock": {
    "operationId": "unblock_account_api_accounts__account_id__unblock_post",
    "summary": "Let a blocked account in again",
    "body": "OperatorConfirmIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "POST /api/admin/api-tokens/{token_id}/block": {
    "operationId": "block_token_api_admin_api_tokens__token_id__block_post",
    "summary": "Block a token for good (operator); its account sees it blocked",
    "body": null,
-   "answer": "AnyTokenOut"
+   "answer": "AnyTokenOut",
+   "path": {
+    "token_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "POST /api/admin/plugins": {
    "operationId": "admin_upload_api_admin_plugins_post",
    "summary": "Admin Upload",
    "body": "UploadIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/admin/plugins/{plugin_id}/install": {
    "operationId": "admin_install_api_admin_plugins__plugin_id__install_post",
    "summary": "Admin Install",
    "body": null,
-   "answer": "PluginOut"
+   "answer": "PluginOut",
+   "path": {
+    "plugin_id": {
+     "type": "string",
+     "pattern": "^[a-z][a-z0-9-]{1,31}$"
+    }
+   }
   },
   "POST /api/ai/models": {
    "operationId": "models_api_ai_models_post",
    "summary": "The models of an access: the test that address and key are right",
    "body": "ModelsIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/ai/run": {
    "operationId": "run_api_ai_run_post",
    "summary": "Send note text to the own service for one task and get its text back",
    "body": "RunIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/ai/shared/models": {
    "operationId": "shared_models_api_ai_shared_models_post",
    "summary": "The models of the operator's service, with what is typed or what is saved",
    "body": "ModelsIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/api-tokens": {
    "operationId": "make_token_api_api_tokens_post",
    "summary": "Make an API token; shown once",
    "body": "TokenIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/app-pairing": {
    "operationId": "pair_api_app_pairing_post",
    "summary": "A pairing for the iPhone app",
    "body": "PairingIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/app/1/batch": {
    "operationId": "batch_api_app_1_batch_post",
    "summary": "Changes from the app, in order; each answered on its own",
    "body": "BatchIn",
-   "answer": "BatchOut"
+   "answer": "BatchOut",
+   "path": {}
   },
   "POST /api/app/1/devices": {
    "operationId": "bring_in_device_api_app_1_devices_post",
    "summary": "A key of its own for another device of this account",
    "body": "app__routers__app1__KeyIn",
-   "answer": "app__routers__app1__KeyOut"
+   "answer": "app__routers__app1__KeyOut",
+   "path": {}
   },
   "POST /api/app/1/fetch": {
    "operationId": "fetch_api_app_1_fetch_post",
    "summary": "The texts of notes, up to 200 and 20 MB at a time",
    "body": "FetchIn",
-   "answer": "FetchOut"
+   "answer": "FetchOut",
+   "path": {}
   },
   "POST /api/app/1/files": {
    "operationId": "upload_api_app_1_files_post",
    "summary": "Upload a file; answered like a create",
    "body": "Body_upload_api_app_1_files_post",
-   "answer": "ResultOut"
+   "answer": "ResultOut",
+   "path": {}
   },
   "POST /api/app/1/pairing/code": {
    "operationId": "pickup_by_code_api_app_1_pairing_code_post",
    "summary": "Pick the device key up with the short code",
    "body": "app__routers__app1__CodeIn",
-   "answer": "app__routers__app1__KeyOut"
+   "answer": "app__routers__app1__KeyOut",
+   "path": {}
   },
   "POST /api/app/1/pairing/{pairing_id}/key": {
    "operationId": "pickup_by_secret_api_app_1_pairing__pairing_id__key_post",
    "summary": "Pick the device key up with the QR code",
    "body": "app__routers__app1__KeyIn",
-   "answer": "app__routers__app1__KeyOut"
+   "answer": "app__routers__app1__KeyOut",
+   "path": {
+    "pairing_id": {
+     "type": "string"
+    }
+   }
   },
   "POST /api/attachments": {
    "operationId": "upload_api_attachments_post",
    "summary": "Upload",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/access/disconnect": {
    "operationId": "disconnect_all_api_auth_access_disconnect_post",
    "summary": "Disconnect all: every device, key, calendar address and passkey",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/access/seen": {
    "operationId": "remaining_access_seen_api_auth_access_seen_post",
    "summary": "The list of what still has access is put away",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/forgot": {
    "operationId": "forgot_api_auth_forgot_post",
    "summary": "Forgot your password? A link by mail (with a mail server)",
    "body": "ForgotIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/login": {
    "operationId": "login_api_auth_login_post",
    "summary": "Sign in with username or email and password",
    "body": "LoginIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/login/totp": {
    "operationId": "login_code_api_auth_login_totp_post",
    "summary": "Second step of the sign-in: the code from the app or a recovery code",
    "body": "app__routers__totp__CodeIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/login/totp/cancel": {
    "operationId": "cancel_code_api_auth_login_totp_cancel_post",
    "summary": "Give up the second step and start over",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/logout": {
    "operationId": "logout_api_auth_logout_post",
    "summary": "Sign out in this browser",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/logout-all": {
    "operationId": "logout_everywhere_api_auth_logout_all_post",
    "summary": "Sign out every other browser of the own account",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/passkey/begin": {
    "operationId": "begin_sign_in_api_auth_passkey_begin_post",
    "summary": "Sign in with a passkey: the challenge (no sign-in needed)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/passkey/finish": {
    "operationId": "finish_sign_in_api_auth_passkey_finish_post",
    "summary": "Sign in with a passkey: the browser's answer",
    "body": "FinishIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/passkeys/begin": {
    "operationId": "begin_add_api_auth_passkeys_begin_post",
    "summary": "Start adding a passkey; needs the password",
    "body": "BeginAddIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/passkeys/finish": {
    "operationId": "finish_add_api_auth_passkeys_finish_post",
    "summary": "Finish adding a passkey with the browser's answer",
    "body": "FinishIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/totp/begin": {
    "operationId": "begin_api_auth_totp_begin_post",
    "summary": "Start enrolling an authenticator app; the seed is shown once",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/totp/confirm": {
    "operationId": "confirm_api_auth_totp_confirm_post",
    "summary": "Finish enrolling: a code from the app and the password",
    "body": "ConfirmIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/totp/disable": {
    "operationId": "disable_api_auth_totp_disable_post",
    "summary": "Turn the second factor off; needs the password",
    "body": "app__routers__totp__PasswordIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/auth/totp/recovery": {
    "operationId": "new_recovery_codes_api_auth_totp_recovery_post",
    "summary": "New recovery codes; the old ones stop working",
    "body": "app__routers__totp__PasswordIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/backups": {
    "operationId": "create_api_backups_post",
    "summary": "Create",
    "body": "app__routers__backups__CreateIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/backups/upload": {
    "operationId": "upload_api_backups_upload_post",
    "summary": "Bring in an archive from elsewhere (the body is the ZIP); needs the password again",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/backups/{name}/check": {
    "operationId": "check_api_backups__name__check_post",
    "summary": "Check",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string",
+     "pattern": "^nexlore-\\d{4}-\\d{2}-\\d{2}-\\d{6}(-\\d+)?(-upload)?\\.zip$",
+     "maxLength": 64
+    }
+   }
   },
   "POST /api/backups/{name}/download": {
    "operationId": "download_api_backups__name__download_post",
    "summary": "The archive itself, to keep a copy elsewhere; needs the password again",
    "body": "DownloadIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string",
+     "pattern": "^nexlore-\\d{4}-\\d{2}-\\d{2}-\\d{6}(-\\d+)?(-upload)?\\.zip$",
+     "maxLength": 64
+    }
+   }
   },
   "POST /api/backups/{name}/restore": {
    "operationId": "restore_api_backups__name__restore_post",
    "summary": "Restore",
    "body": "app__routers__backups__PasswordIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string",
+     "pattern": "^nexlore-\\d{4}-\\d{2}-\\d{2}-\\d{6}(-\\d+)?(-upload)?\\.zip$",
+     "maxLength": 64
+    }
+   }
   },
   "POST /api/bases": {
    "operationId": "create_api_bases_post",
    "summary": "Make a new view in a folder",
    "body": "NewBaseIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/bases/block": {
    "operationId": "view_block_api_bases_block_post",
    "summary": "One view of a base code block in a note",
    "body": "BlockIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/canvases": {
    "operationId": "create_api_canvases_post",
    "summary": "Make a new, empty canvas in a folder",
    "body": "app__routers__canvas__CreateIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/comments": {
    "operationId": "start_api_comments_post",
    "summary": "Start a thread on words of a note",
    "body": "StartIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/comments/{thread_id}/replies": {
    "operationId": "reply_api_comments__thread_id__replies_post",
    "summary": "Answer in a thread",
    "body": "BodyIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "thread_id": {
+     "type": "integer"
+    }
+   }
   },
   "POST /api/comments/{thread_id}/resolve": {
    "operationId": "resolve_api_comments__thread_id__resolve_post",
    "summary": "Close a thread, or open it again",
    "body": "ResolveIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "thread_id": {
+     "type": "integer"
+    }
+   }
   },
   "POST /api/css-snippets": {
    "operationId": "add_snippet_api_css_snippets_post",
    "summary": "Keep a new CSS snippet",
    "body": "SnippetIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/daily": {
    "operationId": "daily_api_daily_post",
    "summary": "Open the daily note of a date, made from the space's template when missing",
    "body": "app__routers__everyday__DailyIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/drafts/{draft_id}/accept": {
    "operationId": "accept_api_drafts__draft_id__accept_post",
    "summary": "Accept",
    "body": null,
-   "answer": "TakenOut"
+   "answer": "TakenOut",
+   "path": {
+    "draft_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "POST /api/email/confirm": {
    "operationId": "confirm_email_api_email_confirm_post",
    "summary": "The link from a mail of 1.16.0: the waiting address counts (no sign-in needed)",
    "body": "EmailConfirmIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/email/{token}": {
    "operationId": "confirm_email_link_api_email__token__post",
    "summary": "Confirm a new address with the link sent there (no sign-in needed)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "token": {
+     "type": "string"
+    }
+   }
   },
   "POST /api/export/pdf": {
    "operationId": "export_pdf_api_export_pdf_post",
    "summary": "Export Pdf",
    "body": "ExportIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/export/preview": {
    "operationId": "export_preview_api_export_preview_post",
    "summary": "Export Preview",
    "body": "ExportIn",
-   "answer": "PreviewOut"
+   "answer": "PreviewOut",
+   "path": {}
   },
   "POST /api/files/zip": {
    "operationId": "files_zip_api_files_zip_post",
    "summary": "Chosen files (the pictures of a note, say) as one ZIP file",
    "body": "FilesIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/folders": {
    "operationId": "create_folder_api_folders_post",
    "summary": "Create Folder",
    "body": "FolderIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/graph/topics": {
    "operationId": "topics_api_graph_topics_post",
    "summary": "Topics",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/import": {
    "operationId": "import_vault_api_import_post",
    "summary": "Import Vault",
    "body": "Body_import_vault_api_import_post",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/inbox": {
    "operationId": "capture_api_inbox_post",
    "summary": "Put words on top of the space's inbox note, made when there is none",
    "body": "CaptureIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/index/scan": {
    "operationId": "index_scan_api_index_scan_post",
    "summary": "Index Scan",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/inks": {
    "operationId": "create_api_inks_post",
    "summary": "Make a new, empty drawing for a note",
    "body": "app__routers__ink__CreateIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/invite/{token}": {
    "operationId": "accept_api_invite__token__post",
    "summary": "Accept an invitation with a new account",
    "body": "AcceptIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "token": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "maxLength": 64,
+     "minLength": 20
+    }
+   }
   },
   "POST /api/invite/{token}/join": {
    "operationId": "join_api_invite__token__join_post",
    "summary": "Accept an invitation with the signed-in account",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "token": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "maxLength": 64,
+     "minLength": 20
+    }
+   }
   },
   "POST /api/invites": {
    "operationId": "invite_api_invites_post",
    "summary": "Invite into nexlore without a space (operator)",
    "body": "InviteIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/locks": {
    "operationId": "lock_api_locks_post",
    "summary": "Lock",
    "body": "LockIn",
-   "answer": "LockOut"
+   "answer": "LockOut",
+   "path": {}
   },
   "POST /api/lore/ask": {
    "operationId": "ask_api_lore_ask_post",
    "summary": "Ask Lore about the own notes; the answer comes as a stream of events",
    "body": "AskIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/lore/conversations/{conversation_id}/note": {
    "operationId": "save_note_api_lore_conversations__conversation_id__note_post",
    "summary": "An answer as a note of its own, its sources as links",
    "body": "AnswerIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "conversation_id": {
+     "type": "integer"
+    }
+   }
   },
   "POST /api/lore/conversations/{conversation_id}/propose": {
    "operationId": "propose_api_lore_conversations__conversation_id__propose_post",
    "summary": "What an answer about a note says, as a proposal for that note",
    "body": "AnswerIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "conversation_id": {
+     "type": "integer"
+    }
+   }
   },
   "POST /api/mcp": {
    "operationId": "endpoint_api_mcp_post",
    "summary": "MCP (JSON-RPC over HTTP) with a key in Authorization: Bearer",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/mcp/keys": {
    "operationId": "make_key_api_mcp_keys_post",
    "summary": "Make Key",
    "body": "app__routers__mcp__KeyIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/mcp/requests/{request_id}/approve": {
    "operationId": "approve_api_mcp_requests__request_id__approve_post",
    "summary": "Run a waiting request, with exactly the arguments it was asked with",
    "body": "DecideIn",
-   "answer": "RequestOut"
+   "answer": "RequestOut",
+   "path": {
+    "request_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "POST /api/mcp/requests/{request_id}/decline": {
    "operationId": "decline_api_mcp_requests__request_id__decline_post",
    "summary": "Turn a request down",
    "body": null,
-   "answer": "RequestOut"
+   "answer": "RequestOut",
+   "path": {
+    "request_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "POST /api/me/calendar-feed": {
    "operationId": "feed_make_api_me_calendar_feed_post",
    "summary": "A new address for the calendar subscription; the one before stops",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/me/email/provider": {
    "operationId": "take_provider_email_api_me_email_provider_post",
    "summary": "Take the address the sign-in provider reports (with the password)",
    "body": "PasswordOnlyIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/me/email/resend": {
    "operationId": "resend_own_email_api_me_email_resend_post",
    "summary": "Mail the link for the waiting address once more",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/me/notify/test": {
    "operationId": "test_api_me_notify_test_post",
    "summary": "Send a test through every way the account has, now",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/me/password-reset-notice/seen": {
    "operationId": "password_reset_notice_seen_api_me_password_reset_notice_seen_post",
    "summary": "The notice that the password was set through somebody else's link is read",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/me/whats-new/seen": {
    "operationId": "whats_new_seen_api_me_whats_new_seen_post",
    "summary": "\"What's new\" of the running version is read or put away",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/mentions/link": {
    "operationId": "link_api_mentions_link_post",
    "summary": "Turn one mention into a link",
    "body": "LinkIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/move": {
    "operationId": "move_api_move_post",
    "summary": "Move",
    "body": "MoveIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/news/seen": {
    "operationId": "seen_all_api_news_seen_post",
    "summary": "Mark everything new as seen",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/notes": {
    "operationId": "create_note_api_notes_post",
    "summary": "Create Note",
    "body": "app__routers__vault__CreateIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/notes/merge": {
    "operationId": "merge_api_notes_merge_post",
    "summary": "Merge a note into another: its text to the end, its links along, it to the trash",
    "body": "MergeIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/notices/{notice_id}/accept": {
    "operationId": "accept_notice_api_notices__notice_id__accept_post",
    "summary": "Accept an invitation into a space",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "notice_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "POST /api/notices/{notice_id}/decline": {
    "operationId": "decline_notice_api_notices__notice_id__decline_post",
    "summary": "Decline an invitation, or mark a notice seen",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "notice_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "POST /api/oauth/authorize": {
    "operationId": "consent_api_oauth_authorize_post",
    "summary": "Agree to a program's sign-in, or turn it down",
    "body": "ConsentIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/oidc/admin/providers": {
    "operationId": "add_provider_api_oidc_admin_providers_post",
    "summary": "Add a provider; the issuer is checked by discovery",
    "body": "ProviderIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/oidc/authentik/address": {
    "operationId": "authentik_save_address_api_oidc_authentik_address_post",
    "summary": "Save the public address (\"Use it only\"); asks first on a change",
    "body": "AddressIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/oidc/authentik/setup": {
    "operationId": "authentik_setup_api_oidc_authentik_setup_post",
    "summary": "Set up provider and application in authentik with a one-time token",
    "body": "app__routers__oidc__SetupIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/oidc/{slug}/link": {
    "operationId": "link_start_api_oidc__slug__link_post",
    "summary": "Start linking the own account to a provider; needs the password",
    "body": "app__routers__oidc__PasswordIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "slug": {
+     "type": "string",
+     "maxLength": 40
+    }
+   }
   },
   "POST /api/presence": {
    "operationId": "here_api_presence_post",
    "summary": "This tab has the note open; who else has it",
    "body": "HereIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/proposals": {
    "operationId": "propose_api_proposals_post",
    "summary": "Propose a change to a note",
    "body": "ProposalIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/proposals/{proposal_id}/decline": {
    "operationId": "decline_api_proposals__proposal_id__decline_post",
    "summary": "Turn a proposal down",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "proposal_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "POST /api/proposals/{proposal_id}/take": {
    "operationId": "take_api_proposals__proposal_id__take_post",
    "summary": "Take a proposal over into the note",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "proposal_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "POST /api/public/{token}/unlock": {
    "operationId": "unlock_api_public__token__unlock_post",
    "summary": "Give the password of a public page",
    "body": "UnlockIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "token": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "maxLength": 64,
+     "minLength": 20
+    }
+   }
   },
   "POST /api/recent": {
    "operationId": "opened_api_recent_post",
    "summary": "The note was opened now; answers what others changed since the last time",
    "body": "RecentIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/reset/{token}": {
    "operationId": "reset_password_api_reset__token__post",
    "summary": "Set a new password with a reset link; signs in nowhere",
    "body": "ResetIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "token": {
+     "type": "string",
+     "pattern": "^[A-Za-z0-9_-]+$",
+     "maxLength": 64,
+     "minLength": 20
+    }
+   }
   },
   "POST /api/settings/guide": {
    "operationId": "make_guide_api_settings_guide_post",
    "summary": "Make the space with the guide again, next to what is there",
    "body": "GuideIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/settings/mail-test": {
    "operationId": "mail_test_api_settings_mail_test_post",
    "summary": "Send a test mail through the configured server",
    "body": "TestMailIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/setup": {
    "operationId": "setup_api_setup_post",
    "summary": "Create the operator account",
    "body": "app__routers__auth__SetupIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/shares": {
    "operationId": "create_api_shares_post",
    "summary": "Put a note or a folder on a public page",
    "body": "ShareIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/spaces": {
    "operationId": "create_space_api_spaces_post",
    "summary": "Create Space",
    "body": "app__routers__vault__NameIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/spaces/{name}/invites": {
    "operationId": "invite_to_space_api_spaces__name__invites_post",
    "summary": "Invite into the space; the link is shown once",
    "body": "InviteIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string",
+     "maxLength": 255,
+     "minLength": 1
+    }
+   }
   },
   "POST /api/spaces/{name}/rename": {
    "operationId": "rename_space_api_spaces__name__rename_post",
    "summary": "Give a space another name; links naming it follow",
    "body": "app__routers__vault__NameIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string"
+    }
+   }
   },
   "POST /api/tags/rename": {
    "operationId": "tag_rename_api_tags_rename_post",
    "summary": "Tag Rename",
    "body": "TagRenameIn",
-   "answer": "TagRenameOut"
+   "answer": "TagRenameOut",
+   "path": {}
   },
   "POST /api/tasks/toggle": {
    "operationId": "task_toggle_api_tasks_toggle_post",
    "summary": "Tick a task off, or open it again: only its line changes",
    "body": "ToggleIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/themes": {
    "operationId": "create_api_themes_post",
    "summary": "Keep a new theme (made here or taken in from a file)",
    "body": "ThemeIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/trash/{entry_id}/restore": {
    "operationId": "restore_trash_api_trash__entry_id__restore_post",
    "summary": "Restore Trash",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "entry_id": {
+     "type": "string",
+     "pattern": "^[fg]-(note-)?[0-9a-f-]+$",
+     "maxLength": 64
+    }
+   }
   },
   "POST /api/v1/daily": {
    "operationId": "daily_api_v1_daily_post",
    "summary": "The daily note, made from the template when missing",
    "body": "app__routers__v1__DailyIn",
-   "answer": "DailyOut"
+   "answer": "DailyOut",
+   "path": {}
   },
   "POST /api/v1/inbox": {
    "operationId": "capture_api_v1_inbox_post",
    "summary": "Put words on top of a space's inbox note",
    "body": "InboxIn",
-   "answer": "PathOut"
+   "answer": "PathOut",
+   "path": {}
   },
   "POST /api/v1/note/append": {
    "operationId": "append_api_v1_note_append_post",
    "summary": "Add text at the end of a note",
    "body": "AppendIn",
-   "answer": "PathOut"
+   "answer": "PathOut",
+   "path": {}
   },
   "POST /api/v1/notes": {
    "operationId": "create_api_v1_notes_post",
    "summary": "Make a note, from a template if wanted",
    "body": "app__routers__v1__CreateIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "POST /api/v1/tasks/complete": {
    "operationId": "complete_api_v1_tasks_complete_post",
    "summary": "Tick a task off, or open it again",
    "body": "CompleteIn",
-   "answer": "CompleteOut"
+   "answer": "CompleteOut",
+   "path": {}
   },
   "POST /api/versions/{version_id}/restore": {
    "operationId": "restore_version_api_versions__version_id__restore_post",
    "summary": "Restore Version",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "version_id": {
+     "type": "integer"
+    }
+   }
   },
   "PUT /api/about/updates": {
    "operationId": "switch_api_about_updates_put",
    "summary": "Switch the daily check",
    "body": "UpdateSwitchIn",
-   "answer": "UpdatesOut"
+   "answer": "UpdatesOut",
+   "path": {}
   },
   "PUT /api/accounts/{account_id}/display-name": {
    "operationId": "set_display_name_api_accounts__account_id__display_name_put",
    "summary": "Give an account another display name",
    "body": "DisplayNameIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "PUT /api/accounts/{account_id}/email": {
    "operationId": "set_account_email_api_accounts__account_id__email_put",
    "summary": "1.16.0's way: only an empty address (taking it away) is still allowed",
    "body": "AccountEmailIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "PUT /api/accounts/{account_id}/name": {
    "operationId": "set_name_api_accounts__account_id__name_put",
    "summary": "Give an account another username (its history goes along)",
    "body": "app__routers__accounts__NameIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "PUT /api/accounts/{account_id}/password": {
    "operationId": "set_password_api_accounts__account_id__password_put",
    "summary": "Gone: the operator makes a reset link instead",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "PUT /api/accounts/{account_id}/role": {
    "operationId": "set_role_api_accounts__account_id__role_put",
    "summary": "Make an account operator or member",
    "body": "RoleIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "account_id": {
+     "type": "integer"
+    }
+   }
   },
   "PUT /api/admin/plugins/{plugin_id}": {
    "operationId": "admin_approve_api_admin_plugins__plugin_id__put",
    "summary": "Admin Approve",
    "body": "ApprovedIn",
-   "answer": "PluginOut"
+   "answer": "PluginOut",
+   "path": {
+    "plugin_id": {
+     "type": "string",
+     "pattern": "^[a-z][a-z0-9-]{1,31}$"
+    }
+   }
   },
   "PUT /api/ai": {
    "operationId": "save_api_ai_put",
    "summary": "Change the own access; what is left out stays",
    "body": "AccessIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/ai/shared": {
    "operationId": "save_shared_api_ai_shared_put",
    "summary": "Change the operator's service for every account; what is left out stays",
    "body": "SharedIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/app-pairing/allowed": {
    "operationId": "set_latch_api_app_pairing_allowed_put",
    "summary": "Operator: open or close the iPhone app",
    "body": "Latch",
-   "answer": "Latch"
+   "answer": "Latch",
+   "path": {}
   },
   "PUT /api/auth/avatar": {
    "operationId": "set_avatar_api_auth_avatar_put",
    "summary": "Set the own profile picture (the picture itself as the body)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/auth/password": {
    "operationId": "change_password_api_auth_password_put",
    "summary": "Change the own password",
    "body": "PasswordChangeIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/bases/cell": {
    "operationId": "change_cell_api_bases_cell_put",
    "summary": "Change one property of a note from a view",
    "body": "CellIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/bases/file": {
    "operationId": "save_text_api_bases_file_put",
    "summary": "Save a view's YAML",
    "body": "BaseTextIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/canvas": {
    "operationId": "save_api_canvas_put",
    "summary": "Save a canvas against the state it was loaded as",
    "body": "app__routers__canvas__SaveIn",
-   "answer": "SaveOut"
+   "answer": "SaveOut",
+   "path": {}
   },
   "PUT /api/comments/{comment_id}": {
    "operationId": "edit_api_comments__comment_id__put",
    "summary": "Change one's own comment",
    "body": "BodyIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "comment_id": {
+     "type": "integer"
+    }
+   }
   },
   "PUT /api/cover": {
    "operationId": "set_cover_api_cover_put",
    "summary": "Set the cover picture of a space or folder (the picture as the body, or an image file of the vault as `source`)",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/css-snippets/{snippet_id}": {
    "operationId": "change_snippet_api_css_snippets__snippet_id__put",
    "summary": "Change an own CSS snippet, or switch it on or off",
    "body": "SnippetChange",
-   "answer": null
+   "answer": null,
+   "path": {
+    "snippet_id": {
+     "type": "integer"
+    }
+   }
   },
   "PUT /api/favorites": {
    "operationId": "set_favorite_api_favorites_put",
    "summary": "Make a note, folder, heading or search a favorite, or not any more",
    "body": "FavoriteIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/ink": {
    "operationId": "save_api_ink_put",
    "summary": "Save a drawing against the state it was loaded as",
    "body": "app__routers__ink__SaveIn",
-   "answer": "SaveOut"
+   "answer": "SaveOut",
+   "path": {}
   },
   "PUT /api/locales/{code}": {
    "operationId": "upload_locale_api_locales__code__put",
    "summary": "Add or replace a language (operator)",
    "body": null,
-   "answer": "LocaleEntry"
+   "answer": "LocaleEntry",
+   "path": {
+    "code": {
+     "type": "string"
+    }
+   }
   },
   "PUT /api/logs/level": {
    "operationId": "set_level_api_logs_level_put",
    "summary": "Change the level, effective at once",
    "body": "LogModeChange",
-   "answer": "LogMode"
+   "answer": "LogMode",
+   "path": {}
   },
   "PUT /api/looks": {
    "operationId": "set_look_api_looks_put",
    "summary": "Give a space or folder a symbol and a colour, or neither",
    "body": "LookIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/mcp/blocked": {
    "operationId": "set_blocked_api_mcp_blocked_put",
    "summary": "Block tools for every account (operator)",
    "body": "BlockedIn",
-   "answer": "ToolsOut"
+   "answer": "ToolsOut",
+   "path": {}
   },
   "PUT /api/mcp/keys/{key_id}/rights": {
    "operationId": "set_rights_api_mcp_keys__key_id__rights_put",
    "summary": "Set what a key may do with each tool",
    "body": "RightsIn",
-   "answer": "app__routers__mcp__KeyOut"
+   "answer": "app__routers__mcp__KeyOut",
+   "path": {
+    "key_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "PUT /api/me/appearance": {
    "operationId": "set_appearance_api_me_appearance_put",
    "summary": "How nexlore looks for the own account; only the values sent change",
    "body": null,
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/me/email": {
    "operationId": "set_own_email_api_me_email_put",
    "summary": "Enter the own mail address (with the password); with a mail server it waits for its link",
    "body": "EmailIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/me/language": {
    "operationId": "set_language_api_me_language_put",
    "summary": "The language of the own account; empty follows the browser",
    "body": "LanguageIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/me/new-sign-in-mail": {
    "operationId": "set_new_sign_in_mail_api_me_new_sign_in_mail_put",
    "summary": "A mail when a browser signs in for the first time: on or off",
    "body": "SwitchIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/me/notify": {
    "operationId": "save_api_me_notify_put",
    "summary": "Choose occasions and ways",
    "body": "NotifyIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/me/profile": {
    "operationId": "set_profile_api_me_profile_put",
    "summary": "The own display name, username and address; empty display name shows the name",
    "body": "ProfileIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/note": {
    "operationId": "save_api_note_put",
    "summary": "Save",
    "body": "app__routers__vault__SaveIn",
-   "answer": "SaveOut"
+   "answer": "SaveOut",
+   "path": {}
   },
   "PUT /api/oidc/admin/providers/order": {
    "operationId": "order_providers_api_oidc_admin_providers_order_put",
    "summary": "Put the providers in this order (the drag handle)",
    "body": "OrderIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/oidc/admin/providers/{provider_id}": {
    "operationId": "save_provider_api_oidc_admin_providers__provider_id__put",
    "summary": "Save a provider; another issuer drops its links",
    "body": "ProviderIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "provider_id": {
+     "type": "integer",
+     "minimum": 1
+    }
+   }
   },
   "PUT /api/plugins/note": {
    "operationId": "write_note_api_plugins_note_put",
    "summary": "Write Note",
    "body": "NoteIn",
-   "answer": null
+   "answer": null,
+   "path": {}
   },
   "PUT /api/plugins/{plugin_id}/enabled": {
    "operationId": "switch_api_plugins__plugin_id__enabled_put",
    "summary": "Switch",
    "body": "EnabledIn",
-   "answer": "PluginOut"
+   "answer": "PluginOut",
+   "path": {
+    "plugin_id": {
+     "type": "string",
+     "pattern": "^[a-z][a-z0-9-]{1,31}$"
+    }
+   }
   },
   "PUT /api/settings": {
    "operationId": "save_api_settings_put",
    "summary": "Save",
    "body": "SettingsIn",
-   "answer": "SettingsOut"
+   "answer": "SettingsOut",
+   "path": {}
   },
   "PUT /api/settings/files": {
    "operationId": "save_file_settings_api_settings_files_put",
    "summary": "Save File Settings",
    "body": "FileSettingsIn",
-   "answer": "FileSettingsOut"
+   "answer": "FileSettingsOut",
+   "path": {}
   },
   "PUT /api/spaces/{name}/members/{person}": {
    "operationId": "set_member_api_spaces__name__members__person__put",
    "summary": "Change a member's right, or invite an account by name",
    "body": "MemberIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string",
+     "maxLength": 255,
+     "minLength": 1
+    },
+    "person": {
+     "type": "string",
+     "maxLength": 64,
+     "minLength": 1
+    }
+   }
   },
   "PUT /api/spaces/{name}/options": {
    "operationId": "put_options_api_spaces__name__options_put",
    "summary": "Set where the daily notes and templates of a space live",
    "body": "app__routers__everyday__OptionsIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string"
+    }
+   }
   },
   "PUT /api/spaces/{name}/task-statuses": {
    "operationId": "put_task_statuses_api_spaces__name__task_statuses_put",
    "summary": "Set the managers' own meanings of task characters",
    "body": "StatusesIn",
-   "answer": null
+   "answer": null,
+   "path": {
+    "name": {
+     "type": "string"
+    }
+   }
   },
   "PUT /api/themes/{theme_id}": {
    "operationId": "change_api_themes__theme_id__put",
    "summary": "Change an own theme: name, colours, shared or not",
    "body": "ThemeChange",
-   "answer": null
+   "answer": null,
+   "path": {
+    "theme_id": {
+     "type": "integer"
+    }
+   }
   },
   "PUT /api/v1/note": {
    "operationId": "replace_api_v1_note_put",
    "summary": "Replace a note's text; unchanged lines stay as they were",
    "body": "ReplaceIn",
-   "answer": "SavedOut"
+   "answer": "SavedOut",
+   "path": {}
   }
  },
  "schemas": [

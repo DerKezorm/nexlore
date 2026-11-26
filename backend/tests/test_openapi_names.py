@@ -1,6 +1,6 @@
 """The names of nexlore 1.16.0 in the API's description stay (plan E53): every way of before keeps its operationId,
-its summary and the schema of its body and answer, and every schema of before is still there, so that a generated
-client or a snapshot notices nothing. New ways and new schemas may come. ``fixtures/openapi-names-1.16.0.json`` holds
+its summary and the schema of its body and answer, and every schema of before is still there, and every path parameter keeps its type, pattern and length (the backup
+names of ``/api/backups/{name}``: pattern and 64), so that a generated client or a snapshot notices nothing. New ways and new schemas may come. ``fixtures/openapi-names-1.16.0.json`` holds
 the names of the branch konten (``app.openapi()`` there); the description itself is published only with
 NEXLORE_API_DOCS, the test reads ``app.openapi()``."""
 
@@ -37,6 +37,18 @@ def _ref(schema: dict[str, Any] | None) -> str | None:
     return None
 
 
+#: What a path parameter's schema says about the values it takes.
+LIMITS = ("type", "pattern", "maxLength", "minLength", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum")
+
+
+def _path(operation: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {
+        parameter["name"]: {key: parameter.get("schema", {})[key] for key in LIMITS if key in parameter.get("schema", {})}
+        for parameter in operation.get("parameters", [])
+        if parameter.get("in") == "path"
+    }
+
+
 def _names() -> dict[str, dict[str, Any]]:
     described = app.openapi()
     names = {}
@@ -49,6 +61,7 @@ def _names() -> dict[str, dict[str, Any]]:
                 "summary": operation.get("summary"),
                 "body": _ref(next(iter(body.values()), {}).get("schema")) if body else None,
                 "answer": _ref(answer.get("schema")),
+                "path": _path(operation),
             }
     return names
 
