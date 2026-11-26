@@ -26,8 +26,9 @@ class Adapter(StandardAdapter):
     built_in: ClassVar[dict[str, str]] = {"de": "Deutsch", "en": "English"}
     public_read = True
     has_template = False
-    # The names nexlore's routes had before (routers/locales.py); nexlore describes its interface under
-    # /api/openapi.json, which only NEXLORE_API_DOCS opens: the adapter opens it for the test (see start).
+    # The names nexlore's routes had before (routers/locales.py). nexlore publishes its description under
+    # /api/openapi.json only with NEXLORE_API_DOCS (off in the tests): the contract tests read app.openapi() instead
+    # (description), nothing is opened for them.
     openapi_path = "/api/openapi.json"
     # Written out, not taken from the router: a change there must turn the contract test red.
     operation_ids: ClassVar[dict[str, str]] = {
@@ -54,26 +55,9 @@ class Adapter(StandardAdapter):
         self._folder = Path(tempfile.mkdtemp(prefix="nexlore-locales-"))
         self._settings.locales_dir = self._folder
         locales.configure()
-        self._open_description()
-
-    def _open_description(self) -> None:
-        """The description nexlore serves with NEXLORE_API_DOCS (off in the tests): the app's own ``openapi()``."""
-        from fastapi.responses import JSONResponse
-
-        from app.main import app
-
-        self._added = not any(getattr(route, "path", "") == self.openapi_path for route in app.router.routes)
-        if self._added:
-            app.openapi_schema = None
-            app.add_route(self.openapi_path, lambda _request: JSONResponse(app.openapi()), include_in_schema=False)
 
     def stop(self) -> None:
-        from app.main import app
         from app.services import locales
-
-        if getattr(self, "_added", False):
-            app.router.routes[:] = [route for route in app.router.routes
-                                    if getattr(route, "path", "") != self.openapi_path]
 
         for client in self._clients:
             client.close()
@@ -90,6 +74,13 @@ class Adapter(StandardAdapter):
 
         with TestClient(app, base_url="http://testserver", headers=TAB):
             pass
+
+    def description(self) -> dict[str, Any]:
+        """nexlore's own description of its interface, as ``/api/openapi.json`` would give it with NEXLORE_API_DOCS."""
+        from app.main import app
+
+        found: dict[str, Any] = app.openapi()
+        return found
 
     def client(self, role: str) -> Any:
         from fastapi.testclient import TestClient
