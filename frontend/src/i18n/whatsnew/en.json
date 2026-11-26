@@ -4,17 +4,17 @@
     "sections": [
       {
         "title": "AI from outside can do everything, with rights per tool",
-        "where": "Account menu, My account, AI, a key, Rights per tool",
+        "where": "My account › Connections › AI tools (MCP), Rights per tool",
         "body": "Over MCP an AI program now makes spaces, folders and notes, renames and moves them with their links, and works with versions, the trash, tags, comments and attachments. Under each key you set every tool to Allow, Ask or Deny. New keys read freely, ask before they make or change something, and do not even see the tools that delete, share or change members. The operator can block tools for everybody."
       },
       {
         "title": "Approvals",
-        "where": "Account menu, Approvals, and New since your last visit",
+        "where": "Account menu › Approvals, and New since your last visit",
         "body": "A tool set to Ask waits for you. The request shows with exactly what the program sent; Approve and run does exactly that, Decline does nothing, and after 24 hours it runs out. With a tick the tool runs without asking from then on."
       },
       {
         "title": "Connectors",
-        "where": "My account, AI, How to connect a program",
+        "where": "My account › Connections › AI tools (MCP), How to connect a program",
         "body": "Programs that sign in themselves need only the address of nexlore with /api/mcp after it. You sign in, choose the level and the spaces, and agree; the program then stands in the list like a key. For AI apps that run in the cloud, nexlore must be reachable from the internet; a program on your own computer reaches it at home."
       },
       {
@@ -24,12 +24,12 @@
       },
       {
         "title": "A display name for every account",
-        "where": "Account menu, My account, Profile, Display name",
+        "where": "My account › Profile, Display name",
         "body": "Each account chooses how others see it, for example with first and last name. In member lists and in the @ suggestions the sign-in name stays beside it, because that is what goes into the text after @."
       },
       {
         "title": "About nexlore, with an update check",
-        "where": "Account menu, About nexlore",
+        "where": "Account menu › About nexlore",
         "body": "The version, the licence, the source code and the releases. Once a day nexlore asks GitHub whether a newer version is out; only that question goes out. The operator can switch it off there and check by hand."
       }
     ],
@@ -44,12 +44,12 @@
     "sections": [
       {
         "title": "Notifications",
-        "where": "Account menu, My account, Notifications",
+        "where": "My account › Notifications",
         "body": "Give a webhook address, a notification inbox for example, and switch mail on if your operator set up a mail server. Then choose what you hear about: somebody names you with @ or answers in your thread, an invitation or an approval for an AI program waits, and once a day at a time of your choosing, what is due today or overdue. Send a test shows at once whether it arrives. A notification names the note and who did something, never what a note or a comment says."
       },
       {
         "title": "Server troubles reach the operator",
-        "where": "Account menu, My account, Notifications, Server troubles",
+        "where": "My account › Notifications › What you hear about, Server troubles",
         "body": "Operators hear when a scheduled backup failed, when a newer version of nexlore is out and when the disk where nexlore keeps its data runs full. Each of these comes once, not every minute."
       }
     ],
@@ -63,12 +63,12 @@
     "sections": [
       {
         "title": "API tokens for programs",
-        "where": "Account menu, My account, Connections, API keys",
+        "where": "My account › Connections › API keys",
         "body": "Make a token of its own for each program: read or write, for all your spaces or only some, and if you like running out after 30 days, 90 days or a year. The token is shown once, with the header line for n8n and a command to try it. What a program writes becomes a version with the source “Program (API)”; when the note changed meanwhile or somebody is editing it, the text goes into a conflict copy."
       },
       {
         "title": "The operator holds the latch",
-        "where": "Settings, Server, General, Interfaces",
+        "where": "Server › General › Interfaces",
         "body": "API tokens are off by default. The operator switches them on, sees every token with its account, level and last use, never the token itself, and can block one for good. Switched off, every token answers 401 until they are switched on again."
       }
     ],
@@ -110,12 +110,12 @@
       },
       {
         "title": "AI services in your own network, by name",
-        "where": "Settings, Server, AI provider",
+        "where": "Server › AI provider",
         "body": "Members may use any public AI service. A service in your own network (Ollama at home, for example) works once you list its host under Services in your own network; every other address there is refused, so nobody can reach your router or NAS through nexlore. If your members already use one at home, add it there."
       },
       {
         "title": "Backups ask for your password",
-        "where": "Settings, Server, Storage and backups",
+        "where": "Server › Storage and backups",
         "body": "Deleting a backup and going back to one now ask for your password once more, as downloading did. Backups, the database and the log are readable only for nexlore's own user."
       },
       {
@@ -208,12 +208,12 @@
     "sections": [
       {
         "title": "Upload a backup, move to a new server",
-        "where": "Settings, Server, Storage and backups, \"Upload a backup\"",
+        "where": "Server › Storage and backups, \"Upload a backup\"",
         "body": "Download a backup on the old server, set up nexlore on the new one and upload the ZIP there: it appears in the list as \"uploaded\", you check it and restore it. After the restart you sign in with your old account, and every space, note, attachment and account is there. Uploading asks for your password like downloading, and the automatic clean-up leaves uploaded backups alone."
       },
       {
         "title": "The backups card, tidied up",
-        "where": "Settings, Server, Storage and backups",
+        "where": "Server › Storage and backups",
         "body": "The schedule, how many backups stay, uploading and \"Back up now\" share one row. Every backup has small buttons to check, download, restore and delete it; a window of its own asks for the password. Up to 365 backups can be kept now. A note for a new backup is gone; the notes of older backups still show in the list."
       }
     ],
@@ -232,12 +232,12 @@
       },
       {
         "title": "One AI service for everybody",
-        "where": "Settings, Server, AI provider",
+        "where": "Server › AI provider",
         "body": "The operator switches Ask Lore on and chooses whether every account brings its own AI service or one service serves all, such as Ollama at home. With one for all and a model for meaning, Lore also finds notes that say your question in other words, and the tab Links beside a note shows the notes most like it."
       },
       {
         "title": "The Markdown view",
-        "where": "While editing, the switch Visual | Markdown in the toolbar; Settings, General, Editor",
+        "where": "While editing, the switch Visual | Markdown in the toolbar; My account › Notes › Editor",
         "body": "The Markdown view stands on the page like the visual editor and keeps the whole toolbar: bold, lists, headings and links put the signs into the text for you, and undo takes them back. One click on Visual and you are back. Under Settings, General you choose which view your notes open in."
       },
       {
@@ -283,22 +283,22 @@
     "sections": [
       {
         "title": "Your mail address",
-        "where": "My account, Profile",
+        "where": "My account › Profile",
         "body": "Enter your address and press Confirm: nexlore mails you a link, and the address counts once you open it. Until then an address you confirmed before stays in force. Invitations and notifications by mail go to it."
       },
       {
         "title": "Set by the operator",
-        "where": "Settings, Server, Accounts, Mail address beside an account",
+        "where": "Server › Accounts, Mail address beside an account",
         "body": "The operator enters an address for an account; it counts at once, and the account sees it under New since your last visit. Every account in the list shows its address and where it came from."
       },
       {
         "title": "With a sign-in service",
-        "where": "My account, Profile, for accounts that sign in through authentik or another service",
+        "where": "My account › Profile, for accounts that sign in through authentik or another service",
         "body": "An account that signs in only through the service follows the service's address at every sign-in. A linked account with a password keeps its own address; when the service knows a different one, the profile offers to take it."
       },
       {
         "title": "The mail server",
-        "where": "Settings, Server, Mail server",
+        "where": "Server › Mail",
         "body": "The mail server is no longer tucked away under Accounts as Invitation mail. Its part says what it carries: invitations, notifications and the links that confirm an address, and it tells you when nexlore's public address is still missing."
       }
     ],
@@ -314,12 +314,12 @@
     "sections": [
       {
         "title": "Microsoft Entra ID with common",
-        "where": "Settings, Server, Sign-in, OpenID Connect",
+        "where": "Server › Sign-in › Sign-in providers",
         "body": "nexlore now takes https://login.microsoftonline.com/common/v2.0 or organizations as the issuer. Every token is checked against the tenant it names; a token whose issuer is another tenant, or one without a tenant, is refused. A new account is named after the part of the Microsoft user name before the @. Entra never confirms a mail address, so people from Entra come in by invitation or link their account under My account, Security."
       },
       {
         "title": "The authentik button after a move",
-        "where": "Settings, Server, Sign-in, authentik in one step",
+        "where": "Server › Sign-in › authentik in one step",
         "body": "A nexlore that shares its authentik with another one and moved to a new address finds its own provider again by the client ID it stored, whatever it is called there. Provider, application and issuer stay, and every account linked to them keeps its sign-in. Before, the button made a third provider and dropped every link."
       }
     ],
@@ -336,22 +336,22 @@
     "sections": [
       {
         "title": "Several sign-in providers",
-        "where": "Settings, Server, Sign-in",
+        "where": "Server › Sign-in",
         "body": "Add as many OpenID Connect providers as you like, each with its own name, its own button on the sign-in page and its own switch for whether it checks the second factor itself. The authentik button sets up its provider in one step. Accounts that signed in through your one provider before are moved over by themselves on the first start, and a backup is made first."
       },
       {
         "title": "Links per provider",
-        "where": "Account menu, My account, Security",
+        "where": "My account › Security",
         "body": "Link your account to each provider on its own and unlink it again. An account is never matched by its mail address any more, not even when a provider says the address is confirmed, so nobody can take over an account by owning the same address elsewhere. Accounts that found their provider by the address are already linked. The operator can unlink a link in the account list, and the person is told about it."
       },
       {
         "title": "A question before the address changes",
-        "where": "Settings, Server, Sign-in",
+        "where": "Server › Sign-in",
         "body": "Changing or clearing the public address asks first, because every provider has the old return address registered. The authentik card names the address it registered when it differs from the current one. nexlore also reads the scheme from the proxy in front of it only from addresses listed in NEXLORE_TRUSTED_PROXIES, so set it when you run behind a TLS proxy."
       },
       {
         "title": "Keys wait for a second factor",
-        "where": "Account menu, My account, Connections",
+        "where": "My account › Connections",
         "body": "Where a second factor is required, API tokens, AI keys and the calendar subscription now say that they work only once you have set one up, with a link to do it. Whoever signs in through a provider that checks the second factor itself does not have to set up another."
       }
     ],
@@ -396,7 +396,7 @@
       },
       {
         "title": "Characters set per space",
-        "where": "Settings, Spaces, Options",
+        "where": "My account › Spaces, Options",
         "body": "The managers of a space can say themselves what a character means: to do, in progress, on hold, done, cancelled or not a task, with a name. This list stands above the plugin's, so a space without Obsidian gets the same. A character nobody names stays open."
       },
       {
@@ -477,7 +477,7 @@
     "sections": [
       {
         "title": "Connect the iPhone app",
-        "where": "Account menu, My account, Security, Connect the iPhone app",
+        "where": "My account › Connections › Devices, Connect an iPhone or iPad",
         "body": "nexlore shows a QR code and a short code. The iPhone's camera opens the app with it, or you type the address and the code into the app. A connected iPhone has the same rights as your browser. The same card shows when each iPhone was last seen and disconnects it with one tap; “Sign out everywhere else” and a new password disconnect it as well."
       },
       {
@@ -487,7 +487,7 @@
       },
       {
         "title": "For operators",
-        "where": "Settings, Server, General, Interfaces",
+        "where": "Server › General › Interfaces",
         "body": "Out of the box, accounts may connect the app. This is where you turn it off for everyone. The app talks to nexlore under /api/app/1, described in docs/api.md."
       }
     ],
@@ -501,17 +501,17 @@
     "sections": [
       {
         "title": "Hide attachment folders",
-        "where": "Sidebar, right click on a space, Hide attachment folders; or Settings, Spaces, Options",
+        "where": "Sidebar, right click on a space, Hide attachment folders; or My account › Spaces, Options",
         "body": "For the managers of a space. The attachment folders stay out of the sidebar and the cover flow for everybody in the space. The files stay where they are, and the notes keep showing them. The same menu shows them again."
       },
       {
         "title": "Name pasted pictures your way",
-        "where": "Settings, Server, Files, Name of pasted pictures",
+        "where": "Server › General › Limits, Name of pasted pictures",
         "body": "A pattern with {note} for the note's name, {date}, {time} and {n} for a running number; {n:3} counts 001, 002 and on. An example shows what comes out. Out of the box it stays as before: Shopping 1.png. Files you upload keep their own name."
       },
       {
         "title": "Rename the attachment folders already there",
-        "where": "Settings, Server, Files, Attachment folder",
+        "where": "Server › General › Limits, Attachment folder",
         "body": "Give the attachment folder a new name and nexlore offers to rename the folders that exist already. The links in the notes follow. A folder with the new name beside it stays as it is and is named afterwards."
       }
     ],
@@ -526,12 +526,12 @@
     "sections": [
       {
         "title": "A folder for each note",
-        "where": "Settings, Server, Files, Name of pasted pictures and Name of uploaded files",
+        "where": "Server › General › Limits, Name of pasted pictures and Name of uploaded files",
         "body": "A / in a name pattern makes a folder below the attachment folder: {note}/{n} keeps each note's pictures together. When a note moves, its attachments come along from those folders, and folders left empty go away, after a move as after a delete."
       },
       {
         "title": "Name uploaded files your way",
-        "where": "Settings, Server, Files, Name of uploaded files",
+        "where": "Server › General › Limits, Name of uploaded files",
         "body": "A pattern of its own for files you upload to a note, with {filename} for the name they came with and the same placeholders as for pasted pictures. Out of the box it is {filename}, so files keep their name as before."
       }
     ],
@@ -559,7 +559,7 @@
     "sections": [
       {
         "title": "Deleted spaces stay gone",
-        "where": "Settings › Server › Accounts › All spaces",
+        "where": "Server › Accounts › All spaces",
         "body": "A deleted space was still listed there, even after the trash was emptied. Now it is gone as soon as it is in the trash, as in the sidebar, and comes back with it when restored."
       }
     ],

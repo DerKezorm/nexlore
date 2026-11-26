@@ -14,7 +14,7 @@ Einen neuen Bereich legst du mit dem **+** neben „BEREICHE“ in der Seitenlei
 - **Neuer Ordner, Umbenennen, Verschieben, Löschen:** Rechtsklick auf einen Ordner oder eine Notiz in der Seitenleiste. Auf dem Handy hältst du den Finger kurz darauf.
 - **Symbol und Farbe:** ebenfalls im Rechtsklick-Menü. Die Farbe gilt auch für die Ordner darin, das Symbol erscheint auch auf der Karte.
 - **Ziehen:** Eine Notiz oder einen Ordner ziehst du in der Seitenleiste auf einen anderen Ordner. Mit den Pfeiltasten wanderst du durch den Baum, `Enter` öffnet.
-- **Wohin Neues kommt:** Neue Notiz, **Heute** und **Schnell erfassen** landen im Bereich der offenen Notiz. Ist keine offen, im Hauptbereich, den du unter **Mein Konto → Notizen** wählst.
+- **Wohin Neues kommt:** Neue Notiz, **Heute** und **Schnell erfassen** landen im Bereich der offenen Notiz. Ist keine offen, im Hauptbereich, den du unter **Mein Konto › Notizen** wählst.
 
 ![Das Menü einer Notiz in der Seitenleiste](Attachments/kontextmenue.webp)
 

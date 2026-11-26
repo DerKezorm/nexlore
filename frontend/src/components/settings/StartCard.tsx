@@ -1,5 +1,5 @@
 /**
- * Settings → General: the page nexlore opens on, for the own account (Obsidian's Homepage plugin): the map, today's
+ * My account › Notes: the page nexlore opens on, for the own account (Obsidian's Homepage plugin): the map, today's
  * daily note, the note opened last, or one note chosen here. `lib/start.ts` goes there once per tab.
  */
 import { useEffect, useState } from 'react'
@@ -102,7 +102,7 @@ export function StartCard() {
   )
 }
 
-/** Settings → General: where "Today", quick capture and a new note go when no note of a space is open (P5.19). */
+/** My account › Notes: where "Today", quick capture and a new note go when no note of a space is open (P5.19). */
 export function HomeSpaceCard() {
   const { t } = useTranslation()
   const { me, setAppearance } = useAuth()

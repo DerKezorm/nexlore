@@ -1,5 +1,5 @@
 /**
- * Settings → Look → Own CSS: snippets as in Obsidian, named and switched on one by one, for the own account only. The
+ * My account › Appearance › Own CSS: snippets as in Obsidian, named and switched on one by one, for the own account only. The
  * server reads every snippet with a CSS parser and refuses what could load anything or leave the page; the operator
  * decides whether own CSS is allowed at all.
  */

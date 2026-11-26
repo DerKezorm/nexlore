@@ -14,7 +14,7 @@ Make a new space with the **+** beside "SPACES" in the sidebar. Whoever manages 
 - **New folder, rename, move, delete:** right-click a folder or a note in the sidebar. On a phone, press and hold it.
 - **Symbol and colour:** in the same menu. The colour holds for the folders inside too; the symbol shows on the map as well.
 - **Dragging:** drag a note or a folder in the sidebar onto another folder. The arrow keys walk the tree, `Enter` opens.
-- **Where new things go:** a new note, **Today** and **Quick capture** go into the space of the open note. With none open, into the main space you choose under **My account → Notes**.
+- **Where new things go:** a new note, **Today** and **Quick capture** go into the space of the open note. With none open, into the main space you choose under **My account › Notes**.
 
 ![The menu of a note in the sidebar](Attachments/context-menu.webp)
 

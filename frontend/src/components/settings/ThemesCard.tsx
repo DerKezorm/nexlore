@@ -1,5 +1,5 @@
 /**
- * Settings → Look → Themes: nexlore's own, the seven that come along, the ones others share, the own ones. A click
+ * My account › Appearance › Themes: nexlore's own, the seven that come along, the ones others share, the own ones. A click
  * chooses one for the own account; an own theme is made, changed, shared or taken in from a file here. While a theme
  * is edited the whole page shows it, so the colours are judged where they are used.
  */

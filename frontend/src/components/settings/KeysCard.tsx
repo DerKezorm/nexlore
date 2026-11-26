@@ -1,5 +1,5 @@
 /**
- * Settings → General: the own keys of the account (`lib/shortcuts.ts`), each with the command's name and a way to
+ * My account › Notes: the own keys of the account (`lib/shortcuts.ts`), each with the command's name and a way to
  * remove it. They are set in the command palette, where the commands are.
  */
 import { useTranslation } from 'react-i18next'

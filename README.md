@@ -174,10 +174,10 @@ nexlore is made to be reachable from outside, for yourself on the road or for a 
    proxy's address or network; without it every sign-in seems to come from the proxy and the brake against guessing
    cannot tell people apart; the log says so; only such a proxy is believed about `X-Forwarded-For` and
    `X-Forwarded-Proto`, so that the return address of a sign-in is `https`; the warning in the authentik card under
-   Settings, Server, Sign-in points here, and the session cookie gets its `Secure` flag from it), and
+   Server › Sign-in points here, and the session cookie gets its `Secure` flag from it), and
    `NEXLORE_COOKIE_SECURE: "on"`.
-4. **A second factor**: set up your own under My account, Security, then Settings, Server, Sign-in, "Require a
-   second factor of everybody". Or sign in through your OpenID Connect provider (and leave "The provider checks the
+4. **A second factor**: set up your own under My account › Security, then Server › Sign-in, "Require a second
+   factor of everybody". Or sign in through your OpenID Connect provider (and leave "The provider checks the
    second factor itself" on only for one that does).
 5. **Leave the switches closed you do not need**: MCP and connectors, the API, public pages, calendar feeds, AI in
    notes, page titles for pasted links, uploaded plugins, own CSS. Each is off until you open it.
@@ -224,7 +224,7 @@ Everything else lives in `/data`: the SQLite database `nexlore.db` (index, versi
 locking does not work reliably over network filesystems.
 
 The database can always be rebuilt from the files, except for versions and the trash. Back it up with nexlore's own
-backups (Settings, Server, Storage and backups), which copy it consistently while it runs, never by copying the file.
+backups (Settings › Server › Storage and backups), which copy it consistently while it runs, never by copying the file.
 
 `secret.key` protects what the server must read on its own (the OIDC client secret, the mail password, the seeds of
 second factors). It goes into every backup. A different key means second factors can no longer be checked; the
@@ -233,14 +233,14 @@ operator resets them.
 A backup archive is a plain ZIP: the database, every note and file, and `secret.key`. Whoever has it has everything,
 so keep downloaded copies as carefully as the data directory itself.
 
-Moving to a new server: download a backup, set up nexlore there, upload the backup under Settings, Server,
+Moving to a new server: download a backup, set up nexlore there, upload the backup under Settings › Server ›
 Storage and backups, check it and restore it. Afterwards the new server has the old accounts, spaces, notes and files.
 
 ## Updating
 
 With an image: `docker compose pull && docker compose up -d`. Built from source: pull the new code and run
 `docker compose up -d --build`. nexlore adds what the database lacks at the start and backs the database up first;
-nothing needs doing by hand. Make a backup before a big jump anyway (Settings, Server, Storage and backups).
+nothing needs doing by hand. Make a backup before a big jump anyway (Settings › Server › Storage and backups).
 
 ## Environment
 
@@ -250,7 +250,7 @@ nothing needs doing by hand. Make a backup before a big jump anyway (Settings, S
 | `NEXLORE_VAULT_DIR` | `<data>/vault` | The notes, as Markdown files |
 | `NEXLORE_LOCALES_DIR` | `<data>/locales` | Extra languages, one JSON file each |
 | `NEXLORE_SECRET_KEY` | created on first start | Protects server-side secrets; when set, it wins over `secret.key` |
-| `NEXLORE_PUBLIC_URL` | from the request | The address people use to reach nexlore, for invitation links, the links confirming a mail address, public pages and the OIDC redirect. The setting under Settings, Sign-in wins when set |
+| `NEXLORE_PUBLIC_URL` | from the request | The address people use to reach nexlore, for invitation links, the links confirming a mail address, public pages and the OIDC redirect. The setting under Server › Sign-in wins when set |
 | `NEXLORE_TRUSTED_PROXIES` | none | Addresses or networks of reverse proxies whose `X-Forwarded-For` and `X-Forwarded-Proto` are believed (of `X-Forwarded-Proto` the rightmost value, the one the proxy appended), comma separated. Without it every request counts as coming from its peer, and as `http` if that is how it arrives, so the session cookie has no `Secure` flag unless `NEXLORE_COOKIE_SECURE` is `on` |
 | `NEXLORE_SETUP_TOKEN` | made at start | The code the first account needs; without it nexlore makes one at every start until set up and writes it to the log |
 | `NEXLORE_OPERATOR_NETWORKS` | none | Networks the operator's settings may be changed from, comma separated (`192.168.0.0/16`); everything else stays reachable from anywhere |

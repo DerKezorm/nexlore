@@ -4,17 +4,17 @@
     "sections": [
       {
         "title": "KI von außen kann alles, mit Rechten je Werkzeug",
-        "where": "Kontomenü, Mein Konto, KI, ein Schlüssel, Rechte je Werkzeug",
+        "where": "Mein Konto › Verbindungen › KI-Werkzeuge (MCP), Rechte je Werkzeug",
         "body": "Über MCP legt ein KI-Programm jetzt Bereiche, Ordner und Notizen an, benennt und verschiebt sie samt Links und arbeitet mit Versionen, Papierkorb, Tags, Kommentaren und Anhängen. Unter jedem Schlüssel stellst du jedes Werkzeug auf Erlauben, Nachfragen oder Verbieten. Neue Schlüssel lesen frei, fragen vor dem Anlegen und Ändern nach und sehen Werkzeuge zum Löschen, Teilen und für Mitglieder gar nicht. Der Betreiber kann Werkzeuge für alle sperren."
       },
       {
         "title": "Freigaben",
-        "where": "Kontomenü, Freigaben, und Neu seit deinem letzten Besuch",
+        "where": "Kontomenü › Freigaben, und Neu seit deinem letzten Besuch",
         "body": "Ein Werkzeug auf Nachfragen wartet auf dich. Die Anfrage steht mit genau dem da, was das Programm geschickt hat; Annehmen und ausführen tut genau das, Ablehnen nichts, und nach 24 Stunden verfällt sie. Mit einem Haken läuft das Werkzeug künftig ohne Nachfrage."
       },
       {
         "title": "Konnektoren",
-        "where": "Mein Konto, KI, So verbindest du ein Programm",
+        "where": "Mein Konto › Verbindungen › KI-Werkzeuge (MCP), So verbindest du ein Programm",
         "body": "Programme, die sich selbst anmelden, brauchen nur die Adresse von nexlore mit /api/mcp dahinter. Du meldest dich an, wählst Stufe und Bereiche und stimmst zu; danach steht das Programm wie ein Schlüssel in der Liste. Für KI-Apps, die in der Cloud laufen, muss nexlore aus dem Internet erreichbar sein; ein Programm auf deinem eigenen Rechner erreicht es zu Hause."
       },
       {
@@ -24,12 +24,12 @@
       },
       {
         "title": "Ein Anzeigename für jedes Konto",
-        "where": "Kontomenü, Mein Konto, Profil, Anzeigename",
+        "where": "Mein Konto › Profil, Anzeigename",
         "body": "Jedes Konto bestimmt selbst, wie andere es sehen, etwa mit Vor- und Nachnamen. In Mitgliederlisten und bei den @-Vorschlägen steht der Anmeldename klein daneben, denn der kommt nach dem @ in den Text."
       },
       {
         "title": "Über nexlore, mit Prüfung auf Aktualisierungen",
-        "where": "Kontomenü, Über nexlore",
+        "where": "Kontomenü › Über nexlore",
         "body": "Version, Lizenz, Quelltext und Veröffentlichungen. Einmal am Tag fragt nexlore bei GitHub nach, ob es eine neuere Version gibt; hinaus geht nur diese Frage. Der Betreiber schaltet das dort ab und kann von Hand nachsehen."
       }
     ],
@@ -44,12 +44,12 @@
     "sections": [
       {
         "title": "Benachrichtigungen",
-        "where": "Kontomenü, Mein Konto, Benachrichtigungen",
+        "where": "Mein Konto › Benachrichtigungen",
         "body": "Gib eine Webhook-Adresse an, etwa eine Benachrichtigungs-Inbox, und schalte Mail ein, wenn dein Betreiber einen Mailserver eingetragen hat. Dann wählst du, worüber du hörst: Jemand nennt dich mit @ oder antwortet in deinem Faden, eine Einladung oder eine Freigabe für ein KI-Programm wartet, und einmal am Tag zu einer Uhrzeit deiner Wahl, was heute fällig oder überfällig ist. Probe senden zeigt sofort, ob es ankommt. Eine Benachrichtigung nennt die Notiz und wer etwas getan hat, nie den Inhalt einer Notiz oder eines Kommentars."
       },
       {
         "title": "Ärger mit dem Server erreicht den Betreiber",
-        "where": "Kontomenü, Mein Konto, Benachrichtigungen, Ärger mit dem Server",
+        "where": "Mein Konto › Benachrichtigungen › Worüber du hörst, Ärger mit dem Server",
         "body": "Betreiber hören, wenn eine geplante Sicherung gescheitert ist, wenn eine neuere Version von nexlore erschienen ist und wenn die Platte, auf der nexlore seine Daten hält, voll läuft. Jedes davon kommt einmal, nicht jede Minute."
       }
     ],
@@ -63,12 +63,12 @@
     "sections": [
       {
         "title": "API-Token für Programme",
-        "where": "Kontomenü, Mein Konto, Verbindungen, API-Schlüssel",
+        "where": "Mein Konto › Verbindungen › API-Schlüssel",
         "body": "Leg für jedes Programm ein eigenes Token an: Lesen oder Schreiben, für alle deine Bereiche oder nur einzelne, und auf Wunsch mit Ablauf nach 30 Tagen, 90 Tagen oder einem Jahr. Das Token steht nur einmal da, mit der Kopfzeile für n8n und einem Befehl zum Ausprobieren. Was ein Programm schreibt, wird eine Version mit der Quelle „Programm (API)“; hat sich die Notiz inzwischen geändert oder bearbeitet sie gerade jemand, landet der Text in einer Konfliktkopie."
       },
       {
         "title": "Der Betreiber hält den Riegel",
-        "where": "Einstellungen, Server, Allgemein, Schnittstellen",
+        "where": "Server › Allgemein › Schnittstellen",
         "body": "API-Token sind ab Werk aus. Der Betreiber schaltet sie ein, sieht jedes Token mit Konto, Stufe und letzter Nutzung, nie das Token selbst, und kann eines für immer sperren. Schaltet er ab, antwortet jedes Token mit 401, bis er wieder einschaltet."
       }
     ],
@@ -110,12 +110,12 @@
       },
       {
         "title": "KI-Dienste im eigenen Netz, mit Namen",
-        "where": "Einstellungen, Server, KI-Anbieter",
+        "where": "Server › KI-Anbieter",
         "body": "Mitglieder dürfen jeden öffentlichen KI-Dienst nutzen. Ein Dienst im eigenen Netz (etwa Ollama zu Hause) geht, sobald du seinen Host unter Dienste im eigenen Netz einträgst; jede andere Adresse dort wird abgelehnt, so erreicht niemand über nexlore deinen Router oder dein NAS. Nutzen Mitglieder schon einen zu Hause, trag ihn dort ein."
       },
       {
         "title": "Sicherungen fragen nach deinem Passwort",
-        "where": "Einstellungen, Server, Speicher und Sicherung",
+        "where": "Server › Speicher und Sicherung",
         "body": "Eine Sicherung löschen und zu einer zurückgehen fragt jetzt noch einmal dein Passwort, wie schon das Herunterladen. Sicherungen, Datenbank und Log kann nur noch nexlores eigener Nutzer lesen."
       },
       {
@@ -208,12 +208,12 @@
     "sections": [
       {
         "title": "Sicherung hochladen, auf einen neuen Server umziehen",
-        "where": "Einstellungen, Server, Speicher und Sicherung, „Sicherung hochladen“",
+        "where": "Server › Speicher und Sicherung, „Sicherung hochladen“",
         "body": "Auf dem alten Server eine Sicherung herunterladen, auf dem neuen nexlore einrichten und dort die ZIP-Datei hochladen: Sie steht dann als „hochgeladen“ in der Liste, du prüfst sie und stellst sie wieder her. Nach dem Neustart meldest du dich mit deinem alten Konto an, alle Bereiche, Notizen, Anhänge und Konten sind da. Hochladen fragt wie Herunterladen nach deinem Passwort, und das automatische Aufräumen lässt hochgeladene Sicherungen stehen."
       },
       {
         "title": "Die Sicherungskarte, neu aufgeräumt",
-        "where": "Einstellungen, Server, Speicher und Sicherung",
+        "where": "Server › Speicher und Sicherung",
         "body": "Zeitplan, wie viele Sicherungen bleiben, Hochladen und „Jetzt sichern“ stehen in einer Zeile. Jede Sicherung hat kleine Knöpfe zum Prüfen, Herunterladen, Wiederherstellen und Löschen; nach dem Passwort fragt ein eigenes Fenster. Aufbewahren lassen sich jetzt bis zu 365 Sicherungen. Eine Notiz zu einer neuen Sicherung gibt es nicht mehr, die Notizen alter Sicherungen stehen weiter in der Liste."
       }
     ],
@@ -232,12 +232,12 @@
       },
       {
         "title": "Ein KI-Dienst für alle",
-        "where": "Einstellungen, Server, KI-Anbieter",
+        "where": "Server › KI-Anbieter",
         "body": "Der Betreiber schaltet Frag Lore ein und legt fest, ob jedes Konto einen eigenen KI-Dienst mitbringt oder einer für alle dient, etwa Ollama zu Hause. Mit einem für alle und einem Modell für Bedeutung findet Lore auch Notizen, die deine Frage mit anderen Worten sagen, und der Reiter Links neben einer Notiz zeigt die ähnlichsten Notizen."
       },
       {
         "title": "Die Markdown-Ansicht",
-        "where": "Beim Bearbeiten der Umschalter Visuell | Markdown in der Werkzeugleiste; Einstellungen, Allgemein, Editor",
+        "where": "Beim Bearbeiten der Umschalter Visuell | Markdown in der Werkzeugleiste; Mein Konto › Notizen › Editor",
         "body": "Die Markdown-Ansicht steht auf der Seite wie der visuelle Editor und behält die ganze Werkzeugleiste: Fett, Listen, Überschriften und Links setzen die Zeichen für dich in den Text, Rückgängig nimmt sie zurück. Ein Klick auf Visuell und du bist zurück. Unter Einstellungen, Allgemein wählst du, in welcher Ansicht deine Notizen aufgehen."
       },
       {
@@ -283,22 +283,22 @@
     "sections": [
       {
         "title": "Deine Mailadresse",
-        "where": "Mein Konto, Profil",
+        "where": "Mein Konto › Profil",
         "body": "Trag deine Adresse ein und drück Bestätigen: nexlore schickt dir einen Link, und die Adresse gilt, sobald du ihn öffnest. Bis dahin bleibt eine früher bestätigte Adresse gültig. Einladungen und Benachrichtigungen per Mail gehen an sie."
       },
       {
         "title": "Vom Betreiber eingetragen",
-        "where": "Einstellungen, Server, Konten, Mailadresse neben einem Konto",
+        "where": "Server › Konten, Mailadresse neben einem Konto",
         "body": "Der Betreiber trägt einem Konto eine Adresse ein; sie gilt sofort, und das Konto sieht es unter Neu seit deinem letzten Besuch. Jedes Konto in der Liste zeigt seine Adresse und woher sie kommt."
       },
       {
         "title": "Mit einem Anmeldedienst",
-        "where": "Mein Konto, Profil, für Konten, die sich über authentik oder einen anderen Dienst anmelden",
+        "where": "Mein Konto › Profil, für Konten, die sich über authentik oder einen anderen Dienst anmelden",
         "body": "Ein Konto, das sich nur über den Dienst anmeldet, folgt bei jeder Anmeldung dessen Adresse. Ein verknüpftes Konto mit Passwort behält seine eigene Adresse; kennt der Dienst eine andere, bietet das Profil an, sie zu übernehmen."
       },
       {
         "title": "Der Mailserver",
-        "where": "Einstellungen, Server, Mailserver",
+        "where": "Server › Mail",
         "body": "Der Mailserver steckt nicht mehr als Einladungsmail unter Konten. Sein eigener Teil sagt, wofür er da ist: Einladungen, Benachrichtigungen und die Links, mit denen jemand seine Adresse bestätigt. Und er sagt, wenn die öffentliche Adresse von nexlore noch fehlt."
       }
     ],
@@ -314,12 +314,12 @@
     "sections": [
       {
         "title": "Microsoft Entra ID mit common",
-        "where": "Einstellungen, Server, Anmeldung, OpenID Connect",
+        "where": "Server › Anmeldung › Anmeldeanbieter",
         "body": "nexlore nimmt jetzt https://login.microsoftonline.com/common/v2.0 oder organizations als Aussteller. Jedes Token wird gegen den Mandanten geprüft, den es selbst nennt; ein Token, dessen Aussteller ein anderer Mandant ist, oder eines ohne Mandanten wird abgelehnt. Ein neues Konto heißt nach dem Teil des Microsoft-Benutzernamens vor dem @. Entra bestätigt nie eine Mailadresse, also kommt herein, wer eingeladen ist oder sein Konto unter Mein Konto, Sicherheit verknüpft."
       },
       {
         "title": "Der authentik-Knopf nach einem Umzug",
-        "where": "Einstellungen, Server, Anmeldung, authentik in einem Schritt",
+        "where": "Server › Anmeldung › authentik in einem Schritt",
         "body": "Eine nexlore, die sich ihr authentik mit einer zweiten teilt und auf eine neue Adresse umgezogen ist, findet ihren eigenen Provider über die gespeicherte Client-ID wieder, egal wie er dort heißt. Provider, Anwendung und Aussteller bleiben, und jedes verknüpfte Konto behält seine Anmeldung. Vorher legte der Knopf einen dritten Provider an und löste alle Verknüpfungen."
       }
     ],
@@ -336,22 +336,22 @@
     "sections": [
       {
         "title": "Mehrere Anbieter für die Anmeldung",
-        "where": "Einstellungen, Server, Anmeldung",
+        "where": "Server › Anmeldung",
         "body": "Füge so viele OpenID-Connect-Anbieter hinzu, wie du möchtest, jeden mit eigenem Namen, eigenem Knopf auf der Anmeldeseite und eigenem Schalter, ob er den zweiten Faktor selbst prüft. Der authentik-Knopf richtet seinen Anbieter in einem Schritt ein. Konten, die sich bisher über deinen einen Anbieter anmeldeten, werden beim ersten Start von selbst übernommen, davor wird eine Sicherung gemacht."
       },
       {
         "title": "Verknüpfungen je Anbieter",
-        "where": "Kontomenü, Mein Konto, Sicherheit",
+        "where": "Mein Konto › Sicherheit",
         "body": "Verknüpfe dein Konto mit jedem Anbieter einzeln und löse es wieder. Ein Konto wird nie mehr über seine Mailadresse zugeordnet, auch nicht, wenn ein Anbieter die Adresse als bestätigt meldet; wer anderswo dieselbe Adresse besitzt, kann so kein Konto übernehmen. Konten, die ihren Anbieter bisher über die Adresse fanden, sind schon verknüpft. Der Betreiber löst eine Verknüpfung in der Kontenliste, und die Person erfährt es."
       },
       {
         "title": "Eine Frage, bevor sich die Adresse ändert",
-        "where": "Einstellungen, Server, Anmeldung",
+        "where": "Server › Anmeldung",
         "body": "Wer die öffentliche Adresse ändert oder leert, wird zuerst gefragt, weil bei jedem Anbieter die alte Rückleitadresse eingetragen ist. Die authentik-Karte nennt die Adresse, die sie eingetragen hat, wenn sie von der jetzigen abweicht. Außerdem liest nexlore das Schema vom vorgeschalteten Proxy nur von Adressen aus NEXLORE_TRUSTED_PROXIES; setze es, wenn nexlore hinter einem TLS-Proxy läuft."
       },
       {
         "title": "Schlüssel warten auf den zweiten Faktor",
-        "where": "Kontomenü, Mein Konto, Verbindungen",
+        "where": "Mein Konto › Verbindungen",
         "body": "Wo ein zweiter Faktor verlangt wird, sagen API-Tokens, KI-Schlüssel und das Kalender-Abo jetzt, dass sie erst funktionieren, wenn du ihn eingerichtet hast, mit einem Link dorthin. Wer sich über einen Anbieter anmeldet, der den zweiten Faktor selbst prüft, muss keinen weiteren einrichten."
       }
     ],
@@ -396,7 +396,7 @@
       },
       {
         "title": "Zeichen je Bereich festlegen",
-        "where": "Einstellungen, Bereiche, Optionen",
+        "where": "Mein Konto › Bereiche, Optionen",
         "body": "Die Verwalter eines Bereichs legen selbst fest, was ein Zeichen bedeutet: zu erledigen, in Arbeit, pausiert, erledigt, abgebrochen oder keine Aufgabe, mit Namen. Diese Liste gilt vor der des Plugins, so bekommt auch ein Bereich ohne Obsidian dasselbe. Ein Zeichen, das niemand benennt, bleibt offen."
       },
       {
@@ -477,7 +477,7 @@
     "sections": [
       {
         "title": "Die iPhone-App verbinden",
-        "where": "Kontomenü, Mein Konto, Sicherheit, iPhone-App verbinden",
+        "where": "Mein Konto › Verbindungen › Geräte, iPhone oder iPad verbinden",
         "body": "nexlore zeigt einen QR-Code und einen kurzen Code. Die Kamera des iPhones öffnet damit die App, oder du tippst Adresse und Code in der App ein. Ein verbundenes iPhone hat dieselben Rechte wie dein Browser. In derselben Karte siehst du, wann jedes iPhone zuletzt da war, und trennst es mit einem Tippen; „Überall sonst abmelden“ und ein neues Passwort trennen es ebenfalls."
       },
       {
@@ -487,7 +487,7 @@
       },
       {
         "title": "Für Betreiber",
-        "where": "Einstellungen, Server, Allgemein, Schnittstellen",
+        "where": "Server › Allgemein › Schnittstellen",
         "body": "Ab Werk dürfen sich Konten mit der App verbinden. Hier schaltest du das für alle ab. Die App spricht mit nexlore unter /api/app/1; beschrieben ist das in docs/api.md."
       }
     ],
@@ -501,17 +501,17 @@
     "sections": [
       {
         "title": "Anhang-Ordner ausblenden",
-        "where": "Seitenleiste, Rechtsklick auf einen Bereich, Anhang-Ordner ausblenden; oder Einstellungen, Bereiche, Optionen",
+        "where": "Seitenleiste, Rechtsklick auf einen Bereich, Anhang-Ordner ausblenden; oder Mein Konto › Bereiche, Optionen",
         "body": "Für die Verwaltenden eines Bereichs. Die Anhang-Ordner erscheinen für alle im Bereich nicht mehr in der Seitenleiste und beim Stöbern. Die Dateien bleiben, wo sie sind, und die Notizen zeigen sie weiter. Im selben Menü holst du sie zurück."
       },
       {
         "title": "Eingefügte Bilder nach eigenem Muster",
-        "where": "Einstellungen, Server, Dateien, Name eingefügter Bilder",
+        "where": "Server › Allgemein › Grenzen, Name eingefügter Bilder",
         "body": "Ein Muster mit {note} für den Namen der Notiz, {date}, {time} und {n} für eine fortlaufende Nummer; {n:3} zählt 001, 002 und so weiter. Ein Beispiel zeigt, was herauskommt. Ab Werk bleibt es wie bisher: Einkauf 1.png. Hochgeladene Dateien behalten ihren Namen."
       },
       {
         "title": "Vorhandene Anhang-Ordner umbenennen",
-        "where": "Einstellungen, Server, Dateien, Ordner für Anhänge",
+        "where": "Server › Allgemein › Grenzen, Ordner für Anhänge",
         "body": "Bekommt der Anhang-Ordner einen neuen Namen, bietet nexlore an, die schon vorhandenen Ordner mit umzubenennen. Die Links in den Notizen ziehen mit. Ein Ordner, neben dem schon einer mit dem neuen Namen liegt, bleibt, wie er ist, und wird danach genannt."
       }
     ],
@@ -526,12 +526,12 @@
     "sections": [
       {
         "title": "Ein Ordner je Notiz",
-        "where": "Einstellungen, Server, Dateien, Name eingefügter Bilder und Name hochgeladener Dateien",
+        "where": "Server › Allgemein › Grenzen, Name eingefügter Bilder und Name hochgeladener Dateien",
         "body": "Ein / im Namensmuster macht einen Ordner im Anhang-Ordner: {note}/{n} hält die Bilder jeder Notiz beisammen. Wird eine Notiz verschoben, kommen ihre Anhänge aus diesen Ordnern mit, und leer gewordene Ordner verschwinden, nach dem Verschieben wie nach dem Löschen."
       },
       {
         "title": "Hochgeladene Dateien nach eigenem Muster",
-        "where": "Einstellungen, Server, Dateien, Name hochgeladener Dateien",
+        "where": "Server › Allgemein › Grenzen, Name hochgeladener Dateien",
         "body": "Ein eigenes Muster für Dateien, die du zu einer Notiz hochlädst, mit {filename} für den Namen, mit dem sie kamen, und denselben Platzhaltern wie bei eingefügten Bildern. Ab Werk steht dort {filename}, Dateien behalten also wie bisher ihren Namen."
       }
     ],
@@ -559,7 +559,7 @@
     "sections": [
       {
         "title": "Gelöschte Bereiche bleiben weg",
-        "where": "Einstellungen › Server › Konten › Alle Bereiche",
+        "where": "Server › Konten › Alle Bereiche",
         "body": "Ein gelöschter Bereich stand dort weiter, auch nachdem der Papierkorb geleert war. Jetzt fehlt er, sobald er im Papierkorb liegt, wie in der Seitenleiste, und kommt mit ihm zurück, wenn man ihn wiederherstellt."
       }
     ],

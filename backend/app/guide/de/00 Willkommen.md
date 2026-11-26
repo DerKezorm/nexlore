@@ -3,7 +3,7 @@ tags: [anleitung]
 ---
 # Willkommen bei nexlore
 
-Dieser Bereich ist Anleitung und Beispiel zugleich. Jede Notiz hier benutzt, was sie erklärt: Links, Aufgaben, Hinweiskästen, ein Kanban-Brett, eine Vorlage. Ändere ruhig alles, lösch, was du nicht brauchst, oder den ganzen Bereich. Unter Einstellungen → Server → Allgemein legt der Betreiber die Anleitung jederzeit neu an (Karte „Die Anleitung“).
+Dieser Bereich ist Anleitung und Beispiel zugleich. Jede Notiz hier benutzt, was sie erklärt: Links, Aufgaben, Hinweiskästen, ein Kanban-Brett, eine Vorlage. Ändere ruhig alles, lösch, was du nicht brauchst, oder den ganzen Bereich. Unter Einstellungen › Server › Allgemein › Die Anleitung legt der Betreiber die Anleitung jederzeit neu an.
 
 > [!tip] So liest du diese Anleitung
 > Klick einen Link an, um die Notiz zu öffnen. Mit **Bearbeiten** oben rechts siehst du, wie sie geschrieben ist.

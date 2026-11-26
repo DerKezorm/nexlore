@@ -16,7 +16,7 @@ A link into another space starts with its name: `[[Work/Project plan]]`. Whoever
 
 The **Links** tab beside every note says which notes point to it. [[00 Welcome|Welcome]] links to this note, for example; open the column on the right there and have a look.
 
-Below, unfold **Unlinked mentions**: places that name the note without linking it. **Link** turns them into a link. Notes without any connection and links into nothing are on the page **Files → Clean up**.
+Below, unfold **Unlinked mentions**: places that name the note without linking it. **Link** turns them into a link. Notes without any connection and links into nothing are on the page **Files › Clean up**.
 
 ## Embedding
 

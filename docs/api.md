@@ -11,20 +11,20 @@ nexlore's own iPhone app has a way in of its own as well, `/api/app/1`, describe
 
 ## Switching it on
 
-The API is off until the operator opens it: Settings, Server, General, card "Interfaces", "Programming interface
-(API) for members". While it is off, no account can make an API key (the account page says so). Under Settings,
-Server, Accounts, card "API keys of all accounts", the operator sees every key (whose it is, its level, when it was
+The API is off until the operator opens it: Settings › Server › General › Interfaces, "Programming interface
+(API) for members". While it is off, no account can make an API key (the account page says so). Under Settings ›
+Server › Accounts › API keys of all accounts, the operator sees every key (whose it is, its level, when it was
 last used, never the key itself) and may lock and unlock one. Switched off again, every key answers `401 api_off`;
 the keys stay and work again when switched on.
 
-Then every account makes its API keys on its account page: My account, Connections, card "API keys".
+Then every account makes its API keys on its account page: My account › Connections › API keys.
 
 - **Name**, to tell keys apart.
 - **Level**: Read (spaces, notes, search, links, tasks, numbers) or Write (also makes and changes notes, appends, the
   daily note, the inbox, ticks tasks off).
 - **Spaces**: all the account may read, later ones too, or only the ones chosen.
 - **Runs out**: in 30 days, 90 days, a year, or never (the default). A week before, the list marks it and the account
-  gets a notification (occasion "API keys run out", on by default, see My account, Notifications).
+  gets a notification (occasion "API keys run out", on by default, see My account › Notifications).
 
 The key is `nxa_` and 43 more characters, shown once. nexlore keeps only its SHA-256 and its first characters.
 
@@ -330,7 +330,7 @@ milk`) become one: `- [ ] Buy milk (07:30)`.
 {"path": "Garden/Inbox.md"}
 ```
 
-`space` optional. Left out: the account's main space (Settings, General), else its first own space it writes in.
+`space` optional. Left out: the account's main space (My account › Notes), else its first own space it writes in.
 
 ### `POST /api/v1/tasks/complete`
 
