@@ -24,7 +24,7 @@ from datetime import UTC, date, datetime
 from typing import Annotated, Any, Literal
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 from sqlalchemy import Integer, and_, cast, func, or_, select
@@ -59,9 +59,54 @@ def _token(request: Request) -> str | None:
     return header[7:].strip() if header[:7].lower() == "bearer " else None
 
 
+#: What a connection with another nex app opens here (module verbinden, catalog: nexnotes puts a note into nexlore,
+#: ``notes.add``): making a note, and seeing who it is and which spaces it may make one in (Stufe 1: the right of the
+#: purpose plus the spaces given). Every other way of ``/api/v1`` answers 403 ``purpose_missing``.
+CONNECTION_WAYS = {
+    "notes.add": frozenset({("GET", "/api/v1/me"), ("GET", "/api/v1/spaces"), ("POST", "/api/v1/notes")}),
+}
+
+
+def _connection(request: Request, token: str) -> Caller:
+    """A token of a connection with another nex app (``nxv_``): it opens the ways of its purpose with the account it
+    acts for, limited to the spaces given, as an API token of that right would. Its own switch "Verbindungen mit
+    anderen nex-Apps" counts, not the one of the API; a refusal answers in the module's words."""
+    from ..services.verbinden_store import CONFIG, VerbindenStore
+    from ..vendor import nexverbinden
+
+    with SessionLocal() as db:
+        try:
+            found = nexverbinden.authenticate(VerbindenStore(db), CONFIG, token, datetime.now(UTC))
+            way = (request.method, request.url.path.rstrip("/"))
+            if not any(found.may(purpose) and way in ways for purpose, ways in CONNECTION_WAYS.items()):
+                raise nexverbinden.Refused("purpose_missing")
+        except nexverbinden.Refused as refusal:
+            raise HTTPException(status_code=refusal.status, detail=refusal.as_dict()) from None
+        account = db.get(Account, int(found.account_id))
+        if account is None:
+            raise HTTPException(status_code=401, detail=nexverbinden.Refused("token_invalid").as_dict())
+        db.expunge(account)
+    account.via_key = True
+    if found.areas is not None:
+        # Only the spaces given, and of those only what the account may still do (rights are checked as ever).
+        account.key_spaces = frozenset(int(space) for space in found.areas if str(space).isdigit())
+    # A number of its own for the brake and the log, never one of an API token (those count from 1).
+    return Caller(account=account, token_id=-(zlib.crc32(found.connection_id.encode()) + 1),
+                  level=found.level if found.level in apitokens.LEVELS else "read")
+
+
 def caller(request: Request) -> Caller:
     if request.headers.get("origin"):
         raise error("origin_refused", "The API is for programs, not web pages.", 403)
+    token = _token(request)
+    if token and token.startswith("nxv_"):
+        found = _connection(request, token)
+        if not apitokens.brake(found.token_id):
+            exc = error("slow_down", "Too many requests with this token. Wait a minute.", 429)
+            exc.headers = {"Retry-After": "60"}
+            raise exc
+        logs.set_actor(found.account.name)
+        return found
     with SessionLocal() as db:
         if not apitokens.allowed(db):
             raise error("api_off", "The operator has not switched the programming interface (API) on.", 401)

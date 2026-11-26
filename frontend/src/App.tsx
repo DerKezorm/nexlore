@@ -8,6 +8,7 @@ import { SecondFactor } from './pages/settings/SecondFactorBoxes'
 import { CalendarPage } from './pages/CalendarPage'
 import { CleanupPage } from './pages/CleanupPage'
 import { AppConnectPage } from './pages/AppConnectPage'
+import { ConnectConsent, ConnectReturn } from './connect/connect'
 import { McpConsentPage, McpRequestRoute } from './pages/McpPages'
 import { McpRequestsPage } from './pages/McpRequestsPage'
 import { CaptureRoute } from './pages/CaptureRoute'
@@ -78,6 +79,24 @@ export default function App() {
         element={
           <SignedIn>
             <McpConsentPage />
+          </SignedIn>
+        }
+      />
+      {/* Another nex app connecting with nexlore (the shared module verbinden): the consent, then the way back from
+          the other app's consent; the account first, without the app around it. */}
+      <Route
+        path="connect/app"
+        element={
+          <SignedIn>
+            <ConnectConsent />
+          </SignedIn>
+        }
+      />
+      <Route
+        path="connect/return"
+        element={
+          <SignedIn>
+            <ConnectReturn />
           </SignedIn>
         }
       />

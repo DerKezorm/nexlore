@@ -38,6 +38,7 @@ vi.mock('../plugins/PluginSettings', () => stubs('AdminPluginsCard', 'MyPluginsC
 vi.mock('../vendor/nexki', () => stubs('AiAccountArea', 'AiProviderArea'))
 vi.mock('../components/settings/LoreCard', () => stubs('LoreCard'))
 vi.mock('../components/AppDevices', () => stubs('AppDevices'))
+vi.mock('../connect/connect', () => stubs('AppsArea', 'AppsOperator', 'ConnectConsent', 'ConnectReturn'))
 vi.mock('../components/NotifySettings', () => stubs('NotifySettings'))
 // The cards of the shared modules: the account module's (profile, security, sign-out, look, what the operator sees,
 // the page Sign-in), the key module's, the mail module's.
@@ -165,6 +166,8 @@ describe('nothing got lost', () => {
     'InstallCard', 'AboutArea',
     // New in the settings pass: "Aussehen" first under Appearance, "What you see" under Accounts
     'AppearanceCard', 'WhatYouSeeCard',
+    // New with the shared module verbinden: the other nex apps under Connections, "Andere nex-Apps" under General
+    'AppsArea', 'AppsOperator',
   ]
 
   it('gives every card of before exactly one place', async () => {
@@ -185,8 +188,9 @@ describe('nothing got lost', () => {
       plugins: ['MyPluginsCard'],
       ai: ['AiAccountArea'],
       notifications: ['NotifySettings'],
-      connections: ['AppDevices', 'InstallCard', 'CalendarFeed', 'ApiKeysCard', 'ToolsCard'],
-      general: ['FilesSettingsCard', 'FeaturesCard', 'InterfacesCard', 'LanguagesCard', 'LinkTitleSwitch', 'CssCard', 'GuideCard'],
+      connections: ['AppDevices', 'InstallCard', 'AppsArea', 'CalendarFeed', 'ApiKeysCard', 'ToolsCard'],
+      // V22: "Andere nex-Apps" after the interfaces, before the languages.
+      general: ['FilesSettingsCard', 'FeaturesCard', 'InterfacesCard', 'AppsOperator', 'LanguagesCard', 'LinkTitleSwitch', 'CssCard', 'GuideCard'],
       'sign-in': ['SignInPage'],
       mail: ['MailCard'],
       storage: ['StorageArea'],

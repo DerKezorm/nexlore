@@ -1451,7 +1451,9 @@
     },
     "features": {
       "title": "Funktionen für alle Konten",
-      "text": "Was jedes Konto auf diesem Server nutzen darf."
+      "text": "Was jedes Konto auf diesem Server nutzen darf.",
+      "localNetwork": "Andere nex-Apps im eigenen Netz",
+      "localNetworkHint": "Konten dürfen andere nex-Apps auch unter einer Adresse im eigenen Netz (LAN, VPN) verbinden. Dann spricht nexlore Adressen dort an, wenn eine andere App sich verbindet."
     }
   },
   "today": {

@@ -10,7 +10,9 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 #: Every way a program posts to; none may answer 400 ``client_required``.
-PROGRAM_WAYS = ("/api/oauth/register", "/api/oauth/token", "/api/oauth/revoke", "/api/mcp")
+PROGRAM_WAYS = ("/api/oauth/register", "/api/oauth/token", "/api/oauth/revoke", "/api/mcp",
+                # The other nex apps (the shared module verbinden 0.1.3).
+                "/api/connect/token", "/api/connect/revoke", "/api/connect/retire")
 
 
 @pytest.mark.parametrize("path", PROGRAM_WAYS)

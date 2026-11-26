@@ -17,7 +17,10 @@ from sqlalchemy import create_engine, event, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import NullPool
 
-from . import models_accounts  # noqa: F401  (its tables belong to the schema of every start)
+from . import (
+    models_accounts,  # noqa: F401  (its tables belong to the schema of every start)
+    models_verbinden,  # noqa: F401  (the tables of the shared module verbinden)
+)
 from .config import get_settings
 from .models import FTS_CREATE, TRI_CREATE, TRI_TABLE, Base
 

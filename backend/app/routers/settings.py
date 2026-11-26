@@ -52,6 +52,8 @@ class SettingsOut(BaseModel):
     app_pairing_allowed: bool
     calendar_feed_allowed: bool
     link_titles_allowed: bool
+    #: Other nex apps may be asked in the own network (module verbinden).
+    connections_local_network: bool = False
     plugin_upload_allowed: bool
     ai_allowed: bool
     ai_private_hosts: str
@@ -88,6 +90,7 @@ class SettingsIn(BaseModel):
     app_pairing_allowed: bool | None = None
     calendar_feed_allowed: bool | None = None
     link_titles_allowed: bool | None = None
+    connections_local_network: bool | None = None
     plugin_upload_allowed: bool | None = None
     ai_allowed: bool | None = None
     ai_private_hosts: str | None = Field(default=None, max_length=2000)
@@ -126,6 +129,7 @@ def _view(db: DbSession) -> SettingsOut:
         app_pairing_allowed=bool(values["app_pairing_allowed"]),
         calendar_feed_allowed=bool(values["calendar_feed_allowed"]),
         link_titles_allowed=bool(values["link_titles_allowed"]),
+        connections_local_network=bool(values["connections_local_network"]),
         plugin_upload_allowed=bool(values["plugin_upload_allowed"]),
         ai_allowed=bool(values["ai_allowed"]),
         ai_private_hosts=str(values["ai_private_hosts"] or ""),

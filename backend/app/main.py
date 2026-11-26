@@ -63,6 +63,7 @@ from .routers import themes as themes_router
 from .routers import totp as totp_router
 from .routers import v1 as v1_router
 from .routers import vault as vault_router
+from .routers import verbinden as verbinden_router
 from .security import HashingBusy, purge_sessions
 from .services import (
     backups,
@@ -118,6 +119,14 @@ def _purge_deleted_accounts() -> None:
         manage.purge_due(KontenStore(db))
 
 
+def _retry_connections() -> None:
+    from .services.verbinden_store import CONFIG, VerbindenStore
+    from .vendor import nexverbinden
+
+    with SessionLocal() as db:
+        nexverbinden.retry_waiting(VerbindenStore(db), CONFIG, datetime.now(UTC))
+
+
 async def _sweep_forever(stop: asyncio.Event) -> None:
     """Enrolments and sign-ins waiting for their second factor run out; what ran out goes from memory, ended
     sessions from the database once an hour (they stayed until someone showed them again), and so do accounts deleted
@@ -130,6 +139,12 @@ async def _sweep_forever(stop: asyncio.Event) -> None:
             await asyncio.to_thread(post_store.run_due)
         except Exception:
             logger.exception("Outbox round failed")
+        if rounds % 5 == 0:
+            # Revocations of connections with other nex apps that did not reach the partner (module verbinden).
+            try:
+                await asyncio.to_thread(_retry_connections)
+            except Exception:
+                logger.exception("Retrying revocations of connections failed")
         if rounds % 60 == 0:
             with SessionLocal() as db:
                 purge_sessions(db)
@@ -262,6 +277,8 @@ for module in ROUTERS:
     app.include_router(module.router)
 # The shared MCP module (mcp 1.1.0): ``POST /api/mcp``, OAuth for programs, the pages under ``/api/connections/mcp``.
 app.include_router(mcp_router.module_router)
+# The shared module verbinden (0.1.3): ``/.well-known/nex-app`` and ``/api/connect/…`` (nexlore hosts nexnotes).
+app.include_router(verbinden_router.router)
 # The shared AI module (ki 0.1.1): Server › KI-Anbieter (``/api/server/ai``) and Mein Konto › KI (``/api/me/ai``).
 # The module's body ``ModelsIn`` is named ``KiModelsIn`` in the description, so nexlore's own of 1.16.0
 # (``POST /api/ai/models``) keeps its name (E53).

@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { aboutApi, api, ApiError, tabId, type ServerSettings } from '../../api/client'
 import { LoreCard } from '../../components/settings/LoreCard'
+import { AppsArea, AppsOperator } from '../../connect/connect'
 import { AppDevices } from '../../components/AppDevices'
 import { NotifySettings } from '../../components/NotifySettings'
 import {
@@ -162,7 +163,8 @@ function AiArea() {
   return <AiAccountArea request={aiRequest} app="nexlore" language={i18n.language} when={when} />
 }
 
-/** Devices, installing, nexlore's calendar feed, then API keys and AI tools (MCP); AI in notes is under "KI" now. */
+/** Devices, installing, the other nex apps, nexlore's calendar feed, then API keys and AI tools (MCP); AI in notes is
+ * under "KI" now. */
 function ConnectionsArea() {
   const { t, i18n } = useTranslation()
   const { me } = useAuth()
@@ -176,6 +178,8 @@ function ConnectionsArea() {
     <>
       <AppDevices />
       <InstallCard />
+      {/* Place 3: the other nex apps (the shared module verbinden), one card for each in use. */}
+      <AppsArea />
       <CalendarFeed />
       <ApiKeysCard request={request} things={t('settings.things')} thingsDative={t('settings.thingsDative')} words={words} docsHref={docs} operator={me?.role === 'operator'} language={i18n.language} />
       {/* The parts of the shared module mcp 1.1.0: "Rechte je Werkzeug" at every MCP key and program, "Wartende
@@ -206,6 +210,8 @@ function ServerArea({ area }: { area: Exclude<AreaSlug, 'profile' | 'security' |
           <FilesSettingsCard />
           {settings && <FeaturesCard settings={settings} onChange={setSettings} />}
           <InterfacesCard request={request} docsHref={docs} language={i18n.language} after={{ mcp: <McpOperatorSettings request={mcpRequest} words={mcpWords} language={i18n.language} /> }} />
+          {/* "Andere nex-Apps" of the shared module verbinden: after the interfaces, before the languages (V22). */}
+          <AppsOperator />
           {/* Server › General › Languages from the shared module sprachen 1.0.0: the template from the page's English
               texts, a change makes the menus ask the server again. */}
           <LanguagesCard app="nexlore" base="/api/locales" template={en} fetcher={languagesFetch} onChange={resetAddedLanguages} language={i18n.language} />

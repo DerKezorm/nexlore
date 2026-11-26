@@ -26,9 +26,9 @@ from ..vendor import nexlog
 from ..vendor.nexlog import *
 
 #: The prefixes nexlore's log blacked out before the module (``nx[aclre]_``: API tokens, calendar subscriptions, MCP
-#: keys, refresh tokens, address links), and the paired devices of the iPhone app: what follows them never reaches the
-#: log.
-KEY_PREFIXES = ("nxa_", "nxc_", "nxl_", "nxr_", "nxe_", "nxd_")
+#: keys, refresh tokens, address links), the paired devices of the iPhone app and the connections with other nex apps
+#: (``nxv_``, module verbinden): what follows them never reaches the log.
+KEY_PREFIXES = ("nxa_", "nxc_", "nxl_", "nxr_", "nxe_", "nxd_", "nxv_", "nxvr_", "nxvc_")
 #: Path segments followed by a token in nexlore, on top of the module's common ones: the link confirming an address.
 TOKEN_PATHS = ("email",)
 #: Query parameters that carry a token in nexlore, on top of the module's common ones.

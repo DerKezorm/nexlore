@@ -879,6 +879,8 @@ export type ServerSettings = {
   custom_css_allowed: boolean
   calendar_feed_allowed: boolean
   link_titles_allowed: boolean
+  /** Other nex apps may be asked at an address in the own network (the shared module verbinden). */
+  connections_local_network: boolean
 }
 export type ServerSettingsChange = Partial<Omit<ServerSettings, 'smtp_password_set'>> & {
   smtp_password?: string

@@ -1451,7 +1451,9 @@
     },
     "features": {
       "title": "Features for all accounts",
-      "text": "What every account may use on this server."
+      "text": "What every account may use on this server.",
+      "localNetwork": "Other nex apps in the own network",
+      "localNetworkHint": "Accounts may connect other nex apps at an address in the own network (LAN, VPN) too. nexlore then asks addresses there when another app connects."
     }
   },
   "today": {

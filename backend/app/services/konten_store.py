@@ -1060,6 +1060,12 @@ class KontenStore:
         row = self._row(account_id)
         if row is None:
             return
+        # Its connections with other nex apps rested while it was deleted; now the partners hear the end (module
+        # verbinden, revoked later where a partner cannot be reached).
+        from ..vendor import nexverbinden
+        from .verbinden_store import CONFIG, VerbindenStore
+
+        nexverbinden.end_all(VerbindenStore(self.db), CONFIG, row.id, datetime.now(UTC))
         self.db.add(FormerName(account_id=None, name=row.name))
         self.db.delete(row)
         # The account's links and old subject go with it: the way back and its fingerprint follow in the same commit.

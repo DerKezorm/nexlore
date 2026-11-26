@@ -82,6 +82,9 @@ DEFAULTS: dict[str, Any] = {
     "calendar_feed_allowed": False,
     #: Titles of links pasted into notes, asked from the pages themselves (services/linktitle): closed until opened.
     "link_titles_allowed": False,
+    #: Other nex apps (module verbinden) may be asked at an address in the own network (a home server): closed until
+    #: the operator opens it, as in nexnotes and nextasks.
+    "connections_local_network": False,
     #: Plugin files of one's own, not from the catalog (M7): off until the operator opens it.
     "plugin_upload_allowed": False,
     #: AI in notes, with each account's own service: note text leaves the house, so closed until the operator opens it.
