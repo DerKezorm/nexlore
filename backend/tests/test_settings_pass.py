@@ -38,9 +38,9 @@ def row_of(name: str) -> Account:
 # --- The migration to 1.1.0 ------------------------------------------------------------------------------------------
 
 
-def test_the_migration_gives_every_account_the_servers_limit_keeps_the_dark_look_and_proves_addresses() -> None:
-    """E23, E24: the server's ``quota_mb`` of before becomes every account's own limit, an account that never chose
-    light or dark keeps the dark look of 1.16.0, an address that counts needs no link."""
+def test_the_migration_gives_every_account_the_servers_limit_and_proves_addresses() -> None:
+    """E23, E24: the server's ``quota_mb`` of before becomes every account's own limit, an address that counts needs no
+    link. The look stays as it was: an account that chose nothing takes "dark" at its next load (E45, test below)."""
     with SessionLocal() as db:
         settings_service.save(db, {"quota_mb": 5})
         db.add(Account(name="kim", email="kim@example.com", email_confirmed=True, email_proven=False))
@@ -52,7 +52,7 @@ def test_the_migration_gives_every_account_the_servers_limit_keeps_the_dark_look
         konten_wanderung._once_110(connection)
     kim, lea = row_of("kim"), row_of("lea")
     assert kim.storage_limit == lea.storage_limit == 5 * MB
-    assert kim.appearance == {"mode": "dark"} and lea.appearance == {"mode": "light", "size": 18}
+    assert kim.appearance is None and lea.appearance == {"mode": "light", "size": 18}
     assert kim.email_proven is True and kim.ai_allowed is True
     # Once: a second start changes nothing the operator set since.
     with SessionLocal() as db:
@@ -61,6 +61,28 @@ def test_the_migration_gives_every_account_the_servers_limit_keeps_the_dark_look
     with engine.begin() as connection:
         konten_wanderung._once_110(connection)
     assert row_of("kim").storage_limit is None
+
+
+def test_an_account_of_before_takes_the_dark_look_once_and_a_new_one_starts_as_the_system(
+    client: TestClient, operator: Account
+) -> None:
+    """konten E45: nexlore looked dark for an account that had chosen nothing; such an account takes "dark" once at
+    its next load (``theme_default_before``), whatever the browser prefers. One that chose keeps its choice, a new
+    account (set up, invited, through a provider) starts "as the system"."""
+    from app.services import accounts as account_service
+
+    kim = make_account("kim")
+    assert row_of("kim").appearance is None
+    anna = TestClient(app, base_url="http://testserver", headers=TAB)
+    sign_in(anna, kim)
+    assert anna.get("/api/auth/me").json()["appearance"]["mode"] == "dark"
+    assert row_of("kim").appearance == {"mode": "dark"}
+    # Taken once: changed later, it stays as changed.
+    assert anna.put("/api/me/appearance", json={"mode": "light"}).status_code == 200
+    assert anna.get("/api/auth/me").json()["appearance"]["mode"] == "light"
+    with SessionLocal() as db:
+        made = account_service.create_with_password(db, "fresh", PASSWORD)
+        assert made.appearance == {"mode": "system"}
 
 
 def test_a_new_account_starts_with_the_servers_limit_and_as_the_system() -> None:

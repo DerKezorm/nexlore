@@ -121,11 +121,29 @@ def configure() -> None:
             setup_token=lambda: get_settings().setup_token,
             logger_name="nexlore.auth",
             error_codes=OLD_CODES,
+            # Before 1.1.0 nexlore looked dark for an account that had chosen nothing (E45): such an account takes
+            # "dark" once at its next load (``adopt_theme``); new accounts start "as the system".
+            theme_default_before="dark",
         )
     )
 
 
 configure()
+
+
+def theme_of(row: Account) -> str:
+    """Light, dark or as the system, as the account chose it (``appearance.mode``); "" while it chose nothing."""
+    look = row.appearance if isinstance(row.appearance, dict) else {}
+    mode = look.get("mode")
+    return mode if mode in nexkonten.profiles.THEMES else ""
+
+
+def adopt_theme(db: Session, row: Account) -> None:
+    """An account of before 1.1.0 that chose no look takes nexlore's look of before once (konten E45, ``dark``).
+    nexlore always kept the choice at the account, never only in the browser, so no browser value counts here."""
+    if theme_of(row) == "":
+        taken = nexkonten.profiles.adopt_theme(KontenStore(db), row.id, None)
+        row.appearance = {**(row.appearance if isinstance(row.appearance, dict) else {}), "mode": taken}
 
 
 def new_device_key() -> str:
@@ -213,17 +231,10 @@ class KontenStore:
             password_changed_at=row.password_changed_at,
             blocked_at=row.blocked_at,
             deleted_at=row.deleted_at,
-            theme=self._theme(row),
+            theme=theme_of(row),
             storage_limit=row.storage_limit,
             rights=frozenset({"ai"} if row.ai_allowed else set()),
         )
-
-    @staticmethod
-    def _theme(row: Account) -> str:
-        """Light, dark or as the system, as the account chose it (``appearance.mode``); "" while it chose nothing."""
-        look = row.appearance if isinstance(row.appearance, dict) else {}
-        mode = look.get("mode")
-        return mode if mode in nexkonten.profiles.THEMES else ""
 
     @staticmethod
     def _offered(row: Account) -> str:
@@ -328,6 +339,8 @@ class KontenStore:
             password_changed_at=utcnow() if new.password else None,
             language=new.language or "",
             whats_new_seen=__version__,
+            # Since E45 a new account has its theme from the start ("system"); only accounts of before have none.
+            appearance={"mode": getattr(new, "theme", "system") or "system"},
             device_key=new_device_key(),
         )
         self.db.add(row)

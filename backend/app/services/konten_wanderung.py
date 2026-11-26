@@ -110,21 +110,12 @@ def _once_110(connection: Connection) -> None:
     limited = 0
     if quota > 0:
         limited = connection.execute(text("UPDATE accounts SET storage_limit = :limit"), {"limit": quota * MB}).rowcount
-    kept_dark = 0
-    for account_id, raw_look in connection.execute(text("SELECT id, appearance FROM accounts")).all():
-        try:
-            look = json.loads(raw_look) if raw_look else {}
-        except (TypeError, ValueError):
-            look = {}
-        if not isinstance(look, dict) or "mode" in look:
-            continue
-        connection.execute(text("UPDATE accounts SET appearance = :look WHERE id = :id"),
-                           {"look": json.dumps({**look, "mode": "dark"}), "id": account_id})
-        kept_dark += 1
+    # The look of an account that chose nothing is no longer written here: the account module takes nexlore's
+    # default of before ("dark", ``theme_default_before``) once at its next load (konten E45, ``adopt_theme``).
     connection.execute(text("INSERT INTO settings (key, value) VALUES (:key, :value)"),
                        {"key": SETTING_110, "value": json.dumps(1)})
-    logger.info("Accounts taken over for the account module 1.1.0: proven addresses=%s, storage limits=%s, "
-                "kept dark=%s", proven or 0, limited or 0, kept_dark)
+    logger.info("Accounts taken over for the account module 1.1.0: proven addresses=%s, storage limits=%s",
+                proven or 0, limited or 0)
 
 
 def run(engine: Engine) -> None:

@@ -1,4 +1,4 @@
-// Vorlage nexoidc 1.0.14
+// Vorlage nexoidc 1.2.0
 /**
  * Contract tests 33 and 34 of the shared sign-in module (started from the shared copy, then nexlore's file).
  *

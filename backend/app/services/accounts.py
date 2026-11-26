@@ -76,6 +76,7 @@ def create_with_password(db: Session, name: str, password: str, role: str = MEMB
         sign_in=SIGN_IN_PASSWORD,
         password_hash=hash_password(password),
         whats_new_seen=__version__,
+        appearance={"mode": "system"},
     )
     db.add(account)
     if commit:

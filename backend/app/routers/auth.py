@@ -478,6 +478,9 @@ def logout_everywhere(request: Request, response: Response, account: Account, db
 
 @router.get("/auth/me", summary="The signed-in account, and what this server offers it")
 def me(account: Account, db: DbSession, request: Request) -> dict[str, Any]:
+    from ..services.konten_store import adopt_theme
+
+    adopt_theme(db, account)
     return {
         **account_view(account, db),
         "shares_allowed": bool(settings_service.get(db, "shares_allowed")),
