@@ -226,6 +226,9 @@ export default defineConfig({
     baseURL: external ?? `http://127.0.0.1:${PORT}`,
     headless: true,
     locale: 'en-US',
+    // New accounts start "as the system" (plan "Einstellungen", the shared account module's theme); the runs measure
+    // nexlore's dark look as before, so the browser says dark. A test that wants light opens a context of its own.
+    colorScheme: 'dark',
     storageState: SIGNED_IN,
   },
   webServer: external

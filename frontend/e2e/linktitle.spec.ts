@@ -56,8 +56,7 @@ test('the operator opens titles of pasted links, and a pasted address gets its p
   await page.request.put('/api/settings', { data: { calendar_feed_allowed: true }, headers: TAB })
   await page.reload()
   await expect(page.locator('#link-titles').getByLabel('Ask pages for their titles')).toBeChecked()
-  // The calendar's switch stands in "AI, API and plugins".
-  await page.goto('/settings/extensions')
+  // The calendar's switch stands in "Funktionen für alle Konten" under General.
   await expect(page.locator('#calendar-feed').getByRole('checkbox').first()).toBeChecked()
 
   const asked: string[] = []

@@ -162,7 +162,7 @@
   "looks2": {
     "spaceThemesHint": "A space may colour its notes. Off, you see your own theme everywhere.",
     "spaceThemes": "Take the themes of spaces",
-    "title": "Look",
+    "title": "Fonts and width",
     "text": "For your account, on every device. Each change shows at once.",
     "mode": "Light or dark",
     "modes": {
@@ -771,6 +771,14 @@
       "about": {
         "title": "About nexlore",
         "text": "Version, licence, updates and what nexlore is built with."
+      },
+      "aiProvider": {
+        "title": "AI provider",
+        "text": "AI for every account: the main switch, the shared service and Ask Lore."
+      },
+      "serverPlugins": {
+        "title": "Plugins",
+        "text": "Which plugins this server has and who may use them."
       }
     },
     "things": "notes"

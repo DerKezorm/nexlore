@@ -162,7 +162,7 @@
   "looks2": {
     "spaceThemesHint": "Ein Bereich darf seine Notizen einfärben. Aus: Du siehst überall dein eigenes Theme.",
     "spaceThemes": "Themes der Bereiche übernehmen",
-    "title": "Aussehen",
+    "title": "Schriften und Breite",
     "text": "Für dein Konto, auf jedem Gerät. Jede Änderung wirkt sofort.",
     "mode": "Hell oder dunkel",
     "modes": {
@@ -771,6 +771,14 @@
       "about": {
         "title": "Über nexlore",
         "text": "Version, Lizenz, Aktualisierungen und woraus nexlore gebaut ist."
+      },
+      "aiProvider": {
+        "title": "KI-Anbieter",
+        "text": "KI für alle Konten: der Hauptschalter, der gemeinsame Dienst und Frag Lore."
+      },
+      "serverPlugins": {
+        "title": "Plugins",
+        "text": "Welche Plugins es auf diesem Server gibt und wer sie nutzen darf."
       }
     },
     "things": "Notizen"

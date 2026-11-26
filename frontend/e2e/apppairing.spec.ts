@@ -9,8 +9,8 @@ test('an iPhone pairs with the short code and goes when disconnected', async ({ 
   const phone = await playwright.request.newContext({ baseURL })
   try {
     await page.goto('/settings/connections')
-    const card = page.locator('#app-devices')
-    await card.getByRole('button', { name: 'Connect the iPhone app' }).click()
+    const card = page.locator('#devices')
+    await card.getByRole('button', { name: 'Connect an iPhone or iPad' }).click()
     await expect(card.getByRole('img', { name: 'QR code to connect the iPhone app' })).toBeVisible()
     await expect(card.getByTestId('app-pairing-address')).toHaveText(new URL(page.url()).origin)
     const code = (await card.getByTestId('app-pairing-code').textContent())!.trim()

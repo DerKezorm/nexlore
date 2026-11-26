@@ -45,8 +45,8 @@ test('the calendar subscription is closed until the operator opens it, and its a
   await page.goto('/account?tab=ai')
   const card = page.getByTestId('calendar-feed')
   await expect(card).toContainText('The operator has not switched calendar subscriptions on.')
-  // The operator opens it under Server, Extensions.
-  await page.goto('/settings?tab=server&sub=extensions')
+  // The operator opens it under Server, General, "Funktionen für alle Konten".
+  await page.goto('/settings/general')
   const toggle = page.getByRole('checkbox', { name: 'Allow calendar subscriptions' })
   // The switch shows at once and saves after; going to another page before that would cut the save off.
   const saved = page.waitForResponse((answer) => answer.url().endsWith('/api/settings') && answer.request().method() === 'PUT')

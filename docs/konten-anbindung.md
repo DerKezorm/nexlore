@@ -14,6 +14,42 @@ comments, locks)“. Ein Umbenennen ohne Vorbereitung nähme jedem Konto seine G
 
 ## 0. Was gebaut ist / was fehlt
 
+### Durchgang „Einstellungen“ (25./26.11.2026)
+
+Nach dem Bauplan in nexlore `Development/nexapps/Baupläne/Bauplan Einstellungen.md` (samt E1 bis E31). Module aus
+`bauplaene` (je `tools/sync.py copy`, `check` grün): **`ui` 1.1.0, `log` 1.0.0, `sicherung` 1.0.1** (aus
+`bauplaene-einst`, mit Nachtrag `b874a2c`), **`konten` 1.1.0, `oidc` 1.2.0, `post` 1.1.0** (Testvorlagen aus
+`bauplaene-einst` `5caffab`), **`schluessel` 1.0.0**. App-Version unverändert 1.16.0, kein Release.
+
+| Bereich | woher jetzt | was gewandert ist (alt → neu) |
+|---|---|---|
+| Gerüst | `SettingsLayout`, `SettingsNav`, `SettingsPage` (ui) in `pages/SettingsPage.tsx`, Karten je Bereich in `pages/settings/SettingsAreas.tsx`; Titel der gemeinsamen Bereiche aus `areaText` | eigene `SettingsNav`/`SettingsJump` fallen weg; Reihenfolge nach Bauplan (Notizen, Bereiche, Plugins vor Benachrichtigungen); `/settings/extensions` und `?tab=server&sub=extensions#…` leiten nach KI-Anbieter, Allgemein oder Server-Plugins um |
+| Eigene Bausteine | `components/settings/ui.tsx` ist jetzt eine dünne Schicht über dem Bausatz (Card, CheckboxRow, Field, SelectField, Button mit Art/Größe/Symbol, CopyRow); `components/ConfirmDialog.tsx` = `ConfirmDialog` des Bausatzes (E31) | eigene Karte, Schalter, Felder, Knöpfe, Rückfrage weg; Fenster Mitglieder, Teilen, Bereichsoptionen, Aufgaben-Status mit Bausatz-Knöpfen und -Feldern |
+| Profil | Profilkarte (konten `PAGES`) und `SignOutCard` des Moduls; neuer Weg `POST /api/me/email/prove` für „Adresse noch nicht bestätigt“ | eigene Abmelde-Karte → Modul |
+| Darstellung | `AppearanceCard` des Moduls (Theme = `appearance.mode`), dann Themes, „Schriften und Breite“ (`Segment`, `CheckboxRow`), Eigenes CSS | Hell/Dunkel aus der Schriftkarte in „Aussehen“; neue Konten „Wie das System“, Bestand ohne Wahl behält „dunkel“ (Wanderung, Frage 1) |
+| Benachrichtigungen | `NotifyWays` (Mail, Test), dann „Worüber du hörst“, „Webhook“ | eine Karte „Wege“ → drei Karten |
+| Verbindungen | „Geräte“ (Rows, `sm` danger „Trennen“, primary „iPhone oder iPad verbinden“), „Auf diesem Gerät installieren“ (`components/settings/InstallCard.tsx`, E28), KI in Notizen, Kalender-Abo, `ApiKeysCard`, `ToolsCard` (mit „Rechte je Werkzeug“ als `extra`) | Installieren aus „Über“; `ApiTokens.tsx`, `McpKeys.tsx` fallen weg |
+| Allgemein | „Grenzen“ (`limits`, Satz zum Speicher je Konto), „Funktionen für alle Konten“ (Kalender-Abos), `InterfacesCard` (API, MCP mit Höchststufe/Konnektoren/gesperrten Werkzeugen als `after.mcp`, iPhone-App), Sprachen, Titel eingefügter Links, Eigenes CSS, Anleitung | `ApiTokensCard`, `McpCard`, `AppPairingSwitch`, `CalendarFeedSwitch` → diese Karten |
+| Anmeldung | `SignInPage` (konten) mit `SignInProviders` (oidc); Wege `GET/PUT /api/server/sign-in`, `GET /api/server/sign-in/readiness` (`routers/server_signin.py`); `PUT /api/settings` behält die Schalter, nach den Regeln des Moduls (`current_password` beim Abschalten des Faktors) | `SignInCards.tsx` fällt weg; Platzhalter `lore.example.com`; nexsuite-Zweige weg; Fund: der Passkey-Schalter wurde vorher nie gespeichert (`passkeys_allowed` fehlte in `SettingsIn`) |
+| Mail | `MailCard` (post) über `/api/server/mail` (`routers/server_mail.py`); `services/mailer.py` gelöscht, alles über post (`services/kontenpost.py`: Kontomails, Einladung, Testmail; `services/notify.py`: Benachrichtigungen als `app_letters` DE/EN in die Outbox, Test sofort); Outbox mit `key`, `waiting`, `on_commit`, `recipient`; `outbox_runner` statt eigenem `nudge` | eigene Mail-Karte weg; Webhook behält seine englischen Worte |
+| Speicher und Sicherung | Modul sicherung: Haken `services/backup_hooks.py` (Format unverändert: `nexlore-backup.json`, `database/nexlore.db`, `vault/`, `trash/`, `secret.key`; Tresor-Inhalt wird getauscht), `routers/backups.py` = neue Wege `/api/server/storage` + alte `/api/backups` (`x-nexlore-password`); Seite `pages/settings/StorageArea.tsx` | neu: Speicher-Karte (Tresor als Teil, auch außerhalb des Datenordners), Uhrzeit (`backup_time`, 03:00), „Jeden Monat“; gescheitertes Wiederherstellen startet mit den alten Daten und meldet es |
+| KI-Anbieter, Plugins, Öffentliche Seiten | `AiCard`, `AdminPluginsCard`, `SharesCard` je eigener Server-Bereich (`ai-provider`, `server-plugins`, `shares`) | aus „KI, API und Plugins“ |
+| Konten | Kontenliste mit `capsOf('nexlore', …)`: mehrere Betreiber, Sperren, Löschen mit 30 Tagen (`manage.remove`, `restore`, Hausputz `manage.purge_due` stündlich), Speichergrenze (`PUT /api/accounts/{id}/storage-limit`) und „KI erlaubt“ (`PUT /api/accounts/{id}/right`) je Konto; `WhatYouSeeCard`, `AllKeysCard`, „Alle Bereiche“ | Löschen bisher sofort und endgültig → 30 Tage; `quota_mb` des Servers → Grenze jedes Kontos (E24), KI-Recht je Konto (Serverschalter bleibt Hauptschalter) |
+| Schlüssel | `services/schluessel_store.py` über `api_tokens` (`nxa_`) und `mcp_keys` (`nxl_`, Programme `kind=oauth`), Ids `api-<n>`/`mcp-<n>`; `routers/connections.py` (`/api/connections`); neue Spalte `mcp_keys.blocked_at` (Sperren auch für MCP-Schlüssel) | alte Wege `/api/api-tokens`, `/api/mcp/keys`, `/api/admin/api-tokens` unverändert (Frage 7) |
+| Log | Modul log: `services/logs.py` = `configure` + `from app.vendor.nexlog import *`, `routers/logs.py` = `nexlog.api.router`, Karte des Moduls | Format, Datei, Schlüssel `log_mode`/`log_mode_until` unverändert; geschwärzt dazu `nxe_`, `nxd_`, Pfad `/email/`, Abfrage `invite` |
+| Über | `AboutPage` (ui) in `pages/AboutPage.tsx` | eigene Seite → drei Karten des Bausatzes |
+
+Neue Spalten (nur ergänzend, Sicherung davor wie bisher): `accounts.deleted_at`, `accounts.storage_limit`,
+`accounts.ai_allowed` (1), `mail_outbox.key`, `mcp_keys.blocked_at`. Einmalige Wanderung `konten_110_migrated`
+(`services/konten_wanderung._once_110`): bestätigte Adressen gelten als bewiesen (E23), `quota_mb` → Grenze jedes
+Kontos (E24), Bestand ohne Hell/Dunkel-Wahl behält „dunkel“. Gelöschte Konten sind überall draußen
+(`security.account_out`, Benachrichtigungen, Einladen per Name).
+
+Umwege: keine offenen (der Umweg für sicherung 1.0.0 entfiel mit 1.0.1). Fragen: `einst-fragen/nexlore.md`.
+
+LÄUFE_PLATZHALTER
+
+
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
 `konten` (`3c55402`): **`konten` 1.0.0, `ui` 1.0.0, `oidc` 1.1.2, `post` 1.0.0**, kopiert mit `tools/sync.py copy`,
 `check` grün. App-Version unverändert 1.16.0, kein Release. Die Abschnitte 1 bis 13 unten sind der Plan vom 24.11.2026

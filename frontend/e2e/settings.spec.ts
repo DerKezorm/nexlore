@@ -11,8 +11,9 @@ test.skip(!!process.env.E2E_BASE_URL, 'makes an account; not against a running i
 
 const TAB = { 'X-Nexlore-Client': 'tab-e2e-sett0' }
 
-const MINE = ['Profile', 'Security', 'Appearance', 'Notes', 'Spaces', 'Notifications', 'Plugins', 'Connections']
-const SERVER = ['General', 'Sign-in', 'Mail', 'Storage and backups', 'Public pages', 'AI, API and plugins', 'Accounts', 'Log']
+// The order of the plan "Einstellungen": the shared areas with nexlore's own between them.
+const MINE = ['Profile', 'Security', 'Appearance', 'Notes', 'Spaces', 'Plugins', 'Notifications', 'Connections']
+const SERVER = ['General', 'Sign-in', 'Mail', 'Storage and backups', 'AI provider', 'Plugins', 'Public pages', 'Accounts', 'Log']
 
 test('the settings are in areas beside the content, and the address says which', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
@@ -25,16 +26,16 @@ test('the settings are in areas beside the content, and the address says which',
   await expect(page.getByTestId('sidebar').getByTestId('settings-link')).toHaveAttribute('aria-current', 'page')
   // The language is a field of the profile since the shared account module (`account.language`).
   await expect(page.getByLabel('Language', { exact: true })).toBeVisible()
-  await expect(page.locator('#backups')).toHaveCount(0)
+  await expect(page.locator('[data-card="backups"]')).toHaveCount(0)
 
   await nav.getByRole('link', { name: 'Accounts' }).click()
   await expect(page).toHaveURL(/\/settings\/accounts$/)
-  await expect(page.locator('#accounts')).toBeVisible()
+  await expect(page.getByTestId('settings-area-accounts')).toBeVisible()
 
   await nav.getByRole('link', { name: 'Storage and backups' }).click()
   await expect(page).toHaveURL(/\/settings\/storage$/)
-  await expect(page.locator('#backups')).toBeVisible()
-  await expect(page.locator('#accounts')).toHaveCount(0)
+  await expect(page.locator('[data-card="backups"]')).toBeVisible()
+  await expect(page.getByTestId('settings-area-accounts')).toHaveCount(0)
 
   // The address of a tab before, as a saved link goes: to its area.
   await page.goto('/settings?tab=spaces')
@@ -43,14 +44,17 @@ test('the settings are in areas beside the content, and the address says which',
   await expect(page.getByLabel('Language of the interface')).toHaveCount(0)
 })
 
-test('on a narrow page a choice above the content goes to the areas', async ({ page }) => {
+test('on a narrow page the list leads to an area and the area back to the list', async ({ page }) => {
   await page.setViewportSize({ width: 900, height: 900 })
   await page.goto('/settings/mail')
-  const jump = page.getByTestId('settings-jump')
-  await expect(jump).toBeVisible()
   await expect(page.getByTestId('settings-nav')).toBeHidden()
-  await jump.selectOption('log')
+  await page.getByTestId('settings-back').click()
+  await expect(page).toHaveURL(/\/settings$/)
+  const nav = page.getByTestId('settings-nav')
+  await expect(nav).toBeVisible()
+  await nav.getByTestId('settings-nav-log').click()
   await expect(page).toHaveURL(/\/settings\/log$/)
+  await expect(page.getByTestId('settings-nav')).toBeHidden()
 })
 
 test('an account that is not the operator sees no Server, not even by the address', async ({ page, browser, baseURL }) => {
@@ -66,7 +70,7 @@ test('an account that is not the operator sees no Server, not even by the addres
   await tab.goto('/settings?tab=server&sub=backups')
   await expect(tab).toHaveURL(/\/settings\/profile$/)
   await expect(tab.getByTestId('settings-nav').getByRole('link')).toHaveText([...MINE, 'About nexlore'])
-  await expect(tab.locator('#backups')).toHaveCount(0)
+  await expect(tab.locator('[data-card="backups"]')).toHaveCount(0)
   await tab.goto('/settings/storage')
   await expect(tab).toHaveURL(/\/settings\/profile$/)
   await member.close()

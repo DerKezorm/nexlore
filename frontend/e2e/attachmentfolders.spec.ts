@@ -51,7 +51,7 @@ test('the operator sets how pasted pictures are named, and sees an example', asy
   const before = await (await page.request.get('/api/settings/files', { headers: TAB })).json()
   try {
     await page.goto('/settings?tab=server&sub=files')
-    const card = page.locator('#files')
+    const card = page.locator('#limits')
     const pattern = card.getByLabel('Name of pasted pictures')
     await expect(pattern).toHaveValue('{note} {n}')
     await expect(card).toContainText('Example: Attachments/Shopping 1.png')

@@ -11,11 +11,13 @@ test.skip(!!process.env.E2E_BASE_URL, 'makes a backup; not against a running ins
 
 test('a backup is downloaded only with the password once more, and uploaded again it joins the list', async ({ page }) => {
   await page.goto('/settings?tab=server&sub=backups')
-  const card = page.locator('#backups')
-  const rows = card.locator('li')
+  await expect(page).toHaveURL(/\/settings\/storage$/)
+  // The card "Sicherung" of the shared module sicherung.
+  const card = page.locator('[data-card="backups"]')
+  const rows = card.getByTestId('backup-list').locator('li')
   await card.getByRole('button', { name: 'Back up now' }).click()
   // Late in a full run the vault holds some 750 files; making the backup took 7 to 8 s once (05.10.2026).
-  await expect(card.getByText('Backup made.')).toBeVisible({ timeout: 30_000 })
+  await expect(card.getByText('Backup created.')).toBeVisible({ timeout: 30_000 })
   const row = rows.filter({ hasText: 'by hand' }).first()
   await expect(row).toBeVisible()
 
@@ -34,7 +36,7 @@ test('a backup is downloaded only with the password once more, and uploaded agai
   await expect(dialog).toBeHidden()
 
   // Upload: the same archive comes back in, against the password, and is listed as uploaded.
-  await card.getByTestId('backup-upload').setInputFiles({ name: 'moved.zip', mimeType: 'application/zip', buffer: fs.readFileSync(saved) })
+  await card.getByTestId('backup-upload-file').setInputFiles({ name: 'moved.zip', mimeType: 'application/zip', buffer: fs.readFileSync(saved) })
   const upload = page.getByRole('dialog', { name: 'Upload a backup?' })
   await upload.getByLabel('Your password').fill(OPERATOR.password)
   await upload.getByRole('button', { name: 'Upload' }).click()
@@ -42,5 +44,5 @@ test('a backup is downloaded only with the password once more, and uploaded agai
   const uploaded = rows.filter({ hasText: 'uploaded' }).first()
   await expect(uploaded).toBeVisible()
   await uploaded.getByRole('button', { name: 'Check' }).click()
-  await expect(card.getByText('The archive is complete and readable.')).toBeVisible()
+  await expect(card.getByTestId('backup-brief')).toContainText('Complete')
 })

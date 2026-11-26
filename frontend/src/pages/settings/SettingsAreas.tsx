@@ -29,7 +29,7 @@ import { InstallCard } from '../../components/settings/InstallCard'
 import { KeysCard } from '../../components/settings/KeysCard'
 import { LinkTitleSwitch } from '../../components/settings/LinkTitleSwitch'
 import { LogCard } from '../../components/settings/LogCard'
-import { McpToolRights } from '../../components/settings/McpToolRights'
+import { McpRecipes, McpToolRights } from '../../components/settings/McpToolRights'
 import { SnippetsCard } from '../../components/settings/SnippetsCard'
 import { SpacesCard } from '../../components/settings/SpacesCard'
 import { HomeSpaceCard, StartCard } from '../../components/settings/StartCard'
@@ -160,7 +160,9 @@ function ConnectionsArea() {
       <AiAccess />
       <CalendarFeed />
       <ApiKeysCard request={request} things={t('settings.things')} words={words} docsHref={docs} operator={me?.role === 'operator'} language={i18n.language} />
-      <ToolsCard request={request} words={words} language={i18n.language} extra={(key) => <McpToolRights entry={key} />} />
+      <ToolsCard request={request} words={words} language={i18n.language} extra={(key) => <McpToolRights entry={key} />}>
+        <McpRecipes />
+      </ToolsCard>
     </>
   )
 }
