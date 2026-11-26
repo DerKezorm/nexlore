@@ -184,6 +184,9 @@ def _caller(db: Session, key: McpKey, *, used: bool) -> Caller | None:
         account.locked_until is not None and account.locked_until > utcnow()
     ):
         return None
+    if not account.ai_allowed:
+        # The operator took AI from the account (MCP decision 10): its keys and connectors rest until it is back.
+        return None
     if totp.setup_required(db, account):
         # The operator requires a second factor this account has not set up: its keys wait like its sessions.
         return None

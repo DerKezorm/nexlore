@@ -190,6 +190,12 @@ class SchluesselStore:
         ceiling = mcp.max_level(self.db)
         return [level for level in mcp.LEVELS if mcp.at_least(ceiling, level)]
 
+    def ai_allowed(self, account_id: Any) -> bool:
+        """"KI erlaubt" of the account (Server › Konten › Verwalten; MCP decision 10): without it the account makes no
+        MCP key and its MCP keys and connectors rest. The operator's main switch is not asked here (ki K8)."""
+        row = self._account(account_id)
+        return row is not None and bool(row.ai_allowed)
+
     def keys_wait(self, account_id: Any) -> bool:
         row = self._account(account_id)
         return row is not None and totp.setup_required(self.db, row)

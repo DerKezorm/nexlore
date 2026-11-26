@@ -133,3 +133,23 @@ class Adapter(StandardAdapter):
 
     def foreign_area(self) -> Any:
         return self.spaces["other"]
+
+    # --- since schluessel 1.1.0: "KI erlaubt" per account (MCP decision 10) ------------------------------------------
+
+    has_ai = True
+
+    def _ai(self, account: str, allowed: bool) -> None:
+        from app.db import SessionLocal
+        from app.models import Account
+
+        with SessionLocal() as db:
+            row = db.get(Account, self.accounts[account].id)
+            assert row is not None
+            row.ai_allowed = allowed
+            db.commit()
+
+    def take_ai(self, account: str = "owner") -> None:
+        self._ai(account, False)
+
+    def give_ai(self, account: str = "owner") -> None:
+        self._ai(account, True)
