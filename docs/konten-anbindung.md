@@ -58,7 +58,10 @@ Nacharbeit nach E44 und E39: Gelöschte Mitglieder zählen in den Rechten nicht 
 Texte (Oberfläche, Anleitung, „Was ist neu“-Orte, README, docs, Mails, API-Meldungen) zeigen auf die neuen Orte und
 Wörter; Wächter `tests/test_references.py`. Alter Betreiberweg `/api/admin/api-tokens`: `prefix` leer (E40).
 
-LÄUFE_PLATZHALTER
+Läufe am Ende (26.11.2026, Module `a374e3c`, `reihe.sh nexlore ende`): ruff 0; pytest 2365 bestanden, 3 übersprungen
+(11:05); lint 0; vitest 87 Dateien, 708 Tests; build 0. Playwright (`npm run e2e`, kopflos): 335 von 337 (14,8 min);
+rot nur `canvas.spec.ts:398` und `sidebar.spec.ts:328` (beide warten auf eine Zeile der Seitenleiste, die sich unter
+vielen Bereichen früherer Tests neu zeichnet; berühren die Einstellungen nicht), allein je zweimal grün (4 von 4).
 
 
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
