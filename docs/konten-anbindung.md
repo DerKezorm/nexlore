@@ -17,7 +17,7 @@ comments, locks)“. Ein Umbenennen ohne Vorbereitung nähme jedem Konto seine G
 ### Durchgang „Einstellungen“ (25./26.11.2026)
 
 Nach dem Bauplan in nexlore `Development/nexapps/Baupläne/Bauplan Einstellungen.md` (samt E1 bis E38). Module aus
-`bauplaene-stand` `b0d3618` (je `tools/sync.py copy`, `check` grün, Vorlagen mit Kopfzeile `// Vorlage <Paket>
+`bauplaene-stand` `a374e3c` (je `tools/sync.py copy`, `check` grün, Vorlagen mit Kopfzeile `// Vorlage <Paket>
 <Fassung>`): **`ui` 1.1.0, `log` 1.0.0, `sicherung` 1.0.1, `konten` 1.1.0, `oidc` 1.2.0, `post` 1.1.0,
 `schluessel` 1.0.0**. App-Version unverändert 1.16.0, kein Release.
 

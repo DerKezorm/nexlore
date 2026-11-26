@@ -222,9 +222,7 @@ def test_use_is_noted_and_the_token_never_reaches_the_log(world: World, caplog: 
     assert ok(world.anna.get("/api/api-tokens"))["tokens"][0]["last_used_at"] is None
     ok(api(secret, "GET", "/api/v1/me"))
     assert ok(world.anna.get("/api/api-tokens"))["tokens"][0]["last_used_at"] is not None
-    # The shared log module blacks out the whole value after "Bearer", the prefix with it.
-    shown = logs.redact(f"Authorization: Bearer {secret}")
-    assert shown.startswith("Authorization: Bearer ") and shown.endswith("…") and secret[4:] not in shown
+    assert logs.redact(f"Authorization: Bearer {secret}") == "Authorization: Bearer nxa_…"
     with caplog.at_level(logging.INFO):
         made = world.token("write")
         ok(api(made, "GET", "/api/v1/me"))

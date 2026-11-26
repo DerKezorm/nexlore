@@ -214,28 +214,17 @@ def test_a_letter_with_a_key_goes_into_the_outbox_once() -> None:
 def test_the_test_mail_of_the_settings_goes_through_post(client: TestClient, operator: Account) -> None:
     """Both ways (the old ``/api/settings/mail-test`` and the module's ``/api/server/mail/test``) send the module's
     test mail with nexlore's logo, in the language asked for."""
-    sent: list[object] = []
-
-    class Server:
-        def send_message(self, message: object) -> None:
-            sent.append(message)
-
-        def quit(self) -> None:
-            pass
-
-        def close(self) -> None:
-            pass
+    from app.vendor.nexpost import config as post_config
 
     client.put("/api/settings", json={"smtp_host": "smtp.example.com", "smtp_from": "lore@example.com"})
-    nexpost.use_smtp(lambda _settings, _timeout, _context: Server())
-    try:
+    with testing.catch_mail() as caught:
         assert client.post("/api/settings/mail-test", json={"to": "dora@example.com"}).status_code == 204
         assert client.post("/api/server/mail/test", json={"to": "dora@example.com", "language": "de"}).status_code == 204
-    finally:
-        nexpost.use_smtp(None)
-    assert len(sent) == 2
-    assert [message["Content-Language"] for message in sent] == ["en", "de"]  # type: ignore[index]
-    assert all("image/png" in str(message) for message in sent)
+    # Caught on the way out (no mail server reached: catch_mail fails the block otherwise).
+    assert [letter.to for letter in caught.sent] == ["dora@example.com", "dora@example.com"]
+    assert [letter.header("Content-Language") for letter in caught.sent] == ["en", "de"]
+    assert all("cid:logo" in letter.html for letter in caught.sent) and caught.attempts == []
+    assert post_config.current().logo is not None
 
 
 @pytest.mark.parametrize("path", ["/api/server/mail", "/api/server/sign-in", "/api/server/storage"])

@@ -306,8 +306,8 @@ test('38: saving the address asks first when a provider knows the old one, and s
   await expect(question).toContainText('authentik still knows the redirect address https://old.example.org/api/oidc/authentik/callback')
   await expect(question).toContainText('For 2 providers entered by hand, change the redirect address there yourself.')
   await shot(page, 'address-question')
-  // TODO konten 1.1.0: nothing was saved yet, but the module's card says "Saved." behind the question (module
-  // error, questions file). Once fixed: await expect(card).not.toContainText('Saved')
+  // Nothing was saved yet, so the card does not say "Saved" behind the question.
+  await expect(card).not.toContainText('Saved')
   await dialog.getByRole('button', { name: 'Cancel' }).click()
   await expect(dialog).toHaveCount(0)
   expect(sent).toEqual([{ public_url: 'https://notes.example.org', confirm_address: false }])
