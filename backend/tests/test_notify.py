@@ -203,6 +203,30 @@ def test_an_ai_request_tells_its_account(garden: tuple, sent: Sent) -> None:
     assert sent.posts[0][1]["event"] == "approval"
 
 
+def test_a_waiting_request_stands_in_the_bell_until_it_is_decided(garden: tuple, sent: Sent) -> None:
+    """MCP 14: "a program waits for your yes" reaches the account on nexlore's ways. The bell ("Neu" in the sidebar,
+    ``RequestBellRow``) shows what the browser asks every minute, ``GET /api/connections/mcp/requests?status=waiting``;
+    the webhook hears it once; decided, the row goes and nothing more is sent."""
+    anna, bob, _ = garden
+    hooked(anna)
+    switch(mcp_allowed=True, mcp_max_level="write")
+    made = anna.post("/api/mcp/keys", json={"name": "Agent", "level": "write"}).json()
+    assert anna.put(f"/api/mcp/keys/{made['key']['id']}/rights",
+                    json={"rights": {"create_note": "ask"}}).status_code == 200
+    bell = "/api/connections/mcp/requests?status=waiting"
+    assert anna.get(bell).json() == []
+    waiting = value(call(made["token"], "create_note", folder="Garden", title="Bell", content="x"))
+    # Asking for its state is no new request: the bell and the webhook stay as they are.
+    value(call(made["token"], "request_status", request=waiting["request"]))
+    rows = anna.get(bell).json()
+    assert [(row["id"], row["status"], row["tool"]) for row in rows] == [(waiting["request"], "waiting", "create_note")]
+    assert bob.get(bell).json() == []
+    assert sent.titles() == ["Agent waits for your approval"]
+    assert anna.post(f"/api/connections/mcp/requests/{waiting['request']}/approve", json={}).status_code == 200
+    assert anna.get(bell).json() == []
+    assert sent.titles() == ["Agent waits for your approval"]
+
+
 def test_the_tasks_of_the_morning_go_out_once_at_the_chosen_time(garden: tuple, sent: Sent, vault: Path) -> None:
     anna, _, _ = garden
     hooked(anna, tasks=True, tasks_time="07:30")
