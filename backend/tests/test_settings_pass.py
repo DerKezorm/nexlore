@@ -245,3 +245,40 @@ def test_the_new_ways_are_the_operators(path: str) -> None:
     member = TestClient(app, base_url="http://testserver", headers=TAB)
     sign_in(member, make_account("member"))
     assert member.get(path).status_code == 403
+
+
+# --- The old ways of the keys run through the key module -------------------------------------------------------------
+
+
+def test_the_old_key_ways_answer_as_before_through_the_key_module(client: TestClient, operator: Account) -> None:
+    with SessionLocal() as db:
+        settings_service.save(db, {"api_tokens_allowed": True, "mcp_allowed": True, "mcp_max_level": "read"})
+    anna = person("anna")
+    made = anna.post("/api/api-tokens", json={"name": "  ", "level": "read"})
+    assert made.status_code == 201
+    token = made.json()["token"]
+    # The old fallback name, the old form; and it is the module's key api-<row>.
+    assert token["name"] == "API" and token["spaces"] is None and made.json()["secret"].startswith("nxa_")
+    assert f"api-{token['id']}" in [key["id"] for key in anna.get("/api/connections/keys").json()["keys"]]
+    refused = anna.post("/api/api-tokens", json={"name": "Few", "level": "read", "spaces": []})
+    assert refused.status_code == 422 and refused.json()["detail"]["code"] == "invalid_input"
+    assert refused.json()["detail"]["message"] == "Choose spaces you may read."
+    days = anna.post("/api/api-tokens", json={"name": "Odd", "level": "read", "days": 7})
+    assert days.status_code == 422 and days.json()["detail"]["code"] == "invalid_input"
+    # The MCP key above the operator's ceiling: the old code.
+    high = anna.post("/api/mcp/keys", json={"name": "High", "level": "write"})
+    assert high.status_code == 403 and high.json()["detail"]["code"] == "level_not_allowed"
+    low = anna.post("/api/mcp/keys", json={"name": "Low", "level": "read"})
+    assert low.status_code == 201 and low.json()["token"].startswith("nxl_")
+    assert [key["name"] for key in anna.get("/api/mcp/keys").json()["keys"]] == ["Low"]
+    # The operator blocks on the old way and unblocks on the module's: the old list follows.
+    assert client.post(f"/api/admin/api-tokens/{token['id']}/block").json()["blocked"] is True
+    assert client.post(f"/api/connections/admin/keys/api-{token['id']}/unblock").status_code == 200
+    listed = [row for row in client.get("/api/admin/api-tokens").json() if row["id"] == token["id"]]
+    assert listed and listed[0]["blocked"] is False and listed[0]["account"] == "anna"
+    # Revoking twice: the second answers as the old way did.
+    assert anna.delete(f"/api/api-tokens/{token['id']}").status_code == 204
+    again = anna.delete(f"/api/api-tokens/{token['id']}")
+    assert again.status_code == 404 and again.json()["detail"]["code"] == "not_found"
+    assert anna.delete(f"/api/mcp/keys/{low.json()['key']['id']}").status_code == 204
+    assert anna.get("/api/mcp/keys").json()["keys"] == []

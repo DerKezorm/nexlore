@@ -207,6 +207,42 @@ class SchluesselStore:
         self.db.rollback()
 
 
+# --- the old ways (``/api/api-tokens``, ``/api/mcp/keys``, ``/api/admin/api-tokens``) ---------------------------------
+
+#: The module's refusals as the old ways answered them: per kind ``code -> (code, text, status)``.
+_OLD_TEXTS = {
+    "api": {
+        "too_many_keys": ("too_many_tokens", "An account holds at most 20 tokens.", 409),
+        "right_invalid": ("invalid_input", "No such level.", 422),
+        "days_invalid": ("invalid_input", "A token runs out after 30, 90 or 365 days, or never.", 422),
+        "api_off": ("api_off", "The operator has not switched API tokens on.", 403),
+    },
+    "mcp": {
+        "too_many_keys": ("too_many_keys", "An account holds at most 20 keys.", 409),
+        "right_invalid": ("level_not_allowed", "The operator does not allow keys of this level.", 403),
+        "mcp_off": ("mcp_off", "The operator has not switched MCP on.", 403),
+    },
+}
+_OLD_COMMON = {
+    "choose_areas": ("invalid_input", "Choose spaces you may read.", 422),
+    "areas_invalid": ("invalid_input", "Choose spaces you may read.", 422),
+    "not_found": ("not_found", "Not found.", 404),
+}
+
+
+def old_refusal(exc: nexschluessel.KeyRefused, kind: str) -> tuple[str, str, int]:
+    """A refusal of the module in the form the old way gave it (code, text, status); others as the module says."""
+    found = _OLD_TEXTS.get(kind, {}).get(exc.code) or _OLD_COMMON.get(exc.code)
+    return found or (exc.public_code, exc.message, exc.status)
+
+
+def old_id(key_id: Any, kind: str) -> int:
+    """The number of a row from the module's id (``api-7`` -> 7)."""
+    found = _split(key_id)
+    assert found is not None and found[0] == kind
+    return found[1]
+
+
 def store() -> Iterator[SchluesselStore]:
     """The dependency of the module's routes: a store over a session of its own."""
     from ..db import SessionLocal
@@ -215,4 +251,4 @@ def store() -> Iterator[SchluesselStore]:
         yield SchluesselStore(db)
 
 
-__all__ = ["CONFIG", "SWITCHES", "SchluesselStore", "nexschluessel", "store"]
+__all__ = ["CONFIG", "SWITCHES", "SchluesselStore", "nexschluessel", "old_id", "old_refusal", "store"]

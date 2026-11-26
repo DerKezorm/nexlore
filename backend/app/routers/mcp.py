@@ -32,13 +32,16 @@ from ..db import SessionLocal
 from ..deps import Account, DbSession, OperatorAccount, need
 from ..errors import error
 from ..models import WRITE, File, McpKey, McpRequest, Space, Version
-from ..services import everyday, inbox, index, logs, mcp, paths, rights, textblocks, vault
+from ..services import everyday, inbox, index, logs, mcp, paths, textblocks, vault
 from ..services.mcp import Caller, McpError
+from ..services.schluessel_store import CONFIG, SchluesselStore, nexschluessel, old_id, old_refusal
 from ..services.vault import Actor, VaultError
 from . import everyday as everyday_routes
 from . import mcptools, oauth
 from . import search as search_routes
 from . import vault as vault_routes
+
+keys = nexschluessel.keys
 
 logger = logging.getLogger("nexlore.mcp")
 
@@ -599,43 +602,63 @@ class MadeOut(BaseModel):
 
 
 def _key_out(db: Any, account: Any, row: McpKey) -> KeyOut:
+    store = SchluesselStore(db)
+    key = store.key(f"mcp-{row.id}")
+    assert key is not None
+    return _entry_out(keys.entry(key, CONFIG, store.areas_of(account.id, "mcp")), row)
+
+
+def _entry_out(entry: dict, row: McpKey) -> KeyOut:
+    """A key of the module in the old form, with what only nexlore has (rights per tool, ``key`` or ``oauth``)."""
     names = None
-    if row.spaces is not None:
+    if entry["areas"] is not None:
         # Only spaces the account may still read: one it lost since tells nothing (and the key does not see it).
-        readable = rights.readable_ids(db, account)
-        wanted = [space_id for space_id in row.spaces if space_id in readable]
-        names = sorted(db.scalars(select(Space.folder).where(Space.id.in_(wanted)))) if wanted else []
+        names = sorted(area["name"] for area in entry["areas"] if area["name"] is not None)
     own = row.tool_rights if isinstance(row.tool_rights, dict) else {}
-    return KeyOut(id=row.id, name=row.name, level=row.level, prefix=row.prefix, created_at=row.created_at,
-                  last_used_at=row.last_used_at, spaces=names, rights=dict(own),
+    return KeyOut(id=row.id, name=entry["name"], level=entry["right"], prefix=entry["prefix"],
+                  created_at=row.created_at, last_used_at=row.last_used_at, spaces=names, rights=dict(own),
                   kind=row.kind or "key")
 
 
+def _refused(exc: nexschluessel.KeyRefused) -> Exception:
+    code, text, status = old_refusal(exc, "mcp")
+    return error(code, text, status)
+
+
 @router.get("/api/mcp/keys", response_model=KeysOut)
-def keys(account: Account, db: DbSession) -> KeysOut:
-    rows = db.scalars(select(McpKey).where(McpKey.account_id == account.id).order_by(McpKey.id)).all()
-    return KeysOut(allowed=mcp.allowed(db), max_level=mcp.max_level(db),
-                   keys=[_key_out(db, account, row) for row in rows])
+def keys_of_account(account: Account, db: DbSession) -> KeysOut:
+    found = keys.listing(SchluesselStore(db), CONFIG, account.id)
+    rows = {row.id: row for row in db.scalars(select(McpKey).where(McpKey.account_id == account.id))}
+    own = sorted((entry for entry in found["keys"] if entry["kind"] == "mcp"),
+                 key=lambda entry: old_id(entry["id"], "mcp"))
+    return KeysOut(allowed=bool(found["mcp"]), max_level=mcp.max_level(db),
+                   keys=[_entry_out(entry, rows[old_id(entry["id"], "mcp")]) for entry in own])
 
 
 @router.post("/api/mcp/keys", response_model=MadeOut, status_code=201)
 def make_key(body: KeyIn, account: Account, db: DbSession) -> MadeOut:
-    if not mcp.allowed(db):
+    store = SchluesselStore(db)
+    if not store.switch("mcp"):
         raise error("mcp_off", "The operator has not switched MCP on.", 403)
     try:
-        row, token = mcp.make_key(db, account, body.name, body.level, body.spaces)
-    except McpError as exc:
-        raise error(exc.code, exc.text, exc.status) from exc
-    return MadeOut(key=_key_out(db, account, row), token=token)
+        made = keys.make(store, CONFIG, account.id, kind="mcp", name=body.name.strip() or "MCP", right=body.level,
+                         areas=body.spaces)
+    except nexschluessel.KeyRefused as exc:
+        raise _refused(exc) from exc
+    row = db.get(McpKey, old_id(made.key.id, "mcp"))
+    assert row is not None
+    logger.info("MCP key made key_id=%s level=%s spaces=%s", row.id, body.level,
+                "all" if row.spaces is None else len(row.spaces))
+    return MadeOut(key=_entry_out(keys.entry(made.key, CONFIG, store.areas_of(account.id, "mcp")), row),
+                   token=made.secret)
 
 
 @router.delete("/api/mcp/keys/{key_id}", status_code=204)
 def revoke_key(key_id: Annotated[int, Path(ge=1)], account: Account, db: DbSession) -> None:
-    row = db.get(McpKey, key_id)
-    if row is None or row.account_id != account.id:
-        raise error("not_found", "Not found.", 404)
-    db.delete(row)
-    db.commit()
+    try:
+        keys.revoke(SchluesselStore(db), CONFIG, account.id, f"mcp-{key_id}")
+    except nexschluessel.KeyRefused as exc:
+        raise _refused(exc) from exc
     logger.info("MCP key revoked key_id=%s", key_id)
 
 
