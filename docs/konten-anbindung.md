@@ -75,6 +75,10 @@ Nach E53 (alte Namen in der API-Beschreibung, sicherung `6edff85`, Test aller Na
 Server, Seite unverändert): ruff 0; pytest 2465 bestanden, 3 übersprungen (11:45);
 lint 0; vitest 88 Dateien, 728 Tests; build 0. Playwright nicht erneut (an der Seite hat sich nichts geändert).
 
+Galerie-Funde Endlauf (Knopfgröße der Kontoknöpfe aus `buttonSize`, „Speicher für neue Konten (GB)“): ruff 0; pytest
+2465 bestanden, 3 übersprungen (11:04); lint 0; vitest 89 Dateien, 729 Tests; build 0; Playwright gezielt für die
+Einstellungen (18 Dateien) 74 von 74.
+
 
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
 `konten` (`3c55402`): **`konten` 1.0.0, `ui` 1.0.0, `oidc` 1.1.2, `post` 1.0.0**, kopiert mit `tools/sync.py copy`,
