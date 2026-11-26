@@ -23,7 +23,7 @@ describe('where a menu at the pointer stands', () => {
     expect(at(100, 590, 585).top).toBe(MENU_EDGE)
     const placed = at(100, 560, 300)
     expect(placed.top).toBeGreaterThanOrEqual(MENU_EDGE)
-    expect(placed.top + 400).toBeLessThanOrEqual(600 - MENU_EDGE)
+    expect(placed.top + 300).toBeLessThanOrEqual(600 - MENU_EDGE)
   })
 
   it('a menu higher than the window stands at the top and scrolls (25 entries in 800 × 600)', () => {
