@@ -1,3 +1,4 @@
+// Vorlage nexkonten 1.1.0
 /**
  * Every text of the konten module is in the app, in German and English, through the app's own i18n, and the screens
  * show the module's fields in the module's order. Copied once by the module's `tools/sync.py` to

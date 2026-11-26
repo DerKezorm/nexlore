@@ -17,8 +17,10 @@ test('a token made on the account page works for a program until the operator bl
     await page.goto('/settings?tab=server&sub=extensions#api-tokens')
     await expect(page).toHaveURL(/\/settings\/general#api-tokens$/)
     const saved = page.waitForResponse((answer) => answer.url().endsWith('/api/connections/interfaces') && answer.request().method() === 'PUT')
-    await page.getByTestId('interfaces-api').check()
+    // The tick follows the server's answer (the card of the module saves at once).
+    await page.getByTestId('interfaces-api').click()
     expect((await saved).status()).toBe(200)
+    await expect(page.getByTestId('interfaces-api')).toBeChecked()
 
     // The account: in Connections, the devices first, the API keys after nexlore's own cards.
     await page.goto('/account?tab=ai')
@@ -78,6 +80,7 @@ test('a token made on the account page works for a program until the operator bl
 })
 
 test('without the operator the card says so and points the operator to the switch', async ({ page }) => {
+  await page.request.put('/api/settings', { data: { api_tokens_allowed: false }, headers: TAB })
   await page.goto('/account?tab=ai')
   await expect(page.getByTestId('api-keys-off')).toContainText('The operator has switched the programming interface off.')
   await expect(page.getByTestId('api-keys-off')).toContainText('Switch it on under Server › General › Interfaces.')

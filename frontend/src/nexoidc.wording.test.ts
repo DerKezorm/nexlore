@@ -1,3 +1,4 @@
+// Vorlage nexoidc 1.2.0
 /**
  * Contract test 35: every text of the oidc module is in the app, in German and English, through the app's
  * own i18n. Started from the shared copy; then nexlore's

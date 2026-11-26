@@ -1,3 +1,4 @@
+// Vorlage nexpost 1.1.0
 /**
  * Every text of the post module is in the app, in German and English, through the app's own i18n, and the mail
  * server card shows the module's fields in the module's order. Copied once by the module's `tools/sync.py` to
@@ -33,6 +34,8 @@ function leaves(tree: Tree, prefix = ''): [string, string][] {
   })
 }
 
+// Every value a text of the module asks for (`count` since 1.1.0: mail.waiting). The module's own test
+// tests/test_template_values.py turns red when a text asks for one this line does not give.
 const values = { email: 'kim@example.com', when: 'today', error: 'mail_unreachable', count: 3 }
 const fill: Record<string, string | number> = { ...postVariables(APP_NAME), ...values }
 
@@ -41,7 +44,7 @@ describe('the post texts', () => {
     it(`are all in the app in ${language}, word for word`, async () => {
       await changeLanguage(language)
       for (const [key, text] of leaves(tree as Tree)) {
-        const expected = text.replace(/\{\{(\w+)\}\}/g, (_, name: string) => fill[name] ?? '')
+        const expected = text.replace(/\{\{(\w+)\}\}/g, (_, name: string) => String(fill[name] ?? ''))
         expect(i18n.t(key, values), key).toBe(expected)
       }
     })
