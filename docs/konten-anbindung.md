@@ -66,7 +66,10 @@ Modul sprachen 1.0.0 (E51, `bauplaene-stand` `4f3e75e`): eigene Sprachen aus `ve
 (`services/locales.py` konfiguriert es mit dem Ordner von vorher, `routers/locales.py` = `nexsprachen.api.router`),
 Karte „Sprachen“ und i18n-Helfer aus dem Modul; schluessel mit „Neuer MCP-Schlüssel“ als md secondary.
 
-LÄUFE_PLATZHALTER
+Läufe am Ende (26.11.2026, Module `4f3e75e`, `reihe.sh nexlore ende`): ruff 0; pytest 2438 bestanden, 3 übersprungen
+(11:49); lint 0; vitest 88 Dateien, 728 Tests; build 0. Playwright (`npm run e2e`, kopflos): 336 von 338 (14,9 min);
+rot nur `canvas.spec.ts:398` und `sidebar.spec.ts:328` (beide warten auf eine Zeile der Seitenleiste, die sich unter
+vielen Bereichen früherer Tests neu zeichnet; berühren die Einstellungen nicht), allein je zweimal grün.
 
 
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
