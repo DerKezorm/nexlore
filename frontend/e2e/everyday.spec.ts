@@ -131,7 +131,7 @@ test('a new note is one click away: at the top of the sidebar, beside each folde
 })
 
 test('"Today" opens the daily note of today in the main space of the account', async ({ page }) => {
-  // The main space is the account's (Settings, General), not remembered by the browser (P5.19); set back at the end.
+  // The main space is the account's (My account › Notes), not remembered by the browser (P5.19); set back at the end.
   const headers = { 'X-Nexlore-Client': 'tab-e2e-days' }
   await page.request.put('/api/me/appearance', { data: { home_space: 'Year' }, headers })
   try {

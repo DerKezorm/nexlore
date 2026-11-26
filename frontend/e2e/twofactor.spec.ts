@@ -117,7 +117,7 @@ test('the operator requires it only with one of their own, and resets it for an 
   const toggle = page.getByRole('checkbox', { name: 'Require a second factor of everybody' })
   await expect(toggle).toBeDisabled()
   await expect(toggle).not.toBeChecked()
-  await expect(page.getByText('Set up a second factor of your own first (My account, Security), or you would be the first one locked out.')).toBeVisible()
+  await expect(page.getByText('Set up a second factor of your own first (My account › Security), or you would be the first one locked out.')).toBeVisible()
 
   // The accounts are an area of their own, further down the settings' navigation: one row per account, "Manage"
   // opens a dialog with every act (the shared account module's list).
