@@ -49,7 +49,10 @@ Löschen mit. Passwortfelder nur mit den Worten des Moduls (`FIELDS`). Browser-M
 
 Umwege: keine offenen (der Umweg für sicherung 1.0.0 entfiel mit 1.0.1). Fragen: `einst-fragen/nexlore.md`.
 
-LÄUFE_PLATZHALTER
+Läufe am Ende (26.11.2026, `reihe.sh nexlore ende`): ruff 0; pytest 2342 bestanden, 3 übersprungen (11:13); lint 0;
+vitest 87 Dateien, 687 Tests; build 0. Playwright (`npm run e2e`): 334 von 336 bestanden (15,6 min); die zwei roten
+(`canvas.spec.ts:398`, `sidebar.spec.ts:328`, beide warten auf eine Zeile der Seitenleiste, die sich unter vielen
+Bereichen früherer Tests neu zeichnet) laufen allein je zweimal grün und berühren die Einstellungen nicht.
 
 
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
