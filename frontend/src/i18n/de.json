@@ -53,7 +53,8 @@
     "saved": "Gespeichert.",
     "done": "Fertig",
     "copy": "Kopieren",
-    "copied": "Kopiert"
+    "copied": "Kopiert",
+    "remove": "Entfernen"
   },
   "palette": {
     "title": "Befehle",

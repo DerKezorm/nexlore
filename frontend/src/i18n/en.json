@@ -53,7 +53,8 @@
     "saved": "Saved.",
     "done": "Done",
     "copy": "Copy",
-    "copied": "Copied"
+    "copied": "Copied",
+    "remove": "Remove"
   },
   "palette": {
     "title": "Commands",
