@@ -1367,7 +1367,7 @@
     },
     "languages": {
       "title": "Languages",
-      "text": "Own translations, from the template under Language. A file for de or en replaces only the texts it holds; all others stay as shipped.",
+      "text": "German and English are built in. Own translations start from the template; a file for de or en replaces only the texts it holds, all others stay as shipped.",
       "remove": "Remove",
       "code": "Language code",
       "upload": "Upload language",

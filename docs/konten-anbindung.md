@@ -17,7 +17,7 @@ comments, locks)“. Ein Umbenennen ohne Vorbereitung nähme jedem Konto seine G
 ### Durchgang „Einstellungen“ (25./26.11.2026)
 
 Nach dem Bauplan in nexlore `Development/nexapps/Baupläne/Bauplan Einstellungen.md` (samt E1 bis E38). Module aus
-`bauplaene-stand` `a374e3c` (je `tools/sync.py copy`, `check` grün, Vorlagen mit Kopfzeile `// Vorlage <Paket>
+`bauplaene-stand` `86a0cce` (je `tools/sync.py copy`, `check` grün, Vorlagen mit Kopfzeile `// Vorlage <Paket>
 <Fassung>`): **`ui` 1.1.0, `log` 1.0.0, `sicherung` 1.0.1, `konten` 1.1.0, `oidc` 1.2.0, `post` 1.1.0,
 `schluessel` 1.0.0**. App-Version unverändert 1.16.0, kein Release.
 
@@ -58,10 +58,11 @@ Nacharbeit nach E44 und E39: Gelöschte Mitglieder zählen in den Rechten nicht 
 Texte (Oberfläche, Anleitung, „Was ist neu“-Orte, README, docs, Mails, API-Meldungen) zeigen auf die neuen Orte und
 Wörter; Wächter `tests/test_references.py`. Alter Betreiberweg `/api/admin/api-tokens`: `prefix` leer (E40).
 
-Läufe am Ende (26.11.2026, Module `a374e3c`, `reihe.sh nexlore ende`): ruff 0; pytest 2365 bestanden, 3 übersprungen
-(11:05); lint 0; vitest 87 Dateien, 708 Tests; build 0. Playwright (`npm run e2e`, kopflos): 335 von 337 (14,8 min);
-rot nur `canvas.spec.ts:398` und `sidebar.spec.ts:328` (beide warten auf eine Zeile der Seitenleiste, die sich unter
-vielen Bereichen früherer Tests neu zeichnet; berühren die Einstellungen nicht), allein je zweimal grün (4 von 4).
+Gemeinsame Runde (E45 bis E49): Module aus `bauplaene-stand` `86a0cce`; Hell/Dunkel nach konten E45
+(`theme_default_before="dark"`, `adopt_theme` in `/api/auth/me`, neue Konten `system`); Ortsangaben mit „›“ (E46);
+angeglichen an nexnotes: Theme-Kacheln, Grenzen, Sprachen, Tastenkürzel, Bereich löschen, Plugins.
+
+LÄUFE_PLATZHALTER
 
 
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig

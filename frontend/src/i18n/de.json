@@ -1367,7 +1367,7 @@
     },
     "languages": {
       "title": "Sprachen",
-      "text": "Eigene Übersetzungen, aus der Vorlage unter Sprache. Eine Datei für de oder en ersetzt nur die Texte, die sie enthält; alle anderen bleiben, wie sie ausgeliefert sind.",
+      "text": "Deutsch und Englisch sind eingebaut. Eigene Übersetzungen kommen aus der Vorlage; eine Datei für de oder en ersetzt nur die Texte, die sie enthält, alle anderen bleiben, wie sie ausgeliefert sind.",
       "remove": "Entfernen",
       "code": "Sprachcode",
       "upload": "Sprache hochladen",
