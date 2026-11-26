@@ -129,6 +129,11 @@ class Adapter(StandardAdapter):
         # "notes.add" makes a note in a space given (``POST /api/v1/notes``, as nexnotes sends it).
         return ("POST", "/api/v1/notes", {"folder": SPACES["owner"][0], "title": "From nexnotes", "content": "Hello"})
 
+    def write_into(self, purpose: str, area: Any) -> tuple[str, str, Any]:
+        # "notes.add" into the space ``area`` (its id from ``areas_choice``), as nexnotes sends it.
+        folder = next(name for name, space_id in self.spaces.items() if str(space_id) == str(area))
+        return ("POST", "/api/v1/notes", {"folder": folder, "title": "From nexnotes", "content": "Hello"})
+
     def areas_seen(self, purpose: str, answer: Any) -> set[str]:
         path = str((answer or {}).get("path") or "")
         space = path.split("/", 1)[0]

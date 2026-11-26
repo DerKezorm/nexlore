@@ -49,7 +49,7 @@ export type PartnerView = {
   /** This app's areas the partner reaches (`null`: all). */
   areas_granted: AreaRef[] | null
   legacy: { shown: string; expires_at: string | null } | null
-  /** Decision V16: this app's areas to choose before the click, where the partner reads areas here (else empty). */
+  /** V16, V41: this app's areas to choose before the click, where the partner reads or writes areas here (else empty). */
   areas_choice: AreaRef[]
   version: string | null
 }

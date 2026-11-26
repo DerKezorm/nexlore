@@ -4,8 +4,8 @@
  * the title, on the right the state as a `Badge` with the host or since when. Open it shows what flows each way (rows
  * with an arrow: ← comes here, → goes there), the facts of the connection and the buttons of its state:
  *
- * - not connected: the partner's address (filled in by the operator where he named it), where the partner reads areas
- *   of this app the choice of them (all at first, decision V16), one sentence how it goes, "Mit <partner> verbinden"
+ * - not connected: the partner's address (filled in by the operator where he named it), where the partner reads or
+ *   writes areas of this app the choice of them (all at first, V16, V41), one sentence how it goes, "Mit <partner> verbinden"
  *   (primary) and, where the app has its own form, "Von Hand verbinden";
  * - connected: "Erneuern", "Trennen"; a partner that only uses this app: "Zugriff beenden";
  * - not reachable (the last state stays, since when), refused, resting, switched off: a `Notice` and what helps;
@@ -115,7 +115,7 @@ export function ConnectionCard({
   const [problem, setProblem] = useState<string>()
   const [tooOld, setTooOld] = useState(false)
   const [leaving, setLeaving] = useState(false)
-  // Decision V16: the areas the partner may read here, chosen before the click (all at first).
+  // Decisions V16, V41: the areas the partner may read or write here, chosen before the click (all at first).
   const choice = view.areas_choice ?? []
   const [allAreas, setAllAreas] = useState(true)
   const [chosen, setChosen] = useState<string[]>([])

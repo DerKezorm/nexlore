@@ -759,12 +759,12 @@ def view(
     found["grants_levels"] = {
         purpose: config.catalog.purpose(config.app_name, purpose).level for purpose in found["grants"]
     }
-    # Decision V16 (F1 = a): where the partner reads areas of this app, the card asks for them before the click; the
-    # account's own areas to choose from (empty when the partner reads none).
+    # Decisions V16 (F1 = a) and V41: where a purpose the partner uses here has areas, reading or writing, the card asks
+    # for them before the click; the account's own areas to choose from (empty when no purpose of the partner has any).
     catalog_grants = config.catalog.uses(partner, config.app_name)
-    reads_areas = any(config.catalog.purpose(config.app_name, purpose).areas for purpose in catalog_grants)
+    asks_areas = any(config.catalog.purpose(config.app_name, purpose).areas for purpose in catalog_grants)
     found["areas_choice"] = (
-        [{"id": area["id"], "name": area["name"]} for area in store.areas(account_id)] if reads_areas else []
+        [{"id": area["id"], "name": area["name"]} for area in store.areas(account_id)] if asks_areas else []
     )
     if connection is not None:
         found.update(

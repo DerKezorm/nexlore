@@ -82,6 +82,13 @@ class StandardAdapter:
         """APP: the ids of the areas whose things the answer of ``probe(purpose)`` shows (JSON of the answer)."""
         raise NotImplementedError("APP: areas_seen")
 
+    def write_into(self, purpose: str, area: Any) -> tuple[str, str, Any]:
+        """APP (since 0.1.7, V41), only for an app whose partner writes there with areas (nexlore and nexnotes
+        ``notes.add``, nexpaper ``documents.add``, nextasks ``tasks.write``): ``(method, route, body)`` of a write of
+        ``purpose`` into the area ``area`` of ``owner`` (an id from ``areas_choice``). Into an area the connection was
+        given it must succeed (2xx), into any other the app refuses it (403 or 404)."""
+        raise NotImplementedError("APP: write_into")
+
     def people(self, answer: Any) -> list[dict[str, Any]]:
         """APP, only for an app that grants ``people.read`` (nexfolk, V29): the persons in the answer of
         ``probe("people.read")`` (JSON of the answer)."""

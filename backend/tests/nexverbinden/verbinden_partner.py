@@ -6,8 +6,9 @@ what the app writes, the tables (``SCHEMA``) are the template for an app that ha
 
 What it has of its own: accounts (``owner`` "kim", ``other`` "sam", ``operator``), two areas of ``owner`` and one of
 ``other``, items in the areas, and for each purpose it grants a route ``GET /api/v1/purpose/<purpose>`` that answers
-the items the connection may see. Its older form (before the module) had API keys (``old_keys``) and one connection
-typed in by hand (``old_links``); ``older=True`` writes exactly that before the module starts.
+the items the connection may see (since 0.1.7 also ``POST`` there, which writes one item into a given area, V41). Its
+older form (before the module) had API keys (``old_keys``) and one connection typed in by hand (``old_links``);
+``older=True`` writes exactly that before the module starts.
 
 The session of a browser is the header ``X-Ref-Session: <role>``: only here, never in an app."""
 
@@ -423,5 +424,26 @@ class ReferenceApp:
             else:
                 items = [{"area": area, "title": title, "phone": "+49 30 000000"} for area, title in seen]
             return {"purpose": purpose, "items": items, "areas": sorted({area for area, _ in seen})}
+
+        @app.post("/api/v1/purpose/{purpose}", status_code=201)
+        def write_by_purpose(purpose: str, body: dict, found: Any = Depends(caller)) -> dict:  # noqa: B008
+            """A purpose that writes: one item into the area named in ``{"area": <id>}``. V41 (since 0.1.7): only into
+            an area the connection was given, also when writing; another of the account's areas is refused."""
+            try:
+                pkg.require(found, purpose)
+            except pkg.Refused as refusal:
+                raise HTTPException(status_code=refusal.status, detail=refusal.as_dict()) from None
+            area = body.get("area")
+            own = {area_id for area_id, _ in AREAS.get(found.account_id, [])}
+            if area not in own:
+                raise HTTPException(status_code=404, detail={"code": "area_unknown"})
+            if found.areas is not None and area not in found.areas:
+                raise HTTPException(status_code=403, detail={"code": "area_not_given"})
+            self.db.execute(
+                "INSERT INTO items (account_id, area_id, title) VALUES (?, ?, ?)",
+                (found.account_id, area, str(body.get("title") or purpose)),
+            )
+            self.db.commit()
+            return {"purpose": purpose, "area": area}
 
         return app
