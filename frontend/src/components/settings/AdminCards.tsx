@@ -527,6 +527,11 @@ export function FeaturesCard({ settings, onChange }: { settings: ServerSettings;
   )
 }
 
+/** ``quota_mb`` as nexlore stores it (MB, the old way), shown in GB as the other apps show it; 0 is no limit (empty). */
+function shownGigabytes(megabytes: number): string {
+  return megabytes ? String(Math.round((megabytes / 1024) * 100) / 100) : ''
+}
+
 export function FilesSettingsCard() {
   const { t } = useTranslation()
   const [values, setValues] = useState<FileSettings | null>(null)
@@ -534,6 +539,8 @@ export function FilesSettingsCard() {
   const [stored, setStored] = useState('')
   const [renameExisting, setRenameExisting] = useState(true)
   const [report, setReport] = useState<string | null>(null)
+  // What is typed in "Storage for new accounts (GB)" while it is typed ("2." stays as it is); null: from the server.
+  const [gigabytes, setGigabytes] = useState<string | null>(null)
   const { busy, problem, done, run } = useAction()
   useEffect(() => {
     void run(async () => {
@@ -555,6 +562,7 @@ export function FilesSettingsCard() {
             const saved = await adminApi.saveFileSettings({ ...values, rename_existing: renamed && renameExisting })
             const { renamed: count, left, ...rest } = saved
             setValues(rest)
+            setGigabytes(null)
             setStored(rest.attachment_folder)
             const lines = [
               ...(count ? [t('admin.files.renamed', { count })] : []),
@@ -566,8 +574,12 @@ export function FilesSettingsCard() {
       >
         <Input label={t('admin.files.folder')} value={values.attachment_folder} onChange={(attachment_folder) => setValues({ ...values, attachment_folder })} />
         <Input label={t('admin.files.perFile')} value={String(values.upload_max_mb)} onChange={(value) => setValues({ ...values, upload_max_mb: Number(value) || 1 })} type="number" />
-        {/* Plan E44: the start of every new account; empty (stored as 0, as before) is no limit. */}
-        <Input label={t('admin.files.quota')} value={values.quota_mb ? String(values.quota_mb) : ''} onChange={(value) => setValues({ ...values, quota_mb: Math.max(0, Math.floor(Number(value))) || 0 })} type="number" hint={t('admin.files.quotaHint')} testId="limits-new-accounts" />
+        {/* Plan E44: the start of every new account, in GB as nexnotes, nexpaper and nexdiary show it; stored in MB as
+            before (quota_mb, the old way unchanged); empty (0) is no limit. */}
+        <Input label={t('admin.files.quota')} value={gigabytes ?? shownGigabytes(values.quota_mb)} onChange={(value) => {
+          setGigabytes(value)
+          setValues({ ...values, quota_mb: Math.max(0, Math.round(Number(value) * 1024)) || 0 })
+        }} type="number" hint={t('admin.files.quotaHint')} testId="limits-new-accounts" />
         {renamed && (
           <div className="sm:col-span-3">
             <Toggle

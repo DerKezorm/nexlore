@@ -1345,7 +1345,7 @@
       "text": "Wohin Hochgeladenes kommt und wie viel es belegen darf.",
       "folder": "Ordner für Anhänge",
       "perFile": "Größte Datei je Anhang (MB)",
-      "quota": "Speicher für neue Konten (MB)",
+      "quota": "Speicher für neue Konten (GB)",
       "quotaHint": "Die Vorgabe für jedes neue Konto. Leer heißt ohne Grenze.",
       "strip": "Ort und Gerät aus Fotos entfernen",
       "stripHint": "Beim Hochladen, aus Bildern und Videos. Das Bild selbst bleibt, wie es ist.",

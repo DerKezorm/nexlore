@@ -1345,7 +1345,7 @@
       "text": "Where uploads go and how much they may take.",
       "folder": "Attachment folder",
       "perFile": "Largest file per attachment (MB)",
-      "quota": "Storage for new accounts (MB)",
+      "quota": "Storage for new accounts (GB)",
       "quotaHint": "What every new account starts with. Empty means no limit.",
       "strip": "Remove place and device from photos",
       "stripHint": "On upload, from pictures and videos. The picture itself stays as it is.",

@@ -163,13 +163,16 @@ test('"Storage for new accounts" is the start of every new account, empty is no 
     await page.goto('/settings/general')
     const card = page.locator('#limits')
     await expect(card).toContainText('The limit of one account is set under Server › Accounts › Manage.')
-    const field = card.getByRole('spinbutton', { name: 'Storage for new accounts (MB)' })
+    const field = card.getByRole('spinbutton', { name: 'Storage for new accounts (GB)' })
     await expect(field).toHaveValue('')
     await expect(card).toContainText('What every new account starts with. Empty means no limit.')
-    await field.fill('250')
+    await field.fill('2.5')
     await card.getByRole('button', { name: 'Save' }).click()
     await expect(card).toContainText('Saved')
-    expect((await (await page.request.get('/api/settings/files', { headers: TAB })).json()).quota_mb).toBe(250)
+    expect((await (await page.request.get('/api/settings/files', { headers: TAB })).json()).quota_mb).toBe(2560)
+    // Stored in MB as before (the old way), shown again in GB.
+    await page.reload()
+    await expect(page.locator('#limits').getByRole('spinbutton', { name: 'Storage for new accounts (GB)' })).toHaveValue('2.5')
     // A new account starts with it: backend test_settings_pass.py, test_a_new_account_starts_with_the_servers_limit_….
     // Emptied, it is no limit again (stored as 0, as the old way knows it).
     await field.fill('')
@@ -177,7 +180,7 @@ test('"Storage for new accounts" is the start of every new account, empty is no 
     await expect(card).toContainText('Saved')
     expect((await (await page.request.get('/api/settings/files', { headers: TAB })).json()).quota_mb).toBe(0)
     await page.reload()
-    await expect(page.locator('#limits').getByRole('spinbutton', { name: 'Storage for new accounts (MB)' })).toHaveValue('')
+    await expect(page.locator('#limits').getByRole('spinbutton', { name: 'Storage for new accounts (GB)' })).toHaveValue('')
   } finally {
     await page.request.put('/api/settings/files', { data: before, headers: TAB })
   }
