@@ -729,7 +729,7 @@ export const aboutApi = {
 
 export const authApi = {
   setupState: () => api<SetupState>('/api/setup'),
-  setup: (body: { display_name: string; name: string; email: string; password: string; password_confirm: string; code: string; language: string }) =>
+  setup: (body: { display_name: string; name: string; email: string; password: string; password_confirm: string; code: string; language: string; update_check?: boolean }) =>
     api<Account>('/api/setup', { method: 'POST', body }),
   methods: () => api<Methods>('/api/auth/methods'),
   /** Signed in, or `second_factor`: the password was right, the code from the app (or a passkey) comes next. */

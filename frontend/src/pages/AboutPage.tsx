@@ -2,18 +2,18 @@
  * About nexlore (block X2, after nexmail; plan "Einstellungen": the kit's \`AboutPage\`): version, licence, where it
  * comes from, and whether a newer one is out. Installing nexlore as an app moved to Connections (E6, E28).
  *
- * The switch for the daily check stands here, where its answer shows, and the page says what goes out: the question
- * to GitHub is the one call nexlore makes by itself. Every account sees the answer; switching and asking now belong to
- * the operator, because the question goes out for the whole installation.
+ * The update check is the shared module updates (\`vendor/nexupdates\`, U1 to U21): the card "Aktualisierungen" with
+ * the daily check, "Jetzt nachsehen" and what goes out is the operator's alone; a member sees only the own version
+ * (U2, U15), and its page never asks for the state.
  */
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { aboutApi, ApiError, type About, type Updates } from '../api/client'
-import { errorText } from '../lib/errors'
+import { tabId } from '../api/client'
 import { useWhatsNew } from '../lib/whatsNew'
 import { useAuth } from '../state/auth'
 import { AboutPage, Notice } from '../vendor/nexui'
+import { useUpdates, useUpdatesTexts, whatGoesOut, type Fetcher } from '../vendor/nexupdates'
 
 const PARTS = [
   { name: 'FastAPI', url: 'https://fastapi.tiangolo.com', licence: 'MIT' },
@@ -38,49 +38,20 @@ const PARTS = [
 
 const FONTS = ['Inter', 'Atkinson Hyperlegible', 'Literata', 'Source Serif', 'IBM Plex Sans', 'JetBrains Mono']
 
-function code(error: unknown): string {
-  return error instanceof ApiError ? error.code : 'internal_error'
-}
+/** The module's calls with what every call of nexlore carries: the tab's name (\`X-Nexlore-Client\`). */
+const fetcher: Fetcher = (path, init) =>
+  fetch(path, { credentials: 'same-origin', ...init, headers: { ...(init.headers as Record<string, string>), 'X-Nexlore-Client': tabId() } })
 
 export function AboutArea() {
   const { t, i18n } = useTranslation()
   const { me } = useAuth()
   const operator = me?.role === 'operator'
-  const [about, setAbout] = useState<About | null>(null)
-  const [updates, setUpdates] = useState<Updates | null>(null)
-  const [problem, setProblem] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const when = useCallback((iso: string) => new Date(iso).toLocaleString(i18n.language), [i18n.language])
+  const state = useUpdates({ fetcher, operator, when, language: i18n.language })
+  const words = useUpdatesTexts(i18n.language)
   // The written text of the running version, to read again at any time.
   const { entry } = useWhatsNew(me?.version, i18n.language)
-
-  const load = useCallback(() => {
-    void aboutApi.about().then(setAbout, (error: unknown) => setProblem(errorText(code(error))))
-    // The answer is a side matter: when it does not come, the page simply shows none.
-    void aboutApi.updates().then(setUpdates, () => setUpdates(null))
-  }, [])
-  useEffect(load, [load])
-
-  async function checkNow() {
-    setBusy(true)
-    try {
-      setUpdates(await aboutApi.check())
-      setProblem(null)
-    } catch (error) {
-      setProblem(errorText(code(error)))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function switchCheck(on: boolean) {
-    if (updates) setUpdates({ ...updates, update_check: on })
-    try {
-      setUpdates(await aboutApi.setCheck(on))
-    } catch (error) {
-      setProblem(errorText(code(error)))
-      load()
-    }
-  }
+  const { about, problem } = state
 
   if (!about) return problem ? <Notice tone="danger">{problem}</Notice> : null
   return (
@@ -95,22 +66,12 @@ export function AboutArea() {
       project={about.project_url}
       report={`${about.repo_url}/issues/new`}
       whatsNew={entry ?? null}
-      updates={
-        updates
-          ? {
-              checkDaily: updates.update_check,
-              checked: updates.checked,
-              latest: updates.latest ?? null,
-              newer: updates.newer,
-              checkedAt: updates.checked_at ? new Date(updates.checked_at).toLocaleString(i18n.language) : null,
-              releaseUrl: updates.release_url ?? null,
-            }
-          : null
-      }
+      updates={state.updates}
+      showUpdates={state.showUpdates}
       operator={operator}
-      onDaily={(on) => void switchCheck(on)}
-      onCheck={() => void checkNow()}
-      checking={busy}
+      onDaily={state.onDaily}
+      onCheck={state.onCheck}
+      checking={state.checking}
       builtWith={PARTS}
       builtWithMore={
         <p className="m-0 text-sm text-[var(--nexui-text-muted)]">
@@ -118,7 +79,7 @@ export function AboutArea() {
         </p>
       }
       problem={problem}
-      texts={{ updatesWhatGoesOut: t('about.updates.whatGoesOut') }}
+      texts={{ updatesWhatGoesOut: whatGoesOut(words, 'nexlore') }}
     />
   )
 }

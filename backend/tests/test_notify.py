@@ -16,6 +16,7 @@ from app.db import SessionLocal
 from app.models import Account
 from app.services import index, notify, settings_service, updates
 from app.vendor import nexpost
+from app.vendor.nexupdates import check
 
 from .conftest import join
 from .test_mcp import call, switch, value
@@ -221,14 +222,17 @@ def test_operators_hear_of_the_disk_and_a_new_version_once(client: TestClient, a
     anna = person("anna")
     hooked(anna)
     monkeypatch.setattr(notify, "disk_low", lambda: True)
-    monkeypatch.setattr(updates, "_ask", lambda: "v99.0.0")
+    monkeypatch.setattr(check, "ask", lambda: "v99.0.0")
     now = datetime.now().astimezone()
+    # The disk is the daily check's, a new version the shared module's look (updates U3), as in the background.
     notify.daily_operator_checks(now)
+    updates.look_once()
     assert sorted(sent.titles()) == ["The disk of nexlore runs full", "nexlore 99.0.0 is out"]
     # Only operators, and each only once.
     assert {url for url, _ in sent.posts} == {HOOK}
     assert len(sent.posts) == 2
     notify.daily_operator_checks(now)
+    updates.look_once()
     assert len(sent.posts) == 2
     with SessionLocal() as db:
         assert settings_service.get(db, "notify_version") == "v99.0.0"

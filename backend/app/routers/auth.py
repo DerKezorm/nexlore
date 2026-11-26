@@ -60,6 +60,7 @@ from ..services import (
     lore,
     settings_service,
     totp,
+    updates,
 )
 from ..services.accounts import AccountError
 from ..services.konten_store import KontenStore, former_names_of
@@ -95,6 +96,8 @@ class SetupIn(BaseModel):
     language: str = Field(default="", max_length=16)
     #: The setup code from the server's log (or NEXLORE_SETUP_TOKEN).
     code: str = Field(default="", max_length=200)
+    #: "Nach neuen Versionen sehen" (updates U1, ticked from the start); left out, as by a form of 1.16.0: on.
+    update_check: bool = True
 
 
 class LoginIn(BaseModel):
@@ -346,6 +349,8 @@ def setup(payload: SetupIn, request: Request, response: Response, db: DbSession)
         raise fail(exc) from exc
     account = db.get(AccountRow, int(done.account.id))
     assert account is not None
+    # U1: the answer to "Nach neuen Versionen sehen?", only where nothing is stored yet.
+    updates.at_setup(payload.update_check)
     # A first start with an empty vault: the guide, in the language chosen here.
     guide.on_first_start(account.id, language)
     return sign_in(db, request, response, account)

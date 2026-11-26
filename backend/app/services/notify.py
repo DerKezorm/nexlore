@@ -43,6 +43,7 @@ from ..config import get_settings
 from ..db import SessionLocal
 from ..models import OPERATOR, Account, utcnow
 from ..security import account_out, decrypt_secret, encrypt_secret
+from ..vendor.nexupdates.words import WORDS as _UPDATE_WORDS
 from . import kontenpost, settings_service
 
 logger = logging.getLogger("nexlore.notify")
@@ -114,9 +115,11 @@ TEXTS: dict[str, dict[str, tuple[str, str]]] = {
         "en": ("The disk of nexlore runs full", "Less than 1 GB or 5 % is free where nexlore keeps its data."),
         "de": ("Die Platte von nexlore läuft voll", "Wo nexlore seine Daten hält, ist weniger als 1 GB oder 5 % frei."),
     },
+    #: The bell's words come from the shared module updates (U12): nexlore {version} in the operator's language.
     "new_version": {
-        "en": ("nexlore {version} is out", "A newer version of nexlore is out."),
-        "de": ("nexlore {version} ist erschienen", "Eine neuere Version von nexlore ist erschienen."),
+        language: (said["title"].replace("{app}", "nexlore"), said["text"].replace("{app}", "nexlore"))
+        for language, said in _UPDATE_WORDS.items()
+        if language in ("en", "de")
     },
     "token_expiring": {
         "en": ("The API key {name} runs out on {day}",
@@ -408,15 +411,12 @@ def disk_low() -> bool:
 
 
 def daily_operator_checks(now: datetime | None = None) -> None:
-    """Once a day: the disk; whenever a newer version is first seen: that."""
-    from . import updates
-
+    """Once a day: the disk. A newer version is the shared module's to tell (``updates.run_forever`` in ``main``,
+    through ``operators`` here, once per version)."""
     now = now or datetime.now().astimezone()
     today = now.date().isoformat()
     with SessionLocal() as db:
-        on = bool(settings_service.get(db, "update_check"))
         disk_day = settings_service.get(db, "notify_disk_day")
-        told_version = settings_service.get(db, "notify_version")
     if disk_day != today:
         with SessionLocal() as db:
             settings_service.save(db, {"notify_disk_day": today})
@@ -426,12 +426,6 @@ def daily_operator_checks(now: datetime | None = None) -> None:
             low = False
         if low:
             operators(words("disk_low"), "/settings/storage", 5)
-    if on:
-        known = updates.state(on=True)
-        if known.newer and known.latest and known.latest != told_version:
-            with SessionLocal() as db:
-                settings_service.save(db, {"notify_version": known.latest})
-            operators(words("new_version", version=known.latest.lstrip("v")), "/settings/about", 2)
 
 
 def tokens_expiring() -> int:

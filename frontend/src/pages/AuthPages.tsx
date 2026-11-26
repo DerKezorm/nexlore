@@ -38,6 +38,7 @@ import {
 } from '../vendor/nexkonten/konten'
 import { oidcErrorKey } from '../vendor/nexoidc/oidc'
 import { Button, Checkbox, Field, Notice, TextLink } from '../vendor/nexui'
+import { UpdateSetupRow } from '../vendor/nexupdates'
 
 /** The shortest new password, as long as the server has not said otherwise. */
 export const MIN_PASSWORD = 12
@@ -151,6 +152,8 @@ export function SetupPage() {
   const [password, setPassword] = useState('')
   const again = usePasswordConfirm(password)
   const [code, setCode] = useState('')
+  // "Nach neuen Versionen sehen" (updates U1): asked once here, ticked from the start.
+  const [updateCheck, setUpdateCheck] = useState(true)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<Trouble>(null)
   useEffect(() => {
@@ -183,6 +186,7 @@ export function SetupPage() {
               code: code.trim(),
               // Quietly from the browser (no field, the shared module): changed later in the profile.
               language: i18n.language,
+              update_check: updateCheck,
             })
             await refresh()
             navigate('/', { replace: true })
@@ -208,6 +212,7 @@ export function SetupPage() {
             {t(note)}
           </p>
         ))}
+        <UpdateSetupRow app="nexlore" checked={updateCheck} onChange={setUpdateCheck} language={i18n.language} />
         <Primary name="setupSubmit" busy={busy}>
           {t('auth.setup.submit')}
         </Primary>

@@ -73,6 +73,7 @@ from .services import (
     post_store,
     settings_service,
     totp,
+    updates,
     watcher,
 )
 from .services.konten_store import KontenStore
@@ -145,6 +146,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     logs.setup()
     # The own languages on the folder of the settings; what a stopped upload left goes (sprachen 1.0.0).
     locales.start()
+    # Whether a newer nexlore is out: the shared module on nexlore's settings and bell.
+    updates.configure()
     # The shared backup module on this data folder (a test may have moved it since the import); a staged restore is
     # swapped in before anything opens the database.
     backups.configure()
@@ -178,6 +181,9 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         tasks.append(asyncio.create_task(watcher.watch(stop)))
         tasks.append(asyncio.create_task(backups.run_forever(stop)))
         tasks.append(asyncio.create_task(notify.run_forever(stop)))
+        # Whether a newer nexlore is out (the shared module updates): a look every hour, the network at most once a
+        # day and never while the daily check is off; the operators hear of a version once.
+        tasks.append(asyncio.create_task(updates.run_forever(stop)))
         tasks.append(asyncio.create_task(_sweep_forever(stop)))
         graphstore.worker.start()
     logger.info("nexlore %s started vault=%s", __version__, settings.vault_dir)

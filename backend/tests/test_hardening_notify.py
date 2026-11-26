@@ -17,6 +17,7 @@ from app.db import SessionLocal
 from app.models import Account, SpaceNotice
 from app.security import brake
 from app.services import kontenpost, logs, notify, settings_service, updates
+from app.vendor.nexupdates import check
 
 from .conftest import join
 from .test_notify import HOOK, Sent, hooked, sent  # noqa: F401  (the fixture is used by name)
@@ -164,10 +165,10 @@ def test_a_mail_subject_is_one_line_whatever_the_title(client: TestClient, accou
 def test_a_failed_check_keeps_the_newer_version_found_before(monkeypatch: pytest.MonkeyPatch) -> None:
     updates.forget()
     tags = iter(["v99.0.0", None])
-    monkeypatch.setattr(updates, "_ask", lambda: next(tags))
-    first = updates.state(force=True)
+    monkeypatch.setattr(check, "ask", lambda: next(tags))
+    first = updates.state(on=True, force=True)
     assert first.newer and first.latest == "v99.0.0"
-    again = updates.state(force=True)
+    again = updates.state(on=True, force=True)
     assert again.newer and again.latest == "v99.0.0"
     updates.forget()
 
@@ -201,8 +202,8 @@ def test_only_a_tag_that_reads_as_a_version_is_taken(monkeypatch: pytest.MonkeyP
         def stream(self, *_: object, **__: object) -> Answer:
             return Answer()
 
-    monkeypatch.setattr(updates.httpx, "Client", Client)
-    assert updates._ask() is None
+    monkeypatch.setattr(check.httpx, "Client", Client)
+    assert check.ask() is None
 
 
 # --- Display names ------------------------------------------------------------------------------------------------------
