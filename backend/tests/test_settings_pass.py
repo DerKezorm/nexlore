@@ -349,3 +349,75 @@ def test_nothing_goes_out_to_an_account_while_it_is_out(client: TestClient, oper
         assert notify.webhook_of(db.get(Account, anna_id)) == "https://hooks.example.com/anna"  # type: ignore[arg-type]
     assert client.post(f"/api/accounts/{anna_id}/unblock", json=confirm).status_code in (200, 204)
     assert notify.deliver(anna_id, "test", said) == {"webhook": "ok"} and len(sent) == 2
+
+
+def test_keys_rest_while_the_account_is_out_and_connected_programs_go_for_good(
+    client: TestClient, operator: Account
+) -> None:
+    """Plan E41: API and MCP keys made by hand rest while their account is blocked or deleted and work again when it
+    comes back; only the final deletion takes them. A connected program (OAuth) goes like a session and a device: it
+    does not come back."""
+    import secrets as random
+
+    from app.models import ApiToken, McpKey, OAuthClient, utcnow
+    from app.routers import oauth
+    from app.services import apitokens, mcp
+
+    with SessionLocal() as db:
+        settings_service.save(db, {"api_tokens_allowed": True, "mcp_allowed": True})
+    person("anna")
+    anna_id = row_of("anna").id
+    with SessionLocal() as db:
+        anna = db.get(Account, anna_id)
+        assert anna is not None
+        _row, api_key = apitokens.make(db, anna, "Script", "read")
+        _key, mcp_key = mcp.make_key(db, anna, "Tool", "read")
+
+    def program() -> str:
+        with SessionLocal() as db:
+            known = OAuthClient(id=f"nxo_{random.token_hex(8)}", name="Connector", redirect_uris=["https://example.com/cb"])
+            db.add(known)
+            row = McpKey(account_id=anna_id, name="Connector", kind="oauth", client_id=known.id, level="read",
+                         spaces=None, token_hash="", prefix="", created_at=utcnow(), signed_in_at=utcnow())
+            db.add(row)
+            db.flush()
+            return str(oauth._issue(db, row)["access_token"])
+
+    outside = TestClient(app, base_url="http://testserver")
+    body = {"jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": {"protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "probe"}}}
+
+    def api(secret: str) -> int:
+        return outside.get("/api/v1/me", headers={"Authorization": f"Bearer {secret}"}).status_code
+
+    def tool(secret: str) -> int:
+        return outside.post("/api/mcp", headers={"Authorization": f"Bearer {secret}"}, json=body).status_code
+
+    def programs() -> int:
+        with SessionLocal() as db:
+            return len(db.scalars(select(McpKey).where(McpKey.account_id == anna_id, McpKey.kind == "oauth")).all())
+
+    confirm = {"current_password": PASSWORD}
+    for out, back in ((f"/api/accounts/{anna_id}/block", f"/api/accounts/{anna_id}/unblock"),
+                      (f"/api/accounts/{anna_id}", f"/api/accounts/{anna_id}/restore")):
+        connected = program()
+        assert (api(api_key), tool(mcp_key), tool(connected)) == (200, 200, 200)
+        method = "DELETE" if out == f"/api/accounts/{anna_id}" else "POST"
+        assert client.request(method, out, json=confirm).status_code in (200, 204)
+        # Out: every key refused; the connected program is gone at once.
+        assert api(api_key) == 401 and tool(mcp_key) == 401 and tool(connected) == 401
+        assert programs() == 0
+        assert client.post(back, json=confirm).status_code in (200, 204)
+        # Back: the keys made by hand work again, the program does not come back.
+        assert (api(api_key), tool(mcp_key)) == (200, 200)
+        assert tool(connected) == 401 and programs() == 0
+    # Gone for good: the keys go with the account.
+    assert client.request("DELETE", f"/api/accounts/{anna_id}", json=confirm).status_code == 204
+    with SessionLocal() as db:
+        db.get(Account, anna_id).deleted_at -= timedelta(days=31)  # type: ignore[union-attr, operator]
+        db.commit()
+    _purge_deleted_accounts()
+    with SessionLocal() as db:
+        assert db.scalars(select(ApiToken).where(ApiToken.account_id == anna_id)).all() == []
+        assert db.scalars(select(McpKey).where(McpKey.account_id == anna_id)).all() == []
+    assert api(api_key) == 401 and tool(mcp_key) == 401
