@@ -35,9 +35,29 @@ def put(folder: Path, name: str, content: object | bytes) -> Path:
     return path
 
 
+def added(client: TestClient) -> list[dict[str, object]]:
+    """The operator's files as the list of before named them ({code, name, keys}). Since the shared module of
+    languages (sprachen 1.0.0) the list names the built-in ones first and says ``built_in`` and ``own``; a caller of
+    before reads it as before by leaving those out (``test_the_list_of_before_reads_as_before``)."""
+    entries = client.get("/api/locales").json()
+    return [{"code": entry["code"], "name": entry["name"], "keys": entry["keys"]} for entry in entries
+            if not entry["built_in"]]
+
+
+def test_the_list_of_before_reads_as_before(client: TestClient, folder: Path) -> None:
+    put(folder, "es.json", GOOD)
+    entries = client.get("/api/locales").json()
+    # Built in first, in nexlore's order, then the files; every entry keeps code, name and keys of before.
+    assert [(entry["code"], entry["built_in"], entry["own"]) for entry in entries] == [
+        ("de", True, False), ("en", True, False), ("es", False, True)]
+    assert all({"code", "name", "keys"} <= set(entry) for entry in entries)
+    # A page of before took every code that was not shipped: still exactly the operator's file.
+    assert [entry["code"] for entry in entries if entry["code"] not in ("de", "en")] == ["es"]
+
+
 def test_a_good_file_is_listed_and_served_without_its_meta(client: TestClient, folder: Path) -> None:
     put(folder, "es.json", GOOD)
-    assert client.get("/api/locales").json() == [{"code": "es", "name": "Español", "keys": 3}]
+    assert added(client) == [{"code": "es", "name": "Español", "keys": 3}]
     texts = client.get("/api/locales/es").json()
     assert texts == {"nav": {"graph": "Grafo", "search": "Buscar"}, "save": "Guardar"}
 
@@ -45,7 +65,7 @@ def test_a_good_file_is_listed_and_served_without_its_meta(client: TestClient, f
 def test_regions_and_scripts_are_codes_too_and_the_name_falls_back_to_the_code(client: TestClient, folder: Path) -> None:
     put(folder, "pt-BR.json", {"save": "Salvar"})
     put(folder, "zh-Hant.json", {"save": "儲存"})
-    listed = {entry["code"]: entry["name"] for entry in client.get("/api/locales").json()}
+    listed = {entry["code"]: entry["name"] for entry in added(client)}
     assert listed == {"pt-BR": "pt-BR", "zh-Hant": "zh-Hant"}
     assert client.get("/api/locales/zh-Hant").json() == {"save": "儲存"}
 
@@ -61,9 +81,10 @@ def test_a_byte_order_mark_is_fine(client: TestClient, folder: Path) -> None:
         (b"{not json", "not valid JSON"),
         (b"\xff\xfe\x00broken", "not UTF-8"),
         (json.dumps(["a", "b"]).encode(), "top level"),
-        (json.dumps({"save": 5}).encode(), "int"),
-        (json.dumps({"save": None}).encode(), "NoneType"),
-        (json.dumps({"save": ["a"]}).encode(), "list"),
+        # The shared module names the reason in its own words, never the value (sprachen 1.0.0).
+        (json.dumps({"save": 5}).encode(), "only texts and groups of texts"),
+        (json.dumps({"save": None}).encode(), "only texts and groups of texts"),
+        (json.dumps({"save": ["a"]}).encode(), "only texts and groups of texts"),
         (json.dumps({}).encode(), "no texts"),
         (json.dumps({"_meta": {"name": 3}, "a": "b"}).encode(), "_meta"),
         (json.dumps({"": "empty key"}).encode(), "key is empty"),
@@ -75,7 +96,7 @@ def test_a_broken_file_is_skipped_and_named_in_the_log_but_the_others_stay(
     put(folder, "es.json", GOOD)
     put(folder, "it.json", content)
     with caplog.at_level("WARNING", logger="nexlore.locales"):
-        assert [entry["code"] for entry in client.get("/api/locales").json()] == ["es"]
+        assert [entry["code"] for entry in added(client)] == ["es"]
     assert any("it.json skipped" in record.getMessage() and why in record.getMessage() for record in caplog.records)
     refused = client.get("/api/locales/it")
     assert refused.status_code == 422 and refused.json()["detail"]["code"] == "locale_unusable"
@@ -87,7 +108,7 @@ def test_too_deep_and_too_large_are_refused(client: TestClient, folder: Path) ->
         deep = {"x": deep}
     put(folder, "nl.json", deep)
     put(folder, "sv.json", b'{"a": "' + b"x" * (locales.MAX_BYTES + 1) + b'"}')
-    assert client.get("/api/locales").json() == []
+    assert added(client) == []
     assert client.get("/api/locales/nl").status_code == 422
     assert client.get("/api/locales/sv").status_code == 422
 
@@ -99,7 +120,7 @@ def test_just_under_the_limits_is_accepted(client: TestClient, folder: Path) -> 
     put(folder, "nl.json", deep)
     padding = locales.MAX_BYTES - len(b'{"a": ""}')
     put(folder, "sv.json", b'{"a": "' + b"x" * padding + b'"}')
-    assert [entry["code"] for entry in client.get("/api/locales").json()] == ["nl", "sv"]
+    assert [entry["code"] for entry in added(client)] == ["nl", "sv"]
 
 
 @pytest.mark.parametrize(
@@ -129,7 +150,7 @@ def test_a_link_is_not_followed(client: TestClient, folder: Path) -> None:
             os.symlink(outside, folder / "es.json")
         except (OSError, NotImplementedError):
             pytest.skip("this system does not allow links for this user (Windows without developer mode)")
-        assert client.get("/api/locales").json() == []
+        assert added(client) == []
         assert "outside" not in client.get("/api/locales/es").text
     finally:
         (folder / "es.json").unlink(missing_ok=True)
@@ -140,13 +161,13 @@ def test_other_files_in_the_directory_are_ignored(client: TestClient, folder: Pa
     put(folder, "es.json", GOOD)
     put(folder, "notes.txt", b"hello")
     put(folder, "README.md", b"# languages")
-    assert [entry["code"] for entry in client.get("/api/locales").json()] == ["es"]
+    assert [entry["code"] for entry in added(client)] == ["es"]
 
 
 def test_no_directory_means_no_extra_languages(client: TestClient, folder: Path) -> None:
     folder.rmdir()
     try:
-        assert client.get("/api/locales").json() == []
+        assert added(client) == []
         assert client.get("/api/locales/es").status_code == 404
     finally:
         folder.mkdir()
@@ -158,17 +179,17 @@ def test_a_broken_file_is_warned_about_once_not_on_every_page_load(
     put(folder, "it.json", b"{broken")
     with caplog.at_level("WARNING", logger="nexlore.locales"):
         for _ in range(5):
-            assert client.get("/api/locales").json() == []
+            assert added(client) == []
     assert sum("it.json skipped" in record.getMessage() for record in caplog.records) == 1
 
 
 def test_a_repaired_file_shows_up_and_a_removed_one_goes(client: TestClient, folder: Path) -> None:
     path = put(folder, "it.json", b"{broken")
-    assert client.get("/api/locales").json() == []
+    assert added(client) == []
     put(folder, "it.json", {"_meta": {"name": "Italiano"}, "save": "Salva"})
-    assert client.get("/api/locales").json() == [{"code": "it", "name": "Italiano", "keys": 1}]
+    assert added(client) == [{"code": "it", "name": "Italiano", "keys": 1}]
     path.unlink()
-    assert client.get("/api/locales").json() == []
+    assert added(client) == []
 
 
 def test_the_operator_uploads_and_removes_a_language(client: TestClient, folder: Path) -> None:
@@ -182,7 +203,7 @@ def test_the_operator_uploads_and_removes_a_language(client: TestClient, folder:
     saved = client.put("/api/locales/es", content=body)
     assert saved.status_code == 200 and saved.json() == {"code": "es", "name": "Español", "keys": 3}
     assert client.get("/api/locales/es").json()["save"] == "Guardar"
-    assert [entry["code"] for entry in client.get("/api/locales").json()] == ["es"]
+    assert [entry["code"] for entry in added(client)] == ["es"]
     # Checked like a file laid into the directory: nothing broken gets in, and nothing lands outside.
     for code, raw in (("fr", b"{not json"), ("fr", b'{"a": 1}'), ("../x", body), ("es.json", body)):
         refused = client.put(f"/api/locales/{code}", content=raw)
@@ -191,7 +212,7 @@ def test_the_operator_uploads_and_removes_a_language(client: TestClient, folder:
     assert sorted(path.name for path in folder.iterdir()) == ["es.json"]
     assert client.delete("/api/locales/es").status_code == 204
     assert client.delete("/api/locales/es").status_code == 404
-    assert client.get("/api/locales").json() == []
+    assert added(client) == []
 
 
 def test_a_file_too_large_is_refused_before_it_is_read(folder: Path, monkeypatch: pytest.MonkeyPatch) -> None:
