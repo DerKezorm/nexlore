@@ -42,6 +42,8 @@ test.afterEach(async ({ page }) => {
 
 test('the calendar subscription is closed until the operator opens it, and its address serves the dated tasks', async ({ page, playwright, baseURL }) => {
   const problems = collectProblems(page)
+  // Closed as on a fresh server, whatever a test before left behind.
+  expect((await page.request.put('/api/settings', { data: { calendar_feed_allowed: false }, headers: TAB })).ok()).toBe(true)
   await page.goto('/account?tab=ai')
   const card = page.getByTestId('calendar-feed')
   await expect(card).toContainText('The operator has not switched calendar subscriptions on.')
@@ -91,12 +93,13 @@ test('a space comes as a ZIP file from its menu in the sidebar', async ({ page }
 test('the operator reads the log under Server, narrows it, and may download it', async ({ page }) => {
   const problems = collectProblems(page)
   await page.goto('/settings?tab=server&sub=log')
-  const lines = page.getByTestId('log-lines')
-  await expect(lines.locator('div').first()).toBeVisible()
+  // The log module's table: one row per line.
+  const lines = page.getByRole('table', { name: 'Log' }).locator('[data-part="table-row"]')
+  await expect(lines.first()).toBeVisible()
   // A line only a sign-in writes: narrowed to it.
-  await page.getByLabel('Contains').fill('Signed in')
-  await expect(lines.locator('div').first()).toContainText('Signed in')
-  for (const text of await lines.locator('div').allInnerTexts()) expect(text).toContain('Signed in')
+  await page.getByRole('searchbox', { name: 'Search' }).fill('Signed in')
+  await expect(lines.first()).toContainText('Signed in')
+  await expect.poll(async () => (await lines.allInnerTexts()).every((text) => text.includes('Signed in'))).toBe(true)
   await expect(page.getByRole('link', { name: 'Download' })).toHaveAttribute('href', '/api/logs/download')
   expect(problems).toEqual([])
 })

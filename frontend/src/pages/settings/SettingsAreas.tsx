@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
-import { aboutApi, api, ApiError, authApi, type ServerSettings } from '../../api/client'
+import { aboutApi, api, ApiError, type ServerSettings } from '../../api/client'
 import { AiAccess } from '../../components/AiAccess'
 import { AppDevices } from '../../components/AppDevices'
 import { NotifySettings } from '../../components/NotifySettings'
@@ -268,7 +268,11 @@ function ServerSignIn({ settings, onSettings }: { settings: ServerSettings | nul
           calls={calls}
           errorOf={(error) => (error instanceof ApiError ? { code: error.code, values: error.values } : null)}
           publicUrl={publicUrl}
-          onAddress={() => void authApi.me().then(() => load())}
+          onAddress={async () => {
+            // The authentik card saved the public address: card 1 of the page shows the server's new one.
+            onSettings(await adminApi.settings())
+            load()
+          }}
         />
       }
     />

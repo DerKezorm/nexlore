@@ -420,6 +420,8 @@ test('on a phone "Notes" and the empty note page open the list as a sheet, and t
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.keyboard.press('Escape')
   await header.getByTestId('settings-link').click()
+  // On a phone the settings open with their list of areas (ui kit), an area one tap further.
+  await page.getByRole('navigation', { name: 'Settings' }).getByRole('link', { name: 'Profile' }).click()
   await expect(page.getByRole('heading', { name: 'Profile', level: 1 })).toBeVisible()
   expect(problems).toEqual([])
 })

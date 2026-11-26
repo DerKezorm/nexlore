@@ -41,8 +41,8 @@ test('a token made on the account page works for a program until the operator bl
     await shown.getByTestId('key-done').click()
     await expect(own.getByTestId('key-made')).toHaveCount(0)
     await expect(page.getByText(token)).toHaveCount(0)
-    await expect(own.getByTestId('key-row').filter({ hasText: 'n8n' })).toContainText('Write')
-    await expect(own.getByTestId('key-row').filter({ hasText: 'n8n' })).toContainText(/\d/)
+    await expect(own.getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'n8n' })).toContainText('Write')
+    await expect(own.getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'n8n' })).toContainText(/\d/)
 
     // A program: no cookie, no tab, the token in Authorization.
     const auth = { Authorization: `Bearer ${token}` }
@@ -55,7 +55,7 @@ test('a token made on the account page works for a program until the operator bl
     // A web page is refused, even with the token.
     expect((await program.get('/api/v1/me', { headers: { ...auth, Origin: 'https://evil.example.com' } })).status()).toBe(403)
     await page.reload()
-    await expect(own.getByTestId('key-row').filter({ hasText: 'n8n' })).not.toContainText('Never')
+    await expect(own.getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'n8n' })).not.toContainText('Never')
 
     // The note is there for the interface too.
     await page.goto(`/note/Zoo/${encodeURIComponent(title)}.md`)
@@ -64,12 +64,12 @@ test('a token made on the account page works for a program until the operator bl
     // The operator blocks it; the program is out, the account sees why.
     await page.goto('/settings/accounts')
     const all = page.locator('[data-card="all-api-keys"]')
-    await all.getByTestId('all-keys-row').filter({ hasText: 'n8n' }).getByTestId('all-keys-block').click()
+    await all.getByTestId('all-keys-row').filter({ visible: true }).filter({ hasText: 'n8n' }).getByTestId('all-keys-block').click()
     await page.getByTestId('all-keys-block-dialog').getByRole('button', { name: 'Lock' }).click()
-    await expect(all.getByTestId('all-keys-row').filter({ hasText: 'n8n' })).toHaveAttribute('data-blocked', 'true')
+    await expect(all.getByTestId('all-keys-row').filter({ visible: true }).filter({ hasText: 'n8n' })).toHaveAttribute('data-blocked', 'true')
     expect((await program.get('/api/v1/me', { headers: auth })).status()).toBe(401)
     await page.goto('/settings/connections')
-    await expect(page.locator('[data-card="api-keys"]').getByTestId('key-row').filter({ hasText: 'n8n' }).getByTestId('key-blocked')).toBeVisible()
+    await expect(page.locator('[data-card="api-keys"]').getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'n8n' }).getByTestId('key-blocked')).toBeVisible()
   } finally {
     await program.dispose()
     await page.request.delete(`/api/files?path=${encodeURIComponent(`Zoo/${title}.md`)}`, { headers: TAB })

@@ -113,10 +113,11 @@ test('an account sets up its second factor and signs in with it', async ({ page,
 test('the operator requires it only with one of their own, and resets it for an account', async ({ page }) => {
   const problems = collectProblems(page)
   await page.goto('/settings?tab=server&sub=signin')
-  const toggle = page.getByRole('checkbox', { name: 'Require a second factor' })
-  await toggle.click()
-  await expect(page.getByText('Set up your own second factor first, on your account page.')).toBeVisible()
+  // Without a factor of the operator's own the switch stays locked, and says why (the account module's card).
+  const toggle = page.getByRole('checkbox', { name: 'Require a second factor of everybody' })
+  await expect(toggle).toBeDisabled()
   await expect(toggle).not.toBeChecked()
+  await expect(page.getByText('Set up a second factor of your own first (My account, Security), or you would be the first one locked out.')).toBeVisible()
 
   // The accounts are an area of their own, further down the settings' navigation: one row per account, "Manage"
   // opens a dialog with every act (the shared account module's list).
@@ -187,7 +188,7 @@ test('an account that must set one up sees nothing else until it has', async ({ 
     expect(problems).toEqual([])
     await own.context().close()
   } finally {
-    expect((await page.request.put('/api/settings', { data: { two_factor_required: false }, headers: TAB })).ok()).toBe(true)
+    expect((await page.request.put('/api/settings', { data: { two_factor_required: false, current_password: OPERATOR.password }, headers: TAB })).ok()).toBe(true)
     expect((await page.request.post('/api/auth/totp/disable', { data: { password: OPERATOR.password }, headers: TAB })).ok()).toBe(true)
   }
 })

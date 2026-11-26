@@ -118,7 +118,7 @@ test('a key made for one space sees no other', async ({ page, playwright, baseUR
   const shown = tools.getByTestId('key-made')
   const token = (await shown.getByTestId('key-secret').locator('input').inputValue()).trim()
   await shown.getByTestId('key-done').click()
-  await expect(tools.getByTestId('key-row').filter({ hasText: 'Zoo only' })).toContainText('1 chosen')
+  await expect(tools.getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'Zoo only' })).toContainText(/Read.*Zoo/)
 
   const program = await playwright.request.newContext({ baseURL })
   const call = async (name: string, args: object) => {

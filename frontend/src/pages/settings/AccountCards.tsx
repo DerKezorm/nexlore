@@ -368,8 +368,9 @@ export function SecurityCard({ me }: { me: Me }) {
             })
           }}
         >
-          <Field label={t('me.password.current')} value={current} onChange={(event) => setCurrent(event.target.value)} type="password" autoComplete="current-password" />
-          <Field label={t('me.password.new')} value={next} onChange={(event) => setNext(event.target.value)} type="password" autoComplete="new-password" hints={[t('auth.passwordHint', { count: me.min_password ?? 12 })]} />
+          {/* The account module's words for every password field (plan E33). */}
+          <Field label={t(FIELDS.currentPassword.label)} value={current} onChange={(event) => setCurrent(event.target.value)} type="password" autoComplete={FIELDS.currentPassword.autoComplete} />
+          <Field label={t(FIELDS.newPassword.label)} value={next} onChange={(event) => setNext(event.target.value)} type="password" autoComplete={FIELDS.newPassword.autoComplete} hints={[t(FIELDS.newPassword.hint, { minimum: me.min_password ?? 12 })]} />
           <Field
             label={t(FIELDS.passwordRepeat.label)}
             name="password_confirm"
