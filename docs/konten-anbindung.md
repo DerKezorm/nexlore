@@ -88,6 +88,10 @@ E57 (sprachen 1.0.1 mit Rückfrage beim Entfernen, konten 1.1.1, schluessel 1.0.
 E57 A4 (schluessel 1.0.2 aus `35ed594`: Platz in der Karte aller Schlüssel, nexlore legt dort nichts hin; Vorlage des
 Tests übernommen): ruff 0; pytest 2465 bestanden, 3 übersprungen (11:34); lint 0; vitest 89 Dateien, 734 Tests;
 build 0; Seite unverändert, deshalb kein Playwright.
+E59 (Zeile „iPhone und iPad“ unter „Auf welchem Weg“ mit Verweis auf Verbindungen, die App bekommt keine Mitteilungen;
+sprachen 1.0.2 mit `offered_template`; konten 1.1.2 mit „Neues Passwort“ beim Ändern und Zurücksetzen): ruff 0; pytest
+2468 bestanden, 3 übersprungen (11:07); lint 0; vitest 90 Dateien, 739 Tests; build 0; Playwright gezielt für die
+Einstellungen (18 Dateien) 76 von 76.
 
 
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
