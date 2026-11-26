@@ -5,7 +5,7 @@ import { showModalOnce } from '../lib/dialog'
 
 import { shareApi, type ShareInfo } from '../api/client'
 import { formatDay } from '../lib/markdown'
-import { Button, CopyLink, Feedback, Input, Select } from './dialogParts'
+import { Button, CopyLink, Feedback, Input, Select } from './settings/ui'
 import { useAction } from './settings/useAction'
 import { Symbol } from './Symbol'
 

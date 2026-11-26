@@ -6,7 +6,7 @@
 import { useTranslation } from 'react-i18next'
 
 import type { TaskKind, TaskStatusEntry, TaskStatuses } from '../api/client'
-import { Button } from './dialogParts'
+import { Button } from './settings/ui'
 import { Symbol } from './Symbol'
 
 const TASK_KINDS: TaskKind[] = ['todo', 'in_progress', 'on_hold', 'done', 'cancelled', 'non_task']
