@@ -71,7 +71,7 @@ Läufe am Ende (26.11.2026, Module `4f3e75e`, `reihe.sh nexlore ende`): ruff 0; 
 rot nur `canvas.spec.ts:398` und `sidebar.spec.ts:328` (beide warten auf eine Zeile der Seitenleiste, die sich unter
 vielen Bereichen früherer Tests neu zeichnet; berühren die Einstellungen nicht), allein je zweimal grün.
 
-Nach sprachen `e18169e` und E52 (nur Server, Seite unverändert): ruff 0; pytest 2451 bestanden, 3 übersprungen (11:54);
+Nach sprachen `68fd070` und E52 (nur Server, Seite unverändert): ruff 0; pytest 2451 bestanden, 3 übersprungen (11:39);
 lint 0; vitest 88 Dateien, 728 Tests; build 0. Playwright nicht erneut (an der Seite hat sich nichts geändert).
 
 
