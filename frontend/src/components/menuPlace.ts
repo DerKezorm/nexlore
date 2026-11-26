@@ -13,10 +13,9 @@ export type MenuPlaceInput = { x: number; y: number; width: number; height: numb
 
 export function menuPlace({ x, y, width, height, viewWidth, viewHeight, sub = false }: MenuPlaceInput): { left: number; top: number } {
   const left = sub && x + width > viewWidth - 4 ? Math.max(4, x - width * 2) : Math.max(4, Math.min(x, viewWidth - width - 4))
-  // As high as it may be at most (it scrolls beyond): what fits below, else above the pointer, else from the top.
-  const shown = Math.min(height, viewHeight - MENU_EDGE * 2)
-  const below = y + shown <= viewHeight - MENU_EDGE
-  const wanted = below ? y : y - shown
-  const top = Math.max(MENU_EDGE, Math.min(wanted, viewHeight - MENU_EDGE - shown))
+  // Below the pointer where it fits, else above it, never off the bottom; and never above 8 px from the top, which is
+  // where a menu higher than the window stands (it scrolls beyond its highest).
+  const wanted = y + height <= viewHeight - MENU_EDGE ? y : y - height
+  const top = Math.max(MENU_EDGE, Math.min(wanted, viewHeight - MENU_EDGE - height))
   return { left, top }
 }
