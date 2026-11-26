@@ -53,3 +53,12 @@ def test_a_change_by_hand_names_no_key_and_one_of_before_stays_as_it_was(world: 
         db.commit()
     older = next(row for row in _history(world, "Garden/Plan.md") if row["source"] == "mcp")
     assert older["key_name"] is None
+
+
+def test_only_the_programs_own_versions_name_it(world: World) -> None:
+    """Links that follow a rename are rewritten as "rename" versions, as ever (``renameBy``): no key on them."""
+    token = world.key("write")
+    value(call(token, "create_note", folder="Garden", title="Seeds", content="See [[Plan]].\n"))
+    value(call(token, "rename_note", path="Garden/Plan.md", title="Plan 2"))
+    sources = [(row["source"], row["key_name"]) for row in _history(world, "Garden/Seeds.md")]
+    assert sources[0] == ("rename", None) and ("mcp", "agent write") in sources
