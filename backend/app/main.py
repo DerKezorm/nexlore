@@ -20,6 +20,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from . import __version__, private
 from .config import get_settings
 from .db import SessionLocal, init_db
+from .deps import require_account, require_operator
 from .errors import detail
 from .middleware import ForwardedSchemeMiddleware, GuardMiddleware, RequestContextMiddleware, unhandled_error
 from .routers import about, accounts, attachments, auth, drafts, everyday, graph, health, imports, members, oidc, shares
@@ -66,6 +67,7 @@ from .security import HashingBusy, purge_sessions
 from .services import (
     backups,
     graphstore,
+    ki_store,
     locales,
     logs,
     notify,
@@ -78,6 +80,7 @@ from .services import (
 )
 from .services.konten_store import KontenStore
 from .vendor import nexoidc
+from .vendor.nexki import api as ki_api
 from .vendor.nexkonten import factor as konten_factor
 from .vendor.nexkonten import setup as konten_setup
 
@@ -155,6 +158,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     backups.tidy_at_start()
     backups.apply_pending()
     init_db()
+    # What the shared AI module needs of an older installation, written once where never stored (K17).
+    ki_store.adopt()
     # The single sign-in provider of the settings becomes the entry "oidc" of the list, once (backup first).
     oidc_store.migrate_settings()
     # The TLS context of the sign-in module is read once, in a thread, so that the first sign-in does not wait for it.
@@ -255,6 +260,11 @@ app.add_exception_handler(Exception, unhandled_error)
 
 for module in ROUTERS:
     app.include_router(module.router)
+# The shared MCP module (mcp 1.1.0): ``POST /api/mcp``, OAuth for programs, the pages under ``/api/connections/mcp``.
+app.include_router(mcp_router.module_router)
+# The shared AI module (ki 0.1.0): Server › KI-Anbieter (``/api/server/ai``) and Mein Konto › KI (``/api/me/ai``).
+app.include_router(ki_api.router(config=ki_store.CONFIG, store=ki_store.store, account=require_account,
+                                 operator=require_operator))
 
 # The shared sign-in module learns who it runs in before the first request (vendor/nexoidc).
 oidc_store.configure()

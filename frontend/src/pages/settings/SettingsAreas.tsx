@@ -2,23 +2,21 @@
  * Which cards each area of the settings shows, in the order of the plan "Einstellungen": the shared ones from the
  * modules first (or at their fixed places), nexlore's own after them. Every area holds only cards.
  */
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 import { aboutApi, api, ApiError, tabId, type ServerSettings } from '../../api/client'
-import { AiAccess } from '../../components/AiAccess'
+import { LoreCard } from '../../components/settings/LoreCard'
 import { AppDevices } from '../../components/AppDevices'
 import { NotifySettings } from '../../components/NotifySettings'
 import {
   AccountsCard,
-  AiCard,
   AllSpacesCard,
   CssCard,
   FeaturesCard,
   FilesSettingsCard,
   GuideCard,
-  McpSettings,
   SharesCard,
 } from '../../components/settings/AdminCards'
 import { LanguagesCard } from '../../vendor/nexsprachen/LanguagesCard'
@@ -31,7 +29,11 @@ import { InstallCard } from '../../components/settings/InstallCard'
 import { KeysCard } from '../../components/settings/KeysCard'
 import { LinkTitleSwitch } from '../../components/settings/LinkTitleSwitch'
 import { LogCard } from '../../components/settings/LogCard'
-import { McpRecipes, McpToolRights } from '../../components/settings/McpToolRights'
+import { McpRecipes } from '../../components/settings/McpRecipes'
+import { mcpRequest, requestHref, useMcpWords } from '../../lib/mcpModule'
+import { AiAccountArea, AiProviderArea, type AiRequest } from '../../vendor/nexki'
+import { refreshNews } from '../../lib/news'
+import { McpOperatorSettings, PendingRequests, ToolRights } from '../../vendor/nexmcp'
 import { SnippetsCard } from '../../components/settings/SnippetsCard'
 import { SpacesCard } from '../../components/settings/SpacesCard'
 import { HomeSpaceCard, StartCard } from '../../components/settings/StartCard'
@@ -56,6 +58,10 @@ import { StorageArea } from './StorageArea'
 /** nexlore's client for the cards of the modules: the tab in every request, its error with `code` and values. */
 const request: KeyRequest = <T,>(path: string, init: Parameters<KeyRequest>[1] = {}) =>
   api<T>(path, { method: init.method, query: init.query, body: init.body } as Parameters<typeof api>[1])
+
+/** The same client for the shared module ki 0.1.0. */
+const aiRequest: AiRequest = <T,>(path: string, init: Parameters<AiRequest>[1] = {}) =>
+  api<T>(path, { method: init.method, body: init.body } as Parameters<typeof api>[1])
 
 function failure(error: unknown): string {
   return error instanceof ApiError ? errorText(error.code, error.values) : errorText('internal_error')
@@ -82,6 +88,8 @@ export function AreaContent({ area }: { area: AreaSlug }) {
       return <SpacesCard />
     case 'plugins':
       return <MyPluginsCard />
+    case 'ai':
+      return <AiArea />
     case 'notifications':
       return <NotifySettings />
     case 'connections':
@@ -146,11 +154,20 @@ function useDocs(): string | undefined {
   return docs
 }
 
-/** Devices, installing, nexlore's own AI in notes and calendar feed, then API keys and AI tools (MCP). */
+/** Mein Konto › KI (E61, the shared module ki 0.1.0): "KI für mich", the own access where the operator chose it, what
+ * went out. */
+function AiArea() {
+  const { i18n } = useTranslation()
+  const when = useCallback((iso: string) => new Date(iso).toLocaleString(i18n.language), [i18n.language])
+  return <AiAccountArea request={aiRequest} app="nexlore" language={i18n.language} when={when} />
+}
+
+/** Devices, installing, nexlore's calendar feed, then API keys and AI tools (MCP); AI in notes is under "KI" now. */
 function ConnectionsArea() {
   const { t, i18n } = useTranslation()
   const { me } = useAuth()
   const docs = useDocs()
+  const mcpWords = useMcpWords()
   const words = {
     rights: { read: t('apiTokens.level.read'), write: t('apiTokens.level.write'), draft: t('mcp.level.draft') },
     areas: t('apiTokens.spaces'),
@@ -159,10 +176,17 @@ function ConnectionsArea() {
     <>
       <AppDevices />
       <InstallCard />
-      <AiAccess />
       <CalendarFeed />
       <ApiKeysCard request={request} things={t('settings.things')} thingsDative={t('settings.thingsDative')} words={words} docsHref={docs} operator={me?.role === 'operator'} language={i18n.language} />
-      <ToolsCard request={request} words={words} language={i18n.language} extra={(key) => <McpToolRights entry={key} />}>
+      {/* The parts of the shared module mcp 1.1.0: "Rechte je Werkzeug" at every MCP key and program, "Wartende
+          Rückfragen" below; nexlore's own box how a program connects after them. */}
+      <ToolsCard
+        request={request}
+        words={words}
+        language={i18n.language}
+        extra={(key) => (key.kind === 'mcp' ? <ToolRights request={mcpRequest} keyId={key.id} words={mcpWords} language={i18n.language} /> : null)}
+      >
+        <PendingRequests request={mcpRequest} words={mcpWords} language={i18n.language} viewHref={requestHref} onChanged={() => void refreshNews()} />
         <McpRecipes />
       </ToolsCard>
     </>
@@ -170,17 +194,18 @@ function ConnectionsArea() {
 }
 
 /** One area of the server, for the operator. */
-function ServerArea({ area }: { area: Exclude<AreaSlug, 'profile' | 'security' | 'appearance' | 'notes' | 'spaces' | 'plugins' | 'notifications' | 'connections' | 'about'> }) {
+function ServerArea({ area }: { area: Exclude<AreaSlug, 'profile' | 'security' | 'appearance' | 'notes' | 'spaces' | 'plugins' | 'ai' | 'notifications' | 'connections' | 'about'> }) {
   const { t, i18n } = useTranslation()
   const [settings, setSettings] = useServerSettings()
   const docs = useDocs()
+  const mcpWords = useMcpWords()
   switch (area) {
     case 'general':
       return (
         <>
           <FilesSettingsCard />
           {settings && <FeaturesCard settings={settings} onChange={setSettings} />}
-          <InterfacesCard request={request} docsHref={docs} language={i18n.language} after={settings ? { mcp: <McpSettings settings={settings} onChange={setSettings} /> } : undefined} />
+          <InterfacesCard request={request} docsHref={docs} language={i18n.language} after={{ mcp: <McpOperatorSettings request={mcpRequest} words={mcpWords} language={i18n.language} /> }} />
           {/* Server › General › Languages from the shared module sprachen 1.0.0: the template from the page's English
               texts, a change makes the menus ask the server again. */}
           <LanguagesCard app="nexlore" base="/api/locales" template={en} fetcher={languagesFetch} onChange={resetAddedLanguages} language={i18n.language} />
@@ -196,7 +221,12 @@ function ServerArea({ area }: { area: Exclude<AreaSlug, 'profile' | 'security' |
     case 'storage':
       return <StorageArea />
     case 'ai-provider':
-      return settings ? <AiCard settings={settings} onChange={setSettings} /> : null
+      // Server › KI-Anbieter from the shared module ki 0.1.0, nexlore's Lore and meaning below.
+      return (
+        <AiProviderArea request={aiRequest} app="nexlore" language={i18n.language}>
+          {settings && <LoreCard settings={settings} onChange={setSettings} />}
+        </AiProviderArea>
+      )
     case 'server-plugins':
       return settings ? <AdminPluginsCard settings={settings} onChange={setSettings} /> : null
     case 'shares':

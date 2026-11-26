@@ -14,12 +14,12 @@ Three levels, each including the one before:
 * **write**: changes notes directly, each change a version with the source ``mcp``, unchanged lines kept byte for
   byte (``textblocks``), a conflict copy when the note changed since the AI read it or somebody is editing it.
 
-**Rights per tool (block Y).** Each tool belongs to a group, and each group has a default right: reading and drafts
-are allowed, making and changing asks first, deleting, sharing and members are denied. A key may set another right
-per tool (``McpKey.tool_rights``). A denied tool, one above the key's level, or one the operator blocked for everybody
-(``mcp_blocked_tools``) does not exist for the key: it is missing from ``tools/list`` and answers like an unknown one.
-"Ask" keeps the call as a request (``McpRequest``) with its arguments fixed; the account approves or declines it in
-nexlore within ``REQUEST_HOURS``, and only then the tool runs, with exactly those arguments.
+**Since the shared module mcp 1.1.0** the protocol, the walls, OAuth, the rights per tool and the requests are the
+module's (``vendor/nexmcp``, set up in ``routers/mcp.py`` with nexlore's tools and answers of before; the store over
+nexlore's tables in ``services/mcp_store.py``). What stays here: the levels, the key's check against its account
+(``_caller``), the drafts, the check of a request's arguments. A new key may use everything of its level (decision
+3); every key and connector of before got the defaults it had written onto it (``DEFAULT_RIGHT``: making and changing
+asks, deleting, sharing and members denied), so they behave as before.
 
 **The key.** ``nxl_`` and 43 random characters, shown once. Only its SHA-256 is stored, and its first characters to
 tell keys apart. It travels in ``Authorization: Bearer``, never in an address, and never reaches the log.
@@ -31,14 +31,11 @@ import hashlib
 import json
 import logging
 import secrets
-import threading
-import time
 import zlib
-from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import timedelta
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..models import Account, Draft, McpKey, McpRequest, utcnow
@@ -157,35 +154,11 @@ class Caller:
         return None if chosen == "deny" else chosen
 
 
-def authenticate(db: Session, token: str | None) -> Caller | None:
-    """The account and key behind a token, or None: no such key, MCP off, or the account locked. The level is the
-    key's, but never above what the operator allows now (lowered later, it applies to keys made before)."""
-    if not token or not token.startswith(TOKEN_PREFIX) or len(token) > 200:
-        return None
-    key = db.scalar(select(McpKey).where(McpKey.token_hash == digest(token)))
-    if key is None or key.blocked_at is not None or (key.expires_at is not None and key.expires_at <= utcnow()):
-        # A connector's access token runs out after an hour; the connector refreshes it.
-        return None
-    if key.kind == "oauth" and not settings_service.get(db, "mcp_oauth_allowed"):
-        # Connectors switched off: their tokens stop at once, not when they run out within the hour.
-        return None
-    return _caller(db, key, used=True)
-
-
-def caller_of_key(db: Session, key_id: int) -> Caller | None:
-    """The caller behind a key as it stands now, for a request its account approves: the same checks as a call."""
-    key = db.get(McpKey, key_id)
-    return None if key is None or key.blocked_at is not None else _caller(db, key, used=False)
-
-
 def _caller(db: Session, key: McpKey, *, used: bool) -> Caller | None:
     account = db.get(Account, key.account_id)
     if account is None or account.blocked_at is not None or account.deleted_at is not None or (
         account.locked_until is not None and account.locked_until > utcnow()
     ):
-        return None
-    if not account.ai_allowed:
-        # The operator took AI from the account (MCP decision 10): its keys and connectors rest until it is back.
         return None
     if totp.setup_required(db, account):
         # The operator requires a second factor this account has not set up: its keys wait like its sessions.
@@ -204,26 +177,11 @@ def _caller(db: Session, key: McpKey, *, used: bool) -> Caller | None:
     return Caller(account=account, key_id=key.id, key_name=key.name, level=level, rights=own, blocked=blocked(db))
 
 
-_calls_lock = threading.Lock()
-_calls: dict[int, deque[float]] = defaultdict(deque)
-
-
-def brake(key_id: int, now: float | None = None) -> bool:
-    """True while the key stays under ``PER_MINUTE`` requests in the last minute; counts this one."""
-    now = time.monotonic() if now is None else now
-    with _calls_lock:
-        seen = _calls[key_id]
-        while seen and now - seen[0] > 60:
-            seen.popleft()
-        if len(seen) >= PER_MINUTE:
-            return False
-        seen.append(now)
-        return True
-
-
 def forget() -> None:
-    with _calls_lock:
-        _calls.clear()
+    """For the tests: the brakes of the shared module (mcp 1.1.0) start again."""
+    from ..vendor.nexmcp.brake import BRAKE
+
+    BRAKE.forget()
 
 
 # --- Drafts ----------------------------------------------------------------------------------------------------------
@@ -262,53 +220,6 @@ def draft_text(draft: Draft) -> bytes:
 
 
 # --- Requests (right "ask") -------------------------------------------------------------------------------------------
-
-
-def canonical(arguments: dict[str, object]) -> str:
-    """The arguments as one fixed text: sorted keys, no spaces. What is shown is what runs."""
-    return json.dumps(arguments, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-
-
-def add_request(db: Session, caller: Caller, tool: str, arguments: dict[str, object]) -> McpRequest:
-    text = canonical(arguments)
-    if len(text.encode("utf-8")) > MAX_REQUEST_BYTES:
-        raise McpError("too_large", "The arguments of a request hold at most 6 MB.", 413)
-    expire(db)
-    waiting = db.scalar(
-        select(func.count())
-        .select_from(McpRequest)
-        .where(McpRequest.account_id == caller.account.id, McpRequest.status == "waiting")
-    )
-    if (waiting or 0) >= MAX_WAITING:
-        raise McpError("too_many_requests", "100 requests are waiting already. Let the account decide first.", 409)
-    # Half of them at most from one key: a busy program leaves room for the account's others.
-    of_key = db.scalar(
-        select(func.count())
-        .select_from(McpRequest)
-        .where(McpRequest.key_id == caller.key_id, McpRequest.status == "waiting")
-    )
-    if (of_key or 0) >= MAX_WAITING // 2:
-        raise McpError("too_many_requests", "This program has 50 requests waiting. Let the account decide first.", 409)
-    now = utcnow()
-    row = McpRequest(
-        account_id=caller.account.id,
-        key_id=caller.key_id,
-        key_name=caller.key_name,
-        tool=tool,
-        arguments=text,
-        digest=hashlib.sha256(text.encode("utf-8")).hexdigest(),
-        status="waiting",
-        created_at=now,
-        expires_at=now + timedelta(hours=REQUEST_HOURS),
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    logger.info("MCP request made request_id=%s tool=%s key_id=%s", row.id, tool, caller.key_id)
-    from . import notify
-
-    notify.send(caller.account.id, "approval", notify.words("approval", key=caller.key_name, tool=tool), "/requests", 4)
-    return row
 
 
 def expire(db: Session) -> int:

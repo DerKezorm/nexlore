@@ -491,6 +491,12 @@ class Account(Base):
     ai_url: Mapped[str] = mapped_column(String(500), default="")
     ai_model: Mapped[str] = mapped_column(String(200), default="")
     ai_key_enc: Mapped[str] = mapped_column(Text, default="")
+    #: The interface of the own access (the shared module ki 0.1.0): ``openai`` or ``messages``; empty is ``openai``,
+    #: the only form nexlore spoke before.
+    ai_api: Mapped[str] = mapped_column(String(16), default="", server_default="")
+    #: "KI für mich" off while the operator's service is for all (ki 0.1.0); with an own access ``ai_active`` says it,
+    #: as before. Off nowhere before: nexlore had no such switch for the operator's service.
+    ai_mine_off: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
     ai_active: Mapped[bool] = mapped_column(Boolean, default=False)
     #: The profile picture (``services/avatars.py``): a square WebP drawn anew, loaded only when asked for; and when it
     #: was set, which makes its address new.
@@ -739,6 +745,20 @@ class McpKey(Base):
     #: Set when the operator locked the key (the shared key module, "API-Schlüssel aller Konten"); it then answers like
     #: none until unlocked. None for every key of 1.16.0, which knew no lock for MCP keys.
     blocked_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: A connector's last refresh (the shared module mcp 1.1.0): 30 days without one, it signs in again. None for a
+    #: connector of 1.16.0, which counted from ``expires_at`` (an hour after the last refresh).
+    refreshed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class McpSpent(Base):
+    """A code or refresh token a connector traded in (the shared module mcp 1.1.0): brought again, it was copied, and
+    the connector ends. The last 20 per connector; ``mcp_keys.refresh_old_hash`` still holds the one of 1.16.0."""
+
+    __tablename__ = "mcp_spent"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    key_id: Mapped[int] = mapped_column(ForeignKey("mcp_keys.id", ondelete="CASCADE"), index=True)
+    spent_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
 
 
 class ApiToken(Base):
@@ -903,6 +923,12 @@ class AiEvent(Base):
     tokens_out: Mapped[int] = mapped_column(Integer, default=0)
     #: The error code when it failed after sending; empty when it worked.
     error: Mapped[str] = mapped_column(String(64), default="")
+    #: Since the shared module ki 0.1.0: where it went (host, or "the own network"), whether a person started it, how
+    #: many characters of text went out, and how it ended (``ok`` or a code).
+    to: Mapped[str] = mapped_column(String(255), default="", server_default="")
+    manual: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
+    chars: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    outcome: Mapped[str] = mapped_column(String(64), default="", server_default="")
 
 
 class LoreConversation(Base):
@@ -997,6 +1023,10 @@ class OAuthCode(Base):
     level: Mapped[str] = mapped_column(String(8))
     spaces: Mapped[Any] = mapped_column(JSON, nullable=True)
     expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+    #: Since the shared module mcp 1.1.0: the app the program asked for (RFC 8707, empty when it named none) and the
+    #: extras agreed to (nexlore has none).
+    resource: Mapped[str] = mapped_column(String(2048), default="", server_default="")
+    extras: Mapped[Any] = mapped_column(JSON, nullable=True)
 
 
 class McpRequest(Base):
@@ -1007,8 +1037,9 @@ class McpRequest(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
-    #: The key that asked; a revoked key takes its waiting requests along.
-    key_id: Mapped[int] = mapped_column(ForeignKey("mcp_keys.id", ondelete="CASCADE"), index=True)
+    #: The key that asked. Since the shared module mcp 1.1.0 a request outlives its key: allowed after the key was
+    #: revoked, it ends as failed ("no longer possible") instead of vanishing (``mcp_store.migrate`` drops the link).
+    key_id: Mapped[int] = mapped_column(Integer, index=True)
     key_name: Mapped[str] = mapped_column(String(100), default="")
     tool: Mapped[str] = mapped_column(String(64))
     #: The arguments as canonical JSON (sorted keys), and their SHA-256: the approval runs these and nothing else.
@@ -1021,6 +1052,11 @@ class McpRequest(Base):
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
     decided_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: Since the shared module mcp 1.1.0: who decided (the account's name), the tool's one line, and whether the tool
+    #: called the call dangerous (then allowing takes a second yes).
+    decided_by: Mapped[str] = mapped_column(String(100), default="", server_default="")
+    summary: Mapped[str] = mapped_column(String(300), default="", server_default="")
+    dangerous: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
 
 
 class Plugin(Base):

@@ -193,8 +193,11 @@ class SchluesselStore:
     def ai_allowed(self, account_id: Any) -> bool:
         """"KI erlaubt" of the account (Server › Konten › Verwalten; MCP decision 10): without it the account makes no
         MCP key and its MCP keys and connectors rest. The operator's main switch is not asked here (ki K8)."""
-        row = self._account(account_id)
-        return row is not None and bool(row.ai_allowed)
+        from ..vendor import nexki
+        from .ki_store import KiStore
+
+        # The module ki answers it for keys and programs (K8): "KI erlaubt" of the account, and the account not out.
+        return bool(nexki.chain.for_programs(KiStore(self.db), account_id))
 
     def keys_wait(self, account_id: Any) -> bool:
         row = self._account(account_id)

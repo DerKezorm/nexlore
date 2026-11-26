@@ -19,7 +19,9 @@ import { PATH_DRAG_TYPE, fileKind } from '../lib/files'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
 import { askFolder, FOLDER_EVENT, narrow, NOTE_LIST_EVENT, RECENT_EVENT, SIDEBAR_EVENT, sidebarHere, takeFolderWish, noteListWished, forgetNoteListWish } from '../lib/shell'
-import { answerNotice, seenAll, useNews } from '../lib/news'
+import { mcpRequest, requestHref, useMcpWords } from '../lib/mcpModule'
+import { answerNotice, refreshNews, seenAll, useNews } from '../lib/news'
+import { RequestBellRow } from '../vendor/nexmcp'
 import { fitWidth, keepWidth, storedWidth, USUAL_WIDTH } from '../lib/sidebarWidth'
 import { openInTab } from '../lib/tabs'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
@@ -81,6 +83,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
   const { t, i18n } = useTranslation()
   const nameOf = usePeople()
   const news = useNews()
+  const mcpWords = useMcpWords()
   const [newsOpen, setNewsOpen] = useState(() => {
     try {
       return localStorage.getItem('nexlore.newsOpen') === 'open'
@@ -993,12 +996,10 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           </div>
           {newsOpen && (
           <ul className="nn-scroll mt-1 max-h-44 overflow-y-auto">
+            {/* A program waits for a yes: the row of the shared module mcp 1.1.0, allowing and declining right here. */}
             {news.requests.map((request) => (
-              <li key={'r' + request.id} data-request={request.id} className="rounded-lg px-2 py-1 text-[13px] text-mist-300">
-                <Link to="/requests" className="block leading-snug hover:text-mist-100">
-                  {t('requests.news', { key: request.key_name, what: i18n.exists(`mcp.tools.${request.tool}`) ? t(`mcp.tools.${request.tool}`) : request.tool })}
-                  <span className="ml-1 rounded-full bg-warn-500/15 px-1.5 text-[11px] text-warn-500">{t('requests.status.waiting')}</span>
-                </Link>
+              <li key={'r' + request.id} className="rounded-lg px-2 py-1 text-[13px] text-mist-300">
+                <RequestBellRow request={mcpRequest} entry={request} words={mcpWords} language={i18n.language} viewHref={requestHref} onDecided={() => void refreshNews()} />
               </li>
             ))}
             {news.notices.map((notice) => (

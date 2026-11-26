@@ -58,28 +58,28 @@ test.afterEach(async ({ page }) => {
 test('rights per tool are set under the key and kept', async ({ page }) => {
   const problems = collectProblems(page)
   await openMcp(page)
-  const key = await makeKey(page, 'Y rights')
+  await makeKey(page, 'Y rights')
   await page.goto('/account?tab=ai')
   const row = page.locator('[data-card="ai-tools"]').getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'Y rights' })
+  // "Rechte je Werkzeug" of the shared module mcp 1.1.0.
   await row.getByRole('button', { name: 'Rights per tool' }).click()
-  const box = page.getByTestId(`tool-rights-${key.id}`)
-  const createNote = box.getByRole('radiogroup', { name: 'create_note' })
-  // The defaults: changing asks, deleting is denied, reading cannot be asked for.
-  await expect(createNote.getByRole('radio', { name: 'Ask' })).toHaveAttribute('aria-checked', 'true')
-  await expect(box.getByRole('radiogroup', { name: 'trash_note' }).getByRole('radio', { name: 'Deny' })).toHaveAttribute('aria-checked', 'true')
-  await expect(box.getByRole('radiogroup', { name: 'read_note' }).getByRole('radio', { name: 'Ask' })).toBeDisabled()
+  const box = page.getByTestId('tool-rights-dialog')
+  const right = (tool: string) => box.locator(`[data-tool="${tool}"]`).filter({ visible: true }).getByTestId('tool-right')
+  // A new key may use everything of its level at once (decision 3); reading cannot be asked for.
+  await expect(right('create_note').getByRole('radio', { name: 'Allow' })).toHaveAttribute('aria-checked', 'true')
+  await expect(right('trash_note').getByRole('radio', { name: 'Allow' })).toHaveAttribute('aria-checked', 'true')
+  await expect(right('read_note').getByRole('radio', { name: 'Ask' })).toBeDisabled()
   // Blocked by the operator: cannot be chosen.
-  await expect(box.getByRole('radiogroup', { name: 'delete_space' }).getByRole('radio', { name: 'Allow' })).toBeDisabled()
-  const saved = page.waitForResponse((answer) => answer.url().endsWith(`/api/mcp/keys/${key.id}/rights`))
-  await createNote.getByRole('radio', { name: 'Allow' }).click()
+  await expect(right('delete_space').getByRole('radio', { name: 'Allow' })).toBeDisabled()
+  await right('create_note').getByRole('radio', { name: 'Ask' }).click()
+  await right('trash_note').getByRole('radio', { name: 'Deny' }).click()
+  const saved = page.waitForResponse((answer) => /\/api\/connections\/mcp\/keys\/.+\/rights$/.test(answer.url()) && answer.request().method() === 'PUT')
+  await box.getByTestId('tool-rights-save').click()
   expect((await saved).status()).toBe(200)
-  await expect(box.getByText('Saved.')).toBeVisible()
   await page.reload()
   await page.locator('[data-card="ai-tools"]').getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'Y rights' }).getByRole('button', { name: 'Rights per tool' }).click()
-  await expect(page.getByTestId(`tool-rights-${key.id}`).getByRole('radiogroup', { name: 'create_note' }).getByRole('radio', { name: 'Allow' })).toHaveAttribute('aria-checked', 'true')
-  // The search narrows the list.
-  await page.getByRole('searchbox', { name: 'Find a tool' }).fill('trash')
-  await expect(page.getByTestId(`tool-rights-${key.id}`).getByRole('radiogroup')).toHaveCount(5)
+  await expect(right('create_note').getByRole('radio', { name: 'Ask' })).toHaveAttribute('aria-checked', 'true')
+  await expect(right('trash_note').getByRole('radio', { name: 'Deny' })).toHaveAttribute('aria-checked', 'true')
   expect(problems).toEqual([])
 })
 
@@ -87,6 +87,8 @@ test('a request waits under New in the sidebar, and approving runs exactly it', 
   const problems = collectProblems(page)
   await openMcp(page)
   const key = await makeKey(page, 'Y asker')
+  // A new key may make notes at once (mcp 1.1.0, decision 3): its account wants to be asked.
+  expect((await page.request.put(`/api/mcp/keys/${key.id}/rights`, { data: { rights: { create_note: 'ask' } }, headers: TAB })).status()).toBe(200)
   const program = await playwright.request.newContext({ baseURL })
   const asked = await tool(program, key.token, 'create_note', { folder: 'Zoo', title: 'Asked for', content: 'Waited for a yes.\n' })
   expect(asked.value.status).toBe('waiting')
@@ -98,8 +100,10 @@ test('a request waits under New in the sidebar, and approving runs exactly it', 
   if ((await news.getByRole('button', { name: /New since your last visit/ }).getAttribute('aria-expanded')) !== 'true') {
     await news.getByRole('button', { name: /New since your last visit/ }).click()
   }
-  await expect(news).toContainText('Y asker wants to: Make a note')
+  // The rows of the shared module mcp 1.1.0 in the bell: program, tool, Allow and Decline right there.
   await expect(news.locator('[data-request]')).toHaveCount(2)
+  await expect(news.locator(`[data-request="${asked.value.request}"]`)).toContainText('Y asker')
+  await expect(news.locator(`[data-request="${asked.value.request}"]`)).toContainText('Make a note')
 
   await page.goto('/requests')
   const first = page.getByTestId(`request-${asked.value.request}`)
@@ -170,13 +174,13 @@ test('a connector signs in on the consent page and gets a key of its own', async
 
 test('the operator blocks a tool for everybody', async ({ page }) => {
   await openMcp(page)
-  // Under the switch "MCP-Zugang" of the card "Schnittstellen" (Server › General).
+  // Under the switch "MCP-Zugang" of the card "Schnittstellen" (Server › General), the parts of the shared module.
   await page.goto('/settings/general')
-  const blocked = page.getByTestId('mcp-blocked')
-  await blocked.getByText('Tools blocked for everybody').click()
-  await expect(blocked.getByRole('checkbox', { name: 'delete_space' })).toBeChecked()
-  const saved = page.waitForResponse((answer) => answer.url().endsWith('/api/mcp/blocked'))
-  await blocked.getByRole('checkbox', { name: 'trash_note' }).check()
+  const blocked = page.getByTestId('mcp-operator-blocked')
+  await blocked.getByText('Blocked tools').click()
+  await expect(blocked.getByTestId('mcp-operator-block-delete_space').locator('input')).toBeChecked()
+  const saved = page.waitForResponse((answer) => answer.url().endsWith('/api/connections/mcp/admin') && answer.request().method() === 'PUT')
+  await blocked.getByTestId('mcp-operator-block-trash_note').locator('input').check()
   expect((await saved).status()).toBe(200)
   expect((await (await page.request.get('/api/mcp/tools')).json()).blocked).toContain('trash_note')
 })

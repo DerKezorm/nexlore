@@ -601,10 +601,12 @@ def per_minute(db: Session) -> int:
 
 
 def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "", instruction: str = "") -> str:
-    """Sends the text to the account's service and gives back what it wrote. Every check is here, not only in the
-    interface: this is the one place where note text leaves the house."""
-    # The operator's lock first: it stands above the account's own choice.
-    using = usable(db, row)
+    """Sends the text to the account's service and gives back what it wrote, through the shared module ki 0.1.0
+    (``nexki.ask``): the chain of switches, the rules of the network, the brakes, the quirks of models and the line in
+    "what went out" are the module's. What stays here: the checks of the text and the task, the rules of the task."""
+    from ..vendor import nexki
+    from . import ki_store
+
     text = (text or "").strip()
     if task != "write":
         if not text:
@@ -613,72 +615,18 @@ def run(db: Session, row: AccountRow, *, task: str, text: str, target: str = "",
             raise AiError("ai_text_too_short", min=MIN_WORDS)
     if len(text) > MAX_CHARS:
         raise AiError("ai_text_too_long", max=MAX_CHARS)
-    instruction_text, kept_target, temperature = _task(task, target, instruction)
-    if not pace.take(row.id, per_minute(db)):
-        raise AiError("ai_too_often", 429)
-
+    instruction_text, _kept_target, _temperature = _task(task, target, instruction)
     rules = RULES_WRITE if task == "write" else RULES
-    body = {
-        "model": using.model,
-        "max_tokens": MAX_OUT_TOKENS,
-        "temperature": temperature,
-        "messages": [
-            {"role": "system", "content": f"{rules}\n\nTask: {instruction_text}"},
-            {"role": "user", "content": text if text else "(no material)"},
-        ],
-    }
-
-    # From here on the text is on its way: whatever happens now, it is kept in the list, a failure too.
-    def keep(tokens_in: int = 0, tokens_out: int = 0, failed: str = "") -> None:
-        _keep(
-            db, row, model=using.model, task=task, target=kept_target, body=body, tokens_in=tokens_in,
-            tokens_out=tokens_out, failed=failed,
-        )
-
-    place = checked_target(db, urljoin(check_address(using.url), "chat/completions"), trusted=using.shared)
+    # The note's text as material between marks, never as instructions (the module's frame and its rule).
+    material, rule = nexki.frame(text if text else "(no material)")
     try:
-        with httpx.Client(timeout=TEXT_SECONDS, follow_redirects=False, transport=transport, trust_env=False,
-                          verify=tls()) as client:
-            answer = _send(client, "POST", place, _headers(using.key), json=body)
-            # A newer model turns down a field older models and other services still take: once more as it asks.
-            while answer.status_code == 400 and _ask_differently(body, _said(answer)):
-                answer = _send(client, "POST", place, _headers(using.key), json=body)
-    except httpx.ReadTimeout as exc:
-        # Only a read timeout: the connection stood and the service wrote too slowly. Not connecting is "unreachable".
-        keep(failed="ai_timeout")
-        raise AiError("ai_timeout", 504, seconds=int(TEXT_SECONDS)) from exc
-    except httpx.HTTPError as exc:
-        logger.info("The AI service was unreachable: %s", type(exc).__name__)
-        keep(failed="ai_unreachable")
-        raise AiError("ai_unreachable", 502) from exc
-    try:
-        _judge(answer, place.public)
-    except AiError as exc:
-        keep(failed=exc.code)
-        raise
-    try:
-        data = answer.json()
-        content = data["choices"][0]["message"]["content"]
-    except (ValueError, KeyError, IndexError, TypeError) as exc:
-        keep(failed="ai_unreadable")
-        raise AiError("ai_unreadable", 502) from exc
-    # Some services give the content as a list of parts.
-    if isinstance(content, list):
-        content = "".join(part.get("text", "") for part in content if isinstance(part, dict))
-    if not isinstance(content, str) or not content.strip():
-        keep(failed="ai_empty")
+        answer = nexki.ask(ki_store.KiStore(db), ki_store.CONFIG, row.id, task,
+                           system=f"{rules}\n\n{rule}\n\nTask: {instruction_text}", user=material)
+    except nexki.AiRefused as exc:
+        raise AiError(exc.code, exc.status, **exc.values) from exc
+    written = unfence(answer.text.strip())[:MAX_OUT_CHARS]
+    if not written:
         raise AiError("ai_empty", 502)
-    written = unfence(content.strip())[:MAX_OUT_CHARS]
-    usage = data.get("usage") if isinstance(data, dict) else None
-    usage = usage if isinstance(usage, dict) else {}
-    keep(tokens_in=int(usage.get("prompt_tokens") or 0), tokens_out=int(usage.get("completion_tokens") or 0))
-    # Not the word for an access token in the log: the log's censor blacks out what follows it.
-    logger.info(
-        "The AI service did a task (%s, in %s, out %s)",
-        task,
-        usage.get("prompt_tokens", "?"),
-        usage.get("completion_tokens", "?"),
-    )
     return written
 
 

@@ -17,7 +17,7 @@ const stubs = vi.hoisted(() => (...names: string[]) =>
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }) }))
 vi.mock('../components/settings/AdminCards', async (original) => ({
   ...(await original()),
-  ...stubs('AccountsCard', 'AiCard', 'AllSpacesCard', 'CssCard', 'FeaturesCard', 'FilesSettingsCard', 'GuideCard', 'McpSettings', 'SharesCard'),
+  ...stubs('AccountsCard', 'AllSpacesCard', 'CssCard', 'FeaturesCard', 'FilesSettingsCard', 'GuideCard', 'SharesCard'),
 }))
 vi.mock('../components/settings/AppearanceCard', () => stubs('AppearanceCard'))
 vi.mock('../components/settings/CalendarFeed', () => stubs('CalendarFeedSwitch', 'CalendarFeed'))
@@ -33,7 +33,10 @@ vi.mock('../components/settings/StartCard', () => stubs('HomeSpaceCard', 'StartC
 vi.mock('../components/settings/ThemesCard', () => stubs('ThemesCard'))
 vi.mock('../components/settings/useServerSettings', () => ({ useServerSettings: () => [{}, () => undefined] }))
 vi.mock('../plugins/PluginSettings', () => stubs('AdminPluginsCard', 'MyPluginsCard'))
-vi.mock('../components/AiAccess', () => stubs('AiAccess'))
+// Since the shared module ki 0.1.0: Mein Konto › KI and Server › KI-Anbieter are the module's areas (E61); nexlore's
+// Lore and meaning stand inside the provider's area.
+vi.mock('../vendor/nexki', () => stubs('AiAccountArea', 'AiProviderArea'))
+vi.mock('../components/settings/LoreCard', () => stubs('LoreCard'))
 vi.mock('../components/AppDevices', () => stubs('AppDevices'))
 vi.mock('../components/NotifySettings', () => stubs('NotifySettings'))
 // The cards of the shared modules: the account module's (profile, security, sign-out, look, what the operator sees,
@@ -125,7 +128,7 @@ describe('the navigation', () => {
     // General, Sign-in, Mail, Storage, nexlore's own (AI provider, Plugins, Public pages), Accounts, Log.
     expect(entries()).toEqual([
       '/settings/profile', '/settings/security', '/settings/appearance', '/settings/notes', '/settings/spaces', '/settings/plugins',
-      '/settings/notifications', '/settings/connections', '/settings/general', '/settings/sign-in', '/settings/mail', '/settings/storage',
+      '/settings/ai', '/settings/notifications', '/settings/connections', '/settings/general', '/settings/sign-in', '/settings/mail', '/settings/storage',
       '/settings/ai-provider', '/settings/server-plugins', '/settings/shares', '/settings/accounts', '/settings/log', '/settings/about',
     ])
     expect(current()).toBe('/settings/profile')
@@ -138,7 +141,7 @@ describe('the navigation', () => {
     await show('/settings')
     expect(entries()).toEqual([
       '/settings/profile', '/settings/security', '/settings/appearance', '/settings/notes', '/settings/spaces', '/settings/plugins',
-      '/settings/notifications', '/settings/connections', '/settings/about',
+      '/settings/ai', '/settings/notifications', '/settings/connections', '/settings/about',
     ])
     await hide()
   })
@@ -155,9 +158,9 @@ describe('nothing got lost', () => {
     // Settings: Server (the switches of API tokens, the iPhone app and MCP are in "Schnittstellen" now, the calendar
     // feed's in "Funktionen für alle Konten", every token of every account in "API-Schlüssel aller Konten")
     'AccountsCard', 'AllSpacesCard', 'SignInPage', 'MailCard', 'SharesCard', 'InterfacesCard', 'FeaturesCard', 'AllKeysCard',
-    'LinkTitleSwitch', 'AiCard', 'CssCard', 'AdminPluginsCard', 'LogCard', 'FilesSettingsCard', 'GuideCard', 'StorageArea', 'LanguagesCard',
+    'LinkTitleSwitch', 'AiProviderArea', 'CssCard', 'AdminPluginsCard', 'LogCard', 'FilesSettingsCard', 'GuideCard', 'StorageArea', 'LanguagesCard',
     // My account (the own API tokens and MCP keys are the key module's two cards now)
-    'ProfileCard', 'SignOutCard', 'SecurityCard', 'AppDevices', 'NotifySettings', 'ApiKeysCard', 'ToolsCard', 'AiAccess', 'CalendarFeed', 'MyPluginsCard',
+    'ProfileCard', 'SignOutCard', 'SecurityCard', 'AppDevices', 'NotifySettings', 'ApiKeysCard', 'ToolsCard', 'AiAccountArea', 'CalendarFeed', 'MyPluginsCard',
     // Installing moved from About to Connections; About
     'InstallCard', 'AboutArea',
     // New in the settings pass: "Aussehen" first under Appearance, "What you see" under Accounts
@@ -180,13 +183,14 @@ describe('nothing got lost', () => {
       notes: ['StartCard', 'EditorCard', 'HomeSpaceCard', 'KeysCard'],
       spaces: ['SpacesCard'],
       plugins: ['MyPluginsCard'],
+      ai: ['AiAccountArea'],
       notifications: ['NotifySettings'],
-      connections: ['AppDevices', 'InstallCard', 'AiAccess', 'CalendarFeed', 'ApiKeysCard', 'ToolsCard'],
+      connections: ['AppDevices', 'InstallCard', 'CalendarFeed', 'ApiKeysCard', 'ToolsCard'],
       general: ['FilesSettingsCard', 'FeaturesCard', 'InterfacesCard', 'LanguagesCard', 'LinkTitleSwitch', 'CssCard', 'GuideCard'],
       'sign-in': ['SignInPage'],
       mail: ['MailCard'],
       storage: ['StorageArea'],
-      'ai-provider': ['AiCard'],
+      'ai-provider': ['AiProviderArea'],
       'server-plugins': ['AdminPluginsCard'],
       shares: ['SharesCard'],
       accounts: ['AccountsCard', 'WhatYouSeeCard', 'AllKeysCard', 'AllSpacesCard'],
@@ -211,8 +215,8 @@ describe('the addresses of before', () => {
     ['/account?tab=profile', '/settings/profile'],
     ['/account?tab=security', '/settings/security'],
     ['/account?tab=notify', '/settings/notifications'],
-    ['/account?tab=ai', '/settings/connections'],
-    ['/account?tab=ai#ai', '/settings/connections#ai'],
+    ['/account?tab=ai', '/settings/ai'],
+    ['/account?tab=ai#ai', '/settings/ai#ai'],
     ['/account?tab=plugins', '/settings/plugins'],
     ['/account#mcp', '/settings/connections#mcp'],
     ['/account#api-tokens', '/settings/connections#api-tokens'],

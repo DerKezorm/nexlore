@@ -50,7 +50,11 @@ def _row(db: DbSession, account: Account) -> AccountRow:
 
 
 def _fail(exc: ai.AiError):
-    return error(exc.code, exc.code.replace("_", " "), exc.status, **exc.values)
+    found = error(exc.code, exc.code.replace("_", " "), exc.status, **exc.values)
+    if exc.code == "ai_too_often":
+        # The brake of the shared module ki 0.1.0: a minute.
+        found.headers = {"Retry-After": "60"}
+    return found
 
 
 def _state(db: DbSession, row: AccountRow) -> dict[str, Any]:

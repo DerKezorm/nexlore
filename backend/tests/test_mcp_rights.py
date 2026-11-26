@@ -54,7 +54,26 @@ def plan_hash(world: World) -> str:
 # --- Rights per tool ---------------------------------------------------------------------------------------------------
 
 
-def test_a_new_key_reads_at_once_asks_before_changing_and_does_not_see_deleting(world: World) -> None:
+def test_a_new_key_may_use_everything_of_its_level_at_once_but_what_the_operator_blocked(world: World) -> None:
+    """Decision 3 of the shared module mcp 1.1.0: no right set, a key changes and deletes at once; delete_space and
+    empty_trash stay blocked by the operator until freed."""
+    made = world.anna.post("/api/mcp/keys", json={"name": "fresh", "level": "write"})
+    assert made.status_code == 201, made.text
+    token = made.json()["token"]
+    assert made.json()["key"]["rights"] == {}
+    tools = listed(token)
+    assert {"create_note", "trash_note", "invite_member", "create_share"} <= tools
+    assert not tools & {"delete_space", "empty_trash"}
+    made_note = value(call(token, "create_note", folder="Garden", title="Seeds", content="Beans"))
+    assert made_note["path"] == "Garden/Seeds.md" and (world.vault / "Garden" / "Seeds.md").exists()
+    value(call(token, "trash_note", path="Garden/Seeds.md"))
+    assert not (world.vault / "Garden" / "Seeds.md").exists()
+    assert "No tool called" in failure(call(token, "delete_space", space="Garden"))
+
+
+def test_a_key_with_the_former_rights_reads_at_once_asks_before_changing_and_does_not_see_deleting(
+    world: World,
+) -> None:
     token = world.key("write", ask=True)
     tools = listed(token)
     assert {"read_note", "create_note", "create_space", "write_note"} <= tools
@@ -97,9 +116,9 @@ def test_rights_take_only_known_tools_and_reading_is_never_asked_for(world: Worl
     assert world.anna.put(where, json={"rights": {"request_status": "deny"}}).status_code == 422
     # Another account's key answers like a missing one.
     assert world.bob.put(where, json={"rights": {"read_note": "deny"}}).status_code == 404
-    # What equals the default is not kept.
+    # What equals the default is not kept (since the shared module mcp 1.1.0 the default is "allow", decision 3).
     shown = world.anna.put(where, json={"rights": {"create_note": "ask", "trash_note": "deny", "write_note": "allow"}})
-    assert shown.json()["rights"] == {"write_note": "allow"}
+    assert shown.json()["rights"] == {"create_note": "ask", "trash_note": "deny"}
 
 
 def test_a_tool_above_the_level_stays_hidden_whatever_the_key_says(world: World) -> None:
@@ -171,6 +190,21 @@ def test_arguments_changed_after_asking_are_refused(world: World) -> None:
     assert not (world.vault / "Garden" / "Changed.md").exists()
 
 
+def test_arguments_changed_after_asking_never_run_on_the_modules_way_either(world: World) -> None:
+    """The page of the shared module (``/api/connections/mcp``) allows through the same store: changed arguments end
+    the request as failed, nothing runs (TODO mcp 1.1.0: the module itself does not check the digest)."""
+    token = world.key("write", ask=True)
+    number = ask_for_a_note(world, token)
+    with SessionLocal() as db:
+        row = db.get(McpRequest, number)
+        assert row is not None
+        row.arguments = json.dumps({"content": "x", "folder": "Garden", "title": "Changed"})
+        db.commit()
+    assert world.anna.post(f"/api/connections/mcp/requests/{number}/approve", json={}).status_code == 409
+    assert not (world.vault / "Garden" / "Changed.md").exists()
+    assert world.anna.get(f"/api/connections/mcp/requests/{number}").json()["status"] == "failed"
+
+
 def test_a_request_runs_out_after_a_day(world: World) -> None:
     token = world.key("write", ask=True)
     number = ask_for_a_note(world, token)
@@ -208,11 +242,16 @@ def test_nothing_runs_once_mcp_is_switched_off(world: World) -> None:
     assert not (world.vault / "Garden" / "Seeds.md").exists()
 
 
-def test_a_revoked_key_takes_its_requests_along(world: World) -> None:
+def test_a_request_of_a_revoked_key_runs_nothing_when_allowed(world: World) -> None:
+    """Since the shared module mcp 1.1.0 a request outlives its key and ends as failed when allowed (before, the key
+    took it along and allowing answered 404); either way nothing runs."""
     token = world.key("write", ask=True)
     number = ask_for_a_note(world, token)
     assert world.anna.delete(f"/api/mcp/keys/{key_id(world, token)}").status_code == 204
-    assert world.anna.post(f"/api/mcp/requests/{number}/approve", json={}).status_code == 404
+    answer = world.anna.post(f"/api/mcp/requests/{number}/approve", json={})
+    assert answer.status_code == 200 and answer.json()["status"] == "failed"
+    assert "no longer possible" in json.dumps(answer.json()["result"])
+    assert not (world.vault / "Garden" / "Seeds.md").exists()
 
 
 def test_only_the_own_account_sees_and_decides_a_request(world: World) -> None:
@@ -223,7 +262,7 @@ def test_only_the_own_account_sees_and_decides_a_request(world: World) -> None:
     assert world.bob.post(f"/api/mcp/requests/{number}/decline").status_code == 404
     # Another key of the same account does not learn about it either.
     other = world.key("write")
-    assert failure(call(other, "request_status", request=number)) == "Not found."
+    assert failure(call(other, "request_status", request=number)) == "No such request."
 
 
 def test_always_allow_sets_the_right_and_runs_the_next_call_at_once(world: World) -> None:
@@ -241,16 +280,19 @@ def test_a_request_with_wrong_arguments_is_refused_before_it_waits(world: World)
     assert world.anna.get("/api/mcp/requests").json() == []
 
 
-def test_waiting_requests_are_limited(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mcp, "MAX_WAITING", 4)
+def test_waiting_requests_are_limited(world: World) -> None:
+    # nexlore's room of before in the shared module (mcp 1.1.0): 100 per account, half of it per program.
+    assert mcp.MAX_WAITING == 100
     token, other = world.key("write", ask=True), world.key("write", ask=True)
-    ask_for_a_note(world, token, "A")
-    ask_for_a_note(world, token, "B")
+    for number in range(50):
+        ask_for_a_note(world, token, f"A{number}")
     # Half of the room per program at most (review before 1.0.0), the rest for the account's others.
-    assert "requests waiting" in failure(call(token, "create_note", folder="Garden", title="C", content="x"))
-    ask_for_a_note(world, other, "D")
-    ask_for_a_note(world, other, "E")
-    assert "requests are waiting already" in failure(call(other, "create_note", folder="Garden", title="F", content="x"))
+    assert "50 requests of this key wait already" in failure(
+        call(token, "create_note", folder="Garden", title="C", content="x"))
+    for number in range(50):
+        ask_for_a_note(world, other, f"D{number}")
+    assert "100 requests wait for this account already" in failure(
+        call(other, "create_note", folder="Garden", title="F", content="x"))
 
 
 # --- The tools of block Y ----------------------------------------------------------------------------------------------

@@ -8,7 +8,7 @@ import { SecondFactor } from './pages/settings/SecondFactorBoxes'
 import { CalendarPage } from './pages/CalendarPage'
 import { CleanupPage } from './pages/CleanupPage'
 import { AppConnectPage } from './pages/AppConnectPage'
-import { ConnectPage } from './pages/ConnectPage'
+import { McpConsentPage, McpRequestRoute } from './pages/McpPages'
 import { McpRequestsPage } from './pages/McpRequestsPage'
 import { CaptureRoute } from './pages/CaptureRoute'
 import { FilePage } from './pages/FilePage'
@@ -71,12 +71,13 @@ export default function App() {
       {/* The confirmation links 1.16.0 mailed: the same page. */}
       <Route path="confirm-email/:token" element={<EmailPage />} />
       <Route path="s/:token/*" element={<PublicPage />} />
-      {/* A connector signing in for MCP (block Y): the account first, then this page, without the app around it. */}
+      {/* A connector signing in for MCP (block Y, the shared module mcp 1.1.0): the account first, then this page,
+          without the app around it. */}
       <Route
         path="oauth/authorize"
         element={
           <SignedIn>
-            <ConnectPage />
+            <McpConsentPage />
           </SignedIn>
         }
       />
@@ -114,6 +115,8 @@ export default function App() {
         <Route path="account" element={<FormerAccountAddress />} />
         <Route path="about" element={<FormerAboutAddress />} />
         <Route path="requests" element={<McpRequestsPage />} />
+        {/* One waiting request of an AI program, the page of the shared module mcp 1.1.0. */}
+        <Route path="mcp/requests/:id" element={<McpRequestRoute />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

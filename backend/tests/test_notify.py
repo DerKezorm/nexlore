@@ -192,7 +192,11 @@ def test_an_ai_request_tells_its_account(garden: tuple, sent: Sent) -> None:
     anna, _, _ = garden
     hooked(anna)
     switch(mcp_allowed=True, mcp_max_level="write")
-    token = anna.post("/api/mcp/keys", json={"name": "Agent", "level": "write"}).json()["token"]
+    made = anna.post("/api/mcp/keys", json={"name": "Agent", "level": "write"}).json()
+    # The key asks before creating (a new key may since mcp 1.1.0, decision 3, so its account sets "ask").
+    assert anna.put(f"/api/mcp/keys/{made['key']['id']}/rights",
+                    json={"rights": {"create_note": "ask"}}).status_code == 200
+    token = made["token"]
     waiting = value(call(token, "create_note", folder="Garden", title="x", content="x"))
     assert waiting["status"] == "waiting"
     assert sent.titles() == ["Agent waits for your approval"]

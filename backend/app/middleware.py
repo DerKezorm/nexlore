@@ -150,7 +150,7 @@ API_PREFIX = "/api/v1/"
 #: The own iPhone app: a device key in ``Authorization``, no tab (``routers/app1.py``).
 APP_PREFIX = "/api/app/1/"
 #: Called by programs signing in for MCP (OAuth), not by a browser tab: no tab, and a form body.
-OAUTH_PATHS = frozenset({"/api/oauth/token", "/api/oauth/register"})
+OAUTH_PATHS = frozenset({"/api/oauth/token", "/api/oauth/register", "/api/oauth/revoke"})
 #: Largest body an ordinary request may carry: a note is at most 5 MB of text, JSON adds a little.
 MAX_BODY = 16 * 1024 * 1024
 #: Where a larger body is expected, with its own limit checked while streaming. An upload's limit is the operator's

@@ -81,8 +81,8 @@ class Adapter(StandardAdapter):
         """As nexlore 1.16.0 made them: ``apitokens.make``, ``mcp.make_key`` and the token endpoint of OAuth."""
         from app.db import SessionLocal
         from app.models import Account, McpKey, OAuthClient, utcnow
-        from app.routers import oauth
         from app.services import apitokens, mcp
+        from tests.mcp_legacy import issue
 
         with SessionLocal() as db:
             row = db.get(Account, self.accounts[account].id)
@@ -105,7 +105,7 @@ class Adapter(StandardAdapter):
                              spaces=None, token_hash="", prefix="", created_at=utcnow(), signed_in_at=utcnow())
             db.add(program)
             db.flush()
-            answer = oauth._issue(db, program)
+            answer = issue(db, program)
             if expired:
                 program.expires_at = utcnow() - timedelta(minutes=1)
                 db.commit()

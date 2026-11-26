@@ -17,7 +17,7 @@ import type { IconLike } from '../../vendor/nexui'
 
 type Role = Account['role']
 
-export type AccountSlug = 'profile' | 'security' | 'appearance' | 'notes' | 'spaces' | 'plugins' | 'notifications' | 'connections'
+export type AccountSlug = 'profile' | 'security' | 'appearance' | 'notes' | 'spaces' | 'plugins' | 'ai' | 'notifications' | 'connections'
 export type ServerSlug = 'general' | 'sign-in' | 'mail' | 'storage' | 'ai-provider' | 'server-plugins' | 'shares' | 'accounts' | 'log'
 export type AreaSlug = AccountSlug | ServerSlug | 'about'
 export type AreaGroup = 'account' | 'server'
@@ -34,6 +34,8 @@ export const AREAS: Area[] = [
   { slug: 'notes', group: 'account', icon: BookOpen, own: true, key: 'notes' },
   { slug: 'spaces', group: 'account', icon: FolderTree, own: true, key: 'spaces' },
   { slug: 'plugins', group: 'account', icon: Puzzle, own: true, key: 'plugins' },
+  // "KI" under My account (E61, the shared module ki 0.1.0): "KI für mich", the own access, what went out.
+  { slug: 'ai', group: 'account', icon: Sparkles, own: true, key: 'ai' },
   { slug: 'notifications', group: 'account', icon: 'Bell', key: 'notifications' },
   { slug: 'connections', group: 'account', icon: 'Plug', key: 'connections' },
   { slug: 'general', group: 'server', icon: 'SlidersHorizontal', key: 'general' },
@@ -70,13 +72,13 @@ const FORMER_ACCOUNT: Record<string, AreaSlug> = {
   profile: 'profile',
   security: 'security',
   notify: 'notifications',
-  ai: 'connections',
+  ai: 'ai',
   plugins: 'plugins',
 }
 
 /** The anchors of "My account" before (`/account#ai`): the card they named, in its area now. */
 const FORMER_ANCHOR: Record<string, AreaSlug> = {
-  '#ai': 'connections',
+  '#ai': 'ai',
   '#mcp': 'connections',
   '#api-tokens': 'connections',
   '#calendar': 'connections',

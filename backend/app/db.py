@@ -108,6 +108,11 @@ def init_db() -> None:
     from .services import konten_wanderung
 
     konten_wanderung.run(engine)
+    # The keys and connectors of an older version keep the rights nexlore gave them (the shared module mcp 1.1.0).
+    from .routers.mcp import GROUPS
+    from .services import mcp_store
+
+    mcp_store.migrate(engine, GROUPS)
 
 
 def _sql_literal(value: Any) -> str:

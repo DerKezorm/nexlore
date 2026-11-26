@@ -66,6 +66,9 @@ DEFAULTS: dict[str, Any] = {
     "mcp_blocked_tools": ["delete_space", "empty_trash"],
     #: Connectors may sign in for MCP (OAuth, block Y); only while MCP itself is open.
     "mcp_oauth_allowed": True,
+    #: The keys and connectors of before got nexlore's former rights written on them (the shared module mcp 1.1.0,
+    #: ``services/mcp_store.migrate``); never set by hand.
+    "mcp_110_migrated": False,
     #: Tokens for programs such as n8n or nexdeck (``/api/v1``): a way in from outside, closed until the operator
     #: opens it.
     "api_tokens_allowed": False,
@@ -96,6 +99,14 @@ DEFAULTS: dict[str, Any] = {
     "lore_allowed": False,
     #: Requests per account and minute, for the editor and for Lore together.
     "ai_per_minute": 20,
+    #: Since the shared module ki 0.1.0 (never set before; ``None`` until the operator sets them): the interface of the
+    #: operator's service, the brakes per day per person and for the server, today's count of the server, whether the
+    #: hosts of older own accesses were put on the list (K4).
+    "ai_shared_api": None,
+    "ai_per_day": None,
+    "ai_server_day": None,
+    "ai_day": None,
+    "ai_hosts_adopted": None,
     #: The model of the operator's service that turns notes into vectors, to find them by their meaning (only with
     #: one service for all); empty: by their words only.
     "ai_embed_model": "",

@@ -371,8 +371,8 @@ def test_keys_rest_while_the_account_is_out_and_connected_programs_go_for_good(
     import secrets as random
 
     from app.models import ApiToken, McpKey, OAuthClient, utcnow
-    from app.routers import oauth
     from app.services import apitokens, mcp
+    from tests.mcp_legacy import issue
 
     with SessionLocal() as db:
         settings_service.save(db, {"api_tokens_allowed": True, "mcp_allowed": True})
@@ -392,7 +392,7 @@ def test_keys_rest_while_the_account_is_out_and_connected_programs_go_for_good(
                          spaces=None, token_hash="", prefix="", created_at=utcnow(), signed_in_at=utcnow())
             db.add(row)
             db.flush()
-            return str(oauth._issue(db, row)["access_token"])
+            return str(issue(db, row)["access_token"])
 
     outside = TestClient(app, base_url="http://testserver")
     body = {"jsonrpc": "2.0", "id": 1, "method": "initialize",

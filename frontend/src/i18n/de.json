@@ -775,6 +775,10 @@
       "serverPlugins": {
         "title": "Plugins",
         "text": "Welche Plugins es auf diesem Server gibt und wer sie nutzen darf."
+      },
+      "ai": {
+        "title": "KI",
+        "text": "Ob dir die KI in Notizen hilft, dein eigener Zugang und was hinausging."
       }
     },
     "things": "Notizen",
@@ -1427,7 +1431,9 @@
       "embedProgress": "{{done}} von {{total}} Notizen eingelesen",
       "embedNotHere": "Dieser Dienst bietet keine Modelle für Vektoren: Für die Suche nach Bedeutung braucht es einen anderen, etwa Ollama oder OpenAI.",
       "loreAllow": "Frag Lore erlauben",
-      "loreAllowHint": "Aus: keine Spinne in der Ecke und kein Frag Lore in der Kopfleiste. An, kann jeder, dessen KI-Dienst bereitsteht, Lore zu den Notizen fragen, die er lesen darf."
+      "loreAllowHint": "Aus: keine Spinne in der Ecke und kein Frag Lore in der Kopfleiste. An, kann jeder, dessen KI-Dienst bereitsteht, Lore zu den Notizen fragen, die er lesen darf.",
+      "loreTitle": "Frag Lore und Bedeutung",
+      "loreText": "Lore beantwortet Fragen zu den Notizen mit dem Dienst oben; ein Modell für Vektoren lässt Lore Notizen nach ihrer Bedeutung finden."
     },
     "guide": {
       "title": "Die Anleitung",

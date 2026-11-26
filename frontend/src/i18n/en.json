@@ -775,6 +775,10 @@
       "serverPlugins": {
         "title": "Plugins",
         "text": "Which plugins this server has and who may use them."
+      },
+      "ai": {
+        "title": "AI",
+        "text": "Whether AI helps you in notes, your own access and what went out."
       }
     },
     "things": "notes",
@@ -1427,7 +1431,9 @@
       "embedProgress": "{{done}} of {{total}} notes read in",
       "embedNotHere": "This service offers no models for vectors: finding by meaning needs another one, such as Ollama or OpenAI.",
       "loreAllow": "Allow Ask Lore",
-      "loreAllowHint": "Off: no spider in the corner and no Ask Lore in the header. On, everybody whose AI service is ready can ask Lore about the notes they may read."
+      "loreAllowHint": "Off: no spider in the corner and no Ask Lore in the header. On, everybody whose AI service is ready can ask Lore about the notes they may read.",
+      "loreTitle": "Ask Lore and meaning",
+      "loreText": "Lore answers questions about the notes with the service above; a model for vectors lets it find notes by meaning."
     },
     "guide": {
       "title": "The guide",
