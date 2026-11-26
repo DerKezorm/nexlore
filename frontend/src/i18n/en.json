@@ -683,8 +683,7 @@
   "settings": {
     "title": "Settings",
     "language": {
-      "added": "added by the operator",
-      "template": "Download template"
+      "added": "added by the operator"
     },
     "spaces": {
       "title": "Spaces and rights",
@@ -1364,15 +1363,6 @@
       "left_other": "{{count}} folders kept their name because one with the new name stands beside them: {{list}}",
       "limitsTitle": "Limits",
       "perAccount": "The limit of one account is set under Server › Accounts › Manage."
-    },
-    "languages": {
-      "title": "Languages",
-      "text": "German and English are built in. Own translations start from the template; a file for de or en replaces only the texts it holds, all others stay as shipped.",
-      "remove": "Remove",
-      "code": "Language code",
-      "upload": "Upload language",
-      "added": "Language added. It takes effect as soon as a page is loaded again.",
-      "builtIn": "built in"
     },
     "mcp": {
       "maxLevel": "Highest level a key may have",

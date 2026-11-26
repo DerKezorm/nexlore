@@ -22,14 +22,12 @@ import {
   shareApi,
 } from '../../api/client'
 import { pastedExample } from '../../lib/pastedName'
-import { downloadTemplate, resetAddedLanguages, languageOptions, type LanguageOption } from '../../i18n'
 import { AI_PROVIDERS } from '../../lib/aiProviders'
 import { formatDay } from '../../lib/markdown'
 import { useAuth } from '../../state/auth'
 import { useStore } from '../../state/store'
 import { noteUrl } from '../../lib/vault'
 import { MembersDialog } from '../MembersDialog'
-import { Button as KitButton, Buttons as KitButtons, Chip, Field } from '../../vendor/nexui'
 import { Button, Card, Feedback, Input, Select, Toggle } from './ui'
 import { useAction } from './useAction'
 
@@ -613,68 +611,3 @@ export function FilesSettingsCard() {
   )
 }
 
-export function LanguagesCard() {
-  const { t } = useTranslation()
-  const [options, setOptions] = useState<LanguageOption[]>([])
-  const [code, setCode] = useState('')
-  const { busy, problem, done, run } = useAction()
-  const load = useCallback(async () => {
-    resetAddedLanguages()
-    setOptions((await languageOptions()).filter((option) => option.added))
-  }, [])
-  useEffect(() => {
-    void load()
-  }, [load])
-  // As nexnotes (plan, Allgemein 5): the built-in ones and the own ones as chips, the template to download, the code
-  // with "Upload language" beside it; the file is chosen at the click.
-  const upload = (chosen: File) =>
-    void run(async () => {
-      await adminApi.uploadLanguage(code.trim(), chosen)
-      setCode('')
-      await load()
-    }, t('admin.languages.added'))
-
-  return (
-    <Card id="languages" symbol="globe" title={t('admin.languages.title')} text={t('admin.languages.text')}>
-      <div className="flex flex-wrap gap-2" data-testid="languages-list">
-        <Chip>{`Deutsch · ${t('admin.languages.builtIn')}`}</Chip>
-        <Chip>{`English · ${t('admin.languages.builtIn')}`}</Chip>
-        {options.map((option) => (
-          <Chip
-            key={option.code}
-            name={option.name}
-            disabled={busy}
-            testId={`language-${option.code}`}
-            onRemove={() =>
-              void run(async () => {
-                await adminApi.removeLanguage(option.code)
-                await load()
-              })
-            }
-          >
-            {`${option.name} (${option.code})`}
-          </Chip>
-        ))}
-      </div>
-      <KitButtons>
-        {/* The English texts as a file to translate (was beside the own language in the profile). */}
-        <KitButton kind="secondary" icon="Download" onClick={downloadTemplate} testId="language-template">
-          {t('settings.language.template')}
-        </KitButton>
-      </KitButtons>
-      <Field
-        label={t('admin.languages.code')}
-        value={code}
-        onChange={(event) => setCode(event.target.value.trim())}
-        placeholder="es"
-        data-testid="language-code"
-        action={
-          <KitButton kind="secondary" icon="Upload" disabled={!code} busy={busy} accept="application/json,.json" onFile={upload} testId="language-upload">
-            {t('admin.languages.upload')}
-          </KitButton>
-        }
-      />
-      <Feedback problem={problem} done={done} />
-    </Card>
-  )
-}

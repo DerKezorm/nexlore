@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
-import { aboutApi, api, ApiError, type ServerSettings } from '../../api/client'
+import { aboutApi, api, ApiError, tabId, type ServerSettings } from '../../api/client'
 import { AiAccess } from '../../components/AiAccess'
 import { AppDevices } from '../../components/AppDevices'
 import { NotifySettings } from '../../components/NotifySettings'
@@ -18,10 +18,12 @@ import {
   FeaturesCard,
   FilesSettingsCard,
   GuideCard,
-  LanguagesCard,
   McpSettings,
   SharesCard,
 } from '../../components/settings/AdminCards'
+import { LanguagesCard } from '../../vendor/nexsprachen/LanguagesCard'
+import type { Fetcher, Texts as SprachenTexts } from '../../vendor/nexsprachen/sprachen'
+import { en, resetAddedLanguages } from '../../i18n'
 import { AppearanceCard as LookCard } from '../../components/settings/AppearanceCard'
 import { CalendarFeed } from '../../components/settings/CalendarFeed'
 import { EditorCard } from '../../components/settings/EditorCard'
@@ -179,7 +181,9 @@ function ServerArea({ area }: { area: Exclude<AreaSlug, 'profile' | 'security' |
           <FilesSettingsCard />
           {settings && <FeaturesCard settings={settings} onChange={setSettings} />}
           <InterfacesCard request={request} docsHref={docs} language={i18n.language} after={settings ? { mcp: <McpSettings settings={settings} onChange={setSettings} /> } : undefined} />
-          <LanguagesCard />
+          {/* Server › General › Languages from the shared module sprachen 1.0.0: the template from the page's English
+              texts, a change makes the menus ask the server again. */}
+          <LanguagesCard app="nexlore" base="/api/locales" template={en as SprachenTexts} fetcher={languagesFetch} onChange={resetAddedLanguages} language={i18n.language} />
           {settings && <LinkTitleSwitch settings={settings} onChange={setSettings} />}
           {settings && <CssCard settings={settings} onChange={setSettings} />}
           <GuideCard />
@@ -210,6 +214,10 @@ function ServerArea({ area }: { area: Exclude<AreaSlug, 'profile' | 'security' |
       return <LogCard />
   }
 }
+
+/** The card of languages asks the server with the session and names the tab, as every change here must. */
+const languagesFetch: Fetcher = (path, init) =>
+  fetch(path, { credentials: 'same-origin', ...init, headers: { ...(init.headers as Record<string, string> | undefined), 'X-Nexlore-Client': tabId() } })
 
 /** Server › Sign-in: the page of the account module (the emergency notice, "Ready for the internet?", "Sign-in") with
  * the cards of the sign-in module after it ("Sign-in providers", "authentik in one step"). */

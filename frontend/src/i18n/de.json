@@ -683,8 +683,7 @@
   "settings": {
     "title": "Einstellungen",
     "language": {
-      "added": "vom Betreiber ergänzt",
-      "template": "Vorlage herunterladen"
+      "added": "vom Betreiber ergänzt"
     },
     "spaces": {
       "title": "Bereiche und Rechte",
@@ -1364,15 +1363,6 @@
       "left_other": "{{count}} Ordner behalten ihren Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}",
       "limitsTitle": "Grenzen",
       "perAccount": "Die Grenze eines Kontos setzt du unter Server › Konten › Verwalten."
-    },
-    "languages": {
-      "title": "Sprachen",
-      "text": "Deutsch und Englisch sind eingebaut. Eigene Übersetzungen kommen aus der Vorlage; eine Datei für de oder en ersetzt nur die Texte, die sie enthält, alle anderen bleiben, wie sie ausgeliefert sind.",
-      "remove": "Entfernen",
-      "code": "Sprachcode",
-      "upload": "Sprache hochladen",
-      "added": "Sprache hinzugefügt. Sie wirkt, sobald eine Seite neu geladen wird.",
-      "builtIn": "eingebaut"
     },
     "mcp": {
       "maxLevel": "Höchste Stufe eines Schlüssels",

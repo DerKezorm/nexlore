@@ -1,10 +1,21 @@
 /** Languages the operator adds on the server: offered, loaded, incomplete ones fall back to English. */
 
-import i18n, { changeLanguage, languageOptions, resetAddedLanguages, startI18n, templateFile } from './index'
+import i18n, { changeLanguage, languageOptions, resetAddedLanguages, startI18n } from './index'
+import { templateFile, type Texts as SprachenTexts } from '../vendor/nexsprachen/sprachen'
 import { en } from './index'
 import ownEn from './en.json'
 
 type Routes = Record<string, unknown>
+
+/** The server's list since the shared module sprachen 1.0.0: the built-in languages first, then the operator's files
+ * (`own`); a file for a built-in one marks that one `own`. */
+function listed(...files: { code: string; name: string; keys: number }[]): unknown[] {
+  const builtIn = [{ code: 'de', name: 'Deutsch' }, { code: 'en', name: 'English' }].map((entry) => {
+    const file = files.find((one) => one.code === entry.code)
+    return { ...entry, keys: file?.keys ?? 0, built_in: true, own: !!file }
+  })
+  return [...builtIn, ...files.filter((one) => !['de', 'en'].includes(one.code)).map((one) => ({ ...one, built_in: false, own: true }))]
+}
 
 function serve(routes: Routes): ReturnType<typeof vi.fn> {
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
@@ -45,7 +56,7 @@ afterEach(() => {
 
 describe('added languages', () => {
   it('are offered next to the shipped ones, with their own name', async () => {
-    serve({ '/api/locales': [{ code: 'es', name: 'Español', keys: 2 }] })
+    serve({ '/api/locales': listed({ code: 'es', name: 'Español', keys: 2 }) })
     expect(await languageOptions()).toEqual([
       { code: 'de', name: 'Deutsch', added: false },
       { code: 'en', name: 'English', added: false },
@@ -55,18 +66,16 @@ describe('added languages', () => {
 
   it('take their place by name among the shipped ones, not at the end (decided 06.10.2026)', async () => {
     serve({
-      '/api/locales': [
-        { code: 'fr', name: 'Français', keys: 1 },
+      '/api/locales': listed({ code: 'fr', name: 'Français', keys: 1 },
         { code: 'af', name: 'Afrikaans', keys: 1 },
-        { code: 'es', name: 'Español', keys: 1 },
-      ],
+        { code: 'es', name: 'Español', keys: 1 },),
     })
     expect((await languageOptions()).map((option) => option.name)).toEqual(['Afrikaans', 'Deutsch', 'English', 'Español', 'Français'])
   })
 
   it('fall back to English for every key they leave out', async () => {
     serve({
-      '/api/locales': [{ code: 'es', name: 'Español', keys: 1 }],
+      '/api/locales': listed({ code: 'es', name: 'Español', keys: 1 }),
       '/api/locales/es': { nav: { graph: 'Grafo' } },
     })
     await startI18n()
@@ -80,7 +89,7 @@ describe('added languages', () => {
 
   it('are chosen again at the next start', async () => {
     serve({
-      '/api/locales': [{ code: 'es', name: 'Español', keys: 1 }],
+      '/api/locales': listed({ code: 'es', name: 'Español', keys: 1 }),
       '/api/locales/es': { nav: { graph: 'Grafo' } },
     })
     localStorage.setItem('nexlore.language', 'es')
@@ -91,7 +100,7 @@ describe('added languages', () => {
 
   it('an operator file for a shipped language is laid over its texts', async () => {
     serve({
-      '/api/locales': [{ code: 'de', name: 'Deutsch', keys: 1 }],
+      '/api/locales': listed({ code: 'de', name: 'Deutsch', keys: 1 }),
       '/api/locales/de': { nav: { files: 'Anhänge' } },
     })
     await startI18n()
@@ -101,14 +110,14 @@ describe('added languages', () => {
   })
 
   it('a language the server no longer has is not switched to', async () => {
-    serve({ '/api/locales': [] })
+    serve({ '/api/locales': listed() })
     await startI18n()
     await changeLanguage('fr')
     expect(i18n.language).toBe('en')
   })
 
   it('a stored language that is gone starts in English', async () => {
-    serve({ '/api/locales': [] })
+    serve({ '/api/locales': listed() })
     localStorage.setItem('nexlore.language', 'fr')
     await startI18n()
     expect(i18n.language).toBe('en')
@@ -123,7 +132,7 @@ describe('added languages', () => {
   })
 
   it('codes that are not language codes are ignored, and never asked for', async () => {
-    const fetchMock = serve({ '/api/locales': [{ code: '../secret', name: 'x', keys: 1 }, { code: 'es', name: 'Español', keys: 1 }] })
+    const fetchMock = serve({ '/api/locales': listed({ code: '../secret', name: 'x', keys: 1 }, { code: 'es', name: 'Español', keys: 1 }) })
     expect((await languageOptions()).map((option) => option.code)).toEqual(['de', 'en', 'es'])
     await changeLanguage('../secret')
     expect(fetchMock.mock.calls.map(([url]) => String(url))).not.toContain('/api/locales/../secret')
@@ -132,7 +141,7 @@ describe('added languages', () => {
 
 describe('the template', () => {
   it('is the English texts plus the _meta entry for the name', async () => {
-    const text = await templateFile().text()
+    const text = await templateFile(en as SprachenTexts).text()
     const template = JSON.parse(text)
     expect(template._meta).toEqual({ name: expect.any(String) })
     const { _meta, ...rest } = template

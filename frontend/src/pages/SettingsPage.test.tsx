@@ -17,7 +17,7 @@ const stubs = vi.hoisted(() => (...names: string[]) =>
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }) }))
 vi.mock('../components/settings/AdminCards', async (original) => ({
   ...(await original()),
-  ...stubs('AccountsCard', 'AiCard', 'AllSpacesCard', 'CssCard', 'FeaturesCard', 'FilesSettingsCard', 'GuideCard', 'LanguagesCard', 'McpSettings', 'SharesCard'),
+  ...stubs('AccountsCard', 'AiCard', 'AllSpacesCard', 'CssCard', 'FeaturesCard', 'FilesSettingsCard', 'GuideCard', 'McpSettings', 'SharesCard'),
 }))
 vi.mock('../components/settings/AppearanceCard', () => stubs('AppearanceCard'))
 vi.mock('../components/settings/CalendarFeed', () => stubs('CalendarFeedSwitch', 'CalendarFeed'))
@@ -43,6 +43,8 @@ vi.mock('../vendor/nexkonten/AccountCards', () => stubs('AppearanceCard', 'SignO
 vi.mock('../vendor/nexkonten/SignInPage', () => stubs('SignInPage'))
 vi.mock('../vendor/nexschluessel', () => stubs('ApiKeysCard', 'ToolsCard', 'InterfacesCard', 'AllKeysCard'))
 vi.mock('../vendor/nexpost/MailCard', () => stubs('MailCard'))
+// Since the shared module sprachen 1.0.0 the card of languages is the module's.
+vi.mock('../vendor/nexsprachen/LanguagesCard', () => stubs('LanguagesCard'))
 vi.mock('./AboutPage', () => stubs('AboutArea'))
 vi.mock('../components/Sidebar', () => stubs('SpacesSidebar'))
 vi.mock('../api/client', async (original) => {
