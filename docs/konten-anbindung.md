@@ -62,7 +62,10 @@ Gemeinsame Runde (E45 bis E49): Module aus `bauplaene-stand` `c0b07ab`; Hell/Dun
 (`theme_default_before="dark"`, `adopt_theme` in `/api/auth/me`, neue Konten `system`); Ortsangaben mit „›“ (E46);
 angeglichen an nexnotes: Theme-Kacheln, Grenzen, Sprachen, Tastenkürzel, Bereich löschen, Plugins.
 
-LÄUFE_PLATZHALTER
+Läufe am Ende (26.11.2026, Module `c0b07ab`, `reihe.sh nexlore ende`): ruff 0; pytest 2374 bestanden, 3 übersprungen
+(11:15); lint 0; vitest 87 Dateien, 714 Tests; build 0. Playwright (`npm run e2e`, kopflos): 337 von 338 (15,1 min);
+rot nur `sidebar.spec.ts:328` (wartet auf eine Zeile der Seitenleiste, die sich unter vielen Bereichen früherer Tests
+neu zeichnet; berührt die Einstellungen nicht), allein zweimal grün.
 
 
 Stand 25.11.2026 abends, Zweig `konten`, auf `main` mit dem neuen Einstellungs-Layout. Module aus `bauplaene` Zweig
