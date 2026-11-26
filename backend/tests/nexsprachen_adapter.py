@@ -81,6 +81,16 @@ class Adapter(StandardAdapter):
         locales.configure()
         shutil.rmtree(self._folder, ignore_errors=True)
 
+    def restart(self) -> None:
+        """nexlore started again on the same folder, as in production: the app's lifespan (``locales.start``:
+        ``configure``, then ``tidy_at_start``)."""
+        from fastapi.testclient import TestClient
+
+        from app.main import app
+
+        with TestClient(app, base_url="http://testserver", headers=TAB):
+            pass
+
     def client(self, role: str) -> Any:
         from fastapi.testclient import TestClient
 

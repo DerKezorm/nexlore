@@ -26,4 +26,11 @@ def configure() -> None:
     ))
 
 
+def start() -> None:
+    """At the app's start: the module on the folder of the settings, then what a stopped upload left goes (sprachen
+    ``tidy_at_start``, right after ``configure``)."""
+    configure()
+    nexsprachen.tidy_at_start()
+
+
 configure()

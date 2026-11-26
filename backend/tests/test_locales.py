@@ -223,3 +223,20 @@ def test_a_file_too_large_is_refused_before_it_is_read(folder: Path, monkeypatch
 
     monkeypatch.setattr(Path, "read_bytes", never)
     assert locales.available() == []
+
+
+@pytest.mark.parametrize(
+    ("code", "taken"),
+    [("", True), ("de", True), ("en", True), ("es", True), ("nl", False), ("fr-CA", False), ("../x", False)],
+)
+def test_the_old_way_takes_a_profile_language_as_before(
+    client: TestClient, account: object, folder: Path, code: str, taken: bool
+) -> None:
+    """Plan E52: the profile language takes exactly what it took before the shared module of languages: empty, a
+    shipped language or a usable file of the operator; a valid code without a file is refused (422) as before."""
+    put(folder, "es.json", GOOD)
+    answer = client.put("/api/me/language", json={"language": code})
+    if taken:
+        assert answer.status_code == 200, answer.text
+    else:
+        assert answer.status_code == 422 and answer.json()["detail"]["code"] == "unknown_language"

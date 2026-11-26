@@ -143,6 +143,8 @@ async def _sweep_forever(stop: asyncio.Event) -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     logs.setup()
+    # The own languages on the folder of the settings; what a stopped upload left goes (sprachen 1.0.0).
+    locales.start()
     # The shared backup module on this data folder (a test may have moved it since the import); a staged restore is
     # swapped in before anything opens the database.
     backups.configure()

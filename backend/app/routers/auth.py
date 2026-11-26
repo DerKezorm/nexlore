@@ -204,8 +204,9 @@ def check_confirm(password: str, confirm: str | None) -> None:
 
 def check_language(language: str) -> str:
     """Empty (the browser decides) or a language nexlore has."""
-    # The shared module of languages knows the built-in ones and every usable file (sprachen 1.0.0).
-    if language and language not in SHIPPED and not locales.known(language):
+    # Exactly what this took before the module (plan E52): a shipped language or a usable file of the operator; the
+    # module's ``known`` serves the menus only.
+    if language and language not in SHIPPED and language not in {item.code for item in locales.available()}:
         raise error("unknown_language", "nexlore does not have this language.", 422)
     return language
 
