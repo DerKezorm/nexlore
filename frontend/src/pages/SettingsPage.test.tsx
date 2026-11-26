@@ -65,7 +65,8 @@ vi.mock('../state/auth', () => ({
   }),
 }))
 
-import { AREAS } from './settings/areas'
+import { areaText, NEXUI_TEXTS } from '../vendor/nexui'
+import { AREAS, GENERAL_PARTS } from './settings/areas'
 import { FormerAboutAddress, FormerAccountAddress, SettingsPage } from './SettingsPage'
 
 let root: Root
@@ -265,6 +266,19 @@ describe('the addresses of before', () => {
     await hide()
     await show('/settings?tab=server&sub=backups')
     expect(where()).toBe('/settings/profile')
+    await hide()
+  })
+})
+
+describe('Server › General names its cards', () => {
+  it('in the line under the title only the shared cards nexlore has there, in their order (ui 1.1.3, U-3)', async () => {
+    await show('/settings/general')
+    const line = box.querySelector('[data-testid="settings-area-general"] p')!.textContent
+    expect(line).toBe(areaText(NEXUI_TEXTS.en, 'general', { app: 'nexlore', parts: GENERAL_PARTS })!.text)
+    expect(line).not.toBe(areaText(NEXUI_TEXTS.en, 'general', { app: 'nexlore' })!.text)
+    // The parts are the cards on the page, in the same order.
+    const part: Record<string, string> = { FilesSettingsCard: 'limits', FeaturesCard: 'features', InterfacesCard: 'interfaces', AppsOperator: 'nexApps', LanguagesCard: 'languages' }
+    expect(cards().flatMap((card) => (card && part[card] ? [part[card]] : []))).toEqual([...GENERAL_PARTS])
     await hide()
   })
 })

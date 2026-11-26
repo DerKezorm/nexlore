@@ -13,7 +13,7 @@
 import { BookOpen, FolderTree, Globe, Puzzle, Sparkles } from 'lucide-react'
 
 import type { Account } from '../../api/client'
-import type { IconLike } from '../../vendor/nexui'
+import type { GeneralPart, IconLike } from '../../vendor/nexui'
 
 type Role = Account['role']
 
@@ -62,6 +62,10 @@ export function findArea(slug: AreaSlug): Area | undefined {
 export function areasFor(role: Role | undefined): Area[] {
   return role === 'operator' ? AREAS : AREAS.filter((area) => area.group === 'account')
 }
+
+/** The shared cards of Server › Allgemein in nexlore, in their order (ui 1.1.3, U-3): the line under the title names only
+ * these ("Grenzen", "Funktionen für alle Konten", "Schnittstellen", "Andere nex-Apps", "Sprachen"). */
+export const GENERAL_PARTS: readonly GeneralPart[] = ['limits', 'features', 'interfaces', 'nexApps', 'languages']
 
 export function areaPath(slug: AreaSlug): string {
   return `/settings/${slug}`
