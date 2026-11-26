@@ -162,7 +162,7 @@ test('"Storage for new accounts" is the start of every new account, empty is no 
     expect((await page.request.put('/api/settings/files', { data: { ...before, quota_mb: 0 }, headers: TAB })).status()).toBe(200)
     await page.goto('/settings/general')
     const card = page.locator('#limits')
-    await expect(card).toContainText('The limit of one account is set under Accounts › Manage.')
+    await expect(card).toContainText('The limit of one account is set under Server › Accounts › Manage.')
     const field = card.getByRole('spinbutton', { name: 'Storage for new accounts (MB)' })
     await expect(field).toHaveValue('')
     await expect(card).toContainText('What every new account starts with. Empty means no limit.')

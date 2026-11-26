@@ -14,6 +14,7 @@ import { confirmOf } from '../../lib/accountButton'
 import { problemText } from '../../lib/errors'
 import { dayTime } from '../../lib/when'
 import { addPasskey, passkeysSupported } from '../../lib/passkeys'
+import { PasskeyAddition } from '../../vendor/nexkonten/AccountCards'
 import { Badge, Box, ConfirmDialog, Field, Notice as Message, Row, Rows } from '../../vendor/nexui'
 
 /** A success worth a sentence that is not the usual "saved" (thrown to end an action early). */
@@ -21,7 +22,7 @@ import { Badge, Box, ConfirmDialog, Field, Notice as Message, Row, Rows } from '
 export class Notice extends Error {}
 
 /** The own passkeys: list, add (password first), remove. */
-export function PasskeysBox({ signedInByPassword }: { signedInByPassword: boolean }) {
+export function PasskeysBox({ signedInByPassword, canAdd, operator }: { signedInByPassword: boolean; canAdd: boolean; operator: boolean }) {
   const { t, i18n } = useTranslation()
   const [keys, setKeys] = useState<PasskeyEntry[] | null>(null)
   const [asking, setAsking] = useState<{ kind: 'add' } | { kind: 'remove'; uid: string } | null>(null)
@@ -57,8 +58,11 @@ export function PasskeysBox({ signedInByPassword }: { signedInByPassword: boolea
       title={t('account.passkeys')}
       hint={t('account.passkeysHint')}
       testId="passkeys"
-      actions={passkeysSupported() && <AccountButton name="account.passkeyAdd" onClick={() => setAsking({ kind: 'add' })} />}
+      // The button, or (in the box) what is missing for it without a public https address (konten E49); the list
+      // of passkeys stays, shown and removable.
+      actions={passkeysSupported() && canAdd && <PasskeyAddition t={t} canAdd operator={operator} busy={busy} onAdd={() => setAsking({ kind: 'add' })} />}
     >
+      {passkeysSupported() && !canAdd && <PasskeyAddition t={t} canAdd={false} operator={operator} onAdd={() => undefined} />}
       {keys.length > 0 && (
         <Rows label={t('account.passkeys')}>
           {keys.map((key) => (

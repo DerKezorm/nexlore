@@ -385,7 +385,7 @@ export function SecurityCard({ me }: { me: Me }) {
 
       <SecondFactor me={me} />
 
-      <PasskeysBox signedInByPassword={me.sign_in === 'password'} />
+      <PasskeysBox signedInByPassword={me.sign_in === 'password'} canAdd={me.passkeys_can_add !== false} operator={me.role === 'operator'} />
 
       <SessionsBox busy={action.busy} onEverywhere={() => action.run(() => authApi.logoutEverywhere(), t('me.sessions.done'))} />
 

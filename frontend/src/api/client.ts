@@ -613,6 +613,8 @@ export type Me = Account & {
   own_css?: string[]
   /** The shortest new password the server takes. */
   min_password?: number
+  /** Since konten E49: a public https address (or the page on localhost), so that a passkey can be added. */
+  passkeys_can_add?: boolean
 }
 /** A provider an account is linked to, as a mark in the operator's account list. */
 export type LinkedProvider = { id: number; slug: string; label: string }

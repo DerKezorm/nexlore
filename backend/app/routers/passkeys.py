@@ -42,6 +42,13 @@ class RemoveIn(BaseModel):
     password: str = Field(default="", max_length=200)
 
 
+def can_add(request: Request, db: DbSession) -> bool:
+    """Since konten E49: whether the box "Passkeys" offers "Add a passkey" (a public https address, or the page on
+    localhost); the same inputs as ``_party``."""
+    base = settings_service.public_url(db) or str(request.base_url).rstrip("/")
+    return passkeys.can_add(base, origin=request.headers.get("origin", ""), request_url=str(request.url))
+
+
 def _party(request: Request, db: DbSession) -> passkeys.Party:
     base = settings_service.public_url(db) or str(request.base_url).rstrip("/")
     try:

@@ -1363,7 +1363,7 @@
       "left_one": "One folder kept its name because one with the new name stands beside it: {{list}}",
       "left_other": "{{count}} folders kept their name because one with the new name stands beside them: {{list}}",
       "limitsTitle": "Limits",
-      "perAccount": "The limit of one account is set under Accounts › Manage."
+      "perAccount": "The limit of one account is set under Server › Accounts › Manage."
     },
     "languages": {
       "title": "Languages",

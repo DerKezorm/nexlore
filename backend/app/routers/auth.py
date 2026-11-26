@@ -476,6 +476,12 @@ def logout_everywhere(request: Request, response: Response, account: Account, db
     logger.info("All other sessions ended by their owner name=%s", account.name)
 
 
+def _passkeys_can_add(request: Request, db: DbSession) -> bool:
+    from .passkeys import can_add
+
+    return can_add(request, db)
+
+
 @router.get("/auth/me", summary="The signed-in account, and what this server offers it")
 def me(account: Account, db: DbSession, request: Request) -> dict[str, Any]:
     from ..services.konten_store import adopt_theme
@@ -488,6 +494,8 @@ def me(account: Account, db: DbSession, request: Request) -> dict[str, Any]:
         # Why the profile cannot send a confirmation now (empty: it can): no mail server, or no public address.
         "email_confirm": emailaddr.cannot_mail(db),
         "min_password": MIN_PASSWORD,
+        # The box "Passkeys" under My account › Security: the button, or what is missing for it (konten E49).
+        "passkeys_can_add": _passkeys_can_add(request, db),
         "second_factor_setup_required": totp.setup_required(
             db, account, session_via(db, request.cookies.get(SESSION_COOKIE))
         ),

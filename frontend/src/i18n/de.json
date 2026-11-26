@@ -1363,7 +1363,7 @@
       "left_one": "Ein Ordner behält seinen Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}",
       "left_other": "{{count}} Ordner behalten ihren Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}",
       "limitsTitle": "Grenzen",
-      "perAccount": "Die Grenze eines Kontos setzt du unter Konten › Verwalten."
+      "perAccount": "Die Grenze eines Kontos setzt du unter Server › Konten › Verwalten."
     },
     "languages": {
       "title": "Sprachen",

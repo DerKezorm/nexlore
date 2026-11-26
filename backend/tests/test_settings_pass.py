@@ -468,3 +468,17 @@ def test_a_space_whose_only_member_is_deleted_is_the_operators_until_it_comes_ba
     assert operators_right() == (None, False)
     with SessionLocal() as db:
         assert db.get(Membership, (space_id, anna_id)).role == MANAGE  # type: ignore[union-attr]
+
+
+def test_the_security_answer_says_whether_a_passkey_can_be_added(client: TestClient, operator: Account) -> None:
+    """konten E49: without a public https address (and not on localhost) the box "Passkeys" says what is missing
+    instead of offering "Add a passkey"; the answer for Security carries it."""
+    with SessionLocal() as db:
+        settings_service.save(db, {"public_url": ""})
+    assert client.get("/api/auth/me").json()["passkeys_can_add"] is False
+    on_localhost = TestClient(app, base_url="http://localhost:8471", headers=TAB)
+    sign_in(on_localhost, operator)
+    assert on_localhost.get("/api/auth/me").json()["passkeys_can_add"] is True
+    with SessionLocal() as db:
+        settings_service.save(db, {"public_url": "https://lore.example.com"})
+    assert client.get("/api/auth/me").json()["passkeys_can_add"] is True
