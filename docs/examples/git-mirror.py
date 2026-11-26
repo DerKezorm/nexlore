@@ -114,6 +114,10 @@ class Mirror:
         return who["display_name"], who.get("email") or f"{who['name']}@{self.domain}"
 
     def run(self) -> None:
+        if not Path(self.args.folder).is_dir():
+            sys.exit(f"{self.args.folder} is not a folder here. Run the script on the Docker host, not in the "
+                     "container, and give the space's folder as the host sees it (the left side of the volume in "
+                     "docker-compose.yml, plus the space's name).")
         if not self.git_dir.exists():
             self.git("init", "-q", "--bare", str(self.git_dir), env=dict(os.environ))
         state = json.loads(self.state_file.read_text()) if self.state_file.exists() else {}
