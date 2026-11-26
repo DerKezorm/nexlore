@@ -28,8 +28,8 @@ import { formatDay } from '../../lib/markdown'
 import { useAuth } from '../../state/auth'
 import { useStore } from '../../state/store'
 import { noteUrl } from '../../lib/vault'
-import { Symbol } from '../Symbol'
 import { MembersDialog } from '../MembersDialog'
+import { Button as KitButton, Buttons as KitButtons, Chip, Field } from '../../vendor/nexui'
 import { Button, Card, Feedback, Input, Select, Toggle } from './ui'
 import { useAction } from './useAction'
 
@@ -602,7 +602,8 @@ export function FilesSettingsCard() {
           <Toggle label={t('admin.files.strip')} hint={t('admin.files.stripHint')} checked={values.strip_location} onChange={(strip_location) => setValues({ ...values, strip_location })} />
         </div>
         <div className="sm:col-span-3">
-          <Button type="submit" primary busy={busy}>
+          {/* Save of a field as nexnotes has it under "Limits": secondary (plan, joint round). */}
+          <Button type="submit" busy={busy}>
             {t('common.save')}
           </Button>
         </div>
@@ -616,7 +617,6 @@ export function LanguagesCard() {
   const { t } = useTranslation()
   const [options, setOptions] = useState<LanguageOption[]>([])
   const [code, setCode] = useState('')
-  const [file, setFile] = useState<File | null>(null)
   const { busy, problem, done, run } = useAction()
   const load = useCallback(async () => {
     resetAddedLanguages()
@@ -625,51 +625,55 @@ export function LanguagesCard() {
   useEffect(() => {
     void load()
   }, [load])
+  // As nexnotes (plan, Allgemein 5): the built-in ones and the own ones as chips, the template to download, the code
+  // with "Upload language" beside it; the file is chosen at the click.
+  const upload = (chosen: File) =>
+    void run(async () => {
+      await adminApi.uploadLanguage(code.trim(), chosen)
+      setCode('')
+      await load()
+    }, t('admin.languages.added'))
 
   return (
     <Card id="languages" symbol="globe" title={t('admin.languages.title')} text={t('admin.languages.text')}>
-      <ul className="divide-y divide-ink-700 rounded-xl border border-ink-700 text-sm">
+      <div className="flex flex-wrap gap-2" data-testid="languages-list">
+        <Chip>{`Deutsch · ${t('admin.languages.builtIn')}`}</Chip>
+        <Chip>{`English · ${t('admin.languages.builtIn')}`}</Chip>
         {options.map((option) => (
-          <li key={option.code} className="flex items-center gap-3 px-4 py-2.5">
-            <span className="flex-1">
-              {option.name} <span className="font-mono text-xs text-mist-500">{option.code}</span>
-            </span>
-            <Button small danger busy={busy} onClick={() => void run(async () => {
-              await adminApi.removeLanguage(option.code)
-              await load()
-            })}>
-              {t('admin.languages.remove')}
-            </Button>
-          </li>
+          <Chip
+            key={option.code}
+            name={option.name}
+            disabled={busy}
+            testId={`language-${option.code}`}
+            onRemove={() =>
+              void run(async () => {
+                await adminApi.removeLanguage(option.code)
+                await load()
+              })
+            }
+          >
+            {`${option.name} (${option.code})`}
+          </Chip>
         ))}
-        {options.length === 0 && <li className="px-4 py-3 text-sm text-mist-500">{t('admin.languages.none')}</li>}
-      </ul>
-      <form
-        className="mt-3 flex flex-wrap items-end gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          if (!file || !code.trim()) return
-          void run(async () => {
-            await adminApi.uploadLanguage(code.trim(), file)
-            setCode('')
-            setFile(null)
-            await load()
-          }, t('admin.languages.added'))
-        }}
-      >
-        <Input label={t('admin.languages.code')} value={code} onChange={setCode} placeholder="es" className="w-28" />
-        <label className="text-sm">
-          <span className="text-xs font-medium text-mist-400">{t('admin.languages.file')}</span>
-          <input type="file" accept="application/json,.json" onChange={(event) => setFile(event.target.files?.[0] ?? null)} className="mt-1 block text-xs" />
-        </label>
-        <Button type="submit" primary busy={busy}>
-          {t('admin.languages.upload')}
-        </Button>
+      </div>
+      <KitButtons>
         {/* The English texts as a file to translate (was beside the own language in the profile). */}
-        <Button onClick={downloadTemplate}>
-          <Symbol name="download" /> {t('settings.language.template')}
-        </Button>
-      </form>
+        <KitButton kind="secondary" icon="Download" onClick={downloadTemplate} testId="language-template">
+          {t('settings.language.template')}
+        </KitButton>
+      </KitButtons>
+      <Field
+        label={t('admin.languages.code')}
+        value={code}
+        onChange={(event) => setCode(event.target.value.trim())}
+        placeholder="es"
+        data-testid="language-code"
+        action={
+          <KitButton kind="secondary" icon="Upload" disabled={!code} busy={busy} accept="application/json,.json" onFile={upload} testId="language-upload">
+            {t('admin.languages.upload')}
+          </KitButton>
+        }
+      />
       <Feedback problem={problem} done={done} />
     </Card>
   )

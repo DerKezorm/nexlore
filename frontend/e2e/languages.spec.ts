@@ -74,6 +74,31 @@ test('the template downloads as the English texts with a _meta entry', async ({ 
   expect(content.nav.settings).toBe('Settings')
 })
 
+test('the operator adds a language with its code and "Upload language", sees it as a chip and takes it out again', async ({ page }) => {
+  test.skip(!!process.env.E2E_BASE_URL, 'writes a language file')
+  const headers = { 'X-Nexlore-Client': 'tab-e2elanguage' }
+  await page.request.delete('/api/locales/eo', { headers })
+  try {
+    await page.goto('/settings/general')
+    const card = page.locator('[data-card="languages"]')
+    await expect(card.getByTestId('languages-list')).toContainText('Deutsch · built in')
+    // The kit's file button: "Upload language" beside the field, the file chosen at the click (as nexnotes).
+    await expect(card.getByTestId('language-upload')).toContainText('Upload language')
+    const file = card.getByTestId('language-upload-file')
+    // Without a code there is nothing to upload.
+    await expect(file).toBeDisabled()
+    await card.getByLabel('Language code').fill('eo')
+    await file.setInputFiles({ name: 'eo.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ _meta: { name: 'Esperanto' }, nav: { settings: 'Agordoj' } })) })
+    await expect(card).toContainText('Language added.')
+    const chip = card.getByTestId('language-eo')
+    await expect(chip).toContainText('Esperanto (eo)')
+    await chip.getByRole('button', { name: 'Remove Esperanto' }).click()
+    await expect(card.getByTestId('language-eo')).toHaveCount(0)
+  } finally {
+    await page.request.delete('/api/locales/eo', { headers })
+  }
+})
+
 test('the server sends the security headers with the page', async ({ request }) => {
   const response = await request.get('/')
   expect(response.headers()['content-security-policy']).toContain("default-src 'self'")

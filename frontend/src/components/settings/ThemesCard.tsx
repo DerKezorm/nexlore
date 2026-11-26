@@ -11,7 +11,7 @@ import { applyThemeColours, NEXLORE_COLOURS, readThemeFile, themeFile, TOKEN_GRO
 import { useAuth } from '../../state/auth'
 import { SwatchBook as Swatches } from 'lucide-react'
 
-import { Button, Buttons, Card } from '../../vendor/nexui'
+import { Button, Buttons, Card, Checkbox, Segment } from '../../vendor/nexui'
 import { CalloutsEditor } from './CalloutsEditor'
 import type { Callouts } from '../../lib/callouts'
 
@@ -135,7 +135,8 @@ export function ThemesCard() {
 
   const card = (ref: string, name: string, colours: Colours | null, extra?: React.ReactNode, note?: string) => (
     <div key={ref} className={'overflow-hidden rounded-xl border bg-ink-850 ' + (chosen === ref ? 'border-accent-500 ring-1 ring-accent-500' : 'border-ink-700')}>
-      <button type="button" onClick={() => void choose(ref)} aria-pressed={chosen === ref} className="block w-full text-left" data-theme-ref={ref}>
+      {/* A tile to choose, as nexnotes' paper: a radio of the group "Themes"; its buttons below are the kit's. */}
+      <button type="button" role="radio" onClick={() => void choose(ref)} aria-checked={chosen === ref} className="block w-full text-left" data-theme-ref={ref}>
         <Swatch colours={colours} />
         <span className="flex items-center justify-between gap-2 px-3 py-2 text-sm text-mist-200">
           <span className="truncate">{name}</span>
@@ -145,7 +146,16 @@ export function ThemesCard() {
       {extra && <div className="flex flex-wrap gap-1 border-t border-ink-700 px-2 py-1.5">{extra}</div>}
     </div>
   )
-  const small = 'rounded-full px-2 py-0.5 text-xs text-mist-400 hover:bg-ink-800 hover:text-mist-100'
+  const copy = (colours: Colours | null, name: string) => (
+    <Button kind="secondary" size="sm" icon="Copy" onClick={() => edit(null, colours, name)}>
+      {t('themes.copy')}
+    </Button>
+  )
+  const tiles = (label: string, children: React.ReactNode) => (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" role="radiogroup" aria-label={label}>
+      {children}
+    </div>
+  )
   const weak = draft ? weakSpots(draft.colours) : []
 
   return (
@@ -163,17 +173,14 @@ export function ThemesCard() {
         <div className="space-y-3 rounded-xl border border-ink-700 bg-ink-900 p-4" data-testid="theme-editor">
           <div className="flex flex-wrap items-center gap-2">
             <input value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} aria-label={t('themes.name')} maxLength={40} className="h-8 w-48 rounded-lg border border-ink-700 bg-ink-950 px-2.5 text-sm" />
-            <div className="inline-flex rounded-full border border-ink-700 bg-ink-850 p-0.5" role="radiogroup" aria-label={t('themes.side')}>
-              {(['dark', 'light'] as const).map((side) => (
-                <button key={side} type="button" role="radio" aria-checked={mode === side} onClick={() => setMode(side)} className={'rounded-full px-3 py-0.5 text-sm ' + (mode === side ? 'bg-accent-500 font-semibold text-on-accent' : 'text-mist-400')}>
-                  {t(`looks2.modes.${side}`)}
-                </button>
-              ))}
-            </div>
-            <label className="flex items-center gap-2 text-sm text-mist-300">
-              <input type="checkbox" checked={draft.shared} onChange={(event) => setDraft({ ...draft, shared: event.target.checked })} className="accent-accent-500" />
-              {t('themes.share')}
-            </label>
+            <Segment
+              label={t('themes.side')}
+              hideLabel
+              value={mode}
+              onChange={setMode}
+              options={(['dark', 'light'] as const).map((side) => ({ value: side, label: t(`looks2.modes.${side}`), icon: side === 'dark' ? 'Moon' : 'Sun' }))}
+            />
+            <Checkbox label={t('themes.share')} checked={draft.shared} onChange={(shared) => setDraft({ ...draft, shared })} />
           </div>
           <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
             {TOKEN_GROUPS.map(([group, tokens]) => (
@@ -199,45 +206,43 @@ export function ThemesCard() {
           <p className="text-xs text-mist-500">{t('themes.derived')}</p>
           <CalloutsEditor callouts={draft.colours.callouts ?? {}} mode={mode} onChange={(callouts) => setDraft({ ...draft, colours: { ...draft.colours, callouts } })} />
           <div className="flex flex-wrap justify-end gap-2">
-            <button type="button" onClick={() => download(draft.name, draft.colours)} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-800">{t('themes.export')}</button>
-            <button type="button" onClick={() => { setDraft(null); restore() }} className="rounded-full border border-ink-700 px-3 py-1 text-sm text-mist-300 hover:bg-ink-800">{t('common.cancel')}</button>
-            <button type="button" disabled={busy || !draft.name.trim()} onClick={() => void save()} className="rounded-full bg-accent-500 px-3 py-1 text-sm font-semibold text-on-accent hover:bg-accent-400 disabled:opacity-40">{t('common.save')}</button>
+            <Button kind="secondary" icon="Download" onClick={() => download(draft.name, draft.colours)}>{t('themes.export')}</Button>
+            <Button kind="secondary" icon="X" onClick={() => { setDraft(null); restore() }}>{t('common.cancel')}</Button>
+            <Button kind="primary" icon="Check" disabled={busy || !draft.name.trim()} onClick={() => void save()}>{t('common.save')}</Button>
           </div>
         </div>
       ) : (
         list && (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {card('nexlore', 'nexlore', null, undefined, t('themes.standard'))}
-              {list.built_in.map((theme) => card(theme.ref, t(`themes.builtIn.${theme.ref}`), theme.colours, <button type="button" className={small} onClick={() => edit(null, theme.colours, t(`themes.builtIn.${theme.ref}`))}>{t('themes.copy')}</button>))}
-            </div>
+            {tiles(t('themes.title'), (
+              <>
+                {card('nexlore', 'nexlore', null, undefined, t('themes.standard'))}
+                {list.built_in.map((theme) => card(theme.ref, t(`themes.builtIn.${theme.ref}`), theme.colours, copy(theme.colours, t(`themes.builtIn.${theme.ref}`))))}
+              </>
+            ))}
             {list.shared.length > 0 && (
               <>
                 <h3 className="pt-2 text-sm font-semibold text-mist-200">{t('themes.shared')}</h3>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {list.shared.map((theme) => card(theme.ref, theme.name, theme.colours, <button type="button" className={small} onClick={() => edit(null, theme.colours, theme.name)}>{t('themes.copy')}</button>, theme.owner))}
-                </div>
+                {tiles(t('themes.shared'), list.shared.map((theme) => card(theme.ref, theme.name, theme.colours, copy(theme.colours, theme.name), theme.owner)))}
               </>
             )}
             <h3 className="pt-2 text-sm font-semibold text-mist-200">{t('themes.mine')}</h3>
             {list.mine.length === 0 ? (
               <p className="text-sm text-mist-500">{t('themes.noneMine')}</p>
             ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {list.mine.map((theme) =>
+              tiles(t('themes.mine'), list.mine.map((theme) =>
                   card(
                     theme.ref,
                     theme.name,
                     theme.colours,
                     <>
-                      <button type="button" className={small} onClick={() => edit(theme)}>{t('themes.edit')}</button>
-                      <button type="button" className={small} onClick={() => download(theme.name, theme.colours)}>{t('themes.export')}</button>
-                      <button type="button" className={small} onClick={() => void remove(theme)}>{t('themes.remove')}</button>
+                      <Button kind="secondary" size="sm" icon="Pencil" onClick={() => edit(theme)}>{t('themes.edit')}</Button>
+                      <Button kind="secondary" size="sm" icon="Download" onClick={() => download(theme.name, theme.colours)}>{t('themes.export')}</Button>
+                      <Button kind="danger" size="sm" icon="Trash2" onClick={() => void remove(theme)}>{t('themes.remove')}</Button>
                     </>,
                     theme.shared ? t('themes.sharedNote') : undefined,
                   ),
-                )}
-              </div>
+                ))
             )}
           </>
         )

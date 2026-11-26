@@ -19,7 +19,7 @@ async function chooseTheme(page: Page, ref: string): Promise<void> {
   const saved = page.waitForResponse((response) => response.url().includes('/api/me/appearance') && response.request().method() === 'PUT')
   await themes.locator(`[data-theme-ref="${ref}"]`).click()
   await saved
-  await expect(themes.locator(`[data-theme-ref="${ref}"]`)).toHaveAttribute('aria-pressed', 'true')
+  await expect(themes.locator(`[data-theme-ref="${ref}"]`)).toHaveAttribute('aria-checked', 'true')
 }
 
 /** Hue of a colour `#rrggbb` or `rgb(r, g, b)`, in degrees. */

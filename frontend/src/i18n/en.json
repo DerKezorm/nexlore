@@ -1344,7 +1344,7 @@
       "title": "Files",
       "text": "Where uploads go and how much they may take.",
       "folder": "Attachment folder",
-      "perFile": "Largest file (MB)",
+      "perFile": "Largest file per attachment (MB)",
       "quota": "Storage for new accounts (MB)",
       "quotaHint": "What every new account starts with. Empty means no limit.",
       "strip": "Remove place and device from photos",
@@ -1362,17 +1362,16 @@
       "left_one": "One folder kept its name because one with the new name stands beside it: {{list}}",
       "left_other": "{{count}} folders kept their name because one with the new name stands beside them: {{list}}",
       "limitsTitle": "Limits",
-      "perAccount": "The limit of one account is set under “Accounts”, “Manage”."
+      "perAccount": "The limit of one account is set under Accounts › Manage."
     },
     "languages": {
       "title": "Languages",
       "text": "Own translations, from the template under Language. A file for de or en replaces only the texts it holds; all others stay as shipped.",
       "remove": "Remove",
-      "none": "No languages of your own.",
-      "code": "Code",
-      "file": "JSON file",
-      "upload": "Upload",
-      "added": "Language added. It takes effect as soon as a page is loaded again."
+      "code": "Language code",
+      "upload": "Upload language",
+      "added": "Language added. It takes effect as soon as a page is loaded again.",
+      "builtIn": "built in"
     },
     "mcp": {
       "maxLevel": "Highest level a key may have",
