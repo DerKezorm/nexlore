@@ -188,8 +188,8 @@ test('35: another issuer asks first in the authentik card, Yes runs the button a
   await run.click()
   const dialog = page.getByRole('dialog')
   await expect(dialog).toContainText('Another issuer is another provider. 2 accounts will have to link again afterwards.')
-  // Behind the question the card says why it asks (the module's step list), no failure: the button waits for the answer.
-  await expect(page.getByTestId('authentik-steps')).toContainText('This is another authentik than before')
+  // No failure on the page behind the question: the button waits for the answer.
+  await expect(page.getByTestId('authentik-steps')).toHaveCount(0)
   if (process.env.E2E_SHOT) await page.screenshot({ path: process.env.E2E_SHOT })
   await dialog.getByRole('button', { name: 'Cancel' }).click()
   await expect(dialog).toHaveCount(0)
@@ -201,6 +201,8 @@ test('35: another issuer asks first in the authentik card, Yes runs the button a
   expect(sent.map((body) => body.confirm_issuer_change)).toEqual([false, false, true])
   // The token stayed in the field while the question waited: all three runs carry it.
   expect(sent.map((body) => body.token)).toEqual([token, token, token])
+  // After the run that worked the token goes from the field (oidc, E33).
+  await expect(card.getByLabel('API token')).toHaveValue('')
   expect(problems).toEqual([])
   await setAddress(page, '')
 })
