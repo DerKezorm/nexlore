@@ -84,14 +84,8 @@ def _managers_left(db: DbSession, space_id: int, without: int) -> int:
 
 
 def _others(db: DbSession, space_id: int, without: int) -> int:
-    return int(
-        db.scalar(
-            select(func.count())
-            .select_from(Membership)
-            .where(Membership.space_id == space_id, Membership.account_id != without)
-        )
-        or 0
-    )
+    # Deleted accounts count nowhere (plan E44): their memberships wait for their return.
+    return rights.member_count(db, space_id, without=without)
 
 
 def _invite_view(invite: Invite, db: DbSession) -> dict[str, Any]:

@@ -421,3 +421,39 @@ def test_keys_rest_while_the_account_is_out_and_connected_programs_go_for_good(
         assert db.scalars(select(ApiToken).where(ApiToken.account_id == anna_id)).all() == []
         assert db.scalars(select(McpKey).where(McpKey.account_id == anna_id)).all() == []
     assert api(api_key) == 401 and tool(mcp_key) == 401
+
+
+def test_a_space_whose_only_member_is_deleted_is_the_operators_until_it_comes_back(
+    client: TestClient, operator: Account
+) -> None:
+    """Plan E44: a deleted account counts nowhere, in the rights neither. Its only space is one without members, the
+    operator's, for the 30 days; brought back, the old state holds again."""
+    from app.models import MANAGE, Membership, Space
+    from app.services import rights
+
+    assert client.post("/api/spaces", json={"name": "Alone"}).status_code == 201
+    person("anna")
+    anna_id = row_of("anna").id
+    with SessionLocal() as db:
+        space_id = db.scalar(select(Space.id).where(Space.folder == "Alone"))
+        assert space_id is not None
+        for membership in db.scalars(select(Membership).where(Membership.space_id == space_id)):
+            db.delete(membership)
+        db.add(Membership(space_id=space_id, account_id=anna_id, role=MANAGE))
+        db.commit()
+
+    def operators_right() -> tuple[str | None, bool]:
+        with SessionLocal() as db:
+            boss = db.get(Account, operator.id)
+            assert boss is not None
+            return rights.role_in(db, boss, space_id), space_id in rights.readable_ids(db, boss)
+
+    assert operators_right() == (None, False)
+    confirm = {"current_password": PASSWORD}
+    assert client.request("DELETE", f"/api/accounts/{anna_id}", json=confirm).status_code == 204
+    assert operators_right() == (MANAGE, True)
+    assert client.get("/api/spaces/Alone/members").json()["members"] == []
+    assert client.post(f"/api/accounts/{anna_id}/restore", json=confirm).status_code == 200
+    assert operators_right() == (None, False)
+    with SessionLocal() as db:
+        assert db.get(Membership, (space_id, anna_id)).role == MANAGE  # type: ignore[union-attr]

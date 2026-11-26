@@ -23,7 +23,7 @@ from ..errors import error
 from ..models import OPERATOR, ROLES, File, Membership, OidcLink, OidcProvider, Space
 from ..models import Account as AccountRow
 from ..security import end_all_sessions
-from ..services import accounts, kontenpost, settings_service
+from ..services import accounts, kontenpost, rights, settings_service
 from ..services.konten_store import KontenStore
 from ..vendor import nexkonten
 from ..vendor.nexkonten import invites, manage, profiles, resets
@@ -154,8 +154,7 @@ def _alone_in(db: DbSession, account_id: int) -> list[str]:
     """The spaces the account is the only member of: after it goes, they have no members and are the operator's."""
     names: list[str] = []
     for space_id in db.scalars(select(Membership.space_id).where(Membership.account_id == account_id)):
-        others = db.scalar(select(func.count()).select_from(Membership)
-                           .where(Membership.space_id == space_id, Membership.account_id != account_id))
+        others = rights.member_count(db, space_id, without=account_id)
         if not others:
             space = db.get(Space, space_id)
             if space is not None:

@@ -284,8 +284,14 @@ def test_deleting_the_only_member_hands_the_space_to_the_operator(world: World) 
     ids = {row["name"]: row["id"] for row in world.operator.get("/api/accounts").json()}
     gone = world.operator.request("DELETE", f"/api/accounts/{ids['anna']}", json={"current_password": PASSWORD})
     assert gone.status_code == 204
-    # For 30 days she can come back with her spaces; then she goes for good (the shared account module 1.1.0).
+    # A deleted member counts nowhere (plan E44): her only space is the operator's at once, for the 30 days in which
+    # she can come back with it; brought back, it is hers alone again; then she goes for good (konten 1.1.0).
+    assert "Private" in names(world.operator)
+    back = world.operator.post(f"/api/accounts/{ids['anna']}/restore", json={"current_password": PASSWORD})
+    assert back.status_code == 200
     assert "Private" not in names(world.operator)
+    again = world.operator.request("DELETE", f"/api/accounts/{ids['anna']}", json={"current_password": PASSWORD})
+    assert again.status_code == 204
     from datetime import timedelta
 
     from app.main import _purge_deleted_accounts

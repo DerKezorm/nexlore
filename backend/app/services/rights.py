@@ -16,7 +16,7 @@ checks it.
 
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from sqlalchemy import Select, func, select
 from sqlalchemy.orm import Session
 
 from ..models import MANAGE, OPERATOR, READ, SPACE_ROLES, WRITE, Account, File, Invite, Membership, Share, Space
@@ -45,8 +45,34 @@ def at_least(role: str | None, need: str) -> bool:
     return role is not None and SPACE_ROLES.index(role) >= SPACE_ROLES.index(need)
 
 
+def member_count(db: Session, space_id: int, without: int | None = None) -> int:
+    """How many accounts not deleted are members of the space (``without``: leaving that one out). A deleted account
+    (30 days to bring back) keeps its membership for its return but counts nowhere, as it shows nowhere (plan E33,
+    E44): a space whose only member is deleted is a space without members, the operator's; brought back, the account
+    has it again as before."""
+    query = (
+        select(func.count())
+        .select_from(Membership)
+        .join(Account, Account.id == Membership.account_id)
+        .where(Membership.space_id == space_id, Account.deleted_at.is_(None))
+    )
+    if without is not None:
+        query = query.where(Membership.account_id != without)
+    return int(db.scalar(query) or 0)
+
+
+def spaces_with_members() -> Select[tuple[int]]:
+    """The ids of the spaces with a member not deleted."""
+    return (
+        select(Membership.space_id)
+        .join(Account, Account.id == Membership.account_id)
+        .where(Account.deleted_at.is_(None))
+        .distinct()
+    )
+
+
 def _members(db: Session, space_id: int) -> int:
-    return int(db.scalar(select(func.count()).select_from(Membership).where(Membership.space_id == space_id)) or 0)
+    return member_count(db, space_id)
 
 
 def role_in(db: Session, account: Account, space_id: int | None) -> str | None:
@@ -67,7 +93,7 @@ def readable_ids(db: Session, account: Account) -> set[int]:
     """Every space the account may read."""
     own = set(db.scalars(select(Membership.space_id).where(Membership.account_id == account.id)))
     if account.role == OPERATOR:
-        with_members = set(db.scalars(select(Membership.space_id).distinct()))
+        with_members = set(db.scalars(spaces_with_members()))
         own |= set(db.scalars(select(Space.id))) - with_members
     if account.key_spaces is not None:
         own &= account.key_spaces
