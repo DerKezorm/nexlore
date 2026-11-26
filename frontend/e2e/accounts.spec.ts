@@ -328,7 +328,8 @@ test('the operator never sets a password: a link lets the person set a new one, 
   // The person opens it, sets a new password, and signs in with it.
   const person = await stranger(browser)
   await person.goto(new URL(link).pathname)
-  await person.getByLabel('Password', { exact: true }).fill('the new password of resa')
+  // "New password" where it replaces one (konten 1.1.2); "Password" stays for setup and invitation.
+  await person.getByLabel('New password', { exact: true }).fill('the new password of resa')
   await person.getByLabel('Repeat password').fill('the new password of resa')
   await person.getByRole('button', { name: 'Set the password' }).click()
   await expect(person.getByRole('heading', { name: 'Password set' })).toBeVisible()

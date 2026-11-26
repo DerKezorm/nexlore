@@ -25,6 +25,7 @@ import { useAuth } from '../state/auth'
 import {
   DISPLAY_NAME_MAX,
   EMAIL_MAX,
+  fieldLabel,
   followUsername,
   normalizeUsername,
   SETUP_PAGE,
@@ -723,7 +724,7 @@ export function ResetPage() {
       >
         <Problem problem={problem} />
         <AuthField
-          label={t('account.newPassword')}
+          label={t(fieldLabel('reset', 'newPassword'))}
           value={password}
           onChange={setPassword}
           type="password"

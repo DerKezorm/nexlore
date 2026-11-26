@@ -76,6 +76,16 @@ test('an account that is not the operator sees no Server, not even by the addres
   await member.close()
 })
 
+test('"Change password" asks for the current password, the new one and its repetition, by those names', async ({ page }) => {
+  await page.goto('/settings/security')
+  await page.getByTestId('password-change').click()
+  const dialog = page.getByRole('dialog', { name: 'Change password' })
+  for (const name of ['Current password', 'New password', 'Repeat password']) await expect(dialog.getByLabel(name, { exact: true })).toBeVisible()
+  await expect(dialog.getByLabel('Password', { exact: true })).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect(dialog).toHaveCount(0)
+})
+
 test('the operator makes the guide again, and it opens at its start note', async ({ page }) => {
   await page.goto('/settings/general')
   const card = page.locator('#guide')

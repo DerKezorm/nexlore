@@ -22,7 +22,7 @@ import { rememberName } from '../../lib/people'
 import { usePasswordConfirm } from '../../lib/passwordConfirm'
 import { day } from '../../lib/when'
 import { useAuth } from '../../state/auth'
-import { DISPLAY_NAME_MAX, EMAIL_MAX, FIELDS, PAGES, passwordChanged, screenFields, USERNAME_MAX } from '../../vendor/nexkonten/konten'
+import { DISPLAY_NAME_MAX, EMAIL_MAX, FIELDS, fieldLabel, PAGES, passwordChanged, screenFields, USERNAME_MAX } from '../../vendor/nexkonten/konten'
 import { oidcErrorKey } from '../../vendor/nexoidc/oidc'
 import { Badge, Box, Card, CheckboxRow, ConfirmDialog, Field, Notice, Row, Rows, SelectField } from '../../vendor/nexui'
 import { pagePart } from './accountPages'
@@ -370,7 +370,7 @@ export function SecurityCard({ me }: { me: Me }) {
         >
           {/* The account module's words for every password field (plan E33). */}
           <Field label={t(FIELDS.currentPassword.label)} value={current} onChange={(event) => setCurrent(event.target.value)} type="password" autoComplete={FIELDS.currentPassword.autoComplete} />
-          <Field label={t(FIELDS.newPassword.label)} value={next} onChange={(event) => setNext(event.target.value)} type="password" autoComplete={FIELDS.newPassword.autoComplete} hints={[t(FIELDS.newPassword.hint, { minimum: me.min_password ?? 12 })]} />
+          <Field label={t(fieldLabel('change', 'newPassword'))} value={next} onChange={(event) => setNext(event.target.value)} type="password" autoComplete={FIELDS.newPassword.autoComplete} hints={[t(FIELDS.newPassword.hint, { minimum: me.min_password ?? 12 })]} />
           <Field
             label={t(FIELDS.passwordRepeat.label)}
             name="password_confirm"
