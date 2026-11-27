@@ -292,8 +292,10 @@ export function AppShell() {
     else navigate(noteUrl(id))
   }
 
+  // `relative` (B7): hidden texts (`sr-only`, absolute) are placed and clipped in this frame instead of making the page
+  // taller than the window.
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
+    <div className="relative flex h-dvh flex-col overflow-hidden">
       {/* The first stop of Tab: past the header and the sidebar straight to the content (it took 92 to 102, P8.9). */}
       <a
         href="#content"
