@@ -50,7 +50,11 @@
     "loading": "Loading …",
     "cancel": "Cancel",
     "save": "Save",
-    "saved": "Saved."
+    "saved": "Saved.",
+    "done": "Done",
+    "copy": "Copy",
+    "copied": "Copied",
+    "remove": "Remove"
   },
   "palette": {
     "title": "Commands",
@@ -159,7 +163,7 @@
   "looks2": {
     "spaceThemesHint": "A space may colour its notes. Off, you see your own theme everywhere.",
     "spaceThemes": "Take the themes of spaces",
-    "title": "Look",
+    "title": "Fonts and width",
     "text": "For your account, on every device. Each change shows at once.",
     "mode": "Light or dark",
     "modes": {
@@ -260,7 +264,7 @@
     "newName": "My snippet",
     "name": "Name of the snippet",
     "css": "CSS of the snippet",
-    "notAllowed": "The operator has not allowed own CSS (Settings → Server → AI, API and plugins).",
+    "notAllowed": "The operator has not allowed own CSS (Server › General › Own CSS).",
     "problem": "Line {{line}}: {{what}} is not allowed here.",
     "rules": "Allowed: rules, @media and @supports. Refused: url(), @import, @font-face and everything else that could load something."
   },
@@ -625,6 +629,7 @@
       "restore": "restored",
       "import": "imported",
       "mcp": "AI (MCP)",
+      "mcpKey": "MCP · {{key}}",
       "plugin": "plugin",
       "api": "Program (API)"
     },
@@ -679,13 +684,7 @@
   "settings": {
     "title": "Settings",
     "language": {
-      "title": "Language",
-      "text": "English and German come with nexlore. The operator can add more as JSON files in data/locales; whatever a file leaves out appears in English.",
-      "choose": "Language of the interface",
-      "added": "added by the operator",
-      "template": "Download template",
-      "templateHint": "The English texts as a file to translate. Save it as data/locales/<code>.json, for example es.json or pt-BR.json.",
-      "textMember": "nexlore comes with English and German; the operator can add more languages."
+      "added": "added by the operator"
     },
     "spaces": {
       "title": "Spaces and rights",
@@ -700,23 +699,91 @@
       "deleteTitle": "Delete the space {{space}}?",
       "deleteText": "Every note and file of the space goes into the trash, and the space disappears for all its members. From the trash it comes back with its members for 30 days."
     },
-    "tabs": {
-      "general": "General",
-      "looks": "Look",
-      "spaces": "Spaces",
+    "groups": {
+      "account": "My account",
       "server": "Server"
     },
-    "parts": {
-      "accounts": "Accounts",
-      "signin": "Sign-in",
-      "shares": "Public pages",
-      "extensions": "AI, API and plugins",
-      "files": "Files",
-      "backups": "Backups",
-      "languages": "Languages",
-      "log": "Log",
-      "mail": "Mail server"
-    }
+    "jump": "Choose an area",
+    "areas": {
+      "profile": {
+        "title": "Profile",
+        "text": "Picture, name, mail address and language of your account."
+      },
+      "security": {
+        "title": "Security",
+        "text": "Password, second factor, sign-in providers and signing out everywhere."
+      },
+      "appearance": {
+        "title": "Appearance",
+        "text": "Themes, light or dark, fonts and your own CSS snippets."
+      },
+      "notes": {
+        "title": "Notes",
+        "text": "Where you start, the editor, the space for daily notes and your own keys."
+      },
+      "spaces": {
+        "title": "Spaces",
+        "text": "Your spaces and who works in them with you."
+      },
+      "notifications": {
+        "title": "Notifications",
+        "text": "When and how nexlore lets you know."
+      },
+      "plugins": {
+        "title": "Plugins",
+        "text": "Which plugins you use for yourself."
+      },
+      "connections": {
+        "title": "Connections",
+        "text": "Devices, other apps, API keys and AI tools that work with your notes."
+      },
+      "general": {
+        "title": "General",
+        "text": "Files, link titles, own CSS, languages and the guide."
+      },
+      "signIn": {
+        "title": "Sign-in",
+        "text": "How people sign in: password, second factor and providers."
+      },
+      "mail": {
+        "title": "Mail",
+        "text": "The mail server for invitations, notifications and confirmations."
+      },
+      "storage": {
+        "title": "Storage and backups",
+        "text": "Backups of the server, to download and restore."
+      },
+      "shares": {
+        "title": "Public pages",
+        "text": "What can be seen without signing in."
+      },
+      "accounts": {
+        "title": "Accounts",
+        "text": "Who uses nexlore, and all spaces with their rights."
+      },
+      "log": {
+        "title": "Log",
+        "text": "What happened on the server."
+      },
+      "about": {
+        "title": "About nexlore",
+        "text": "Version, licence, updates and what nexlore is built with."
+      },
+      "aiProvider": {
+        "title": "AI provider",
+        "text": "AI for every account: the main switch, the shared service and Ask Lore."
+      },
+      "serverPlugins": {
+        "title": "Plugins",
+        "text": "Which plugins this server has and who may use them."
+      },
+      "ai": {
+        "title": "AI",
+        "text": "Whether AI helps you in notes, your own access and what went out."
+      }
+    },
+    "things": "notes",
+    "thingsDative": "notes"
   },
   "errors": {
     "byCode": {
@@ -803,7 +870,7 @@
       "own_second_factor_first": "Set up your own second factor first, on your account page.",
       "use_disable": "Turn your own second factor off on your account page.",
       "ai_off": "AI in notes is off on this server.",
-      "ai_not_on": "Switch AI on under My account first.",
+      "ai_not_on": "Switch AI on under My account › AI first.",
       "ai_incomplete": "Save an address and a model first.",
       "ai_address_missing": "Give the address of the service.",
       "ai_address_invalid": "Give an address beginning with http:// or https://.",
@@ -839,15 +906,15 @@
       "request_changed": "This request does not match what was asked; nothing ran.",
       "notify_no_way": "Give a webhook address or switch mail on first.",
       "webhook_invalid": "Give an address like https://example.com/hook.",
-      "api_off": "The operator has not switched API tokens on.",
-      "too_many_tokens": "An account holds at most 20 tokens.",
+      "api_off": "The operator has not switched the programming interface (API) on.",
+      "too_many_tokens": "An account holds at most 20 API keys.",
       "setup_code_wrong": "The setup code is wrong. It is in the server's log: docker logs nexlore.",
       "operator_network": "The operator's settings are open only from the home network.",
       "bad_date": "That date does not exist.",
       "display_name_taken": "Another account goes by this name.",
       "display_name_invalid": "A display name cannot hold control or invisible characters.",
-      "public_url_missing": "Mail needs the public address of nexlore; the operator sets it under Settings.",
-      "ai_address_private": "This address is in your own network. The operator allows such services one by one, under Settings, AI in notes.",
+      "public_url_missing": "Mail needs the public address of nexlore; the operator sets it under Server › Sign-in.",
+      "ai_address_private": "This address is in your own network. The operator allows such services one by one, under Server › AI provider.",
       "ai_address_refused": "nexlore does not send to this address.",
       "ai_hosts_invalid": "One host per entry, like 192.168.1.20 or ollama.lan:11434.",
       "bad_canvas": "This is no canvas nexlore can keep (JSON Canvas).",
@@ -877,7 +944,7 @@
       "not_signed_in": "This device is no longer signed in. Connect it again.",
       "app_disabled": "The operator has switched the iPhone app off.",
       "too_many": "Too many requests. Wait a moment and try again.",
-      "app_address_missing": "nexlore does not know its address. The operator enters it in the settings.",
+      "app_address_missing": "nexlore does not know its address. The operator enters it under Server › Sign-in.",
       "app_too_many_pairings": "Five codes are waiting already. Close one or wait until it runs out.",
       "app_pairing_unknown": "This code does not exist or is no longer valid.",
       "cursor_expired": "Syncing starts over.",
@@ -1067,24 +1134,17 @@
     "manage": "Manage"
   },
   "auth": {
-    "name": "Name",
-    "nameHint": "2 to 64 characters: small letters, digits, dots, dashes or underscores. You sign in with it.",
     "password": "Password",
-    "passwordAgain": "Password again",
     "passwordHint_one": "At least {{count}} character.",
     "passwordHint_other": "At least {{count}} characters.",
-    "mismatch": "The two passwords are not the same.",
     "login": {
       "title": "Sign in",
       "text": "Welcome back to nexlore.",
       "submit": "Sign in"
     },
     "setup": {
-      "title": "Set up nexlore",
-      "text": "The account you make now is the operator's: it runs this server, invites others and sets things up.",
       "submit": "Create account",
-      "code": "Setup code",
-      "codeHint": "In the server's log: docker logs nexlore (a line saying \"The setup code is …\"), or NEXLORE_SETUP_TOKEN if you set one."
+      "version": "Version {{version}}"
     },
     "invite": {
       "title": "You are invited",
@@ -1092,69 +1152,39 @@
       "intoNexlore": "Into nexlore.",
       "invalidTitle": "This invitation is not valid",
       "invalidText": "It was used already, it ran out, or it was withdrawn. Ask for a new one.",
-      "toLogin": "To the sign-in",
       "join": "Join as {{name}}",
       "haveAccount": "You are signed in as {{name}} and have an account already.",
       "create": "Create account",
       "already": "Have an account already?",
-      "signIn": "Sign in first"
+      "signIn": "Sign in first",
+      "expiredTitle": "Invitation expired",
+      "expiredText": "This invitation has run out. Ask for a new one.",
+      "noWay": "No account can be made here right now. Ask the operator."
+    },
+    "backToLogin": "To the sign-in",
+    "reset": {
+      "text": "For {{name}}. Every sign-in in a browser ends; then you sign in with the new password and see which devices still have access.",
+      "submit": "Set the password",
+      "doneTitle": "Password set",
+      "doneText": "Sign in with your new password now.",
+      "expiredTitle": "Link expired",
+      "expiredText": "This link has run out. Ask the operator for a new one.",
+      "invalidTitle": "Link not valid",
+      "invalidText": "This link has been used already or was replaced by a newer one."
     }
   },
-  "account": {
-    "tabs": {
-      "profile": "Profile",
-      "security": "Security",
-      "ai": "Connections",
-      "plugins": "Plugins",
-      "notify": "Notifications"
-    },
+  "me": {
     "profile": {
-      "displayName": "Display name",
-      "displayHint": "How others see you. Empty shows your user name {{name}}; you still sign in with it.",
-      "displaySave": "Save",
-      "displaySaved": "Display name saved.",
-      "name": "Name",
-      "role": "Role",
       "email": "Email",
-      "upload": "Upload a picture",
-      "change": "Another picture",
       "remove": "Remove",
       "saved": "Picture saved.",
       "removed": "Picture removed.",
-      "hint": "A photo from your phone or camera. It is cut to a square, and nothing of the file but the picture is kept: no place, no device.",
-      "emailTitle": "Mail address",
-      "emailHint": "For invitations and notifications by mail. Nobody else sees it. It counts once you open the link in the mail we send you.",
-      "emailConfirm": "Confirm",
-      "emailRemove": "Remove",
-      "emailSent": "Mail sent to {{address}}. Open the link in it.",
-      "emailSame": "You have this address already.",
-      "emailRemoved": "Mail address removed.",
-      "emailConfirmed": "Confirmed",
-      "emailSource": {
-        "own": "entered by you",
-        "operator": "entered by the operator",
-        "invite": "from the invitation",
-        "provider": "from {{provider}}"
-      },
-      "emailWaitTitle": "Waiting for confirmation.",
-      "emailWait": "We sent a link to {{address}}. It works for 24 hours. No mail? Look in the spam folder.",
-      "emailResend": "Send again",
-      "emailResent": "Sent again.",
-      "emailCancel": "Cancel",
-      "emailCancelled": "The address no longer waits.",
-      "emailOffer": "{{provider}} knows you as {{address}}. Should nexlore take this address?",
       "emailTake": "Take it",
       "emailTaken": "Address taken.",
       "emailDecline": "Don't ask again",
       "emailDeclined": "nexlore no longer asks about this address.",
-      "emailProviderOnly": "Comes from {{provider}} and follows it at every sign-in. You change it there.",
-      "emailNoServer": "The operator has not set up a mail server, so nexlore cannot send a confirmation. Until then only the operator can enter an address for you.",
-      "emailNoPublicUrl": "The operator has not entered nexlore's public address, so nexlore cannot send a confirmation. Until then only the operator can enter an address for you.",
-      "emailSetServer": "Set up a mail server",
-      "emailSetPublicUrl": "Enter the public address",
       "providerFallback": "the sign-in service"
     },
-    "menu": "Account of {{name}}",
     "role": {
       "operator": "Operator",
       "member": "Member"
@@ -1165,23 +1195,17 @@
     "title": "My account",
     "linked": "Your account is linked to {{name}}.",
     "password": {
-      "title": "Password",
-      "current": "Current password",
-      "new": "New password",
       "submit": "Change password",
       "done": "Password changed. Other browsers have to sign in again."
     },
     "sessions": {
-      "title": "Other browsers",
-      "text": "Signs you out everywhere except here, for example after losing a phone.",
-      "submit": "Sign out everywhere else",
       "done": "Every other browser is signed out."
     },
     "unlinked": "No longer linked to {{name}}.",
     "app": {
-      "title": "iPhone app",
+      "title": "Devices",
       "text": "Connected iPhones have the same rights as this browser. An iPhone is disconnected here, by signing out everywhere else, or by a new password.",
-      "connect": "Connect the iPhone app",
+      "connect": "Connect an iPhone or iPad",
       "scan": "Open the iPhone's camera and point it at the code.",
       "orType": "Or type the address and the code into the app.",
       "address": "Address",
@@ -1198,7 +1222,10 @@
       "never": "Not seen yet",
       "disconnect": "Disconnect",
       "disconnectNamed": "Disconnect {{name}}"
-    }
+    },
+    "signOutText": "Signs you out in this browser. Other devices stay signed in.",
+    "profileSaved": "Profile saved.",
+    "languageBrowser": "As the browser"
   },
   "members": {
     "title": "Members of {{space}}",
@@ -1209,7 +1236,6 @@
     "remove": "Remove {{name}}",
     "removeShort": "Remove",
     "none": "No members yet.",
-    "addName": "Name of an account",
     "role": "Right",
     "add": "Add",
     "invite": {
@@ -1272,51 +1298,13 @@
     "title": "Server",
     "text": "Only you see this part, as the operator.",
     "accounts": {
-      "title": "Accounts",
-      "text": "Everybody who can sign in here.",
-      "signIn": {
-        "password": "password",
-        "oidc": "provider"
-      },
-      "never": "never signed in",
-      "locked": "locked for a while after wrong passwords",
-      "makeMember": "Make member",
-      "makeOperator": "Make operator",
-      "newPassword": "New password",
-      "passwordSet": "Password set. The account was signed out everywhere.",
-      "signOut": "Sign out",
-      "signedOut": "Signed out everywhere.",
-      "yourPassword": "Your own password",
-      "operatorTitle": "Make {{name}} an operator?",
-      "operatorText": "An operator sees every account and every setting, and can restore backups.",
-      "memberTitle": "Make {{name}} a member?",
-      "memberText": "A member keeps the spaces and rights they have, without the settings of the server.",
-      "delete": "Delete",
-      "deleteTitle": "Delete the account {{name}}?",
-      "deleteText": "Its rights go with it; its notes stay where they are. A space it was alone in becomes yours.",
-      "inviteTitle": "Invite into nexlore",
-      "inviteText": "Without a space: the new account makes its own spaces or is added to others later.",
-      "noEmail": "no address",
-      "twoFactor": "second factor on",
-      "resetFactor": "Reset second factor",
-      "resetTitle": "Reset the second factor of {{name}}?",
-      "resetText": "For a lost phone. The account is signed out everywhere and signs in with its password alone until it sets up a new one.",
-      "resetDone": "Second factor reset. The account was signed out everywhere.",
-      "email": "Mail address",
-      "emailFor": "Mail address for {{name}}",
-      "emailHint": "Counts at once, without confirmation. {{name}} sees under New that you set it. Leave it empty and save to remove it.",
-      "emailOwnHint": "Counts at once, without confirmation. Leave it empty and save to remove it.",
-      "emailSave": "Save",
-      "emailCancel": "Cancel",
-      "emailSaved": "Mail address saved.",
-      "noAddress": "No mail address",
-      "emailWaits": "waiting for confirmation: {{address}}",
-      "emailConfirmed": "confirmed",
-      "unlink": "Unlink",
-      "unlinkFrom": "Unlink from {{name}}",
-      "unlinkTitle": "Unlink {{name}} from {{provider}}?",
-      "unlinkText": "The account can no longer sign in through {{provider}} until it links itself again in its profile.",
-      "unlinked": "Unlinked."
+      "withdrawn": "Invitation withdrawn.",
+      "spacesFact": "Spaces",
+      "storageFact": "Uploaded",
+      "removeWhat": "Its rights go with it, its notes stay; a space it was alone in is yours then.",
+      "removeAlone_one": "It is alone in this space: {{spaces}}.",
+      "removeAlone_other": "It is alone in these spaces: {{spaces}}.",
+      "whatYouSee": "As the operator you see names, sign-in, roles, storage and the spaces with their members, but never a title or a word of somebody else’s notes."
     },
     "spaces": {
       "title": "All spaces",
@@ -1339,7 +1327,7 @@
     },
     "mail": {
       "title": "Mail server",
-      "text": "nexlore sends its mail through it. Without a server nothing goes out.",
+      "text": "The mail server nexlore sends invitations through, links to confirm an address and for a new password, notices about signing in, notifications and notices to the operator.",
       "host": "Server",
       "port": "Port",
       "security": "Encryption",
@@ -1361,9 +1349,9 @@
       "title": "Files",
       "text": "Where uploads go and how much they may take.",
       "folder": "Attachment folder",
-      "perFile": "Largest file (MB)",
-      "quota": "Space per account (MB)",
-      "quotaHint": "0 is no limit.",
+      "perFile": "Largest file per attachment (MB)",
+      "quota": "Storage for new accounts (GB)",
+      "quotaHint": "What every new account starts with. Empty means no limit.",
       "strip": "Remove place and device from photos",
       "stripHint": "On upload, from pictures and videos. The picture itself stays as it is.",
       "pasted": "Name of pasted pictures",
@@ -1377,84 +1365,12 @@
       "renamed_one": "One folder renamed.",
       "renamed_other": "{{count}} folders renamed.",
       "left_one": "One folder kept its name because one with the new name stands beside it: {{list}}",
-      "left_other": "{{count}} folders kept their name because one with the new name stands beside them: {{list}}"
-    },
-    "backups": {
-      "title": "Backups",
-      "text": "Notes, files, the trash and the database in one archive.",
-      "schedule": "Automatically",
-      "every": {
-        "off": "never",
-        "daily": "every night",
-        "weekly": "every week"
-      },
-      "keep": "Keep",
-      "make": "Back up now",
-      "made": "Backup made.",
-      "notes_one": "{{count}} note",
-      "notes_other": "{{count}} notes",
-      "kind": {
-        "manual": "by hand",
-        "scheduled": "scheduled",
-        "update": "before a restore"
-      },
-      "check": "Check",
-      "restore": "Restore",
-      "download": "Download",
-      "password": "Your password",
-      "downloaded": "The backup is being saved.",
-      "delete": "Delete",
-      "none": "No backups yet.",
-      "usable": "The archive is complete and readable.",
-      "damaged": "The archive is damaged. It cannot be restored.",
-      "would": "A restore would add {{add}}, change {{change}} and remove {{remove}} files.",
-      "restarting": "nexlore restarts with the backup. Sign in again in a moment.",
-      "restartingWait": "This page waits and goes to the sign-in as soon as nexlore is back.",
-      "upload": "Upload a backup",
-      "uploaded": "uploaded",
-      "uploadedHint": "Uploaded. It is in the list now: check it first, then restore.",
-      "confirm": {
-        "restore": {
-          "title": "Restore this backup?",
-          "text": "The current state is backed up first. nexlore then restarts, and everybody signs in again.",
-          "button": "Restore"
-        },
-        "download": {
-          "title": "Download this backup?",
-          "text": "It holds every note, file and account and the key of the server. It is not encrypted.",
-          "button": "Download"
-        },
-        "delete": {
-          "title": "Delete this backup?",
-          "text": "It cannot be brought back.",
-          "button": "Delete"
-        },
-        "upload": {
-          "title": "Upload a backup?",
-          "text": "The file joins the list of backups. Nothing is restored until you confirm it there.",
-          "button": "Upload"
-        }
-      }
-    },
-    "languages": {
-      "title": "Languages",
-      "text": "Own translations, from the template under Language. A file for de or en replaces only the texts it holds; all others stay as shipped.",
-      "remove": "Remove",
-      "none": "No languages of your own.",
-      "code": "Code",
-      "file": "JSON file",
-      "upload": "Upload",
-      "added": "Language added. It takes effect as soon as a page is loaded again."
+      "left_other": "{{count}} folders kept their name because one with the new name stands beside them: {{list}}",
+      "limitsTitle": "Limits",
+      "perAccount": "The limit of one account is set under Server › Accounts › Manage."
     },
     "mcp": {
-      "title": "AI from outside (MCP)",
-      "text": "Off by default. Switched on, every account makes keys of its own; a key never sees more than its account.",
-      "allow": "Allow MCP",
-      "allowHint": "Programs outside reach notes with a key per account.",
       "maxLevel": "Highest level a key may have",
-      "keysWhere": "Keys are made by every account for itself, under My account → Connections → AI from outside, with the lines to paste into a program.",
-      "keysLater": "Once it is on, every account makes its keys under My account.",
-      "keysLink": "Go to my keys",
       "oauth": "Connectors may sign in",
       "oauthHint": "Programs add nexlore with its address and sign in through a page of nexlore (OAuth). nexlore must be reachable over HTTPS for that.",
       "blocked": "Tools blocked for everybody",
@@ -1484,7 +1400,7 @@
       "uploadText": "Once you let it out, this plugin runs for everybody who switches it on. Through WebRTC it could send the notes it is shown to somewhere else. Upload only code you have read, or whose author you trust.",
       "uploadConfirm": "Upload anyway",
       "upload": "Upload",
-      "nextStep": "Let out: every account can now switch it on for itself under My account → Plugins for me.",
+      "nextStep": "Let out: every account can now switch it on for itself under My account › Plugins.",
       "toMine": "Go there",
       "enableMine": "Switch it on for me",
       "enabledMine": "On for you"
@@ -1494,14 +1410,14 @@
       "text": "AI corrects and writes in the editor, and Lore answers questions about the notes. Text that is chosen or asked about leaves the server for the AI service.",
       "allow": "Allow AI in notes",
       "allowHint": "Off: nothing goes out, and the editor offers no AI. Accounts keep their access for later.",
-      "where": "Each account sets up its service under My account → Connections → AI in notes.",
+      "where": "Each account sets up its service under My account › AI.",
       "whereLink": "Go to my access",
       "hosts": "Services in your own network",
       "hostsHint": "Hosts members may use as AI service although they are in your network or on this machine, separated by commas: 192.168.1.20, ollama.lan:11434. Every other address in your network is refused; public addresses always work.",
       "mode": "Who brings the AI service?",
       "modes": {
         "own": "Each on their own",
-        "ownText": "Every account puts in its own service under My account. Without one, it cannot ask Lore.",
+        "ownText": "Every account puts in its own service under My account › AI. Without one, it cannot ask Lore.",
         "shared": "One for all",
         "sharedText": "You put in one service here and every account uses it. The accounts' own accesses rest."
       },
@@ -1516,7 +1432,9 @@
       "embedProgress": "{{done}} of {{total}} notes read in",
       "embedNotHere": "This service offers no models for vectors: finding by meaning needs another one, such as Ollama or OpenAI.",
       "loreAllow": "Allow Ask Lore",
-      "loreAllowHint": "Off: no spider in the corner and no Ask Lore in the header. On, everybody whose AI service is ready can ask Lore about the notes they may read."
+      "loreAllowHint": "Off: no spider in the corner and no Ask Lore in the header. On, everybody whose AI service is ready can ask Lore about the notes they may read.",
+      "loreTitle": "Ask Lore and meaning",
+      "loreText": "Lore answers questions about the notes with the service above; a model for vectors lets it find notes by meaning."
     },
     "guide": {
       "title": "The guide",
@@ -1526,37 +1444,15 @@
       "made": "Made the space “{{space}}”.",
       "open": "Open it"
     },
-    "apiTokens": {
-      "title": "API tokens",
-      "text": "Accounts connect nexlore with programs such as n8n or nexdeck. A token can never do more than its account and deletes, moves and shares nothing. Off by default.",
-      "allow": "Accounts may make API tokens",
-      "allowHint": "Every account makes its own tokens under My account → Connections.",
-      "account": "Account",
-      "token": "Token",
-      "level": "Level",
-      "spaces": "Spaces",
-      "used": "Last used",
-      "allSpaces": "all",
-      "someSpaces_one": "{{count}} space",
-      "someSpaces_other": "{{count}} spaces",
-      "blocked": "blocked",
-      "block": "Block",
-      "blockNamed": "Block token {{name}} of {{account}}",
-      "blockTitle": "Block the token “{{name}}” of {{account}}?",
-      "blockText": "The token then answers like none, for good. The account sees it as “blocked by the operator” and may make a new one while API tokens are on.",
-      "offHint": "Switch API tokens off and every token answers 401. The tokens stay and work again when you switch them on."
-    },
     "providers": {
       "order": "Move {{name}}: drag, or the arrow keys",
       "coupled": "through the coupling",
       "copy": "Copy",
       "more": "More"
     },
-    "app": {
-      "title": "iPhone app",
-      "text": "Accounts connect the own iPhone app to nexlore. It can do nothing the browser cannot. On from the start.",
-      "allow": "The iPhone app may connect",
-      "hint": "Off, no device gets in any more and none can be connected anew. Connected devices stay and work again when you switch it on."
+    "features": {
+      "title": "Features for all accounts",
+      "text": "What every account may use on this server."
     }
   },
   "today": {
@@ -1639,7 +1535,10 @@
       "done": "done",
       "cancelled": "cancelled",
       "non_task": "not a task"
-    }
+    },
+    "next": "Next",
+    "nextNone": "Nothing with a date is open.",
+    "views": "Views"
   },
   "newNote": {
     "title": "New note in “{{folder}}”",
@@ -1701,7 +1600,16 @@
     "install": "Install",
     "later": "Don't ask again",
     "menu": "Install as an app",
-    "notNow": "Not now"
+    "notNow": "Not now",
+    "card": {
+      "title": "Install on this device",
+      "installed": "nexlore runs installed on this device.",
+      "asked": "The browser asked; if you said yes, nexlore is on your home screen now.",
+      "ios": "In Safari, tap “Share”, then “Add to Home Screen”.",
+      "safari": "In Safari, choose File, then “Add to Dock”.",
+      "firefox": "Firefox cannot install web apps. Use Chrome, Edge or Safari for that.",
+      "other": "Your browser offers it in its menu, as “Install app” or “Add to home screen”."
+    }
   },
   "mcp": {
     "title": "AI from outside (MCP)",
@@ -1737,7 +1645,7 @@
       "write": "Changes notes directly: every change a version, a conflict copy when the note changed in the meantime."
     },
     "off": "The operator has not switched on AI from outside, so there are no keys to make here.",
-    "offOperator": "Switch it on under Settings → Server → AI, API and plugins.",
+    "offOperator": "Switch it on under Server › General › Interfaces.",
     "nextStep": "Next: give your AI program the address and the key. Programs that read an mcp.json (Cursor, for example, or a project’s .mcp.json) take the JSON below; Claude Code takes the command. Others ask for the same two things in their own settings. The key works until you revoke it.",
     "recipeJson": "JSON in the mcp.json format",
     "copyNamed": "Copy: {{what}}",
@@ -1868,21 +1776,14 @@
     },
     "none": "The operator has not let out a plugin yet. Once they do, you switch it on for yourself here.",
     "noneOperator": "No plugin is installed and let out yet. Four checked ones wait in the catalog: contents, query, kanban and rediscover.",
-    "toCatalog": "To the catalog under Server → AI, API and plugins"
+    "toCatalog": "To the catalog under Server › Plugins"
   },
   "twofactor": {
-    "title": "Second factor",
-    "lead": "Besides the password, a code from an app on your phone (any authenticator app that takes a QR code). Recovery codes on paper get you in when the phone is gone.",
     "provider": "You sign in through the provider; its second factor applies.",
-    "off": "Off.",
-    "on_one": "On. {{count}} recovery code left.",
-    "on_other": "On. {{count}} recovery codes left.",
-    "enable": "Set up",
     "scan": "Scan this code with the app, or type the key below into it. Then give the code the app shows, and your password.",
     "qr": "QR code for the authenticator app",
     "secret": "Key to type in:",
     "code": "Code from the app",
-    "codeHint": "Six digits. Or one of your recovery codes.",
     "passwordHint": "Proves it is you at the keyboard.",
     "confirm": "Turn on",
     "codesTitle": "Your recovery codes",
@@ -2146,7 +2047,7 @@
     "title": "Calendar subscription",
     "text": "Your open tasks with a date as an address your calendar subscribes to (internet calendar, ICS). It asks for it again about every hour.",
     "closed": "The operator has not switched calendar subscriptions on.",
-    "closedOperator": "Switch them on under Settings → Server → AI, API and plugins, card Calendar subscriptions.",
+    "closedOperator": "Switch them on under Server › General › Features for all accounts.",
     "none": "No address yet.",
     "active": "An address is active. It is shown only once; a new one replaces it.",
     "make": "Make an address",
@@ -2159,29 +2060,6 @@
     "adminText": "Every account can make an address for its calendar, with its open tasks that have a date. The tasks leave the house that way.",
     "allow": "Allow calendar subscriptions",
     "allowHint": "Switched off, every address answers as if it did not exist."
-  },
-  "log": {
-    "title": "Log",
-    "text": "The newest lines of the server's log. Passwords, keys and note texts are never in it.",
-    "level": "Level",
-    "all": "All",
-    "search": "Contains",
-    "refresh": "Reload",
-    "empty": "No lines.",
-    "detail": "Detail",
-    "detailFixed": "Detail (fixed by the environment)",
-    "modes": {
-      "quiet": "Quiet",
-      "normal": "Normal",
-      "detailed": "Detailed (1 hour)",
-      "trace": "Everything (1 hour)"
-    },
-    "until": "Back to normal at {{time}}.",
-    "download": "Download",
-    "clear": "Clear",
-    "clearTitle": "Clear the log?",
-    "clearText": "Every line goes, the older files too.",
-    "cleared": "The log is empty."
   },
   "comments": {
     "title": "Comments",
@@ -2235,7 +2113,7 @@
     "title": "AI in notes",
     "text": "Your own AI service corrects, rewrites, translates, summarizes and writes in the editor. You pay for its key yourself; a result is always shown next to the text first and changes nothing until you take it over.",
     "off": "The operator has not switched on AI in notes.",
-    "offOperator": "Switch it on under Settings → Server → AI, API and plugins.",
+    "offOperator": "Switch it on under Server › AI provider.",
     "tiles": "Fill in the address of a service",
     "getKey": "Get a key from {{name}}",
     "address": "Address (any service that speaks the usual chat interface)",
@@ -2463,7 +2341,7 @@
   "connect": {
     "title": "{{name}} wants to use nexlore",
     "text": "Signed in as {{account}}. Afterwards you are sent back to {{host}}.",
-    "after": "The program then appears under My account, Connections, like a key, with the same rights per tool. You disconnect it there at any time.",
+    "after": "The program then appears under My account › Connections › AI tools (MCP), with the same rights per tool as a key. You disconnect it there at any time.",
     "allow": "Allow",
     "decline": "Decline",
     "failed": "This sign-in cannot go on",
@@ -2471,6 +2349,7 @@
   },
   "notify": {
     "ways": "Where notifications go",
+    "devicesNote": "The iPhone and iPad app gets no notifications from nexlore; it is connected under “Connections”.",
     "waysText": "A webhook of your choosing, for example a notification inbox like nexsift, and mail when the operator set up a mail server.",
     "webhook": "Webhook address",
     "webhookSave": "Save",
@@ -2497,7 +2376,7 @@
       "approval": "Approvals for AI programs",
       "tasks": "Tasks of the day",
       "operator": "Server troubles",
-      "tokens": "API tokens run out"
+      "tokens": "API keys run out"
     },
     "occasionHint": {
       "mention": "Somebody names you with @ in a comment, or answers in a thread you take part in.",
@@ -2505,7 +2384,7 @@
       "approval": "An AI program waits for your yes.",
       "tasks": "Once a day at the time below: what is due today or overdue.",
       "operator": "For operators: a backup failed, a newer version is out, the disk runs full.",
-      "tokens": "Seven days before one of your API tokens runs out, once per token."
+      "tokens": "Seven days before one of your API keys runs out, once per key."
     },
     "tasksTime": "Time for the tasks of the day",
     "emailNoAddressLink": "Enter it in the profile",
@@ -2516,42 +2395,11 @@
     "link": "Set it up"
   },
   "apiTokens": {
-    "title": "API tokens",
-    "text": "For programs such as n8n or nexdeck. A token may do what you may, limited to its level and its spaces. Deleting, moving and sharing never go through a token.",
-    "none": "No tokens yet.",
-    "new": "New token",
-    "name": "Name, so you know it again",
-    "levelTitle": "Level",
     "level": {
       "read": "Read",
       "write": "Write"
     },
-    "levelText": {
-      "read": "Spaces, notes, search, tasks, numbers. Changes nothing.",
-      "write": "Also makes and changes notes, appends, the daily note, the inbox, ticks tasks off. Each change becomes a version with the source “Program (API)”. Never deletes, moves or shares."
-    },
-    "where": "Spaces",
-    "lifetime": "Runs out",
-    "lifetimeDays": {
-      "30": "in 30 days",
-      "90": "in 90 days",
-      "365": "in a year"
-    },
-    "lifetimeNever": "never",
-    "make": "Make",
-    "shownOnce": "Token “{{name}}” made. It is shown only now. Copy it into your program; nexlore keeps only a checksum.",
-    "header": "As a header in n8n (HTTP Request, Header Auth) or nexdeck",
-    "tryIt": "To try it",
-    "never": "never runs out",
-    "runsOut": "runs out on {{day}}",
-    "ranOut": "ran out on {{day}}",
-    "blocked": "blocked by the operator",
-    "delete": "Delete",
-    "deleteNamed": "Delete token {{name}}",
-    "off": "The operator has not switched API tokens on. Ask them if you want to connect nexlore with n8n or nexdeck.",
-    "offOperator": "Switch them on under Settings → Server → AI, API and plugins.",
-    "whatItDoes": "What the API does",
-    "whatItDoesText": "Every request carries the token in the header Authorization: Bearer, the answers are JSON. Writing needs the level Write and the right in the space."
+    "spaces": "Spaces"
   },
   "lore": {
     "title": "Ask Lore",
@@ -2736,9 +2584,7 @@
     "morePages": "More pages in the reader: {{pages}}"
   },
   "confirmEmail": {
-    "busy": "Confirming …",
     "title": "Address confirmed",
-    "text": "{{email}} now counts for your account {{name}}. Invitations and notifications by mail go there from now on.",
     "failed": "Not confirmed",
     "toApp": "To nexlore"
   },
@@ -2801,7 +2647,7 @@
   "appConnect": {
     "title": "Connect iPhone",
     "text": "Signed in as {{account}}. The device “{{device}}” wants to connect.",
-    "rights": "It gets the same rights as this browser. You can disconnect it at any time under My account, Security.",
+    "rights": "It gets the same rights as this browser. You can disconnect it at any time under My account › Connections › Devices.",
     "confirm": "Connect iPhone",
     "cancel": "Cancel",
     "doneTitle": "Back to the app",
@@ -2865,5 +2711,19 @@
     "strokes_other": "{{count}} strokes",
     "cardHint": "Double click to draw",
     "notDrawable": "This drawing cannot be drawn in here: {{reason}}"
+  },
+  "emailLink": {
+    "title": "Confirm the new address",
+    "submit": "Confirm"
+  },
+  "storage": {
+    "holds": "Notes, files, the trash and the database in one archive.",
+    "counts": "{{notes}}, {{files}}",
+    "notes_one": "{{count}} note",
+    "notes_other": "{{count}} notes",
+    "files_one": "{{count}} file",
+    "files_other": "{{count}} files",
+    "would": "A restore would add {{add}} files, change {{change}} and remove {{remove}}.",
+    "trash": "Trash"
   }
 }

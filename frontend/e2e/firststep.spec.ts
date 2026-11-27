@@ -4,6 +4,7 @@
  * nothing goes out that only meets 401.
  */
 import { request, type Browser, type Page } from '@playwright/test'
+import { signOut } from './account'
 import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'makes accounts of its own')
@@ -25,8 +26,8 @@ async function newcomer(page: Page, browser: Browser, baseURL: string, name: str
   const other = await context.newPage()
   await other.setViewportSize({ width: 1440, height: 900 })
   await other.goto('/login')
-  await other.getByLabel('Name').fill(name)
-  await other.getByLabel('Password').fill(PASSWORD)
+  await other.getByLabel('Username or email').fill(name)
+  await other.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await other.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(other).not.toHaveURL(/\/login/)
   return other
@@ -42,7 +43,7 @@ test('an empty sign-in names the empty field and asks the server nothing (P1.22)
   await page.goto('/login')
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page.getByText('Enter a name.')).toBeVisible()
-  await page.getByLabel('Name').fill('somebody')
+  await page.getByLabel('Username or email').fill('somebody')
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page.getByText('Enter a password.')).toBeVisible()
   expect(asked).toEqual([])
@@ -73,21 +74,25 @@ test('an account without a space is shown the first step, with a button for it (
   await other.context().close()
 })
 
-test('an invitation writes the name in small letters and names an empty field (P1.22)', async ({ page, browser, baseURL }) => {
+test('an invitation suggests the username in small letters and names a password too short (P1.22)', async ({ page, browser, baseURL }) => {
   const invite = await page.request.post('/api/invites', { data: { days: 1, email: '', send: false }, headers: TAB })
   const link = new URL((await invite.json()).link)
   const context = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] } })
   const guest = await context.newPage()
   await guest.goto(link.pathname)
-  const name = guest.getByLabel('Name')
-  await name.fill('Neuling')
-  await expect(name).toHaveValue('neuling')
+  // The username follows the display name (the shared account module), in small letters.
+  await guest.getByLabel('Display name').fill('Neuling')
+  await expect(guest.getByLabel('Username')).toHaveValue('neuling')
   await guest.getByRole('button', { name: 'Create account' }).click()
-  await expect(guest.getByText('Enter a password.')).toBeVisible()
+  await expect(guest.getByText('The password needs at least 12 characters.')).toBeVisible()
   await context.close()
-  // Without a mail server the mail field says that nothing is sent (P1.24).
+  // Without a mail server nothing is sent: inviting offers no mail, only the link (P1.24).
   await page.goto('/settings?tab=server&sub=accounts')
-  await expect(page.getByText('Without a mail server nexlore sends nothing').first()).toBeVisible()
+  await page.getByTestId('invite-open').click()
+  const dialog = page.getByTestId('invite-dialog')
+  await dialog.getByLabel('Email').fill('guest@example.com')
+  await expect(dialog.getByRole('checkbox')).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'Create link' })).toBeVisible()
 })
 
 test('after signing out from an open note nothing goes out that meets 401 (P1.23)', async ({ page, browser, baseURL }, testInfo) => {
@@ -96,10 +101,10 @@ test('after signing out from an open note nothing goes out that meets 401 (P1.23
   await expect(other.locator('.nn-prose')).toBeVisible()
   const refused: string[] = []
   other.on('response', (answer) => answer.status() === 401 && refused.push(answer.url()))
-  await other.getByRole('button', { name: /^Account of / }).click()
-  await other.getByRole('button', { name: 'Sign out', exact: true }).click()
+  // To the settings with the picture at the foot of the sidebar, and out (there is no account menu any more).
+  await signOut(other)
   await expect(other).toHaveURL(/\/login/)
-  // Long enough for the polls of the note and the account menu to have come round once more.
+  // Long enough for the polls of the note and the sidebar to have come round once more.
   await other.waitForTimeout(6_000)
   expect(refused).toEqual([])
   await other.context().close()

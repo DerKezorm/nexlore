@@ -27,7 +27,8 @@ test.describe('a German browser', () => {
 
   test('gets German', async ({ page }) => {
     await page.goto('/settings')
-    await expect(page.getByRole('heading', { name: 'Einstellungen', level: 1 })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Profil', level: 1 })).toBeVisible()
+    await expect(page.getByTestId('settings-nav')).toContainText('Mein Konto')
     await expect(page.locator('html')).toHaveAttribute('lang', 'de')
   })
 })
@@ -37,22 +38,20 @@ test('the operator language is offered, falls back to English where it has no te
   try {
     const problems = collectProblems(page)
     await page.goto('/settings')
-    const select = page.getByLabel('Language of the interface')
-    await expect(select.locator('option')).toHaveText(['Deutsch', 'English', 'Español (added by the operator)'])
+    // The language is a field of the profile (the shared account module), empty follows the browser.
+    const select = page.getByTestId('profile-card').getByLabel('Language', { exact: true })
+    await expect(select.locator('option')).toHaveText(['As the browser', 'Deutsch', 'English', 'Español (added by the operator)'])
     // The interface speaks it at once, the account keeps it after: the reload below must not cut that off.
     const kept = page.waitForResponse((answer) => answer.url().endsWith('/api/me/language') && answer.request().method() === 'PUT')
     await select.selectOption('es')
     expect((await kept).ok()).toBe(true)
-    // The settings sit in the account menu: its link says it in Spanish.
-    const account = page.getByRole('banner').getByRole('button', { name: /^Account of / })
-    await account.click()
-    await expect(page.getByRole('link', { name: 'Ajustes' })).toBeVisible()
-    await page.keyboard.press('Escape')
+    // The way to the settings at the foot of the sidebar says it in Spanish.
+    const account = page.getByRole('link', { name: / · Ajustes$/ })
+    await expect(account).toBeVisible()
     // Not in the Spanish file: English instead of a raw key.
-    await expect(page.getByRole('heading', { name: 'Language', level: 2, exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Profile', level: 2, exact: true })).toBeVisible()
     await page.reload()
-    await account.click()
-    await expect(page.getByRole('link', { name: 'Ajustes' })).toBeVisible()
+    await expect(account).toBeVisible()
     await expect(page.locator('html')).toHaveAttribute('lang', 'es')
     // The choice went with the account: a fresh browser of the same account starts in Spanish too.
     expect((await (await page.request.get('/api/auth/me')).json()).language).toBe('es')
@@ -64,7 +63,8 @@ test('the operator language is offered, falls back to English where it has no te
 })
 
 test('the template downloads as the English texts with a _meta entry', async ({ page }) => {
-  await page.goto('/settings')
+  // Beside the languages the operator added (it stood beside the own language in the profile before).
+  await page.goto('/settings/general')
   const download = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Download template' }).click()
   const file = await download
@@ -72,6 +72,39 @@ test('the template downloads as the English texts with a _meta entry', async ({ 
   const content = JSON.parse(fs.readFileSync((await file.path())!, 'utf-8'))
   expect(content._meta.name).toBeTruthy()
   expect(content.nav.settings).toBe('Settings')
+})
+
+test('the operator adds a language with its code and "Upload language", sees it as a chip and takes it out again', async ({ page }) => {
+  test.skip(!!process.env.E2E_BASE_URL, 'writes a language file')
+  const headers = { 'X-Nexlore-Client': 'tab-e2elanguage' }
+  await page.request.delete('/api/locales/eo', { headers })
+  try {
+    await page.goto('/settings/general')
+    const card = page.locator('[data-card="languages"]')
+    await expect(card.getByTestId('languages-list')).toContainText('Deutsch · built in')
+    // The kit's file button: "Upload language" beside the field, the file chosen at the click (as nexnotes).
+    await expect(card.getByTestId('language-upload')).toContainText('Upload language')
+    const file = card.getByTestId('language-upload-file')
+    // Without a code there is nothing to upload.
+    await expect(file).toBeDisabled()
+    await card.getByLabel('Language code').fill('eo')
+    await file.setInputFiles({ name: 'eo.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ _meta: { name: 'Esperanto' }, nav: { settings: 'Agordoj' } })) })
+    await expect(card).toContainText('Language added.')
+    const chip = card.getByTestId('language-eo')
+    await expect(chip).toContainText('Esperanto (eo)')
+    // Removing asks first (sprachen 1.0.1): cancelled, the language stays; confirmed, it goes.
+    await chip.getByRole('button', { name: 'Remove Esperanto' }).click()
+    const asked = page.getByTestId('language-remove-dialog')
+    await expect(asked).toBeVisible()
+    await asked.getByRole('button', { name: 'Cancel' }).click()
+    await expect(asked).toHaveCount(0)
+    await expect(chip).toBeVisible()
+    await chip.getByRole('button', { name: 'Remove Esperanto' }).click()
+    await page.getByTestId('language-remove-dialog').getByRole('button', { name: 'Remove language' }).click()
+    await expect(card.getByTestId('language-eo')).toHaveCount(0)
+  } finally {
+    await page.request.delete('/api/locales/eo', { headers })
+  }
 })
 
 test('the server sends the security headers with the page', async ({ request }) => {
@@ -96,7 +129,7 @@ test('a file of the operator for English lays its words over the shipped ones (P
   }
 })
 
-test('the language picked in the account menu holds the first time, even when saving it takes a while', async ({ page }) => {
+test('the language picked in the profile holds the first time, even when saving it takes a while', async ({ page }) => {
   const headers = { 'X-Nexlore-Client': 'tab-e2elanguage' }
   try {
     await page.request.put('/api/me/language', { data: { language: 'en' }, headers })
@@ -106,21 +139,20 @@ test('the language picked in the account menu holds the first time, even when sa
       await new Promise((resolve) => setTimeout(resolve, 800))
       await route.continue()
     })
-    await page.goto('/')
+    await page.goto('/settings/profile')
     await expect(page.locator('html')).toHaveAttribute('lang', 'en')
     await page.evaluate(() => {
       const seen: string[] = []
       ;(window as unknown as { langs: string[] }).langs = seen
       new MutationObserver(() => seen.push(document.documentElement.lang)).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
     })
-    await page.getByRole('banner').getByRole('button', { name: /^Account of / }).click()
-    const select = page.locator('select').filter({ has: page.locator('option[value="de"]') })
+    const select = page.getByTestId('profile-card').getByLabel('Language', { exact: true })
     await expect(select.locator('option[value="de"]')).toHaveCount(1)
     await select.selectOption('de')
     await expect.poll(async () => (await (await page.request.get('/api/auth/me')).json()).language).toBe('de')
     await page.waitForTimeout(1500)
     expect(await page.evaluate(() => (window as unknown as { langs: string[] }).langs)).toEqual(['de'])
-    await expect(page.getByRole('link', { name: 'Mein Konto' })).toBeVisible()
+    await expect(page.getByTestId('settings-nav')).toContainText('Mein Konto')
   } finally {
     await page.request.put('/api/me/language', { data: { language: '' }, headers })
   }

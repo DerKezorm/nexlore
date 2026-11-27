@@ -1,209 +1,89 @@
 /**
- * Settings in tabs, as in Nexview and nextrmnl: General (the language), Spaces (one's own, with members), and for the
- * operator Server, with a second row for its parts. The tab is in the address (`?tab=server&sub=backups`), so a link
- * can point at one; a tab someone may not see falls back to General.
+ * Settings (plan "Einstellungen") in the frame of the ui kit: `SettingsLayout` with `SettingsNav` (the account at the
+ * top, "Mein Konto", "Server" for the operator, "Über nexlore" set apart at the end) and one `SettingsPage` per area:
+ * its title, one line, then only cards. As before the app's sidebar with the spaces stays on the left. Each area has
+ * its own address (`/settings/<slug>`, `settings/areas.ts`); `/settings` alone is the list on a phone and the profile
+ * beside the navigation on a wider page. An area someone may not open, or an address of before (`/account?tab=…`,
+ * `/settings?tab=…&sub=…`, `/settings/extensions`, `/about`), leads on with the address replaced, so the navigation
+ * always marks where one is. The cards of an area are chosen in `settings/SettingsAreas.tsx`.
  */
-import { useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom'
 
-import {
-  AccountsCard,
-  AllSpacesCard,
-  BackupsCard,
-  FilesSettingsCard,
-  LanguagesCard,
-  MailCard,
-  AiCard,
-  GuideCard,
-  McpCard,
-  ApiTokensCard,
-  SharesCard,
-  CssCard,
-} from '../components/settings/AdminCards'
-import { AdminPluginsCard } from '../plugins/PluginSettings'
-import { useServerSettings } from '../components/settings/useServerSettings'
-import { AppearanceCard } from '../components/settings/AppearanceCard'
-import { HomeSpaceCard, StartCard } from '../components/settings/StartCard'
-import { EditorCard } from '../components/settings/EditorCard'
-import { KeysCard } from '../components/settings/KeysCard'
-import { SnippetsCard } from '../components/settings/SnippetsCard'
-import { ThemesCard } from '../components/settings/ThemesCard'
-import { SpacesCard } from '../components/settings/SpacesCard'
-import { CalendarFeedSwitch } from '../components/settings/CalendarFeed'
-import { AppPairingSwitch } from '../components/settings/AppPairingSwitch'
-import { LinkTitleSwitch } from '../components/settings/LinkTitleSwitch'
-import { LogCard } from '../components/settings/LogCard'
-import { SignInPart } from '../components/settings/SignInCards'
-import { Symbol, type SymbolName } from '../components/Symbol'
-import { TabRow, type Tab } from '../components/TabRow'
-import { downloadTemplate, languageOptions, type LanguageOption } from '../i18n'
+import { Avatar } from '../components/Avatar'
+import { SpacesSidebar } from '../components/Sidebar'
 import { useAuth } from '../state/auth'
+import { areaText, languageOf, NEXUI_TEXTS, NexuiLanguage, SettingsLayout, SettingsNav, SettingsPage as Area, type SettingsGroup } from '../vendor/nexui'
+import { ABOUT_AREA, areaPath, areasFor, findArea, formerAccountAddress, GENERAL_PARTS, GROUPS, resolveArea, type Area as AreaInfo } from './settings/areas'
+import { AreaContent } from './settings/SettingsAreas'
 
-type Top = 'general' | 'looks' | 'spaces' | 'server'
-type Part = 'accounts' | 'signin' | 'mail' | 'shares' | 'extensions' | 'files' | 'backups' | 'languages' | 'log'
-const TOPS: Top[] = ['general', 'looks', 'spaces', 'server']
-const PARTS: Part[] = ['accounts', 'signin', 'mail', 'shares', 'extensions', 'files', 'backups', 'languages', 'log']
-const TOP_SYMBOL: Record<Top, SymbolName> = { general: 'globe', looks: 'eye', spaces: 'space', server: 'shield' }
-const PART_SYMBOL: Record<Part, SymbolName> = {
-  accounts: 'users', signin: 'key', mail: 'mail', shares: 'globe', extensions: 'plug', files: 'files', backups: 'history', languages: 'globe', log: 'info',
-}
+const APP = 'nexlore'
 
 export function SettingsPage() {
-  const { t } = useTranslation()
-  const { me } = useAuth()
-  const [params, setParams] = useSearchParams()
-  const operator = me?.role === 'operator'
-  const asked = params.get('tab') as Top | null
-  const top: Top = asked && TOPS.includes(asked) && (asked !== 'server' || operator) ? asked : 'general'
-  const askedPart = params.get('sub') as Part | null
-  const part: Part = askedPart && PARTS.includes(askedPart) ? askedPart : 'accounts'
-  const go = (next: Top, sub?: Part) => setParams(next === 'general' ? {} : sub ? { tab: next, sub } : { tab: next }, { replace: true })
-
-  const tops: Tab<Top>[] = TOPS.filter((value) => value !== 'server' || operator).map((value) => ({
-    value, label: t(`settings.tabs.${value}`), symbol: TOP_SYMBOL[value],
-  }))
-  const parts: Tab<Part>[] = PARTS.map((value) => ({ value, label: t(`settings.parts.${value}`), symbol: PART_SYMBOL[value] }))
-
-  return (
-    <main className="nn-scroll flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-4xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
-        <h1 className="text-2xl font-bold tracking-tight">{t('settings.title')}</h1>
-        <TabRow tabs={tops} active={top} onChange={(value) => go(value)} label={t('settings.title')} />
-        {top === 'server' && <TabRow under tabs={parts} active={part} onChange={(value) => go('server', value)} label={t('settings.tabs.server')} />}
-        <div className="space-y-6 pt-1">
-          {top === 'general' && <LanguageCard />}
-          {top === 'general' && <StartCard />}
-          {top === 'general' && <EditorCard />}
-          {top === 'general' && <HomeSpaceCard />}
-          {top === 'general' && <KeysCard />}
-          {top === 'looks' && (
-            <>
-              {/* The themes first: the fonts and sizes below them fill a screen, and the themes were lost under them. */}
-              <ThemesCard />
-              <AppearanceCard />
-              <SnippetsCard />
-            </>
-          )}
-          {top === 'spaces' && <SpacesCard />}
-          {top === 'server' && <ServerPart part={part} />}
-        </div>
-      </div>
-    </main>
-  )
-}
-
-/** One part of the server, for the operator. */
-function ServerPart({ part }: { part: Part }) {
-  const [settings, setSettings] = useServerSettings()
-  switch (part) {
-    case 'accounts':
-      return (
-        <>
-          <AccountsCard />
-          <AllSpacesCard />
-        </>
-      )
-    case 'mail':
-      // Its own part since issue #13: it carries invitations, notifications and the links confirming an address.
-      return settings && <MailCard settings={settings} onChange={setSettings} />
-    case 'signin':
-      return settings && <SignInPart settings={settings} onChange={setSettings} />
-    case 'shares':
-      return settings && <SharesCard settings={settings} onChange={setSettings} />
-    case 'extensions':
-      return (
-        settings && (
-          <>
-            <ApiTokensCard settings={settings} onChange={setSettings} />
-            <AppPairingSwitch settings={settings} onChange={setSettings} />
-            <McpCard settings={settings} onChange={setSettings} />
-            <CalendarFeedSwitch settings={settings} onChange={setSettings} />
-            <LinkTitleSwitch settings={settings} onChange={setSettings} />
-            <AiCard settings={settings} onChange={setSettings} />
-            <CssCard settings={settings} onChange={setSettings} />
-            <AdminPluginsCard settings={settings} onChange={setSettings} />
-          </>
-        )
-      )
-    case 'log':
-      return <LogCard />
-    case 'files':
-      return (
-        <>
-          <FilesSettingsCard />
-          <GuideCard />
-        </>
-      )
-    case 'backups':
-      return settings && <BackupsCard settings={settings} onChange={setSettings} />
-    case 'languages':
-      return <LanguagesCard />
-  }
-}
-
-function LanguageCard() {
   const { t, i18n } = useTranslation()
-  const { setLanguage, me } = useAuth()
-  const operator = me?.role === 'operator'
-  const [options, setOptions] = useState<LanguageOption[]>([])
-
-  useEffect(() => {
-    let alive = true
-    void languageOptions().then((list) => alive && setOptions(list))
-    return () => {
-      alive = false
-    }
-  }, [])
-
+  const { me } = useAuth()
+  const { area: asked } = useParams()
+  const { search, hash } = useLocation()
+  if (!me) return null
+  const where = resolveArea(asked, me.role, search, hash)
+  if ('redirect' in where) return <Navigate to={where.redirect} replace />
+  const area = findArea(where.area)
+  if (!area) return null
+  const things = t('settings.things')
+  const thingsDative = t('settings.thingsDative')
+  const kit = NEXUI_TEXTS[languageOf(i18n.language)]
+  const words = (info: AreaInfo) => {
+    const shared = areaText(kit, info.slug, { app: APP, things, thingsDative })
+    if (!info.own) return shared ?? { title: info.slug, text: '' }
+    return { title: shared?.title || t(`settings.areas.${info.key}.title`), text: t(`settings.areas.${info.key}.text`) }
+  }
+  const groups: SettingsGroup[] = GROUPS.map((group) => ({
+    id: group,
+    areas: areasFor(me.role)
+      .filter((entry) => entry.group === group)
+      .map((entry) => ({ slug: entry.slug, icon: entry.icon, href: areaPath(entry.slug), title: entry.own ? words(entry).title : undefined })),
+  }))
+  const shown = me.display_name || me.name
+  const own = area.own ? words(area) : null
   return (
-    <Card symbol="globe" title={t('settings.language.title')} text={operator ? t('settings.language.text') : t('settings.language.textMember')}>
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-ink-700 bg-ink-850 px-4 py-3 text-sm">
-        <label htmlFor="language" className="font-medium">
-          {t('settings.language.choose')}
-        </label>
-        <select
-          id="language"
-          value={i18n.language}
-          onChange={(e) => void setLanguage(e.target.value)}
-          className="rounded-lg border border-ink-700 bg-ink-900 px-2.5 py-1.5 text-sm text-mist-100"
-        >
-          {options.map((option) => (
-            <option key={option.code} value={option.code}>
-              {option.name}
-              {option.added ? ` (${t('settings.language.added')})` : ''}
-            </option>
-          ))}
-        </select>
-        {operator && (
-        <button
-          type="button"
-          onClick={downloadTemplate}
-          className="ml-auto inline-flex items-center gap-2 rounded-full border border-ink-700 px-3.5 py-1.5 text-sm text-mist-300 hover:bg-ink-800"
-          title={t('settings.language.templateHint')}
-        >
-          <Symbol name="download" /> {t('settings.language.template')}
-        </button>
-        )}
-      </div>
-      {operator && <p className="mt-2 text-xs text-mist-500">{t('settings.language.templateHint')}</p>}
-    </Card>
+    <>
+      <SpacesSidebar />
+      <main className="nn-scroll flex-1 overflow-y-auto">
+        <NexuiLanguage language={i18n.language}>
+          <SettingsLayout
+            list={asked === undefined}
+            back="/settings"
+            link={Link}
+            nav={
+              <SettingsNav
+                app={APP}
+                things={things}
+                thingsDative={thingsDative}
+                groups={groups}
+                about={{ href: areaPath(ABOUT_AREA.slug), slug: ABOUT_AREA.slug }}
+                current={area.slug}
+                account={{ name: shown, role: t(`me.role.${me.role}`), picture: <Avatar account={me} className="h-10 w-10 shrink-0 text-base" /> }}
+                link={Link}
+              />
+            }
+          >
+            <Area slug={area.slug} app={APP} things={things} thingsDative={thingsDative} title={own?.title} subtitle={own?.text} parts={area.slug === 'general' ? GENERAL_PARTS : undefined}>
+              <AreaContent key={area.slug} area={area.slug} />
+            </Area>
+          </SettingsLayout>
+        </NexuiLanguage>
+      </main>
+    </>
   )
 }
 
-function Card({ symbol, title, text, children }: { symbol: SymbolName; title: string; text: string; children: ReactNode }) {
-  return (
-    <section className="rounded-2xl border border-ink-700 bg-ink-900 p-5">
-      <div className="mb-4 flex gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent-500/12 text-accent-400">
-          <Symbol name={symbol} />
-        </span>
-        <div>
-          <h2 className="font-semibold">{title}</h2>
-          <p className="text-sm text-mist-500">{text}</p>
-        </div>
-      </div>
-      {children}
-    </section>
-  )
+/** `/account` of before: the server still sends people there (notifications, the way back from a provider). */
+export function FormerAccountAddress() {
+  const { search, hash } = useLocation()
+  return <Navigate to={formerAccountAddress(search, hash)} replace />
+}
+
+/** `/about` of before: "About nexlore" is an area of the settings now. */
+export function FormerAboutAddress() {
+  return <Navigate to={areaPath('about')} replace />
 }

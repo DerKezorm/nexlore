@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services import feed, logs
+from app.vendor import nexlog
 
 from .conftest import join, make_account, sign_in
 
@@ -121,7 +122,7 @@ def test_long_lines_are_folded_at_75_octets() -> None:
 def test_the_key_of_a_feed_never_reaches_the_log(caplog: pytest.LogCaptureFixture) -> None:
     assert logs.redact("GET /api/calendar/feed/nxc_abcdefghijklmnop.ics -> 200") == "GET /api/calendar/feed/nxc_….ics -> 200"
     record = logging.LogRecord("x", logging.WARNING, __file__, 1, "Slow request: %s", ("/api/calendar/feed/nxc_secretsecret1234.ics",), None)
-    logs._ContextFilter().filter(record)
+    nexlog.handlers._ContextFilter().filter(record)
     assert "secretsecret" not in record.getMessage()
 
 

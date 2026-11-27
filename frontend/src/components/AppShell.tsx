@@ -8,12 +8,12 @@ import { errorText } from '../lib/errors'
 import { homeSpace, openSpaceOf, today as isoToday } from '../lib/everyday'
 import { isNotePath } from '../lib/files'
 import { fileRoute } from '../lib/markdown'
-import { NEW_NOTE_EVENT } from '../lib/newNote'
+import { NEW_NOTE_EVENT, NEW_NOTE_HERE_EVENT, setNewNoteTarget } from '../lib/newNote'
 import { askCapture, CAPTURE_EVENT, takeCapture } from '../lib/capture'
 import { askCoverflow } from '../lib/coverflow'
 import { askNoteList, askPanelToggle, askSidebarToggle, hasSidebar, narrow, SEARCH_EVENT } from '../lib/shell'
-import { allCommands, PALETTE_EVENT, useCommands, type Command } from '../lib/commands'
-import { comboOf, commandFor, isRecording } from '../lib/shortcuts'
+import { allCommands, askPalette, PALETTE_EVENT, useCommands, type Command } from '../lib/commands'
+import { comboOf, commandFor, isRecording, shownCombo } from '../lib/shortcuts'
 import { storedTheme } from '../lib/theme'
 import { useAuth } from '../state/auth'
 import { refreshNews } from '../lib/news'
@@ -25,7 +25,6 @@ import { ExportHost } from './ExportDialog'
 import { VaultActions } from './VaultActions'
 import { folderOf, notePathOf, noteUrl } from '../lib/vault'
 import { useStore } from '../state/store'
-import { AccountMenu } from './AccountMenu'
 import { CaptureDialog } from './CaptureDialog'
 import { InstallPrompt } from './InstallPrompt'
 import { Logo } from './Logo'
@@ -36,33 +35,30 @@ import { SearchDialog } from './SearchDialog'
 import { LoreOverlay } from './LoreOverlay'
 import { LoreSpider } from './LoreSpider'
 import { Symbol, type SymbolName } from './Symbol'
-import { ThemeSwitcher } from './ThemeSwitcher'
+import { SettingsCorner } from './SideFrame'
 
 type NavItem = {
   to: string
   label: 'nav.graph' | 'nav.notes' | 'nav.calendar' | 'nav.tasks' | 'nav.files' | 'nav.lore'
   symbol: SymbolName | 'lore'
   end: boolean
-  /** Below `sm` the item is in the account menu: a phone has room for the four daily places only. */
-  wide?: boolean
 }
 
-// The settings live in the account menu, as in Nexview (idea 279): the header keeps the places one works in.
+// The settings are at the foot of every sidebar, as in nexnotes: the header keeps the places one works in.
 const ITEMS: NavItem[] = [
   { to: '/', label: 'nav.graph', symbol: 'graph', end: true },
   { to: '/note', label: 'nav.notes', symbol: 'note', end: false },
   { to: '/calendar', label: 'nav.calendar', symbol: 'calendar', end: false },
   { to: '/tasks', label: 'nav.tasks', symbol: 'tasks', end: false },
-  { to: '/files', label: 'nav.files', symbol: 'files', end: false, wide: true },
+  { to: '/files', label: 'nav.files', symbol: 'files', end: false },
   // Frag Lore: an entry of its own with the spider; only where the operator switched Lore
   // on and an AI service is ready.
   { to: '/lore', label: 'nav.lore', symbol: 'lore', end: false },
 ]
 
-function navClass(isActive: boolean, wide = false): string {
+function navClass(isActive: boolean): string {
   return (
-    (wide ? 'hidden sm:inline-flex ' : 'inline-flex ') +
-    'shrink-0 items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3.5 ' +
+    'inline-flex shrink-0 items-center gap-2 rounded-full px-2.5 py-1.5 text-sm font-medium transition-colors sm:px-3.5 ' +
     (isActive ? 'bg-accent-500/15 text-accent-400' : 'text-mist-500 hover:bg-ink-850 hover:text-mist-100')
   )
 }
@@ -75,7 +71,7 @@ function typing(target: EventTarget | null): boolean {
 
 /** Shell like the other nex apps: header with pills, then the page fills the rest of the window. */
 export function AppShell() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const [searching, setSearching] = useState(false)
   const [commanding, setCommanding] = useState(false)
   const navigate = useNavigate()
@@ -154,9 +150,15 @@ export function AppShell() {
 
   useEffect(() => {
     const ask = (event: Event) => setCreating((event as CustomEvent<string>).detail)
+    // "New note" at the top of a sidebar: where a new note goes here, or why there is no such place.
+    const here = () => (newNoteAt.current ? setCreating(newNoteAt.current) : setTodayProblem(t('today.none')))
     window.addEventListener(NEW_NOTE_EVENT, ask)
-    return () => window.removeEventListener(NEW_NOTE_EVENT, ask)
-  }, [])
+    window.addEventListener(NEW_NOTE_HERE_EVENT, here)
+    return () => {
+      window.removeEventListener(NEW_NOTE_EVENT, ask)
+      window.removeEventListener(NEW_NOTE_HERE_EVENT, here)
+    }
+  }, [t])
 
   // Quick capture: words asked for before this frame listened (the share target) are taken on the way in.
   const [capturing, setCapturing] = useState<string | null>(null)
@@ -196,6 +198,7 @@ export function AppShell() {
     return path ? folderOf(path) : ''
   }
   newNoteAt.current = newNoteTarget
+  useEffect(() => setNewNoteTarget(newNoteTarget), [newNoteTarget])
   // A note named by the minute (lib/zettel.ts), where a new note goes, opened for writing.
   const makeZettel = async () => {
     const folder = newNoteAt.current
@@ -268,7 +271,7 @@ export function AppShell() {
       go('go.tasks', t('palette.goTo', { place: t('nav.tasks') }), '/tasks', 'tasks'),
       go('go.files', t('palette.goTo', { place: t('nav.files') }), '/files', 'files'),
       go('go.settings', t('palette.goTo', { place: t('nav.settings') }), '/settings', 'settings'),
-      go('go.account', t('palette.goTo', { place: t('account.page') }), '/account', 'users'),
+      go('go.account', t('palette.goTo', { place: t('me.page') }), '/settings/profile', 'users'),
       {
         id: 'app.theme',
         label: storedTheme() === 'light' ? t('palette.dark') : t('palette.light'),
@@ -318,7 +321,7 @@ export function AppShell() {
                 end={item.end}
                 aria-label={t(item.label)}
                 title={t(item.label)}
-                className={({ isActive }) => navClass(isActive, item.wide)}
+                className={({ isActive }) => navClass(isActive)}
                 onClick={(event) => {
                   // On a phone "Notes" is the list of notes: it opens as a sheet, on the note page without leaving it.
                   if (item.to !== '/note' || !narrow()) return
@@ -361,10 +364,9 @@ export function AppShell() {
             disabled={!newNoteTarget}
             aria-label={t('sidebar.newNote')}
             title={newNoteTarget || status !== 'ready' ? t('sidebar.newNoteShortcut') : t('today.none')}
-            className="inline-flex h-8 shrink-0 items-center gap-2 rounded-full border border-accent-500/60 px-2 text-sm font-semibold text-accent-400 hover:bg-accent-500/10 disabled:opacity-40 2xl:px-3"
+            className="inline-flex h-8 shrink-0 items-center gap-2 rounded-full border border-accent-500/60 px-2 text-sm font-semibold text-accent-400 hover:bg-accent-500/10 disabled:opacity-40 md:hidden"
           >
             <Symbol name="plus" />
-            <span className="hidden 2xl:inline">{t('sidebar.newNote')}</span>
           </button>
           {/* Quick capture in sight, not only behind a right click or a long press on "+" (P5.18). */}
           <button
@@ -381,17 +383,37 @@ export function AppShell() {
             onClick={() => setSearching(true)}
             aria-label={t('search.button')}
             title={`${t('search.button')} (${t('search.shortcut')})`}
-            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-ink-700 bg-ink-850 px-2 py-1.5 text-sm text-mist-500 hover:text-mist-100 2xl:pr-2 2xl:pl-3"
+            className="inline-flex shrink-0 items-center gap-2 rounded-full border border-ink-700 bg-ink-850 px-2 py-1.5 text-sm text-mist-500 hover:text-mist-100 md:hidden"
           >
             <Symbol name="search" />
-            {/* The words from wide screens on; below, the menu's words need the room. */}
-            <span className="hidden w-32 text-left 2xl:inline">{t('search.button')}</span>
-            <kbd className="hidden rounded border border-ink-700 px-1.5 text-[11px] 2xl:inline">{t('search.shortcut')}</kbd>
           </button>
-          <div className="hidden sm:block">
-            <ThemeSwitcher />
+          {/* "New note" and the search stand at the top of the sidebar from 768 pixels on (as in nexnotes); a phone has
+              no sidebar column and keeps them here. The corner: the commands and the cover flow (on a phone they sit at
+              the foot of the sidebar's sheet, the header has no room for them beside the places), on a phone the way
+              to the settings. Light or dark is chosen under My account › Appearance. */}
+          <button
+            type="button"
+            onClick={askPalette}
+            aria-label={t('palette.menu')}
+            title={`${t('palette.menu')} (${shownCombo('Ctrl P', undefined, i18n.language)})`}
+            data-testid="open-palette"
+            className="hidden h-8 w-8 shrink-0 place-items-center rounded-full text-mist-400 hover:bg-ink-850 hover:text-mist-100 sm:grid"
+          >
+            <Symbol name="command" />
+          </button>
+          <button
+            type="button"
+            onClick={() => askCoverflow(coverflowStart())}
+            aria-label={t('coverflow.browse')}
+            title={t('coverflow.browseHint')}
+            data-testid="open-coverflow"
+            className="hidden h-8 w-8 shrink-0 place-items-center rounded-full text-mist-400 hover:bg-ink-850 hover:text-mist-100 sm:grid"
+          >
+            <Symbol name="coverflow" />
+          </button>
+          <div className="md:hidden">
+            <SettingsCorner compact />
           </div>
-          <AccountMenu />
         </div>
       </header>
       <ScanNotice />

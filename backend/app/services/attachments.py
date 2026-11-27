@@ -122,10 +122,14 @@ def used_by(db: Session, account: str) -> int:
 
 
 def limits(account: str) -> Limits:
+    """The largest file of the server, and the account's own storage limit (the shared account module 1.1.0: set per
+    account under Accounts; 0 here for none)."""
+    from ..models import Account
+
     with SessionLocal() as db:
         per_file = int(settings_service.get(db, "upload_max_mb") or 0) * MB
-        quota = int(settings_service.get(db, "quota_mb") or 0) * MB
-        return Limits(per_file=per_file, quota=quota, used=used_by(db, account))
+        limit = db.scalar(select(Account.storage_limit).where(Account.name == account))
+        return Limits(per_file=per_file, quota=int(limit or 0), used=used_by(db, account))
 
 
 def link_text(target: str, note: str) -> str:

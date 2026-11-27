@@ -37,28 +37,31 @@ test('a key made on the account page proposes a draft that the note takes over',
   })
   expect(opened.ok()).toBe(true)
 
-  await page.goto('/account?tab=ai')
-  await page.getByRole('button', { name: 'New key' }).click()
-  await page.getByLabel('Name').fill('Agent')
-  await page.getByRole('radio', { name: /Drafts/ }).check()
-  await page.getByRole('button', { name: 'Make the key' }).click()
-  const shown = page.getByTestId('mcp-token')
-  await expect(shown).toContainText('It is shown only now.')
-  const token = (await shown.locator('code').first().textContent())!.trim()
+  // The card "KI-Werkzeuge (MCP)" of the shared key module, under My account › Connections.
+  await page.goto('/settings/connections')
+  const tools = page.locator('[data-card="ai-tools"]')
+  await tools.getByTestId('tools-new').click()
+  const keyDialog = page.getByTestId('key-dialog')
+  await keyDialog.getByTestId('key-name').fill('Agent')
+  await keyDialog.getByTestId('key-right').getByRole('radio', { name: /Drafts/ }).check()
+  await keyDialog.getByTestId('key-submit').click()
+  const shown = tools.getByTestId('key-made')
+  await expect(shown).toContainText('It is shown this once only')
+  const token = (await shown.getByTestId('key-secret').locator('input').inputValue()).trim()
   expect(token).toMatch(/^nxl_/)
-  // What to do with it: the lines for a program, with this address and this key, ready to copy.
+  await expect(shown.getByTestId('key-header').locator('input')).toHaveValue(`Authorization: Bearer ${token}`)
+  await shown.getByTestId('key-done').click()
+  // What to do with it: the lines for a program, with this address and a stand-in for the key shown only once.
   const address = `${new URL(page.url()).origin}/api/mcp`
-  const json = JSON.parse((await shown.locator('pre').nth(0).textContent())!)
-  expect(json).toEqual({ mcpServers: { nexlore: { type: 'http', url: address, headers: { Authorization: `Bearer ${token}` } } } })
-  await expect(shown.locator('pre').nth(1)).toHaveText(`claude mcp add --transport http nexlore ${address} --header "Authorization: Bearer ${token}"`)
-  await shown.getByRole('button', { name: 'Copy: Command for Claude Code' }).click()
-  await expect(shown.getByRole('button', { name: 'Copy: Command for Claude Code' })).toHaveText('Copied')
-  await shown.getByRole('button', { name: 'I have it' }).click()
-  // Later the same lines, with a stand-in for the key shown only once.
-  await page.getByText('How to connect a program').click()
-  await expect(page.getByText(/Bearer YOUR-KEY/).first()).toBeVisible()
-  await expect(page.getByTestId('mcp-token')).toHaveCount(0)
-  await expect(page.getByText('nxl_')).toHaveCount(1) // only the first characters stay
+  await tools.getByTestId('mcp-how-to').getByRole('button').first().click()
+  expect(JSON.parse(await tools.getByTestId('mcp-recipe-json').locator('input').inputValue())).toEqual({
+    mcpServers: { nexlore: { type: 'http', url: address, headers: { Authorization: 'Bearer YOUR-KEY' } } },
+  })
+  await expect(tools.getByTestId('mcp-recipe-command').locator('input')).toHaveValue(
+    `claude mcp add --transport http nexlore ${address} --header "Authorization: Bearer YOUR-KEY"`,
+  )
+  await expect(tools.getByTestId('key-made')).toHaveCount(0)
+  await expect(page.getByText(token)).toHaveCount(0)
 
   // A program: no cookie, no Origin, the key in Authorization.
   const program = await playwright.request.newContext({ baseURL })
@@ -91,7 +94,8 @@ test('a key made on the account page proposes a draft that the note takes over',
   expect(onDisk('Zoo/Draft me.md')).toBe('# Draft me\r\n\r\nKept line.\r\nNew line.\r\n')
   await page.setViewportSize({ width: 1400, height: 900 })
   await page.getByRole('tab', { name: 'Versions' }).click()
-  await expect(page.getByText('AI (MCP)').first()).toBeVisible()
+  // MCP decision 15: the history names the key, as nexnotes does.
+  await expect(page.getByText('MCP · Agent').first()).toBeVisible()
   expect(problems).toEqual([])
 })
 
@@ -102,18 +106,20 @@ test('a key made for one space sees no other', async ({ page, playwright, baseUR
     headers: { 'X-Nexlore-Client': 'tab-e2e-mcp0' },
   })
   expect(opened.ok()).toBe(true)
-  await page.goto('/account?tab=ai')
-  await page.getByRole('button', { name: 'New key' }).click()
-  await page.getByLabel('Name').fill('Zoo only')
-  await page.getByRole('radio', { name: 'Only these' }).check()
-  const make = page.getByRole('button', { name: 'Make the key' })
+  await page.goto('/settings/connections')
+  const tools = page.locator('[data-card="ai-tools"]')
+  await tools.getByTestId('tools-new').click()
+  const dialog = page.getByTestId('key-dialog')
+  await dialog.getByTestId('key-name').fill('Zoo only')
+  await dialog.getByRole('radio', { name: 'Only these' }).check()
+  const make = dialog.getByTestId('key-submit')
   await expect(make).toBeDisabled()
-  await page.getByRole('checkbox', { name: 'Zoo', exact: true }).check()
+  await dialog.getByRole('checkbox', { name: 'Zoo', exact: true }).check()
   await make.click()
-  const shown = page.getByTestId('mcp-token')
-  const token = (await shown.locator('code').first().textContent())!.trim()
-  await shown.getByRole('button', { name: 'I have it' }).click()
-  await expect(page.getByRole('listitem').filter({ hasText: 'Zoo only' }).getByTestId('mcp-key-spaces')).toHaveText('Zoo')
+  const shown = tools.getByTestId('key-made')
+  const token = (await shown.getByTestId('key-secret').locator('input').inputValue()).trim()
+  await shown.getByTestId('key-done').click()
+  await expect(tools.getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'Zoo only' })).toContainText(/Read.*Zoo/)
 
   const program = await playwright.request.newContext({ baseURL })
   const call = async (name: string, args: object) => {
@@ -137,15 +143,12 @@ test('a key made for one space sees no other', async ({ page, playwright, baseUR
 test('the operator switches MCP off again, and both pages say where it goes on', async ({ page }) => {
   const closed = await page.request.put('/api/settings', { data: { mcp_allowed: false }, headers: { 'X-Nexlore-Client': 'tab-e2e-mcp0' } })
   expect(closed.ok()).toBe(true)
-  // The account page says why there are no keys, and shows the operator the way to the switch.
-  await page.goto('/account?tab=ai')
-  await expect(page.getByTestId('mcp-off')).toContainText('has not switched on AI from outside')
-  await expect(page.getByRole('button', { name: 'New key' })).toHaveCount(0)
-  await page.getByTestId('mcp-off').getByRole('link', { name: /Switch it on under Settings/ }).click()
-  await expect(page).toHaveURL(/\/settings\?tab=server&sub=extensions/)
-  await expect(page.getByRole('heading', { name: 'AI from outside (MCP)' })).toBeVisible()
-  // The operator's card says where the keys are made, and leads there.
-  await expect(page.getByTestId('mcp-where-keys')).toContainText('Once it is on')
-  await page.getByRole('link', { name: 'Go to my keys' }).click()
-  await expect(page).toHaveURL(/\/account#mcp$/)
+  // The account page says why there are no keys; the operator's switch is "MCP-Zugang" under Server › General.
+  await page.goto('/settings/connections')
+  const tools = page.locator('[data-card="ai-tools"]')
+  await expect(tools.getByTestId('tools-off')).toContainText('The operator has switched MCP access off.')
+  await page.goto('/settings/extensions#mcp')
+  await expect(page).toHaveURL(/\/settings\/general#mcp$/)
+  await expect(page.getByTestId('interfaces-mcp')).not.toBeChecked()
+  await expect(page.getByTestId('mcp-settings')).toBeVisible()
 })

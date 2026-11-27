@@ -47,7 +47,7 @@ test.afterEach(async ({ page }) => {
 test('the operator opens titles of pasted links, and a pasted address gets its page\'s title', async ({ page }) => {
   const problems = collectProblems(page)
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('/settings?tab=server&sub=extensions')
+  await page.goto('/settings/general')
   const card = page.locator('#link-titles')
   const saved = page.waitForResponse((response) => response.url().endsWith('/api/settings') && response.request().method() === 'PUT')
   await card.getByLabel('Ask pages for their titles').check()
@@ -56,6 +56,7 @@ test('the operator opens titles of pasted links, and a pasted address gets its p
   await page.request.put('/api/settings', { data: { calendar_feed_allowed: true }, headers: TAB })
   await page.reload()
   await expect(page.locator('#link-titles').getByLabel('Ask pages for their titles')).toBeChecked()
+  // The calendar's switch stands in "Funktionen für alle Konten" under General.
   await expect(page.locator('#calendar-feed').getByRole('checkbox').first()).toBeChecked()
 
   const asked: string[] = []

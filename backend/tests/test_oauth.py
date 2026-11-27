@@ -133,16 +133,20 @@ def test_registration_refuses_unsafe_return_addresses(world: World, address: str
 
 def test_registration_takes_https_and_the_own_machine_and_only_public_clients(world: World) -> None:
     made = register([REDIRECT, "http://localhost:43123/callback", "http://127.0.0.1/callback"])
-    assert made["client_id"].startswith("nxo_") and made["token_endpoint_auth_method"] == "none"
+    # The id is the shared module's since mcp 1.1.0 (programs of before keep their ``nxo_`` ids): unguessable.
+    assert len(made["client_id"]) >= 32 and made["token_endpoint_auth_method"] == "none"
     secret = stranger().post("/api/oauth/register", json={"redirect_uris": [REDIRECT],
                                                           "token_endpoint_auth_method": "client_secret_basic"})
     assert secret.status_code == 400
 
 
-def test_registration_is_braked(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(oauth, "REGISTER_PER_MINUTE", 2)
-    register()
-    register()
+def test_registration_is_braked(world: World) -> None:
+    # The shared module's brakes (mcp 1.1.0), nexlore's values of before: 10 per sender and hour, 30 a minute in all.
+    from app.routers.mcp import CONFIG
+
+    assert (CONFIG.register_per_sender, CONFIG.register_per_minute) == (10, 30)
+    for _ in range(CONFIG.register_per_sender):
+        register()
     assert stranger().post("/api/oauth/register", json={"redirect_uris": [REDIRECT]}).status_code == 429
 
 
@@ -204,8 +208,13 @@ def test_the_whole_way_gives_a_key_that_acts_as_the_account(world: World) -> Non
     keys = world.anna.get("/api/mcp/keys").json()["keys"]
     connector = [key for key in keys if key["kind"] == "oauth"]
     assert len(connector) == 1 and connector[0]["name"] == "Made-up connector" and connector[0]["level"] == "write"
-    # Rights per tool as for every key: changing asks first.
-    waiting = value(call(tokens["access_token"], "create_note", folder="Garden", title="x", content="x"))
+    # Rights per tool as for every key: a new connector may use everything of its level (mcp 1.1.0, decision 3) ...
+    made = value(call(tokens["access_token"], "create_note", folder="Garden", title="x", content="x"))
+    assert made["path"] == "Garden/x.md"
+    # ... and asks first where its account set "ask".
+    assert world.anna.put(f"/api/mcp/keys/{connector[0]['id']}/rights",
+                          json={"rights": {"create_note": "ask"}}).status_code == 200
+    waiting = value(call(tokens["access_token"], "create_note", folder="Garden", title="y", content="y"))
     assert waiting["status"] == "waiting"
 
 
@@ -270,12 +279,13 @@ def test_an_access_token_runs_out_after_an_hour(world: World) -> None:
 def test_signing_in_again_keeps_the_rights_and_revoking_ends_it(world: World) -> None:
     client, _ = signed_in(world)
     key = next(key for key in world.anna.get("/api/mcp/keys").json()["keys"] if key["kind"] == "oauth")
-    assert world.anna.put(f"/api/mcp/keys/{key['id']}/rights", json={"rights": {"create_note": "allow"}}).status_code == 200
+    # A right away from the default (since mcp 1.1.0 "allow", decision 3), so that keeping it shows.
+    assert world.anna.put(f"/api/mcp/keys/{key['id']}/rights", json={"rights": {"create_note": "ask"}}).status_code == 200
     verifier, challenge = pkce()
     code = agree(world, client["client_id"], challenge, level="read")["code"][0]
     second = trade(client["client_id"], code, verifier).json()
     keys = [k for k in world.anna.get("/api/mcp/keys").json()["keys"] if k["kind"] == "oauth"]
-    assert len(keys) == 1 and keys[0]["rights"] == {"create_note": "allow"} and keys[0]["level"] == "read"
+    assert len(keys) == 1 and keys[0]["rights"] == {"create_note": "ask"} and keys[0]["level"] == "read"
     assert world.anna.delete(f"/api/mcp/keys/{keys[0]['id']}").status_code == 204
     assert rpc(second["access_token"], "ping").status_code == 401
     refused = stranger().post("/api/oauth/token", data={"grant_type": "refresh_token", "client_id": client["client_id"],

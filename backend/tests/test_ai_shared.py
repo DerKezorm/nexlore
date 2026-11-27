@@ -13,9 +13,13 @@ from fastapi.testclient import TestClient
 
 from app.db import SessionLocal
 from app.models import Account as AccountRow
-from app.services import ai
+from app.models import Setting
+from app.services import ai, ki_store
+from app.vendor import nexki
+from app.vendor.nexki import client as nexki_client
+from app.vendor.nexki.brake import BRAKE
 
-from .test_ai import KEY, NOTE, Service, newer_openai, open_lock, person, set_up
+from .test_ai import KEY, NOTE, Service, newer_openai, open_lock, own_way, person, resolve, set_up
 
 SHARED_KEY = "sk-shared-stand-in"
 
@@ -38,25 +42,48 @@ def flowing(text: str, *, usage: bool = True) -> httpx.Response:
 def service() -> Iterator[Service]:
     stand_in = Service()
     ai.transport = httpx.MockTransport(stand_in.handle)
+    before = nexki_client.transport, nexki_client.resolver
+    nexki_client.transport, nexki_client.resolver = ai.transport, resolve
     ai.pace.forget()
+    BRAKE.forget()
     yield stand_in
     ai.transport = None
+    nexki_client.transport, nexki_client.resolver = before
 
 
 def share(operator: TestClient, **values: str) -> None:
     open_lock(operator)
     assert operator.put("/api/settings", json={"ai_mode": "shared", "lore_allowed": True}).status_code == 200
-    body = {"url": "http://ai.example.test/v1", "model": "shared-model", "key": SHARED_KEY, **values}
+    body = {"url": "https://ai.example.test/v1", "model": "shared-model", "key": SHARED_KEY, **values}
     answer = operator.put("/api/ai/shared", json=body)
     assert answer.status_code == 200, answer.text
 
 
-def test_each_on_their_own_is_where_it_starts(client: TestClient, account: object, service: Service) -> None:
+def test_one_for_all_is_where_a_new_installation_starts_and_each_on_their_own_stays_where_it_was(
+    client: TestClient, account: object, service: Service
+) -> None:
+    """K2: a new installation starts with the operator's service for all; one whose accounts had their own accesses
+    keeps "own" (``adopt`` at the start, K17)."""
     open_lock(client)
-    assert client.get("/api/settings").json()["ai_mode"] == "own"
+    with SessionLocal() as db:
+        # The start of the app wrote it (``adopt``): no account had an own access.
+        assert ki_store.KiStore(db).setting("mode") == "shared"
+    assert client.get("/api/settings").json()["ai_mode"] == "shared"
     anna = person("anna")
     state = anna.get("/api/ai").json()
-    assert (state["mode"], state["ready"], state["shared"]) == ("own", False, {"model": "", "complete": False})
+    assert (state["mode"], state["ready"], state["shared"]) == ("shared", False, {"model": "", "complete": False})
+    # As 1.16.0 left it: the way never stored, an account with its own access.
+    set_up(anna)
+    with SessionLocal() as db:
+        db.delete(db.get(Setting, "ai_mode"))
+        db.commit()
+    with SessionLocal() as db:
+        done = nexki.settings.adopt(ki_store.KiStore(db), ki_store.CONFIG, resolver=resolve)
+        db.commit()
+    assert "mode=own" in done
+    assert client.get("/api/settings").json()["ai_mode"] == "own"
+    state = anna.get("/api/ai").json()
+    assert (state["mode"], state["ready"]) == ("own", True)
 
 
 def test_one_for_all_lets_every_member_ask_without_an_access_of_their_own(
@@ -88,7 +115,7 @@ def test_a_member_sees_the_model_of_the_service_for_all_but_neither_its_address_
     # The operator sees whether a key is there, never the key.
     operator_view = client.get("/api/ai/shared")
     assert {key: operator_view.json()[key] for key in ("url", "model", "key_set", "complete")} == {
-        "url": "http://ai.example.test/v1/", "model": "shared-model", "key_set": True, "complete": True,
+        "url": "https://ai.example.test/v1/", "model": "shared-model", "key_set": True, "complete": True,
     }
     assert SHARED_KEY not in operator_view.text
 
@@ -97,6 +124,7 @@ def test_the_own_access_rests_while_one_serves_all_and_comes_back_unchanged(
     client: TestClient, account: object, service: Service
 ) -> None:
     open_lock(client)
+    own_way(client)
     anna = person("anna")
     set_up(anna)
     share(client)
@@ -132,17 +160,22 @@ def test_the_lock_still_stands_above_the_service_for_all(client: TestClient, acc
 def test_the_operators_address_may_be_at_home_without_a_list_and_a_members_may_not(
     client: TestClient, account: object, service: Service, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(ai, "resolver", lambda host, port: ["192.168.1.20"])
+    def home(address: str) -> None:
+        # The old model list of the operator's page and the module's requests ask the same name.
+        monkeypatch.setattr(ai, "resolver", lambda host, port: [address])
+        monkeypatch.setattr(nexki_client, "resolver", lambda host, port: [address])
+
+    home("192.168.1.20")
     share(client, url="http://ollama.home.test:11434/v1")
     anna = person("anna")
     assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).status_code == 200
     assert client.post("/api/ai/shared/models", json={}).status_code == 200
     # Link-local stays refused, the operator's address too.
-    monkeypatch.setattr(ai, "resolver", lambda host, port: ["169.254.169.254"])
+    home("169.254.169.254")
     refused = anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE})
     assert refused.json()["detail"]["code"] == "ai_address_refused"
     # A member's own address at home still needs the operator's list.
-    monkeypatch.setattr(ai, "resolver", lambda host, port: ["192.168.1.20"])
+    home("192.168.1.20")
     assert client.put("/api/settings", json={"ai_mode": "own"}).status_code == 200
     set_up(anna)
     refused = anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE})

@@ -53,9 +53,10 @@ def _row(db: DbSession, account: Account) -> AccountRow:
     return row
 
 
-def _on(db: DbSession) -> None:
-    """Asking and looking up only while the operator lets Lore be asked; the own conversations stay readable."""
-    if not ai.allowed(db):
+def _on(db: DbSession, account: Any) -> None:
+    """Asking and looking up only while the operator lets Lore be asked and the account may use AI; the own
+    conversations stay readable."""
+    if not ai.allowed_for(db, account):
         raise error("ai_off", "AI in notes is off on this server.", 403)
     if not lore.allowed(db):
         raise error("lore_off", "Ask Lore is not switched on on this server.", 403)
@@ -67,7 +68,7 @@ def _event(name: str, value: Any) -> str:
 
 @router.post("/ask", summary="Ask Lore about the own notes; the answer comes as a stream of events")
 def ask(payload: AskIn, account: Account, db: DbSession) -> StreamingResponse:
-    _on(db)
+    _on(db, account)
     row = _row(db, account)
     question = payload.question.strip()
     if not question:
@@ -161,7 +162,7 @@ class AnswerIn(BaseModel):
              summary="An answer as a note of its own, its sources as links")
 def save_note(conversation_id: int, payload: AnswerIn, account: Account, db: DbSession,
               who: ActorDep) -> dict[str, str]:
-    _on(db)
+    _on(db, account)
     row = _row(db, account)
     try:
         file = lore.save_note(db, row, lore.own_conversation(db, row, conversation_id), payload.message, who)
@@ -175,7 +176,7 @@ def save_note(conversation_id: int, payload: AnswerIn, account: Account, db: DbS
 @router.post("/conversations/{conversation_id}/propose", status_code=201,
              summary="What an answer about a note says, as a proposal for that note")
 def propose(conversation_id: int, payload: AnswerIn, account: Account, db: DbSession) -> dict[str, Any]:
-    _on(db)
+    _on(db, account)
     row = _row(db, account)
     note = need(account, payload.note, rights.READ) if payload.note else None
     try:
@@ -190,7 +191,7 @@ def propose(conversation_id: int, payload: AnswerIn, account: Account, db: DbSes
 
 @router.get("/similar", summary="The notes nearest in meaning to a note, among those one may read")
 def similar(account: Account, db: DbSession, path: Annotated[str, Query(max_length=1024)]) -> dict[str, Any]:
-    _on(db)
+    _on(db, account)
     clean = need(account, path, rights.READ)
     if not meaning.enabled(db):
         return {"on": False, "notes": []}

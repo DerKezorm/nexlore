@@ -94,6 +94,7 @@ def test_the_environment_fixes_the_level(client: TestClient, operator: str, monk
     assert client.get("/api/logs/level").json() == {
         "mode": "detailed", "until": None, "fixed_by_env": True,
         "modes": ["quiet", "normal", "detailed", "trace"], "durations": list(logs.ALLOWED_MINUTES),
+        "variable": "NEXLORE_LOG_LEVEL",
     }
     refused = client.put("/api/logs/level", json={"mode": "quiet"})
     assert refused.status_code == 409 and refused.json()["detail"]["code"] == "log_level_from_environment"

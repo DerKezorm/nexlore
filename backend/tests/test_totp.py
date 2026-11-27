@@ -16,6 +16,7 @@ from app.main import app
 from app.models import SIGN_IN_OIDC, Account
 from app.security import MAX_FAILURES, SESSION_COOKIE, brake, start_session
 from app.services import settings_service, totp
+from app.vendor.nexkonten import factor
 
 from .conftest import PASSWORD, make_account, sign_in
 
@@ -45,6 +46,10 @@ class Clock:
 def clock(monkeypatch: pytest.MonkeyPatch) -> Clock:
     fake = Clock()
     monkeypatch.setattr(totp, "time", fake)
+    # The code step checks through the shared account module, which reads the same clock.
+    from app.vendor.nexkonten import factor
+
+    monkeypatch.setattr(factor, "time", fake)
     return fake
 
 
@@ -75,7 +80,7 @@ def enrol(client: TestClient) -> tuple[str, list[str]]:
     confirmed = client.post("/api/auth/totp/confirm", json={"code": current_code(secret), "password": PASSWORD})
     assert confirmed.status_code == 200, confirmed.text
     codes = confirmed.json()["recovery_codes"]
-    assert len(codes) == totp.RECOVERY_CODES and confirmed.json()["account"]["two_factor"] is True
+    assert len(codes) == factor.RECOVERY_CODES and confirmed.json()["account"]["two_factor"] is True
     return secret, codes
 
 
@@ -152,7 +157,7 @@ def test_enrolment_needs_the_password_and_a_matching_code(client: TestClient, op
     confirmed = client.post("/api/auth/totp/confirm", json={"code": current_code(secret), "password": PASSWORD})
     assert confirmed.status_code == 200, confirmed.text
     me = client.get("/api/auth/me").json()
-    assert me["two_factor"] is True and me["two_factor_recovery_left"] == 8
+    assert me["two_factor"] is True and me["two_factor_recovery_left"] == factor.RECOVERY_CODES
     # On already: a second enrolment is refused until it is turned off.
     assert client.post("/api/auth/totp/begin").status_code == 409
     # The seed is stored sealed, not in the clear.
@@ -164,7 +169,7 @@ def test_enrolment_needs_the_password_and_a_matching_code(client: TestClient, op
 
 def test_an_enrolment_runs_out(client: TestClient, operator: Account, monkeypatch: pytest.MonkeyPatch) -> None:
     secret = client.post("/api/auth/totp/begin").json()["secret"]
-    monkeypatch.setattr(totp, "ENROLMENT_SECONDS", 0)
+    monkeypatch.setattr(factor, "ENROLMENT_SECONDS", 0)
     client.post("/api/auth/totp/begin")
     late = client.post("/api/auth/totp/confirm", json={"code": current_code(secret), "password": PASSWORD})
     assert late.status_code == 410 and late.json()["detail"]["code"] == "totp_enrolment_expired"
@@ -245,6 +250,8 @@ def test_the_brake_slows_a_guessing_sender(client: TestClient, operator: Account
     for _ in range(totp.MAX_ATTEMPTS):
         code_step(client, "000000")
     password_step(client)
+    # The shared module counts every code of the account (``code:<account>``, konten 0.3.10): five free, the fifth
+    # starts the wait, so the next code waits.
     braked = code_step(client, "000000")
     assert braked.status_code == 429 and braked.json()["detail"]["code"] == "too_many_attempts"
     assert "retry-after" in braked.headers
@@ -292,7 +299,7 @@ def test_a_recovery_code_signs_in_once(client: TestClient, operator: Account, cl
     password_step(client)
     used = code_step(client, codes[0])
     assert used.status_code == 200, used.text
-    assert used.json()["two_factor_recovery_left"] == 7
+    assert used.json()["two_factor_recovery_left"] == factor.RECOVERY_CODES - 1
     sign_out(client)
     password_step(client)
     assert code_step(client, codes[0]).status_code == 401
@@ -305,7 +312,7 @@ def test_new_recovery_codes_replace_the_old_ones(client: TestClient, operator: A
     renewed = client.post("/api/auth/totp/recovery", json={"password": PASSWORD})
     assert renewed.status_code == 200
     new = renewed.json()["recovery_codes"]
-    assert len(new) == 8 and not set(new) & set(old)
+    assert len(new) == factor.RECOVERY_CODES and not set(new) & set(old)
     sign_out(client)
     password_step(client)
     assert code_step(client, old[0]).status_code == 401
@@ -409,3 +416,30 @@ def test_accounts_from_a_provider_bring_their_own_second_factor(client: TestClie
     assert other.get("/api/spaces").status_code == 200
     with SessionLocal() as db:
         assert db.scalar(select(Account.totp_secret_enc).where(Account.name == "idp-user")) == ""
+
+
+def test_a_waiting_setup_shows_the_same_qr_code_again(client: TestClient, operator: Account) -> None:
+    """konten 0.3.4 (``factor.pending_setup``): after a reload the page gets the same secret and QR code back, until
+    a code confirms it; nothing waits before ``begin`` and after the confirmation."""
+    assert client.get("/api/auth/totp/setup").json() == {"waiting": False}
+    begun = client.post("/api/auth/totp/begin").json()
+    again = client.get("/api/auth/totp/setup").json()
+    assert again["waiting"] is True
+    assert (again["secret"], again["uri"], again["qr_svg"]) == (begun["secret"], begun["uri"], begun["qr_svg"])
+    assert again["expires_at"] == begun["expires_at"] and begun["expires_at"]
+    confirmed = client.post("/api/auth/totp/confirm", json={"code": current_code(begun["secret"]), "password": PASSWORD})
+    assert confirmed.status_code == 200, confirmed.text
+    assert client.get("/api/auth/totp/setup").json() == {"waiting": False}
+
+
+def test_turning_it_off_goes_through_the_module_with_its_brake(client: TestClient, operator: Account) -> None:
+    """konten 0.3.5 (``factor.disable_totp``): a wrong password counts at the module's brake, the right one turns
+    the factor off and the next sign-in asks no code."""
+    enrol(client)
+    wrong = client.post("/api/auth/totp/disable", json={"password": "not the password at all"})
+    assert wrong.status_code == 401 and wrong.json()["detail"]["code"] == "wrong_password"
+    done = client.post("/api/auth/totp/disable", json={"password": PASSWORD})
+    assert done.status_code == 200 and done.json()["two_factor"] is False
+    sign_out(client)
+    answer = client.post("/api/auth/login", json={"name": "tester", "password": PASSWORD})
+    assert answer.status_code == 200 and "second_factor" not in answer.json()

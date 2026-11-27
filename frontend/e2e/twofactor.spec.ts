@@ -5,6 +5,7 @@
  * so the operator's own sign-in stays as the other tests expect it.
  */
 import { request, type Browser, type Page } from '@playwright/test'
+import { signOut } from './account'
 import { expect, test } from './fixtures'
 import { createHmac } from 'node:crypto'
 
@@ -61,8 +62,8 @@ async function signedOutPage(browser: Browser): Promise<Page> {
 
 async function signIn(page: Page, name: string): Promise<void> {
   await page.goto('/login')
-  await page.getByLabel('Name').fill(name)
-  await page.getByLabel('Password').fill(PASSWORD)
+  await page.getByLabel('Username or email').fill(name)
+  await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
 }
 
@@ -75,34 +76,36 @@ test('an account sets up its second factor and signs in with it', async ({ page,
 
   await own.goto('/account?tab=security')
   const section = own.getByTestId('second-factor')
-  await expect(section).toContainText('Off.')
-  await section.getByRole('button', { name: 'Set up' }).click()
+  // The state beside the heading, as the shared account module words it ("On"/"Off").
+  await expect(own.getByTestId('second-factor-state')).toHaveText('Off')
+  await section.getByRole('button', { name: 'Set up an authenticator app' }).click()
   await expect(section.getByRole('img', { name: 'QR code for the authenticator app' })).toBeVisible()
   const secret = (await own.getByTestId('totp-secret').textContent())!.replace(/\s/g, '')
   await section.getByLabel('Code from the app').fill(totp(secret))
-  await section.getByLabel('Password').fill(PASSWORD)
+  await section.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await section.getByRole('button', { name: 'Turn on' }).click()
   const shown = own.getByTestId('recovery-codes')
-  await expect(shown.getByRole('listitem')).toHaveCount(8)
+  // Ten recovery codes since the shared account module.
+  await expect(shown.getByRole('listitem')).toHaveCount(10)
   const codes = await shown.getByRole('listitem').allTextContents()
   await shown.getByRole('button', { name: 'I have them' }).click()
-  await expect(section).toContainText('On. 8 recovery codes left.')
+  await expect(own.getByTestId('second-factor-state')).toHaveText('On')
+  await expect(own.getByTestId('recovery-part')).toContainText('10 codes left')
 
   // Signing in now takes two steps; a wrong code is refused, a recovery code goes through once.
-  await own.getByRole('button', { name: 'Account of factor' }).click()
-  await own.getByRole('button', { name: 'Sign out', exact: true }).click()
+  await signOut(own)
   // Signed out once the login page is there; going there before (a slow CI machine did) finds the session alive.
   await expect(own).toHaveURL(/\/login(\?|$)/)
   await signIn(own, 'factor')
   await expect(own.getByRole('heading', { name: 'Second factor' })).toBeVisible()
-  await own.getByLabel('Code from the app').fill('000000')
+  await own.getByLabel('Code', { exact: true }).fill('000000')
   await own.getByRole('button', { name: 'Sign in', exact: true }).click()
-  await expect(own.getByRole('alert')).toContainText('The code is not right.')
-  await own.getByLabel('Code from the app').fill(codes[0])
+  await expect(own.getByRole('alert')).toContainText('The code is wrong.')
+  await own.getByLabel('Code', { exact: true }).fill(codes[0])
   await own.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(own).toHaveURL(/\/$/)
   await own.goto('/account?tab=security')
-  await expect(own.getByTestId('second-factor')).toContainText('On. 7 recovery codes left.')
+  await expect(own.getByTestId('recovery-part')).toContainText('9 codes left')
   expect(problems).toEqual([])
   await own.context().close()
 })
@@ -110,38 +113,49 @@ test('an account sets up its second factor and signs in with it', async ({ page,
 test('the operator requires it only with one of their own, and resets it for an account', async ({ page }) => {
   const problems = collectProblems(page)
   await page.goto('/settings?tab=server&sub=signin')
-  const toggle = page.getByRole('checkbox', { name: 'Require a second factor' })
-  await toggle.click()
-  await expect(page.getByText('Set up your own second factor first, on your account page.')).toBeVisible()
+  // Without a factor of the operator's own the switch stays locked, and says why (the account module's card).
+  const toggle = page.getByRole('checkbox', { name: 'Require a second factor of everybody' })
+  await expect(toggle).toBeDisabled()
   await expect(toggle).not.toBeChecked()
+  await expect(page.getByText('Set up a second factor of your own first (My account › Security), or you would be the first one locked out.')).toBeVisible()
 
-  // The accounts are one tab further along.
-  await page.getByRole('tab', { name: 'Accounts' }).click()
-  const row = page.getByRole('listitem').filter({ hasText: /^factor/ })
-  await expect(row).toContainText('second factor on')
-  await row.getByRole('button', { name: 'Reset second factor' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Reset the second factor of factor?' })
-  // Only with the operator's own password once more: a session alone is not enough.
-  await dialog.getByRole('button', { name: 'Reset second factor' }).click()
-  await expect(page.getByText('The password is wrong.')).toBeVisible()
-  await expect(row).toContainText('second factor on')
-  await dialog.getByLabel('Your own password').fill(OPERATOR.password)
-  await dialog.getByRole('button', { name: 'Reset second factor' }).click()
-  await expect(page.getByText('Second factor reset. The account was signed out everywhere.')).toBeVisible()
-  await expect(row).not.toContainText('second factor on')
+  // The accounts are an area of their own, further down the settings' navigation: one row per account, "Manage"
+  // opens a dialog with every act (the shared account module's list).
+  await page.getByTestId('settings-nav').getByRole('link', { name: 'Accounts' }).click()
+  const row = page.getByTestId('account-factor')
+  await expect(row).toContainText('Second factor')
+  const manage = async () => {
+    await row.getByTestId('account-manage').click()
+    return page.getByTestId('manage-dialog')
+  }
+  const close = async () => page.getByTestId('manage-dialog').getByRole('button', { name: 'Close' }).click()
+  await (await manage()).getByRole('button', { name: 'Reset the second factor' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Reset the second factor' }).last()
+  // Only with the operator's own password once more: a session alone is not enough, the button waits for it.
+  await expect(dialog.getByRole('button', { name: 'Reset the second factor' })).toBeDisabled()
+  await dialog.getByLabel('Current password').fill('not the password at all')
+  await dialog.getByRole('button', { name: 'Reset the second factor' }).click()
+  await expect(dialog.getByText('The password is wrong.')).toBeVisible()
+  await dialog.getByLabel('Current password').fill(OPERATOR.password)
+  await dialog.getByRole('button', { name: 'Reset the second factor' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(row).not.toContainText('Second factor')
+  await close()
 
   // A role, the same way; the field starts empty each time.
-  await row.getByRole('button', { name: 'Make operator' }).click()
-  const promote = page.getByRole('dialog', { name: 'Make factor an operator?' })
-  await expect(promote.getByLabel('Your own password')).toHaveValue('')
-  await promote.getByLabel('Your own password').fill(OPERATOR.password)
+  await (await manage()).getByRole('button', { name: 'Make operator' }).click()
+  const promote = page.getByRole('dialog', { name: 'Make operator' }).last()
+  await expect(promote.getByLabel('Current password')).toHaveValue('')
+  await promote.getByLabel('Current password').fill(OPERATOR.password)
   await promote.getByRole('button', { name: 'Make operator' }).click()
   await expect(row).toContainText('Operator')
-  await row.getByRole('button', { name: 'Make member' }).click()
-  const demote = page.getByRole('dialog', { name: 'Make factor a member?' })
-  await demote.getByLabel('Your own password').fill(OPERATOR.password)
+  await close()
+  await (await manage()).getByRole('button', { name: 'Make member' }).click()
+  const demote = page.getByRole('dialog', { name: 'Make member' }).last()
+  await demote.getByLabel('Current password').fill(OPERATOR.password)
   await demote.getByRole('button', { name: 'Make member' }).click()
   await expect(row).not.toContainText('Operator')
+  await close()
   // The wrong password above counted like a failed sign-in, and nothing more.
   expect(problems.filter((problem) => !problem.includes('401'))).toEqual([])
 })
@@ -163,10 +177,10 @@ test('an account that must set one up sees nothing else until it has', async ({ 
     await expect(own.getByRole('heading', { name: 'Set up a second factor' })).toBeVisible()
     await expect(own.getByRole('link', { name: 'Graph' })).toHaveCount(0)
     const section = own.getByTestId('second-factor')
-    await section.getByRole('button', { name: 'Set up' }).click()
+    await section.getByRole('button', { name: 'Set up an authenticator app' }).click()
     const secret = (await own.getByTestId('totp-secret').textContent())!.replace(/\s/g, '')
     await section.getByLabel('Code from the app').fill(totp(secret))
-    await section.getByLabel('Password').fill(PASSWORD)
+    await section.getByLabel('Password', { exact: true }).fill(PASSWORD)
     await section.getByRole('button', { name: 'Turn on' }).click()
     await own.getByTestId('recovery-codes').getByRole('button', { name: 'I have them' }).click()
     await expect(own.getByRole('heading', { name: 'Set up a second factor' })).toHaveCount(0)
@@ -174,7 +188,7 @@ test('an account that must set one up sees nothing else until it has', async ({ 
     expect(problems).toEqual([])
     await own.context().close()
   } finally {
-    expect((await page.request.put('/api/settings', { data: { two_factor_required: false }, headers: TAB })).ok()).toBe(true)
+    expect((await page.request.put('/api/settings', { data: { two_factor_required: false, current_password: OPERATOR.password }, headers: TAB })).ok()).toBe(true)
     expect((await page.request.post('/api/auth/totp/disable', { data: { password: OPERATOR.password }, headers: TAB })).ok()).toBe(true)
   }
 })
@@ -191,12 +205,12 @@ test('too many wrong codes lead back to the password', async ({ page, browser, b
   await own.request.post('/api/auth/logout', { headers: TAB })
   await signIn(own, 'guessed')
   for (let attempt = 0; attempt < 5; attempt++) {
-    await own.getByLabel('Code from the app').fill('000000')
+    await own.getByLabel('Code', { exact: true }).fill('000000')
     await own.getByRole('button', { name: 'Sign in', exact: true }).click()
     await expect(own.getByRole('alert')).toBeVisible()
   }
-  await expect(own.getByRole('alert')).toContainText('Too many wrong codes, or too long a wait.')
-  await expect(own.getByLabel('Password')).toBeVisible()
-  await expect(own.getByLabel('Code from the app')).toHaveCount(0)
+  await expect(own.getByRole('alert')).toContainText('That took too long. Sign in again.')
+  await expect(own.getByLabel('Password', { exact: true })).toBeVisible()
+  await expect(own.getByLabel('Code', { exact: true })).toHaveCount(0)
   await own.context().close()
 })

@@ -13,8 +13,13 @@ and never shown again in full. It gets a small JSON body (``app``, ``event``, ``
 server and the account has an address.
 
 Sending never holds up what caused it and never breaks it: it runs in a worker thread, every failure is logged by its
-kind only (never the address, never the text), and nothing is tried again. What a notification says is a title and a
-line, the names of notes and people, never a note's text.
+kind only (never the address, never the text). What a notification says is a title and a line, the names of notes and
+people, never a note's text.
+
+**Mail goes through the shared post module** (post 1.1.0, ``app_letters``): the letter in the account's language (German
+or English, ``TEXTS``) with nexlore's logo, into the outbox, which tries a mail again that did not go out; the test of
+the account goes out at once and says how it went. **The webhook keeps its English words**, as before: a program
+behind it may read them.
 """
 
 from __future__ import annotations
@@ -25,8 +30,8 @@ import shutil
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass, field
 from datetime import datetime
-from email.message import EmailMessage
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -37,8 +42,9 @@ from sqlalchemy.orm import Session
 from ..config import get_settings
 from ..db import SessionLocal
 from ..models import OPERATOR, Account, utcnow
-from ..security import decrypt_secret, encrypt_secret
-from . import mailer, settings_service
+from ..security import account_out, decrypt_secret, encrypt_secret
+from ..vendor.nexupdates.words import WORDS as _UPDATE_WORDS
+from . import kontenpost, settings_service
 
 logger = logging.getLogger("nexlore.notify")
 
@@ -66,6 +72,87 @@ _counts_lock = threading.Lock()
 _waiting = 0
 #: Control characters and line breaks of any kind: a mail subject must be one line, or the mail is never sent.
 _UNSAFE_LINE = re.compile("[\x00-\x1f\x7f\x85\u2028\u2029]")
+
+#: What each notification says, in English (the webhook and mail in English) and German (mail): its title and its
+#: line, with the values of ``Words``. The English words are those of 1.16.0.
+TEXTS: dict[str, dict[str, tuple[str, str]]] = {
+    "test": {
+        "en": ("nexlore test", "Notifications from nexlore reach you here."),
+        "de": ("Test von nexlore", "Benachrichtigungen von nexlore erreichen dich hier."),
+    },
+    "mention": {
+        "en": ("{who} names you in a comment on {note}", ""),
+        "de": ("{who} nennt dich in einem Kommentar zu {note}", ""),
+    },
+    "answer": {
+        "en": ("{who} answered in a thread on {note}", ""),
+        "de": ("{who} hat in einem Gespräch zu {note} geantwortet", ""),
+    },
+    "invite": {
+        "en": ("{who} invites you into {space}", "Answer under New in nexlore."),
+        "de": ("{who} lädt dich in {space} ein", "Antworte unter „Neu“ in nexlore."),
+    },
+    "approval": {
+        "en": ("{key} waits for your approval", "Tool: {tool}"),
+        "de": ("{key} wartet auf deine Zustimmung", "Werkzeug: {tool}"),
+    },
+    "tasks": {
+        "en": ("{today} due today, {overdue} overdue", "{titles}"),
+        "de": ("{today} heute fällig, {overdue} überfällig", "{titles}"),
+    },
+    "backup_failed": {
+        "en": ("A backup of nexlore failed", "The scheduled backup did not finish; the log says why."),
+        "de": ("Eine Sicherung von nexlore ist gescheitert",
+               "Die geplante Sicherung ist nicht fertig geworden; das Log sagt, warum."),
+    },
+    "restore_failed": {
+        "en": ("A restore of nexlore failed",
+               "The backup could not be restored at the start; nexlore runs with the data from before."),
+        "de": ("Eine Wiederherstellung von nexlore ist gescheitert",
+               "Die Sicherung ließ sich beim Start nicht wiederherstellen; nexlore läuft mit den Daten von vorher."),
+    },
+    "disk_low": {
+        "en": ("The disk of nexlore runs full", "Less than 1 GB or 5 % is free where nexlore keeps its data."),
+        "de": ("Die Platte von nexlore läuft voll", "Wo nexlore seine Daten hält, ist weniger als 1 GB oder 5 % frei."),
+    },
+    #: The bell's words come from the shared module updates (U12): nexlore {version} in the operator's language.
+    "new_version": {
+        language: (said["title"].replace("{app}", "nexlore"), said["text"].replace("{app}", "nexlore"))
+        for language, said in _UPDATE_WORDS.items()
+        if language in ("en", "de")
+    },
+    "token_expiring": {
+        "en": ("The API key {name} runs out on {day}",
+               "Make a new one under My account › Connections › API keys, and put it where the old one is used."),
+        "de": ("Der API-Schlüssel {name} läuft am {day} ab",
+               ("Leg unter Mein Konto › Verbindungen › API-Schlüssel einen neuen an und setz ihn dort ein, wo der "
+                "alte benutzt wird.")),
+    },
+}
+#: The last line of every notification mail, and the word on its button.
+FOOTER = {"en": "You get this because you switched it on in nexlore.",
+          "de": "Du bekommst das, weil du es in nexlore eingeschaltet hast."}
+ACTION = {"en": "Open in nexlore", "de": "In nexlore öffnen"}
+
+
+@dataclass(frozen=True)
+class Words:
+    """What a notification says: one of ``TEXTS`` and its values (names of notes, people, spaces; never a note's
+    text)."""
+
+    kind: str
+    values: dict[str, str] = field(default_factory=dict)
+
+    def render(self, language: str = "en") -> tuple[str, str]:
+        texts = TEXTS[self.kind]
+        title, message = texts.get(language) or texts["en"]
+        return title.format(**self.values), message.format(**self.values)
+
+
+def words(kind: str, **values: object) -> Words:
+    if kind not in TEXTS:
+        raise ValueError(kind)
+    return Words(kind, {name: str(value) for name, value in values.items()})
 
 
 class NotifyError(Exception):
@@ -133,26 +220,50 @@ def _post(url: str, body: dict[str, Any]) -> int:
         return response.status_code
 
 
-def _mail(db: Session, to: str, title: str, message: str, url: str) -> None:
-    mail = EmailMessage()
-    mail["To"] = to
+def _letter(db: Session, account: Account, said: Words, url: str) -> Any:
+    """The notification as a letter of the post module, in the account's language, to its address."""
+    from ..vendor import nexpost
+
+    language = kontenpost.language_for(db, account)
+    language = language if language in TEXTS[said.kind] else "en"
+    title, message = said.render(language)
     # A line break in a note's title made the subject invalid and the mail was never sent.
-    mail["Subject"] = " ".join(_UNSAFE_LINE.sub(" ", title).split())[:200]
-    ending = "\nYou get this because you switched it on in nexlore.\n"
-    mail.set_content(message + (f"\n\n{url}\n" if url else "\n") + ending)
-    mailer._send(db, mail)
+    subject = " ".join(_UNSAFE_LINE.sub(" ", title).split())[:200]
+    return nexpost.app_letters.write(
+        account.email, kind=f"notify.{said.kind}", subject=subject, language=language,
+        paragraphs=[line for line in message.split("\n") if line.strip()] or [subject],
+        link=url, action=ACTION[language] if url else "", footer=FOOTER[language],
+    )
 
 
-def deliver(account_id: int, event: str, title: str, message: str, path: str = "", priority: int = 3) -> dict[str, str]:
-    """Send one notification now, through every way the account has. Returns how each went (for the test button)."""
+def reaches(account: Account | None) -> bool:
+    """Whether a notification would go out to the account now: it is not out (blocked or deleted, konten E38) and has
+    a way (a webhook, or mail with an address and the operator's mail server)."""
+    if account is None or account_out(account):
+        return False
+    if webhook_of(account):
+        return True
+    with SessionLocal() as db:
+        return bool(choices(account)["email"] and account.email and kontenpost.configured(db))
+
+
+def deliver(account_id: int, event: str, said: Words, path: str = "", priority: int = 3, *,
+            at_once: bool = False) -> dict[str, str]:
+    """Send one notification now, through every way the account has. Returns how each went (for the test button).
+    The mail goes into the outbox of the post module, or at once with ``at_once`` (the test: its answer counts)."""
+    from ..vendor import nexpost
+    from .post_store import PostStore
+
     outcome: dict[str, str] = {}
+    title, message = said.render("en")
     with SessionLocal() as db:
         account = db.get(Account, account_id)
-        if account is None:
+        if account is None or account_out(account):
+            # Out since it was handed on (blocked or deleted, konten E38): nothing goes to it.
             return outcome
         mine = choices(account)
         hook = webhook_of(account)
-        email = account.email if mine["email"] and account.email and mailer.configured(db) else ""
+        email = account.email if mine["email"] and account.email and kontenpost.configured(db) else ""
         url = _link(path) if path else ""
         if hook:
             body = {"app": "nexlore", "event": event, "title": title, "message": message, "url": url,
@@ -166,7 +277,12 @@ def deliver(account_id: int, event: str, title: str, message: str, path: str = "
                 logger.warning("Notification not sent way=webhook event=%s reason=%s", event, type(exc).__name__)
         if email:
             try:
-                _mail(db, email, title, message, url)
+                letter = _letter(db, account, said, url)
+                if at_once:
+                    nexpost.outbox.deliver_now(PostStore(db), letter)
+                else:
+                    nexpost.outbox.queue(PostStore(db), letter)
+                    db.commit()
                 outcome["email"] = "ok"
             except Exception as exc:  # noqa: BLE001
                 outcome["email"] = "failed"
@@ -174,13 +290,14 @@ def deliver(account_id: int, event: str, title: str, message: str, path: str = "
     return outcome
 
 
-def send(account_id: int, event: str, title: str, message: str, path: str = "", priority: int = 3) -> None:
+def send(account_id: int, event: str, said: Words, path: str = "", priority: int = 3) -> None:
     """A notification for one account, if it wants this occasion; sent in the background."""
     if event not in EVENTS:
         raise ValueError(event)
     with SessionLocal() as db:
         account = db.get(Account, account_id)
-        if account is None or not choices(account)[event]:
+        # Blocked or deleted: out of every way in, nothing reaches it either.
+        if account_out(account) or not choices(account)[event]:
             return
         if event == "operator" and account.role != OPERATOR:
             return
@@ -189,7 +306,7 @@ def send(account_id: int, event: str, title: str, message: str, path: str = "", 
     if not _room_for(account_id):
         return
     if INLINE:
-        deliver(account_id, event, title, message, path, priority)
+        deliver(account_id, event, said, path, priority)
         return
     global _waiting
     with _counts_lock:
@@ -197,7 +314,7 @@ def send(account_id: int, event: str, title: str, message: str, path: str = "", 
             logger.warning("Notification dropped: %s are waiting already", MAX_WAITING)
             return
         _waiting += 1
-    _worker.submit(_safely, account_id, event, title, message, path, priority)
+    _worker.submit(_safely, account_id, event, said, path, priority)
 
 
 def _room_for(account_id: int) -> bool:
@@ -235,11 +352,11 @@ def _safely(*args: Any) -> None:
             _waiting = max(0, _waiting - 1)
 
 
-def operators(title: str, message: str, path: str = "", priority: int = 4) -> None:
+def operators(said: Words, path: str = "", priority: int = 4) -> None:
     with SessionLocal() as db:
         ids = list(db.scalars(select(Account.id).where(Account.role == OPERATOR)))
     for account_id in ids:
-        send(account_id, "operator", title, message, path, priority)
+        send(account_id, "operator", said, path, priority)
 
 
 # --- The daily ones ---------------------------------------------------------------------------------------------------
@@ -281,8 +398,8 @@ def tasks_due(now: datetime | None = None) -> int:
                 continue
             # The notes they stand in, never the tasks' own words: what leaves nexlore is titles and names.
             titles = list(dict.fromkeys(item["title"] for item in overdue["items"] + today_items["items"]))[:10]
-            send(row.id, "tasks", f"{count_today} due today, {count_overdue} overdue",
-                 "\n".join(f"- {title}" for title in titles), "/tasks", 3)
+            send(row.id, "tasks", words("tasks", today=count_today, overdue=count_overdue,
+                                        titles="\n".join(f"- {title}" for title in titles)), "/tasks", 3)
             sent += 1
     return sent
 
@@ -294,15 +411,12 @@ def disk_low() -> bool:
 
 
 def daily_operator_checks(now: datetime | None = None) -> None:
-    """Once a day: the disk; whenever a newer version is first seen: that."""
-    from . import updates
-
+    """Once a day: the disk. A newer version is the shared module's to tell (``updates.run_forever`` in ``main``,
+    through ``operators`` here, once per version)."""
     now = now or datetime.now().astimezone()
     today = now.date().isoformat()
     with SessionLocal() as db:
-        on = bool(settings_service.get(db, "update_check"))
         disk_day = settings_service.get(db, "notify_disk_day")
-        told_version = settings_service.get(db, "notify_version")
     if disk_day != today:
         with SessionLocal() as db:
             settings_service.save(db, {"notify_disk_day": today})
@@ -311,14 +425,7 @@ def daily_operator_checks(now: datetime | None = None) -> None:
         except OSError:
             low = False
         if low:
-            operators("The disk of nexlore runs full", "Less than 1 GB or 5 % is free where nexlore keeps its data.",
-                      "/settings?tab=server", 5)
-    if on:
-        known = updates.state(on=True)
-        if known.newer and known.latest and known.latest != told_version:
-            with SessionLocal() as db:
-                settings_service.save(db, {"notify_version": known.latest})
-            operators(f"nexlore {known.latest.lstrip('v')} is out", "A newer version of nexlore is out.", "/about", 2)
+            operators(words("disk_low"), "/settings/storage", 5)
 
 
 def tokens_expiring() -> int:
@@ -335,9 +442,7 @@ def tokens_expiring() -> int:
             db.commit()
         for account_id, name, expires_at in due:
             day = expires_at.astimezone().date().isoformat()
-            send(account_id, "tokens", f"The API token {name} runs out on {day}",
-                 "Make a new one under My account, Connections, and put it where the old one is used.",
-                 "/account?tab=ai", 3)
+            send(account_id, "tokens", words("token_expiring", name=name, day=day), "/settings/connections", 3)
             sent += 1
     return sent
 

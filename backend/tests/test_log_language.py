@@ -108,7 +108,7 @@ AVOIDED = (
     ("Holds", re.compile(r"(?<![\w/.-])Holds?(?![\w/-])(?!\.\w)")),
 )
 SPOKEN_KEYWORDS = {"summary", "description", "detail"}
-MAIL_FILES = {"mailer.py", "email_change.py", "notify.py"}
+MAIL_FILES = {"kontenpost.py", "email_change.py", "notify.py"}
 #: The app speaks in at least this many places; fewer means the scan looked in the wrong place.
 SPOKEN_FLOOR = 1000
 

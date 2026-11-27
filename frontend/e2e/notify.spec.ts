@@ -12,7 +12,7 @@ test.skip(!!process.env.E2E_BASE_URL, 'changes the account')
 test('a webhook gets the test, and occasions are kept', async ({ page, request }) => {
   try {
     await page.goto('/account?tab=notify')
-    await page.getByLabel('Webhook address').fill(HOOK)
+    await page.getByRole('textbox', { name: 'Webhook address' }).fill(HOOK)
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.getByTestId('notify-webhook')).toHaveText(/Webhook to 127\.0\.0\.1/)
     await expect(page.getByText(HOOK)).toHaveCount(0)
@@ -31,4 +31,14 @@ test('a webhook gets the test, and occasions are kept', async ({ page, request }
   } finally {
     await page.request.put('/api/me/notify', { data: { webhook: '', choices: { tasks: false } }, headers: TAB })
   }
+})
+
+test('"iPhone and iPad" says the app gets nothing and leads to its card under Connections', async ({ page }) => {
+  await page.goto('/settings/notifications')
+  const row = page.locator('#notify-ways').getByTestId('notify-devices-box')
+  await expect(row).toContainText('iPhone and iPad')
+  await expect(row).toContainText('gets no notifications from nexlore')
+  await row.getByTestId('notify-devices').click()
+  await expect(page).toHaveURL(/\/settings\/connections#devices$/)
+  await expect(page.getByTestId('app-devices-card')).toBeVisible()
 })

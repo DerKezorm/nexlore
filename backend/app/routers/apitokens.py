@@ -1,24 +1,24 @@
 """API tokens through the interface: an account's own (My account, Connections) and every token for the operator.
 
 Only with a session: a token never makes, lists or deletes tokens (``require_account`` reads the session cookie).
+The old ways, answering as before; behind them the shared key module (``keys.listing/make/revoke/overview/block``),
+as the cards under ``/api/connections``.
 """
 
 from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Path
 from pydantic import BaseModel, Field
-from sqlalchemy import select
 
 from ..deps import Account, DbSession, OperatorAccount
 from ..errors import error
-from ..models import Account as AccountRow
-from ..models import ApiToken, Space, utcnow
-from ..services import apitokens, rights
-from ..services.apitokens import TokenError
+from ..services.schluessel_store import CONFIG, SchluesselStore, nexschluessel, old_id, old_refusal
+
+keys = nexschluessel.keys
 
 logger = logging.getLogger("nexlore.api")
 
@@ -59,42 +59,54 @@ class MadeOut(BaseModel):
     secret: str
 
 
-def _out(db: Any, account: Any, row: ApiToken) -> TokenOut:
-    names = None
-    if row.spaces is not None:
-        # Only spaces the account may still read: one it lost since tells nothing (and the token does not see it).
-        readable = rights.readable_ids(db, account)
-        wanted = [space_id for space_id in row.spaces if space_id in readable]
-        names = sorted(db.scalars(select(Space.folder).where(Space.id.in_(wanted)))) if wanted else []
-    return TokenOut(id=row.id, name=row.name, level=row.level, prefix=row.prefix, created_at=row.created_at,
-                    last_used_at=row.last_used_at, expires_at=row.expires_at, blocked=row.blocked_at is not None,
-                    spaces=names)
+def _names(entry: dict) -> list[str] | None:
+    """The names of the spaces of a key, of those the account may read now (a space it lost since tells nothing)."""
+    if entry["areas"] is None:
+        return None
+    return sorted(area["name"] for area in entry["areas"] if area["name"] is not None)
+
+
+def _out(entry: dict) -> TokenOut:
+    return TokenOut(id=old_id(entry["id"], "api"), name=entry["name"], level=entry["right"], prefix=entry["prefix"],
+                    created_at=entry["created_at"], last_used_at=entry["last_used_at"],
+                    expires_at=entry["expires_at"], blocked=entry["blocked"], spaces=_names(entry))
+
+
+def _refused(exc: nexschluessel.KeyRefused) -> Exception:
+    code, text, status = old_refusal(exc, "api")
+    return error(code, text, status)
 
 
 @router.get("/api-tokens", response_model=TokensOut, summary="The own API tokens")
 def own_tokens(account: Account, db: DbSession) -> TokensOut:
-    rows = db.scalars(select(ApiToken).where(ApiToken.account_id == account.id).order_by(ApiToken.id)).all()
-    return TokensOut(allowed=apitokens.allowed(db), tokens=[_out(db, account, row) for row in rows])
+    found = keys.listing(SchluesselStore(db), CONFIG, account.id)
+    own = sorted((entry for entry in found["keys"] if entry["kind"] == "api"),
+                 key=lambda entry: old_id(entry["id"], "api"))
+    return TokensOut(allowed=found["api"], tokens=[_out(entry) for entry in own])
 
 
 @router.post("/api-tokens", response_model=MadeOut, status_code=201, summary="Make an API token; shown once")
 def make_token(body: TokenIn, account: Account, db: DbSession) -> MadeOut:
-    if not apitokens.allowed(db):
-        raise error("api_off", "The operator has not switched API tokens on.", 403)
+    store = SchluesselStore(db)
+    if not store.switch("api"):
+        raise error("api_off", "The operator has not switched the programming interface (API) on.", 403)
     try:
-        row, secret = apitokens.make(db, account, body.name, body.level, body.spaces, body.days)
-    except TokenError as exc:
-        raise error(exc.code, exc.text, exc.status) from exc
-    return MadeOut(token=_out(db, account, row), secret=secret)
+        made = keys.make(store, CONFIG, account.id, kind="api", name=body.name.strip() or "API", right=body.level,
+                         areas=body.spaces, days=body.days)
+    except nexschluessel.KeyRefused as exc:
+        raise _refused(exc) from exc
+    entry = keys.entry(made.key, CONFIG, store.areas_of(account.id, "api"))
+    logger.info("API token made token_id=%s level=%s spaces=%s days=%s", old_id(made.key.id, "api"), body.level,
+                "all" if body.spaces is None else len(made.key.areas or []), body.days or "never")
+    return MadeOut(token=_out(entry), secret=made.secret)
 
 
 @router.delete("/api-tokens/{token_id}", status_code=204, summary="Delete an own API token")
 def delete_token(token_id: Annotated[int, Path(ge=1)], account: Account, db: DbSession) -> None:
-    row = db.get(ApiToken, token_id)
-    if row is None or row.account_id != account.id:
-        raise error("not_found", "Not found.", 404)
-    db.delete(row)
-    db.commit()
+    try:
+        keys.revoke(SchluesselStore(db), CONFIG, account.id, f"api-{token_id}")
+    except nexschluessel.KeyRefused as exc:
+        raise _refused(exc) from exc
     logger.info("API token deleted token_id=%s", token_id)
 
 
@@ -115,28 +127,30 @@ class AnyTokenOut(BaseModel):
     blocked: bool = False
 
 
+def _any(entry: dict) -> AnyTokenOut:
+    # Since schluessel E36 the operator sees no start of a key: the old field stays, empty (plan E40).
+    return AnyTokenOut(id=old_id(entry["id"], "api"), account=entry["account"]["name"], name=entry["name"],
+                       level=entry["right"], prefix="", spaces=entry["areas"],
+                       created_at=entry["created_at"], last_used_at=entry["last_used_at"],
+                       expires_at=entry["expires_at"], blocked=entry["blocked"])
+
+
 @router.get("/admin/api-tokens", response_model=list[AnyTokenOut], summary="Every API token (operator)")
 def every_token(_operator: OperatorAccount, db: DbSession) -> list[AnyTokenOut]:
-    names = dict(db.execute(select(AccountRow.id, AccountRow.name)).all())
-    rows = db.scalars(select(ApiToken).order_by(ApiToken.account_id, ApiToken.id)).all()
-    return [AnyTokenOut(id=row.id, account=names.get(row.account_id, ""), name=row.name, level=row.level,
-                        prefix=row.prefix, spaces=None if row.spaces is None else len(row.spaces),
-                        created_at=row.created_at, last_used_at=row.last_used_at, expires_at=row.expires_at,
-                        blocked=row.blocked_at is not None) for row in rows]
+    found = [entry for entry in keys.overview(SchluesselStore(db), CONFIG) if entry["kind"] == "api"]
+    found.sort(key=lambda entry: (entry["account"]["id"], old_id(entry["id"], "api")))
+    return [_any(entry) for entry in found]
 
 
 @router.post("/admin/api-tokens/{token_id}/block", response_model=AnyTokenOut,
-             summary="Block a token for good (operator); its account sees it blocked")
+             summary="Block a token (operator); its account sees it blocked")
 def block_token(token_id: Annotated[int, Path(ge=1)], _operator: OperatorAccount, db: DbSession) -> AnyTokenOut:
-    row = db.get(ApiToken, token_id)
-    if row is None:
-        raise error("not_found", "Not found.", 404)
-    if row.blocked_at is None:
-        row.blocked_at = utcnow()
-        db.commit()
+    store = SchluesselStore(db)
+    was = store.key(f"api-{token_id}")
+    try:
+        entry = keys.block(store, CONFIG, f"api-{token_id}")
+    except nexschluessel.KeyRefused as exc:
+        raise _refused(exc) from exc
+    if was is not None and was.blocked_at is None:
         logger.info("API token blocked by the operator token_id=%s", token_id)
-    owner = db.get(AccountRow, row.account_id)
-    return AnyTokenOut(id=row.id, account=owner.name if owner else "", name=row.name, level=row.level,
-                       prefix=row.prefix, spaces=None if row.spaces is None else len(row.spaces),
-                       created_at=row.created_at, last_used_at=row.last_used_at, expires_at=row.expires_at,
-                       blocked=True)
+    return _any(entry)

@@ -20,7 +20,7 @@ export function KeyFactorHint({ compact = false }: { compact?: boolean }) {
       className={(compact ? 'mt-1 text-xs' : 'mb-3 rounded-lg border border-warn-500/30 bg-warn-500/10 px-3 py-2 text-sm') + ' text-warn-500'}
     >
       {t('keyFactor.text')}{' '}
-      <Link to="/account?tab=security" className="underline">
+      <Link to="/settings/security" className="underline">
         {t('keyFactor.link')}
       </Link>
     </p>

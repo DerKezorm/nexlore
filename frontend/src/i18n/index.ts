@@ -12,24 +12,43 @@
  * comes from outside the code.
  *
  * The texts of sign-in through providers (`oidc.…`) come with the shared module `vendor/nexoidc`, the same words in
- * every nex app; they are merged in here, `{{app}}` says "nexlore".
+ * every nex app; they are merged in here, `{{app}}` says "nexlore". So are those of accounts (`account.…`, the shared
+ * module `vendor/nexkonten`, whose namespace nexlore leaves alone: its own account texts are under `me.…`) and of
+ * system mail (`mail.…`, `vendor/nexpost`).
  */
 
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
+import { kontenVariables } from '../vendor/nexkonten/konten'
+import kontenEn from '../vendor/nexkonten/konten.en.json'
+import { postVariables } from '../vendor/nexpost/post'
+import postEn from '../vendor/nexpost/post.en.json'
 import oidcEn from '../vendor/nexoidc/oidc.en.json'
 import { oidcVariables, oidcWording } from '../vendor/nexoidc/oidc'
 import ownEn from './en.json'
+import { ownLanguages, type LanguageOption } from '../vendor/nexsprachen/languages'
 
-/** nexlore's own English texts with the shared sign-in texts. */
-export const en: Texts = { ...ownEn, ...oidcWording(oidcEn, { singleAccount: false, invitations: true }) }
+/** nexlore's own English texts with the shared texts of sign-in, accounts and system mail. */
+export const en: Texts = { ...ownEn, ...oidcWording(oidcEn, { singleAccount: false, invitations: true }), ...kontenEn, ...postEn }
 /** What `{{app}}` stands for in the shared texts. */
 export const APP_NAME = 'nexlore'
 
 async function german(): Promise<{ default: Texts }> {
-  const [own, oidc] = await Promise.all([import('./de.json'), import('../vendor/nexoidc/oidc.de.json')])
-  return { default: { ...own.default, ...oidcWording(oidc.default, { singleAccount: false, invitations: true }) } }
+  const [own, oidc, konten, post] = await Promise.all([
+    import('./de.json'),
+    import('../vendor/nexoidc/oidc.de.json'),
+    import('../vendor/nexkonten/konten.de.json'),
+    import('../vendor/nexpost/post.de.json'),
+  ])
+  return {
+    default: {
+      ...own.default,
+      ...oidcWording(oidc.default, { singleAccount: false, invitations: true }),
+      ...konten.default,
+      ...post.default,
+    },
+  }
 }
 
 type Texts = Record<string, unknown>
@@ -45,7 +64,8 @@ export const SHIPPED = {
   de: { name: 'Deutsch', load: german },
 } as const satisfies Record<string, Shipped>
 
-export type LanguageOption = { code: string; name: string; added: boolean }
+export type { LanguageOption } from '../vendor/nexsprachen/languages'
+export { byName } from '../vendor/nexsprachen/languages'
 
 const FALLBACK = 'en'
 const STORAGE_KEY = 'nexlore.language'
@@ -55,38 +75,17 @@ function isShipped(code: string): code is keyof typeof SHIPPED {
   return code in SHIPPED
 }
 
-type AddedEntry = { code: string; name: string; keys: number }
+/** The operator's own languages through the shared module sprachen 1.0.0 (`/api/locales`, as before). */
+export const own = ownLanguages({ base: '/api/locales' })
+/** The languages nexlore ships, each named in itself. */
+export const BUILT_IN = [
+  { code: 'de', name: 'Deutsch' },
+  { code: 'en', name: 'English' },
+] as const
 
-let addedList: Promise<AddedEntry[]> | null = null
-
-/** The languages the operator added. An empty list when the server is not reachable: the app still works. */
-export function addedLanguages(): Promise<AddedEntry[]> {
-  addedList ??= fetch('/api/locales', { headers: { Accept: 'application/json' } })
-    .then((response) => (response.ok ? response.json() : []))
-    .then((list: unknown) =>
-      Array.isArray(list)
-        ? list.filter((entry): entry is AddedEntry => !!entry && typeof entry.code === 'string' && CODE.test(entry.code))
-        : [],
-    )
-    .catch(() => [])
-  return addedList
-}
-
-/** Only for tests: forget what the server said. */
+/** Forget what the server said (after the card added or removed a language; and for tests). */
 export function resetAddedLanguages(): void {
-  addedList = null
-}
-
-async function fetchAdded(code: string): Promise<Texts | null> {
-  if (!CODE.test(code)) return null
-  try {
-    const response = await fetch(`/api/locales/${encodeURIComponent(code)}`, { headers: { Accept: 'application/json' } })
-    if (!response.ok) return null
-    const texts: unknown = await response.json()
-    return texts && typeof texts === 'object' && !Array.isArray(texts) ? (texts as Texts) : null
-  } catch {
-    return null
-  }
+  own.forget()
 }
 
 /** Shipped texts first, the operator's file on top. False when there is nothing for this code at all. */
@@ -99,9 +98,8 @@ async function loadTexts(code: string): Promise<boolean> {
     }
     found = true
   }
-  const added = await addedLanguages()
-  if (added.some((entry) => entry.code === code)) {
-    const texts = await fetchAdded(code)
+  if (CODE.test(code) && (await own.knows(code, []))) {
+    const texts = await own.texts(code)
     if (texts) {
       i18n.addResourceBundle(code, 'translation', texts, true, true)
       found = true
@@ -110,20 +108,9 @@ async function loadTexts(code: string): Promise<boolean> {
   return found
 }
 
-/**
- * Languages in the order of their names, the same everywhere in the family: Deutsch, English, and every added one
- * in its place among them, never simply at the end.
- */
-export function byName(a: { name: string }, b: { name: string }): number {
-  return a.name.localeCompare(b.name)
-}
-
-export async function languageOptions(): Promise<LanguageOption[]> {
-  const options: LanguageOption[] = Object.entries(SHIPPED).map(([code, entry]) => ({ code, name: entry.name, added: false }))
-  for (const entry of await addedLanguages()) {
-    if (!isShipped(entry.code)) options.push({ code: entry.code, name: entry.name || entry.code, added: true })
-  }
-  return options.sort(byName)
+/** Deutsch, English and every added one in its place among them by name, never simply at the end. */
+export function languageOptions(): Promise<LanguageOption[]> {
+  return own.options(BUILT_IN)
 }
 
 function storedLanguage(): string | null {
@@ -149,7 +136,10 @@ export async function startI18n(): Promise<void> {
     resources: { en: { translation: en } },
     lng: FALLBACK,
     fallbackLng: FALLBACK,
-    interpolation: { escapeValue: false, defaultVariables: oidcVariables(APP_NAME) },
+    interpolation: {
+      escapeValue: false,
+      defaultVariables: { ...oidcVariables(APP_NAME), ...postVariables(APP_NAME), ...kontenVariables(APP_NAME) },
+    },
     returnNull: false,
   })
   const wanted = storedLanguage() ?? browserLanguage()
@@ -168,21 +158,6 @@ export async function changeLanguage(code: string): Promise<void> {
   }
   document.documentElement.lang = code
   await i18n.changeLanguage(code)
-}
-
-/** The English texts as a file to translate, with the `_meta` entry the server reads the name from. */
-export function templateFile(): Blob {
-  const template = { _meta: { name: 'Name of the language in itself, for example Español' }, ...en }
-  return new Blob([JSON.stringify(template, null, 2) + '\n'], { type: 'application/json' })
-}
-
-export function downloadTemplate(): void {
-  const url = URL.createObjectURL(templateFile())
-  const link = document.createElement('a')
-  link.href = url
-  link.download = 'nexlore-language-template.json'
-  link.click()
-  URL.revokeObjectURL(url)
 }
 
 /** The locale for dates and numbers: the chosen language, as the browser understands it. */

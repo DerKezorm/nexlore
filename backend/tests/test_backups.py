@@ -13,7 +13,8 @@ from sqlalchemy import func, select
 from app.config import get_settings
 from app.db import SessionLocal
 from app.models import OPERATOR, Version
-from app.services import backups, index
+from app.services import backup_hooks, backups, index
+from app.vendor import nexsicherung
 
 from .conftest import PASSWORD, make_account, sign_in
 
@@ -51,15 +52,16 @@ def test_backup_check_and_restore_bring_back_files_and_history(vault: Path) -> N
     assert {"vault/S/a.md", "vault/S/.obsidian/app.json", "database/nexlore.db", backups.MANIFEST} <= names
 
     brief = backups.check(archive.name)
-    assert brief.usable and (brief.would_add, brief.would_change, brief.would_remove) == (0, 0, 0)
+    found = brief.details
+    assert brief.usable and (found["would_add"], found["would_change"], found["would_remove"]) == (0, 0, 0)
 
     put(vault, "S/a.md", "changed")
     (vault / "S" / "b.md").unlink()
     put(vault, "S/new.md", "new")
     index.scan()
-    brief = backups.check(archive.name)
-    assert (brief.would_add, brief.would_change, brief.would_remove) == (1, 1, 1)
-    assert brief.examples["remove"] == ["S/new.md"]
+    found = backups.check(archive.name).details
+    assert (found["would_add"], found["would_change"], found["would_remove"]) == (1, 1, 1)
+    assert found["examples"]["remove"] == ["S/new.md"]
 
     backups.stage_restore(archive.name)
     assert [entry.kind for entry in backups.entries()].count("update") == 1  # the way back
@@ -111,14 +113,14 @@ def test_the_trash_in_a_backup_is_the_one_its_database_knows(vault: Path, monkey
     index.scan()
     vault_service.delete_path("S/clip.bin", actor=vault_service.Actor(name="t", client="tab-tests000"))
     waiting = next(paths.trash_root().iterdir())
-    walk = backups._vault_files
+    walk = backup_hooks._vault_files
 
     def and_emptied_meanwhile(root: Path) -> list[tuple[str, Path]]:
         # The vault is walked after the database copy; the trash empties itself in the meantime.
         waiting.unlink()
         return walk(root)
 
-    monkeypatch.setattr(backups, "_vault_files", and_emptied_meanwhile)
+    monkeypatch.setattr(backup_hooks, "_vault_files", and_emptied_meanwhile)
     archive = backups.create()
     with zipfile.ZipFile(archive) as opened:
         assert opened.read(f"trash/{waiting.name}") == b"\x03" * 4000
@@ -181,14 +183,23 @@ def test_names_are_checked(vault: Path) -> None:
             backups.path_of(name)
 
 
-def test_due_only_at_night_or_a_day_late(vault: Path) -> None:
+def test_due_at_the_time_of_day_and_once_a_day(vault: Path) -> None:
+    """The night's hour of before is the module's time of day, 03:00 in the server's zone: a scheduled copy is due once
+    that time has passed and none was made since; a server that was off makes up for it."""
     from datetime import datetime, timedelta
 
-    night = datetime(2026, 9, 26, 3, tzinfo=datetime.now().astimezone().tzinfo)
-    assert backups.due("daily", now=night) and not backups.due("daily", now=night.replace(hour=14))
-    assert not backups.due("off", now=night)
+    from app.vendor.nexsicherung import Schedule, plan
+
+    zone = datetime.now().astimezone().tzinfo
+    night = datetime(2026, 9, 26, 3, 30, tzinfo=zone)
+    every_night = backup_hooks.NexloreHooks().load_schedule()
+    assert (every_night.every, every_night.time, every_night.keep) == ("daily", "03:00", 7)
+    assert plan.due(every_night, night - timedelta(days=1), night, zone)
+    assert not plan.due(every_night, night - timedelta(days=1), night.replace(hour=2), zone)
+    assert not plan.due(every_night, night - timedelta(minutes=10), night, zone)
+    assert not plan.due(Schedule(every="off"), None, night, zone)
     backups.create(kind=backups.SCHEDULED)
-    assert not backups.due("daily", now=datetime.now().astimezone() + timedelta(hours=2))
+    assert plan.last_scheduled() is not None
 
 
 def test_backup_routes_are_for_the_operator(client: TestClient, vault: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -203,7 +214,7 @@ def test_backup_routes_are_for_the_operator(client: TestClient, vault: Path, mon
     assert client.get("/api/backups").json()[0]["note"] == "by hand"
     assert client.post(f"/api/backups/{name}/check").json()["usable"] is True
     restarted: list[bool] = []
-    monkeypatch.setattr(backups, "restart_soon", lambda: restarted.append(True))
+    monkeypatch.setattr(nexsicherung.restore, "restart_soon", lambda: restarted.append(True))
     # Going back, and deleting one, ask for the password again (review before 1.0.0).
     refused = client.post(f"/api/backups/{name}/restore", json={"password": "not it"})
     assert refused.status_code == 401 and not restarted

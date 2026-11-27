@@ -8,9 +8,11 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const OPERATOR = { name: 'tester', password: 'e2e test operator password' }
-/** The setup code the test server is started with (playwright.config.ts); a real one is in the server's log. */
-export const SETUP_CODE = 'e2e-setup-code'
+/** The display name is the username too: the sidebar and the tests name the operator by it. */
+export const OPERATOR = { name: 'tester', displayName: 'tester', password: 'e2e test operator password' }
+/** The setup code the test server is started with (playwright.config.ts); a real one is in the server's log. A code
+ * of one's own needs 16 characters at least (the shared account module), else the server makes one. */
+export const SETUP_CODE = 'e2e-setup-code-of-the-run'
 
 export default async function globalSetup(config: FullConfig): Promise<void> {
   const baseURL = config.projects[0].use.baseURL!
@@ -18,8 +20,18 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   const context = await request.newContext({ baseURL, extraHTTPHeaders: { 'X-Nexlore-Client': 'tab-e2esetup0' } })
   const setup = await (await context.get('/api/setup')).json()
   if (setup.needs_setup) {
-    // Empty language: the account follows the browser, as the language tests expect.
-    const made = await context.post('/api/setup', { data: { name: OPERATOR.name, password: OPERATOR.password, language: '', code: process.env.E2E_SETUP_CODE ?? SETUP_CODE } })
+    // Empty language: the account follows the browser, as the language tests expect. The display name is required
+    // since the shared account module; the username is the field `name` as before.
+    const made = await context.post('/api/setup', {
+      data: {
+        display_name: OPERATOR.displayName,
+        name: OPERATOR.name,
+        password: OPERATOR.password,
+        password_confirm: OPERATOR.password,
+        language: '',
+        code: process.env.E2E_SETUP_CODE ?? SETUP_CODE,
+      },
+    })
     if (!made.ok()) throw new Error(`setup failed: ${made.status()}`)
   } else {
     const name = process.env.E2E_USER ?? OPERATOR.name

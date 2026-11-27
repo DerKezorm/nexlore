@@ -16,7 +16,9 @@ describe('error sentences', () => {
   })
 
   it('keep nexlore\'s own sentence where it has one, and never show an unknown code', () => {
-    expect(errorText('provider_first')).toBe('Set up a sign-in provider first, or nobody but you could sign in.')
+    expect(errorText('ai_off')).toBe('AI in notes is off on this server.')
+    // A code the shared account module names since 1.1.0 says the module's words, the same in every app.
+    expect(errorText('provider_first')).toBe('Without an active sign-in provider, signing in with a password stays on.')
     expect(errorText('made_up_code')).not.toContain('made_up_code')
   })
 })

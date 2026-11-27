@@ -45,13 +45,14 @@ test('the look is chosen under settings, shows at once, and comes back with the 
   const second = await other.newPage()
   await second.goto('/settings?tab=looks')
   await expect(second.getByTestId('appearance').getByRole('radio', { name: /Literata/ })).toHaveAttribute('aria-checked', 'true')
-  await second.getByTestId('appearance').getByRole('radio', { name: 'As the system' }).click()
+  // Light or dark: the card "Aussehen" of the shared account module, first under Appearance.
+  await second.getByTestId('appearance-theme').getByRole('radio', { name: 'As the system' }).click()
   await expect(second.locator('html')).toHaveAttribute('data-theme', 'light')
   await other.close()
   // Back to how it was, for the other tests.
   await page.goto('/settings?tab=looks')
   const again = page.getByTestId('appearance')
-  await again.getByRole('radio', { name: 'Dark' }).click()
+  await page.getByTestId('appearance-theme').getByRole('radio', { name: 'Dark' }).click()
   await again.getByRole('radiogroup', { name: 'Text of notes' }).getByRole('radio', { name: /Inter/ }).click()
   await again.getByRole('radiogroup', { name: 'Width of the text' }).getByRole('radio', { name: 'Normal' }).click()
   await again.getByLabel('Text size').fill('16')

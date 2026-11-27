@@ -25,13 +25,19 @@ const CLIENT_KEY = 'nexlore.client'
 /** Sent on `window` when a request finds that the session is gone: the page goes back to the sign-in. */
 export const SIGNED_OUT_EVENT = 'nexlore:signed-out'
 /** What a signed-out page still asks for. */
-const OPEN_WHEN_SIGNED_OUT = /^\/api\/(auth|setup|locales|oidc|public|invite)(\/|$)/
+const OPEN_WHEN_SIGNED_OUT = /^\/api\/(auth|setup|locales|oidc|public|invite|reset|email)(\/|$)/
 let signedOut = false
 
 /** Once signed out, nothing but signing in goes out: the goodbye of a closing note or a poll still running would
  * only meet 401 (P1.23). Such a call never settles; nobody is left to wait for it. */
 export function setSignedOut(value: boolean): void {
   signedOut = value
+}
+
+/** Whether the account signed itself out here (not a session that ran out): then the sign-in page asks for nothing
+ * to come back to, the place one left from was the settings. */
+export function signedOutHere(): boolean {
+  return signedOut
 }
 
 function randomId(): string {
@@ -162,7 +168,7 @@ export type Hit = { path: string; title: string; snippet: string }
 export type Found = { path: string; title: string; link?: string | null; alias?: string | null }
 export type FolderEntry = { name: string; path: string; notes: number; files?: number }
 export type FileEntry = { id: number; name: string; path: string; title: string; is_note: boolean; size: number; modified: number }
-export type VersionInfo = { id: number; path: string; created_at: string; updated_at: string; source: string; author: string | null; size: number }
+export type VersionInfo = { id: number; path: string; created_at: string; updated_at: string; source: string; author: string | null; size: number; key_name?: string | null }
 export type TrashEntry = { id: string; path: string; files: number; deleted_at: string; how: string; by: string | null }
 export type Finding = { count: number; examples: string[] }
 export type Report = {
@@ -348,17 +354,6 @@ export const feedApi = {
   state: () => api<{ allowed: boolean; active: boolean }>('/api/me/calendar-feed'),
   make: () => api<{ path: string }>('/api/me/calendar-feed', { method: 'POST' }),
   stop: () => api<void>('/api/me/calendar-feed', { method: 'DELETE' }),
-}
-
-export type LogLine = { time: string; level: string; logger: string; message: string; request_id: string | null; user: string | null }
-export type LogMode = { mode: string; until: string | null; fixed_by_env: boolean; modes: string[]; durations: number[] }
-
-/** The server's log, for the operator. */
-export const logsApi = {
-  read: (level?: string, search?: string) => api<LogLine[]>('/api/logs', { query: { level, search, limit: 300 } }),
-  mode: () => api<LogMode>('/api/logs/level'),
-  setMode: (mode: string, minutes: number) => api<LogMode>('/api/logs/level', { method: 'PUT', body: { mode, minutes } }),
-  clear: () => api<void>('/api/logs', { method: 'DELETE' }),
 }
 
 /** A space as one ZIP file: the browser downloads it with the session it has. */
@@ -563,9 +558,29 @@ export type Account = {
   email_pending: string
   /** The provider's address, offered when it differs from the own one (linked accounts with a password). */
   provider_email: string
+  /** The provider whose address is offered, as on its button (konten 0.3.4). */
+  provider_email_from?: string
   language: string
   two_factor: boolean
   two_factor_recovery_left: number
+  /** The module's state of the second factor (`factor.state`): none, required, active, passkey. */
+  factor_state?: string
+  /** NEXLORE_SECOND_FACTOR_OFF holds: no second factor is asked of anybody. */
+  second_factor_off?: boolean
+  /** When the password was set last (konten 0.3.10); null when nexlore does not know. */
+  password_changed_at?: string | null
+  /** The password was set through the operator's reset link; the page says so until it is put away. */
+  password_reset_notice?: boolean
+  /** The address counts (signing in, a forgotten password); proven by a link; a new one waiting for its link (the
+   * same as `email_pending`); the username before the last change. */
+  email_confirmed?: boolean
+  email_proven?: boolean
+  pending_email?: string
+  former_name?: string
+  /** A mail when a browser signs in for the first time (on from the start). */
+  new_sign_in_mail?: boolean
+  /** A password set through a link: the page lists what still has access, until put away. */
+  new_password_origin?: string
   created_at: string
   last_seen_at: string | null
   /** When the profile picture was set (it makes its address new), or null without one. */
@@ -596,21 +611,102 @@ export type Me = Account & {
   theme_colours?: Colours | null
   /** The own CSS snippets in force (empty unless the operator allows own CSS). */
   own_css?: string[]
+  /** The shortest new password the server takes. */
+  min_password?: number
+  /** Since konten E49: a public https address (or the page on localhost), so that a passkey can be added. */
+  passkeys_can_add?: boolean
 }
 /** A provider an account is linked to, as a mark in the operator's account list. */
 export type LinkedProvider = { id: number; slug: string; label: string }
-export type AdminAccount = Account & { spaces: number; locked: boolean; providers: LinkedProvider[] }
+export type AdminAccount = Account & {
+  spaces: number
+  locked: boolean
+  providers: LinkedProvider[]
+  /** The address is held by another account too (left by an older version): it signs nobody in. */
+  email_duplicate?: boolean
+  /** Passkeys of the account (a second factor too, since konten 0.3.2). */
+  passkeys?: number
+  has_password?: boolean
+  blocked?: boolean
+  blocked_at?: string | null
+  /** Bytes of the files the account uploaded. */
+  storage_used?: number
+  /** Deleted with 30 days to bring it back (konten 1.1.0), and when it goes for good. */
+  deleted?: boolean
+  deleted_at?: string | null
+  purge_at?: string | null
+  /** How many bytes it may upload; null: no limit. */
+  storage_limit?: number | null
+  /** It may use AI in its notes (while the operator's main switch is on). */
+  ai_allowed?: boolean
+}
+/** What deleting an account takes away: its rights in so many spaces, and the spaces where it was alone (they become
+ * the operator's). */
+export type AccountImpact = { spaces: number; alone: string[] }
+/** The operator's dialog "Reset the second factor": what the account has. */
+export type FactorResetOverview = {
+  authenticator: boolean
+  recovery_codes: number
+  passkeys: { uid: string; name: string }[]
+  devices: { uid: string; label: string }[]
+}
 export type SetupState = { needs_setup: boolean; signed_in: boolean; version: string; min_password: number }
 /** A button of the sign-in page: an active provider (the shared sign-in module, vendor/nexoidc). */
 export type ProviderButton = { slug: string; label: string }
-export type Methods = { password: boolean; providers: ProviderButton[] }
+export type Methods = {
+  password: boolean
+  providers: ProviderButton[]
+  /** "Sign in with a passkey" (the operator's switch). */
+  passkeys?: boolean
+  /** "Forgot your password?" by mail (a mail server, the public address, signing in by password). */
+  forgot_mail?: boolean
+}
 /** An active provider and whether the own account is linked to it. */
 export type MyProvider = ProviderButton & { linked: boolean }
 export type Member = { name: string; role: Role; you: boolean }
-export type Invite = { id: number; role: string; email: string; by: string | null; created_at: string; expires_at: string }
+export type Invite = {
+  id: number
+  role: string
+  email: string
+  /** What the inviting one gave as the display name (empty for invitations of 1.16.0). */
+  display_name?: string
+  by: string | null
+  created_at: string
+  expires_at: string
+  /** Run out, but not withdrawn yet: the list keeps it, marked (konten 0.3.10). */
+  expired?: boolean
+}
 export type NewInvite = Invite & { link: string; sent: boolean }
 export type Members = { space: string; members: Member[]; invites: Invite[]; role: Role | null }
-export type InviteOffer = { space: string | null; role: Role | null; min_password: number; signed_in_as: string | null }
+export type InviteOffer = {
+  space: string | null
+  role: Role | null
+  min_password: number
+  signed_in_as: string | null
+  /** The fields as the page fills them: the invitation's display name and address, a username suggested from it. */
+  display_name?: string
+  email?: string
+  name?: string
+  /** Signing in by password is on (else only the providers make an account). */
+  password?: boolean
+  /** Who invited, by the name shown. */
+  by?: string | null
+}
+/** A browser or a paired device in "Signed-in devices". */
+export type SessionEntry = {
+  uid: string
+  kind: string
+  label: string
+  address: string
+  created_at: string
+  last_seen_at: string | null
+  current: boolean
+  device: boolean
+}
+/** What still has access after a password set through a link: devices, API tokens, passkeys. */
+export type AccessEntry = { id: string; kind: string; label: string; last_used_at: string | null }
+/** A passkey of the own account. */
+export type PasskeyEntry = { uid: string; name: string; created_at: string; last_used_at: string | null }
 export type AdminSpace = { name: string; members: number; managers: string[]; role: Role | null }
 
 export type About = { version: string; license: string; repo_url: string; releases_url: string; project_url: string }
@@ -633,28 +729,36 @@ export const aboutApi = {
 
 export const authApi = {
   setupState: () => api<SetupState>('/api/setup'),
-  setup: (name: string, password: string, language: string, code: string) =>
-    api<Account>('/api/setup', { method: 'POST', body: { name, password, language, code } }),
+  setup: (body: { display_name: string; name: string; email: string; password: string; password_confirm: string; code: string; language: string; update_check?: boolean }) =>
+    api<Account>('/api/setup', { method: 'POST', body }),
   methods: () => api<Methods>('/api/auth/methods'),
-  /** Signed in, or `second_factor`: the password was right, the code from the app comes next. */
-  login: (name: string, password: string) =>
-    api<Account | { second_factor: true }>('/api/auth/login', { method: 'POST', body: { name, password } }),
+  /** Signed in, or `second_factor`: the password was right, the code from the app (or a passkey) comes next. */
+  login: (name: string, password: string, remember = true) =>
+    api<Account | { second_factor: true; passkey?: boolean; code?: boolean }>('/api/auth/login', { method: 'POST', body: { name, password, remember } }),
+  /** "Forgot your password?": the same answer whatever was typed. */
+  forgot: (name: string) => api<{ sent: boolean }>('/api/auth/forgot', { method: 'POST', body: { name } }),
   logout: () => api<void>('/api/auth/logout', { method: 'POST' }),
   logoutEverywhere: () => api<void>('/api/auth/logout-all', { method: 'POST' }),
   me: () => api<Me>('/api/auth/me'),
-  changePassword: (current: string, next: string) => api<void>('/api/auth/password', { method: 'PUT', body: { current, new: next } }),
+  changePassword: (current: string, next: string, confirm: string) =>
+    api<void>('/api/auth/password', { method: 'PUT', body: { current, new: next, password_confirm: confirm } }),
   setLanguage: (language: string) => api<Account>('/api/me/language', { method: 'PUT', body: { language } }),
   whatsNewSeen: () => api<Account>('/api/me/whats-new/seen', { method: 'POST' }),
-  setProfile: (displayName: string) => api<Account>('/api/me/profile', { method: 'PUT', body: { display_name: displayName } }),
-  /** The own address: a link goes to it, and it counts once that is opened (`sent` false: it was the address already). */
-  setEmail: (address: string) => api<Account & { sent: boolean }>('/api/me/email', { method: 'PUT', body: { address } }),
+  /** Display name, username and address with one button (the shared account module): a new username or address
+   * with the own password. With a mail server a new address waits for its link (`pending_email`). */
+  profile: (change: { display_name?: string; email?: string; name?: string; password?: string }) =>
+    api<Account>('/api/me/profile', { method: 'PUT', body: change }),
   resendEmail: () => api<Account>('/api/me/email/resend', { method: 'POST' }),
-  cancelEmail: () => api<Account>('/api/me/email/pending', { method: 'DELETE' }),
-  removeEmail: () => api<Account>('/api/me/email', { method: 'DELETE' }),
-  takeProviderEmail: () => api<Account>('/api/me/email/provider', { method: 'POST' }),
+  withdrawEmail: () => api<Account>('/api/me/email/pending', { method: 'DELETE' }),
+  takeProviderEmail: (password = '') => api<Account>('/api/me/email/provider', { method: 'POST', body: { password } }),
   declineProviderEmail: () => api<Account>('/api/me/email/provider', { method: 'DELETE' }),
-  /** The link from the mail; works without being signed in. */
-  confirmEmail: (token: string) => api<{ email: string; name: string }>('/api/email/confirm', { method: 'POST', body: { token } }),
+  newSignInMail: (on: boolean) => api<Account>('/api/me/new-sign-in-mail', { method: 'PUT', body: { on } }),
+  sessions: () => api<SessionEntry[]>('/api/auth/sessions'),
+  endSession: (uid: string) => api<void>(`/api/auth/sessions/${encodeURIComponent(uid)}`, { method: 'DELETE' }),
+  access: () => api<{ origin: string; access: AccessEntry[] }>('/api/auth/access'),
+  disconnectAll: () => api<{ disconnected: number }>('/api/auth/access/disconnect', { method: 'POST' }),
+  accessSeen: () => api<Account>('/api/auth/access/seen', { method: 'POST' }),
+  resetNoticeSeen: () => api<Account>('/api/me/password-reset-notice/seen', { method: 'POST' }),
   setAppearance: (changes: Partial<Appearance>) => api<Appearance>('/api/me/appearance', { method: 'PUT', body: changes }),
   myProviders: () => api<MyProvider[]>('/api/oidc/me'),
   linkStart: (slug: string, password: string) =>
@@ -682,22 +786,53 @@ export const authApi = {
     api<Member & { invited?: boolean }>(`/api/spaces/${encodeURIComponent(space)}/members/${encodeURIComponent(name)}`, { method: 'PUT', body: { role } }),
   removeMember: (space: string, name: string) =>
     api<void>(`/api/spaces/${encodeURIComponent(space)}/members/${encodeURIComponent(name)}`, { method: 'DELETE' }),
-  inviteToSpace: (space: string, role: Role, days: number, email = '', send = false) =>
-    api<NewInvite>(`/api/spaces/${encodeURIComponent(space)}/invites`, { method: 'POST', body: { role, days, email, send } }),
-  invite: (days: number, email = '', send = false) => api<NewInvite>('/api/invites', { method: 'POST', body: { days, email, send } }),
+  inviteToSpace: (space: string, role: Role, days: number, email = '', send = false, displayName = '') =>
+    api<NewInvite>(`/api/spaces/${encodeURIComponent(space)}/invites`, { method: 'POST', body: { role, days, email, send, display_name: displayName } }),
+  invite: (days: number, email = '', send = false, displayName = '') =>
+    api<NewInvite>('/api/invites', { method: 'POST', body: { days, email, send, display_name: displayName } }),
   invites: () => api<Invite[]>('/api/invites'),
   withdrawInvite: (id: number) => api<void>(`/api/invites/${id}`, { method: 'DELETE' }),
   offer: (token: string) => api<InviteOffer>(`/api/invite/${encodeURIComponent(token)}`),
-  accept: (token: string, name: string, password: string) =>
-    api<Account>(`/api/invite/${encodeURIComponent(token)}`, { method: 'POST', body: { name, password } }),
+  accept: (token: string, body: { display_name: string; name: string; email: string; password: string; password_confirm: string }) =>
+    api<Account>(`/api/invite/${encodeURIComponent(token)}`, { method: 'POST', body }),
   join: (token: string) => api<{ space: string | null }>(`/api/invite/${encodeURIComponent(token)}/join`, { method: 'POST' }),
   deleteSpace: (space: string) => api<{ files: number }>('/api/files', { method: 'DELETE', query: { path: space } }),
 }
 
-export type TotpEnrolment = { secret: string; uri: string; qr_svg: string }
+/** A confirmation link for a new address, opened without an account (the old links of 1.16.0 too). */
+export const emailLinkApi = {
+  offer: (token: string) => api<{ email: string }>(`/api/email/${encodeURIComponent(token)}`),
+  confirm: (token: string) => api<{ email: string }>(`/api/email/${encodeURIComponent(token)}`, { method: 'POST' }),
+}
+
+/** Passkeys: sign in with one, add and remove the own (the browser's WebAuthn in `lib/passkeys.ts`). */
+export const passkeysApi = {
+  list: () => api<PasskeyEntry[]>('/api/auth/passkeys'),
+  beginAdd: (password: string) =>
+    api<{ token: string; options: Record<string, unknown> }>('/api/auth/passkeys/begin', { method: 'POST', body: { password } }),
+  finishAdd: (token: string, credential: unknown, name: string) =>
+    api<PasskeyEntry>('/api/auth/passkeys/finish', { method: 'POST', body: { token, credential, name } }),
+  remove: (uid: string, password: string) =>
+    api<Account>(`/api/auth/passkeys/${encodeURIComponent(uid)}`, { method: 'DELETE', body: { password } }),
+  beginSignIn: () => api<{ token: string; options: Record<string, unknown> }>('/api/auth/passkey/begin', { method: 'POST' }),
+  finishSignIn: (token: string, credential: unknown) =>
+    api<Me>('/api/auth/passkey/finish', { method: 'POST', body: { token, credential } }),
+}
+
+/** A link for a new password (the person's own, the operator's or the server's), opened without an account. */
+export const resetApi = {
+  offer: (token: string) =>
+    api<{ name: string; username?: string; min_password: number; expires_at: string }>(`/api/reset/${encodeURIComponent(token)}`),
+  use: (token: string, password: string, confirm: string) =>
+    api<void>(`/api/reset/${encodeURIComponent(token)}`, { method: 'POST', body: { password, password_confirm: confirm } }),
+}
+
+export type TotpEnrolment = { secret: string; uri: string; qr_svg: string; expires_at?: string | null }
 
 export const totpApi = {
   begin: () => api<TotpEnrolment>('/api/auth/totp/begin', { method: 'POST' }),
+  /** The authenticator that waits for its first code, once more (after a reload). */
+  waiting: () => api<{ waiting: boolean } & Partial<TotpEnrolment>>('/api/auth/totp/setup'),
   confirm: (code: string, password: string) =>
     api<{ recovery_codes: string[]; account: Account }>('/api/auth/totp/confirm', { method: 'POST', body: { code, password } }),
   disable: (password: string) => api<Account>('/api/auth/totp/disable', { method: 'POST', body: { password } }),
@@ -723,6 +858,13 @@ export type ServerSettings = {
   smtp_user: string
   smtp_password_set: boolean
   smtp_from: string
+  /** The name system mail goes out under ("" for nexlore), and the last result (the shared post module). */
+  smtp_sender_name?: string
+  mail_last_ok_at?: string
+  mail_last_error?: string
+  mail_last_error_at?: string
+  /** Passkeys may be added and used to sign in (on from the start). */
+  passkeys_allowed?: boolean
   mcp_allowed: boolean
   mcp_max_level: McpLevel
   mcp_oauth_allowed: boolean
@@ -737,6 +879,8 @@ export type ServerSettings = {
   custom_css_allowed: boolean
   calendar_feed_allowed: boolean
   link_titles_allowed: boolean
+  /** Other nex apps may be asked at an address in the own network (the shared module verbinden). */
+  connections_local_network: boolean
 }
 export type ServerSettingsChange = Partial<Omit<ServerSettings, 'smtp_password_set'>> & {
   smtp_password?: string
@@ -793,29 +937,11 @@ export type AuthentikResult = {
   /** With the reason `public_url_needed`: what the card shows about the address. */
   address?: AuthentikAddress | null
 }
-export type Backup = { name: string; size: number; created: string; kind: string; note: string; notes: number; files: number; version: string; uploaded?: boolean }
-
 /** The password for an upload rides in a header, as base64 of its UTF-8: a header carries no umlauts. */
 export function passwordHeader(password: string): string {
   let bytes = ''
   for (const byte of new TextEncoder().encode(password)) bytes += String.fromCharCode(byte)
   return btoa(bytes)
-}
-export type BackupCheck = {
-  name: string
-  usable: boolean
-  database_ok: boolean
-  files_ok: boolean
-  damaged: string[]
-  version: string
-  created: string
-  kind: string
-  notes: number
-  files: number
-  would_add: number
-  would_change: number
-  would_remove: number
-  examples: { add: string[]; change: string[]; remove: string[] }
 }
 export type AddedLanguage = { code: string; name: string; keys: number }
 
@@ -1079,15 +1205,35 @@ export const adminApi = {
   deleteAccount: (id: number, current_password: string) =>
     api<void>(`/api/accounts/${id}`, { method: 'DELETE', body: { current_password } }),
   signOutAccount: (id: number) => api<void>(`/api/accounts/${id}/sign-out`, { method: 'POST' }),
-  resetSecondFactor: (id: number, current_password: string) =>
-    api<Account>(`/api/accounts/${id}/totp/reset`, { method: 'POST', body: { current_password } }),
+  /** What a reset of the second factor would take away (the shared module's `factor.reset_overview`). */
+  resetOverview: (id: number) => api<FactorResetOverview>(`/api/accounts/${id}/totp/reset`),
+  resetSecondFactor: (id: number, current_password: string, disconnect_devices = true, remove_passkeys = true) =>
+    api<Account>(`/api/accounts/${id}/totp/reset`, { method: 'POST', body: { current_password, disconnect_devices, remove_passkeys } }),
   setRole: (id: number, role: 'operator' | 'member', current_password: string) =>
     api<Account>(`/api/accounts/${id}/role`, { method: 'PUT', body: { role, current_password } }),
-  setPassword: (id: number, password: string, current_password: string) =>
-    api<void>(`/api/accounts/${id}/password`, { method: 'PUT', body: { password, current_password } }),
-  /** Counts at once; empty removes it. The account is told under "New". */
-  setEmail: (id: number, address: string, current_password: string) =>
-    api<Account>(`/api/accounts/${id}/email`, { method: 'PUT', body: { address, current_password } }),
+  /** What deleting takes away: numbers and the names of the spaces it was alone in, never contents. */
+  impact: (id: number) => api<AccountImpact>(`/api/accounts/${id}/impact`),
+  block: (id: number, current_password: string) => api<void>(`/api/accounts/${id}/block`, { method: 'POST', body: { current_password } }),
+  unblock: (id: number, current_password: string) => api<void>(`/api/accounts/${id}/unblock`, { method: 'POST', body: { current_password } }),
+  /** A deleted account back, while its 30 days run (konten 1.1.0). */
+  restore: (id: number, current_password: string) =>
+    api<AdminAccount>(`/api/accounts/${id}/restore`, { method: 'POST', body: { current_password } }),
+  /** The account's storage limit in bytes; null removes it. */
+  setStorageLimit: (id: number, limit: number | null, current_password: string) =>
+    api<AdminAccount>(`/api/accounts/${id}/storage-limit`, { method: 'PUT', body: { limit, current_password } }),
+  /** A right of nexlore for the account (``ai``), saved at once. */
+  setRight: (id: number, right: string, allowed: boolean) =>
+    api<AdminAccount>(`/api/accounts/${id}/right`, { method: 'PUT', body: { right, allowed } }),
+  /** A one-time link with which the person sets a new password themselves; the operator never sets one. */
+  resetLink: (id: number, days: number, current_password: string) =>
+    api<{ link: string | null; sent?: boolean; expires_at: string }>(`/api/accounts/${id}/reset-link`, { method: 'POST', body: { days, current_password } }),
+  /** Another username or display name; the address only taken away, never set (the operator's own password). */
+  rename: (id: number, name: string, current_password: string) =>
+    api<AdminAccount>(`/api/accounts/${id}/name`, { method: 'PUT', body: { name, current_password } }),
+  displayName: (id: number, display_name: string, current_password: string) =>
+    api<AdminAccount>(`/api/accounts/${id}/display-name`, { method: 'PUT', body: { display_name, current_password } }),
+  removeEmail: (id: number, current_password: string) =>
+    api<AdminAccount>(`/api/accounts/${id}/email`, { method: 'DELETE', body: { current_password } }),
   spaces: () => api<AdminSpace[]>('/api/admin/spaces'),
   shares: () => api<ShareInfo[]>('/api/admin/shares'),
   providers: () => api<OidcProvider[]>('/api/oidc/admin/providers'),
@@ -1112,27 +1258,7 @@ export const adminApi = {
   /** "Use it only": saves the address; 409 `public_url_change` asks first (`count`, `address`, `hand`), `confirm` answers. */
   saveAuthentikAddress: (public_url: string, confirm = false) =>
     api<AuthentikAddress>('/api/oidc/authentik/address', { method: 'POST', body: { public_url, confirm } }),
-  backups: () => api<Backup[]>('/api/backups'),
-  makeBackup: (note: string) => api<{ name: string }>('/api/backups', { method: 'POST', body: { note } }),
-  checkBackup: (name: string) => api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/check`, { method: 'POST' }),
-  restoreBackup: (name: string, password: string) =>
-    api<BackupCheck>(`/api/backups/${encodeURIComponent(name)}/restore`, { method: 'POST', body: { password } }),
-  deleteBackup: (name: string, password: string) =>
-    api<void>(`/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE', body: { password } }),
-  /** The archive itself; the password is asked again (empty for an account that signs in through the provider). */
-  downloadBackup: (name: string, password: string) =>
-    api<Blob>(`/api/backups/${encodeURIComponent(name)}/download`, { method: 'POST', body: { password }, blob: true }),
-  /** A backup from elsewhere (a move to a new server): the ZIP as the body, the password once more in a header. */
-  uploadBackup: async (file: Blob, password: string): Promise<{ name: string }> => {
-    const response = await fetch('/api/backups/upload', {
-      method: 'POST',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/zip', 'X-Nexlore-Client': tabId(), 'X-Nexlore-Password': passwordHeader(password) },
-      body: file,
-    })
-    const data = await response.json().catch(() => null)
-    if (!response.ok) throw new ApiError(response.status, typeof data?.detail?.code === 'string' ? data.detail.code : 'internal_error')
-    return data as { name: string }
-  },
+
   /** The JSON file itself as the body. */
   uploadLanguage: async (code: string, file: Blob): Promise<AddedLanguage> => {
     const response = await fetch(`/api/locales/${encodeURIComponent(code)}`, {

@@ -11,6 +11,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from
 import { createPortal } from 'react-dom'
 
 import type { MenuAction, MenuGroup, MenuItem } from '../lib/menu'
+import { MENU_MAX_HEIGHT, menuPlace } from './menuPlace'
 import { Symbol } from './Symbol'
 
 const isAction = (item: MenuItem): item is MenuAction => item !== 'separator' && 'onSelect' in item
@@ -22,14 +23,13 @@ export function ContextMenu({ x, y, items, onClose, sub = false }: { x: number; 
   const [openGroup, setOpenGroup] = useState<{ index: number; x: number; y: number } | null>(null)
   const buttons = useRef<(HTMLButtonElement | null)[]>([])
 
-  // Inside the window: a menu near the right or bottom edge opens to the left or upwards.
+  // Inside the window: a menu near the right or bottom edge opens to the left or upwards, one higher than the window
+  // stands at the top and scrolls (`menuPlace`), submenus alike.
   useLayoutEffect(() => {
     const element = box.current
     if (!element) return
-    const { width, height } = element.getBoundingClientRect()
-    const left = Math.max(4, Math.min(x, window.innerWidth - width - 4))
-    const top = Math.max(4, y + height > window.innerHeight - 4 ? Math.max(4, y - height) : y)
-    setPlace({ left: sub && x + width > window.innerWidth - 4 ? Math.max(4, x - width * 2) : left, top })
+    const { width } = element.getBoundingClientRect()
+    setPlace(menuPlace({ x, y, width, height: element.scrollHeight, viewWidth: window.innerWidth, viewHeight: window.innerHeight, sub }))
   }, [x, y, sub])
 
   // Where the focus was when the menu opened: Escape gives it back there (it fell to the page, P4.16).
@@ -92,7 +92,7 @@ export function ContextMenu({ x, y, items, onClose, sub = false }: { x: number; 
       onKeyDown={onKey}
       onContextMenu={(event) => event.preventDefault()}
       className="fixed z-50 min-w-52 max-w-[calc(100vw-8px)] rounded-xl border border-ink-700 bg-ink-900 py-1 text-sm text-mist-200 shadow-xl shadow-black/30"
-      style={{ left: place.left, top: place.top }}
+      style={{ left: place.left, top: place.top, maxHeight: MENU_MAX_HEIGHT, overflowY: 'auto' }}
     >
       {items.map((item, index) => {
         if (item === 'separator') return <div key={index} role="separator" className="my-1 border-t border-ink-700" />

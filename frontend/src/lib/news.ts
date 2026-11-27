@@ -3,11 +3,13 @@
  * notes change and after a note was opened (it is seen then). One list for the sidebar's section and its dots.
  */
 import { useSyncExternalStore } from 'react'
-import { mcpApi, newsApi, noticesApi, type McpRequest, type NewNote, type NewsMention, type SpaceNotice } from '../api/client'
+import { newsApi, noticesApi, type NewNote, type NewsMention, type SpaceNotice } from '../api/client'
+import { MCP_BASE, type ToolRequest } from '../vendor/nexmcp'
+import { mcpRequest } from './mcpModule'
 import { REQUESTS_EVENT } from './mcpRequests'
 
-/** ``requests``: what AI programs wait to have approved (block Y); they stay until decided in nexlore. */
-type State = { count: number; notes: NewNote[]; paths: Set<string>; mentions: NewsMention[]; notices: SpaceNotice[]; requests: McpRequest[] }
+/** ``requests``: what AI programs wait to have approved (the shared module mcp 1.1.0); they stay until decided. */
+type State = { count: number; notes: NewNote[]; paths: Set<string>; mentions: NewsMention[]; notices: SpaceNotice[]; requests: ToolRequest[] }
 
 let state: State = { count: 0, notes: [], paths: new Set(), mentions: [], notices: [], requests: [] }
 const listeners = new Set<() => void>()
@@ -19,7 +21,7 @@ function publish(next: State): void {
 }
 
 export function refreshNews(): Promise<void> {
-  asking ??= Promise.all([newsApi.list(), noticesApi.list().catch(() => []), mcpApi.requests().catch(() => [])])
+  asking ??= Promise.all([newsApi.list(), noticesApi.list().catch(() => []), mcpRequest<ToolRequest[]>(`${MCP_BASE}/requests?status=waiting`).catch(() => [] as ToolRequest[])])
     .then(
       ([found, notices, requests]) =>
         publish({

@@ -13,7 +13,6 @@ rolls back when it refuses after a write (a consumed invitation comes back that 
 from __future__ import annotations
 
 import logging
-import re
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
@@ -33,9 +32,11 @@ from ..models import (
 )
 from ..models import Invite as InviteRow
 from ..security import decrypt_secret, encrypt_secret
-from ..vendor import nexoidc
+from ..vendor import nexkonten, nexoidc
 from ..vendor.nexoidc import AccountState, Invite, Link, Provider, ProviderValues, migrate, secret_context
 from . import accounts, emailaddr, settings_service
+from .konten_store import KontenStore
+from .konten_store import provider_picture as konten_provider_picture
 
 logger = logging.getLogger("nexlore.oidc")
 
@@ -44,11 +45,6 @@ APP_NAME = "nexlore"
 LOGIN_PAGE = "/login"
 ACCOUNT_PAGE = "/account"
 HOME = "/"
-#: Longest account name (``accounts.NAME_PATTERN``).
-NAME_MAX = 64
-_NUMBERED = re.compile(r"^(.*?)(-\d+)$")
-
-
 def _public_url() -> str:
     with SessionLocal() as db:
         return settings_service.public_url(db)
@@ -81,15 +77,10 @@ def configure() -> None:
 
 
 def clean_name(raw: str) -> str:
-    """An account name from what the provider suggests: lower case, nexlore's characters, at most 64; a number at the
-    end (``max-2``) survives the cut. Empty when nothing usable is left."""
-    cleaned = re.sub(r"[^a-z0-9._-]", "-", raw.strip().lower()).strip("-._")
-    if len(cleaned) > NAME_MAX:
-        numbered = _NUMBERED.match(cleaned)
-        suffix = numbered.group(2) if numbered else ""
-        stem = numbered.group(1) if numbered else cleaned
-        cleaned = stem[: NAME_MAX - len(suffix)].rstrip("-._") + suffix
-    return cleaned if accounts.NAME_PATTERN.match(cleaned) else ""
+    """Since ``oidc`` 1.1.0 the naming rules of the shared account module (the same in every app): lower case,
+    ``a-z 0-9 . _ -``, umlauts written out (``Müller`` becomes ``mueller``), a number at the end survives the cut; ""
+    when nothing usable is left."""
+    return nexkonten.names.clean_username(raw)
 
 
 def has_links(db: Session, account_id: int) -> bool:
@@ -198,7 +189,7 @@ class SqlStore:
         self.db.add(OidcLink(provider_id=link.provider_id, subject=link.subject, account_id=link.account_id,
                              issuer=link.issuer, email=link.email))
         self.db.flush()
-        self._address(link.account_id, link.email)
+        self._address(link.account_id, link.email, link.provider_id)
 
     def remove_link(self, provider_id: int, account_id: int) -> bool:
         result = self.db.execute(
@@ -233,14 +224,25 @@ class SqlStore:
             select(OidcLink.account_id).where(OidcLink.provider_id == provider_id, OidcLink.subject == subject)
         )
         if account_id is not None:
-            self._address(account_id, email)
+            self._address(account_id, email, provider_id)
 
-    def _address(self, account_id: int, email: str | None) -> None:
-        """What the provider says about the address, as nexlore treats any address change: an account through the
-        provider only follows it, a linked one with a password is offered it (``services/emailaddr``)."""
+    def _address(self, account_id: int, email: str | None, provider_id: int | None = None) -> None:
+        """What the provider says about the address, through the shared module (``profiles.provider_email``): an
+        account through the provider only follows it (it does not count and is not proven, an own address stays), a
+        linked one with a password is only offered it and takes it in its profile with its password. Never an address
+        another account has, never one the account declined."""
         account = self.db.get(Account, account_id)
-        if account is not None and email:
-            emailaddr.from_provider(self.db, account, email)
+        if account is None or not email:
+            return
+        try:
+            address = emailaddr.clean(email)
+        except emailaddr.AddressError:
+            return
+        entry = self.db.get(OidcProvider, provider_id) if provider_id is not None else None
+        self.db.flush()
+        nexkonten.profiles.provider_email(KontenStore(self.db), account.id, address,
+                                          provider=entry.label if entry is not None else "")
+        self.db.refresh(account)
 
     # --- Accounts --------------------------------------------------------------------------------------------------
 
@@ -248,12 +250,13 @@ class SqlStore:
         row = self.db.get(Account, account_id)
         if row is None:
             return None
-        # nexlore has no blocked accounts: the lock after wrong passwords keeps out guessing at the password, and a
-        # stranger could set it off from outside; it does not close the provider's way in.
+        # Blocked by the operator (since the shared account module): no way in, the provider's neither. The lock after
+        # wrong passwords keeps out guessing at the password, and a stranger could set it off from outside; it does
+        # not close the provider's way in.
         return AccountState(
             id=row.id,
             name=row.name,
-            blocked=False,
+            blocked=row.blocked_at is not None or row.deleted_at is not None,
             has_password=row.sign_in == SIGN_IN_PASSWORD and bool(row.password_hash),
             has_second_factor=bool(row.totp_secret_enc),
         )
@@ -262,18 +265,59 @@ class SqlStore:
         return clean_name(raw)
 
     def name_taken(self, name: str) -> bool:
-        return accounts.by_name(self.db, name) is not None
+        """Taken: another account has the name now or had it, it belonged to an account deleted for good, or it is
+        somebody else's display name (the shared account module)."""
+        return nexkonten.names.username_taken(KontenStore(self.db), name)
 
-    def create_account(self, name: str, *, invite: Invite | None, email: str | None) -> int:
-        row = Account(name=name, role=MEMBER, sign_in=SIGN_IN_OIDC, whats_new_seen=__version__)
+    def create_account(
+        self, name: str, *, invite: Invite | None, email: str | None, display_name: str = "", picture: str = ""
+    ) -> int:
+        """A new account through a provider only (no password).
+
+        - **Display name:** the provider's (claim ``name``), else the invitation's, else empty; one another account
+          shows stays empty (unique, the account module).
+        - **Address:** the invitation's (it counts; proven when the link went there by mail), else the provider's when
+          no other account has it: then it follows the provider and does not count. It never finds an account.
+        - **Rights:** those of the invitation, as in 1.16.0 (``accounts.redeem``).
+        - **Picture:** comes through ``provider_picture``, not here."""
+        store = KontenStore(self.db)
+        invitation = invite.rights if invite is not None and isinstance(invite.rights, InviteRow) else None
+        shown = nexkonten.names.provider_display_name(store, display_name or "")
+        if not shown and invitation is not None:
+            shown = nexkonten.names.provider_display_name(store, invitation.display_name or "")
+        address = ""
+        if invitation is not None and invitation.email and not emailaddr.taken(self.db, invitation.email, 0):
+            address = invitation.email
+        row = Account(
+            name=name,
+            display_name=shown,
+            role=MEMBER,
+            sign_in=SIGN_IN_OIDC,
+            password_hash="",
+            email=address,
+            email_source=emailaddr.INVITE if address else "",
+            email_confirmed=True,
+            email_proven=bool(address and invitation is not None and invitation.mailed),
+            whats_new_seen=__version__,
+            # A new account through a provider starts "as the system" (konten E45).
+            appearance={"mode": "system"},
+        )
         self.db.add(row)
         self.db.flush()
-        if email:
-            emailaddr.from_provider(self.db, row, email)
-        if invite is not None and isinstance(invite.rights, InviteRow):
-            accounts.redeem(self.db, invite.rights, row, consumed=True, commit=False)
+        if not address and email:
+            self._address(row.id, email)
+        if invitation is not None:
+            accounts.redeem(self.db, invitation, row, consumed=True, commit=False)
         logger.info("Account created name=%s role=%s sign_in=oidc", row.name, MEMBER)
         return row.id
+
+    def provider_picture(self, account_id: int, picture: str, issuer: str) -> None:
+        """After every sign-in through a provider that sends a picture: an account **without** a picture gets the
+        provider's, in a thread of its own (a fetch takes up to five seconds). An own picture is never replaced."""
+        row = self.db.get(Account, account_id)
+        if row is None or row.avatar_at is not None:
+            return
+        konten_provider_picture(row.id, picture, issuer)
 
     # --- Invitations -----------------------------------------------------------------------------------------------
 

@@ -8,6 +8,7 @@ import { Link, NavLink } from 'react-router-dom'
 
 import { ApiError, vaultApi, type Attachment, type Finding, type IndexState, type Report, type TrashEntry, type Usage } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
+import { SpacesSidebar } from '../components/Sidebar'
 import { Symbol, type SymbolName } from '../components/Symbol'
 import { errorText } from '../lib/errors'
 import { fileKind, formatSize } from '../lib/files'
@@ -19,6 +20,8 @@ export function FilesPage() {
   const { t } = useTranslation()
   const { me } = useAuth()
   return (
+    <>
+      <SpacesSidebar />
     <main className="nn-scroll flex-1 overflow-y-auto">
       <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
         <div>
@@ -33,6 +36,7 @@ export function FilesPage() {
         <ImportCard />
       </div>
     </main>
+    </>
   )
 }
 

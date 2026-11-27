@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { Link, useSearchParams } from 'react-router-dom'
 import { searchApi, tagsApi, type SearchPage as Page, type TagCount } from '../api/client'
 import { Marked } from '../components/Marked'
+import { SpacesSidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { folderColor } from '../graph/palette'
 import { operator, pieces, replaced, toggled, without } from '../lib/searchText'
@@ -92,6 +93,8 @@ export function SearchPage() {
   const changed = CHANGED.find((option) => option.value && has(option.value))?.value ?? null
 
   return (
+    <>
+      <SpacesSidebar />
     <main className="nn-scroll flex-1 overflow-y-auto" data-testid="search-page">
       <h1 className="sr-only">{t('searchPage.heading')}</h1>
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 md:grid-cols-[13rem_1fr]">
@@ -231,5 +234,6 @@ export function SearchPage() {
         </section>
       </div>
     </main>
+    </>
   )
 }

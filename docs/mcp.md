@@ -7,11 +7,12 @@ operator, not even with the operator's own key: members and public pages need th
 
 ## Switching it on
 
-MCP is off until the operator opens it: Settings, Server, AI and plugins. There the operator also sets the highest
-level a key may have (lowering it later applies to keys made before), whether connectors may sign in, and which tools
-are blocked for everybody.
+MCP is off until the operator opens it: Settings › Server › General › Interfaces, "MCP access". There the
+operator also sets the highest level a key may have (lowering it later applies to keys made before), whether
+connectors may sign in, and which tools are blocked for everybody.
 
-Then every account connects its programs on its account page (My account, AI), in one of two ways:
+Then every account connects its programs on its account page (My account › Connections › AI tools (MCP)), in
+one of two ways:
 
 - **A key** for programs that take a fixed header: a name, a level and which spaces the key may see (all spaces the
   account may read, later ones too, or only the ones chosen). The key is shown once. nexlore keeps only its hash and
@@ -145,7 +146,7 @@ curl -s https://notes.example.com/api/mcp \
   name the program gave itself; where you are sent back to is what counts.
 
 For connectors of hosted AI apps, nexlore must be reachable from the internet over HTTPS, and the addresses it names
-come from the public address in Settings, Server (or `NEXLORE_PUBLIC_URL`): set it when nexlore runs behind a reverse
+come from the public address in Server › Sign-in (or `NEXLORE_PUBLIC_URL`): set it when nexlore runs behind a reverse
 proxy. Revoking the connector in the list ends it at once, and so do a new password, "sign out everywhere", the
 operator signing the account out, and the operator switching connectors off. Registering is limited: ten an hour from
 one sender.

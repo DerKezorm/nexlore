@@ -135,7 +135,8 @@ def test_the_sign_in_page_learns_the_active_providers_in_their_order_and_nothing
     first = add_provider(client, provider, slug="sso", label="SSO")
     second = add_provider(client, provider, slug="work", label="Work")
     assert fresh_browser().get("/api/auth/methods").json() == {
-        "password": True, "providers": [{"slug": "sso", "label": "SSO"}, {"slug": "work", "label": "Work"}]}
+        "password": True, "providers": [{"slug": "sso", "label": "SSO"}, {"slug": "work", "label": "Work"}],
+        "passkeys": True, "forgot_mail": False}
     client.put("/api/oidc/admin/providers/order", json={"ids": [second["id"], first["id"]]}, headers=UI)
     body = {key: first[key] for key in ("label", "issuer", "client_id", "scopes", "auto_create",
                                          "trusts_second_factor")}

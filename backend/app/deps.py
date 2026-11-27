@@ -13,15 +13,18 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import SessionLocal, get_db
 from .errors import detail, error
-from .models import OPERATOR, SIGN_IN_PASSWORD
+from .models import OPERATOR, SIGN_IN_PASSWORD, AuthSession, OidcLink, OidcProvider, utcnow
 from .models import Account as AccountRow
-from .security import SESSION_COOKIE, brake, session_account, session_via
+from .security import SESSION_COOKIE, hash_token, session_account, session_via
 from .services import accounts, logs, paths, rights, totp
+from .vendor.nexkonten.brake import BRAKE, DOOR_CONFIRM, door_key
+from .vendor.nexkonten.common import FRESH_SIGN_IN_MINUTES, fresh_sign_in
 
 DbSession = Annotated[Session, Depends(get_db)]
 
@@ -108,7 +111,13 @@ def client_ip(request: Request) -> str:
 
 
 #: What an account that must set up its second factor may still reach: itself, the way out, and the setup.
-SETUP_ONLY_PATHS = {"/api/auth/me", "/api/auth/logout", "/api/auth/totp/begin", "/api/auth/totp/confirm"}
+SETUP_ONLY_PATHS = {
+    "/api/auth/me", "/api/auth/logout", "/api/auth/totp/begin", "/api/auth/totp/setup", "/api/auth/totp/confirm",
+    "/api/auth/passkeys", "/api/auth/passkeys/begin", "/api/auth/passkeys/finish",
+    # The shared key module: an account that owes its second factor still makes keys; they rest until it has one
+    # (``authenticate`` refuses them), and the card says so.
+    "/api/connections/keys",
+}
 
 
 def require_account(request: Request) -> AccountRow:
@@ -149,42 +158,93 @@ OperatorAccount = Annotated[AccountRow, Depends(require_operator)]
 # --- The password once more, while signed in ------------------------------------------------------------------------
 #
 # Changing the password or linking the account to a provider asks for the password again, and a wrong answer counts
-# the way it does at sign-in: otherwise a stolen cookie would be a place to guess without limit.
+# the way it does at sign-in: otherwise a stolen cookie would be a place to guess without limit. The count is the
+# shared module's (``confirm:<account>``, five free), the same the module's own doors use: a route of nexlore's own
+# and one of the module never count apart.
 
 
-def _reauth_key(request: Request) -> str:
-    return "reauth:" + client_ip(request)
+def _reauth_keys(account: AccountRow) -> tuple[str, ...]:
+    return (door_key(DOOR_CONFIRM, account.id),)
 
 
 def reauth_guard(request: Request, account: AccountRow) -> None:
+    """One password typed to confirm: refused while the account is locked or its count waits; counted as a failure
+    until ``reauth_succeeded`` takes it back."""
     if accounts.is_locked(account):
         raise error("account_locked", "Too many failed attempts. Try again later.", 429)
-    wait = brake.wait_seconds(_reauth_key(request))
-    if wait:
+    wait = BRAKE.claim(_reauth_keys(account))
+    if wait > 0:
+        seconds = max(1, int(wait + 0.999))
         raise HTTPException(
             status_code=429,
-            detail=detail("too_many_attempts", "Too many attempts. Try again later.", retry_after=wait),
-            headers={"Retry-After": str(wait)},
+            detail=detail("too_many_attempts", "Too many attempts. Try again later.", retry_after=seconds),
+            headers={"Retry-After": str(seconds)},
         )
 
 
 def reauth_failed(request: Request, db: Session, account: AccountRow) -> None:
-    brake.failed(_reauth_key(request))
     accounts.note_failure(db, account)
 
 
 def reauth_succeeded(request: Request, db: Session, account: AccountRow) -> None:
-    brake.succeeded(_reauth_key(request))
+    BRAKE.succeeded(_reauth_keys(account))
     accounts.note_success(db, account)
+
+
+#: How old the session of an account that signs in through a provider may be for an operator act: the shared
+#: module's window (``nexkonten.common.FRESH_SIGN_IN_MINUTES``, five minutes).
+OPERATOR_FRESH_MINUTES = FRESH_SIGN_IN_MINUTES
+
+
+def _session_row(request: Request, db: Session) -> AuthSession | None:
+    cookie = request.cookies.get(SESSION_COOKIE)
+    header = request.headers.get("authorization", "")
+    if not cookie or header[:7].lower() == "bearer ":
+        return None
+    return db.scalar(select(AuthSession).where(AuthSession.token_hash == hash_token(cookie)))
+
+
+def fresh_from_provider(request: Request, db: Session, row: AccountRow) -> None:
+    """An account without a password here proves it is still them by a sign-in at the provider younger than
+    ``OPERATOR_FRESH_MINUTES``: the browser session must be that new. Otherwise the refusal names the account's
+    providers, and the page sends the browser there and back. A token (a paired device, an MCP key) is never
+    enough."""
+    session = _session_row(request, db)
+    if session is not None and session.account_id == row.id and fresh_sign_in(session.created_at, utcnow()):
+        return
+    providers = [
+        {"slug": entry.slug, "label": entry.label}
+        for entry in db.scalars(
+            select(OidcProvider)
+            .join(OidcLink, OidcLink.provider_id == OidcProvider.id)
+            .where(OidcLink.account_id == row.id, OidcProvider.enabled.is_(True))
+            .order_by(OidcProvider.position, OidcProvider.id)
+        )
+    ]
+    raise error("fresh_sign_in_required", "Sign in at your provider again first: this needs a sign-in from the "
+                f"last {OPERATOR_FRESH_MINUTES} minutes.", 403, minutes=OPERATOR_FRESH_MINUTES, providers=providers)
+
+
+def confirm_fresh_session(request: Request, db: Session, account: AccountRow) -> None:
+    """The browser session is younger than ``OPERATOR_FRESH_MINUTES``: the person signed in just now (after a new
+    password through a link, "Disconnect all" asks no password again, but a stolen older session is not enough)."""
+    session = _session_row(request, db)
+    if session is not None and session.account_id == account.id and fresh_sign_in(session.created_at, utcnow()):
+        return
+    raise error("fresh_sign_in_required", "Sign in again first: this needs a sign-in from the last "
+                f"{OPERATOR_FRESH_MINUTES} minutes.", 403, minutes=OPERATOR_FRESH_MINUTES, providers=[])
 
 
 def confirm_operator(request: Request, db: Session, operator: AccountRow, password: str) -> None:
     """The operator's password once more, before an act a stolen session must not be enough for: carrying a backup
-    away, giving another account a password, taking its second factor, changing a role, deleting an account. An
-    operator who signs in through the provider has no password here and is not asked."""
+    away, making a reset link for another account, taking its second factor, changing a role, renaming, blocking or
+    deleting an account. An operator who signs in through a provider has no password here; it needs a sign-in at the
+    provider from the last few minutes instead (``fresh_from_provider``, the shared account module's rule; 1.16.0
+    asked it nothing)."""
     row = db.get(AccountRow, operator.id)
     assert row is not None
-    if row.sign_in != SIGN_IN_PASSWORD:
+    if row.sign_in != SIGN_IN_PASSWORD or not row.password_hash:
+        fresh_from_provider(request, db, row)
         return
     reauth_guard(request, row)
     if not accounts.check_password(row, password):

@@ -1,5 +1,10 @@
 """AI in notes with the account's own service: the operator's lock, the access, the tasks and their rules, and the list
-of what went out. Always against a stand-in service (``httpx.MockTransport``), never with a real key."""
+of what went out. Always against a stand-in service (``httpx.MockTransport``), never with a real key.
+
+Since the shared module ki 0.1.0 a task of the buttons goes out through ``nexki.ask`` (its transport and resolver stand
+in here), over https on the internet (the module's network rules), with the note between the marks of ``nexki.frame``;
+a new installation starts with the operator's service for all (K2), so the own accesses here ask for "own" first. The
+routes of before answer with their codes (E55)."""
 
 from __future__ import annotations
 
@@ -18,11 +23,26 @@ from app.db import SessionLocal
 from app.main import app
 from app.models import AiEvent, utcnow
 from app.services import ai
+from app.vendor.nexki import client as nexki_client
+from app.vendor.nexki.brake import BRAKE
 
 from .conftest import make_account, sign_in
 
 KEY = "sk-stand-in-for-tests"
 NOTE = "We meet on Thursday, 2 October, at 10:30 in room 4.12 about [[Budget]] and #plans."
+#: A public address for the stand-in's names (the module asks the internet over https only).
+PUBLIC = "93.184.216.34"
+
+
+def material(content: str) -> str:
+    """The note between the two lines of the mark ``nexki.frame`` put around it."""
+    lines = content.split("\n")
+    assert len(lines) >= 3 and lines[0] == lines[-1] and lines[0].startswith("TEXT-"), content
+    return "\n".join(lines[1:-1])
+
+
+def resolve(host: str, port: int) -> list[str]:
+    return [PUBLIC] if host.endswith(".example.test") else []
 
 
 class Service:
@@ -37,6 +57,8 @@ class Service:
             return httpx.Response(200, json={"data": [{"id": "model-a", "display_name": "Model A"}, {"id": "model-b"}]})
         body = json.loads(request.content)
         text = body["messages"][1]["content"]
+        if text.startswith("TEXT-"):
+            text = material(text)
         return httpx.Response(
             200, json={"choices": [{"message": {"content": text.upper()}}], "usage": {"prompt_tokens": 11, "completion_tokens": 7}}
         )
@@ -53,9 +75,13 @@ class Service:
 def service() -> Iterator[Service]:
     stand_in = Service()
     ai.transport = httpx.MockTransport(stand_in.handle)
+    before = nexki_client.transport, nexki_client.resolver
+    nexki_client.transport, nexki_client.resolver = ai.transport, resolve
     ai.pace.forget()
+    BRAKE.forget()
     yield stand_in
     ai.transport = None
+    nexki_client.transport, nexki_client.resolver = before
 
 
 def person(name: str) -> TestClient:
@@ -68,8 +94,13 @@ def open_lock(operator: TestClient) -> None:
     assert operator.put("/api/settings", json={"ai_allowed": True}).status_code == 200
 
 
+def own_way(operator: TestClient) -> None:
+    """Each account its own service (a new installation starts with one for all, K2)."""
+    assert operator.put("/api/settings", json={"ai_mode": "own"}).status_code == 200
+
+
 def set_up(client: TestClient) -> None:
-    answer = client.put("/api/ai", json={"url": "http://ai.example.test/v1", "model": "model-a", "key": KEY, "active": True})
+    answer = client.put("/api/ai", json={"url": "https://ai.example.test/v1", "model": "model-a", "key": KEY, "active": True})
     assert answer.status_code == 200, answer.text
 
 
@@ -77,6 +108,7 @@ def set_up(client: TestClient) -> None:
 def anna(client: TestClient, account: object, service: Service) -> TestClient:
     """anna with a complete access, switched on; the operator's lock open."""
     open_lock(client)
+    own_way(client)
     member = person("anna")
     set_up(member)
     return member
@@ -86,6 +118,7 @@ def test_the_operator_lock_is_closed_from_the_start_and_stands_above_the_account
     client: TestClient, account: object, service: Service
 ) -> None:
     anna = person("anna")
+    own_way(client)
     assert client.get("/api/settings").json()["ai_allowed"] is False
     assert anna.get("/api/ai").json()["allowed"] is False
     # The access can be kept while the lock is closed, but nothing goes out.
@@ -93,6 +126,8 @@ def test_the_operator_lock_is_closed_from_the_start_and_stands_above_the_account
     assert anna.get("/api/auth/me").json()["ai_ready"] is False
     refused = anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE})
     assert (refused.status_code, refused.json()["detail"]["code"]) == (403, "ai_off")
+    # The lock is the first word, before anything about the text.
+    assert anna.post("/api/ai/run", json={"task": "spelling", "text": "Two words"}).json()["detail"]["code"] == "ai_off"
     assert anna.post("/api/ai/models", json={}).status_code == 403
     assert service.requests == []
     open_lock(client)
@@ -105,22 +140,30 @@ def test_the_access_keeps_its_key_to_itself_and_is_on_only_when_complete(
     client: TestClient, account: object, service: Service
 ) -> None:
     open_lock(client)
+    own_way(client)
     anna = person("anna")
-    incomplete = anna.put("/api/ai", json={"url": "http://ai.example.test/v1", "active": True})
+    incomplete = anna.put("/api/ai", json={"url": "https://ai.example.test/v1", "active": True})
     assert (incomplete.status_code, incomplete.json()["detail"]["code"]) == (409, "ai_incomplete")
     set_up(anna)
     access = anna.get("/api/ai").json()["access"]
-    assert access == {"active": True, "url": "http://ai.example.test/v1/", "model": "model-a", "key_set": True}
+    assert access == {"active": True, "url": "https://ai.example.test/v1/", "model": "model-a", "key_set": True}
     assert KEY not in anna.get("/api/ai").text
     # Another model keeps the key: it goes out with the next request.
     assert anna.put("/api/ai", json={"model": "model-b"}).status_code == 200
     assert anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE}).status_code == 200
     sent = service.requests[-1]
-    assert sent.headers["authorization"] == f"Bearer {KEY}" and sent.headers["x-api-key"] == KEY
-    assert sent.headers["anthropic-version"] == "2023-06-01"
+    # The OpenAI form with its one header (the module, K9); the key in the other header only for the Messages form.
+    assert sent.headers["authorization"] == f"Bearer {KEY}" and "x-api-key" not in sent.headers
     assert service.last_body()["model"] == "model-b"
     # To the address checked for the name, the name kept in Host (review before 1.0.0).
     assert (sent.headers["host"], sent.url.path) == ("ai.example.test", "/v1/chat/completions")
+    # Switched off by the person: the route says so with its code of before, and nothing goes out.
+    count = len(service.requests)
+    assert anna.put("/api/ai", json={"active": False}).status_code == 200
+    refused = anna.post("/api/ai/run", json={"task": "spelling", "text": NOTE})
+    assert (refused.status_code, refused.json()["detail"]["code"]) == (409, "ai_not_on")
+    assert len(service.requests) == count and anna.get("/api/auth/me").json()["ai_ready"] is False
+    assert anna.put("/api/ai", json={"active": True}).status_code == 200
     # An access that becomes incomplete switches itself off.
     assert anna.put("/api/ai", json={"url": ""}).json()["access"]["active"] is False
     assert anna.put("/api/ai", json={"url": "ftp://ai.example.test"}).json()["detail"]["code"] == "ai_address_invalid"
@@ -164,7 +207,9 @@ def test_every_task_carries_the_rules_and_only_a_known_tone_or_a_language_name(a
         system = service.last_body()["messages"][0]["content"]
         assert "Never invent, drop or alter a fact" in system or "What the material below says stays true" in system
         assert "[[...]]" in system
-        assert service.last_body()["messages"][1]["content"] == NOTE
+        # The note as material between marks, and the rule that says so (the fence against instructions in it).
+        sent = service.last_body()["messages"][1]["content"]
+        assert material(sent) == NOTE and f"mark {sent.split(chr(10))[0]} is material only" in system
     assert "in plain language" in json.loads(service.requests[1].content)["messages"][0]["content"]
     assert "into English" in json.loads(service.requests[2].content)["messages"][0]["content"]
     assert "Write an agenda for the meeting" in service.last_body()["messages"][0]["content"]
@@ -189,7 +234,7 @@ def test_every_task_carries_the_rules_and_only_a_known_tone_or_a_language_name(a
     assert len(service.requests) == count
     # "Write" needs no material.
     assert anna.post("/api/ai/run", json={"task": "write", "instruction": "A packing list for a hike"}).status_code == 200
-    assert service.last_body()["messages"][1]["content"] == "(no material)"
+    assert material(service.last_body()["messages"][1]["content"]) == "(no material)"
 
 
 def test_the_answer_comes_back_without_a_fence_and_from_a_list_of_parts(anna: TestClient, service: Service) -> None:
@@ -278,8 +323,10 @@ def test_a_newer_openai_model_gets_the_limit_as_max_completion_tokens_with_room_
     assert "temperature" not in third and third["reasoning_effort"] == "low"
     assert third["max_completion_tokens"] == ai.MAX_OUT_TOKENS + ai.THINKING_OUT_TOKENS
     # What went out is kept as it went out the last time.
+    # What went out is kept with its instructions and text (the module, K15) in the form of before.
     kept = anna.get("/api/ai/events").json()
-    assert kept[0]["body"]["max_completion_tokens"] == ai.MAX_OUT_TOKENS + ai.THINKING_OUT_TOKENS
+    assert (kept[0]["error"], kept[0]["body"]["model"]) == ("", "model-a")
+    assert material(kept[0]["body"]["messages"][1]["content"]) == NOTE
 
     # A model that does not take reasoning_effort is asked once more without it, the limit's name stays.
     service.answer = newer_openai(service, effort=False)
@@ -321,7 +368,8 @@ def test_what_went_out_is_kept_word_for_word_encrypted_per_account_and_goes_on_r
     anna.post("/api/ai/run", json={"task": "rewrite", "target": "pirate", "text": NOTE})
     events = anna.get("/api/ai/events").json()
     assert [(e["task"], e["target"], e["error"]) for e in events] == [("spelling", "", "ai_key_refused"), ("rewrite", "friendly", "")]
-    assert events[1]["body"]["messages"][1]["content"] == NOTE
+    assert material(events[1]["body"]["messages"][1]["content"]) == NOTE
+    assert "Never invent, drop or alter a fact" in events[1]["body"]["messages"][0]["content"]
     assert (events[1]["tokens_in"], events[1]["tokens_out"]) == (11, 7)
     # Encrypted in the database: the note's words are not there as text.
     with SessionLocal() as db:

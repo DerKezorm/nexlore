@@ -11,6 +11,7 @@ import { aiApi, loreApi, type AiState, type LoreListed } from '../api/client'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { LoreChat } from '../components/LoreChat'
 import { LoreSpider } from '../components/LoreSpider'
+import { SettingsCorner, SideFrame, SideTop } from '../components/SideFrame'
 import { Symbol } from '../components/Symbol'
 import { spaceColor } from '../graph/palette'
 import { useLoreSpaces } from '../lib/useLoreSpaces'
@@ -51,8 +52,15 @@ export function LorePage() {
   }
   const title = list?.find((item) => item.id === conversation)?.title
 
-  if (me && !me.lore_allowed) return <NoThread why={me.ai_allowed ? 'loreOff' : 'off'} />
-  if (state && !state.ready) return <NoThread why={!state.allowed ? 'off' : state.mode === 'shared' ? 'shared' : 'own'} />
+  // Without Lore the page still has its sidebar: "New note", the search and the settings stay where they always are.
+  const frame = (why: 'loreOff' | 'off' | 'shared' | 'own') => (
+    <>
+      <SideFrame label={t('lore.conversations')} />
+      <NoThread why={why} />
+    </>
+  )
+  if (me && !me.lore_allowed) return frame(me.ai_allowed ? 'loreOff' : 'off')
+  if (state && !state.ready) return frame(!state.allowed ? 'off' : state.mode === 'shared' ? 'shared' : 'own')
 
   const groups = (['today', 'yesterday', 'week', 'earlier'] as const)
     .map((day) => ({ day, items: (list ?? []).filter((item) => dayOf(item.updated_at) === day) }))
@@ -63,11 +71,15 @@ export function LorePage() {
       <aside
         className={
           (sheet ? 'fixed inset-x-0 bottom-0 z-40 max-h-[80%] rounded-t-2xl border-t shadow-2xl ' : 'hidden ') +
-          'nn-scroll w-full shrink-0 flex-col overflow-y-auto border-ink-700 bg-ink-950 p-3 md:static md:flex md:max-h-none md:w-64 md:rounded-none md:border-t-0 md:border-r md:shadow-none'
+          'w-full shrink-0 flex-col border-ink-700 bg-ink-950 md:static md:flex md:max-h-none md:w-64 md:rounded-none md:border-t-0 md:border-r md:shadow-none'
         }
         aria-label={t('lore.conversations')}
         data-testid="lore-list"
       >
+        {/* The frame of every sidebar (SideFrame): "New note" and the search above, the settings below. The phone's
+            sheet has neither: its header keeps them. */}
+        {!sheet && <SideTop />}
+        <div className="nn-scroll min-h-0 flex-1 overflow-y-auto p-3">
         <button
           type="button"
           onClick={() => open(null)}
@@ -111,6 +123,8 @@ export function LorePage() {
             {t('lore.removeAll')}
           </button>
         )}
+        </div>
+        {!sheet && <SettingsCorner />}
       </aside>
       {sheet && <button type="button" aria-label={t('common.close')} className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setSheet(false)} />}
 
@@ -211,12 +225,12 @@ function NoThread({ why }: { why: 'off' | 'loreOff' | 'shared' | 'own' }) {
         <h1 className="mt-3 text-xl font-semibold">{t('lore.noThreadTitle')}</h1>
         <p className="mt-1 text-sm text-mist-500">{t(`lore.noThread.${why}`)}</p>
         {why === 'own' && (
-          <Link to="/account?tab=ai#ai" className="mt-5 inline-block rounded-full bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400">
+          <Link to="/settings/ai" className="mt-5 inline-block rounded-full bg-accent-500 px-4 py-2 text-sm font-semibold text-on-accent hover:bg-accent-400">
             {t('lore.setUp')}
           </Link>
         )}
         {why !== 'own' && me?.role === 'operator' && (
-          <Link to="/settings?tab=server&sub=extensions#ai" className="mt-5 inline-block rounded-full border border-accent-500/50 px-4 py-2 text-sm text-accent-400">
+          <Link to="/settings/ai-provider" className="mt-5 inline-block rounded-full border border-accent-500/50 px-4 py-2 text-sm text-accent-400">
             {t('lore.toSettings')}
           </Link>
         )}

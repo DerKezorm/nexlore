@@ -39,7 +39,7 @@ describe('the hint beside keys that wait for a second factor', () => {
     const shown = show(<KeyFactorHint />)
     const note = shown.querySelector('[data-testid="key-needs-factor"]')
     expect(note?.textContent).toContain('keyFactor.text')
-    expect(note?.querySelector('a')?.getAttribute('href')).toBe('/account?tab=security')
+    expect(note?.querySelector('a')?.getAttribute('href')).toBe('/settings/security')
   })
 
   it('is small beside a key and says the same', () => {

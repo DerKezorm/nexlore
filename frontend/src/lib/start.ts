@@ -1,5 +1,5 @@
 /**
- * The start page of the account (Settings → General): taken once per tab, when nexlore is opened on its first page
+ * The start page of the account (My account › Notes): taken once per tab, when nexlore is opened on its first page
  * (`/` without anything after it). Later visits to the map stay on the map.
  */
 

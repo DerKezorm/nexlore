@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 
 import { ApiError, mentionsApi, vaultApi, type Cleanup } from '../api/client'
+import { SpacesSidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { ownKey } from '../lib/accountStorage'
 import { Unlinked } from '../components/Unlinked'
@@ -89,6 +90,8 @@ export function CleanupPage() {
   const shown = found?.space === space ? found : null
   const button = 'shrink-0 rounded-full border border-ink-700 px-2.5 py-0.5 text-xs text-mist-300 hover:bg-ink-850 hover:text-mist-100 disabled:opacity-40'
   return (
+    <>
+      <SpacesSidebar />
     <main className="nn-scroll flex-1 overflow-y-auto">
       <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
         <div>
@@ -184,5 +187,6 @@ export function CleanupPage() {
         )}
       </div>
     </main>
+    </>
   )
 }

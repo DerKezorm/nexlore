@@ -45,7 +45,7 @@ test('the banner opens the window, and reading it puts it away for good', async 
   await expect(banner).toBeHidden()
   // Read means read: once the texts are there (the about page offers them), the banner stays away.
   await page.goto('/about')
-  await expect(page.getByRole('button', { name: `What's new in nexlore ${version}` })).toBeVisible()
+  await expect(page.getByRole('button', { name: `New in nexlore ${version}` })).toBeVisible()
   await expect(banner).toBeHidden()
 })
 
@@ -59,8 +59,8 @@ test('the banner can be put away without reading, and the about page opens the t
   await expect(banner).toBeHidden()
   await page.goto('/about')
   const version = (await (await page.request.get('/api/auth/me')).json()).version as string
-  await page.getByRole('button', { name: `What's new in nexlore ${version}` }).click()
-  await expect(page.getByRole('dialog', { name: `What's new in nexlore ${version}` })).toBeVisible()
+  await page.getByRole('button', { name: `New in nexlore ${version}` }).click()
+  await expect(page.getByRole('dialog', { name: `New in nexlore ${version}` })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toBeHidden()
 })

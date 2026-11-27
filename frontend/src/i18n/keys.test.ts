@@ -34,6 +34,10 @@ describe('translation keys used in the code', () => {
     const composed = [
       ...['nav.graph', 'nav.notes', 'nav.files', 'nav.settings'],
       ...['folders', 'tags', 'topics'].map((cloud) => `graph.cloud.${cloud}`),
+      // The areas of the settings and their groups (pages/settings/areas.ts).
+      ...['profile', 'security', 'appearance', 'notes', 'spaces', 'notifications', 'plugins', 'connections', 'general', 'signIn', 'mail', 'storage', 'aiProvider', 'serverPlugins', 'shares', 'accounts', 'log', 'about']
+        .flatMap((area) => [`settings.areas.${area}.title`, `settings.areas.${area}.text`]),
+      ...['account', 'server'].map((group) => `settings.groups.${group}`),
       ...['pending', 'saving', 'saved', 'failed', 'refreshed'].map((state) => `note.save.${state}`),
       // The symbols and colours to choose for a space or folder, as the server lists them (services/looks.py).
       ...['folder', 'book', 'server', 'cooking', 'travel', 'tool', 'star', 'heart', 'home', 'work', 'code', 'music', 'image',
@@ -50,9 +54,8 @@ describe('translation keys used in the code', () => {
       ...['todo', 'in_progress', 'on_hold', 'done', 'cancelled', 'non_task'].map((kind) => `tasks.kind.${kind}`),
       // How a version came about, as the server names it.
       ...['initial', 'app', 'external', 'rename', 'restore', 'import', 'mcp', 'api', 'plugin'].map((source) => `note.source.${source}`),
-      // API tokens: levels, their texts, the lifetimes offered; the occasion of the notification.
-      ...['read', 'write'].flatMap((level) => [`apiTokens.level.${level}`, `apiTokens.levelText.${level}`]),
-      ...['30', '90', '365'].map((days) => `apiTokens.lifetimeDays.${days}`),
+      // The levels of an API key (the words handed to the key module's cards); the occasion of the notification.
+      ...['read', 'write'].map((level) => `apiTokens.level.${level}`),
       ...['mention', 'invite', 'approval', 'tokens', 'tasks', 'operator'].flatMap((occasion) => [`notify.occasion.${occasion}`, `notify.occasionHint.${occasion}`]),
       // The notices under "New", as the server names their kinds (services/notices, emailaddr, routers/oidc).
       ...['invite', 'operator_added', 'operator_role', 'operator_removed', 'operator_email', 'operator_email_removed', 'operator_unlinked'].map((kind) => `notices.${kind}`),

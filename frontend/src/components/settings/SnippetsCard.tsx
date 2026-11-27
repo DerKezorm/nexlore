@@ -1,5 +1,5 @@
 /**
- * Settings → Look → Own CSS: snippets as in Obsidian, named and switched on one by one, for the own account only. The
+ * My account › Appearance › Own CSS: snippets as in Obsidian, named and switched on one by one, for the own account only. The
  * server reads every snippet with a CSS parser and refuses what could load anything or leave the page; the operator
  * decides whether own CSS is allowed at all.
  */
@@ -8,7 +8,9 @@ import { useTranslation } from 'react-i18next'
 import { ApiError, cssApi, type Snippet } from '../../api/client'
 import { errorText } from '../../lib/errors'
 import { useAuth } from '../../state/auth'
-import { Symbol } from '../Symbol'
+import { Code } from 'lucide-react'
+
+import { Button, Buttons, Card } from '../../vendor/nexui'
 
 type Problem = { line: number; what: string }
 
@@ -75,19 +77,14 @@ export function SnippetsCard() {
   if (!state) return null
 
   return (
-    <section className="space-y-4 rounded-2xl border border-ink-700 bg-ink-850/60 p-5" data-testid="snippets">
-      <div className="flex flex-wrap items-start gap-3">
-        <span className="rounded-lg bg-accent-500/10 p-2 text-accent-400"><Symbol name="code" /></span>
-        <div className="min-w-0 flex-1">
-          <h2 className="font-semibold text-mist-100">{t('snippets.title')}</h2>
-          <p className="text-sm text-mist-400">{t('snippets.text')}</p>
-        </div>
-        {state.allowed && !editing && (
-          <button type="button" onClick={() => setEditing({ id: null, name: t('snippets.newName'), css: '' })} className="rounded-full bg-accent-500 px-3 py-1 text-sm font-semibold text-on-accent hover:bg-accent-400">
+    <Card id="own-css" icon={Code} title={t('snippets.title')} subtitle={t('snippets.text')} testId="snippets">
+      {state.allowed && !editing && (
+        <Buttons>
+          <Button kind="primary" icon="Plus" onClick={() => setEditing({ id: null, name: t('snippets.newName'), css: '' })} testId="snippet-new">
             {t('snippets.new')}
-          </button>
-        )}
-      </div>
+          </Button>
+        </Buttons>
+      )}
       {!state.allowed && <p className="rounded-lg border border-ink-700 bg-ink-900 px-3 py-2 text-sm text-mist-400">{t('snippets.notAllowed')}</p>}
       {editing && (
         <div className="space-y-2 rounded-xl border border-ink-700 bg-ink-900 p-4" data-testid="snippet-editor">
@@ -131,6 +128,6 @@ export function SnippetsCard() {
         </ul>
       )}
       {problem && <p role="alert" className="text-sm text-bad-500">{problem}</p>}
-    </section>
+    </Card>
   )
 }

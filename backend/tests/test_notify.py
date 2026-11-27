@@ -14,7 +14,9 @@ from fastapi.testclient import TestClient
 
 from app.db import SessionLocal
 from app.models import Account
-from app.services import index, mailer, notify, settings_service, updates
+from app.services import index, notify, settings_service, updates
+from app.vendor import nexpost
+from app.vendor.nexupdates import check
 
 from .conftest import join
 from .test_mcp import call, switch, value
@@ -36,11 +38,19 @@ class Sent:
             self.posts.append((url, body))
             return self.status
 
-        def mail(_db: Any, message: Any) -> None:
-            self.mails.append(message)
+        def mail(_settings: Any, letter: Any) -> None:
+            self.mails.append(letter)
 
+        def queued(store: Any, letter: Any) -> int | str:
+            # A notification waits in the outbox of the post module; the test takes it as sent.
+            self.mails.append(letter)
+            return real_queue(store, letter)
+
+        real_queue = nexpost.outbox.queue
         monkeypatch.setattr(notify, "_post", post)
-        monkeypatch.setattr(mailer, "_send", mail)
+        # Every system mail goes through the shared post module (post 1.1.0): at once or into its outbox.
+        monkeypatch.setattr(nexpost.send, "deliver", mail)
+        monkeypatch.setattr(nexpost.outbox, "queue", queued)
 
     def titles(self) -> list[str]:
         return [body["title"] for _, body in self.posts]
@@ -115,7 +125,7 @@ def test_mail_only_with_the_operators_server_and_an_address(client: TestClient, 
     assert anna.get("/api/me/notify").json()["email"]["possible"] is True
     anna.put("/api/me/notify", json={"webhook": ""})
     assert anna.post("/api/me/notify/test").json() == {"email": "ok"}
-    assert sent.mails[-1]["To"] == "anna@example.com"
+    assert sent.mails[-1].to == "anna@example.com"
 
 
 # --- What sets them off ------------------------------------------------------------------------------------------------
@@ -182,11 +192,39 @@ def test_an_ai_request_tells_its_account(garden: tuple, sent: Sent) -> None:
     anna, _, _ = garden
     hooked(anna)
     switch(mcp_allowed=True, mcp_max_level="write")
-    token = anna.post("/api/mcp/keys", json={"name": "Agent", "level": "write"}).json()["token"]
+    made = anna.post("/api/mcp/keys", json={"name": "Agent", "level": "write"}).json()
+    # The key asks before creating (a new key may since mcp 1.1.0, decision 3, so its account sets "ask").
+    assert anna.put(f"/api/mcp/keys/{made['key']['id']}/rights",
+                    json={"rights": {"create_note": "ask"}}).status_code == 200
+    token = made["token"]
     waiting = value(call(token, "create_note", folder="Garden", title="x", content="x"))
     assert waiting["status"] == "waiting"
     assert sent.titles() == ["Agent waits for your approval"]
     assert sent.posts[0][1]["event"] == "approval"
+
+
+def test_a_waiting_request_stands_in_the_bell_until_it_is_decided(garden: tuple, sent: Sent) -> None:
+    """MCP 14: "a program waits for your yes" reaches the account on nexlore's ways. The bell ("Neu" in the sidebar,
+    ``RequestBellRow``) shows what the browser asks every minute, ``GET /api/connections/mcp/requests?status=waiting``;
+    the webhook hears it once; decided, the row goes and nothing more is sent."""
+    anna, bob, _ = garden
+    hooked(anna)
+    switch(mcp_allowed=True, mcp_max_level="write")
+    made = anna.post("/api/mcp/keys", json={"name": "Agent", "level": "write"}).json()
+    assert anna.put(f"/api/mcp/keys/{made['key']['id']}/rights",
+                    json={"rights": {"create_note": "ask"}}).status_code == 200
+    bell = "/api/connections/mcp/requests?status=waiting"
+    assert anna.get(bell).json() == []
+    waiting = value(call(made["token"], "create_note", folder="Garden", title="Bell", content="x"))
+    # Asking for its state is no new request: the bell and the webhook stay as they are.
+    value(call(made["token"], "request_status", request=waiting["request"]))
+    rows = anna.get(bell).json()
+    assert [(row["id"], row["status"], row["tool"]) for row in rows] == [(waiting["request"], "waiting", "create_note")]
+    assert bob.get(bell).json() == []
+    assert sent.titles() == ["Agent waits for your approval"]
+    assert anna.post(f"/api/connections/mcp/requests/{waiting['request']}/approve", json={}).status_code == 200
+    assert anna.get(bell).json() == []
+    assert sent.titles() == ["Agent waits for your approval"]
 
 
 def test_the_tasks_of_the_morning_go_out_once_at_the_chosen_time(garden: tuple, sent: Sent, vault: Path) -> None:
@@ -212,14 +250,17 @@ def test_operators_hear_of_the_disk_and_a_new_version_once(client: TestClient, a
     anna = person("anna")
     hooked(anna)
     monkeypatch.setattr(notify, "disk_low", lambda: True)
-    monkeypatch.setattr(updates, "_ask", lambda: "v99.0.0")
+    monkeypatch.setattr(check, "ask", lambda: "v99.0.0")
     now = datetime.now().astimezone()
+    # The disk is the daily check's, a new version the shared module's look (updates U3), as in the background.
     notify.daily_operator_checks(now)
+    updates.look_once()
     assert sorted(sent.titles()) == ["The disk of nexlore runs full", "nexlore 99.0.0 is out"]
     # Only operators, and each only once.
     assert {url for url, _ in sent.posts} == {HOOK}
     assert len(sent.posts) == 2
     notify.daily_operator_checks(now)
+    updates.look_once()
     assert len(sent.posts) == 2
     with SessionLocal() as db:
         assert settings_service.get(db, "notify_version") == "v99.0.0"
@@ -227,7 +268,7 @@ def test_operators_hear_of_the_disk_and_a_new_version_once(client: TestClient, a
 
 def test_a_failed_backup_tells_the_operators(client: TestClient, account: Account, sent: Sent) -> None:
     hooked(client)
-    notify.operators("A backup of nexlore failed", "x")
+    notify.operators(notify.words("backup_failed"))
     assert sent.titles() == ["A backup of nexlore failed"]
 
 
@@ -235,5 +276,5 @@ def test_server_troubles_never_reach_a_member(client: TestClient, account: Accou
     anna = person("anna")
     hooked(anna)
     anna_id = anna.get("/api/auth/me").json()["id"]
-    notify.send(anna_id, "operator", "The disk of nexlore runs full", "x")
+    notify.send(anna_id, "operator", notify.words("disk_low"))
     assert sent.posts == []

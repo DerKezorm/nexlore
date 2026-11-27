@@ -122,7 +122,9 @@ def authenticate(db: Session, token: str | None) -> Caller | None:
     if row is None or row.blocked_at is not None or (row.expires_at is not None and row.expires_at <= now):
         return None
     account = db.get(Account, row.account_id)
-    if account is None or (account.locked_until is not None and account.locked_until > now):
+    if account is None or account.blocked_at is not None or account.deleted_at is not None or (
+        account.locked_until is not None and account.locked_until > now
+    ):
         return None
     if totp.setup_required(db, account):
         # The operator requires a second factor this account has not set up: its tokens wait like its sessions.

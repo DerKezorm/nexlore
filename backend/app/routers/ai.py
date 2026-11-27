@@ -50,12 +50,16 @@ def _row(db: DbSession, account: Account) -> AccountRow:
 
 
 def _fail(exc: ai.AiError):
-    return error(exc.code, exc.code.replace("_", " "), exc.status, **exc.values)
+    found = error(exc.code, exc.code.replace("_", " "), exc.status, **exc.values)
+    if exc.code == "ai_too_often":
+        # The brake of the shared module ki 0.1.0: a minute.
+        found.headers = {"Retry-After": "60"}
+    return found
 
 
 def _state(db: DbSession, row: AccountRow) -> dict[str, Any]:
     return {
-        "allowed": ai.allowed(db),
+        "allowed": ai.allowed_for(db, row),
         "ready": ai.ready(db, row),
         "mode": ai.mode(db),
         "access": ai.view(row),
@@ -132,8 +136,8 @@ def shared_models(payload: ModelsIn, operator: OperatorAccount, db: DbSession) -
 
 @router.post("/models", summary="The models of an access: the test that address and key are right")
 def models(payload: ModelsIn, account: Account, db: DbSession) -> list[dict[str, str]]:
-    # It sends the key out: only with the operator's lock open.
-    if not ai.allowed(db):
+    # It sends the key out: only with the operator's lock open and the account allowed.
+    if not ai.allowed_for(db, account):
         raise error("ai_off", "AI in notes is off on this server.", 403)
     # Each asking may wait on a slow service: a few an hour, or one account ties up the server (review before 1.0.0).
     key_name = f"ai-models:{account.id}"

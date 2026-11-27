@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { ApiError, everydayApi, type CalendarDay, type TaskItem } from '../api/client'
+import { SideFrame } from '../components/SideFrame'
+import { useNarrow } from '../lib/useNarrow'
 import { Symbol } from '../components/Symbol'
 import { TaskRow } from '../components/TaskRow'
 import { errorText } from '../lib/errors'
@@ -26,6 +28,7 @@ export function CalendarPage() {
   const readOnlyIn = useMemo(() => new Set(spaces.filter((item) => item.role === 'read').map((item) => item.name)), [spaces])
   const [params, setParams] = useSearchParams()
   const today = todayIso()
+  const small = useNarrow()
   const month = MONTH.test(params.get('month') ?? '') ? params.get('month')! : monthOf(today)
   const space = params.get('space') ?? ''
   const [days, setDays] = useState<Record<string, CalendarDay>>({})
@@ -140,9 +143,49 @@ export function CalendarPage() {
   const weekdayName = (iso: string) => atNoon(iso).toLocaleDateString(i18n.language, { weekday: 'long' })
   const long = (iso: string) => atNoon(iso).toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' })
 
+  // What is due this month: in the sidebar, as in nexnotes, between "New note" and the settings; on a phone, which
+  // has no sidebar, under the month.
+  const due = (
+    <>
+      <h2 className="px-2 text-sm font-semibold text-mist-100">{t('calendar.month')}</h2>
+      {byDay.length === 0 && <p className="px-2 pt-2 text-sm text-mist-500">{t('calendar.nothing')}</p>}
+      {byDay.map(([day, list]) => (
+        <section key={day} className="mt-3">
+          <h3 className={'px-2 text-xs font-semibold ' + (day < today ? 'text-bad-500' : day === today ? 'text-accent-400' : 'text-mist-500')}>
+            {long(day)}
+          </h3>
+          <ul>
+            {list.map((task) => (
+              <TaskRow
+                key={`${task.id}:${task.raw}`}
+                task={task}
+                today={today}
+                readOnly={readOnlyIn.has(task.path.split('/')[0])}
+                onToggled={(_task, result) => {
+                  setNotice(result.conflict ? t('tasks.conflict') : result.added ? t('tasks.repeated') : null)
+                  void load()
+                }}
+                onProblem={(code) => {
+                  setNotice(code === 'task_changed' ? t('tasks.changed') : errorText(code))
+                  void load()
+                }}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
+    </>
+  )
+
   return (
-    <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden" data-testid="calendar-page">
-      <section className="min-w-0 flex-1 px-3 py-3 sm:px-4 sm:py-4 lg:overflow-y-auto">
+    <>
+    {!small && (
+      <SideFrame label={t('calendar.month')} testId="calendar-side">
+        <div className="px-2 py-3">{due}</div>
+      </SideFrame>
+    )}
+    <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto" data-testid="calendar-page">
+      <section className="min-w-0 flex-1 px-3 py-3 sm:px-4 sm:py-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <button type="button" onClick={() => go({ month: shiftMonth(month, -1) })} aria-label={t('calendar.previous')} className="grid h-8 w-8 place-items-center rounded-full text-mist-400 hover:bg-ink-850">
             <Symbol name="chevronLeft" />
@@ -250,7 +293,7 @@ export function CalendarPage() {
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
           <p className="text-xs text-mist-600">{t('calendar.hint')}</p>
-          <Link to="/account#calendar" className="text-xs text-accent-400 hover:underline">
+          <Link to="/settings/connections#calendar" className="text-xs text-accent-400 hover:underline">
             {t('calendar.subscribe')}
           </Link>
           <label className="ml-auto flex items-center gap-2 text-xs text-mist-500">
@@ -287,35 +330,8 @@ export function CalendarPage() {
           </p>
         )}
       </section>
-      <aside className="w-full shrink-0 border-t border-ink-700 px-2 py-3 sm:px-3 lg:w-96 lg:overflow-y-auto lg:border-t-0 lg:border-l">
-        <h2 className="px-2 text-sm font-semibold text-mist-100">{t('calendar.month')}</h2>
-        {byDay.length === 0 && <p className="px-2 pt-2 text-sm text-mist-500">{t('calendar.nothing')}</p>}
-        {byDay.map(([day, list]) => (
-          <section key={day} className="mt-3">
-            <h3 className={'px-2 text-xs font-semibold ' + (day < today ? 'text-bad-500' : day === today ? 'text-accent-400' : 'text-mist-500')}>
-              {long(day)}
-            </h3>
-            <ul>
-              {list.map((task) => (
-                <TaskRow
-                  key={`${task.id}:${task.raw}`}
-                  task={task}
-                  today={today}
-                  readOnly={readOnlyIn.has(task.path.split('/')[0])}
-                  onToggled={(_task, result) => {
-                    setNotice(result.conflict ? t('tasks.conflict') : result.added ? t('tasks.repeated') : null)
-                    void load()
-                  }}
-                  onProblem={(code) => {
-                    setNotice(code === 'task_changed' ? t('tasks.changed') : errorText(code))
-                    void load()
-                  }}
-                />
-              ))}
-            </ul>
-          </section>
-        ))}
-      </aside>
+      {small && <aside className="w-full shrink-0 border-t border-ink-700 px-2 py-3 sm:px-3">{due}</aside>}
     </main>
+    </>
   )
 }

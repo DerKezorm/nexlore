@@ -15,6 +15,7 @@ from typing import Any, ClassVar
 
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     DateTime,
     Float,
@@ -33,6 +34,16 @@ from sqlalchemy.types import TypeDecorator
 
 def utcnow() -> datetime:
     return datetime.now(UTC)
+
+
+def _default_storage_limit(context: Any) -> int | None:
+    """The storage limit a new account starts with: the server's setting ``quota_mb`` (0: none), read on the
+    connection that inserts it."""
+    from .services.konten_wanderung import megabytes
+
+    raw = context.connection.exec_driver_sql("SELECT value FROM settings WHERE key = 'quota_mb'").scalar()
+    found = megabytes(raw)
+    return found * 1024 * 1024 if found > 0 else None
 
 
 class UtcDateTime(TypeDecorator[datetime]):
@@ -339,6 +350,9 @@ class Version(Base):
     hash: Mapped[str] = mapped_column(String(64))
     size: Mapped[int] = mapped_column(Integer)
     content: Mapped[bytes] = mapped_column(LargeBinary)
+    #: The name of the key or program an AI program wrote with (source ``mcp``, MCP decision 15: "MCP · <key>" in the
+    #: history, as nexnotes shows it); empty for every other version and for those before.
+    key_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
 
 class Lock(Base):
@@ -420,6 +434,14 @@ class Account(Base):
     #: wants to be asked about: when it differs from ``email``, the profile offers to take it.
     provider_email: Mapped[str] = mapped_column(String(255), default="")
     provider_email_off: Mapped[str] = mapped_column(String(255), default="")
+    #: The name of the provider whose address is offered, as on its button (the shared account module).
+    provider_email_from: Mapped[str] = mapped_column(String(80), default="", server_default="")
+    #: The address **counts** (signing in, a forgotten password, notices; the shared account module). Every address
+    #: of 1.16.0 counts, whatever its source: whoever was mailed at it keeps being so.
+    email_confirmed: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
+    #: Somebody opened a link mailed to the address. 1.16.0 knows that for its own addresses (``email_source`` own):
+    #: ``services/konten_wanderung`` sets it there once.
+    email_proven: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
     oidc_subject: Mapped[str] = mapped_column(String(255), default="")
     #: The interface language chosen in the account menu; empty: the browser's.
     language: Mapped[str] = mapped_column(String(16), default="")
@@ -432,16 +454,60 @@ class Account(Base):
     totp_secret_enc: Mapped[str] = mapped_column(Text, default="")
     totp_recovery: Mapped[str] = mapped_column(Text, default="")
     totp_last_step: Mapped[int] = mapped_column(Integer, default=0)
+    #: An authenticator being set up (the shared account module): its seed sealed in a context of its own, waiting
+    #: ten minutes for its first code; it survives a restart. Never a factor while it waits.
+    totp_pending: Mapped[str] = mapped_column(Text, default="", server_default="")
+    totp_pending_until: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: When the password was set last ("Last changed on" under Security); unknown (None) for one of 1.16.0.
+    password_changed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: The random user handle of the account's passkeys (WebAuthn), made with the first passkey and kept.
+    passkey_handle: Mapped[str] = mapped_column(String(64), default="", server_default="")
+    #: What the marks of known browsers are signed with (``sessions.mark``): drawn anew with a new password, a block
+    #: or a deletion, which makes every mark of before worthless.
+    device_key: Mapped[str] = mapped_column(String(64), default="", server_default="")
+    #: "A mail at a new sign-in" (on from the start): a browser that never signed in as the account before.
+    new_sign_in_mail: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
+    #: The password was set through a link: where it came from (``self``, ``operator``, ``server``), "" for none.
+    #: The account page then lists the ways in that stayed, until put away.
+    new_password_origin: Mapped[str] = mapped_column(String(16), default="", server_default="")
+    #: The password was set through somebody else's link (the operator's, the emergency command): said once.
+    password_reset_notice: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
+    #: The browser's language at the last sign-in: what a mail is written in while ``language`` is empty.
+    browser_language: Mapped[str] = mapped_column(String(16), default="", server_default="")
+    #: Blocked by the operator (the shared account module): out on every way in at once. None for every account of
+    #: 1.16.0, which knew no blocking.
+    blocked_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: Deleted by the operator (the shared account module 1.1.0): gone for everybody at once, its things kept; for 30
+    #: days the operator brings it back, then it goes for good (``manage.purge_due``). None for every account of
+    #: 1.16.0, which deleted for good at once.
+    deleted_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: How many bytes the account may upload (vault and trash), None for no limit (the shared account module 1.1.0).
+    #: The migration to 1.1.0 gives every account the server's limit of before (``quota_mb``); a new account starts
+    #: with that setting as well (``_default_storage_limit``).
+    storage_limit: Mapped[int | None] = mapped_column(BigInteger, nullable=True, default=lambda context:
+                                                      _default_storage_limit(context))
+    #: The account may use AI in its notes (the shared account module 1.1.0, "KI erlaubt"); allowed from the start.
+    #: The operator's switch ``ai_allowed`` stays the main one: AI works only where both are on.
+    ai_allowed: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
     #: The account's own AI service for its notes (``services/ai.py``): an OpenAI-shaped address, the model, the key
     #: encrypted with the server secret, and whether the account switched it on. Off and empty from the start.
     ai_url: Mapped[str] = mapped_column(String(500), default="")
     ai_model: Mapped[str] = mapped_column(String(200), default="")
     ai_key_enc: Mapped[str] = mapped_column(Text, default="")
+    #: The interface of the own access (the shared module ki 0.1.0): ``openai`` or ``messages``; empty is ``openai``,
+    #: the only form nexlore spoke before.
+    ai_api: Mapped[str] = mapped_column(String(16), default="", server_default="")
+    #: "KI für mich" off while the operator's service is for all (ki 0.1.0); with an own access ``ai_active`` says it,
+    #: as before. Off nowhere before: nexlore had no such switch for the operator's service.
+    ai_mine_off: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
     ai_active: Mapped[bool] = mapped_column(Boolean, default=False)
     #: The profile picture (``services/avatars.py``): a square WebP drawn anew, loaded only when asked for; and when it
     #: was set, which makes its address new.
     avatar: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True, deferred=True)
     avatar_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: "" for a picture the person set (and every picture of 1.16.0), ``provider`` for one taken from a sign-in
+    #: provider: a provider's picture never replaces an own one.
+    avatar_source: Mapped[str] = mapped_column(String(16), default="", server_default="")
     #: How nexlore looks for the account (``services/appearance.py``): only what it chose; defaults fill the rest.
     appearance: Mapped[Any] = mapped_column(JSON, nullable=True)
     #: Changes by others after this are "new" for a note the account never opened (``routers/news.py``); set when
@@ -474,6 +540,17 @@ class AuthSession(Base):
     #: ``server_default`` as well: a database this version made fresh must still take a session from the version
     #: before the column (the way back), which does not name it.
     via: Mapped[str] = mapped_column(String(16), default=SESSION_VIA_PASSWORD, server_default=SESSION_VIA_PASSWORD)
+    #: The id the list "Signed-in devices" names the session by (the token's hash never leaves the server). Sessions
+    #: of 1.16.0 get one at the first start (``services/konten_wanderung``).
+    uid: Mapped[str | None] = mapped_column(String(32), nullable=True, unique=True, index=True)
+    #: "Stay signed in": 30 days from the last use, sliding; without it the session ends with the browser and lives
+    #: at most 12 hours. Sessions of 1.16.0 were all remembered.
+    remember: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
+    #: ``full``, or ``setup``: the session may only set up the second factor the operator requires.
+    stage: Mapped[str] = mapped_column(String(8), default="full", server_default="full")
+    #: ``browser``; the shared account module's other kinds are kept elsewhere in nexlore (paired devices in
+    #: ``app_devices``, a sign-in waiting for its code in memory). 1.16.0: browsers only.
+    kind: Mapped[str] = mapped_column(String(8), default="browser", server_default="browser")
 
 
 class OidcProvider(Base):
@@ -554,6 +631,10 @@ class Invite(Base):
     space_role: Mapped[str] = mapped_column(String(16), default="")
     #: Where the invitation was mailed to, if it was; also a hint for the name.
     email: Mapped[str] = mapped_column(String(255), default="")
+    #: What the one who invites gave as the display name (the form shows it); invitations of 1.16.0 have none.
+    display_name: Mapped[str] = mapped_column(String(80), default="", server_default="")
+    #: The link went by mail to ``email``: whoever comes through it proved the address.
+    mailed: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
     created_by: Mapped[int | None] = mapped_column(ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
@@ -664,6 +745,23 @@ class McpKey(Base):
     refresh_old_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     #: When the connector signed in: its refresh tokens run out REFRESH_DAYS later, refreshed or not.
     signed_in_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: Set when the operator locked the key (the shared key module, "API-Schlüssel aller Konten"); it then answers like
+    #: none until unlocked. None for every key of 1.16.0, which knew no lock for MCP keys.
+    blocked_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: A connector's last refresh (the shared module mcp 1.1.0): 30 days without one, it signs in again. None for a
+    #: connector of 1.16.0, which counted from ``expires_at`` (an hour after the last refresh).
+    refreshed_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+
+
+class McpSpent(Base):
+    """A code or refresh token a connector traded in (the shared module mcp 1.1.0): brought again, it was copied, and
+    the connector ends. The last 20 per connector; ``mcp_keys.refresh_old_hash`` still holds the one of 1.16.0."""
+
+    __tablename__ = "mcp_spent"
+
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    key_id: Mapped[int] = mapped_column(ForeignKey("mcp_keys.id", ondelete="CASCADE"), index=True)
+    spent_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
 
 
 class ApiToken(Base):
@@ -828,6 +926,12 @@ class AiEvent(Base):
     tokens_out: Mapped[int] = mapped_column(Integer, default=0)
     #: The error code when it failed after sending; empty when it worked.
     error: Mapped[str] = mapped_column(String(64), default="")
+    #: Since the shared module ki 0.1.0: where it went (host, or "the own network"), whether a person started it, how
+    #: many characters of text went out, and how it ended (``ok`` or a code).
+    to: Mapped[str] = mapped_column(String(255), default="", server_default="")
+    manual: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"))
+    chars: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    outcome: Mapped[str] = mapped_column(String(64), default="", server_default="")
 
 
 class LoreConversation(Base):
@@ -922,6 +1026,10 @@ class OAuthCode(Base):
     level: Mapped[str] = mapped_column(String(8))
     spaces: Mapped[Any] = mapped_column(JSON, nullable=True)
     expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+    #: Since the shared module mcp 1.1.0: the app the program asked for (RFC 8707, empty when it named none) and the
+    #: extras agreed to (nexlore has none).
+    resource: Mapped[str] = mapped_column(String(2048), default="", server_default="")
+    extras: Mapped[Any] = mapped_column(JSON, nullable=True)
 
 
 class McpRequest(Base):
@@ -932,8 +1040,9 @@ class McpRequest(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
-    #: The key that asked; a revoked key takes its waiting requests along.
-    key_id: Mapped[int] = mapped_column(ForeignKey("mcp_keys.id", ondelete="CASCADE"), index=True)
+    #: The key that asked. Since the shared module mcp 1.1.0 a request outlives its key: allowed after the key was
+    #: revoked, it ends as failed ("no longer possible") instead of vanishing (``mcp_store.migrate`` drops the link).
+    key_id: Mapped[int] = mapped_column(Integer, index=True)
     key_name: Mapped[str] = mapped_column(String(100), default="")
     tool: Mapped[str] = mapped_column(String(64))
     #: The arguments as canonical JSON (sorted keys), and their SHA-256: the approval runs these and nothing else.
@@ -946,6 +1055,11 @@ class McpRequest(Base):
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
     decided_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    #: Since the shared module mcp 1.1.0: who decided (the account's name), the tool's one line, and whether the tool
+    #: called the call dangerous (then allowing takes a second yes).
+    decided_by: Mapped[str] = mapped_column(String(100), default="", server_default="")
+    summary: Mapped[str] = mapped_column(String(300), default="", server_default="")
+    dangerous: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("0"))
 
 
 class Plugin(Base):

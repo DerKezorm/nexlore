@@ -544,7 +544,7 @@ function NotePane({ path, side, right, mirror = false }: PaneProps) {
     setLockHolder(null)
     setConflict(null)
     setSaveState('idle')
-    // Each account opens notes in its own view (Settings → General); the switch in the toolbar changes it for this note.
+    // Each account opens notes in its own view (My account › Notes); the switch in the toolbar changes it for this note.
     setMode(me?.appearance?.editor === 'source' ? 'source' : 'visual')
     setEditingPath(path)
   }, [note, path, me?.appearance?.editor])

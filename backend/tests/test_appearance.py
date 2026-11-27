@@ -6,12 +6,16 @@ from fastapi.testclient import TestClient
 
 from app.services import appearance
 
+#: The test account stands for an account of before 1.1.0 that chose no look: at its first load it takes nexlore's
+#: look of before, dark, once (konten E45, ``theme_default_before``); everything else is the defaults.
+BEFORE = {**appearance.DEFAULTS, "mode": "dark"}
+
 
 def test_the_defaults_come_with_me_and_a_change_keeps_the_rest(client: TestClient, account: object) -> None:
-    assert client.get("/api/auth/me").json()["appearance"] == appearance.DEFAULTS
+    assert client.get("/api/auth/me").json()["appearance"] == BEFORE
     changed = client.put("/api/me/appearance", json={"font_text": "literata", "size": 18})
     assert changed.status_code == 200, changed.text
-    assert changed.json() == {**appearance.DEFAULTS, "font_text": "literata", "size": 18}
+    assert changed.json() == {**BEFORE, "font_text": "literata", "size": 18}
     client.put("/api/me/appearance", json={"width": "wide", "mode": "system"})
     assert client.get("/api/auth/me").json()["appearance"] == {
         **appearance.DEFAULTS, "font_text": "literata", "size": 18, "width": "wide", "mode": "system",
@@ -50,7 +54,7 @@ def test_only_values_on_the_lists_are_taken(client: TestClient, account: object,
     answer = client.put("/api/me/appearance", json=bad)
     assert answer.status_code == 422
     assert answer.json()["detail"]["code"] == "bad_appearance"
-    assert client.get("/api/auth/me").json()["appearance"] == appearance.DEFAULTS
+    assert client.get("/api/auth/me").json()["appearance"] == BEFORE
 
 
 def test_the_spaces_left_out_of_the_map_are_kept_by_id(client: TestClient, account: object) -> None:

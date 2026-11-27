@@ -1,17 +1,16 @@
 /**
- * Settings → Look: light or dark, the fonts, the text size and width, for the own account (on every device). Each
+ * Settings › Appearance › "Schriften und Breite": the fonts, the text size and width, for the own account (on every
+ * device). Light or dark is the account module's card "Aussehen" above it. Each
  * change is saved and shown at once; the sample below shows the note text as it will look.
  */
+import { Type } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FONT_CHOICES, FONTS, WIDTHS, type Appearance, type Mode, type Width } from '../../lib/appearance'
+import { FONT_CHOICES, FONTS, WIDTHS, type Appearance, type Width } from '../../lib/appearance'
 import { errorText } from '../../lib/errors'
 import { useAuth } from '../../state/auth'
 import { ApiError } from '../../api/client'
-import { Symbol } from '../Symbol'
-
-const segment = (on: boolean) =>
-  'rounded-full px-3 py-1 text-sm ' + (on ? 'bg-accent-500 font-semibold text-on-accent' : 'text-mist-400 hover:text-mist-100')
+import { Card, CheckboxRow, Segment } from '../../vendor/nexui'
 
 export function AppearanceCard() {
   const { t } = useTranslation()
@@ -58,25 +57,7 @@ export function AppearanceCard() {
   )
 
   return (
-    <section className="space-y-5 rounded-2xl border border-ink-700 bg-ink-850/60 p-5" data-testid="appearance">
-      <div className="flex items-start gap-3">
-        <span className="rounded-lg bg-accent-500/10 p-2 text-accent-400"><Symbol name="eye" /></span>
-        <div>
-          <h2 className="font-semibold text-mist-100">{t('looks2.title')}</h2>
-          <p className="text-sm text-mist-400">{t('looks2.text')}</p>
-        </div>
-      </div>
-
-      <div className="grid gap-2 sm:grid-cols-[10rem_1fr] sm:items-center">
-        <span className="text-sm text-mist-300">{t('looks2.mode')}</span>
-        <div className="inline-flex w-fit rounded-full border border-ink-700 bg-ink-850 p-0.5" role="radiogroup" aria-label={t('looks2.mode')}>
-          {(['light', 'dark', 'system'] as Mode[]).map((mode) => (
-            <button key={mode} type="button" role="radio" aria-checked={look.mode === mode} onClick={() => void change({ mode })} className={segment(look.mode === mode)}>
-              {t(`looks2.modes.${mode}`)}
-            </button>
-          ))}
-        </div>
-      </div>
+    <Card id="fonts" icon={Type} title={t('looks2.title')} subtitle={t('looks2.text')} testId="appearance">
 
       {fontRow('ui', 'font_ui')}
       {fontRow('text', 'font_text')}
@@ -90,33 +71,17 @@ export function AppearanceCard() {
         </div>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-[10rem_1fr] sm:items-center">
-        <span className="text-sm text-mist-300">{t('looks2.width')}</span>
-        <div className="inline-flex w-fit flex-wrap rounded-full border border-ink-700 bg-ink-850 p-0.5" role="radiogroup" aria-label={t('looks2.width')}>
-          {(Object.keys(WIDTHS) as Width[]).map((width) => (
-            <button key={width} type="button" role="radio" aria-checked={look.width === width} onClick={() => void change({ width })} className={segment(look.width === width)}>
-              {t(`looks2.widths.${width}`)}
-            </button>
-          ))}
-        </div>
-      </div>
-      <p className="text-xs text-mist-500">{t('looks2.wideHint')}</p>
+      <Segment
+        label={t('looks2.width')}
+        value={look.width}
+        options={(Object.keys(WIDTHS) as Width[]).map((width) => ({ value: width, label: t(`looks2.widths.${width}`) }))}
+        onChange={(width) => void change({ width })}
+        hints={[t('looks2.wideHint')]}
+        testId="appearance-width"
+      />
 
-      <label className="flex items-start gap-3 text-sm text-mist-300">
-        <input type="checkbox" checked={look.space_themes} onChange={(event) => void change({ space_themes: event.target.checked })} className="mt-1 accent-accent-500" />
-        <span>
-          {t('looks2.spaceThemes')}
-          <span className="block text-xs text-mist-500">{t('looks2.spaceThemesHint')}</span>
-        </span>
-      </label>
-
-      <label className="flex items-start gap-3 text-sm text-mist-300">
-        <input type="checkbox" checked={look.graph_glow !== false} onChange={(event) => void change({ graph_glow: event.target.checked })} className="mt-1 accent-accent-500" />
-        <span>
-          {t('looks2.graphGlow')}
-          <span className="block text-xs text-mist-500">{t('looks2.graphGlowHint')}</span>
-        </span>
-      </label>
+      <CheckboxRow label={t('looks2.spaceThemes')} hint={t('looks2.spaceThemesHint')} checked={look.space_themes} onChange={(on) => void change({ space_themes: on })} />
+      <CheckboxRow label={t('looks2.graphGlow')} hint={t('looks2.graphGlowHint')} checked={look.graph_glow !== false} onChange={(on) => void change({ graph_glow: on })} />
 
       <div className="rounded-xl border border-ink-700 bg-ink-900 p-4">
         <div className="nn-prose mx-auto" style={{ maxWidth: 'var(--nn-width)' }} data-testid="appearance-sample">
@@ -126,6 +91,6 @@ export function AppearanceCard() {
         </div>
       </div>
       {problem && <p role="alert" className="text-sm text-bad-500">{problem}</p>}
-    </section>
+    </Card>
   )
 }

@@ -35,7 +35,7 @@ test.afterEach(async ({ page }) => {
 async function zettel(page: Page): Promise<string> {
   const before = page.url()
   // The command is there once the spaces are (it goes where a new note goes); the palette reads its list when opened.
-  await expect(page.getByRole('banner').getByRole('button', { name: 'New note' })).toBeEnabled()
+  await expect(page.getByTestId('side-new-note')).toBeEnabled()
   await page.keyboard.press('ControlOrMeta+p')
   await page.keyboard.type('named by the time')
   await expect(page.getByRole('dialog', { name: 'Commands' }).getByRole('button', { name: /^New note named by the time/ })).toBeVisible()

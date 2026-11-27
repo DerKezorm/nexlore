@@ -304,7 +304,7 @@ test('tabs: a note opens in a tab of its own with Ctrl or from the menu, and clo
   await expect(tabs.getByRole('tab')).toHaveText(['Menu', 'Linked'])
   await expect(tabs.getByRole('tab', { name: 'Linked' })).toHaveAttribute('aria-selected', 'true')
   // A plain click shows a note in the tab in front.
-  await row(page, 'Reading').click()
+  await clickRow(page, 'Reading')
   await expect(tabs.getByRole('tab')).toHaveText(['Menu', 'Reading'])
   await row(page, 'Menu').click({ button: 'right' })
   await page.getByRole('menuitem', { name: 'Open in a new tab' }).click()
@@ -389,9 +389,11 @@ test('on a phone "Notes" and the empty note page open the list as a sheet, and t
   await expect(start).toBeVisible()
   await expect(start).not.toContainText('Ctrl')
   const header = page.locator('header')
-  // Four daily places, today, new, search and the account fit; files and settings moved into the account menu.
+  // The daily places, today, new, search and the picture that leads to the settings fit (as in nexnotes there is no
+  // account menu; the commands and the cover flow wait in the sidebar's sheet).
   await expect(header.getByRole('button', { name: 'Search' })).toBeInViewport()
-  await expect(header.getByRole('link', { name: 'Settings' })).toBeHidden()
+  await expect(header.getByTestId('settings-link')).toBeInViewport()
+  await expect(header.getByTestId('open-palette')).toBeHidden()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   const sidebar = page.getByTestId('sidebar')
   await expect(sidebar).toBeHidden()
@@ -417,8 +419,10 @@ test('on a phone "Notes" and the empty note page open the list as a sheet, and t
   await header.getByRole('button', { name: 'Search' }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: /^Account of / }).click()
-  await expect(page.getByRole('link', { name: 'Settings' })).toBeVisible()
+  await header.getByTestId('settings-link').click()
+  // On a phone the settings open with their list of areas (ui kit), an area one tap further.
+  await page.getByRole('navigation', { name: 'Settings' }).getByRole('link', { name: 'Profile' }).click()
+  await expect(page.getByRole('heading', { name: 'Profile', level: 1 })).toBeVisible()
   expect(problems).toEqual([])
 })
 

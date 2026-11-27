@@ -2,6 +2,7 @@
  * The about page (block X2): version, licence, links, and the update check against a stand-in for GitHub
  * (e2e/fake-ai.mjs answers v9.0.0). The operator switches the daily check and asks now; the switch is set back.
  */
+import { accountLink } from './account'
 import { expect, test } from './fixtures'
 
 test.skip(!!process.env.E2E_BASE_URL, 'changes a server setting')
@@ -11,9 +12,9 @@ const TAB = { 'X-Nexlore-Client': 'tab-e2e-about000' }
 test('the about page names the version and says when a newer one is out', async ({ page }) => {
   try {
     await page.goto('/')
-    await page.getByRole('banner').getByRole('button', { name: /^Account of / }).click()
-    await page.getByRole('link', { name: 'About nexlore' }).click()
-    await expect(page).toHaveURL(/\/about$/)
+    await accountLink(page).click()
+    await page.getByTestId('settings-nav').getByRole('link', { name: 'About nexlore' }).click()
+    await expect(page).toHaveURL(/\/settings\/about$/)
     const version = (await (await page.request.get('/api/about')).json()).version as string
     await expect(page.getByTestId('about-version')).toHaveText(version)
     await expect(page.getByRole('link', { name: 'AGPL-3.0' })).toHaveAttribute('href', 'https://www.gnu.org/licenses/agpl-3.0.html')

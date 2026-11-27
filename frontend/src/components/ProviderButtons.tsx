@@ -1,22 +1,14 @@
 /**
  * The sign-in providers as buttons, in the order of the operator's list, with the line "or" above them: on the sign-in
  * page "Sign in with …", on the invitation page "Continue with …" (the invitation travels along to the provider).
- * Words from the shared sign-in module (`oidc.login.*`, `oidc.invite.button`), the same in every nex app.
+ * Words from the shared sign-in module (`oidc.login.*`, `oidc.invite.button`), the same in every nex app; the look is
+ * the shared kit's (`vendor/nexui`), kind and symbol from the account module's `BUTTONS`.
  */
 import { useTranslation } from 'react-i18next'
 
 import type { ProviderButton } from '../api/client'
-
-export function OrLine() {
-  const { t } = useTranslation()
-  return (
-    <div className="my-4 flex items-center gap-3 text-xs text-mist-600">
-      <span className="h-px flex-1 bg-ink-700" />
-      {t('oidc.login.or')}
-      <span className="h-px flex-1 bg-ink-700" />
-    </div>
-  )
-}
+import { OrLine } from '../vendor/nexui'
+import { AccountButton } from './AccountButton'
 
 /** Where a provider's button leads: its start, with the invitation when there is one. */
 function startAddress(slug: string, invite?: string): string {
@@ -39,17 +31,12 @@ export function ProviderButtons({
   if (providers.length === 0) return null
   return (
     <>
-      {withOr && <OrLine />}
-      <div className="space-y-2">
+      {withOr && <OrLine>{t('oidc.login.or')}</OrLine>}
+      <div className="flex flex-col gap-2" data-testid="provider-buttons">
         {providers.map((provider) => (
-          <button
-            key={provider.slug}
-            type="button"
-            onClick={() => window.location.assign(startAddress(provider.slug, invite))}
-            className="flex h-10 w-full items-center justify-center rounded-full border border-ink-700 text-sm font-medium hover:bg-ink-850"
-          >
+          <AccountButton key={provider.slug} name="oidc.login.button" wide onClick={() => window.location.assign(startAddress(provider.slug, invite))}>
             {invite ? t('oidc.invite.button', { name: provider.label }) : t('oidc.login.button', { name: provider.label })}
-          </button>
+          </AccountButton>
         ))}
       </div>
     </>

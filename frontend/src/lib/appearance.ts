@@ -12,7 +12,7 @@ export type FontText = 'inter' | 'literata' | 'source-serif' | 'atkinson' | 'ple
 export type FontCode = 'jetbrains' | 'system'
 export type Width = 'narrow' | 'normal' | 'wide' | 'full'
 
-/** Where nexlore opens (Settings → General). */
+/** Where nexlore opens (My account › Notes). */
 export type Start = 'graph' | 'daily' | 'last' | 'note'
 
 /** The tabs of the column beside a note. */

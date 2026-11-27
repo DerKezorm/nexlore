@@ -55,7 +55,9 @@ def owner(db: Session, token: str) -> Account | None:
     if not token.startswith(TOKEN_PREFIX) or len(token) > 100 or not allowed(db):
         return None
     account = db.scalar(select(Account).where(Account.calendar_feed_hash == digest(token)))
-    if account is None or (account.locked_until is not None and account.locked_until > utcnow()):
+    if account is None or account.blocked_at is not None or account.deleted_at is not None or (
+        account.locked_until is not None and account.locked_until > utcnow()
+    ):
         return None
     if totp.setup_required(db, account):
         return None

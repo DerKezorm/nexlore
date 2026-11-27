@@ -6,6 +6,7 @@
 import { type Browser, type Page } from '@playwright/test'
 import { expect, test } from './fixtures'
 
+import { accountLink, signOut } from './account'
 import { OPERATOR } from './global-setup'
 
 test.skip(!!process.env.E2E_BASE_URL, 'makes accounts; not against a running instance')
@@ -41,11 +42,14 @@ async function accept(browser: Browser, link: string, name: string): Promise<Pag
   const page = await stranger(browser)
   await page.goto(new URL(link).pathname)
   await expect(page.getByRole('heading', { name: 'You are invited' })).toBeVisible()
-  await page.getByLabel('Name').fill(name)
+  // Display name and username the same: the username follows the display name (the shared account module), and the
+  // sidebar names the account by its display name.
+  await page.getByLabel('Display name').fill(name)
+  await expect(page.getByLabel('Username')).toHaveValue(name)
   await page.getByLabel('Password', { exact: true }).fill('a long enough password')
-  await page.getByLabel('Password again').fill('a long enough password')
+  await page.getByLabel('Repeat password').fill('a long enough password')
   await page.getByRole('button', { name: 'Create account' }).click()
-  await expect(page.getByRole('button', { name: `Account of ${name}` })).toBeVisible()
+  await expect(accountLink(page, name)).toBeVisible()
   return page
 }
 
@@ -53,18 +57,17 @@ test('without a session the app sends to the sign-in and back', async ({ browser
   const page = await stranger(browser)
   await page.goto('/files')
   await expect(page).toHaveURL(/\/login\?next=%2Ffiles$/)
-  await page.getByLabel('Name').fill(OPERATOR.name)
-  await page.getByLabel('Password').fill('a wrong password here')
+  await page.getByLabel('Username or email').fill(OPERATOR.name)
+  await page.getByLabel('Password', { exact: true }).fill('a wrong password here')
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-  await expect(page.getByRole('alert')).toHaveText('Name or password is wrong.')
-  await page.getByLabel('Password').fill(OPERATOR.password)
+  await expect(page.getByRole('alert')).toHaveText('Username, email or password is wrong.')
+  await page.getByLabel('Password', { exact: true }).fill(OPERATOR.password)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(page).toHaveURL(/\/files$/)
   // The setup is done: its page leads to the app.
   await page.goto('/setup')
   await expect(page).toHaveURL(/\/$/)
-  await page.getByRole('button', { name: `Account of ${OPERATOR.name}` }).click()
-  await page.getByRole('button', { name: 'Sign out' }).click()
+  await signOut(page)
   await expect(page).toHaveURL(/\/login$/)
   await page.goto('/')
   await expect(page).toHaveURL(/\/login$/)
@@ -177,35 +180,38 @@ test('the sign-in page opens without a single console error', async ({ browser }
   expect(problems).toEqual([])
 })
 
-test('the own account comes in tabs, and a profile picture goes up, shows in the account menu and goes again', async ({ page }) => {
+test('the own account is in areas of the settings, and a profile picture goes up, shows at the foot of the sidebar and goes again', async ({ page }) => {
   // One red pixel (a PNG): the server draws a square of it anew.
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==', 'base64')
   await page.goto('/account')
-  const tabs = page.getByRole('tablist', { name: 'My account' })
-  await expect(tabs.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page).toHaveURL(/\/settings\/profile$/)
+  const nav = page.getByTestId('settings-nav')
+  await expect(nav.getByRole('link', { name: 'Profile' })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('button', { name: 'Change password' })).toHaveCount(0)
-  await tabs.getByRole('tab', { name: 'Security' }).click()
-  await expect(page).toHaveURL(/\/account\?tab=security$/)
+  await nav.getByRole('link', { name: 'Security' }).click()
+  await expect(page).toHaveURL(/\/settings\/security$/)
   await expect(page.getByTestId('second-factor')).toBeVisible()
-  await tabs.getByRole('tab', { name: 'Profile' }).click()
+  await expect(page.getByTestId('password-row')).toContainText('Last changed on')
+  await nav.getByRole('link', { name: 'Profile' }).click()
 
-  const menu = page.getByRole('banner').getByRole('button', { name: `Account of ${OPERATOR.name}` })
+  const menu = accountLink(page, OPERATOR.name)
   await expect(menu.getByTestId('avatar-letter')).toHaveText(OPERATOR.name.slice(0, 1).toUpperCase())
-  await page.getByLabel('Upload a picture').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: png })
+  await page.getByLabel('Upload a profile picture').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: png })
   await expect(page.getByText('Picture saved.')).toBeVisible()
   const shown = menu.getByTestId('avatar')
   await expect(shown).toBeVisible()
   await expect.poll(() => shown.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth)).toBe(256)
   // Not a picture: said so, the old one stays.
-  await page.getByLabel('Upload a picture').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: Buffer.from('<svg/>') })
-  await expect(page.getByText('That is not a picture nexlore takes')).toBeVisible()
+  await page.getByLabel('Upload a profile picture').setInputFiles({ name: 'me.png', mimeType: 'image/png', buffer: Buffer.from('<svg/>') })
+  await expect(page.getByRole('alert')).toBeVisible()
   await expect(shown).toBeVisible()
-  await page.getByRole('button', { name: 'Remove' }).click()
+  await page.getByRole('button', { name: 'Remove the picture' }).click()
   await expect(page.getByText('Picture removed.')).toBeVisible()
   await expect(menu.getByTestId('avatar-letter')).toBeVisible()
-  // The old anchors lead to their tab.
+  // The old anchors lead to their area.
   await page.goto('/account#mcp')
-  await expect(tabs.getByRole('tab', { name: 'Connections' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page).toHaveURL(/\/settings\/connections#mcp$/)
+  await expect(nav.getByRole('link', { name: 'Connections' })).toHaveAttribute('aria-current', 'page')
 })
 
 test('a reader sees what changed since the last visit, proposes a change, and the writer takes it over', async ({ page, browser }) => {
@@ -244,9 +250,8 @@ test('a reader sees what changed since the last visit, proposes a change, and th
   await page.getByTestId('compare-dialog').getByRole('button', { name: 'Take over' }).click()
   await expect(page.getByText('Proposal taken over.')).toBeVisible()
   await expect(page.locator('article')).toContainText('A third one, from nora.')
-  // The reader learns what became of it.
+  // The reader learns what became of it, in the sidebar (there is no account menu any more).
   await reader.goto('/note')
-  await reader.getByRole('button', { name: 'Account of nora' }).click()
   await expect(reader.getByTestId('menu-proposals')).toContainText(`Taken over by ${OPERATOR.name}`)
 })
 
@@ -288,7 +293,7 @@ test('naming an account invites it, and it joins only by accepting under New', a
   await page.goto('/settings?tab=spaces')
   await page.locator('#spaces li', { hasText: 'Orchard' }).getByRole('button', { name: 'Members' }).click()
   const dialog = page.getByRole('dialog', { name: 'Members of Orchard' })
-  await dialog.getByLabel('Name of an account').fill('pia')
+  await dialog.getByLabel('Username').fill('pia')
   await dialog.getByRole('button', { name: 'Invite', exact: true }).click()
   await expect(dialog.getByRole('status')).toContainText('finds the invitation under “New”')
   await expect(dialog.getByLabel('Right of pia')).toHaveCount(0)
@@ -299,4 +304,42 @@ test('naming an account invites it, and it joins only by accepting under New', a
   await expect(person.getByTestId('sidebar-tree').getByText('Orchard', { exact: true })).toHaveCount(0)
   await news.getByRole('button', { name: 'Accept' }).click()
   await expect(person.getByTestId('sidebar-tree').getByText('Orchard', { exact: true })).toBeVisible()
+})
+
+test('the operator never sets a password: a link lets the person set a new one, and signing in works with it', async ({ page, browser }) => {
+  // An account of its own, through an invitation into nexlore (the form of 1.16.0: the username stands for the display name).
+  const headers = { 'X-Nexlore-Client': 'tab-e2ereset0' }
+  const invite = await page.request.post('/api/invites', { data: { days: 1 }, headers })
+  const token = new URL((await invite.json()).link).pathname.split('/').pop()!
+  const outside = await stranger(browser)
+  expect((await outside.request.post(`/api/invite/${token}`, { data: { name: 'resa', password: 'the first password of resa' }, headers })).ok()).toBe(true)
+  await page.goto('/settings/accounts')
+  const row = page.getByTestId('account-resa')
+  await row.getByTestId('account-manage').click()
+  const manage = page.getByTestId('manage-dialog')
+  // No button sets a password; the link is the way, with the operator's own password.
+  await expect(manage.getByRole('button', { name: /Set password|New password/ })).toHaveCount(0)
+  await manage.getByRole('button', { name: 'Link for a new password' }).click()
+  const dialog = page.getByTestId('reset-link-dialog')
+  await dialog.getByLabel('Current password').fill(OPERATOR.password)
+  await dialog.getByRole('button', { name: 'Create link' }).click()
+  const link = await dialog.getByTestId('reset-link').getByRole('textbox').inputValue()
+  expect(link).toContain('/reset/')
+  // The person opens it, sets a new password, and signs in with it.
+  const person = await stranger(browser)
+  await person.goto(new URL(link).pathname)
+  // "New password" where it replaces one (konten 1.1.2); "Password" stays for setup and invitation.
+  await person.getByLabel('New password', { exact: true }).fill('the new password of resa')
+  await person.getByLabel('Repeat password').fill('the new password of resa')
+  await person.getByRole('button', { name: 'Set the password' }).click()
+  await expect(person.getByRole('heading', { name: 'Password set' })).toBeVisible()
+  await person.goto('/login')
+  await person.getByLabel('Username or email').fill('resa')
+  await person.getByLabel('Password', { exact: true }).fill('the new password of resa')
+  await person.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await expect(person).toHaveURL(/\/$/)
+  // A script of 1.16.0 that sets a password hears that this way is gone.
+  const id = (await (await person.request.get('/api/auth/me')).json()).id
+  const gone = await page.request.put(`/api/accounts/${id}/password`, { data: { password: 'a password set by hand', current_password: OPERATOR.password }, headers })
+  expect(gone.status()).toBe(410)
 })

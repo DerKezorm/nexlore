@@ -7,10 +7,12 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError, mcpApi, type McpRequest } from '../api/client'
+import { SpacesSidebar } from '../components/Sidebar'
 import { Symbol } from '../components/Symbol'
 import { errorText } from '../lib/errors'
 import { formatDate } from '../lib/markdown'
 import { REQUESTS_EVENT } from '../lib/mcpRequests'
+import { formatMoment } from '../vendor/nexui'
 
 /** Long texts (a whole note, a file as base64) are cut for the list; the full text runs all the same. */
 const SHOWN = 600
@@ -60,7 +62,7 @@ function Request({ request, onChange }: { request: McpRequest; onChange: () => v
         <span className="text-mist-500">
           {t('requests.from', { key: request.key_name, when: formatDate(request.created_at) })}
           {/* Ahead, not past: formatDate would call every time to come "today". */}
-          {waiting && ` · ${t('requests.until', { when: new Date(request.expires_at).toLocaleString(i18n.language, { dateStyle: 'medium', timeStyle: 'short' }) })}`}
+          {waiting && ` · ${t('requests.until', { when: formatMoment(request.expires_at, i18n.language) })}`}
         </span>
       </div>
       <h2 id={`request-${request.id}-title`} className="mt-2 font-semibold">
@@ -128,6 +130,8 @@ export function McpRequestsPage() {
   const waiting = requests?.filter((request) => request.status === 'waiting') ?? []
   const decided = requests?.filter((request) => request.status !== 'waiting') ?? []
   return (
+    <>
+      <SpacesSidebar />
     <main className="nn-scroll flex-1 overflow-y-auto">
       <div className="mx-auto max-w-2xl space-y-4 px-6 py-8">
         <div>
@@ -153,5 +157,6 @@ export function McpRequestsPage() {
         )}
       </div>
     </main>
+    </>
   )
 }

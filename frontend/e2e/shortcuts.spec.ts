@@ -1,6 +1,6 @@
 /**
  * Own keys for commands: set in the command palette with the keyboard beside a command, pressed anywhere the command
- * is on offer, listed and removed under Settings → General, kept with the account.
+ * is on offer, listed and removed under My account › Notes, kept with the account.
  */
 import { type Page } from '@playwright/test'
 import { expect, test } from './fixtures'
@@ -72,8 +72,8 @@ test('keys set in the palette run the command, are refused where taken, and are 
   await page.keyboard.press('Control+Alt+j')
   await expect(page).toHaveURL(/\/files$/)
 
-  // Listed under Settings → General, and removed there.
-  await page.goto('/settings')
+  // Listed under My account › Notes, and removed there.
+  await page.goto('/settings/notes')
   const list = page.getByTestId('own-keys')
   await expect(list.locator('li')).toHaveCount(1)
   await expect(list.locator('[data-command="go.files"]')).toContainText('Ctrl + Alt + J')
@@ -83,6 +83,6 @@ test('keys set in the palette run the command, are refused where taken, and are 
   await expect(page.getByText('No own keys yet.')).toBeVisible()
   await page.keyboard.press('Control+Alt+j')
   await page.waitForTimeout(300)
-  await expect(page).toHaveURL(/\/settings$/)
+  await expect(page).toHaveURL(/\/settings\/notes$/)
   expect(problems).toEqual([])
 })

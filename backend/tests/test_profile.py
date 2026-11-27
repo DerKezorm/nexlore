@@ -29,11 +29,10 @@ def test_the_own_display_name_is_set_cleaned_and_taken_back(client: TestClient, 
 
 def test_a_display_name_is_not_too_long_and_has_no_control_characters(client: TestClient, account: Account) -> None:
     assert client.put("/api/me/profile", json={"display_name": "x" * 80}).status_code == 200
-    long = client.put("/api/me/profile", json={"display_name": "x" * 81})
-    assert (long.status_code, long.json()["detail"]["code"]) == (422, "display_name_too_long")
-    control = client.put("/api/me/profile", json={"display_name": "Tess\nTer"})
-    assert (control.status_code, control.json()["detail"]["code"]) == (422, "display_name_invalid")
-    assert client.get("/api/auth/me").json()["display_name"] == "x" * 80
+    # The shared account module cuts a display name at 80 characters and drops what nobody can see.
+    assert client.put("/api/me/profile", json={"display_name": "y" * 81}).json()["display_name"] == "y" * 80
+    control = client.put("/api/me/profile", json={"display_name": "Tess\nTer\u202e"})
+    assert control.status_code == 200 and control.json()["display_name"] in ("TessTer", "Tess Ter")
 
 
 def test_display_names_reach_whoever_shares_a_space_and_nobody_else(client: TestClient, account: Account) -> None:

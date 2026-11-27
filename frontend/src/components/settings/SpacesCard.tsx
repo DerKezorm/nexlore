@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { authApi, vaultApi } from '../../api/client'
 import { useAuth } from '../../state/auth'
 import { useStore } from '../../state/store'
-import { ConfirmDialog } from '../ConfirmDialog'
+import { ConfirmDialog } from '../../vendor/nexui'
 import { MembersDialog } from '../MembersDialog'
 import { SpaceOptionsDialog } from '../SpaceOptionsDialog'
 import { Button, Card, Feedback } from './ui'
@@ -96,21 +96,23 @@ export function SpacesCard() {
         />
       )}
       {everyday && <SpaceOptionsDialog space={everyday} onClose={() => setEveryday(null)} />}
-      <ConfirmDialog
-        open={deleting !== null}
-        title={t('settings.spaces.deleteTitle', { space: deleting ?? '' })}
-        confirm={t('settings.spaces.delete')}
-        danger
-        busy={busy}
-        onCancel={() => setDeleting(null)}
-        onConfirm={() => void run(async () => {
-          await authApi.deleteSpace(deleting!)
-          setDeleting(null)
-          await reload()
-        })}
-      >
-        {t('settings.spaces.deleteText')}
-      </ConfirmDialog>
+      {/* Opened only from the settings: the kit's window (plan E31). */}
+      {deleting !== null && (
+        <ConfirmDialog
+          title={t('settings.spaces.deleteTitle', { space: deleting })}
+          text={t('settings.spaces.deleteText')}
+          confirm={{ label: t('settings.spaces.delete'), kind: 'danger', icon: 'Trash2' }}
+          cancel={t('common.cancel')}
+          closeLabel={t('common.close')}
+          busy={busy}
+          onCancel={() => setDeleting(null)}
+          onConfirm={() => void run(async () => {
+            await authApi.deleteSpace(deleting)
+            setDeleting(null)
+            await reload()
+          })}
+        />
+      )}
     </Card>
   )
 }

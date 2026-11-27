@@ -77,6 +77,42 @@
   --color-ai-500: #6d28d9;
 }
 
+/* The colours of the shared kit (bauplaene/ui, `src/vendor/nexui`): nexlore's tones by name, so light mode follows by
+   itself. The kit has no colour of its own; every nex app sets the same names to its tones (here nexlore's teal). */
+:root {
+  --nexui-accent: var(--color-accent-500);
+  --nexui-accent-hover: var(--color-accent-400);
+  --nexui-on-accent: var(--color-on-accent);
+  --nexui-accent-text: var(--color-accent-400);
+  --nexui-surface: var(--color-ink-850);
+  --nexui-surface-raised: var(--color-ink-800);
+  --nexui-surface-hover: var(--color-ink-700);
+  --nexui-field: var(--color-ink-900);
+  --nexui-line: var(--color-ink-700);
+  --nexui-edge: var(--color-edge);
+  --nexui-text: var(--color-mist-100);
+  --nexui-text-muted: var(--color-mist-500);
+  --nexui-danger: var(--color-bad-500);
+  --nexui-ok: var(--color-ok-500);
+  --nexui-warn: var(--color-warn-500);
+  --nexui-disabled-bg: var(--color-ink-800);
+  --nexui-disabled-text: var(--color-mist-600);
+  --nexui-scrim: var(--color-scrim);
+  /* A picture without a photo (ui 0.1.1, `Avatar`): the letter on the hue from the name (the same on the server and
+     on the iPhone), here saturation and lightness of that ground and the letter's colour. */
+  --nexui-avatar-saturation: 38%;
+  --nexui-avatar-lightness: 40%;
+  --nexui-avatar-text: #f2f2f5;
+}
+
+:root[data-theme='light'] {
+  /* In light mode the accent's lighter step is the same tone: the darker one under the pointer. */
+  --nexui-accent-hover: var(--color-accent-600);
+  --nexui-avatar-saturation: 45%;
+  --nexui-avatar-lightness: 46%;
+  --nexui-avatar-text: #ffffff;
+}
+
 @layer base {
   html {
     color-scheme: dark;

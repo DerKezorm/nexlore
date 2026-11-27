@@ -1,3 +1,4 @@
+// Vorlage nexoidc 1.2.0
 /**
  * Contract tests 33 and 34 of the shared sign-in module (started from the shared copy, then nexlore's file).
  *
@@ -67,17 +68,19 @@ test('33: sign-in through the provider button ends in a session', async ({ page,
   const own = await browser.newContext({ storageState: { cookies: [], origins: [] } })
   const ossie = await own.newPage()
   await ossie.goto('/login')
-  await ossie.getByLabel('Name').fill('ossie')
-  await ossie.getByLabel('Password').fill(PASSWORD)
+  await ossie.getByLabel('Username or email').fill('ossie')
+  await ossie.getByLabel('Password', { exact: true }).fill(PASSWORD)
   await ossie.getByRole('button', { name: 'Sign in', exact: true }).click()
   await expect(ossie).toHaveURL(/\/$/)
   await ossie.goto('/account?tab=security')
   const row = ossie.getByTestId('my-providers').locator('li').filter({ hasText: 'Stand-in 33' })
   await expect(row).toContainText('Not linked')
   await row.getByRole('button', { name: 'Link' }).click()
-  await row.getByLabel('Password').fill(PASSWORD)
-  await row.getByRole('button', { name: 'Link' }).click()
-  await expect(ossie).toHaveURL(/\/account\?linked=standin33/)
+  // The password in a dialog of the shared kit, then on to the provider.
+  const asking = ossie.getByRole('dialog', { name: 'Link: Stand-in 33' })
+  await asking.getByLabel('Password', { exact: true }).fill(PASSWORD)
+  await asking.getByRole('button', { name: 'Link' }).click()
+  await expect(ossie).toHaveURL(/\/settings\/security\?linked=standin33/)
   // The provider by the name on its button, not by the short name in the address.
   await expect(ossie.getByText('Your account is linked to Stand-in 33.')).toBeVisible()
   await expect(ossie.getByTestId('my-providers').locator('li').filter({ hasText: 'Stand-in 33' })).toContainText('Linked')
@@ -119,7 +122,7 @@ test('34: add, edit and remove a provider; the authentik card lists its steps', 
   await form.getByLabel('Name on the button').fill('Stand-in')
   // The short name follows the name until it is typed itself; the redirect address follows the short name.
   await expect(form.getByLabel('Short name')).toHaveValue('stand-in')
-  await expect(form.getByRole('textbox', { name: 'Copy' })).toHaveValue(/\/api\/oidc\/stand-in\/callback$/)
+  await expect(form.getByRole('textbox', { name: 'Redirect address for the provider' })).toHaveValue(/\/api\/oidc\/stand-in\/callback$/)
   // An issuer that does not answer as one is refused at its field, and nothing is stored.
   await form.getByLabel('Issuer').fill(`${PROVIDER}/nothing-here`)
   await form.getByLabel('Client ID').fill('e2e-client')
@@ -198,6 +201,8 @@ test('35: another issuer asks first in the authentik card, Yes runs the button a
   expect(sent.map((body) => body.confirm_issuer_change)).toEqual([false, false, true])
   // The token stayed in the field while the question waited: all three runs carry it.
   expect(sent.map((body) => body.token)).toEqual([token, token, token])
+  // After the run that worked the token goes from the field (oidc, E33).
+  await expect(card.getByLabel('API token')).toHaveValue('')
   expect(problems).toEqual([])
   await setAddress(page, '')
 })
@@ -297,7 +302,7 @@ test('38: saving the address asks first when a provider knows the old one, and s
   await field.fill('https://notes.example.org')
   await card.getByRole('button', { name: 'Save' }).click()
   const dialog = page.getByRole('dialog')
-  const question = dialog.getByTestId('address-question')
+  const question = dialog
   await expect(question).toContainText('authentik still knows the redirect address https://old.example.org/api/oidc/authentik/callback')
   await expect(question).toContainText('For 2 providers entered by hand, change the redirect address there yourself.')
   await shot(page, 'address-question')
@@ -305,7 +310,7 @@ test('38: saving the address asks first when a provider knows the old one, and s
   await expect(card).not.toContainText('Saved')
   await dialog.getByRole('button', { name: 'Cancel' }).click()
   await expect(dialog).toHaveCount(0)
-  expect(sent).toEqual([{ public_url: 'https://notes.example.org' }])
+  expect(sent).toEqual([{ public_url: 'https://notes.example.org', confirm_address: false }])
   expect((await (await page.request.get('/api/settings')).json()).public_url).toBe('')
   await card.getByRole('button', { name: 'Save' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
@@ -333,10 +338,10 @@ test('39: "Use it only" asks first as well, and a count of 0 leaves out the sent
   await page.goto('/settings?tab=server&sub=signin')
   const card = page.locator('#sign-in-authentik')
   await card.getByRole('button', { name: 'Use it only' }).click()
-  const question = page.getByRole('dialog').getByTestId('address-question')
+  const question = page.getByRole('dialog')
   await expect(question).toContainText('For 1 provider entered by hand, change the redirect address there yourself.')
   await expect(question).not.toContainText('authentik still knows')
-  await page.getByRole('dialog').getByRole('button', { name: 'Save' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Use it only' }).click()
   await expect(card.getByTestId('authentik-no-address')).toHaveCount(0)
   expect(sent.map((body) => body.confirm)).toEqual([false, true])
   expect(problems).toEqual([])
@@ -357,21 +362,29 @@ test('40: keys of an account that must still set up a second factor carry the hi
     const me = (await response.json()) as Record<string, unknown>
     await route.fulfill({ response, json: { ...me, keys_need_second_factor: true } })
   })
-  await page.goto('/account?tab=ai')
+  // The key cards of the key module read the same from their own list (keys_wait).
+  await page.route('**/api/connections/keys', async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+    const response = await route.fetch()
+    const listing = (await response.json()) as Record<string, unknown>
+    await route.fulfill({ response, json: { ...listing, keys_wait: true } })
+  })
+  await page.goto('/settings/connections')
   const hint = 'Works only once you set up a second factor.'
-  const tokens = page.locator('#api-tokens')
+  const tokens = page.locator('[data-card="api-keys"]')
   await expect(tokens).toContainText(hint)
-  await expect(tokens.getByRole('link', { name: 'Set it up' })).toHaveAttribute('href', '/account?tab=security')
-  await expect(page.locator('#mcp')).toContainText(hint)
+  await expect(tokens.getByRole('link', { name: 'Set up a second factor' }).first()).toHaveAttribute('href', '/settings/security')
   await expect(page.locator('#calendar')).toContainText(hint)
   // Making a token is still possible; the token in the list carries the hint, too.
-  await tokens.getByRole('button', { name: 'New token' }).click()
-  await tokens.getByLabel('Name, so you know it again').fill('hint-check')
-  await tokens.getByRole('button', { name: 'Make', exact: true }).click()
-  const row = tokens.getByTestId('api-token').filter({ hasText: 'hint-check' })
-  await expect(row).toContainText(hint)
+  await tokens.getByTestId('api-keys-new').click()
+  await page.getByTestId('key-dialog').getByTestId('key-name').fill('hint-check')
+  await page.getByTestId('key-dialog').getByTestId('key-submit').click()
+  await tokens.getByTestId('key-done').click()
+  const row = tokens.getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'hint-check' })
+  await expect(row.getByTestId('key-wait')).toBeVisible()
   await shot(page, 'keys-hint')
-  await row.getByRole('button', { name: /Delete/ }).click()
+  await row.getByTestId('key-revoke').click()
+  await page.getByTestId('key-revoke-dialog').getByRole('button', { name: 'Revoke' }).click()
   await expect(row).toHaveCount(0)
   // A connector asks for a key of its own on the consent page: the hint stands there, too, and agreeing stays possible.
   const program = await playwright.request.newContext({ baseURL })

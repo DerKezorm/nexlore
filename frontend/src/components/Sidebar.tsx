@@ -19,7 +19,9 @@ import { PATH_DRAG_TYPE, fileKind } from '../lib/files'
 import { menuTriggers, useContextMenu, type MenuItem } from '../lib/menu'
 import { askNewNote } from '../lib/newNote'
 import { askFolder, FOLDER_EVENT, narrow, NOTE_LIST_EVENT, RECENT_EVENT, SIDEBAR_EVENT, sidebarHere, takeFolderWish, noteListWished, forgetNoteListWish } from '../lib/shell'
-import { answerNotice, seenAll, useNews } from '../lib/news'
+import { mcpRequest, requestHref, useMcpWords } from '../lib/mcpModule'
+import { answerNotice, refreshNews, seenAll, useNews } from '../lib/news'
+import { RequestBellRow } from '../vendor/nexmcp'
 import { fitWidth, keepWidth, storedWidth, USUAL_WIDTH } from '../lib/sidebarWidth'
 import { openInTab } from '../lib/tabs'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
@@ -35,6 +37,9 @@ import { Symbol, type SymbolName } from './Symbol'
 import { NameDialog } from './NameDialog'
 import { askExport } from '../lib/exportPdf'
 import { askCoverflow } from '../lib/coverflow'
+import { askPalette } from '../lib/commands'
+import { OpenDrafts } from './OpenDrafts'
+import { SettingsCorner, SideTop } from './SideFrame'
 
 const FAVORITE_SYMBOLS: Record<Favorite['kind'], SymbolName> = { note: 'note', folder: 'folder', file: 'file', heading: 'heading', search: 'search' }
 
@@ -75,10 +80,10 @@ const pageName = (path: string, title: string) => (opensAsPage(path) ? title.rep
 
 export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: Props) {
   // Browsing as cover flow starts where one is: the folder open on the map, or the folder of the open note.
-  const browse = () => askCoverflow(activeFolder ?? (activeNote ? folderOf(activeNote) : ''))
   const { t, i18n } = useTranslation()
   const nameOf = usePeople()
   const news = useNews()
+  const mcpWords = useMcpWords()
   const [newsOpen, setNewsOpen] = useState(() => {
     try {
       return localStorage.getItem('nexlore.newsOpen') === 'open'
@@ -619,7 +624,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
         onSelect: () => void everydayApi.setOptions(row.path, { hide_attachments: !hidden }).then(reload, () => undefined),
       })
     }
-    if (manage) items.push({ label: t('menu.spaceSettings'), symbol: 'users', onSelect: () => navigate('/settings?tab=spaces') })
+    if (manage) items.push({ label: t('menu.spaceSettings'), symbol: 'users', onSelect: () => navigate('/settings/spaces') })
     if (write && !row.space) {
       items.push('separator')
       items.push({ label: t('menu.trash'), symbol: 'trash', danger: true, onSelect: () => askVaultAction({ kind: 'delete', path: row.path, folder: true }) })
@@ -896,6 +901,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
         <button type="button" onClick={() => unfold()} title={t('sidebar.unfold')} aria-label={t('sidebar.unfold')} className="rounded-lg p-2 text-mist-400 hover:bg-ink-850 hover:text-mist-100">
           <Symbol name="sidebar" className="h-4 w-4" />
         </button>
+        <SideTop compact />
         <span aria-hidden="true" className="my-1 h-px w-6 bg-ink-700" />
         {strip.map((item) => (
           <button key={item.symbol} type="button" onClick={() => unfold(item.run)} title={item.label} aria-label={item.label} className="rounded-lg p-2 text-mist-500 hover:bg-ink-850 hover:text-mist-100">
@@ -908,9 +914,9 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
             <span aria-hidden="true" className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-accent-400" />
           </button>
         )}
-        <button type="button" onClick={browse} title={t('coverflow.browseHint')} aria-label={t('coverflow.browse')} className="mt-auto rounded-lg p-2 text-mist-500 hover:bg-ink-850 hover:text-mist-100">
-          <Symbol name="coverflow" className="h-4 w-4" />
-        </button>
+        <div className="mt-auto">
+          <SettingsCorner compact />
+        </div>
       </nav>
     )
   }
@@ -973,6 +979,11 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           </button>
         </div>
       )}
+      {/* "New note" and the search at the top, the way to the settings at the foot, as in nexnotes (SideFrame). In the
+          phone's sheet the header has all three already: the list keeps the room. */}
+      <div className="hidden md:block">
+        <SideTop />
+      </div>
       {(news.count > 0 || news.mentions.length > 0 || news.notices.length > 0 || news.requests.length > 0) && (
         <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-news">
           <div className="flex items-center gap-2 px-2">
@@ -985,12 +996,10 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           </div>
           {newsOpen && (
           <ul className="nn-scroll mt-1 max-h-44 overflow-y-auto">
+            {/* A program waits for a yes: the row of the shared module mcp 1.1.0, allowing and declining right here. */}
             {news.requests.map((request) => (
-              <li key={'r' + request.id} data-request={request.id} className="rounded-lg px-2 py-1 text-[13px] text-mist-300">
-                <Link to="/requests" className="block leading-snug hover:text-mist-100">
-                  {t('requests.news', { key: request.key_name, what: i18n.exists(`mcp.tools.${request.tool}`) ? t(`mcp.tools.${request.tool}`) : request.tool })}
-                  <span className="ml-1 rounded-full bg-warn-500/15 px-1.5 text-[11px] text-warn-500">{t('requests.status.waiting')}</span>
-                </Link>
+              <li key={'r' + request.id} className="rounded-lg px-2 py-1 text-[13px] text-mist-300">
+                <RequestBellRow request={mcpRequest} entry={request} words={mcpWords} language={i18n.language} viewHref={requestHref} onDecided={() => void refreshNews()} />
               </li>
             ))}
             {news.notices.map((notice) => (
@@ -1008,10 +1017,10 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
                     <>
                       <button type="button" onClick={() => void answerNotice(notice.id, false).then(() => reload())} className="rounded-md px-2 py-0.5 text-xs text-mist-400 hover:bg-ink-850">{t('notices.seen')}</button>
                       {notice.kind.startsWith('operator_email') && (
-                        <Link to="/account#mail" className="rounded-md px-2 py-0.5 text-xs text-accent-300 hover:bg-ink-850">{t('notices.toProfile')}</Link>
+                        <Link to="/settings/profile#mail" className="rounded-md px-2 py-0.5 text-xs text-accent-300 hover:bg-ink-850">{t('notices.toProfile')}</Link>
                       )}
                       {notice.kind === 'operator_unlinked' && (
-                        <Link to="/account?tab=security" className="rounded-md px-2 py-0.5 text-xs text-accent-300 hover:bg-ink-850">{t('notices.toSecurity')}</Link>
+                        <Link to="/settings/security" className="rounded-md px-2 py-0.5 text-xs text-accent-300 hover:bg-ink-850">{t('notices.toSecurity')}</Link>
                       )}
                     </>
                   )}
@@ -1038,6 +1047,7 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           )}
         </div>
       )}
+      <OpenDrafts />
       {recent.length > 0 && (
         <div className="border-b border-ink-700/60 px-2 pt-3 pb-2" data-testid="sidebar-recent">
           <FoldHead label={t('sidebar.recent')} open={recentOpen} onToggle={() => showRecent(!recentOpen)} />
@@ -1169,18 +1179,19 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
           {t('menu.copied', { text: copied })}
         </p>
       )}
-      {/* The cover flow, at the open folder or note; here rather than in the header, which has no room left. */}
-      <div className="shrink-0 border-t border-ink-700/80 p-2">
-        <button
-          type="button"
-          onClick={browse}
-          title={t('coverflow.browseHint')}
-          data-testid="open-coverflow"
-          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-mist-400 hover:bg-ink-850 hover:text-mist-100"
-        >
-          <Symbol name="coverflow" />
-          {t('coverflow.browse')}
-        </button>
+      {/* On a phone the header has no room for the commands and the cover flow: they wait here, in the sheet. */}
+      {sheet && (
+        <div className="flex shrink-0 gap-1 border-t border-ink-700/80 p-2 sm:hidden" data-testid="sheet-tools">
+          <button type="button" onClick={askPalette} className="flex flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-mist-300 hover:bg-ink-850">
+            <Symbol name="command" /> {t('palette.menu')}
+          </button>
+          <button type="button" onClick={() => askCoverflow(activeFolder ?? (activeNote ? folderOf(activeNote) : ''))} className="flex flex-1 items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-mist-300 hover:bg-ink-850">
+            <Symbol name="coverflow" /> {t('coverflow.browse')}
+          </button>
+        </div>
+      )}
+      <div className="hidden md:block">
+        <SettingsCorner />
       </div>
       {menu.element}
       {grouping && (
@@ -1199,6 +1210,15 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
     </aside>
     </>
   )
+}
+
+/**
+ * The spaces' sidebar for a page that is about no note of its own (files, cleaning up, search, requests): as in
+ * nexnotes the spaces stand beside every place, and with them "New note", the search and the settings.
+ */
+export function SpacesSidebar() {
+  const navigate = useNavigate()
+  return <Sidebar activeNote={null} onNote={(path) => navigate(noteUrl(path))} />
 }
 
 /** Open or folded, remembered in this browser under `key` (open unless folded once). */

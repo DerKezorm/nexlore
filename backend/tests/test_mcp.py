@@ -50,15 +50,19 @@ class World:
         switch(mcp_allowed=True, mcp_max_level="write")
 
     def key(self, level: str = "read", who: TestClient | None = None, *, ask: bool = False) -> str:
-        """A key; the tools that change things run at once unless ``ask`` keeps the defaults of block Y (asking)."""
+        """A key; the tools that change things run at once. ``ask`` gives it the rights a key of block Y had until
+        it said otherwise (changing asks, deleting, sharing and members denied), as the move to the shared module
+        mcp 1.1.0 writes them onto every older key; a new key may do everything of its level (decision 3)."""
         owner = who or self.anna
         made = owner.post("/api/mcp/keys", json={"name": f"agent {level}", "level": level})
         assert made.status_code == 201, made.text
-        if not ask:
-            changing = [t["name"] for t in owner.get("/api/mcp/tools").json()["tools"] if t["group"] == "change"]
-            rights = owner.put(f"/api/mcp/keys/{made.json()['key']['id']}/rights",
-                               json={"rights": dict.fromkeys(changing, "allow")})
-            assert rights.status_code == 200, rights.text
+        tools = owner.get("/api/mcp/tools").json()["tools"]
+        wanted = {t["name"]: "allow" for t in tools if t["group"] == "change"}
+        if ask:
+            wanted = {t["name"]: {"change": "ask", "risky": "deny"}[t["group"]] for t in tools
+                      if t["group"] in ("change", "risky")}
+        rights = owner.put(f"/api/mcp/keys/{made.json()['key']['id']}/rights", json={"rights": wanted})
+        assert rights.status_code == 200, rights.text
         return made.json()["token"]
 
 
@@ -166,10 +170,14 @@ def test_a_key_may_not_be_above_what_the_operator_allows(world: World) -> None:
     assert "No tool" in failure(call(token, "write_note", path="Garden/Plan.md", content="x", base_hash="0" * 64))
 
 
-def test_a_key_is_slowed_down_after_its_rate(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(mcp, "PER_MINUTE", 3)
+def test_a_key_is_slowed_down_after_its_rate(world: World) -> None:
+    # The rate of the shared module (mcp 1.1.0) is nexlore's of before, 240 a minute.
+    from app.routers.mcp import CONFIG
+
+    assert CONFIG.per_minute == mcp.PER_MINUTE == 240
     token = world.key()
-    assert [rpc(token, "ping").status_code for _ in range(4)] == [200, 200, 200, 429]
+    answers = [rpc(token, "ping").status_code for _ in range(CONFIG.per_minute + 1)]
+    assert answers[:-1] == [200] * CONFIG.per_minute and answers[-1] == 429
 
 
 def test_the_key_never_reaches_the_log(world: World) -> None:
@@ -202,8 +210,11 @@ def test_initialize_and_the_tools_of_each_level(world: World) -> None:
                 "create_from_template", "set_property", "merge_notes", "restore_version", "restore_from_trash",
                 "rename_tag", "add_comment", "reply_comment", "resolve_comment", "capture_to_inbox",
                 "upload_attachment", "link_mention", "set_favorite"}
-    # Deleting, sharing and members are denied by default: a write key does not see them.
-    assert levels["write"] == levels["draft"] | changing
+    risky = {"trash_note", "trash_folder", "invite_member", "set_member_role", "remove_member", "create_share",
+             "remove_share"}
+    # Since the shared module mcp 1.1.0 a new key may use everything of its level (decision 3); what cannot be undone
+    # stays blocked by the operator until freed (delete_space, empty_trash).
+    assert levels["write"] == levels["draft"] | changing | risky
 
 
 def test_a_foreign_space_answers_like_a_missing_one(world: World) -> None:

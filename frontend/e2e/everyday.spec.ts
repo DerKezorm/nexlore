@@ -4,6 +4,7 @@
  * the phone, and the service worker (built app only: it never answers for /api, and signing out empties its caches).
  */
 import { type Page } from '@playwright/test'
+import { accountLink, signOut } from './account'
 import { expect, test } from './fixtures'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -108,15 +109,13 @@ test('a new note starts from a template, its placeholders filled and Templater l
   expect(onDisk('Year/Kick-off.md')).toBe(`# Kick-off\n\nStarted ${day(0)}\n<% tp.date.now() %>\n`)
 })
 
-test('a new note is one click away: in the header, beside each folder, and with Alt+N', async ({ page }) => {
-  // Wide enough for the button's words (below, the menu's words need the room).
-  await page.setViewportSize({ width: 1600, height: 900 })
+test('a new note is one click away: at the top of the sidebar, beside each folder, and with Alt+N', async ({ page }) => {
   await page.goto('/note/Year/Templates/Day.md')
   const dialog = page.getByTestId('new-note-dialog')
-  // The header, with its words on a wide screen: beside the open note.
-  const header = page.getByRole('banner').getByRole('button', { name: 'New note' })
-  await expect(header).toContainText('New note')
-  await header.click()
+  // At the top of the sidebar, as in nexnotes: beside the open note.
+  const top = page.getByTestId('side-new-note')
+  await expect(top).toContainText('New note')
+  await top.click()
   await expect(dialog).toContainText('New note in “Year / Templates”')
   await dialog.getByRole('button', { name: 'Cancel' }).click()
   await expect(dialog).toHaveCount(0)
@@ -132,7 +131,7 @@ test('a new note is one click away: in the header, beside each folder, and with 
 })
 
 test('"Today" opens the daily note of today in the main space of the account', async ({ page }) => {
-  // The main space is the account's (Settings, General), not remembered by the browser (P5.19); set back at the end.
+  // The main space is the account's (My account › Notes), not remembered by the browser (P5.19); set back at the end.
   const headers = { 'X-Nexlore-Client': 'tab-e2e-days' }
   await page.request.put('/api/me/appearance', { data: { home_space: 'Year' }, headers })
   try {
@@ -146,17 +145,16 @@ test('"Today" opens the daily note of today in the main space of the account', a
   }
 })
 
-test('the header fits at every width of a desktop, and the settings are in the account menu', async ({ page }) => {
+test('the header fits at every width of a desktop, and the settings are at the foot of the sidebar', async ({ page }) => {
   for (const width of [1024, 1152, 1280, 1366, 1440, 1600]) {
     await page.setViewportSize({ width, height: 800 })
     await page.goto('/tasks')
     const menu = page.getByRole('navigation', { name: 'Main menu' })
     await expect(menu.getByRole('link', { name: 'Files' })).toBeVisible()
-    // As in Nexview (idea 279): not in the header, in the account menu on every width.
+    // As in nexnotes: not in the header, at the foot of the sidebar on every width.
     await expect(menu.getByRole('link', { name: 'Settings' })).toHaveCount(0)
-    await page.getByRole('banner').getByRole('button', { name: /^Account of / }).click()
-    await page.getByRole('link', { name: 'Settings' }).click()
-    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible()
+    await accountLink(page).click()
+    await expect(page.getByRole('heading', { name: 'Profile', level: 1 })).toBeVisible()
     const fits = await menu.evaluate((nav) => nav.scrollWidth <= nav.clientWidth + 1)
     expect(fits, `the menu overflows at ${width} px`).toBe(true)
   }
@@ -211,8 +209,7 @@ test('the service worker keeps the app, never anything from /api, and signing ou
   })
   expect(signIn.ok()).toBe(true)
   await page.goto('/')
-  await page.getByRole('button', { name: `Account of ${OPERATOR.name}` }).click()
-  await page.getByRole('button', { name: 'Sign out' }).click()
+  await signOut(page)
   await page.waitForURL(/\/login/)
   await expect.poll(() => page.evaluate(async () => (await caches.keys()).length)).toBe(0)
 })
@@ -220,8 +217,8 @@ test('the service worker keeps the app, never anything from /api, and signing ou
 test('a new note can go to another place, and the templates follow the space', async ({ page }) => {
   await page.goto('/note/Year/Chores.md')
   await expect(page.locator('article')).toContainText('Water the ferns')
-  // Alt+N needs the spaces loaded (the note shows before them; the header button is enabled once they are there).
-  await expect(page.getByRole('banner').getByRole('button', { name: 'New note' })).toBeEnabled()
+  // Alt+N needs the spaces loaded (the note shows before them; the button at the top of the sidebar is enabled once they are there).
+  await expect(page.getByTestId('side-new-note')).toBeEnabled()
   await page.keyboard.press('Alt+n')
   const dialog = page.getByTestId('new-note-dialog')
   await expect(dialog.getByTestId('new-note-where')).toHaveText('Year')
@@ -242,8 +239,8 @@ test('templates can be found: made from the new note dialog, saved from the menu
   // A space without templates: the dialog offers to make one, and says what the placeholders do.
   await page.goto('/note/Zone/Across.md')
   await expect(page.locator('article')).toContainText('Across')
-  // Alt+N needs the spaces loaded (the note shows before them; the header button is enabled once they are there).
-  await expect(page.getByRole('banner').getByRole('button', { name: 'New note' })).toBeEnabled()
+  // Alt+N needs the spaces loaded (the note shows before them; the button at the top of the sidebar is enabled once they are there).
+  await expect(page.getByTestId('side-new-note')).toBeEnabled()
   await page.keyboard.press('Alt+n')
   const dialog = page.getByTestId('new-note-dialog')
   await expect(dialog).toContainText('{{title}}')

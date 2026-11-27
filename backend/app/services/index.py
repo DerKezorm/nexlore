@@ -35,6 +35,7 @@ from collections import defaultdict, deque
 from collections.abc import Iterable, Iterator
 from concurrent.futures import Executor, ProcessPoolExecutor, ThreadPoolExecutor
 from concurrent.futures.process import BrokenProcessPool
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import partial
@@ -465,6 +466,16 @@ def ensure_space(db: Session, folder: str) -> Space:
     return space
 
 
+#: The key or program an AI program works with during one call of a tool (MCP decision 15): versions made with the
+#: source ``MCP`` meanwhile carry its name. Set by ``routers/mcp._runner`` around the call, nowhere else.
+VIA_KEY: ContextVar[str | None] = ContextVar("nexlore_via_key", default=None)
+
+
+def _key_name(source: str) -> str | None:
+    found = VIA_KEY.get()
+    return found[:100] if source == MCP and found else None
+
+
 def add_version(
     db: Session,
     file: File,
@@ -502,7 +513,7 @@ def add_version(
         return newest
     version = Version(
         file_id=file.id, path=file.path, created_at=now, updated_at=now, source=source, author=author,
-        session=session, hash=hashed, size=len(data), content=zlib.compress(data, 6),
+        session=session, hash=hashed, size=len(data), content=zlib.compress(data, 6), key_name=_key_name(source),
     )
     db.add(version)
     return version
@@ -689,7 +700,7 @@ def record(
                 [{
                     "file_id": file.id, "path": rel, "created_at": now, "updated_at": now, "source": source,
                     "author": author, "session": session, "hash": file.hash, "size": len(content),
-                    "content": zlib.compress(content, 6),
+                    "content": zlib.compress(content, 6), "key_name": _key_name(source),
                 }],
             )
         else:

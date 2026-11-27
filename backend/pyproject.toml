@@ -1,8 +1,12 @@
 [tool.ruff]
 target-version = "py313"
 line-length = 120
-# The shared sign-in module and its contract tests are copied in unchanged and linted at their source.
-extend-exclude = ["app/vendor/nexoidc", "tests/nexoidc"]
+# The shared modules and their contract tests are copied in unchanged and linted at their source.
+extend-exclude = ["app/vendor/nexoidc", "tests/nexoidc", "app/vendor/nexkonten", "tests/nexkonten", "app/vendor/nexpost",
+                  "tests/nexpost", "app/vendor/nexlog", "tests/nexlog", "app/vendor/nexsicherung",
+                  "tests/nexsicherung", "app/vendor/nexschluessel", "tests/nexschluessel", "app/vendor/nexsprachen",
+                  "tests/nexsprachen", "app/vendor/nexupdates", "tests/nexupdates", "app/vendor/nexmcp", "tests/nexmcp",
+                  "app/vendor/nexki", "tests/nexki", "app/vendor/nexverbinden", "tests/nexverbinden"]
 
 [tool.ruff.lint]
 extend-select = ["E501", "E402", "S608", "B", "I"]

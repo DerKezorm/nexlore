@@ -84,7 +84,7 @@ def test_one_program_fills_at_most_half_of_the_waiting_room(world: World) -> Non
     busy = world.key("write", ask=True)
     for number in range(50):
         assert "request" in value(call(busy, "create_note", folder="Garden", title=f"N{number}", content="x"))
-    assert "50 requests waiting" in failure(call(busy, "create_note", folder="Garden", title="N50", content="x"))
+    assert "50 requests of this key wait" in failure(call(busy, "create_note", folder="Garden", title="N50", content="x"))
     other = world.key("write", ask=True)
     assert "request" in value(call(other, "create_note", folder="Garden", title="Other", content="x"))
 
@@ -164,6 +164,15 @@ def test_a_connector_signs_in_again_after_ninety_days_or_a_month_idle(world: Wor
     with SessionLocal() as db:
         key = db.scalar(select(McpKey).where(McpKey.kind == "oauth", McpKey.client_id == client["client_id"]))
         assert key is not None
+        key.refreshed_at = utcnow() - timedelta(days=31)
+        db.commit()
+    assert refresh(client["client_id"], tokens["refresh_token"]).status_code == 400
+    # A connector of 1.16.0 knows no refreshed_at: its last refresh is an hour before its access token ran out.
+    client, tokens = signed_in(world)
+    with SessionLocal() as db:
+        key = db.scalar(select(McpKey).where(McpKey.kind == "oauth", McpKey.client_id == client["client_id"]))
+        assert key is not None
+        key.refreshed_at = None
         key.expires_at = utcnow() - timedelta(days=31)
         db.commit()
     assert refresh(client["client_id"], tokens["refresh_token"]).status_code == 400
@@ -198,15 +207,18 @@ def test_one_sender_registers_a_few_connectors_an_hour(world: World) -> None:  #
 
 
 def test_a_connector_registered_in_the_last_hour_is_never_pushed_out(world: World, monkeypatch) -> None:  # noqa: F811
-    from app.routers import oauth
+    import dataclasses
 
-    monkeypatch.setattr(oauth, "MAX_CLIENTS", 3)
+    from app.routers import mcp as mcp_routes
+    from app.services import mcp as mcp_service
+
+    # The room of the shared module (mcp 1.1.0) made small; nexlore's own value stays 500.
+    assert mcp_routes.CONFIG.max_clients == 500
+    monkeypatch.setattr(mcp_routes, "CONFIG", dataclasses.replace(mcp_routes.CONFIG, max_clients=3))
     first = register()["client_id"]
     for _ in range(4):
-        from app.security import brake
-
-        brake.forget()
-        register()
+        mcp_service.forget()
+        assert stranger().post("/api/oauth/register", json={"redirect_uris": [REDIRECT]}).status_code in (201, 429)
     with SessionLocal() as db:
         assert db.get(OAuthClient, first) is not None
 

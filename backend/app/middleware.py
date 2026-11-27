@@ -36,7 +36,7 @@ QUIET_PATHS = ("/api/health", "/api/logs")
 SLOW_MS = 3000
 #: What takes long by nature: backups grow with the vault.
 #: Lore writes its answer while the request stands open (``routers/lore.py``).
-SLOW_EXPECTED = ("/api/backups", "/api/lore/ask")
+SLOW_EXPECTED = ("/api/backups", "/api/server/storage", "/api/lore/ask")
 
 #: The editor and the graph set inline styles, hence 'unsafe-inline' for styles only. Scripts stay strict.
 #: ``blob:`` for images: a pasted picture is shown before it is uploaded.
@@ -150,13 +150,18 @@ API_PREFIX = "/api/v1/"
 #: The own iPhone app: a device key in ``Authorization``, no tab (``routers/app1.py``).
 APP_PREFIX = "/api/app/1/"
 #: Called by programs signing in for MCP (OAuth), not by a browser tab: no tab, and a form body.
-OAUTH_PATHS = frozenset({"/api/oauth/token", "/api/oauth/register"})
+OAUTH_PATHS = frozenset({"/api/oauth/token", "/api/oauth/register", "/api/oauth/revoke",
+                         # The other nex apps trade, refresh, revoke and retire the tokens of a connection the same
+                         # way (module verbinden); ``/api/connect/hello`` only reads.
+                         "/api/connect/token", "/api/connect/revoke", "/api/connect/retire"})
 #: Largest body an ordinary request may carry: a note is at most 5 MB of text, JSON adds a little.
 MAX_BODY = 16 * 1024 * 1024
 #: Where a larger body is expected, with its own limit checked while streaming. An upload's limit is the operator's
 #: setting, checked by the route while the file arrives; this is only the ceiling above every setting.
 LARGE_BODIES = {
     "/api/import": 4 * 1024**3, "/api/attachments": 1024**4, "/api/backups/upload": 64 * 1024**3,
+    # The same upload on the way of the shared module sicherung (Settings, Storage and backups).
+    "/api/server/storage/backups/upload": 64 * 1024**3,
     # The app's uploads have the operator's limit like any other; a batch carries up to 100 notes.
     "/api/app/1/files": 1024**4, "/api/app/1/batch": 128 * 1024**2,
 }

@@ -14,21 +14,28 @@ from pydantic import BaseModel, Field
 
 from ..deps import DbSession, OperatorAccount
 from ..errors import error
-from ..models import SIGN_IN_PASSWORD
 from ..security import encrypt_secret
-from ..services import accounts, ai, guide, lore, mailer, settings_service
+from ..services import accounts, ai, guide, kontenpost, lore, settings_service
 from ..services.oidc_store import SqlStore
-from ..vendor.nexoidc import authentik, flow, providers
+from ..vendor.nexoidc import authentik, flow
+from . import server_signin
 
 logger = logging.getLogger("nexlore.settings")
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
+
+#: The sign-in switches under their names here and in the shared account module (``signin.change``): the old way
+#: keeps them and keeps to the module's rules (a provider first, an own second factor first, the password to switch
+#: the second factor for everybody off).
+SWITCHES = {"password_login": "password_login", "two_factor_required": "factor_required",
+            "passkeys_allowed": "passkeys_allowed"}
 
 
 class SettingsOut(BaseModel):
     public_url: str
     password_login: bool
     two_factor_required: bool
+    passkeys_allowed: bool
     shares_allowed: bool
     backup_schedule: str
     backup_keep: int
@@ -45,6 +52,8 @@ class SettingsOut(BaseModel):
     app_pairing_allowed: bool
     calendar_feed_allowed: bool
     link_titles_allowed: bool
+    #: Other nex apps may be asked in the own network (module verbinden).
+    connections_local_network: bool = False
     plugin_upload_allowed: bool
     ai_allowed: bool
     ai_private_hosts: str
@@ -59,10 +68,13 @@ class SettingsIn(BaseModel):
     public_url: str | None = Field(default=None, max_length=255)
     #: The operator said yes to the question that came back with 409 ``public_url_change`` (module 1.0.10).
     confirm_address: bool | None = None
+    #: The operator's own password: asked when the second factor for everybody goes off (konten 1.1.0).
+    current_password: str = Field(default="", max_length=200)
     password_login: bool | None = None
     two_factor_required: bool | None = None
+    passkeys_allowed: bool | None = None
     shares_allowed: bool | None = None
-    backup_schedule: Literal["off", "daily", "weekly"] | None = None
+    backup_schedule: Literal["off", "daily", "weekly", "monthly"] | None = None
     backup_keep: int | None = Field(default=None, ge=1, le=365)
     smtp_host: str | None = Field(default=None, max_length=255)
     smtp_port: int | None = Field(default=None, ge=1, le=65535)
@@ -78,6 +90,7 @@ class SettingsIn(BaseModel):
     app_pairing_allowed: bool | None = None
     calendar_feed_allowed: bool | None = None
     link_titles_allowed: bool | None = None
+    connections_local_network: bool | None = None
     plugin_upload_allowed: bool | None = None
     ai_allowed: bool | None = None
     ai_private_hosts: str | None = Field(default=None, max_length=2000)
@@ -99,6 +112,7 @@ def _view(db: DbSession) -> SettingsOut:
         public_url=values["public_url"],
         password_login=values["password_login"],
         two_factor_required=bool(values["two_factor_required"]),
+        passkeys_allowed=bool(values["passkeys_allowed"]),
         shares_allowed=values["shares_allowed"],
         backup_schedule=values["backup_schedule"],
         backup_keep=values["backup_keep"],
@@ -115,6 +129,7 @@ def _view(db: DbSession) -> SettingsOut:
         app_pairing_allowed=bool(values["app_pairing_allowed"]),
         calendar_feed_allowed=bool(values["calendar_feed_allowed"]),
         link_titles_allowed=bool(values["link_titles_allowed"]),
+        connections_local_network=bool(values["connections_local_network"]),
         plugin_upload_allowed=bool(values["plugin_upload_allowed"]),
         ai_allowed=bool(values["ai_allowed"]),
         ai_private_hosts=str(values["ai_private_hosts"] or ""),
@@ -135,7 +150,7 @@ def read(_operator: OperatorAccount, db: DbSession) -> SettingsOut:
 def save(payload: SettingsIn, operator: OperatorAccount, db: DbSession, request: Request) -> SettingsOut:
     changes: dict[str, Any] = {}
     for key, value in payload.model_dump(exclude_unset=True).items():
-        if value is None or key == "confirm_address":
+        if value is None or key in ("confirm_address", "current_password"):
             continue
         if key == "public_url":
             try:
@@ -156,15 +171,9 @@ def save(payload: SettingsIn, operator: OperatorAccount, db: DbSession, request:
             value = value.strip()
             if value and not accounts.EMAIL_PATTERN.match(value):
                 raise error("invalid_email", "This is not a mail address.", 422)
-        elif key == "two_factor_required" and value and operator.sign_in == SIGN_IN_PASSWORD and not (
-            operator.totp_secret_enc
-        ):
-            # Else the operator would be the first one sent to the account page, with nothing else in reach.
-            raise error("own_second_factor_first", "Set up your own second factor first.", 409)
-        elif key == "password_login" and not value:
-            if not providers.public_list(SqlStore(db)):
-                # Without a provider nobody but the operator could sign in any more, and invitations would fail.
-                raise error("provider_first", "Set up a sign-in provider first.", 409)
+        elif key in SWITCHES:
+            # The sign-in switches go through the shared account module's rules (Server › Sign-in).
+            continue
         elif key == "ai_private_hosts":
             try:
                 value = "\n".join(ai.parse_hosts(value))
@@ -177,20 +186,28 @@ def save(payload: SettingsIn, operator: OperatorAccount, db: DbSession, request:
         elif isinstance(value, str):
             value = value.strip()
         changes[key] = value
+    switches = {SWITCHES[key]: value for key, value in payload.model_dump(exclude_unset=True).items()
+                if key in SWITCHES and value is not None}
+    if switches:
+        server_signin.change(db, request, operator, current_password=payload.current_password, **switches)
     settings_service.save(db, changes)
-    logger.info("Settings changed keys=%s by=%s", ",".join(sorted(changes)), operator.name)
+    logger.info("Settings changed keys=%s by=%s", ",".join(sorted([*changes, *switches])), operator.name)
     return _view(db)
 
 
 @router.post("/mail-test", status_code=204, summary="Send a test mail through the configured server")
-def mail_test(payload: TestMailIn, _operator: OperatorAccount, db: DbSession) -> None:
+def mail_test(payload: TestMailIn, operator: OperatorAccount, db: DbSession) -> None:
     to = payload.to.strip()
     if not accounts.EMAIL_PATTERN.match(to):
         raise error("invalid_email", "This is not a mail address.", 422)
     try:
-        mailer.send_test(db, to)
-    except mailer.MailError as exc:
-        raise error(exc.code, str(exc), 502) from exc
+        kontenpost.send_test(db, to, operator.language or "en")
+    except kontenpost.MailError as exc:
+        # The reason goes to the log by its kind only: an SMTP answer can quote the address or the credentials.
+        logger.warning("Test mail not sent reason=%s", exc.code)
+        # The codes of 1.16.0: no server, or the server did not take it.
+        code = "mail_off" if exc.code == "mail_off" else "mail_failed"
+        raise error(code, str(exc), 502) from exc
 
 
 class GuideIn(BaseModel):

@@ -244,10 +244,16 @@ def test_signing_out_everywhere_and_a_new_password_disconnect_the_devices(world:
     third = pair(world["bob"])
     with SessionLocal() as db:
         bob_id = db.scalar(select(AppDevice.account_id))
-    reset = world["operator"].put(f"/api/accounts/{bob_id}/password",
-                                  json={"password": "a brand new password", "current_password": "correct horse battery"})
-    assert reset.status_code == 204, reset.text
-    assert phone().get("/api/app/1/me", headers=bearer(third)).status_code == 401
+    # A new password through the operator's link (the operator no longer sets one) leaves the paired devices
+    # connected: they are listed under "These devices still have access" (the shared account module, 25.11.2026).
+    made = world["operator"].post(f"/api/accounts/{bob_id}/reset-link",
+                                  json={"current_password": "correct horse battery"})
+    assert made.status_code == 201, made.text
+    token = made.json()["link"].rsplit("/", 1)[1]
+    used = phone().post(f"/api/reset/{token}", json={"password": "a brand new password"},
+                        headers={"X-Nexlore-Client": "tab-phone0000"})
+    assert used.status_code == 204, used.text
+    assert phone().get("/api/app/1/me", headers=bearer(third)).status_code == 200
 
 
 def test_a_device_has_a_rate(world: dict[str, TestClient], monkeypatch: pytest.MonkeyPatch) -> None:

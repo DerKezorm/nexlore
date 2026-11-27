@@ -17,6 +17,7 @@ from app.db import SessionLocal
 from app.main import ROUTERS, app
 from app.models import Account, McpKey
 from app.services import backups, index, logs, mcp, settings_service
+from app.vendor import nexsicherung
 
 from .conftest import PASSWORD, make_account, sign_in
 
@@ -189,14 +190,16 @@ def test_a_restore_that_fails_half_way_puts_the_vault_back_as_it_was(
 
     monkeypatch.setattr(os, "rename", rename)
     monkeypatch.setattr(shutil, "move", move)
-    with pytest.raises(OSError):
-        backups.apply_pending()
+    # The shared backup module: the start goes on with the data from before, the staged files are set aside.
+    assert backups.apply_pending() is False
     monkeypatch.undo()
     after = {path.relative_to(vault).as_posix(): path.read_bytes() for path in vault.rglob("*") if path.is_file()}
     assert after == now
-    pending = backups.pending_folder() / "vault"
-    assert {path.relative_to(pending).as_posix(): path.read_bytes() for path in pending.rglob("*") if path.is_file()} == staged
-    # And a later start that can move everything restores the backup.
+    failed = nexsicherung.restore.failed_folder() / "vault"
+    assert {path.relative_to(failed).as_posix(): path.read_bytes() for path in failed.rglob("*") if path.is_file()} == staged
+    # And restoring it again, at a start that can move everything, brings the backup back.
+    manual = next(entry.name for entry in backups.entries() if entry.kind == backups.MANUAL)
+    backups.stage_restore(manual)
     assert backups.apply_pending() is True
     assert (vault / "B" / "n.md").read_bytes() == b"backup B\n"
 
@@ -226,7 +229,8 @@ def test_mcp_marks_hits_so_that_bold_text_stays_readable_and_refuses_an_unknown_
 # --- Acts on another account ask for the operator's password once more ------------------
 
 ACTS = {
-    "password": ("PUT", "/api/accounts/{id}/password", {"password": "a brand new password"}),
+    # The operator no longer sets a password (410); the link for a new one asks the same.
+    "reset link": ("POST", "/api/accounts/{id}/reset-link", {}),
     "role": ("PUT", "/api/accounts/{id}/role", {"role": "operator"}),
     "second factor": ("POST", "/api/accounts/{id}/totp/reset", {}),
     "delete": ("DELETE", "/api/accounts/{id}", {}),
@@ -248,7 +252,7 @@ def _state_of(account_id: int) -> tuple[object, ...]:
         row = db.get(Account, account_id)
         if row is None:
             return ("gone",)
-        return (row.role, row.password_hash, row.totp_secret_enc)
+        return (row.role, row.password_hash, row.totp_secret_enc, row.deleted_at is not None)
 
 
 def _failures(account_id: int) -> int:
@@ -274,8 +278,10 @@ def test_the_operator_acts_on_another_account_only_with_the_password_once_more(
     assert _failures(operator.id) == 3
     assert client.get("/api/auth/me").status_code == 200
     done = client.request(method, url, json={**body, "current_password": PASSWORD})
-    assert done.status_code in (200, 204)
-    assert _state_of(anna_id) != before
+    assert done.status_code in (200, 201, 204)
+    if act != "reset link":
+        # A link changes nothing yet: the person sets the password with it.
+        assert _state_of(anna_id) != before
     assert _failures(operator.id) == 0
 
 

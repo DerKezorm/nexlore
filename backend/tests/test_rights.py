@@ -212,7 +212,8 @@ def test_an_invitation_into_a_space(world: World, client: TestClient) -> None:
     assert link.startswith("http://testserver/invite/")
     stranger = TestClient(app, base_url="http://testserver", headers={"X-Nexlore-Client": "tab-stranger"})
     offer = stranger.get(f"/api/invite/{token}").json()
-    assert offer == {"space": "Shared", "role": "write", "min_password": 12, "signed_in_as": None}
+    assert offer == {"space": "Shared", "role": "write", "min_password": 12, "signed_in_as": None, "by": "anna",
+                     "display_name": "", "email": "", "name": "", "password": True}
     joined = stranger.post(f"/api/invite/{token}", json={"name": "dora", "password": "a long enough password"})
     assert joined.status_code == 200 and joined.json()["name"] == "dora" and joined.json()["role"] == "member"
     assert names(stranger) == ["Shared"]
@@ -246,7 +247,8 @@ def test_an_expired_invitation_is_not_valid(world: World) -> None:
         db.commit()
     assert world.bob.get(f"/api/invite/{token}").status_code == 404
     assert world.bob.post(f"/api/invite/{token}/join").status_code == 404
-    assert world.anna.get("/api/spaces/Shared/members").json()["invites"] == []
+    # Listed, marked, until withdrawn (konten 0.3.10).
+    assert [entry["expired"] for entry in world.anna.get("/api/spaces/Shared/members").json()["invites"]] == [True]
 
 
 def test_invitations_are_checked(world: World) -> None:
@@ -282,6 +284,22 @@ def test_deleting_the_only_member_hands_the_space_to_the_operator(world: World) 
     ids = {row["name"]: row["id"] for row in world.operator.get("/api/accounts").json()}
     gone = world.operator.request("DELETE", f"/api/accounts/{ids['anna']}", json={"current_password": PASSWORD})
     assert gone.status_code == 204
+    # A deleted member counts nowhere (plan E44): her only space is the operator's at once, for the 30 days in which
+    # she can come back with it; brought back, it is hers alone again; then she goes for good (konten 1.1.0).
+    assert "Private" in names(world.operator)
+    back = world.operator.post(f"/api/accounts/{ids['anna']}/restore", json={"current_password": PASSWORD})
+    assert back.status_code == 200
+    assert "Private" not in names(world.operator)
+    again = world.operator.request("DELETE", f"/api/accounts/{ids['anna']}", json={"current_password": PASSWORD})
+    assert again.status_code == 204
+    from datetime import timedelta
+
+    from app.main import _purge_deleted_accounts
+
+    with SessionLocal() as db:
+        db.get(Account, ids["anna"]).deleted_at -= timedelta(days=31)  # type: ignore[union-attr, operator]
+        db.commit()
+    _purge_deleted_accounts()
     assert "Private" in names(world.operator)
 
 
@@ -383,8 +401,8 @@ def test_an_invitation_is_used_once_even_at_the_same_moment(world: World, monkey
     both_found = threading.Barrier(2, timeout=10)
     found = accounts.find_invite
 
-    def find_then_wait(db, token):  # type: ignore[no-untyped-def]
-        invite = found(db, token)
+    def find_then_wait(db, token, **options):  # type: ignore[no-untyped-def]
+        invite = found(db, token, **options)
         # Both requests hold a valid invitation before either uses it: the worst timing, every time.
         both_found.wait()
         return invite
@@ -392,12 +410,16 @@ def test_an_invitation_is_used_once_even_at_the_same_moment(world: World, monkey
     monkeypatch.setattr(accounts, "find_invite", find_then_wait)
     results: list[str] = []
 
+    from app.services.konten_store import KontenStore
+    from app.vendor import nexkonten
+
     def take(name: str) -> None:
         with SessionLocal() as db:
             try:
-                accounts.accept_invite(db, token, name, "a long enough password")
+                nexkonten.invites.accept_invite(KontenStore(db), token, display_name=name, username=name, email="",
+                                                password="a long enough password")
                 results.append("ok")
-            except accounts.AccountError as exc:
+            except nexkonten.AccountError as exc:
                 results.append(exc.code)
 
     threads = [threading.Thread(target=take, args=(name,)) for name in ("racer-one", "racer-two")]

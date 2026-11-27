@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import MANAGE, OPERATOR, Account, Membership, Space, SpaceNotice
@@ -69,8 +69,7 @@ def invite(db: Session, space: Space, target: Account | None, role: str, by: Acc
     if news:
         from . import notify
 
-        notify.send(target.id, "invite", f"{by.name} invites you into {space.folder}", "Answer under New in nexlore.",
-                    "/")
+        notify.send(target.id, "invite", notify.words("invite", who=by.name, space=space.folder), "/")
 
 
 def tell(db: Session, space: Space, kind: str, actor: Account, subject: str, role: str = "",
@@ -130,7 +129,9 @@ def answer(db: Session, account: Account, notice_id: int, *, accept: bool) -> st
         db.commit()
         raise NoticeError("not_found")
     if db.get(Membership, (space.id, account.id)) is None:
-        members = db.scalar(select(func.count()).select_from(Membership).where(Membership.space_id == space.id)) or 0
+        from . import rights
+
+        members = rights.member_count(db, space.id)
         if members == 0 and inviter is not None and inviter.role == OPERATOR:
             # A space without members is the operator's; the operator who invited stays in it as manager.
             db.add(Membership(space_id=space.id, account_id=inviter.id, role=MANAGE))

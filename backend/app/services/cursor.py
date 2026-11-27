@@ -127,8 +127,15 @@ def _came_to_read(session: Session) -> set[int]:
     spaces |= {item.space_id for item in session.deleted if isinstance(item, Membership)}
     if any(isinstance(item, Account) and item.role == OPERATOR and inspect(item).attrs.role.history.has_changes()
            for item in session.dirty):
-        with_members = select(Membership.space_id).distinct()
-        spaces |= set(session.execute(select(Space.id).where(Space.id.not_in(with_members))).scalars())
+        from .rights import spaces_with_members
+
+        spaces |= set(session.execute(select(Space.id).where(Space.id.not_in(spaces_with_members()))).scalars())
+    # Deleted or brought back (plan E44): a deleted member counts nowhere, so its spaces may pass to the operator and
+    # back; the account's own spaces are read anew.
+    moved = [item.id for item in session.dirty
+             if isinstance(item, Account) and inspect(item).attrs.deleted_at.history.has_changes()]
+    if moved:
+        spaces |= set(session.execute(select(Membership.space_id).where(Membership.account_id.in_(moved))).scalars())
     return spaces
 
 

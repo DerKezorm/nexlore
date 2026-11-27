@@ -274,7 +274,7 @@ async def _returned(slug: str, request: Request) -> RedirectResponse:
         # The module logged the sign-in with its provider already; ``sign_in`` adds nexlore's own line.
         # A provider the entry trusts with the second factor ends the duty to enrol one of the own (rule of 10.10.2026).
         via = SESSION_VIA_PROVIDER if arrival.provider.trusts_second_factor else SESSION_VIA_PASSWORD
-        sign_in(s.db, request, response, row, via)
+        sign_in(s.db, request, response, row, via, tell=True)
         return response
 
 

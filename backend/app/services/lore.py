@@ -689,7 +689,7 @@ def _may_write(db: Session, account: Account, space_id: int) -> bool:
 def save_note(db: Session, account: Account, conversation: LoreConversation, message_id: int,
               actor: vault.Actor) -> File:
     """The answer as a note of its own: next to its first source, where one may write there; else in the own home
-    space (Settings, General), else in the first space one may write in."""
+    space (My account › Notes), else in the first space one may write in."""
     body, question = answer_of(db, account, conversation, message_id)
     folder = None
     readable = rights.readable_ids(db, account)

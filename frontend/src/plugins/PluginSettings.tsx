@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 
 import { adminApi, api, type ServerSettings } from '../api/client'
-import { ConfirmDialog } from '../components/ConfirmDialog'
+import { Button as KitButton, Buttons as KitButtons, ConfirmDialog } from '../vendor/nexui'
 import { Symbol } from '../components/Symbol'
 import { Button, Card, Feedback, Toggle } from '../components/settings/ui'
 import { useAction } from '../components/settings/useAction'
@@ -134,7 +134,7 @@ export function AdminPluginsCard({ settings, onChange }: { settings: ServerSetti
               {here?.approved && (
                 <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg bg-accent-500/10 px-2.5 py-1.5 text-xs text-mist-300" data-testid={`plugin-next-${plugin.id}`}>
                   <span>{t('admin.plugins.nextStep')}</span>
-                  <Link to="/account#plugins" className="text-accent-400 hover:underline">
+                  <Link to="/settings/plugins" className="text-accent-400 hover:underline">
                     {t('admin.plugins.toMine')}
                   </Link>
                   {mine.get(plugin.id) ? (
@@ -213,21 +213,23 @@ export function AdminPluginsCard({ settings, onChange }: { settings: ServerSetti
         )}
       </div>
       <Feedback problem={problem} done={done} />
-      <ConfirmDialog
-        open={asking !== null}
-        danger
-        title={asking === 'upload' ? t('admin.plugins.uploadTitle') : t('admin.plugins.warnTitle')}
-        confirm={asking === 'upload' ? t('admin.plugins.uploadConfirm') : t('admin.plugins.warnConfirm')}
-        onCancel={() => setAsking(null)}
-        onConfirm={() => {
-          const what = asking
-          setAsking(null)
-          if (what === 'upload') upload()
-          else latch(true)
-        }}
-      >
-        <p>{asking === 'upload' ? t('admin.plugins.uploadText') : t('admin.plugins.warnText')}</p>
-      </ConfirmDialog>
+      {/* Opened only from the settings: the kit's window (plan E31). */}
+      {asking !== null && (
+        <ConfirmDialog
+          title={asking === 'upload' ? t('admin.plugins.uploadTitle') : t('admin.plugins.warnTitle')}
+          text={asking === 'upload' ? t('admin.plugins.uploadText') : t('admin.plugins.warnText')}
+          confirm={{ label: asking === 'upload' ? t('admin.plugins.uploadConfirm') : t('admin.plugins.warnConfirm'), kind: 'danger', icon: 'Check' }}
+          cancel={t('common.cancel')}
+          closeLabel={t('common.close')}
+          onCancel={() => setAsking(null)}
+          onConfirm={() => {
+            const what = asking
+            setAsking(null)
+            if (what === 'upload') upload()
+            else latch(true)
+          }}
+        />
+      )}
     </Card>
   )
 }
@@ -245,25 +247,19 @@ export function MyPluginsCard() {
   // Nothing let out yet: say why the page is empty, and the operator where to change that.
   if (list.length === 0) {
     return (
-      <section id="plugins" className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="my-plugins" data-testid="plugins-none">
-        <h2 id="my-plugins" className="mb-1 flex items-center gap-2 font-semibold">
-          <Symbol name="plug" className="h-4 w-4 text-accent-400" /> {t('plugins.mine')}
-        </h2>
-        <p className="text-sm text-mist-500">{me?.role === 'operator' ? t('plugins.noneOperator') : t('plugins.none')}</p>
+      <Card id="plugins" symbol="plug" title={t('plugins.mine')} text={me?.role === 'operator' ? t('plugins.noneOperator') : t('plugins.none')} testId="plugins-none">
         {me?.role === 'operator' && (
-          <Link to="/settings?tab=server&sub=extensions" className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent-500/50 px-3 py-1 text-sm text-accent-300 hover:bg-accent-500/10">
-            {t('plugins.toCatalog')}
-          </Link>
+          <KitButtons>
+            <KitButton kind="secondary" icon="ArrowRight" href="/settings/server-plugins">
+              {t('plugins.toCatalog')}
+            </KitButton>
+          </KitButtons>
         )}
-      </section>
+      </Card>
     )
   }
   return (
-    <section id="plugins" className="rounded-2xl border border-ink-700 bg-ink-900 p-5" aria-labelledby="my-plugins">
-      <h2 id="my-plugins" className="mb-1 flex items-center gap-2 font-semibold">
-        <Symbol name="plug" className="h-4 w-4 text-accent-400" /> {t('plugins.mine')}
-      </h2>
-      <p className="mb-4 text-sm text-mist-500">{t('plugins.mineText')}</p>
+    <Card id="plugins" symbol="plug" title={t('plugins.mine')} text={t('plugins.mineText')}>
       <ul className="space-y-2">
         {list.map((plugin) => (
           <li key={plugin.id} className="rounded-xl border border-ink-700 p-3">
@@ -285,6 +281,6 @@ export function MyPluginsCard() {
         ))}
       </ul>
       <Feedback problem={problem} />
-    </section>
+    </Card>
   )
 }

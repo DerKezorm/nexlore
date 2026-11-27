@@ -57,7 +57,7 @@ test('a long press on + opens quick capture, and the words land on top of the in
 })
 
 test('sharing to the app brings the words, into the main space of the account', async ({ page }) => {
-  // The main space is the account's (Settings, General), not remembered by the browser (P5.19); set back at the end.
+  // The main space is the account's (My account › Notes), not remembered by the browser (P5.19); set back at the end.
   const headers = { 'X-Nexlore-Client': 'tab-e2e-capture0' }
   await page.request.put('/api/me/appearance', { data: { home_space: 'Moor' }, headers })
   await page.goto('/capture?title=Heron&text=Seen+at+the+pond&url=https%3A%2F%2Fexample.com%2Fheron')

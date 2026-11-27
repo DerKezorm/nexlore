@@ -50,7 +50,11 @@
     "loading": "Lädt …",
     "cancel": "Abbrechen",
     "save": "Speichern",
-    "saved": "Gespeichert."
+    "saved": "Gespeichert.",
+    "done": "Fertig",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "remove": "Entfernen"
   },
   "palette": {
     "title": "Befehle",
@@ -159,7 +163,7 @@
   "looks2": {
     "spaceThemesHint": "Ein Bereich darf seine Notizen einfärben. Aus: Du siehst überall dein eigenes Theme.",
     "spaceThemes": "Themes der Bereiche übernehmen",
-    "title": "Aussehen",
+    "title": "Schriften und Breite",
     "text": "Für dein Konto, auf jedem Gerät. Jede Änderung wirkt sofort.",
     "mode": "Hell oder dunkel",
     "modes": {
@@ -260,7 +264,7 @@
     "newName": "Mein Schnipsel",
     "name": "Name des Schnipsels",
     "css": "CSS des Schnipsels",
-    "notAllowed": "Der Betreiber hat eigenes CSS nicht freigegeben (Einstellungen → Server → KI, API und Plugins).",
+    "notAllowed": "Der Betreiber hat eigenes CSS nicht freigegeben (Server › Allgemein › Eigenes CSS).",
     "problem": "Zeile {{line}}: {{what}} ist hier nicht erlaubt.",
     "rules": "Erlaubt: Regeln, @media und @supports. Abgewiesen: url(), @import, @font-face und alles andere, was etwas nachladen könnte."
   },
@@ -625,6 +629,7 @@
       "restore": "zurückgeholt",
       "import": "importiert",
       "mcp": "KI (MCP)",
+      "mcpKey": "MCP · {{key}}",
       "plugin": "Plugin",
       "api": "Programm (API)"
     },
@@ -679,13 +684,7 @@
   "settings": {
     "title": "Einstellungen",
     "language": {
-      "title": "Sprache",
-      "text": "Englisch und Deutsch bringt nexlore mit. Der Betreiber kann weitere als JSON-Dateien in data/locales ablegen; was einer Datei fehlt, erscheint auf Englisch.",
-      "choose": "Sprache der Oberfläche",
-      "added": "vom Betreiber ergänzt",
-      "template": "Vorlage herunterladen",
-      "templateHint": "Die englischen Texte als Datei zum Übersetzen. Als data/locales/<code>.json ablegen, zum Beispiel es.json oder pt-BR.json.",
-      "textMember": "Englisch und Deutsch bringt nexlore mit; weitere Sprachen kann der Betreiber ergänzen."
+      "added": "vom Betreiber ergänzt"
     },
     "spaces": {
       "title": "Bereiche und Rechte",
@@ -700,23 +699,91 @@
       "deleteTitle": "Den Bereich {{space}} löschen?",
       "deleteText": "Alle Notizen und Dateien des Bereichs gehen in den Papierkorb, und der Bereich verschwindet für alle Mitglieder. Aus dem Papierkorb kommt er 30 Tage lang samt Mitgliedern zurück."
     },
-    "tabs": {
-      "general": "Allgemein",
-      "looks": "Aussehen",
-      "spaces": "Bereiche",
+    "groups": {
+      "account": "Mein Konto",
       "server": "Server"
     },
-    "parts": {
-      "accounts": "Konten",
-      "signin": "Anmeldung",
-      "shares": "Öffentliche Seiten",
-      "extensions": "KI, API und Plugins",
-      "files": "Dateien",
-      "backups": "Sicherung",
-      "languages": "Sprachen",
-      "log": "Log",
-      "mail": "Mailserver"
-    }
+    "jump": "Bereich wählen",
+    "areas": {
+      "profile": {
+        "title": "Profil",
+        "text": "Bild, Name, Mailadresse und Sprache deines Kontos."
+      },
+      "security": {
+        "title": "Sicherheit",
+        "text": "Passwort, zweiter Faktor, Anmeldeanbieter und das Abmelden überall."
+      },
+      "appearance": {
+        "title": "Darstellung",
+        "text": "Themes, hell oder dunkel, Schriften und eigene CSS-Schnipsel."
+      },
+      "notes": {
+        "title": "Notizen",
+        "text": "Wo du startest, der Editor, der Bereich für Tagesnotizen und eigene Tasten."
+      },
+      "spaces": {
+        "title": "Bereiche",
+        "text": "Deine Bereiche und wer darin mitarbeitet."
+      },
+      "notifications": {
+        "title": "Benachrichtigungen",
+        "text": "Wann und wie nexlore dir Bescheid gibt."
+      },
+      "plugins": {
+        "title": "Plugins",
+        "text": "Welche Plugins du für dich nutzt."
+      },
+      "connections": {
+        "title": "Verbindungen",
+        "text": "Geräte, andere Apps, API-Schlüssel und KI-Werkzeuge, die mit deinen Notizen arbeiten."
+      },
+      "general": {
+        "title": "Allgemein",
+        "text": "Dateien, Link-Titel, eigenes CSS, Sprachen und die Anleitung."
+      },
+      "signIn": {
+        "title": "Anmeldung",
+        "text": "Wie man sich anmeldet: Passwort, zweiter Faktor und Anbieter."
+      },
+      "mail": {
+        "title": "Mail",
+        "text": "Der Mailserver für Einladungen, Benachrichtigungen und Bestätigungen."
+      },
+      "storage": {
+        "title": "Speicher und Sicherung",
+        "text": "Sicherungen des Servers, zum Herunterladen und Wiederherstellen."
+      },
+      "shares": {
+        "title": "Öffentliche Seiten",
+        "text": "Was ohne Anmeldung zu sehen ist."
+      },
+      "accounts": {
+        "title": "Konten",
+        "text": "Wer nexlore nutzt, und alle Bereiche mit ihren Rechten."
+      },
+      "log": {
+        "title": "Log",
+        "text": "Was auf dem Server geschehen ist."
+      },
+      "about": {
+        "title": "Über nexlore",
+        "text": "Version, Lizenz, Aktualisierungen und woraus nexlore gebaut ist."
+      },
+      "aiProvider": {
+        "title": "KI-Anbieter",
+        "text": "KI für alle Konten: der Hauptschalter, der gemeinsame Dienst und Frag Lore."
+      },
+      "serverPlugins": {
+        "title": "Plugins",
+        "text": "Welche Plugins es auf diesem Server gibt und wer sie nutzen darf."
+      },
+      "ai": {
+        "title": "KI",
+        "text": "Ob dir die KI in Notizen hilft, dein eigener Zugang und was hinausging."
+      }
+    },
+    "things": "Notizen",
+    "thingsDative": "Notizen"
   },
   "errors": {
     "byCode": {
@@ -803,7 +870,7 @@
       "own_second_factor_first": "Richte zuerst deinen eigenen zweiten Faktor ein, auf deiner Kontoseite.",
       "use_disable": "Schalte deinen eigenen zweiten Faktor auf deiner Kontoseite aus.",
       "ai_off": "KI in Notizen ist auf diesem Server aus.",
-      "ai_not_on": "Schalte KI erst unter Mein Konto ein.",
+      "ai_not_on": "Schalte KI erst unter Mein Konto › KI ein.",
       "ai_incomplete": "Erst Adresse und Modell speichern.",
       "ai_address_missing": "Gib die Adresse des Dienstes an.",
       "ai_address_invalid": "Gib eine Adresse an, die mit http:// oder https:// beginnt.",
@@ -839,15 +906,15 @@
       "request_changed": "Diese Anfrage passt nicht zu dem, was gefragt wurde; nichts wurde ausgeführt.",
       "notify_no_way": "Gib erst eine Webhook-Adresse an oder schalte Mail ein.",
       "webhook_invalid": "Gib eine Adresse wie https://example.com/hook an.",
-      "api_off": "Der Betreiber hat API-Token nicht eingeschaltet.",
-      "too_many_tokens": "Ein Konto hat höchstens 20 Token.",
+      "api_off": "Der Betreiber hat die Programmschnittstelle (API) nicht eingeschaltet.",
+      "too_many_tokens": "Ein Konto hat höchstens 20 API-Schlüssel.",
       "setup_code_wrong": "Der Einrichtungscode stimmt nicht. Er steht im Log des Servers: docker logs nexlore.",
       "operator_network": "Die Einstellungen des Betreibers sind nur aus dem Heimnetz erreichbar.",
       "bad_date": "Dieses Datum gibt es nicht.",
       "display_name_taken": "Ein anderes Konto heißt schon so.",
       "display_name_invalid": "Ein Anzeigename darf keine Steuer- oder unsichtbaren Zeichen enthalten.",
-      "public_url_missing": "Für Mails braucht nexlore seine öffentliche Adresse; der Betreiber trägt sie unter Einstellungen ein.",
-      "ai_address_private": "Diese Adresse liegt im eigenen Netz. Der Betreiber erlaubt solche Dienste einzeln, unter Einstellungen, KI in Notizen.",
+      "public_url_missing": "Für Mails braucht nexlore seine öffentliche Adresse; der Betreiber trägt sie unter Server › Anmeldung ein.",
+      "ai_address_private": "Diese Adresse liegt im eigenen Netz. Der Betreiber erlaubt solche Dienste einzeln, unter Server › KI-Anbieter.",
       "ai_address_refused": "An diese Adresse schickt nexlore nichts.",
       "ai_hosts_invalid": "Ein Host je Eintrag, etwa 192.168.1.20 oder ollama.lan:11434.",
       "bad_canvas": "Das ist keine Leinwand, die nexlore behalten kann (JSON Canvas).",
@@ -877,7 +944,7 @@
       "not_signed_in": "Dieses Gerät ist nicht mehr angemeldet. Verbinde es neu.",
       "app_disabled": "Der Betreiber hat die iPhone-App abgeschaltet.",
       "too_many": "Zu viele Anfragen. Kurz warten und noch einmal.",
-      "app_address_missing": "nexlore kennt seine Adresse nicht. Der Betreiber trägt sie in den Einstellungen ein.",
+      "app_address_missing": "nexlore kennt seine Adresse nicht. Der Betreiber trägt sie unter Server › Anmeldung ein.",
       "app_too_many_pairings": "Es warten schon fünf Codes. Schließe einen oder warte, bis er abläuft.",
       "app_pairing_unknown": "Diesen Code gibt es nicht oder er gilt nicht mehr.",
       "cursor_expired": "Der Abgleich fängt von vorn an.",
@@ -1067,24 +1134,17 @@
     "manage": "Verwalten"
   },
   "auth": {
-    "name": "Name",
-    "nameHint": "2 bis 64 Zeichen: Kleinbuchstaben, Ziffern, Punkte, Striche oder Unterstriche. Damit meldest du dich an.",
     "password": "Passwort",
-    "passwordAgain": "Passwort noch einmal",
     "passwordHint_one": "Mindestens {{count}} Zeichen.",
     "passwordHint_other": "Mindestens {{count}} Zeichen.",
-    "mismatch": "Die beiden Passwörter sind nicht gleich.",
     "login": {
       "title": "Anmelden",
       "text": "Willkommen zurück bei nexlore.",
       "submit": "Anmelden"
     },
     "setup": {
-      "title": "nexlore einrichten",
-      "text": "Das Konto, das du jetzt anlegst, gehört dem Betreiber: Es führt diesen Server, lädt andere ein und stellt alles ein.",
       "submit": "Konto anlegen",
-      "code": "Einrichtungscode",
-      "codeHint": "Steht im Log des Servers: docker logs nexlore (Zeile „The setup code is …“), oder NEXLORE_SETUP_TOKEN, wenn du einen gesetzt hast."
+      "version": "Version {{version}}"
     },
     "invite": {
       "title": "Du bist eingeladen",
@@ -1092,69 +1152,39 @@
       "intoNexlore": "Zu nexlore.",
       "invalidTitle": "Diese Einladung gilt nicht",
       "invalidText": "Sie wurde schon benutzt, ist abgelaufen oder wurde zurückgezogen. Bitte um eine neue.",
-      "toLogin": "Zur Anmeldung",
       "join": "Als {{name}} beitreten",
       "haveAccount": "Du bist als {{name}} angemeldet und hast schon ein Konto.",
       "create": "Konto anlegen",
       "already": "Schon ein Konto?",
-      "signIn": "Erst anmelden"
+      "signIn": "Erst anmelden",
+      "expiredTitle": "Einladung abgelaufen",
+      "expiredText": "Diese Einladung ist abgelaufen. Bitte um eine neue.",
+      "noWay": "Gerade lässt sich hier kein Konto anlegen. Frag den Betreiber."
+    },
+    "backToLogin": "Zur Anmeldung",
+    "reset": {
+      "text": "Für {{name}}. Alle Anmeldungen im Browser enden; danach meldest du dich mit dem neuen Passwort an und siehst, welche Geräte noch Zugriff haben.",
+      "submit": "Passwort setzen",
+      "doneTitle": "Passwort gesetzt",
+      "doneText": "Melde dich jetzt mit dem neuen Passwort an.",
+      "expiredTitle": "Link abgelaufen",
+      "expiredText": "Dieser Link ist abgelaufen. Bitte den Betreiber um einen neuen.",
+      "invalidTitle": "Link nicht gültig",
+      "invalidText": "Dieser Link wurde schon benutzt oder durch einen neueren ersetzt."
     }
   },
-  "account": {
-    "tabs": {
-      "profile": "Profil",
-      "security": "Sicherheit",
-      "ai": "Verbindungen",
-      "plugins": "Plugins",
-      "notify": "Benachrichtigungen"
-    },
+  "me": {
     "profile": {
-      "displayName": "Anzeigename",
-      "displayHint": "So sehen dich andere. Leer zeigt deinen Benutzernamen {{name}}; mit ihm meldest du dich weiter an.",
-      "displaySave": "Speichern",
-      "displaySaved": "Anzeigename gespeichert.",
-      "name": "Name",
-      "role": "Rolle",
       "email": "E-Mail",
-      "upload": "Bild hochladen",
-      "change": "Anderes Bild",
       "remove": "Entfernen",
       "saved": "Bild gespeichert.",
       "removed": "Bild entfernt.",
-      "hint": "Ein Foto vom Handy oder von der Kamera. Es wird quadratisch zugeschnitten, und von der Datei bleibt nur das Bild: kein Ort, kein Gerät.",
-      "emailTitle": "Mailadresse",
-      "emailHint": "Für Einladungen und Benachrichtigungen per Mail. Andere sehen sie nicht. Sie gilt, sobald du den Link in der Mail öffnest, die wir dir schicken.",
-      "emailConfirm": "Bestätigen",
-      "emailRemove": "Entfernen",
-      "emailSent": "Mail an {{address}} geschickt. Öffne den Link darin.",
-      "emailSame": "Diese Adresse hast du schon.",
-      "emailRemoved": "Mailadresse entfernt.",
-      "emailConfirmed": "Bestätigt",
-      "emailSource": {
-        "own": "selbst eingetragen",
-        "operator": "vom Betreiber eingetragen",
-        "invite": "aus der Einladung",
-        "provider": "von {{provider}}"
-      },
-      "emailWaitTitle": "Wartet auf Bestätigung.",
-      "emailWait": "Wir haben einen Link an {{address}} geschickt. Er gilt 24 Stunden. Keine Mail da? Sieh im Spam nach.",
-      "emailResend": "Noch einmal schicken",
-      "emailResent": "Noch einmal geschickt.",
-      "emailCancel": "Abbrechen",
-      "emailCancelled": "Die Adresse wartet nicht mehr.",
-      "emailOffer": "{{provider}} kennt dich als {{address}}. Soll nexlore diese Adresse nehmen?",
       "emailTake": "Übernehmen",
       "emailTaken": "Adresse übernommen.",
       "emailDecline": "Nicht mehr fragen",
       "emailDeclined": "nexlore fragt nicht mehr nach dieser Adresse.",
-      "emailProviderOnly": "Kommt von {{provider}} und folgt ihm bei jeder Anmeldung. Ändern kannst du sie dort.",
-      "emailNoServer": "Der Betreiber hat keinen Mailserver eingetragen, darum kann nexlore keine Bestätigung schicken. Bis dahin kann nur der Betreiber dir eine Adresse eintragen.",
-      "emailNoPublicUrl": "Der Betreiber hat die öffentliche Adresse von nexlore nicht eingetragen, darum kann nexlore keine Bestätigung schicken. Bis dahin kann nur der Betreiber dir eine Adresse eintragen.",
-      "emailSetServer": "Mailserver eintragen",
-      "emailSetPublicUrl": "Öffentliche Adresse eintragen",
       "providerFallback": "dem Anmeldedienst"
     },
-    "menu": "Konto von {{name}}",
     "role": {
       "operator": "Betreiber",
       "member": "Mitglied"
@@ -1165,23 +1195,17 @@
     "title": "Mein Konto",
     "linked": "Dein Konto ist mit {{name}} verknüpft.",
     "password": {
-      "title": "Passwort",
-      "current": "Jetziges Passwort",
-      "new": "Neues Passwort",
       "submit": "Passwort ändern",
       "done": "Passwort geändert. Andere Browser müssen sich neu anmelden."
     },
     "sessions": {
-      "title": "Andere Browser",
-      "text": "Meldet dich überall ab außer hier, etwa nach einem verlorenen Handy.",
-      "submit": "Überall sonst abmelden",
       "done": "Alle anderen Browser sind abgemeldet."
     },
     "unlinked": "Nicht mehr mit {{name}} verknüpft.",
     "app": {
-      "title": "iPhone-App",
+      "title": "Geräte",
       "text": "Verbundene iPhones haben dieselben Rechte wie dieser Browser. Getrennt wird ein iPhone hier, mit „Überall sonst abmelden“ oder mit einem neuen Passwort.",
-      "connect": "iPhone-App verbinden",
+      "connect": "iPhone oder iPad verbinden",
       "scan": "Öffne die Kamera des iPhones und richte sie auf den Code.",
       "orType": "Oder tippe in der App die Adresse und den Code ein.",
       "address": "Adresse",
@@ -1198,7 +1222,10 @@
       "never": "Noch nicht gesehen",
       "disconnect": "Trennen",
       "disconnectNamed": "{{name}} trennen"
-    }
+    },
+    "signOutText": "Meldet dich in diesem Browser ab. Andere Geräte bleiben angemeldet.",
+    "profileSaved": "Profil gespeichert.",
+    "languageBrowser": "Wie der Browser"
   },
   "members": {
     "title": "Mitglieder von {{space}}",
@@ -1209,7 +1236,6 @@
     "remove": "{{name}} entfernen",
     "removeShort": "Entfernen",
     "none": "Noch keine Mitglieder.",
-    "addName": "Name eines Kontos",
     "role": "Recht",
     "add": "Hinzufügen",
     "invite": {
@@ -1272,51 +1298,13 @@
     "title": "Server",
     "text": "Diesen Teil siehst nur du als Betreiber.",
     "accounts": {
-      "title": "Konten",
-      "text": "Alle, die sich hier anmelden können.",
-      "signIn": {
-        "password": "Passwort",
-        "oidc": "Anbieter"
-      },
-      "never": "nie angemeldet",
-      "locked": "nach falschen Passwörtern eine Weile gesperrt",
-      "makeMember": "Zum Mitglied machen",
-      "makeOperator": "Zum Betreiber machen",
-      "newPassword": "Neues Passwort",
-      "passwordSet": "Passwort gesetzt. Das Konto wurde überall abgemeldet.",
-      "signOut": "Abmelden",
-      "signedOut": "Überall abgemeldet.",
-      "yourPassword": "Dein eigenes Passwort",
-      "operatorTitle": "{{name}} zum Betreiber machen?",
-      "operatorText": "Ein Betreiber sieht alle Konten und alle Einstellungen und kann Sicherungen zurückspielen.",
-      "memberTitle": "{{name}} zum Mitglied machen?",
-      "memberText": "Ein Mitglied behält seine Bereiche und Rechte, ohne die Einstellungen des Servers.",
-      "delete": "Löschen",
-      "deleteTitle": "Das Konto {{name}} löschen?",
-      "deleteText": "Seine Rechte gehen mit, seine Notizen bleiben, wo sie sind. Ein Bereich, in dem es allein war, gehört dann dir.",
-      "inviteTitle": "Zu nexlore einladen",
-      "inviteText": "Ohne Bereich: Das neue Konto legt eigene Bereiche an oder wird später zu anderen hinzugefügt.",
-      "noEmail": "keine Adresse",
-      "twoFactor": "zweiter Faktor an",
-      "resetFactor": "Zweiten Faktor zurücksetzen",
-      "resetTitle": "Den zweiten Faktor von {{name}} zurücksetzen?",
-      "resetText": "Für ein verlorenes Handy. Das Konto wird überall abgemeldet und meldet sich mit dem Passwort allein an, bis es einen neuen einrichtet.",
-      "resetDone": "Zweiter Faktor zurückgesetzt. Das Konto wurde überall abgemeldet.",
-      "email": "Mailadresse",
-      "emailFor": "Mailadresse für {{name}}",
-      "emailHint": "Gilt sofort, ohne Bestätigung. {{name}} sieht unter Neuigkeiten, dass du sie gesetzt hast. Leer lassen und speichern entfernt sie.",
-      "emailOwnHint": "Gilt sofort, ohne Bestätigung. Leer lassen und speichern entfernt sie.",
-      "emailSave": "Speichern",
-      "emailCancel": "Abbrechen",
-      "emailSaved": "Mailadresse gespeichert.",
-      "noAddress": "Keine Mailadresse",
-      "emailWaits": "wartet auf Bestätigung: {{address}}",
-      "emailConfirmed": "bestätigt",
-      "unlink": "Verknüpfung lösen",
-      "unlinkFrom": "Verknüpfung mit {{name}} lösen",
-      "unlinkTitle": "Verknüpfung von {{name}} mit {{provider}} lösen?",
-      "unlinkText": "Das Konto kann sich dann nicht mehr über {{provider}} anmelden, bis es sich in seinem Profil wieder verknüpft.",
-      "unlinked": "Verknüpfung gelöst."
+      "withdrawn": "Einladung zurückgenommen.",
+      "spacesFact": "Bereiche",
+      "storageFact": "Hochgeladen",
+      "removeWhat": "Rechte gehen mit, Notizen bleiben; ein Bereich, in dem es allein war, gehört dann dir.",
+      "removeAlone_one": "Allein ist es in diesem Bereich: {{spaces}}.",
+      "removeAlone_other": "Allein ist es in diesen Bereichen: {{spaces}}.",
+      "whatYouSee": "Als Betreiber siehst du Namen, Anmeldung, Rollen, Speicher und die Bereiche mit ihren Mitgliedern, aber nie einen Titel oder ein Wort aus fremden Notizen."
     },
     "spaces": {
       "title": "Alle Bereiche",
@@ -1339,7 +1327,7 @@
     },
     "mail": {
       "title": "Mailserver",
-      "text": "Darüber verschickt nexlore Mails. Ohne Server geht keine hinaus.",
+      "text": "Der Mailserver, über den nexlore Einladungen, Links zum Bestätigen einer Adresse und für ein neues Passwort, Hinweise zur Anmeldung, Benachrichtigungen und Hinweise an den Betreiber verschickt.",
       "host": "Server",
       "port": "Port",
       "security": "Verschlüsselung",
@@ -1361,9 +1349,9 @@
       "title": "Dateien",
       "text": "Wohin Hochgeladenes kommt und wie viel es belegen darf.",
       "folder": "Ordner für Anhänge",
-      "perFile": "Größte Datei (MB)",
-      "quota": "Platz je Konto (MB)",
-      "quotaHint": "0 heißt ohne Grenze.",
+      "perFile": "Größte Datei je Anhang (MB)",
+      "quota": "Speicher für neue Konten (GB)",
+      "quotaHint": "Die Vorgabe für jedes neue Konto. Leer heißt ohne Grenze.",
       "strip": "Ort und Gerät aus Fotos entfernen",
       "stripHint": "Beim Hochladen, aus Bildern und Videos. Das Bild selbst bleibt, wie es ist.",
       "pasted": "Name eingefügter Bilder",
@@ -1377,84 +1365,12 @@
       "renamed_one": "Ein Ordner umbenannt.",
       "renamed_other": "{{count}} Ordner umbenannt.",
       "left_one": "Ein Ordner behält seinen Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}",
-      "left_other": "{{count}} Ordner behalten ihren Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}"
-    },
-    "backups": {
-      "title": "Sicherung",
-      "text": "Notizen, Dateien, Papierkorb und Datenbank in einem Archiv.",
-      "schedule": "Automatisch",
-      "every": {
-        "off": "nie",
-        "daily": "jede Nacht",
-        "weekly": "jede Woche"
-      },
-      "keep": "Aufbewahren",
-      "make": "Jetzt sichern",
-      "made": "Sicherung erstellt.",
-      "notes_one": "{{count}} Notiz",
-      "notes_other": "{{count}} Notizen",
-      "kind": {
-        "manual": "von Hand",
-        "scheduled": "geplant",
-        "update": "vor einer Wiederherstellung"
-      },
-      "check": "Prüfen",
-      "restore": "Wiederherstellen",
-      "download": "Herunterladen",
-      "password": "Dein Passwort",
-      "downloaded": "Die Sicherung wird gespeichert.",
-      "delete": "Löschen",
-      "none": "Noch keine Sicherung.",
-      "usable": "Das Archiv ist vollständig und lesbar.",
-      "damaged": "Das Archiv ist beschädigt. Es lässt sich nicht wiederherstellen.",
-      "would": "Eine Wiederherstellung würde {{add}} Dateien hinzufügen, {{change}} ändern und {{remove}} entfernen.",
-      "restarting": "nexlore startet mit der Sicherung neu. Gleich neu anmelden.",
-      "restartingWait": "Die Seite wartet und führt zur Anmeldung, sobald nexlore wieder da ist.",
-      "upload": "Sicherung hochladen",
-      "uploaded": "hochgeladen",
-      "uploadedHint": "Hochgeladen. Sie steht jetzt in der Liste: erst prüfen, dann wiederherstellen.",
-      "confirm": {
-        "restore": {
-          "title": "Diese Sicherung wiederherstellen?",
-          "text": "Der jetzige Stand wird vorher gesichert. Danach startet nexlore neu, und alle melden sich neu an.",
-          "button": "Wiederherstellen"
-        },
-        "download": {
-          "title": "Diese Sicherung herunterladen?",
-          "text": "Sie enthält alle Notizen, Dateien und Konten und den Schlüssel des Servers. Sie ist nicht verschlüsselt.",
-          "button": "Herunterladen"
-        },
-        "delete": {
-          "title": "Diese Sicherung löschen?",
-          "text": "Sie lässt sich nicht zurückholen.",
-          "button": "Löschen"
-        },
-        "upload": {
-          "title": "Sicherung hochladen?",
-          "text": "Die Datei kommt in die Liste der Sicherungen. Wiederhergestellt wird erst, wenn du es dort bestätigst.",
-          "button": "Hochladen"
-        }
-      }
-    },
-    "languages": {
-      "title": "Sprachen",
-      "text": "Eigene Übersetzungen, aus der Vorlage unter Sprache. Eine Datei für de oder en ersetzt nur die Texte, die sie enthält; alle anderen bleiben, wie sie ausgeliefert sind.",
-      "remove": "Entfernen",
-      "none": "Keine eigenen Sprachen.",
-      "code": "Kürzel",
-      "file": "JSON-Datei",
-      "upload": "Hochladen",
-      "added": "Sprache hinzugefügt. Sie wirkt, sobald eine Seite neu geladen wird."
+      "left_other": "{{count}} Ordner behalten ihren Namen, weil daneben schon einer mit dem neuen Namen liegt: {{list}}",
+      "limitsTitle": "Grenzen",
+      "perAccount": "Die Grenze eines Kontos setzt du unter Server › Konten › Verwalten."
     },
     "mcp": {
-      "title": "KI von außen (MCP)",
-      "text": "Ab Werk aus. Eingeschaltet legt jedes Konto eigene Schlüssel an; ein Schlüssel sieht nie mehr als sein Konto.",
-      "allow": "MCP erlauben",
-      "allowHint": "Programme von außen erreichen Notizen mit einem Schlüssel je Konto.",
       "maxLevel": "Höchste Stufe eines Schlüssels",
-      "keysWhere": "Schlüssel legt jedes Konto selbst an, unter Mein Konto → Verbindungen → KI von außen, samt den Zeilen zum Einfügen ins Programm.",
-      "keysLater": "Sobald es an ist, legt jedes Konto seine Schlüssel unter Mein Konto an.",
-      "keysLink": "Zu meinen Schlüsseln",
       "oauth": "Konnektoren dürfen sich anmelden",
       "oauthHint": "Programme tragen nexlore mit seiner Adresse ein und melden sich über eine Seite von nexlore an (OAuth). Dafür muss nexlore per HTTPS erreichbar sein.",
       "blocked": "Für alle gesperrte Werkzeuge",
@@ -1484,7 +1400,7 @@
       "uploadText": "Sobald du es freigibst, läuft dieses Plugin für alle, die es einschalten. Über WebRTC könnte es die Notizen, die es gezeigt bekommt, nach draußen schicken. Lade nur Code hoch, den du gelesen hast oder dessen Urheber du vertraust.",
       "uploadConfirm": "Trotzdem hochladen",
       "upload": "Hochladen",
-      "nextStep": "Freigegeben: Jetzt kann jedes Konto es für sich einschalten, unter Mein Konto → Plugins für mich.",
+      "nextStep": "Freigegeben: Jetzt kann jedes Konto es für sich einschalten, unter Mein Konto › Plugins.",
       "toMine": "Dorthin",
       "enableMine": "Für mich einschalten",
       "enabledMine": "Für dich an"
@@ -1494,14 +1410,14 @@
       "text": "Die KI korrigiert und schreibt im Editor, und Lore beantwortet Fragen zu den Notizen. Text, den jemand wählt oder nach dem jemand fragt, verlässt dabei den Server in Richtung des KI-Dienstes.",
       "allow": "KI in Notizen erlauben",
       "allowHint": "Aus: Nichts geht hinaus, und der Editor bietet keine KI an. Die Konten behalten ihren Zugang für später.",
-      "where": "Jedes Konto richtet seinen Dienst unter Mein Konto → Verbindungen → KI in Notizen ein.",
+      "where": "Jedes Konto richtet seinen Dienst unter Mein Konto › KI ein.",
       "whereLink": "Zu meinem Zugang",
       "hosts": "Dienste im eigenen Netz",
       "hostsHint": "Hosts, die Mitglieder als KI-Dienst nutzen dürfen, obwohl sie im eigenen Netz oder auf diesem Rechner stehen, durch Komma getrennt: 192.168.1.20, ollama.lan:11434. Jede andere Adresse im eigenen Netz wird abgelehnt; öffentliche Adressen gehen immer.",
       "mode": "Wer bringt den KI-Dienst mit?",
       "modes": {
         "own": "Jeder für sich",
-        "ownText": "Jedes Konto trägt unter Mein Konto seinen eigenen Dienst ein. Wer keinen hat, kann Lore nicht fragen.",
+        "ownText": "Jedes Konto trägt unter Mein Konto › KI seinen eigenen Dienst ein. Wer keinen hat, kann Lore nicht fragen.",
         "shared": "Einer für alle",
         "sharedText": "Du trägst hier einen Dienst ein, alle Konten nutzen ihn. Eigene Zugänge der Konten ruhen."
       },
@@ -1516,7 +1432,9 @@
       "embedProgress": "{{done}} von {{total}} Notizen eingelesen",
       "embedNotHere": "Dieser Dienst bietet keine Modelle für Vektoren: Für die Suche nach Bedeutung braucht es einen anderen, etwa Ollama oder OpenAI.",
       "loreAllow": "Frag Lore erlauben",
-      "loreAllowHint": "Aus: keine Spinne in der Ecke und kein Frag Lore in der Kopfleiste. An, kann jeder, dessen KI-Dienst bereitsteht, Lore zu den Notizen fragen, die er lesen darf."
+      "loreAllowHint": "Aus: keine Spinne in der Ecke und kein Frag Lore in der Kopfleiste. An, kann jeder, dessen KI-Dienst bereitsteht, Lore zu den Notizen fragen, die er lesen darf.",
+      "loreTitle": "Frag Lore und Bedeutung",
+      "loreText": "Lore beantwortet Fragen zu den Notizen mit dem Dienst oben; ein Modell für Vektoren lässt Lore Notizen nach ihrer Bedeutung finden."
     },
     "guide": {
       "title": "Die Anleitung",
@@ -1526,37 +1444,15 @@
       "made": "Bereich „{{space}}“ angelegt.",
       "open": "Öffnen"
     },
-    "apiTokens": {
-      "title": "API-Token",
-      "text": "Konten verbinden nexlore mit Programmen wie n8n oder nexdeck. Ein Token darf nie mehr als sein Konto und löscht, verschiebt und teilt nichts. Ab Werk aus.",
-      "allow": "Konten dürfen API-Token anlegen",
-      "allowHint": "Jedes Konto legt eigene Token unter Mein Konto → Verbindungen an.",
-      "account": "Konto",
-      "token": "Token",
-      "level": "Stufe",
-      "spaces": "Bereiche",
-      "used": "Zuletzt",
-      "allSpaces": "alle",
-      "someSpaces_one": "{{count}} Bereich",
-      "someSpaces_other": "{{count}} Bereiche",
-      "blocked": "gesperrt",
-      "block": "Sperren",
-      "blockNamed": "Token {{name}} von {{account}} sperren",
-      "blockTitle": "Token „{{name}}“ von {{account}} sperren?",
-      "blockText": "Das Token antwortet danach wie keines, für immer. Das Konto sieht es als „vom Betreiber gesperrt“ und kann ein neues anlegen, solange API-Token eingeschaltet sind.",
-      "offHint": "Schaltest du API-Token ab, antwortet jedes Token mit 401. Die Token bleiben stehen und gehen wieder, wenn du einschaltest."
-    },
     "providers": {
       "order": "{{name}} verschieben: ziehen oder die Pfeiltasten",
       "coupled": "über die Kopplung",
       "copy": "Kopieren",
       "more": "Mehr"
     },
-    "app": {
-      "title": "iPhone-App",
-      "text": "Konten verbinden die eigene iPhone-App mit nexlore. Sie kann nichts, was der Browser nicht auch kann. Ab Werk an.",
-      "allow": "Die iPhone-App darf sich verbinden",
-      "hint": "Ausgeschaltet kommt kein Gerät mehr herein und keines kann neu verbunden werden. Verbundene Geräte bleiben und gehen wieder, wenn du einschaltest."
+    "features": {
+      "title": "Funktionen für alle Konten",
+      "text": "Was jedes Konto auf diesem Server nutzen darf."
     }
   },
   "today": {
@@ -1639,7 +1535,10 @@
       "done": "erledigt",
       "cancelled": "abgebrochen",
       "non_task": "keine Aufgabe"
-    }
+    },
+    "next": "Als Nächstes",
+    "nextNone": "Nichts mit Datum offen.",
+    "views": "Ansichten"
   },
   "newNote": {
     "title": "Neue Notiz in „{{folder}}“",
@@ -1701,7 +1600,16 @@
     "install": "Installieren",
     "later": "Nicht mehr fragen",
     "menu": "Als App installieren",
-    "notNow": "Jetzt nicht"
+    "notNow": "Jetzt nicht",
+    "card": {
+      "title": "Auf diesem Gerät installieren",
+      "installed": "nexlore läuft auf diesem Gerät als App.",
+      "asked": "Der Browser hat gefragt; wenn du zugestimmt hast, liegt nexlore jetzt auf deinem Startbildschirm.",
+      "ios": "In Safari auf „Teilen“ tippen, dann „Zum Home-Bildschirm“.",
+      "safari": "In Safari „Ablage“ wählen, dann „Zum Dock hinzufügen“.",
+      "firefox": "Firefox kann keine Web-Apps installieren. Dafür Chrome, Edge oder Safari nehmen.",
+      "other": "Dein Browser bietet es in seinem Menü an, als „App installieren“ oder „Zum Startbildschirm hinzufügen“."
+    }
   },
   "mcp": {
     "title": "KI von außen (MCP)",
@@ -1737,7 +1645,7 @@
       "write": "Ändert Notizen direkt: jede Änderung eine Version, eine Konfliktkopie, wenn sich die Notiz inzwischen geändert hat."
     },
     "off": "Der Betreiber hat KI von außen nicht eingeschaltet, deshalb gibt es hier keine Schlüssel.",
-    "offOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins.",
+    "offOperator": "Einschalten unter Server › Allgemein › Schnittstellen.",
     "nextStep": "Als Nächstes: Adresse und Schlüssel in dein KI-Programm eintragen. Programme, die eine mcp.json lesen (etwa Cursor oder die .mcp.json eines Projekts), nehmen das JSON unten; Claude Code nimmt den Befehl. Andere fragen in ihren eigenen Einstellungen nach denselben zwei Dingen. Der Schlüssel gilt, bis du ihn widerrufst.",
     "recipeJson": "JSON im mcp.json-Format",
     "copyNamed": "Kopieren: {{what}}",
@@ -1868,21 +1776,14 @@
     },
     "none": "Der Betreiber hat noch kein Plugin freigegeben. Sobald er eins freigibt, schaltest du es hier für dich ein.",
     "noneOperator": "Noch ist kein Plugin installiert und freigegeben. Vier geprüfte liegen im Katalog bereit: Inhaltsverzeichnis, Abfrage, Kanban und Wiederentdecken.",
-    "toCatalog": "Zum Katalog unter Server → KI, API und Plugins"
+    "toCatalog": "Zum Katalog unter Server › Plugins"
   },
   "twofactor": {
-    "title": "Zweiter Faktor",
-    "lead": "Neben dem Passwort ein Code aus einer App auf dem Handy (jede Authenticator-App, die einen QR-Code nimmt). Wiederherstellungscodes auf Papier bringen dich hinein, wenn das Handy weg ist.",
     "provider": "Du meldest dich über den Anbieter an; dort gilt sein zweiter Faktor.",
-    "off": "Aus.",
-    "on_one": "An. Noch {{count}} Wiederherstellungscode.",
-    "on_other": "An. Noch {{count}} Wiederherstellungscodes.",
-    "enable": "Einrichten",
     "scan": "Scanne diesen Code mit der App oder tippe den Schlüssel darunter ein. Dann gib den Code ein, den die App zeigt, und dein Passwort.",
     "qr": "QR-Code für die Authenticator-App",
     "secret": "Schlüssel zum Eintippen:",
     "code": "Code aus der App",
-    "codeHint": "Sechs Ziffern. Oder einer deiner Wiederherstellungscodes.",
     "passwordHint": "Zeigt, dass du selbst an der Tastatur sitzt.",
     "confirm": "Einschalten",
     "codesTitle": "Deine Wiederherstellungscodes",
@@ -2146,7 +2047,7 @@
     "title": "Kalender-Abo",
     "text": "Deine offenen Aufgaben mit Termin als Adresse, die dein Kalender abonniert (Internet-Kalender, ICS). Er fragt sie etwa stündlich neu ab.",
     "closed": "Der Betreiber hat Kalender-Abos nicht eingeschaltet.",
-    "closedOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins, Karte Kalender-Abos.",
+    "closedOperator": "Einschalten unter Server › Allgemein › Funktionen für alle Konten.",
     "none": "Noch keine Adresse.",
     "active": "Eine Adresse ist aktiv. Sie wird nur einmal gezeigt; eine neue ersetzt sie.",
     "make": "Adresse erzeugen",
@@ -2159,29 +2060,6 @@
     "adminText": "Jedes Konto kann sich eine Adresse für seinen Kalender erzeugen, mit seinen offenen Aufgaben mit Termin. Die Aufgaben verlassen damit das Haus.",
     "allow": "Kalender-Abos erlauben",
     "allowHint": "Ausgeschaltet antworten alle Adressen, als gäbe es sie nicht."
-  },
-  "log": {
-    "title": "Log",
-    "text": "Die neuesten Zeilen des Server-Logs. Kennwörter, Schlüssel und Notiztexte stehen nie darin.",
-    "level": "Stufe",
-    "all": "Alle",
-    "search": "Enthält",
-    "refresh": "Neu laden",
-    "empty": "Keine Zeilen.",
-    "detail": "Ausführlichkeit",
-    "detailFixed": "Ausführlichkeit (fest per Umgebung)",
-    "modes": {
-      "quiet": "Ruhig",
-      "normal": "Normal",
-      "detailed": "Ausführlich (1 Stunde)",
-      "trace": "Alles (1 Stunde)"
-    },
-    "until": "Zurück auf Normal um {{time}}.",
-    "download": "Herunterladen",
-    "clear": "Leeren",
-    "clearTitle": "Log leeren?",
-    "clearText": "Alle Zeilen gehen, auch die älteren Dateien.",
-    "cleared": "Das Log ist leer."
   },
   "comments": {
     "title": "Kommentare",
@@ -2235,7 +2113,7 @@
     "title": "KI in Notizen",
     "text": "Dein eigener KI-Dienst korrigiert, formuliert um, übersetzt, fasst zusammen und schreibt im Editor. Den Schlüssel bezahlst du selbst; ein Ergebnis steht immer erst neben dem Text und ändert nichts, bis du es übernimmst.",
     "off": "Der Betreiber hat KI in Notizen nicht eingeschaltet.",
-    "offOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins.",
+    "offOperator": "Einschalten unter Server › KI-Anbieter.",
     "tiles": "Adresse eines Dienstes eintragen",
     "getKey": "Schlüssel bei {{name}} holen",
     "address": "Adresse (jeder Dienst mit der üblichen Chat-Schnittstelle)",
@@ -2463,7 +2341,7 @@
   "connect": {
     "title": "{{name}} möchte nexlore nutzen",
     "text": "Angemeldet als {{account}}. Danach geht es zurück zu {{host}}.",
-    "after": "Das Programm steht danach unter Mein Konto, Verbindungen wie ein Schlüssel, mit denselben Rechten je Werkzeug. Dort trennst du es jederzeit.",
+    "after": "Das Programm steht danach unter Mein Konto › Verbindungen › KI-Werkzeuge (MCP), mit denselben Rechten je Werkzeug wie ein Schlüssel. Dort trennst du es jederzeit.",
     "allow": "Erlauben",
     "decline": "Ablehnen",
     "failed": "Diese Anmeldung geht nicht weiter",
@@ -2471,6 +2349,7 @@
   },
   "notify": {
     "ways": "Wohin Benachrichtigungen gehen",
+    "devicesNote": "Die App fürs iPhone und iPad bekommt keine Mitteilungen von nexlore; verbunden wird sie unter „Verbindungen“.",
     "waysText": "Ein Webhook deiner Wahl, etwa eine Benachrichtigungs-Inbox wie nexsift, und Mail, wenn der Betreiber einen Mailserver eingetragen hat.",
     "webhook": "Webhook-Adresse",
     "webhookSave": "Speichern",
@@ -2497,7 +2376,7 @@
       "approval": "Freigaben für KI-Programme",
       "tasks": "Aufgaben des Tages",
       "operator": "Ärger mit dem Server",
-      "tokens": "API-Token laufen ab"
+      "tokens": "API-Schlüssel laufen ab"
     },
     "occasionHint": {
       "mention": "Jemand nennt dich mit @ in einem Kommentar oder antwortet in einem Faden, an dem du teilnimmst.",
@@ -2505,7 +2384,7 @@
       "approval": "Ein KI-Programm wartet auf dein Ja.",
       "tasks": "Einmal am Tag zur Uhrzeit unten: was heute fällig oder überfällig ist.",
       "operator": "Für Betreiber: eine Sicherung ist gescheitert, eine neuere Version ist da, die Platte läuft voll.",
-      "tokens": "Sieben Tage bevor eines deiner API-Token abläuft, einmal je Token."
+      "tokens": "Sieben Tage bevor einer deiner API-Schlüssel abläuft, einmal je Schlüssel."
     },
     "tasksTime": "Uhrzeit für die Aufgaben des Tages",
     "emailNoAddressLink": "Im Profil eintragen",
@@ -2516,42 +2395,11 @@
     "link": "Jetzt einrichten"
   },
   "apiTokens": {
-    "title": "API-Token",
-    "text": "Für Programme wie n8n oder nexdeck. Ein Token darf, was du darfst, beschränkt auf seine Stufe und seine Bereiche. Löschen, Verschieben und Teilen gehen nie über ein Token.",
-    "none": "Noch keine Token.",
-    "new": "Neues Token",
-    "name": "Name, damit du es wiedererkennst",
-    "levelTitle": "Stufe",
     "level": {
       "read": "Lesen",
       "write": "Schreiben"
     },
-    "levelText": {
-      "read": "Bereiche, Notizen, Suche, Aufgaben, Zahlen. Ändert nichts.",
-      "write": "Dazu Notizen anlegen und ändern, anhängen, Tagesnotiz, Eingang, Aufgaben abhaken. Jede Änderung wird eine Version mit der Quelle „Programm (API)“. Nie löschen, verschieben oder teilen."
-    },
-    "where": "Bereiche",
-    "lifetime": "Läuft ab",
-    "lifetimeDays": {
-      "30": "in 30 Tagen",
-      "90": "in 90 Tagen",
-      "365": "in einem Jahr"
-    },
-    "lifetimeNever": "nie",
-    "make": "Anlegen",
-    "shownOnce": "Token „{{name}}“ angelegt. Es steht nur jetzt hier. Kopier es in dein Programm; nexlore speichert nur eine Prüfsumme.",
-    "header": "Als Kopfzeile in n8n (HTTP Request, Header Auth) oder nexdeck",
-    "tryIt": "Zum Ausprobieren",
-    "never": "läuft nie ab",
-    "runsOut": "läuft am {{day}} ab",
-    "ranOut": "abgelaufen am {{day}}",
-    "blocked": "vom Betreiber gesperrt",
-    "delete": "Löschen",
-    "deleteNamed": "Token {{name}} löschen",
-    "off": "Der Betreiber hat API-Token nicht eingeschaltet. Frag ihn, wenn du nexlore mit n8n oder nexdeck verbinden willst.",
-    "offOperator": "Einschalten unter Einstellungen → Server → KI, API und Plugins.",
-    "whatItDoes": "Was die API kann",
-    "whatItDoesText": "Jede Anfrage trägt das Token in der Kopfzeile Authorization: Bearer, die Antworten sind JSON. Schreiben braucht die Stufe Schreiben und das Recht im Bereich."
+    "spaces": "Bereiche"
   },
   "lore": {
     "title": "Frag Lore",
@@ -2736,9 +2584,7 @@
     "morePages": "Weitere Seiten im Leser: {{pages}}"
   },
   "confirmEmail": {
-    "busy": "Wird bestätigt …",
     "title": "Adresse bestätigt",
-    "text": "{{email}} gilt jetzt für dein Konto {{name}}. Einladungen und Benachrichtigungen per Mail gehen ab jetzt dorthin.",
     "failed": "Nicht bestätigt",
     "toApp": "Zu nexlore"
   },
@@ -2801,7 +2647,7 @@
   "appConnect": {
     "title": "iPhone verbinden",
     "text": "Angemeldet als {{account}}. Das Gerät „{{device}}“ möchte sich verbinden.",
-    "rights": "Es bekommt dieselben Rechte wie dieser Browser. Trennen kannst du es jederzeit unter Mein Konto, Sicherheit.",
+    "rights": "Es bekommt dieselben Rechte wie dieser Browser. Trennen kannst du es jederzeit unter Mein Konto › Verbindungen › Geräte.",
     "confirm": "iPhone verbinden",
     "cancel": "Abbrechen",
     "doneTitle": "Zurück zur App",
@@ -2865,5 +2711,19 @@
     "strokes_other": "{{count}} Striche",
     "cardHint": "Doppelklick zum Zeichnen",
     "notDrawable": "In diese Zeichnung kann hier nicht gezeichnet werden: {{reason}}"
+  },
+  "emailLink": {
+    "title": "Neue Adresse bestätigen",
+    "submit": "Bestätigen"
+  },
+  "storage": {
+    "holds": "Notizen, Dateien, Papierkorb und Datenbank in einem Archiv.",
+    "counts": "{{notes}}, {{files}}",
+    "notes_one": "{{count}} Notiz",
+    "notes_other": "{{count}} Notizen",
+    "files_one": "{{count}} Datei",
+    "files_other": "{{count}} Dateien",
+    "would": "Eine Wiederherstellung würde {{add}} Dateien hinzufügen, {{change}} ändern und {{remove}} entfernen.",
+    "trash": "Papierkorb"
   }
 }

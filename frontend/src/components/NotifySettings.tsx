@@ -1,16 +1,19 @@
 /**
- * The own notifications (block Z2): where they go (a webhook, always possible; mail, when the operator set up a mail
- * server and the account has an address) and which occasions. Saved at once; the test goes out at once.
- * The webhook address is shown once while typing and afterwards only by its host: it may carry a token.
+ * My account › Notifications (block Z2, plan "Einstellungen"): first "Auf welchem Weg" of the ui kit (`NotifyWays`:
+ * mail, when the operator set up a mail server and the account has an address, with its tick and the test; "iPhone
+ * and iPad" with the way to Connections, saying that the app gets no notifications, since nexlore sends no pushes), then
+ * nexlore's own cards: "Worüber du hörst" (the occasions) and "Webhook" (always possible). Saved at once; the test goes
+ * out at once. The webhook address is shown once while typing and afterwards only by its host: it may carry a token.
  */
+import { Send, Trash2, Webhook } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
 
 import { ApiError, notifyApi, type NotifyChoices, type NotifyView } from '../api/client'
 import { errorText } from '../lib/errors'
 import { useAuth } from '../state/auth'
-import { Button, Card, Feedback, Toggle } from './settings/ui'
+import { Box, Button as KitButton, NotifyWays } from '../vendor/nexui'
+import { Button, Card, Feedback, Input, Toggle } from './settings/ui'
 
 const OCCASIONS = ['mention', 'invite', 'approval', 'tokens', 'tasks'] as const
 
@@ -49,107 +52,96 @@ export function NotifySettings() {
     setView({ ...view, choices: { ...view.choices, [key]: value } })
     void save({ choices: { [key]: value } })
   }
+  const test = () => {
+    setBusy(true)
+    setProblem(null)
+    setDone(null)
+    void notifyApi
+      .test()
+      .then(
+        (outcome) =>
+          setDone(
+            Object.entries(outcome)
+              .map(([way, how]) => t(`notify.way.${way}`) + ': ' + (how === 'ok' ? t('notify.arrived') : how))
+              .join(' · '),
+          ),
+        (error) => setProblem(errorText(code(error))),
+      )
+      .finally(() => setBusy(false))
+  }
 
   return (
     <>
-      <Card id="notify-ways" symbol="globe" title={t('notify.ways')} text={t('notify.waysText')}>
-        <div className="space-y-3 text-sm">
-          {view.webhook.set ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-ink-700 bg-ink-850 px-4 py-3" data-testid="notify-webhook">
-              <span className="flex-1">{t('notify.webhookTo', { host: view.webhook.host })}</span>
-              <Button small danger onClick={() => void save({ webhook: '' }, t('notify.webhookRemoved'))}>
+      <NotifyWays
+        subtitle={t('notify.waysText')}
+        mail={view.email.possible ? { address: view.email.address, confirmed: me?.email_proven !== false, href: '/settings/profile#mail' } : undefined}
+        devices={{ href: '/settings/connections#devices', note: t('notify.devicesNote') }}
+      >
+        <Toggle
+          label={t('notify.email')}
+          hint={view.email.possible ? t('notify.emailTo', { address: view.email.address }) : view.email.server ? t('notify.emailNoAddress') : t('notify.emailNoServer')}
+          checked={view.choices.email && view.email.possible}
+          disabled={!view.email.possible}
+          onChange={(on) => choose('email', on)}
+        />
+        {/* Locked, it says where that is changed: the address in the profile, the server with the operator. */}
+        {!view.email.possible && (view.email.server || me?.role === 'operator') && (
+          <div>
+            <KitButton kind="secondary" size="sm" icon="UserPen" href={view.email.server ? '/settings/profile#mail' : '/settings/mail'} testId="notify-mail-fix">
+              {t(view.email.server ? 'notify.emailNoAddressLink' : 'notify.emailNoServerLink')}
+            </KitButton>
+          </div>
+        )}
+        <div>
+          <Button icon={Send} busy={busy} onClick={test} testId="notify-test">
+            {t('notify.test')}
+          </Button>
+        </div>
+        <Feedback problem={problem} done={done} />
+      </NotifyWays>
+      <Card id="notify-occasions" icon="Bell" title={t('notify.occasions')} text={t('notify.occasionsText')}>
+        {OCCASIONS.map((occasion) => (
+          <Toggle key={occasion} label={t(`notify.occasion.${occasion}`)} hint={t(`notify.occasionHint.${occasion}`)} checked={view.choices[occasion]} onChange={(on) => choose(occasion, on)} />
+        ))}
+        {view.choices.tasks && (
+          <Input label={t('notify.tasksTime')} type="time" value={view.choices.tasks_time} onChange={(value) => value && choose('tasks_time', value)} className="max-w-48" />
+        )}
+        {view.operator && (
+          <Toggle label={t('notify.occasion.operator')} hint={t('notify.occasionHint.operator')} checked={view.choices.operator} onChange={(on) => choose('operator', on)} />
+        )}
+      </Card>
+      <Card id="notify-webhook" icon={Webhook} title={t('notify.webhook')} text={t('notify.webhookHint')}>
+        {view.webhook.set ? (
+          <Box
+            title={t('notify.webhookTo', { host: view.webhook.host })}
+            testId="notify-webhook"
+            actions={
+              <Button small danger icon={Trash2} onClick={() => void save({ webhook: '' }, t('notify.webhookRemoved'))}>
                 {t('notify.webhookRemove')}
               </Button>
-            </div>
-          ) : (
-            <form
-              className="flex flex-wrap items-end gap-2"
-              onSubmit={(event) => {
-                event.preventDefault()
-                void save({ webhook: address }, t('notify.webhookSaved')).then((ok) => ok && setAddress(''))
-              }}
-            >
-              <label className="min-w-0 flex-1">
-                <span className="text-xs font-medium text-mist-400">{t('notify.webhook')}</span>
-                <input
-                  type="url"
-                  value={address}
-                  onChange={(event) => setAddress(event.target.value)}
-                  placeholder="https://example.com/hook"
-                  autoComplete="off"
-                  className="mt-1 h-9 w-full rounded-lg border border-ink-700 bg-ink-850 px-2"
-                />
-              </label>
-              <Button type="submit" primary>
-                {t('notify.webhookSave')}
-              </Button>
-            </form>
-          )}
-          <p className="text-xs text-mist-500">{t('notify.webhookHint')}</p>
-          <Toggle
-            label={t('notify.email')}
-            hint={view.email.possible ? t('notify.emailTo', { address: view.email.address }) : view.email.server ? t('notify.emailNoAddress') : t('notify.emailNoServer')}
-            checked={view.choices.email && view.email.possible}
-            disabled={!view.email.possible}
-            onChange={(on) => choose('email', on)}
+            }
           />
-          {/* Locked, it says where that is changed: the address in the profile, the server with the operator. */}
-          {!view.email.possible && (view.email.server || me?.role === 'operator') && (
-            <Link
-              to={view.email.server ? '/account#mail' : '/settings?tab=server&sub=mail'}
-              className="-mt-2 block text-xs text-accent-400 underline underline-offset-2"
-              data-testid="notify-mail-fix"
-            >
-              {t(view.email.server ? 'notify.emailNoAddressLink' : 'notify.emailNoServerLink')}
-            </Link>
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              busy={busy}
-              onClick={() => {
-                setBusy(true)
-                setProblem(null)
-                setDone(null)
-                void notifyApi
-                  .test()
-                  .then(
-                    (outcome) =>
-                      setDone(
-                        Object.entries(outcome)
-                          .map(([way, how]) => t(`notify.way.${way}`) + ': ' + (how === 'ok' ? t('notify.arrived') : how))
-                          .join(' · '),
-                      ),
-                    (error) => setProblem(errorText(code(error))),
-                  )
-                  .finally(() => setBusy(false))
-              }}
-            >
-              {t('notify.test')}
-            </Button>
-          </div>
-          <Feedback problem={problem} done={done} />
-        </div>
-      </Card>
-      <Card id="notify-occasions" symbol="info" title={t('notify.occasions')} text={t('notify.occasionsText')}>
-        <div className="space-y-2">
-          {OCCASIONS.map((occasion) => (
-            <Toggle key={occasion} label={t(`notify.occasion.${occasion}`)} hint={t(`notify.occasionHint.${occasion}`)} checked={view.choices[occasion]} onChange={(on) => choose(occasion, on)} />
-          ))}
-          {view.choices.tasks && (
-            <label className="flex items-center justify-between gap-4 rounded-xl border border-ink-700 bg-ink-850 px-4 py-3 text-sm">
-              <span className="font-medium">{t('notify.tasksTime')}</span>
-              <input
-                type="time"
-                value={view.choices.tasks_time}
-                onChange={(event) => event.target.value && choose('tasks_time', event.target.value)}
-                className="rounded-lg border border-ink-700 bg-ink-900 px-2 py-1"
-              />
-            </label>
-          )}
-          {view.operator && (
-            <Toggle label={t('notify.occasion.operator')} hint={t('notify.occasionHint.operator')} checked={view.choices.operator} onChange={(on) => choose('operator', on)} />
-          )}
-        </div>
+        ) : (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              void save({ webhook: address }, t('notify.webhookSaved')).then((ok) => ok && setAddress(''))
+            }}
+          >
+            <Input
+              label={t('notify.webhook')}
+              type="url"
+              value={address}
+              onChange={setAddress}
+              placeholder="https://example.com/hook"
+              action={
+                <Button type="submit" primary icon={Webhook}>
+                  {t('notify.webhookSave')}
+                </Button>
+              }
+            />
+          </form>
+        )}
       </Card>
     </>
   )

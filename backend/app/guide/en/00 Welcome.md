@@ -3,7 +3,7 @@ tags: [guide]
 ---
 # Welcome to nexlore
 
-This space is a guide and an example at once. Every note here uses what it explains: links, tasks, callouts, a Kanban board, a template. Change anything, delete what you do not need, or the whole space. Under Settings → Server the operator can make the guide again at any time.
+This space is a guide and an example at once. Every note here uses what it explains: links, tasks, callouts, a Kanban board, a template. Change anything, delete what you do not need, or the whole space. Under Settings › Server › General › The guide the operator can make the guide again at any time.
 
 > [!tip] How to read this guide
 > Click a link to open its note. **Edit** at the top right shows how it is written.

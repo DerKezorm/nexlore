@@ -18,7 +18,7 @@ from sqlalchemy.exc import OperationalError
 from app.db import SessionLocal, engine
 from app.main import app
 from app.models import File, Link
-from app.services import accounts, index
+from app.services import index
 from tests.conftest import PASSWORD, make_account, sign_in
 
 
@@ -224,7 +224,9 @@ def test_a_database_still_busy_answers_503_busy_not_a_server_error(
     def locked(*_args: object, **_kwargs: object) -> None:
         raise OperationalError("UPDATE accounts", {}, sqlite3.OperationalError("database is locked"))
 
-    monkeypatch.setattr(accounts, "authenticate", locked)
+    from app.services.konten_store import KontenStore
+
+    monkeypatch.setattr(KontenStore, "check_password", locked)
     with TestClient(app, raise_server_exceptions=False, headers={"X-Nexlore-Client": "tab-busy0000"}) as fresh:
         answer = fresh.post("/api/auth/login", json={"name": "tester", "password": PASSWORD})
     assert answer.status_code == 503

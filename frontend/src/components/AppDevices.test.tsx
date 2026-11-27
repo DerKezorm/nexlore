@@ -55,7 +55,7 @@ async function click(element: Element | null | undefined): Promise<void> {
 }
 
 function button(shown: HTMLElement, text: string): HTMLButtonElement | undefined {
-  return [...shown.querySelectorAll('button')].find((candidate) => candidate.textContent === text)
+  return [...shown.querySelectorAll('button')].find((candidate) => candidate.textContent?.trim() === text)
 }
 
 async function tick(ms: number): Promise<void> {
@@ -85,9 +85,9 @@ describe('the iPhone app on the account page', () => {
     calls.disconnect.mockResolvedValue()
     const shown = await show()
     const rows = shown.querySelectorAll('[data-testid="app-device"]')
-    expect([...rows].map((row) => row.querySelector('.font-medium')?.textContent)).toEqual(['Pocket', 'Tablet'])
-    expect(rows[0].textContent).toContain('account.app.never')
-    expect(rows[1].textContent).toContain('account.app.seen')
+    expect([...rows].map((row) => row.querySelector('[data-testid="app-device-name"]')?.textContent)).toEqual(['Pocket', 'Tablet'])
+    expect(rows[0].textContent).toContain('me.app.never')
+    expect(rows[1].textContent).toContain('me.app.seen')
     calls.devices.mockResolvedValueOnce([])
     await click(rows[0].querySelector('button'))
     expect(calls.disconnect).toHaveBeenCalledWith(7)
@@ -97,14 +97,14 @@ describe('the iPhone app on the account page', () => {
 
   it('shows the code, the address and the QR code, and says when the app came', async () => {
     const shown = await show()
-    await click(button(shown, 'account.app.connect'))
+    await click(button(shown, 'me.app.connect'))
     expect(calls.pair).toHaveBeenCalledWith(window.location.origin)
     const card = shown.querySelector('[data-testid="app-pairing"]')!
     expect(card.getAttribute('data-state')).toBe('waiting')
     expect(shown.querySelector('[data-testid="app-pairing-code"]')?.textContent).toBe('ABCD-EFGH')
     expect(shown.querySelector('[data-testid="app-pairing-address"]')?.textContent).toBe('https://notes.example.com')
     expect(card.querySelector('svg[data-testid="qr"]')).not.toBeNull()
-    expect(card.textContent).toContain('account.app.left {"count":10}')
+    expect(card.textContent).toContain('me.app.left {"count":10}')
     // Asked at its pace, not before.
     await tick(POLL_MS - 10)
     expect(calls.state).not.toHaveBeenCalled()
@@ -114,25 +114,25 @@ describe('the iPhone app on the account page', () => {
     calls.devices.mockResolvedValue([POCKET])
     await tick(POLL_MS)
     expect(shown.querySelector('[data-testid="app-pairing"]')?.getAttribute('data-state')).toBe('connected')
-    expect(shown.textContent).toContain('account.app.connected {"name":"Anna’s iPhone"}')
+    expect(shown.textContent).toContain('me.app.connected {"name":"Anna’s iPhone"}')
     expect(shown.querySelector('[data-testid="app-pairing-code"]')).toBeNull()
     expect(shown.querySelectorAll('[data-testid="app-device"]')).toHaveLength(1)
     // Connected, it stops asking, and closing withdraws nothing.
     const asked = calls.state.mock.calls.length
     await tick(POLL_MS * 3)
     expect(calls.state.mock.calls.length).toBe(asked)
-    await click(button(shown, 'account.app.close'))
+    await click(button(shown, 'me.app.close'))
     expect(calls.withdraw).not.toHaveBeenCalled()
   })
 
   it('withdraws a pairing closed before the app came, and one left open when the page goes', async () => {
     const shown = await show()
-    await click(button(shown, 'account.app.connect'))
-    await click(button(shown, 'account.app.cancel'))
+    await click(button(shown, 'me.app.connect'))
+    await click(button(shown, 'me.app.cancel'))
     expect(calls.withdraw).toHaveBeenCalledWith('p1')
     expect(shown.querySelector('[data-testid="app-pairing"]')).toBeNull()
     calls.withdraw.mockClear()
-    await click(button(shown, 'account.app.connect'))
+    await click(button(shown, 'me.app.connect'))
     act(() => root?.unmount())
     root = null
     expect(calls.withdraw).toHaveBeenCalledWith('p1')
@@ -140,12 +140,12 @@ describe('the iPhone app on the account page', () => {
 
   it('offers a new code when the old one ran out', async () => {
     const shown = await show()
-    await click(button(shown, 'account.app.connect'))
+    await click(button(shown, 'me.app.connect'))
     calls.state.mockResolvedValue({ state: 'expired', device: '' })
     await tick(POLL_MS)
-    expect(shown.textContent).toContain('account.app.expired')
+    expect(shown.textContent).toContain('me.app.expired')
     calls.pair.mockResolvedValue({ ...PAIRING, id: 'p2', code: 'JKLM-NPQR' })
-    await click(button(shown, 'account.app.again'))
+    await click(button(shown, 'me.app.again'))
     expect(calls.withdraw).toHaveBeenCalledWith('p1')
     expect(shown.querySelector('[data-testid="app-pairing-code"]')?.textContent).toBe('JKLM-NPQR')
   })
@@ -153,7 +153,7 @@ describe('the iPhone app on the account page', () => {
   it('says why there is no pairing', async () => {
     calls.pair.mockRejectedValue(new ApiError(422, 'app_address_missing'))
     const shown = await show()
-    await click(button(shown, 'account.app.connect'))
+    await click(button(shown, 'me.app.connect'))
     expect(shown.querySelector('[role="alert"]')?.textContent).toBe('error:app_address_missing')
     expect(shown.querySelector('[data-testid="app-pairing"]')).toBeNull()
   })
