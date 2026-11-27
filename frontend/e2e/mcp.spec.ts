@@ -45,7 +45,8 @@ test('a key made on the account page proposes a draft that the note takes over',
   await keyDialog.getByTestId('key-name').fill('Agent')
   await keyDialog.getByTestId('key-right').getByRole('radio', { name: /Drafts/ }).check()
   await keyDialog.getByTestId('key-submit').click()
-  const shown = tools.getByTestId('key-made')
+  // Since schluessel 1.2.0 (B23) the new key shows in the window that made it.
+  const shown = keyDialog.getByTestId('key-made')
   await expect(shown).toContainText('It is shown this once only')
   const token = (await shown.getByTestId('key-secret').locator('input').inputValue()).trim()
   expect(token).toMatch(/^nxl_/)
@@ -60,7 +61,7 @@ test('a key made on the account page proposes a draft that the note takes over',
   await expect(tools.getByTestId('mcp-recipe-command').locator('input')).toHaveValue(
     `claude mcp add --transport http nexlore ${address} --header "Authorization: Bearer YOUR-KEY"`,
   )
-  await expect(tools.getByTestId('key-made')).toHaveCount(0)
+  await expect(keyDialog).toHaveCount(0)
   await expect(page.getByText(token)).toHaveCount(0)
 
   // A program: no cookie, no Origin, the key in Authorization.
@@ -116,7 +117,7 @@ test('a key made for one space sees no other', async ({ page, playwright, baseUR
   await expect(make).toBeDisabled()
   await dialog.getByRole('checkbox', { name: 'Zoo', exact: true }).check()
   await make.click()
-  const shown = tools.getByTestId('key-made')
+  const shown = dialog.getByTestId('key-made')
   const token = (await shown.getByTestId('key-secret').locator('input').inputValue()).trim()
   await shown.getByTestId('key-done').click()
   await expect(tools.getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'Zoo only' })).toContainText(/Read.*Zoo/)

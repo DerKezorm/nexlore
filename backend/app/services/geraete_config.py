@@ -28,10 +28,11 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from ..db import SessionLocal
-from ..models import OPERATOR, Account, AppCode, AppDevice, AppPairing
+from ..models import OPERATOR, Account, AppCode, AppDevice, AppGoneSibling, AppPairing
 from ..security import account_out
 from ..vendor import nexgeraete
 from ..vendor.nexgeraete import (
+    VIA_ICLOUD,
     ConnectCode,
     Device,
     DeviceChange,
@@ -179,9 +180,26 @@ class GeraeteStore:
         return _device(row)
 
     def remove_device(self, device_id: Any) -> None:
-        """Its bases and the answers of its operations go with it (``ON DELETE CASCADE``)."""
+        """Its bases and the answers of its operations go with it (``ON DELETE CASCADE``). A device that came in over
+        iCloud leaves when it was made in ``app_gone_siblings`` (geraete 0.1.5, G33), for the limit of the hour."""
+        row = self._row(device_id)
+        if row is not None and row.via == VIA_ICLOUD and row.created_at is not None:
+            hour_ago = clock() - timedelta(hours=1)
+            self.db.execute(delete(AppGoneSibling).where(AppGoneSibling.created_at < hour_ago))
+            self.db.add(AppGoneSibling(account_id=row.account_id, created_at=row.created_at))
         self.db.execute(delete(AppDevice).where(AppDevice.id == int(device_id)))
         self.db.flush()
+
+    def sibling_times(self, account_id: Any, since: datetime) -> list[datetime]:
+        """geraete 0.1.5 (G33 anew): when each device of the account that came in over iCloud at or after ``since``
+        was made, the disconnected ones included."""
+        if not str(account_id).isdigit():
+            return []
+        living = self.db.scalars(select(AppDevice.created_at).where(
+            AppDevice.account_id == int(account_id), AppDevice.via == VIA_ICLOUD, AppDevice.created_at >= since))
+        gone = self.db.scalars(select(AppGoneSibling.created_at).where(
+            AppGoneSibling.account_id == int(account_id), AppGoneSibling.created_at >= since))
+        return [*living, *gone]
 
     def touch(self, device_id: Any, when: datetime) -> None:
         self.db.execute(update(AppDevice).where(AppDevice.id == int(device_id)).values(last_seen_at=when))

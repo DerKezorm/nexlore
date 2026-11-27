@@ -379,7 +379,7 @@ test('40: keys of an account that must still set up a second factor carry the hi
   await tokens.getByTestId('api-keys-new').click()
   await page.getByTestId('key-dialog').getByTestId('key-name').fill('hint-check')
   await page.getByTestId('key-dialog').getByTestId('key-submit').click()
-  await tokens.getByTestId('key-done').click()
+  await page.getByTestId('key-dialog').getByTestId('key-done').click()
   const row = tokens.getByTestId('key-row').filter({ visible: true }).filter({ hasText: 'hint-check' })
   await expect(row.getByTestId('key-wait')).toBeVisible()
   await shot(page, 'keys-hint')

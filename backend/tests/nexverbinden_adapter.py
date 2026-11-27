@@ -128,6 +128,36 @@ class Adapter(StandardAdapter):
             db.commit()
         self._session.expire_all()
 
+    def lock(self, role: str, locked: bool = True) -> None:
+        """verbinden 0.2.1 (E41): locked after failed sign-ins as ``accounts.note_failure`` locks it."""
+        from datetime import timedelta
+
+        from app.db import SessionLocal
+        from app.models import Account, utcnow
+
+        with SessionLocal() as db:
+            row = db.get(Account, self.ids[role])
+            assert row is not None
+            row.locked_until = utcnow() + timedelta(minutes=15) if locked else None
+            db.commit()
+        self._session.expire_all()
+
+    def require_second_factor(self, role: str, required: bool = True) -> None:
+        """verbinden 0.2.1 (E41): the operator asks a second factor of everybody; the others have an authenticator,
+        ``role`` has none (as ``nexgeraete_adapter.owe_factor``)."""
+        from app.db import SessionLocal
+        from app.models import Account
+        from app.services import konten_store, settings_service, totp
+
+        with SessionLocal() as db:
+            for name, number in self.ids.items():
+                row = db.get(Account, number)
+                assert row is not None
+                row.totp_secret_enc = "" if name == role else totp.seal_seed("JBSWY3DPEHPK3PXP")
+            db.commit()
+            settings_service.save(db, {konten_store.SWITCH_FACTOR_REQUIRED: required})
+        self._session.expire_all()
+
     def probe(self, purpose: str) -> str | tuple[str, str, Any] | None:
         # "notes.add" makes a note in a space given (``POST /api/v1/notes``, as nexnotes sends it).
         return ("POST", "/api/v1/notes", {"folder": SPACES["owner"][0], "title": "From nexnotes", "content": "Hello"})

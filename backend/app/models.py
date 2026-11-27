@@ -1149,6 +1149,17 @@ class AppDevice(Base):
     push_kinds: Mapped[Any] = mapped_column(JSON, nullable=True)
 
 
+class AppGoneSibling(Base):
+    """When a disconnected device that came in over iCloud was made (module geraete 0.1.5, G33 anew): disconnecting
+    and asking anew must not get around the limit of new siblings per hour. Rows older than an hour may go."""
+
+    __tablename__ = "app_gone_siblings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime)
+
+
 class AppPairing(Base):
     """A pairing waiting in the browser: the secret of the QR code and the short code, both as SHA-256. Lives ten
     minutes and pairs one device."""
