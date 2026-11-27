@@ -211,7 +211,8 @@ test('the own account is in areas of the settings, and a profile picture goes up
   // The old anchors lead to their area.
   await page.goto('/account#mcp')
   await expect(page).toHaveURL(/\/settings\/connections#mcp$/)
-  await expect(nav.getByRole('link', { name: 'Connections' })).toHaveAttribute('aria-current', 'page')
+  // Two entries are called Connections since E67 (My account and Server); this is the account's.
+  await expect(nav.getByTestId('settings-nav-connections')).toHaveAttribute('aria-current', 'page')
 })
 
 test('a reader sees what changed since the last visit, proposes a change, and the writer takes it over', async ({ page, browser }) => {

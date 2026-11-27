@@ -89,7 +89,7 @@ describe('the card of nexnotes in nexlore (verbinden 0.1.8)', () => {
     await show()
     expect(asked).toContain('/api/connect/partners')
     expect(byTest('connection-not-set-up')).not.toBeNull()
-    expect(byTest('connection-set-up')?.getAttribute('href')).toBe('/settings/general#nex-apps')
+    expect(byTest('connection-set-up')?.getAttribute('href')).toBe('/settings/server-connections#nex-apps')
   })
 
   it('tells a member who sets it up, without the way there', async () => {

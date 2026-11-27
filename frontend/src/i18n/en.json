@@ -1645,7 +1645,7 @@
       "write": "Changes notes directly: every change a version, a conflict copy when the note changed in the meantime."
     },
     "off": "The operator has not switched on AI from outside, so there are no keys to make here.",
-    "offOperator": "Switch it on under Server › General › Interfaces.",
+    "offOperator": "Switch it on under Server › Connections › Interfaces.",
     "nextStep": "Next: give your AI program the address and the key. Programs that read an mcp.json (Cursor, for example, or a project’s .mcp.json) take the JSON below; Claude Code takes the command. Others ask for the same two things in their own settings. The key works until you revoke it.",
     "recipeJson": "JSON in the mcp.json format",
     "copyNamed": "Copy: {{what}}",

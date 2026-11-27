@@ -683,13 +683,13 @@
       },
       {
         "title": "Setting up other nex apps",
-        "where": "Server › General › Other nex apps",
+        "where": "Server › Connections › Other nex apps",
         "body": "For the operator: enter the address of nexnotes here once, and every account connects with one click. If nexnotes runs in your local network (LAN, VPN), also allow \"Connections into the local network\". The switch \"Connections with other nex apps\" lets every connection rest; nothing is deleted. When something goes wrong while connecting, you come back to your card and read there what happened. API keys for programs such as n8n keep working as before."
       },
       {
         "title": "Settings like in every nex app",
         "where": "The gear at the bottom of the sidebar",
-        "body": "The settings are sorted into areas with an address of their own. Under My account: Profile, Security, Appearance, Notes, Spaces, Plugins, AI, Notifications and Connections. For the operator under Server: General, Sign-in, Mail, Storage and backups, AI provider, Plugins, Public pages, Accounts and Log. And About nexlore. The cards look as in the other nex apps, on a phone the list of the areas comes first, and saved links lead to the new place. Light or dark now belongs to your account and follows you to every device; \"Like the system\" follows each device."
+        "body": "The settings are sorted into areas with an address of their own. Under My account: Profile, Security, Appearance, Notes, Spaces, Plugins, AI, Notifications and Connections. For the operator under Server: General, Connections, Sign-in, Mail, Storage and backups, AI provider, Plugins, Public pages, Accounts and Log; Server › Connections holds \"Other nex apps\" and \"Interfaces\". And About nexlore. The cards look as in the other nex apps, on a phone the list of the areas comes first, and saved links lead to the new place. Light or dark now belongs to your account and follows you to every device; \"Like the system\" follows each device."
       },
       {
         "title": "Sidebars like in nexnotes",

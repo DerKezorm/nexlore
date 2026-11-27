@@ -11,7 +11,7 @@ nexlore's own iPhone app has a way in of its own as well, `/api/app/1`, describe
 
 ## Switching it on
 
-The API is off until the operator opens it: Settings › Server › General › Interfaces, "Programming interface
+The API is off until the operator opens it: Settings › Server › Connections › Interfaces, "Programming interface
 (API) for members". While it is off, no account can make an API key (the account page says so). Under Settings ›
 Server › Accounts › API keys of all accounts, the operator sees every key (whose it is, its level, when it was
 last used, never the key itself) and may lock and unlock one. Switched off again, every key answers `401 api_off`;

@@ -209,15 +209,21 @@ function ServerArea({ area }: { area: Exclude<AreaSlug, 'profile' | 'security' |
         <>
           <FilesSettingsCard />
           {settings && <FeaturesCard settings={settings} onChange={setSettings} />}
-          <InterfacesCard request={request} docsHref={docs} language={i18n.language} after={{ mcp: <McpOperatorSettings request={mcpRequest} words={mcpWords} language={i18n.language} /> }} />
-          {/* "Andere nex-Apps" of the shared module verbinden: after the interfaces, before the languages (V22). */}
-          <AppsOperator />
           {/* Server › General › Languages from the shared module sprachen 1.0.0: the template from the page's English
               texts, a change makes the menus ask the server again. */}
           <LanguagesCard app="nexlore" base="/api/locales" template={en} fetcher={languagesFetch} onChange={resetAddedLanguages} language={i18n.language} />
           {settings && <LinkTitleSwitch settings={settings} onChange={setSettings} />}
           {settings && <CssCard settings={settings} onChange={setSettings} />}
           <GuideCard />
+        </>
+      )
+    case 'server-connections':
+      // E67: the operator's mirror of My account › Connections: "Andere nex-Apps" (module verbinden), then
+      // "Schnittstellen" (module schluessel) with the MCP settings, as they stood under General before.
+      return (
+        <>
+          <AppsOperator />
+          <InterfacesCard request={request} docsHref={docs} language={i18n.language} after={{ mcp: <McpOperatorSettings request={mcpRequest} words={mcpWords} language={i18n.language} /> }} />
         </>
       )
     case 'sign-in':

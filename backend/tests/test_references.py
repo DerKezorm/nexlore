@@ -1,6 +1,6 @@
 """Plan E39 and E46: what nexlore says about its own settings points at the places and words of today, written as
 the plan writes a place: group › area › card, never with arrows or commas between the parts. The area "KI, API und
-Plugins" is gone (AI provider, General › Interfaces, Plugins), API tokens are API keys, "Sicherung" is "Speicher und
+Plugins" is gone (AI provider, Connections › Interfaces, Plugins), API tokens are API keys, "Sicherung" is "Speicher und
 Sicherung", "Mailserver" is "Mail", "Plugins für mich" is the area "Plugins". Read: the words of the interface, the
 guide, the places ("where") of every "What's new", README and the docs. The bodies of older "What's new" entries tell
 what happened then and stay as they were."""
@@ -52,7 +52,7 @@ def test_the_texts_are_all_there() -> None:
     assert all(texts.values())
 
 
-#: Plan E46: a place is "Mein Konto › Verbindungen › API-Schlüssel", "Server › Allgemein › Schnittstellen".
+#: Plan E46: a place is "Mein Konto › Verbindungen › API-Schlüssel", "Server › Verbindungen › Schnittstellen".
 SEPARATORS = (
     re.compile(r"\S → \S"),
     re.compile(r"(Einstellungen|Settings|Mein Konto|My account|Kontomenü|Account menu|Server), (Server|Mein Konto|My account|"
@@ -72,8 +72,8 @@ def test_the_places_begin_with_their_group() -> None:
     texts = _texts()
     words = "\n".join(texts["i18n/de.json"] + texts["i18n/en.json"])
     # KI under Mein Konto since the shared module ki 0.1.0 (E61).
-    for place in ("Mein Konto › KI", "Server › Allgemein › Schnittstellen", "Server › KI-Anbieter",
-                  "My account › AI", "Server › General › Interfaces", "Server › AI provider"):
+    for place in ("Mein Konto › KI", "Server › Verbindungen › Schnittstellen", "Server › KI-Anbieter",
+                  "My account › AI", "Server › Connections › Interfaces", "Server › AI provider"):
         assert place in words, place
     assert "Einstellungen › " not in words and "Settings › " not in words
 
@@ -105,9 +105,9 @@ def test_the_guide_points_to_the_places_of_1_17() -> None:
         for words in old:
             assert words not in guide, (language, words)
     new = {
-        "guide/de/15 Dein Konto und andere Apps.md": ("Einstellungen › Server › Allgemein › Andere nex-Apps", "Zugriff beenden",
+        "guide/de/15 Dein Konto und andere Apps.md": ("Einstellungen › Server › Verbindungen › Andere nex-Apps", "Zugriff beenden",
                                                      "Passwort vergessen?", "Passkey hinzufügen", "Einstellungen › Server › Konten"),
-        "guide/en/15 Your account and other apps.md": ("Settings › Server › General › Other nex apps", "End access",
+        "guide/en/15 Your account and other apps.md": ("Settings › Server › Connections › Other nex apps", "End access",
                                                       "Forgot your password?", "Add a passkey", "Settings › Server › Accounts"),
         "guide/de/11 KI.md": ("Wartende Rückfragen",),
         "guide/en/11 AI.md": ("Waiting requests",),

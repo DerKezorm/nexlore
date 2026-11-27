@@ -180,7 +180,7 @@ test('a connector signs in on the consent page and gets a key of its own', async
 test('the operator blocks a tool for everybody', async ({ page }) => {
   await openMcp(page)
   // Under the switch "MCP-Zugang" of the card "Schnittstellen" (Server › General), the parts of the shared module.
-  await page.goto('/settings/general')
+  await page.goto('/settings/server-connections')
   const blocked = page.getByTestId('mcp-operator-blocked')
   await blocked.getByText('Blocked tools').click()
   await expect(blocked.getByTestId('mcp-operator-block-delete_space').locator('input')).toBeChecked()

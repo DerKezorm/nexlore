@@ -101,7 +101,7 @@ from one space into another that only resolve for people who may read both.*
   some); then "To nexlore" in the menu of a note in nexnotes puts it into one of them, with its title and text.
   nexnotes may only add notes there: it sees your account and the names of those spaces, never what your notes say.
   "End access" ends the connection on both sides. The operator enters the address of nexnotes once under
-  Server › General › Other nex apps (and allows "Connections into the local network" when it runs at home).
+  Server › Connections › Other nex apps (and allows "Connections into the local network" when it runs at home).
 - **Public pages**: share a note or a folder as a reading page, with an expiry and a password if you like. Off until
   the operator opens it.
 - **Versions and trash**: every save is a version (bundled per session, thinned out over time), deleted files wait
@@ -212,7 +212,7 @@ nexlore is made to be reachable from outside, for yourself on the road or for a 
 Whatever is in nexlore leaves only where you open a way: the webhooks and mail of each account, the AI service an
 account or the operator enters (public addresses, or hosts in your own network you list), the daily update check
 against GitHub (asked once at setup, switched on the About page), connectors you sign in, and the other nex apps the
-operator enters under Server › General › Other nex apps (an address in your own network only after "Connections into
+operator enters under Server › Connections › Other nex apps (an address in your own network only after "Connections into
 the local network").
 
 ## Your notes in a folder of their own

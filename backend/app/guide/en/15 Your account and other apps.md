@@ -31,7 +31,7 @@ If you start in nexnotes, nexlore asks you for the same spaces on the page where
 
 The card shows which account in nexnotes you are connected with, since when, when nexnotes last brought something and which spaces it uses. **End access** ends the connection on both sides; what is in nexlore already stays.
 
-If the card says nexnotes is not set up on this server, it is the operator's turn: the operator enters the address of nexnotes once under **Settings › Server › General › Other nex apps**, and from then on every account connects with one click. If nexnotes runs in the local network (LAN, VPN), the operator also allows **Connections into the local network** there. The switch **Connections with other nex apps** lets every connection rest; nothing is deleted. API keys for programs such as n8n keep working as before, see [[11 AI]].
+If the card says nexnotes is not set up on this server, it is the operator's turn: the operator enters the address of nexnotes once under **Settings › Server › Connections › Other nex apps**, and from then on every account connects with one click. If nexnotes runs in the local network (LAN, VPN), the operator also allows **Connections into the local network** there. The switch **Connections with other nex apps** lets every connection rest; nothing is deleted. API keys for programs such as n8n keep working as before, see [[11 AI]].
 
 ## For the operator: accounts
 

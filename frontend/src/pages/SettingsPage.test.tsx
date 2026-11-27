@@ -10,8 +10,13 @@ import { createRoot, type Root } from 'react-dom/client'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+// The props each stand-in got last, by its name (E67: the moved cards keep theirs).
+const seen = vi.hoisted(() => ({}) as Record<string, Record<string, unknown>>)
 const stubs = vi.hoisted(() => (...names: string[]) =>
-  Object.fromEntries(names.map((name) => [name, () => ({ $$typeof: Symbol.for('react.transitional.element'), type: 'section', key: null, props: { 'data-card': name }, _owner: null, _store: {} })])),
+  Object.fromEntries(names.map((name) => [name, (props: Record<string, unknown>) => {
+    seen[name] = props
+    return { $$typeof: Symbol.for('react.transitional.element'), type: 'section', key: null, props: { 'data-card': name }, _owner: null, _store: {} }
+  }])),
 )
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }) }))
@@ -130,7 +135,7 @@ describe('the navigation', () => {
     // General, Sign-in, Mail, Storage, nexlore's own (AI provider, Plugins, Public pages), Accounts, Log.
     expect(entries()).toEqual([
       '/settings/profile', '/settings/security', '/settings/appearance', '/settings/notes', '/settings/spaces', '/settings/plugins',
-      '/settings/ai', '/settings/notifications', '/settings/connections', '/settings/general', '/settings/sign-in', '/settings/mail', '/settings/storage',
+      '/settings/ai', '/settings/notifications', '/settings/connections', '/settings/general', '/settings/server-connections', '/settings/sign-in', '/settings/mail', '/settings/storage',
       '/settings/ai-provider', '/settings/server-plugins', '/settings/shares', '/settings/accounts', '/settings/log', '/settings/about',
     ])
     expect(current()).toBe('/settings/profile')
@@ -190,8 +195,9 @@ describe('nothing got lost', () => {
       ai: ['AiAccountArea'],
       notifications: ['NotifySettings'],
       connections: ['AppDevices', 'InstallCard', 'AppsArea', 'CalendarFeed', 'ApiKeysCard', 'ToolsCard'],
-      // V22: "Andere nex-Apps" after the interfaces, before the languages.
-      general: ['FilesSettingsCard', 'FeaturesCard', 'InterfacesCard', 'AppsOperator', 'LanguagesCard', 'LinkTitleSwitch', 'CssCard', 'GuideCard'],
+      general: ['FilesSettingsCard', 'FeaturesCard', 'LanguagesCard', 'LinkTitleSwitch', 'CssCard', 'GuideCard'],
+      // E67: "Andere nex-Apps", then "Schnittstellen", under Server › Connections.
+      'server-connections': ['AppsOperator', 'InterfacesCard'],
       'sign-in': ['SignInPage'],
       mail: ['MailCard'],
       storage: ['StorageArea'],
@@ -240,11 +246,18 @@ describe('the addresses of before', () => {
     ['/settings?tab=server&sub=shares', '/settings/shares'],
     ['/settings?tab=server&sub=extensions', '/settings/ai-provider'],
     ['/settings?tab=server&sub=extensions#ai', '/settings/ai-provider#ai'],
-    ['/settings?tab=server&sub=extensions#mcp', '/settings/general#mcp'],
+    ['/settings?tab=server&sub=extensions#mcp', '/settings/server-connections#mcp'],
     ['/settings?tab=server&sub=extensions#plugins', '/settings/server-plugins#plugins'],
     ['/settings/extensions', '/settings/ai-provider'],
-    ['/settings/extensions#api-tokens', '/settings/general#api-tokens'],
-    ['/settings/extensions#app-pairing', '/settings/general#app-pairing'],
+    ['/settings/extensions#api-tokens', '/settings/server-connections#api-tokens'],
+    ['/settings/extensions#app-pairing', '/settings/server-connections#app-pairing'],
+    // E67: the cards that left General, by the address of before (the cards' "Einrichten", saved links).
+    ['/settings/general#nex-apps', '/settings/server-connections#nex-apps'],
+    ['/settings/general#interfaces', '/settings/server-connections#interfaces'],
+    ['/settings/general#mcp', '/settings/server-connections#mcp'],
+    ['/settings/general#api-tokens', '/settings/server-connections#api-tokens'],
+    ['/settings/general#app-pairing', '/settings/server-connections#app-pairing'],
+    ['/settings/general#languages', '/settings/general#languages'],
     ['/settings/extensions#calendar', '/settings/general#calendar'],
     ['/settings?tab=server&sub=files', '/settings/general'],
     ['/settings?tab=server&sub=backups', '/settings/storage'],
@@ -270,14 +283,51 @@ describe('the addresses of before', () => {
   })
 })
 
+describe('Server › Connections (E67)', () => {
+  it('holds "Andere nex-Apps", then "Schnittstellen" with the MCP settings, titled by the kit; General no longer has them', async () => {
+    await show('/settings/general#nex-apps')
+    expect(where()).toBe('/settings/server-connections#nex-apps')
+    expect(current()).toBe('/settings/server-connections')
+    expect(box.querySelector('h1')?.textContent).toBe(areaText(NEXUI_TEXTS.en, 'server-connections', { app: 'nexlore' })!.title)
+    expect(box.querySelector('[data-testid="settings-area-server-connections"] p')!.textContent).toBe(
+      areaText(NEXUI_TEXTS.en, 'server-connections', { app: 'nexlore' })!.text,
+    )
+    expect(cards()).toEqual(['AppsOperator', 'InterfacesCard'])
+    // The interfaces keep everything they had: the documentation and the operator's MCP settings after "MCP-Zugang".
+    const interfaces = seen.InterfacesCard as { docsHref?: string; after?: { mcp?: unknown } }
+    expect(interfaces.docsHref).toBeTruthy()
+    expect(interfaces.after?.mcp).toBeTruthy()
+    await hide()
+    await show('/settings/general#interfaces')
+    expect(where()).toBe('/settings/server-connections#interfaces')
+    await hide()
+    await show('/settings/general')
+    expect(cards()).not.toContain('AppsOperator')
+    expect(cards()).not.toContain('InterfacesCard')
+    await hide()
+  })
+
+  it('stays closed to a member, who lands on the profile', async () => {
+    asked.role = 'member'
+    await show('/settings/general#nex-apps')
+    expect(where()).toBe('/settings/profile')
+    await hide()
+    await show('/settings/server-connections')
+    expect(where()).toBe('/settings/profile')
+    await hide()
+  })
+})
+
 describe('Server › General names its cards', () => {
   it('in the line under the title only the shared cards nexlore has there, in their order (ui 1.1.3, U-3)', async () => {
     await show('/settings/general')
     const line = box.querySelector('[data-testid="settings-area-general"] p')!.textContent
     expect(line).toBe(areaText(NEXUI_TEXTS.en, 'general', { app: 'nexlore', parts: GENERAL_PARTS })!.text)
-    expect(line).not.toBe(areaText(NEXUI_TEXTS.en, 'general', { app: 'nexlore' })!.text)
+    // Since E67 the parts are the kit's plain line; the interfaces and the other nex apps are not named any more.
+    expect(line).toBe(areaText(NEXUI_TEXTS.en, 'general', { app: 'nexlore' })!.text)
+    expect(line).not.toMatch(/interfaces|nex apps/i)
     // The parts are the cards on the page, in the same order.
-    const part: Record<string, string> = { FilesSettingsCard: 'limits', FeaturesCard: 'features', InterfacesCard: 'interfaces', AppsOperator: 'nexApps', LanguagesCard: 'languages' }
+    const part: Record<string, string> = { FilesSettingsCard: 'limits', FeaturesCard: 'features', LanguagesCard: 'languages' }
     expect(cards().flatMap((card) => (card && part[card] ? [part[card]] : []))).toEqual([...GENERAL_PARTS])
     await hide()
   })

@@ -15,7 +15,7 @@ test('a token made on the account page works for a program until the operator bl
   try {
     // The operator's switch, on the card "Schnittstellen" under Server › General (the shared key module).
     await page.goto('/settings?tab=server&sub=extensions#api-tokens')
-    await expect(page).toHaveURL(/\/settings\/general#api-tokens$/)
+    await expect(page).toHaveURL(/\/settings\/server-connections#api-tokens$/)
     const saved = page.waitForResponse((answer) => answer.url().endsWith('/api/connections/interfaces') && answer.request().method() === 'PUT')
     // The tick follows the server's answer (the card of the module saves at once).
     await page.getByTestId('interfaces-api').click()
@@ -83,5 +83,5 @@ test('without the operator the card says so and points the operator to the switc
   await page.request.put('/api/settings', { data: { api_tokens_allowed: false }, headers: TAB })
   await page.goto('/settings/connections')
   await expect(page.getByTestId('api-keys-off')).toContainText('The operator has switched the programming interface off.')
-  await expect(page.getByTestId('api-keys-off')).toContainText('Switch it on under Server › General › Interfaces.')
+  await expect(page.getByTestId('api-keys-off')).toContainText('Switch it on under Server › Connections › Interfaces.')
 })

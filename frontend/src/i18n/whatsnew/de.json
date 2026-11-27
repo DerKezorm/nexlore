@@ -683,13 +683,13 @@
       },
       {
         "title": "Andere nex-Apps einrichten",
-        "where": "Server › Allgemein › Andere nex-Apps",
+        "where": "Server › Verbindungen › Andere nex-Apps",
         "body": "Für den Betreiber: Trag die Adresse von nexnotes hier einmal ein, danach verbindet jedes Konto mit einem Klick. Läuft nexnotes im eigenen Netz (LAN, VPN), erlaube dazu „Verbindungen ins eigene Netz“. Der Schalter „Verbindungen mit anderen nex-Apps“ lässt alle Verbindungen ruhen, gelöscht wird nichts. Geht beim Verbinden etwas schief, kommt man in seine Karte zurück und liest dort, woran es liegt. API-Schlüssel für Programme wie n8n gelten weiter wie bisher."
       },
       {
         "title": "Einstellungen wie in jeder nex-App",
         "where": "Zahnrad unten in der Seitenleiste",
-        "body": "Die Einstellungen sind in Bereiche mit eigener Adresse geordnet. Unter Mein Konto: Profil, Sicherheit, Darstellung, Notizen, Bereiche, Plugins, KI, Benachrichtigungen und Verbindungen. Für den Betreiber unter Server: Allgemein, Anmeldung, Mail, Speicher und Sicherung, KI-Anbieter, Plugins, Öffentliche Seiten, Konten und Log. Dazu Über nexlore. Die Karten sehen aus wie in den anderen nex-Apps, auf dem Handy kommt zuerst die Liste der Bereiche, und gespeicherte Links führen an den neuen Ort. Hell oder dunkel gehört jetzt zu deinem Konto und gilt auf jedem Gerät; „Wie das System“ folgt dem jeweiligen Gerät."
+        "body": "Die Einstellungen sind in Bereiche mit eigener Adresse geordnet. Unter Mein Konto: Profil, Sicherheit, Darstellung, Notizen, Bereiche, Plugins, KI, Benachrichtigungen und Verbindungen. Für den Betreiber unter Server: Allgemein, Verbindungen, Anmeldung, Mail, Speicher und Sicherung, KI-Anbieter, Plugins, Öffentliche Seiten, Konten und Log; Server › Verbindungen hält „Andere nex-Apps“ und „Schnittstellen“. Dazu Über nexlore. Die Karten sehen aus wie in den anderen nex-Apps, auf dem Handy kommt zuerst die Liste der Bereiche, und gespeicherte Links führen an den neuen Ort. Hell oder dunkel gehört jetzt zu deinem Konto und gilt auf jedem Gerät; „Wie das System“ folgt dem jeweiligen Gerät."
       },
       {
         "title": "Seitenleisten wie in nexnotes",

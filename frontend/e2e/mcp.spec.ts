@@ -148,7 +148,7 @@ test('the operator switches MCP off again, and both pages say where it goes on',
   const tools = page.locator('[data-card="ai-tools"]')
   await expect(tools.getByTestId('tools-off')).toContainText('The operator has switched MCP access off.')
   await page.goto('/settings/extensions#mcp')
-  await expect(page).toHaveURL(/\/settings\/general#mcp$/)
+  await expect(page).toHaveURL(/\/settings\/server-connections#mcp$/)
   await expect(page.getByTestId('interfaces-mcp')).not.toBeChecked()
   await expect(page.getByTestId('mcp-settings')).toBeVisible()
 })

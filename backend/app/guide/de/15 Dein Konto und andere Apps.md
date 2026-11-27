@@ -31,7 +31,7 @@ Fängst du in nexnotes an, fragt dich nexlore auf der Seite, auf der du zustimms
 
 Die Karte zeigt, mit welchem Konto in nexnotes du verbunden bist, seit wann, wann nexnotes zuletzt etwas gebracht hat und welche Bereiche es nutzt. **Zugriff beenden** trennt die Verbindung auf beiden Seiten; was schon in nexlore liegt, bleibt.
 
-Sagt die Karte, dass nexnotes auf diesem Server nicht eingerichtet ist, ist der Betreiber dran: Er trägt die Adresse von nexnotes einmal unter **Einstellungen › Server › Allgemein › Andere nex-Apps** ein, danach verbindet jedes Konto mit einem Klick. Läuft nexnotes im eigenen Netz (LAN, VPN), erlaubt er dort auch **Verbindungen ins eigene Netz**. Der Schalter **Verbindungen mit anderen nex-Apps** lässt alle Verbindungen ruhen; gelöscht wird dabei nichts. API-Schlüssel für Programme wie n8n gelten davon unberührt weiter, siehe [[11 KI]].
+Sagt die Karte, dass nexnotes auf diesem Server nicht eingerichtet ist, ist der Betreiber dran: Er trägt die Adresse von nexnotes einmal unter **Einstellungen › Server › Verbindungen › Andere nex-Apps** ein, danach verbindet jedes Konto mit einem Klick. Läuft nexnotes im eigenen Netz (LAN, VPN), erlaubt er dort auch **Verbindungen ins eigene Netz**. Der Schalter **Verbindungen mit anderen nex-Apps** lässt alle Verbindungen ruhen; gelöscht wird dabei nichts. API-Schlüssel für Programme wie n8n gelten davon unberührt weiter, siehe [[11 KI]].
 
 ## Für den Betreiber: Konten
 

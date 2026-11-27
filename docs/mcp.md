@@ -7,7 +7,7 @@ operator, not even with the operator's own key: members and public pages need th
 
 ## Switching it on
 
-MCP is off until the operator opens it: Settings › Server › General › Interfaces, "MCP access". There the
+MCP is off until the operator opens it: Settings › Server › Connections › Interfaces, "MCP access". There the
 operator also sets the highest level a key may have (lowering it later applies to keys made before), whether
 connectors may sign in, and which tools are blocked for everybody.
 

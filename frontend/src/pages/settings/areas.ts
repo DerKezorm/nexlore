@@ -1,13 +1,15 @@
 /**
  * The areas of the settings, each with its own address (`/settings/<slug>`, plan "Einstellungen"): "Mein Konto" for
  * every account (Profile, Security, Appearance, nexlore's own Notes, Spaces and Plugins, Notifications, Connections),
- * "Server" for the operator only (General, Sign-in, Mail, Storage and backups, nexlore's own AI provider, Plugins and
- * Public pages, Accounts, Log), and "Über nexlore" (`/settings/about`) for everyone, set apart at the end. Titles and
+ * "Server" for the operator only (General, Connections, Sign-in, Mail, Storage and backups, nexlore's own AI provider,
+ * Plugins and Public pages, Accounts, Log), and "Über nexlore" (`/settings/about`) for everyone, set apart at the end. Titles and
  * lines of the shared areas come from the ui kit (`areaText`), nexlore's own keep theirs.
  *
  * `/settings` alone is the list on a phone and the profile beside it on a wider page. The addresses of before lead to
  * the area that holds their cards now: `/account?tab=…` with its anchors, `/settings?tab=…&sub=…`, `/about`, and the
- * area "AI, API and plugins" (`/settings/extensions`), which went to AI provider, General › Interfaces and Plugins.
+ * area "AI, API and plugins" (`/settings/extensions`), which went to AI provider, Connections › Interfaces and Plugins.
+ * Server › Connections (`server-connections`, plan E67, ui 1.2.1) holds "Andere nex-Apps" and "Schnittstellen", which
+ * stood under General before: `/settings/general` with their anchors leads there.
  * The server sends some of them in notifications, and saved links keep working.
  */
 import { BookOpen, FolderTree, Globe, Puzzle, Sparkles } from 'lucide-react'
@@ -18,7 +20,7 @@ import type { GeneralPart, IconLike } from '../../vendor/nexui'
 type Role = Account['role']
 
 export type AccountSlug = 'profile' | 'security' | 'appearance' | 'notes' | 'spaces' | 'plugins' | 'ai' | 'notifications' | 'connections'
-export type ServerSlug = 'general' | 'sign-in' | 'mail' | 'storage' | 'ai-provider' | 'server-plugins' | 'shares' | 'accounts' | 'log'
+export type ServerSlug = 'general' | 'server-connections' | 'sign-in' | 'mail' | 'storage' | 'ai-provider' | 'server-plugins' | 'shares' | 'accounts' | 'log'
 export type AreaSlug = AccountSlug | ServerSlug | 'about'
 export type AreaGroup = 'account' | 'server'
 
@@ -39,6 +41,7 @@ export const AREAS: Area[] = [
   { slug: 'notifications', group: 'account', icon: 'Bell', key: 'notifications' },
   { slug: 'connections', group: 'account', icon: 'Plug', key: 'connections' },
   { slug: 'general', group: 'server', icon: 'SlidersHorizontal', key: 'general' },
+  { slug: 'server-connections', group: 'server', icon: 'Plug', key: 'serverConnections' },
   { slug: 'sign-in', group: 'server', icon: 'KeyRound', key: 'signIn' },
   { slug: 'mail', group: 'server', icon: 'Mail', key: 'mail' },
   { slug: 'storage', group: 'server', icon: 'HardDrive', key: 'storage' },
@@ -64,8 +67,9 @@ export function areasFor(role: Role | undefined): Area[] {
 }
 
 /** The shared cards of Server › Allgemein in nexlore, in their order (ui 1.1.3, U-3): the line under the title names only
- * these ("Grenzen", "Funktionen für alle Konten", "Schnittstellen", "Andere nex-Apps", "Sprachen"). */
-export const GENERAL_PARTS: readonly GeneralPart[] = ['limits', 'features', 'interfaces', 'nexApps', 'languages']
+ * these ("Grenzen", "Funktionen für alle Konten", "Sprachen"); "Schnittstellen" and "Andere nex-Apps" stand under
+ * Server › Verbindungen since E67. */
+export const GENERAL_PARTS: readonly GeneralPart[] = ['limits', 'features', 'languages']
 
 export function areaPath(slug: AreaSlug): string {
   return `/settings/${slug}`
@@ -105,15 +109,19 @@ const FORMER_PART: Record<string, AreaSlug> = {
 }
 
 /** Where the cards of the area "AI, API and plugins" (`/settings/extensions`, until the settings pass) went, by the
- * anchor of the card: the AI for everybody under AI provider, the interfaces under General, plugins of their own. */
+ * anchor of the card: the AI for everybody under AI provider, the interfaces under Connections (E67; General before),
+ * plugins of their own. */
 const FORMER_EXTENSIONS: Record<string, AreaSlug> = {
   '#ai': 'ai-provider',
-  '#api-tokens': 'general',
-  '#mcp': 'general',
-  '#app-pairing': 'general',
+  '#api-tokens': 'server-connections',
+  '#mcp': 'server-connections',
+  '#app-pairing': 'server-connections',
   '#calendar': 'general',
   '#plugins': 'server-plugins',
 }
+
+/** E67: the anchors of the cards (and their parts) that left Server › General for Server › Connections. */
+const MOVED_FROM_GENERAL = new Set(['#nex-apps', '#interfaces', '#api-tokens', '#mcp', '#app-pairing'])
 
 /** Keeps the answer of a provider after linking (`?linked=`, `?error=`): it belongs to Security. */
 function providerAnswer(params: URLSearchParams): string {
@@ -153,6 +161,10 @@ export function resolveArea(asked: string | undefined, role: Role | undefined, s
     const former = tab === 'server' && sub ? (sub === 'extensions' && FORMER_EXTENSIONS[hash]) || FORMER_PART[sub] : FORMER_TAB[tab]
     if (former && open(former)) return { redirect: areaPath(former) + hash }
     return { redirect: areaPath('profile') }
+  }
+  // E67: a link to a card that moved (the cards' "Einrichten" of before, saved links) lands at its new place.
+  if (asked === 'general' && MOVED_FROM_GENERAL.has(hash) && open('server-connections')) {
+    return { redirect: areaPath('server-connections') + search + hash }
   }
   if (asked === 'extensions') {
     const former = FORMER_EXTENSIONS[hash] ?? 'ai-provider'

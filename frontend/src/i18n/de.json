@@ -1645,7 +1645,7 @@
       "write": "Ändert Notizen direkt: jede Änderung eine Version, eine Konfliktkopie, wenn sich die Notiz inzwischen geändert hat."
     },
     "off": "Der Betreiber hat KI von außen nicht eingeschaltet, deshalb gibt es hier keine Schlüssel.",
-    "offOperator": "Einschalten unter Server › Allgemein › Schnittstellen.",
+    "offOperator": "Einschalten unter Server › Verbindungen › Schnittstellen.",
     "nextStep": "Als Nächstes: Adresse und Schlüssel in dein KI-Programm eintragen. Programme, die eine mcp.json lesen (etwa Cursor oder die .mcp.json eines Projekts), nehmen das JSON unten; Claude Code nimmt den Befehl. Andere fragen in ihren eigenen Einstellungen nach denselben zwei Dingen. Der Schlüssel gilt, bis du ihn widerrufst.",
     "recipeJson": "JSON im mcp.json-Format",
     "copyNamed": "Kopieren: {{what}}",

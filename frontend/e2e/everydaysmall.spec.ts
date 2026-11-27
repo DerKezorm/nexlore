@@ -341,7 +341,7 @@ test('quick capture has a button, the zettel command is found by its name, the c
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/calendar')
   await page.getByRole('link', { name: 'Subscribe to the calendar' }).click()
-  await expect(page.getByTestId('settings-nav').getByRole('link', { name: 'Connections' })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByTestId('settings-nav').getByTestId('settings-nav-connections')).toHaveAttribute('aria-current', 'page')
   await expect(page.getByTestId('calendar-feed')).toBeVisible()
   await page.getByRole('button', { name: 'Quick capture' }).click()
   await expect(page.getByRole('dialog', { name: 'Quick capture' })).toBeVisible()
