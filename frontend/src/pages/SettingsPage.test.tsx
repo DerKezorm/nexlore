@@ -36,7 +36,11 @@ vi.mock('../components/settings/SnippetsCard', () => stubs('SnippetsCard'))
 vi.mock('../components/settings/SpacesCard', () => stubs('SpacesCard'))
 vi.mock('../components/settings/StartCard', () => stubs('HomeSpaceCard', 'StartCard'))
 vi.mock('../components/settings/ThemesCard', () => stubs('ThemesCard'))
-vi.mock('../components/settings/useServerSettings', () => ({ useServerSettings: () => [{}, () => undefined] }))
+// The server settings: loaded, or (``failed``) not, then the cards that need them give way to a message with a retry.
+const serverSettings = vi.hoisted(() => ({ failed: false, retries: 0 }))
+vi.mock('../components/settings/useServerSettings', () => ({
+  useServerSettings: () => [serverSettings.failed ? null : {}, () => undefined, serverSettings.failed, () => { serverSettings.retries += 1 }],
+}))
 vi.mock('../plugins/PluginSettings', () => stubs('AdminPluginsCard', 'MyPluginsCard'))
 // Since the shared module ki 0.1.0: Mein Konto › KI and Server › KI-Anbieter are the module's areas (E61); nexlore's
 // Lore and meaning stand inside the provider's area.
@@ -117,6 +121,8 @@ const cards = () => [...box.querySelectorAll('[data-testid^="settings-area-"] [d
 
 beforeEach(() => {
   asked.role = 'operator'
+  serverSettings.failed = false
+  serverSettings.retries = 0
 })
 
 afterEach(() => {
@@ -330,6 +336,32 @@ describe('Server › General names its cards', () => {
     // The parts are the cards on the page, in the same order.
     const part: Record<string, string> = { FilesSettingsCard: 'limits', FeaturesCard: 'features', LanguagesCard: 'languages' }
     expect(cards().flatMap((card) => (card && part[card] ? [part[card]] : []))).toEqual([...GENERAL_PARTS])
+    await hide()
+  })
+})
+
+describe('server settings that could not be loaded', () => {
+  it('say so where their cards would stand, with a retry, instead of the cards silently missing', async () => {
+    serverSettings.failed = true
+    await show('/settings/general')
+    const notice = box.querySelector('[data-testid="server-settings-failed"]')
+    expect(notice?.textContent).toContain('admin.settingsFailed')
+    expect(cards()).not.toContain('FeaturesCard')
+    expect(cards()).toContain('FilesSettingsCard')
+    await act(async () => (box.querySelector('[data-testid="server-settings-retry"]') as HTMLButtonElement).click())
+    expect(serverSettings.retries).toBe(1)
+    await hide()
+    for (const area of ['sign-in', 'server-plugins', 'shares']) {
+      await show(`/settings/${area}`)
+      expect(box.querySelector('[data-testid="server-settings-failed"]'), area).not.toBeNull()
+      await hide()
+    }
+  })
+
+  it('show no message once they are there', async () => {
+    await show('/settings/general')
+    expect(box.querySelector('[data-testid="server-settings-failed"]')).toBeNull()
+    expect(cards()).toContain('FeaturesCard')
     await hide()
   })
 })

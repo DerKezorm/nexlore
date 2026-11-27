@@ -33,6 +33,7 @@ from ..models_verbinden import (
 from ..security import account_out, decrypt_secret, encrypt_secret
 from ..vendor import nexverbinden
 from . import apitokens, paths, rights, settings_service
+from .accounts import is_locked
 
 logger = logging.getLogger("nexlore.connect")
 
@@ -190,8 +191,16 @@ class VerbindenStore:
     # --- the account and the app ------------------------------------------------------------------------------------
 
     def account_may(self, account_id: Any) -> bool:
+        """False while the account is blocked or deleted (E41), and, as for every token and key of nexlore without a
+        session (``apitokens.authenticate``, ``mcp_store.account_may``), while it is locked after failed sign-ins or
+        still owes the second factor the operator requires (``totp.setup_required``): its connections rest until then,
+        none ends."""
+        from . import totp
+
         account = self.db.get(Account, int(account_id))
-        return account is not None and not account_out(account)
+        if account is None or account_out(account) or is_locked(account):
+            return False
+        return not totp.setup_required(self.db, account)
 
     def account_name(self, account_id: Any) -> str:
         """The account's user name, as the other app names it ("verbunden als kim"); the shown name with the picture

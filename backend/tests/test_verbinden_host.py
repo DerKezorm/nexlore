@@ -145,6 +145,34 @@ def test_its_own_switch_and_a_resting_account_close_it(kim: tuple[Account, dict[
     assert program().get("/api/v1/spaces", headers={"Authorization": "Bearer nxv_nothing"}).status_code == 401
 
 
+def test_a_locked_account_or_one_owing_its_second_factor_rests(kim: tuple[Account, dict[str, int]]) -> None:
+    """As every token and key of nexlore without a session: locked after failed sign-ins, or the operator requires a
+    second factor the account has not set up, its connection rests (and works again afterwards, nothing ends)."""
+    owner, spaces = kim
+    token = _connect(owner, areas=[spaces["Wissen"]])
+    auth = {"Authorization": f"Bearer {token}"}
+    assert program().get("/api/v1/spaces", headers=auth).status_code == 200
+    with SessionLocal() as db:
+        row = db.get(Account, owner.id)
+        assert row is not None
+        row.locked_until = utcnow() + timedelta(minutes=15)
+        db.commit()
+    answer = program().get("/api/v1/spaces", headers=auth)
+    assert (answer.status_code, answer.json()["detail"]["code"]) == (401, "account_resting")
+    with SessionLocal() as db:
+        row = db.get(Account, owner.id)
+        assert row is not None
+        row.locked_until = None
+        settings_service.save(db, {"two_factor_required": True})
+        db.commit()
+    answer = program().post("/api/v1/notes", headers=auth, json={"folder": "Wissen", "title": "x", "content": "x"})
+    assert (answer.status_code, answer.json()["detail"]["code"]) == (401, "account_resting")
+    with SessionLocal() as db:
+        settings_service.save(db, {"two_factor_required": False})
+        db.commit()
+    assert program().get("/api/v1/spaces", headers=auth).status_code == 200
+
+
 def test_only_nexnotes_has_a_card(kim: tuple[Account, dict[str, int]]) -> None:
     """V20: nexlore grants notes.add to nexnotes and uses no other app: one card, and no start for another partner."""
     owner, _spaces = kim

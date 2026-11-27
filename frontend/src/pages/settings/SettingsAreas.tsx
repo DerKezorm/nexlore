@@ -49,6 +49,7 @@ import { SignInPage, type AddressQuestion, type SignInChange, type SignInView } 
 import type { Readiness } from '../../vendor/nexkonten/konten'
 import { SignInProviders, type OidcAdminCalls } from '../../vendor/nexoidc/SignInProviders'
 import { MailCard } from '../../vendor/nexpost/MailCard'
+import { Button, Notice } from '../../vendor/nexui'
 import { AllKeysCard, ApiKeysCard, InterfacesCard, ToolsCard } from '../../vendor/nexschluessel'
 import type { KeyRequest } from '../../vendor/nexschluessel/schluessel'
 import { adminApi } from '../../api/client'
@@ -202,13 +203,16 @@ function ConnectionsArea() {
 /** One area of the server, for the operator. */
 function ServerArea({ area }: { area: Exclude<AreaSlug, 'profile' | 'security' | 'appearance' | 'notes' | 'spaces' | 'plugins' | 'ai' | 'notifications' | 'connections' | 'about'> }) {
   const { t, i18n } = useTranslation()
-  const [settings, setSettings] = useServerSettings()
+  const [settings, setSettings, settingsFailed, reloadSettings] = useServerSettings()
+  // The cards below that need the server settings are missing while these could not be loaded: say so, with a retry.
+  const unloaded = settingsFailed ? <SettingsUnloaded onRetry={reloadSettings} /> : null
   const docs = useDocs()
   const mcpWords = useMcpWords()
   switch (area) {
     case 'general':
       return (
         <>
+          {unloaded}
           <FilesSettingsCard />
           {settings && <FeaturesCard settings={settings} onChange={setSettings} />}
           {/* Server › General › Languages from the shared module sprachen 1.0.0: the template from the page's English
@@ -229,7 +233,12 @@ function ServerArea({ area }: { area: Exclude<AreaSlug, 'profile' | 'security' |
         </>
       )
     case 'sign-in':
-      return <ServerSignIn settings={settings} onSettings={setSettings} />
+      return (
+        <>
+          {unloaded}
+          <ServerSignIn settings={settings} onSettings={setSettings} />
+        </>
+      )
     case 'mail':
       return <MailCard request={request} subtitle={t('admin.mail.text')} senderPlaceholder="lore@example.com" language={i18n.language} />
     case 'storage':
@@ -238,13 +247,14 @@ function ServerArea({ area }: { area: Exclude<AreaSlug, 'profile' | 'security' |
       // Server › KI-Anbieter from the shared module ki 0.1.0, nexlore's Lore and meaning below.
       return (
         <AiProviderArea request={aiRequest} app="nexlore" language={i18n.language}>
+          {unloaded}
           {settings && <LoreCard settings={settings} onChange={setSettings} />}
         </AiProviderArea>
       )
     case 'server-plugins':
-      return settings ? <AdminPluginsCard settings={settings} onChange={setSettings} /> : null
+      return settings ? <AdminPluginsCard settings={settings} onChange={setSettings} /> : unloaded
     case 'shares':
-      return settings ? <SharesCard settings={settings} onChange={setSettings} /> : null
+      return settings ? <SharesCard settings={settings} onChange={setSettings} /> : unloaded
     case 'accounts':
       return (
         <>
@@ -265,6 +275,20 @@ const languagesFetch: Fetcher = (path, init) =>
 
 /** Server › Sign-in: the page of the account module (the emergency notice, "Ready for the internet?", "Sign-in") with
  * the cards of the sign-in module after it ("Sign-in providers", "authentik in one step"). */
+/** The server settings could not be loaded: a message instead of cards silently missing, and a way to ask again. */
+function SettingsUnloaded({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation()
+  return (
+    <Notice tone="danger" title={t('admin.settingsFailed')} testId="server-settings-failed">
+      <div className="mt-2">
+        <Button kind="secondary" size="sm" icon="RefreshCw" onClick={onRetry} testId="server-settings-retry">
+          {t('admin.settingsRetry')}
+        </Button>
+      </div>
+    </Notice>
+  )
+}
+
 function ServerSignIn({ settings, onSettings }: { settings: ServerSettings | null; onSettings: (next: ServerSettings) => void }) {
   const { t } = useTranslation()
   const { me, refresh } = useAuth()

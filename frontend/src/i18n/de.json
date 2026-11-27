@@ -1276,6 +1276,8 @@
     },
     "title": "Server",
     "text": "Diesen Teil siehst nur du als Betreiber.",
+    "settingsFailed": "Die Server-Einstellungen konnten nicht geladen werden. Einige Karten fehlen deshalb.",
+    "settingsRetry": "Erneut versuchen",
     "accounts": {
       "withdrawn": "Einladung zurückgenommen.",
       "spacesFact": "Bereiche",

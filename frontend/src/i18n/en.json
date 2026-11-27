@@ -1276,6 +1276,8 @@
     },
     "title": "Server",
     "text": "Only you see this part, as the operator.",
+    "settingsFailed": "The server settings could not be loaded, so some cards are missing.",
+    "settingsRetry": "Try again",
     "accounts": {
       "withdrawn": "Invitation withdrawn.",
       "spacesFact": "Spaces",
