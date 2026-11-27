@@ -10,8 +10,10 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ApiError, notifyApi, type NotifyChoices, type NotifyView } from '../api/client'
+import { DEVICES_API, deviceRequest } from '../lib/devicesModule'
 import { errorText } from '../lib/errors'
 import { useAuth } from '../state/auth'
+import { DevicePushCard, useDevicesWay } from '../vendor/nexgeraete'
 import { Box, Button as KitButton, NotifyWays } from '../vendor/nexui'
 import { Button, Card, Feedback, Input, Toggle } from './settings/ui'
 
@@ -22,7 +24,9 @@ function code(error: unknown): string {
 }
 
 export function NotifySettings() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  // The row "iPhone und iPad": how many devices, on how many notifications may show (module geraete).
+  const devicesWay = useDevicesWay(deviceRequest, { base: DEVICES_API, href: '/settings/connections#devices', language: i18n.language })
   const { me } = useAuth()
   const [view, setView] = useState<NotifyView | null>(null)
   const [address, setAddress] = useState('')
@@ -75,7 +79,7 @@ export function NotifySettings() {
       <NotifyWays
         subtitle={t('notify.waysText')}
         mail={view.email.possible ? { address: view.email.address, confirmed: me?.email_proven !== false, href: '/settings/profile#mail' } : undefined}
-        devices={{ href: '/settings/connections#devices', note: t('notify.devicesNote') }}
+        devices={devicesWay}
       >
         <Toggle
           label={t('notify.email')}
@@ -99,6 +103,8 @@ export function NotifySettings() {
         </div>
         <Feedback problem={problem} done={done} />
       </NotifyWays>
+      {/* The kinds of notification per device (module geraete): what each iPhone, iPad or Mac shows. */}
+      <DevicePushCard request={deviceRequest} base={DEVICES_API} app="nexlore" language={i18n.language} connectionsHref="/settings/connections#devices" />
       <Card id="notify-occasions" icon="Bell" title={t('notify.occasions')} text={t('notify.occasionsText')}>
         {OCCASIONS.map((occasion) => (
           <Toggle key={occasion} label={t(`notify.occasion.${occasion}`)} hint={t(`notify.occasionHint.${occasion}`)} checked={view.choices[occasion]} onChange={(on) => choose(occasion, on)} />

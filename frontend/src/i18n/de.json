@@ -1202,27 +1202,6 @@
       "done": "Alle anderen Browser sind abgemeldet."
     },
     "unlinked": "Nicht mehr mit {{name}} verknüpft.",
-    "app": {
-      "title": "Geräte",
-      "text": "Verbundene iPhones haben dieselben Rechte wie dieser Browser. Getrennt wird ein iPhone hier, mit „Überall sonst abmelden“ oder mit einem neuen Passwort.",
-      "connect": "iPhone oder iPad verbinden",
-      "scan": "Öffne die Kamera des iPhones und richte sie auf den Code.",
-      "orType": "Oder tippe in der App die Adresse und den Code ein.",
-      "address": "Adresse",
-      "code": "Code",
-      "qr": "QR-Code zum Verbinden der iPhone-App",
-      "left_one": "Gilt noch {{count}} Minute.",
-      "left_other": "Gilt noch {{count}} Minuten.",
-      "connected": "{{name}} ist verbunden.",
-      "expired": "Der Code ist abgelaufen.",
-      "again": "Neuer Code",
-      "cancel": "Abbrechen",
-      "close": "Schließen",
-      "seen": "Zuletzt gesehen {{when}}",
-      "never": "Noch nicht gesehen",
-      "disconnect": "Trennen",
-      "disconnectNamed": "{{name}} trennen"
-    },
     "signOutText": "Meldet dich in diesem Browser ab. Andere Geräte bleiben angemeldet.",
     "profileSaved": "Profil gespeichert.",
     "languageBrowser": "Wie der Browser"
@@ -2349,7 +2328,6 @@
   },
   "notify": {
     "ways": "Wohin Benachrichtigungen gehen",
-    "devicesNote": "Die App fürs iPhone und iPad bekommt keine Mitteilungen von nexlore; verbunden wird sie unter „Verbindungen“.",
     "waysText": "Ein Webhook deiner Wahl, etwa eine Benachrichtigungs-Inbox wie nexsift, und Mail, wenn der Betreiber einen Mailserver eingetragen hat.",
     "webhook": "Webhook-Adresse",
     "webhookSave": "Speichern",
@@ -2643,15 +2621,6 @@
     },
     "browse": "Stöbern",
     "browseHint": "Durch Bereiche und Ordner blättern wie durch Plattencover"
-  },
-  "appConnect": {
-    "title": "iPhone verbinden",
-    "text": "Angemeldet als {{account}}. Das Gerät „{{device}}“ möchte sich verbinden.",
-    "rights": "Es bekommt dieselben Rechte wie dieser Browser. Trennen kannst du es jederzeit unter Mein Konto › Verbindungen › Geräte.",
-    "confirm": "iPhone verbinden",
-    "cancel": "Abbrechen",
-    "doneTitle": "Zurück zur App",
-    "done": "Die App übernimmt jetzt. Du kannst dieses Fenster schließen."
   },
   "ink": {
     "toolbar": "Werkzeuge des Stifts",

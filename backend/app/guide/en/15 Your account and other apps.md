@@ -33,6 +33,16 @@ The card shows which account in nexnotes you are connected with, since when, whe
 
 If the card says nexnotes is not set up on this server, it is the operator's turn: the operator enters the address of nexnotes once under **Settings › Server › Connections › Other nex apps**, and from then on every account connects with one click. If nexnotes runs in the local network (LAN, VPN), the operator also allows **Connections into the local network** there. The switch **Connections with other nex apps** lets every connection rest; nothing is deleted. API keys for programs such as n8n keep working as before, see [[11 AI]].
 
+## iPhone and iPad
+
+You connect the nexlore app for iPhone and iPad under **My account › Connections › Devices** with **Connect iPhone or iPad**: scan the QR code with the device's camera, or type the code below it into the app. It holds for ten minutes and for one device. Every device has a key of its own; the list shows when it was last there. There you rename it, disconnect it or disconnect all at once; a disconnected device gets in no more, at once.
+
+- When a device is newly connected to your account, you get a mail as for a new sign-in (switched off under **My account › Security**).
+- Under **My account › Notifications** you choose per device which notifications it gets. Today's nexlore app does not fetch notifications yet; the ticks apply once a later version of the app can.
+- A device not seen for a year is disconnected.
+
+The operator allows the app with **Allow the iPhone app** under **Settings › Server › Connections › Interfaces** (on from the start). Off, no device gets in any more and no new one comes; they stay connected all the same.
+
 ## For the operator: accounts
 
 Under **Settings › Server › Accounts** every account has a line with **Manage**. There:
@@ -42,6 +52,7 @@ Under **Settings › Server › Accounts** every account has a line with **Manag
 - **Link for a new password** makes a link with which the person sets a new password; you never set a password for anybody. With a mail server the link goes to their address, otherwise nexlore shows it to you once to pass on.
 - A **mail address** everybody enters themselves; you can only remove it.
 - You also set the account's **Storage limit** and whether it may use AI.
+- **Devices** shows how many iPhones and iPads the account has connected, which, and when last, never what is on them; **Disconnect devices** disconnects them all. A blocked or deleted account keeps its devices: they rest and work again after unblocking or restoring, without connecting anew. Only deleting for good removes them.
 
 You do not block or delete your own account here, and there is always an operator left who can sign in.
 

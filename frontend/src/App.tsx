@@ -7,7 +7,7 @@ import { AuthFrame } from './components/AuthFrame'
 import { SecondFactor } from './pages/settings/SecondFactorBoxes'
 import { CalendarPage } from './pages/CalendarPage'
 import { CleanupPage } from './pages/CleanupPage'
-import { AppConnectPage } from './pages/AppConnectPage'
+import { AppConnectRoute } from './pages/AppConnectRoute'
 import { ConnectConsent, ConnectReturn } from './connect/connect'
 import { McpConsentPage, McpRequestRoute } from './pages/McpPages'
 import { McpRequestsPage } from './pages/McpRequestsPage'
@@ -105,7 +105,7 @@ export default function App() {
         path="app-connect"
         element={
           <SignedIn>
-            <AppConnectPage />
+            <AppConnectRoute />
           </SignedIn>
         }
       />

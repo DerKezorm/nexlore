@@ -9,7 +9,6 @@ import { useNavigate } from 'react-router-dom'
 import { aboutApi, api, ApiError, tabId, type ServerSettings } from '../../api/client'
 import { LoreCard } from '../../components/settings/LoreCard'
 import { AppsArea, AppsOperator } from '../../connect/connect'
-import { AppDevices } from '../../components/AppDevices'
 import { NotifySettings } from '../../components/NotifySettings'
 import {
   AccountsCard,
@@ -31,9 +30,11 @@ import { KeysCard } from '../../components/settings/KeysCard'
 import { LinkTitleSwitch } from '../../components/settings/LinkTitleSwitch'
 import { LogCard } from '../../components/settings/LogCard'
 import { McpRecipes } from '../../components/settings/McpRecipes'
+import { DEVICES_API, deviceRequest } from '../../lib/devicesModule'
 import { mcpRequest, requestHref, useMcpWords } from '../../lib/mcpModule'
 import { AiAccountArea, AiProviderArea, type AiRequest } from '../../vendor/nexki'
 import { refreshNews } from '../../lib/news'
+import { DevicesCard } from '../../vendor/nexgeraete'
 import { McpOperatorSettings, PendingRequests, ToolRights } from '../../vendor/nexmcp'
 import { SnippetsCard } from '../../components/settings/SnippetsCard'
 import { SpacesCard } from '../../components/settings/SpacesCard'
@@ -176,7 +177,8 @@ function ConnectionsArea() {
   }
   return (
     <>
-      <AppDevices />
+      {/* Place 1: the devices (the shared module geraete 0.1.0): list, pairing, renaming, disconnecting. */}
+      <DevicesCard request={deviceRequest} base={DEVICES_API} app="nexlore" language={i18n.language} operator={me?.role === 'operator'} serverHref="/settings/server-connections#interfaces" />
       <InstallCard />
       {/* Place 3: the other nex apps (the shared module verbinden), one card for each in use. */}
       <AppsArea />

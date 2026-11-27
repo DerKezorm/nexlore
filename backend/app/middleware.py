@@ -149,6 +149,8 @@ MCP_PATH = "/api/mcp"
 API_PREFIX = "/api/v1/"
 #: The own iPhone app: a device key in ``Authorization``, no tab (``routers/app1.py``).
 APP_PREFIX = "/api/app/1/"
+#: The browser routes of the device module (``routers/app_pairing.py``).
+DEVICES_PREFIX = "/api/devices/"
 #: Called by programs signing in for MCP (OAuth), not by a browser tab: no tab, and a form body.
 OAUTH_PATHS = frozenset({"/api/oauth/token", "/api/oauth/register", "/api/oauth/revoke",
                          # The other nex apps trade, refresh, revoke and retire the tokens of a connection the same
@@ -204,7 +206,11 @@ class GuardMiddleware:
         # MCP (M7) is called by programs, not by a browser tab: it needs a key in ``Authorization`` instead, and a
         # request that carries an ``Origin`` is refused there (``routers/mcp.py``).
         exempt = (scope["path"] == MCP_PATH or scope["path"] in OAUTH_PATHS or scope["path"].startswith(API_PREFIX)
-                  or scope["path"].startswith(APP_PREFIX))
+                  or scope["path"].startswith(APP_PREFIX)
+                  # A device's key at the browser routes of the device module: the module itself answers
+                  # ``403 browser_only`` (a key carries no tab, and a cookie never rides along with it here).
+                  or (scope["path"].startswith(DEVICES_PREFIX)
+                      and headers.get(b"authorization", b"")[:7].lower() == b"bearer "))
         if scope.get("method") in CHANGING and not exempt and not CLIENT_PATTERN.match(headers.get(CLIENT_HEADER, b"")):
             for message in _refuse(400, "client_required", "Changes need the header X-Nexlore-Client."):
                 await send(message)

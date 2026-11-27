@@ -67,6 +67,7 @@ from .routers import verbinden as verbinden_router
 from .security import HashingBusy, purge_sessions
 from .services import (
     backups,
+    geraete_config,
     graphstore,
     ki_store,
     locales,
@@ -145,6 +146,12 @@ async def _sweep_forever(stop: asyncio.Event) -> None:
                 await asyncio.to_thread(_retry_connections)
             except Exception:
                 logger.exception("Retrying revocations of connections failed")
+        if rounds % 1440 == 0:
+            # Devices unused for a year are disconnected (module geraete, G27), once a day.
+            try:
+                await asyncio.to_thread(geraete_config.sweep)
+            except Exception:
+                logger.exception("Sweeping unused devices failed")
         if rounds % 60 == 0:
             with SessionLocal() as db:
                 purge_sessions(db)
@@ -277,6 +284,11 @@ for module in ROUTERS:
     app.include_router(module.router)
 # The shared MCP module (mcp 1.1.0): ``POST /api/mcp``, OAuth for programs, the pages under ``/api/connections/mcp``.
 app.include_router(mcp_router.module_router)
+# The shared device module (geraete 0.1.0): its app routes new in 1.17.0 under ``/api/app/1`` and its browser routes
+# under ``/api/devices``; the ways of 1.16.0 stay in ``app1`` and ``app_pairing`` (ROUTERS). Out of the description:
+# their shapes are the module's (``tests/nexgeraete``), and its ``AddressIn`` would rename nexlore's own (E53).
+app.include_router(app1_router.module_router)
+app.include_router(app_pairing_router.module_router, include_in_schema=False)
 # The shared module verbinden (0.1.3): ``/.well-known/nex-app`` and ``/api/connect/…`` (nexlore hosts nexnotes).
 app.include_router(verbinden_router.router)
 # The shared AI module (ki 0.1.1): Server › KI-Anbieter (``/api/server/ai``) and Mein Konto › KI (``/api/me/ai``).

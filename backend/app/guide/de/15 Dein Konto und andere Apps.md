@@ -33,6 +33,16 @@ Die Karte zeigt, mit welchem Konto in nexnotes du verbunden bist, seit wann, wan
 
 Sagt die Karte, dass nexnotes auf diesem Server nicht eingerichtet ist, ist der Betreiber dran: Er trägt die Adresse von nexnotes einmal unter **Einstellungen › Server › Verbindungen › Andere nex-Apps** ein, danach verbindet jedes Konto mit einem Klick. Läuft nexnotes im eigenen Netz (LAN, VPN), erlaubt er dort auch **Verbindungen ins eigene Netz**. Der Schalter **Verbindungen mit anderen nex-Apps** lässt alle Verbindungen ruhen; gelöscht wird dabei nichts. API-Schlüssel für Programme wie n8n gelten davon unberührt weiter, siehe [[11 KI]].
 
+## iPhone und iPad
+
+Die App nexlore fürs iPhone und iPad verbindest du unter **Mein Konto › Verbindungen › Geräte** mit **iPhone oder iPad verbinden**: Scanne den QR-Code mit der Kamera des Geräts oder tippe den Code darunter in der App ab. Er gilt zehn Minuten und für ein Gerät. Jedes Gerät hat seinen eigenen Schlüssel; die Liste zeigt, wann es zuletzt da war. Dort benennst du es um, trennst es oder trennst alle auf einmal; ein getrenntes Gerät kommt sofort nicht mehr hinein.
+
+- Wird ein Gerät neu mit deinem Konto verbunden, bekommst du eine Mail wie bei einer neuen Anmeldung (abschaltbar unter **Mein Konto › Sicherheit**).
+- Unter **Mein Konto › Benachrichtigungen** stellst du je Gerät ein, welche Mitteilungen es bekommt. Die heutige App von nexlore holt sich noch keine Mitteilungen; die Haken gelten, sobald eine spätere Version der App es kann.
+- Ein Gerät, das ein Jahr lang nicht da war, wird getrennt.
+
+Der Betreiber erlaubt die App mit **iPhone-App erlauben** unter **Einstellungen › Server › Verbindungen › Schnittstellen** (ab Werk an). Aus, kommt kein Gerät mehr hinein und kein neues dazu; verbunden bleiben sie trotzdem.
+
 ## Für den Betreiber: Konten
 
 Unter **Einstellungen › Server › Konten** hat jedes Konto eine Zeile mit **Verwalten**. Dort:
@@ -42,6 +52,7 @@ Unter **Einstellungen › Server › Konten** hat jedes Konto eine Zeile mit **V
 - **Link für ein neues Passwort** erzeugt einen Link, mit dem die Person selbst ein neues Passwort setzt; ein Passwort für jemanden setzt du nie. Mit Mailserver geht der Link an ihre Adresse, sonst zeigt nexlore ihn dir einmal zum Weitergeben.
 - Eine **Mailadresse** trägt jeder selbst ein; du kannst sie nur entfernen.
 - Dazu legst du die **Speichergrenze** des Kontos fest und ob es KI nutzen darf.
+- **Geräte** zeigt, wie viele iPhones und iPads das Konto verbunden hat, welche und wann zuletzt, nie, was darauf liegt; **Geräte trennen** trennt sie alle. Ein gesperrtes oder gelöschtes Konto behält seine Geräte: Sie ruhen und gehen nach dem Entsperren oder Zurückholen wieder, ohne neu verbunden zu werden. Erst das endgültige Löschen entfernt sie.
 
 Dein eigenes Konto sperrst und löschst du hier nicht, und es bleibt immer ein Betreiber, der sich anmelden kann.
 

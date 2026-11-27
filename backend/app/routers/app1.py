@@ -34,7 +34,7 @@ from typing import Annotated, Any, ClassVar, Literal
 import anyio
 from fastapi import APIRouter, Depends, Form, Header, Query, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -44,10 +44,17 @@ from ..db import SessionLocal
 from ..deps import client_ip, readable_spaces
 from ..errors import error
 from ..models import OPERATOR, READ, WRITE, AppOp, DeviceBase, File, GoneFile, Space, Version, utcnow
-from ..security import brake as sign_in_brake
+from ..models import Account as AccountRow
 from ..services import attachments, cursor, devices, index, logs, looks, paths, rights, vault
-from ..services.devices import Caller, PairingError
+from ..services.devices import Caller
+from ..services.geraete_config import CONFIG, GeraeteStore, Hooks
+from ..services.geraete_config import clock as geraete_clock
+from ..services.geraete_config import send as geraete_send
+from ..services.geraete_config import store as geraete_store
 from ..services.vault import Actor, VaultError
+from ..vendor import nexgeraete
+from ..vendor.nexgeraete import api as geraete_api
+from ..vendor.nexkonten.brake import BRAKE
 from . import vault as vault_routes
 from .attachments import FILE_POLICY
 
@@ -85,17 +92,31 @@ def _refused(code: str, text: str, status: int, retry: int | None = None) -> Exc
     return exc
 
 
-def device(request: Request) -> Caller:
+#: The module's check of a device's key (G12, G38): unknown or disconnected, account gone, account blocked or deleted
+#: (the device rests, G26), unused for 365 days, second factor owed, the operator's switch off. Without ``X-Nex-App``
+#: it answers as 1.16.0 did (``401 not_signed_in``, ``403 app_disabled``).
+_checked = geraete_api.device(config=CONFIG, store=geraete_store, clock=geraete_clock)
+Checked = Annotated[nexgeraete.Caller, Depends(_checked)]
+GeraeteData = Annotated[GeraeteStore, Depends(geraete_store)]
+
+
+def device(found: Checked) -> Caller:
     with SessionLocal() as db:
-        found = devices.authenticate(db, _token(request))
-        if found is None:
+        account = db.get(AccountRow, int(found.holder.id))
+        if account is None:
             raise _refused("not_signed_in", "No valid device key.", 401)
-        if not devices.allowed(db):
-            raise _refused("app_disabled", "The operator has switched the app off.", 403)
-    if not devices.brake(found.device_id):
+        db.expunge(account)
+    if not devices.brake(found.device.id):
         raise _refused("too_many", "Too many requests from this device. Wait a minute.", 429, 60)
-    logs.set_actor(found.account.name)
-    return found
+    logs.set_actor(account.name)
+    return Caller(account=account, device_id=int(found.device.id), device_name=found.device.name)
+
+
+def _rate(request: Request) -> None:
+    """The device's rate on the module's own routes too, counted per key."""
+    token = _token(request)
+    if token and not devices.brake("key:" + devices.digest(token)):
+        raise _refused("too_many", "Too many requests from this device. Wait a minute.", 429, 60)
 
 
 Device = Annotated[Caller, Depends(device)]
@@ -117,14 +138,26 @@ def _moment(mtime_ns: int) -> datetime:
 
 
 # --- Pairing (no key, behind the sign-in brake) ------------------------------------------------------------------
+#
+# The module ``geraete`` pairs (``vendor/nexgeraete``, since 1.17.0). Its routes for the key, the code and another own
+# device stand here under the names, bodies and answers of 1.16.0 (the promise and ``test_openapi_names``) and hand
+# over to the module's handlers; its routes new in 1.17.0 (the list, renaming, notifications) are ``module_router``.
 
 
 class KeyIn(BaseModel):
+    #: The device's name as the published app sends it.
     device: str = Field(default="", max_length=200)
+    #: Since 1.17.0, apps on the module: the name, ``ios``/``ipados``/``mac``, the secret in the body.
+    device_name: str | None = Field(default=None, max_length=200)
+    device_kind: str | None = Field(default=None, max_length=16)
+    secret: str | None = Field(default=None, max_length=200)
 
 
 class CodeIn(KeyIn):
-    code: str = Field(max_length=20)
+    #: The typed code, or the one-time code of the sign-in page (since 1.17.0).
+    code: str = Field(max_length=200)
+    #: PKCE: the verifier of the challenge the sign-in page got.
+    verifier: str | None = Field(default=None, max_length=200)
 
 
 class PairedAccount(BaseModel):
@@ -137,41 +170,60 @@ class KeyOut(BaseModel):
     account: PairedAccount
 
 
-def _pickup(request: Request, take: Any) -> JSONResponse:
-    """The brake counts per sender: there is no account to count at, and 40 bits of a short code hold only with it."""
+def _on_paired(holder: nexgeraete.Holder, paired: nexgeraete.Device) -> None:
+    """After every new device: the mail "A new sign-in" as after a sign-in from an unknown browser (G29), unless the
+    person turned it off."""
+    from ..services import kontenpost
+    from ..services.konten_store import KontenStore
+    from ..vendor.nexkonten import sessions as konten_sessions
+
+    for listener in Hooks.listeners:
+        listener(holder, paired)
     with SessionLocal() as db:
-        if not devices.allowed(db):
-            raise _refused("app_disabled", "The operator has switched the app off.", 403)
-    key = "app-pairing:" + client_ip(request)
-    wait = sign_in_brake.wait_seconds(key)
-    if wait:
-        raise _refused("too_many", "Too many attempts. Try again later.", 429, wait)
-    with SessionLocal() as db:
-        try:
-            token, account, _row = take(db)
-        except PairingError as exc:
-            sign_in_brake.failed(key)
-            raise error(exc.code, exc.text, exc.status) from exc
-        out = KeyOut(key=token, account=PairedAccount(id=account.id, name=account.display_name or account.name))
-    sign_in_brake.succeeded(key)
-    # A key must not stay behind in any cache.
-    return JSONResponse(content=out.model_dump(), headers={"Cache-Control": "no-store"})
+        row = db.get(AccountRow, int(holder.id))
+        konto = KontenStore(db).get_account(int(holder.id)) if row is not None else None
+        if konto is None or row is None:
+            return
+        mail = konten_sessions.new_sign_in(konto, known=False, wanted=bool(row.new_sign_in_mail))
+        if kontenpost.queue(db, mail, where=nexgeraete.describe(paired)):
+            logger.info("Mail about a new device queued device_id=%s", paired.id)
+
+
+#: The module's app routes; the four of 1.16.0 are taken out below and stand on ``router`` under their old names.
+_module = geraete_api.app_router(config=CONFIG, store=geraete_store, brake=BRAKE, sender=client_ip,
+                                 on_paired=_on_paired, send=geraete_send, clock=geraete_clock, prefix="/api/app/1")
+_OWN = {("POST", "/api/app/1/pairing/{pairing_id}/key"), ("POST", "/api/app/1/pairing/code"),
+        ("POST", "/api/app/1/devices"), ("DELETE", "/api/app/1/device")}
+_HANDLERS: dict[tuple[str, str], Any] = {
+    (method, route.path): route.endpoint for route in _module.routes for method in getattr(route, "methods", ())
+}
+
+
+def _pair_in(body: KeyIn | None, secret: str | None = None, code: str | None = None,
+             verifier: str | None = None) -> geraete_api.PairIn:
+    given = body or KeyIn()
+    return geraete_api.PairIn(secret=given.secret or secret, code=code, verifier=verifier,
+                              device_name=given.device_name, device_kind=given.device_kind,
+                              device=given.device or None)
 
 
 @router.post("/pairing/{pairing_id}/key", response_model=KeyOut, summary="Pick the device key up with the QR code")
 def pickup_by_secret(
     pairing_id: str,
     request: Request,
+    data: GeraeteData,
     body: KeyIn | None = None,
     secret: Annotated[str | None, Header(alias="X-Pairing-Secret", max_length=200)] = None,
-) -> JSONResponse:
+) -> Response:
     """Unknown, wrong, expired and used answer the same (404 ``app_pairing_unknown``)."""
-    return _pickup(request, lambda db: devices.by_secret(db, pairing_id, secret, body.device if body else ""))
+    handler = _HANDLERS[("POST", "/api/app/1/pairing/{pairing_id}/key")]
+    return handler(pairing_id=pairing_id, request=request, data=data, body=_pair_in(body, secret))  # type: ignore[no-any-return]
 
 
 @router.post("/pairing/code", response_model=KeyOut, summary="Pick the device key up with the short code")
-def pickup_by_code(body: CodeIn, request: Request) -> JSONResponse:
-    return _pickup(request, lambda db: devices.by_code(db, body.code, body.device))
+def pickup_by_code(body: CodeIn, request: Request, data: GeraeteData) -> Response:
+    handler = _HANDLERS[("POST", "/api/app/1/pairing/code")]
+    return handler(request=request, data=data, body=_pair_in(body, code=body.code, verifier=body.verifier))  # type: ignore[no-any-return]
 
 
 # --- Who am I -----------------------------------------------------------------------------------------------------
@@ -242,23 +294,18 @@ def me(found: Device) -> MeOut:
 
 
 @router.delete("/device", status_code=204, summary="Disconnect this device")
-def forget_device(found: Device) -> None:
-    with SessionLocal() as db:
-        devices.disconnect(db, found.account.id, found.device_id)
+def forget_device(found: Device, data: GeraeteData) -> None:
+    nexgeraete.devices.disconnect(data, CONFIG, found.account.id, found.device_id)
 
 
 @router.post("/devices", response_model=KeyOut, summary="A key of its own for another device of this account")
-def bring_in_device(found: Device, body: KeyIn | None = None) -> JSONResponse:
+def bring_in_device(request: Request, _found: Device, checked: Checked, data: GeraeteData,
+                    body: KeyIn | None = None) -> Response:
     """The owner's iPad takes the iPhone's connection from iCloud and comes in under its own name with it
-    (``devices.sibling``). The answer is that of a pairing."""
-    with SessionLocal() as db:
-        try:
-            token, _row = devices.sibling(db, found, body.device if body else "")
-        except PairingError as exc:
-            raise _refused(exc.code, exc.text, exc.status, 3600 if exc.status == 429 else None) from exc
-    account = found.account
-    out = KeyOut(key=token, account=PairedAccount(id=account.id, name=account.display_name or account.name))
-    return JSONResponse(content=out.model_dump(), headers={"Cache-Control": "no-store"})
+    (``pairing.sibling`` of the module: at most five an hour, counted in the database). The answer is that of a
+    pairing."""
+    handler = _HANDLERS[("POST", "/api/app/1/devices")]
+    return handler(request=request, found=checked, data=data, body=_pair_in(body))  # type: ignore[no-any-return]
 
 
 # --- Fetching -----------------------------------------------------------------------------------------------------
@@ -839,6 +886,20 @@ async def _upload(found: Caller, space: str, path: str, file: UploadFile) -> dic
         if row is None:
             raise OpFailed("not_found")
         return {"id": row.id, "path": row.path, "hash": row.hash}
+
+
+#: The module's routes new in 1.17.0, for apps on the module (``X-Nex-App``): ``GET devices``, ``DELETE devices/{id}``,
+#: ``PATCH device``, ``PUT``/``DELETE push``, ``GET``/``PUT push/kinds``. Their shapes are the module's promise, kept by
+#: its contract (``tests/nexgeraete``); they stay out of the description and of ``PROMISED``, whose imprint holds the
+#: answers the published app reads.
+module_router = APIRouter(dependencies=[Depends(_rate)])
+for _route in _module.routes:
+    _methods = set(getattr(_route, "methods", ()))
+    if not _methods or any((method, _route.path) in _OWN for method in _methods):
+        continue
+    module_router.add_api_route(_route.path, _route.endpoint, methods=sorted(_methods), response_model=None,  # type: ignore[attr-defined]
+                                status_code=_route.status_code, summary=_route.summary,  # type: ignore[attr-defined]
+                                include_in_schema=False, tags=["app"])
 
 
 #: Every address of the promise. A new one is added here; none is ever taken away (``/api/app/2`` instead).

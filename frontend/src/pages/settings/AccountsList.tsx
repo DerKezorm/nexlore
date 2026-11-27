@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { adminApi, authApi, type AccountImpact, type AdminAccount, type FactorResetOverview, type Invite } from '../../api/client'
 import { AccountButton } from '../../components/AccountButton'
 import { confirmOf } from '../../lib/accountButton'
+import { DEVICES_API, deviceRequest } from '../../lib/devicesModule'
 import { problemText } from '../../lib/errors'
 import { copyText } from '../../lib/vaultActions'
 import { bytes, day, dayTime } from '../../lib/when'
@@ -56,6 +57,7 @@ import {
   type ListedAccount,
   type ListedInvite,
 } from '../../vendor/nexkonten/konten'
+import { AccountDevicesPart } from '../../vendor/nexgeraete'
 import { Avatar, Badge, Button, ButtonGroup, Buttons, Card, CheckboxRow, ConfirmDialog, Dialog, Facts, Field, Notice, Row, Rows, SelectField, type IconName } from '../../vendor/nexui'
 import { APP_CAPS, APP_OWN_ACTIONS, listedOf } from './accountList'
 
@@ -305,6 +307,8 @@ function ManageDialog({ row, listed, operatorHasPassword, mailServer, onClose, o
             <Row lead={<Picture row={listed} size={48} />} name={name} badge={<Badges shown={accountBadges(listed)} />} sub={accountLine(listed)} />
           </Rows>
           <Facts items={facts} label={t(MANAGE_DIALOG.title, { name })} testId="manage-facts" />
+          {/* The account's devices (module geraete): how many, which, last seen, "Disconnect devices". */}
+          <AccountDevicesPart request={deviceRequest} base={DEVICES_API} accountId={row.id} name={name} blocked={listed.blocked || Boolean(listed.deletedAt)} language={lang} onChanged={onChanged} />
           {groups.map((group) => (
             <ButtonGroup key={group.group} title={t(group.title)} layout={group.layout} testId={`manage-${group.group}`}>
               {group.actions.map((act) =>

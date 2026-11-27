@@ -33,12 +33,12 @@ test('a webhook gets the test, and occasions are kept', async ({ page, request }
   }
 })
 
-test('"iPhone and iPad" says the app gets nothing and leads to its card under Connections', async ({ page }) => {
+test('"iPhone and iPad" counts the devices and leads to their card under Connections (module geraete)', async ({ page }) => {
   await page.goto('/settings/notifications')
   const row = page.locator('#notify-ways').getByTestId('notify-devices-box')
   await expect(row).toContainText('iPhone and iPad')
-  await expect(row).toContainText('gets no notifications from nexlore')
+  await expect(row).toContainText('No device connected yet')
   await row.getByTestId('notify-devices').click()
   await expect(page).toHaveURL(/\/settings\/connections#devices$/)
-  await expect(page.getByTestId('app-devices-card')).toBeVisible()
+  await expect(page.getByTestId('devices-card')).toBeVisible()
 })

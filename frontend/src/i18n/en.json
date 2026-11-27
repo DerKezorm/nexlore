@@ -1202,27 +1202,6 @@
       "done": "Every other browser is signed out."
     },
     "unlinked": "No longer linked to {{name}}.",
-    "app": {
-      "title": "Devices",
-      "text": "Connected iPhones have the same rights as this browser. An iPhone is disconnected here, by signing out everywhere else, or by a new password.",
-      "connect": "Connect an iPhone or iPad",
-      "scan": "Open the iPhone's camera and point it at the code.",
-      "orType": "Or type the address and the code into the app.",
-      "address": "Address",
-      "code": "Code",
-      "qr": "QR code to connect the iPhone app",
-      "left_one": "Valid for {{count}} more minute.",
-      "left_other": "Valid for {{count}} more minutes.",
-      "connected": "{{name}} is connected.",
-      "expired": "The code has run out.",
-      "again": "New code",
-      "cancel": "Cancel",
-      "close": "Close",
-      "seen": "Last seen {{when}}",
-      "never": "Not seen yet",
-      "disconnect": "Disconnect",
-      "disconnectNamed": "Disconnect {{name}}"
-    },
     "signOutText": "Signs you out in this browser. Other devices stay signed in.",
     "profileSaved": "Profile saved.",
     "languageBrowser": "As the browser"
@@ -2349,7 +2328,6 @@
   },
   "notify": {
     "ways": "Where notifications go",
-    "devicesNote": "The iPhone and iPad app gets no notifications from nexlore; it is connected under “Connections”.",
     "waysText": "A webhook of your choosing, for example a notification inbox like nexsift, and mail when the operator set up a mail server.",
     "webhook": "Webhook address",
     "webhookSave": "Save",
@@ -2643,15 +2621,6 @@
     },
     "browse": "Browse",
     "browseHint": "Flip through spaces and folders as covers"
-  },
-  "appConnect": {
-    "title": "Connect iPhone",
-    "text": "Signed in as {{account}}. The device “{{device}}” wants to connect.",
-    "rights": "It gets the same rights as this browser. You can disconnect it at any time under My account › Connections › Devices.",
-    "confirm": "Connect iPhone",
-    "cancel": "Cancel",
-    "doneTitle": "Back to the app",
-    "done": "The app takes over now. You can close this window."
   },
   "ink": {
     "toolbar": "Pen tools",

@@ -42,7 +42,8 @@ vi.mock('../plugins/PluginSettings', () => stubs('AdminPluginsCard', 'MyPluginsC
 // Lore and meaning stand inside the provider's area.
 vi.mock('../vendor/nexki', () => stubs('AiAccountArea', 'AiProviderArea'))
 vi.mock('../components/settings/LoreCard', () => stubs('LoreCard'))
-vi.mock('../components/AppDevices', () => stubs('AppDevices'))
+// Since the shared module geraete 0.1.0 the card of devices is the module's (place 1 of Connections).
+vi.mock('../vendor/nexgeraete', () => stubs('DevicesCard'))
 vi.mock('../connect/connect', () => stubs('AppsArea', 'AppsOperator', 'ConnectConsent', 'ConnectReturn'))
 vi.mock('../components/NotifySettings', () => stubs('NotifySettings'))
 // The cards of the shared modules: the account module's (profile, security, sign-out, look, what the operator sees,
@@ -167,7 +168,7 @@ describe('nothing got lost', () => {
     'AccountsCard', 'AllSpacesCard', 'SignInPage', 'MailCard', 'SharesCard', 'InterfacesCard', 'FeaturesCard', 'AllKeysCard',
     'LinkTitleSwitch', 'AiProviderArea', 'CssCard', 'AdminPluginsCard', 'LogCard', 'FilesSettingsCard', 'GuideCard', 'StorageArea', 'LanguagesCard',
     // My account (the own API tokens and MCP keys are the key module's two cards now)
-    'ProfileCard', 'SignOutCard', 'SecurityCard', 'AppDevices', 'NotifySettings', 'ApiKeysCard', 'ToolsCard', 'AiAccountArea', 'CalendarFeed', 'MyPluginsCard',
+    'ProfileCard', 'SignOutCard', 'SecurityCard', 'DevicesCard', 'NotifySettings', 'ApiKeysCard', 'ToolsCard', 'AiAccountArea', 'CalendarFeed', 'MyPluginsCard',
     // Installing moved from About to Connections; About
     'InstallCard', 'AboutArea',
     // New in the settings pass: "Aussehen" first under Appearance, "What you see" under Accounts
@@ -194,7 +195,7 @@ describe('nothing got lost', () => {
       plugins: ['MyPluginsCard'],
       ai: ['AiAccountArea'],
       notifications: ['NotifySettings'],
-      connections: ['AppDevices', 'InstallCard', 'AppsArea', 'CalendarFeed', 'ApiKeysCard', 'ToolsCard'],
+      connections: ['DevicesCard', 'InstallCard', 'AppsArea', 'CalendarFeed', 'ApiKeysCard', 'ToolsCard'],
       general: ['FilesSettingsCard', 'FeaturesCard', 'LanguagesCard', 'LinkTitleSwitch', 'CssCard', 'GuideCard'],
       // E67: "Andere nex-Apps", then "Schnittstellen", under Server › Connections.
       'server-connections': ['AppsOperator', 'InterfacesCard'],

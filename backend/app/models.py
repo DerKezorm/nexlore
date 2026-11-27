@@ -1133,6 +1133,20 @@ class AppDevice(Base):
     key_hash: Mapped[str] = mapped_column(String(64), unique=True)
     created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
     last_seen_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
+    # Since 1.17.0 (module geraete): what the device says of itself (``X-Nex-App``), how it came, where its
+    # notifications go. Rows of before keep ``NULL`` (an iPhone, way unknown, no push).
+    kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    system: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    app_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    via: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    via_device_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    push_ticket: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    push_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: The kinds the device says it understands (JSON list); ``NULL``: an app that says nothing.
+    push_understands: Mapped[Any] = mapped_column(JSON, nullable=True)
+    #: The kinds switched on or off on this device (JSON object); ``NULL`` as ``{}``.
+    push_kinds: Mapped[Any] = mapped_column(JSON, nullable=True)
 
 
 class AppPairing(Base):
@@ -1149,6 +1163,23 @@ class AppPairing(Base):
     expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
     used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
     device_name: Mapped[str] = mapped_column(String(80), default="")
+    #: Since 1.17.0: the device the pairing brought in (gone with it).
+    device_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class AppCode(Base):
+    """The one-time code the sign-in page ``/app-connect`` hands to the app (module geraete, since 1.17.0): five
+    minutes, once, only its SHA-256 kept, with the app's ``state`` and its PKCE ``challenge``."""
+
+    __tablename__ = "app_codes"
+
+    code_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id", ondelete="CASCADE"), index=True)
+    state: Mapped[str] = mapped_column(String(200), default="")
+    challenge: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UtcDateTime, default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(UtcDateTime)
+    used_at: Mapped[datetime | None] = mapped_column(UtcDateTime, nullable=True)
 
 
 class DeviceBase(Base):

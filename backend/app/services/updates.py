@@ -12,6 +12,8 @@ Every name the routes and tests used from the old file is still here (``parse``,
 
 from __future__ import annotations
 
+import logging
+
 from .. import __version__ as APP_VERSION
 from ..config import get_settings
 from ..db import SessionLocal
@@ -54,6 +56,16 @@ def _on_newer(version: str) -> None:
     from . import notify
 
     notify.operators(notify.words("new_version", version=version.strip().removeprefix("v")), "/settings/about", 2)
+    # And on the operators' devices whose app understands it (module geraete, G18), once per version.
+    try:
+        from . import geraete_config
+
+        with SessionLocal() as db:
+            address = settings_service.public_url(db)
+        geraete_config.announce(version.strip().removeprefix("v"), APP_VERSION,
+                                f"{address}/settings/about" if address else RELEASES_URL)
+    except Exception:
+        logging.getLogger("nexlore.app").exception("Telling the devices of a new version failed")
 
 
 def configure() -> None:

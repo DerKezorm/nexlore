@@ -146,6 +146,14 @@ def adopt_theme(db: Session, row: Account) -> None:
         row.appearance = {**(row.appearance if isinstance(row.appearance, dict) else {}), "mode": taken}
 
 
+def device_label(row: AppDevice) -> str:
+    """A paired device in "Angemeldete Geräte" and "still have access": its name, and its model where it says more
+    (module geraete, ``describe``)."""
+    from .geraete_config import describe
+
+    return describe(row)
+
+
 def new_device_key() -> str:
     return secrets.token_urlsafe(24)
 
@@ -478,7 +486,7 @@ class KontenStore:
     def list_access(self, account_id: AccountId) -> list[Access]:
         number = int(account_id)
         found = [
-            Access(f"{DEVICE_UID}{row.id}", nexkonten.ACCESS_DEVICE, row.name, row.last_seen_at)
+            Access(f"{DEVICE_UID}{row.id}", nexkonten.ACCESS_DEVICE, device_label(row), row.last_seen_at)
             for row in self.db.scalars(select(AppDevice).where(AppDevice.account_id == number)
                                        .order_by(AppDevice.created_at))
         ]
@@ -870,7 +878,7 @@ class KontenStore:
             created_at=created,
             expires_at=created + timedelta(days=36500),
             last_seen_at=_aware(row.last_seen_at) if row.last_seen_at else None,
-            label=row.name,
+            label=device_label(row),
         )
 
     def add_session(self, session: SessionData, token_hash: str) -> None:
@@ -1024,13 +1032,15 @@ class KontenStore:
             self._flush()
 
     def shut_out(self, account_id: AccountId) -> None:
-        """What blocking did in 1.16.0: every browser session, the OAuth connectors and the paired iPhones end, the
-        marks of known browsers are worthless, a sign-in waiting for its code goes. API tokens, MCP keys made by hand
-        and the calendar address stay and are refused while the account is out (``security.account_out``)."""
+        """Blocking and deleting with 30 days: every browser session and the OAuth connectors end, the marks of known
+        browsers are worthless, a sign-in waiting for its code goes. The paired devices rest since 1.17.0 (konten
+        1.1.5, G26): kept, refused while the account is out (``401``, the module geraete), working again when it is
+        back; nothing is written to remember them. API tokens, MCP keys made by hand and the calendar address stay
+        and are refused while the account is out (``security.account_out``)."""
         from ..vendor.nexkonten import factor
         from . import totp
 
-        end_all_sessions(self.db, int(account_id))
+        end_all_sessions(self.db, int(account_id), devices=False)
         totp.forget_account(int(account_id))
         factor.drop_waiting(int(account_id))
 

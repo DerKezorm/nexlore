@@ -200,6 +200,38 @@ class Adapter(StandardAdapter):
                 return bool(row and row.device_key) and sessions.is_known(handle[2], server_key(), row.device_key)
         raise ValueError(handle)
 
+    # Since konten 1.1.5 (G26): nexlore's paired devices (module geraete) rest while their account is out.
+    paired_devices = True
+
+    def pair_device(self, account_id: Any) -> Any:
+        """Paired as the module pairs one (``devices.add`` through nexlore's store); the handle is its key."""
+        from app.db import SessionLocal
+        from app.models import Account
+        from app.services import devices
+
+        with SessionLocal() as db:
+            row = db.get(Account, account_id)
+            assert row is not None
+            key, _device = devices.make_device(db, row, "Probe")
+        return key
+
+    def device_works(self, handle: Any) -> bool:
+        """nexlore's own device route, as the published app calls it."""
+        from fastapi.testclient import TestClient
+
+        from app.main import app
+
+        phone = TestClient(app, base_url=BASE)
+        return phone.get("/api/app/1/me", headers={"Authorization": f"Bearer {handle}"}).status_code == 200
+
+    def device_kept(self, handle: Any) -> bool:
+        from app.db import SessionLocal
+        from app.services import devices
+        from app.services.geraete_config import GeraeteStore
+
+        with SessionLocal() as db:
+            return GeraeteStore(db).device_by_hash(devices.digest(handle)) is not None
+
     def switch(self, name: str, on: bool) -> None:
         from app.db import SessionLocal
         from app.services import konten_store, settings_service

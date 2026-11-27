@@ -174,18 +174,20 @@ def end_session(db: Session, token: str | None) -> None:
         db.commit()
 
 
-def end_all_sessions(db: Session, account_id: int, except_token: str | None = None) -> None:
+def end_all_sessions(db: Session, account_id: int, except_token: str | None = None, *, devices: bool = True) -> None:
     """Every browser session of the account but ``except_token``, and every connector that signed in over OAuth: a
     new password or "sign out everywhere" is what one does when the account was taken, and a connector's refresh
     token would have kept the taker in. Paired iPhones go too: they act with a session's rights. Keys made by hand in
     the interface stay; they are revoked there. The browsers known before are forgotten too (their marks); the one
-    that stays gets a new one from the caller."""
+    that stays gets a new one from the caller. ``devices=False`` (blocking, deleting with 30 days, G26): the paired
+    devices rest instead and work again when the account is back."""
     statement = delete(AuthSession).where(AuthSession.account_id == account_id)
     if except_token:
         statement = statement.where(AuthSession.token_hash != hash_token(except_token))
     db.execute(statement)
     db.execute(delete(McpKey).where(McpKey.account_id == account_id, McpKey.kind == "oauth"))
-    db.execute(delete(AppDevice).where(AppDevice.account_id == account_id))
+    if devices:
+        db.execute(delete(AppDevice).where(AppDevice.account_id == account_id))
     db.execute(update(Account).where(Account.id == account_id).values(device_key=secrets.token_urlsafe(24)))
     db.commit()
 
