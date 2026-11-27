@@ -523,3 +523,40 @@ test('pictures and other files stand in the tree as in Obsidian and open their p
   await expect(page).toHaveURL(/\/file\/Media\/sunset\.png$/)
   expect(problems).toEqual([])
 })
+
+test('a space folded by hand stays folded at the next note and after a reload; a note in it unfolds it again', async ({ page }) => {
+  // GitHub issue 22: the tree is drawn anew for every note, and every space opened again.
+  // The tree draws only the rows near the note shown, the spaces sit above it, and listings that come late move the
+  // view back to the note: looked for from the top, again until the row is there.
+  const spaceIs = async (name: string, open: boolean) => {
+    const tree = page.getByTestId('sidebar-tree')
+    const button = row(page, name)
+    await expect(async () => {
+      await tree.evaluate((element) => element.scrollTo(0, 0))
+      for (let step = 0; step < 40 && !(await button.isVisible()); step++) {
+        await tree.evaluate((element) => element.scrollBy(0, element.clientHeight / 2))
+        await page.waitForTimeout(50)
+      }
+      await expect(button).toHaveAttribute('aria-expanded', String(open), { timeout: 500 })
+    }).toPass({ timeout: 20_000 })
+  }
+  await page.goto('/note/Zoo/Board.md')
+  await spaceIs('Zone', true)
+  await clickRow(page, 'Zone')
+  await spaceIs('Zone', false)
+  // Another note, opened from the tree: Zone stays folded, the note's own space stays open.
+  await clickRow(page, 'Sown')
+  await expect(page).toHaveURL(/\/note\/Zoo\/Sown\.md$/)
+  await spaceIs('Zone', false)
+  await spaceIs('Zoo', true)
+  // A reload keeps it folded.
+  await page.reload()
+  await expect(row(page, 'Sown')).toBeVisible()
+  await spaceIs('Zone', false)
+  // A note in the folded space unfolds that space alone, and it stays open afterwards.
+  await page.goto('/note/Zone/Across.md')
+  await spaceIs('Zone', true)
+  await page.goto('/note/Zoo/Board.md')
+  await expect(row(page, 'Board')).toBeVisible()
+  await spaceIs('Zone', true)
+})

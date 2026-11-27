@@ -23,6 +23,7 @@ import { mcpRequest, requestHref, useMcpWords } from '../lib/mcpModule'
 import { answerNotice, refreshNews, seenAll, useNews } from '../lib/news'
 import { RequestBellRow } from '../vendor/nexmcp'
 import { fitWidth, keepWidth, storedWidth, USUAL_WIDTH } from '../lib/sidebarWidth'
+import { keepFolds, storedFolds } from '../lib/spaceFold'
 import { openInTab } from '../lib/tabs'
 import { baseName, folderOf, noteUrl } from '../lib/vault'
 import { askVaultAction, copyText, FORGET_EVENT, reveal, REVEAL_EVENT, within } from '../lib/vaultActions'
@@ -210,7 +211,10 @@ export function Sidebar({ activeNote, activeFolder, onNote: choose, onFolder }: 
   const location = useLocation()
   const menu = useContextMenu()
   const [copied, setCopied] = useState<string | null>(null)
-  const [toggled, setToggled] = useState<Map<string, boolean>>(new Map())
+  // Spaces folded by hand stay folded at the next note and after a reload (GitHub issue 22): the tree is drawn anew
+  // for every note.
+  const [toggled, setToggled] = useState<Map<string, boolean>>(storedFolds)
+  useEffect(() => keepFolds(toggled), [toggled])
   const [listings, setListings] = useState<Map<string, Listing | 'loading' | 'failed'>>(new Map())
   const scroller = useRef<HTMLDivElement>(null)
   const [viewport, setViewport] = useState({ top: 0, height: 600 })
