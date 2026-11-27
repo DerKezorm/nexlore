@@ -37,6 +37,9 @@ class StandardAdapter:
     store: Any = None
     #: The display names of ``owner`` and ``other`` in the app (since 0.1.2; an app with other names says so).
     names: dict[str, str] = {"owner": "kim", "other": "sam"}  # noqa: RUF012 (read only)
+    #: Since 0.1.8 (B1, V43): the shown names the app's ``Store.account_card`` gives ``owner`` and ``other``, where
+    #: they differ from ``names`` ("Kim Example"); empty: the consent page shows the name alone.
+    shown_names: dict[str, str] = {}  # noqa: RUF012 (read only)
 
     def start(self, folder: Path, *, older: bool = False) -> None:
         """APP: the app started as in production, with ``owner``, ``other`` and ``operator``; ``older``: on a database
@@ -123,6 +126,8 @@ class World:
         self.tokens: list[str] = []
         self._apps = {self.host(app.base): app.asgi(), self.host(partner.base): partner.api}
         self._kept: tuple[Any, Any] | None = None
+        #: Since 0.1.8 (B2): hosts besides ``home.…`` whose name points into the own network.
+        self.at_home: set[str] = set()
 
     @staticmethod
     def host(base: str) -> str:
@@ -132,7 +137,7 @@ class World:
         reach = self.pkg.reach
         self._kept = (reach.TRANSPORT, reach.RESOLVER)
         reach.TRANSPORT = httpx.MockTransport(self._handle)
-        reach.RESOLVER = lambda host, port: [HOME if host.startswith("home.") else PUBLIC]
+        reach.RESOLVER = lambda host, port: [HOME if host.startswith("home.") or host in self.at_home else PUBLIC]
         self.pkg.connect.BRAKE.forget()
 
     def uninstall(self) -> None:
@@ -184,12 +189,26 @@ class World:
 
     # --- connecting -------------------------------------------------------------------------------------------------
 
-    def start(self, which: str = "app", role: str = "owner", *, address: str | None = None, **body: Any) -> Any:
+    def start(self, which: str = "app", role: str = "owner", **body: Any) -> Any:
+        """"Mit <other> verbinden" on ``which``; since 0.1.8 (V42) at the address the operator set (``world`` sets it
+        on both sides), an ``address`` in ``body`` is not taken."""
         clients, _, _ = self.side(which)
-        _, other_name, other_base = self.side(self.other(which))
-        return clients(role).post(
-            f"{self.pkg.PREFIX}/partners/{other_name}/start", json={"address": address or other_base, **body}
-        )
+        _, other_name, _ = self.side(self.other(which))
+        return clients(role).post(f"{self.pkg.PREFIX}/partners/{other_name}/start", json=body)
+
+    def set_address(self, which: str, address: str | None) -> None:
+        """Since 0.1.8 (V42): the operator of ``which`` sets the address of the other app ("" or ``None``: none)."""
+        _, other_name, _ = self.side(self.other(which))
+        if which == "app":
+            found = self.app.client("operator").put(
+                f"{self.pkg.PREFIX}/admin", json={"addresses": {other_name: address or ""}}
+            )
+            assert found.status_code == 200, found.text
+            return
+        kept = self.partner.store.setting("addresses") or {}
+        kept = {name: url for name, url in {**kept, other_name: address or ""}.items() if url}
+        self.partner.store.set_setting("addresses", kept)
+        self.partner.store.commit()
 
     def consent_params(self, go: str) -> dict[str, str]:
         return {key: values[0] for key, values in parse_qs(urlsplit(go).query).items()}
@@ -276,6 +295,9 @@ def world(pkg: ModuleType, adapter: StandardAdapter, folder: Path, *, older: boo
     partner = ReferenceApp(pkg, adapter.partner, f"https://{adapter.partner}.example.com", folder / "partner")
     made = World(pkg, adapter, partner)
     made.install()
+    # Since 0.1.8 (V42, B3): only the operator sets the other app up; here on both sides, as a server with both apps.
+    made.set_address("app", partner.base)
+    made.set_address("partner", adapter.base)
     try:
         yield made
     finally:

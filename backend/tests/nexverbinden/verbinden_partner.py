@@ -225,6 +225,12 @@ class ReferenceStore:
         row = self.db.execute("SELECT name FROM accounts WHERE id = ?", (account_id,)).fetchone()
         return row[0] if row else "?"
 
+    def account_card(self, account_id: Any) -> dict[str, Any] | None:
+        """Since 0.1.8 (B1, V43): shown name, user name, own picture (the reference has one for kim only)."""
+        name = self.account_name(account_id)
+        picture = f"/api/account/{account_id}/picture" if name == "kim" else None
+        return {"name": f"{name.capitalize()} Example", "username": name, "picture": picture, "color": None}
+
     def areas(self, account_id: Any) -> list[dict[str, Any]]:
         rows = self.db.execute("SELECT id, name FROM areas WHERE account_id = ? ORDER BY id", (account_id,))
         return [{"id": row[0], "name": row[1]} for row in rows]
