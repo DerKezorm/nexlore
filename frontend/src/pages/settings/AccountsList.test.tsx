@@ -51,6 +51,8 @@ async function show() {
         : asked === '/api/auth/me' ? ME
         : asked === '/api/accounts' ? ACCOUNTS
         : asked === '/api/accounts/2/impact' ? { spaces: 2, alone: ['Garten'] }
+        // The devices of an account in "Verwalten" (module geraete): none here.
+        : asked.startsWith('/api/devices/server/accounts/') ? { count: 0, devices: [] }
         : []
       return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } })
     }),

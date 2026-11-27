@@ -234,6 +234,25 @@ export default defineConfig({
   webServer: external
     ? undefined
     : [
+      // The stand-ins first: Playwright starts the servers in this order, each once the one before answers. The
+      // backend checks for updates as it starts (the module updates, then only an hour after a failure), so the
+      // stand-in for GitHub must answer by then (about.spec.ts); before, the first check failed with ConnectError.
+      // A stand-in AI service (ai.spec.ts) and GitHub's latest release (about.spec.ts), answering by rule.
+      {
+        command: 'node e2e/fake-ai.mjs',
+        url: 'http://127.0.0.1:8478/health',
+        reuseExistingServer: false,
+        timeout: 20_000,
+        env: { FAKE_AI_PORT: '8478' },
+      },
+      // A stand-in mail server and sign-in provider (email.spec.ts): keeps the mails, signs in whoever it is told.
+      {
+        command: 'node e2e/fake-postbox.mjs',
+        url: 'http://127.0.0.1:8476/health',
+        reuseExistingServer: false,
+        timeout: 20_000,
+        env: { FAKE_POSTBOX_PORT: '8476', FAKE_SMTP_PORT: '2525' },
+      },
       {
         command: `${python} -m uvicorn app.main:app --host 127.0.0.1 --port ${PORT}`,
         cwd: path.join('..', 'backend'),
@@ -249,27 +268,11 @@ export default defineConfig({
           NEXLORE_ARGON2_TIME: '1',
           NEXLORE_ARGON2_MEMORY_KIB: '8192',
           NEXLORE_ARGON2_PARALLELISM: '1',
-          // Never GitHub from a test: the stand-in below answers the update check.
+          // Never GitHub from a test: the stand-in above answers the update check.
           NEXLORE_UPDATE_URL: 'http://127.0.0.1:8478/releases/latest',
           // The code the first account brings; global-setup.ts sends it.
           NEXLORE_SETUP_TOKEN: 'e2e-setup-code-of-the-run',
         },
-      },
-      // A stand-in AI service (ai.spec.ts): the chat interface, answering by rule.
-      {
-        command: 'node e2e/fake-ai.mjs',
-        url: 'http://127.0.0.1:8478/health',
-        reuseExistingServer: false,
-        timeout: 20_000,
-        env: { FAKE_AI_PORT: '8478' },
-      },
-      // A stand-in mail server and sign-in provider (email.spec.ts): keeps the mails, signs in whoever it is told.
-      {
-        command: 'node e2e/fake-postbox.mjs',
-        url: 'http://127.0.0.1:8476/health',
-        reuseExistingServer: false,
-        timeout: 20_000,
-        env: { FAKE_POSTBOX_PORT: '8476', FAKE_SMTP_PORT: '2525' },
       },
     ],
 })
