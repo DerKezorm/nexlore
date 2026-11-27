@@ -147,7 +147,7 @@ class Adapter(StandardAdapter):
         from app.vendor.nexkonten import manage
 
         with SessionLocal() as db:
-            getattr(manage, action)(KontenStore(db), self.ids[account], actor_id=self._actor(account),
+            getattr(manage, action)(KontenStore(db), self.ids[account], actor_id=self.ids["operator"],
                                     password=PASSWORD)
         # nexlore ends the browser sessions of a blocked or deleted account; back, the person signs in again.
         if action in ("unblock", "restore") and account in self.clients:
@@ -156,14 +156,6 @@ class Adapter(StandardAdapter):
                 assert row is not None
                 db.expunge(row)
             sign_in(self.clients[account], row)
-
-    def _actor(self, account: str) -> Any:
-        """The operator acts; on the operator's own account a second operator does (nobody blocks themselves)."""
-        if account != "operator":
-            return self.ids["operator"]
-        if "second operator" not in self.ids:
-            self.ids["second operator"] = make_account("second", "operator").id
-        return self.ids["second operator"]
 
     def block(self, account: str = "owner") -> None:
         self._manage("block", account)

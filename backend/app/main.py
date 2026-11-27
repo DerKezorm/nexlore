@@ -288,13 +288,12 @@ app.include_router(mcp_router.module_router)
 # The shared module wasneu (0.1.0): "What's new" under ``/api/whats-new`` for the signed-in account; the way of
 # before (``POST /api/me/whats-new/seen``) stays in ``auth``.
 app.include_router(_wasneu_api.router(viewer=auth.whats_new_viewer))
-# The shared device module (geraete 0.1.1): its app routes new in 1.17.0 under ``/api/app/1`` and its browser routes
-# under ``/api/devices``; the ways of 1.16.0 stay in ``app1`` and ``app_pairing`` (ROUTERS). Out of the description:
-# their shapes are the module's (``tests/nexgeraete``), and the description of ``/api/app/1`` holds the published app's
-# promise (``test_app1_contract``). Since 0.1.1 the module's bodies are ``Nexgeraete…`` (G59) and would rename none
-# of nexlore's (E53); the browser routes stay out until the module's name guard accepts nexlore's names of 1.16.0.
+# The shared device module (geraete 0.1.4): its app routes new in 1.17.0 under ``/api/app/1`` and its browser routes
+# under ``/api/devices``; the ways of 1.16.0 stay in ``app1`` and ``app_pairing`` (ROUTERS). The app routes stay out of
+# the description, which for ``/api/app/1`` holds the published app's promise (``test_app1_contract``, G60). The
+# browser routes are in it: the module's bodies are ``Nexgeraete…`` (G59) and rename none of nexlore's (E53).
 app.include_router(app1_router.module_router)
-app.include_router(app_pairing_router.module_router, include_in_schema=False)
+app.include_router(app_pairing_router.module_router)
 # The shared module verbinden (0.1.3): ``/.well-known/nex-app`` and ``/api/connect/…`` (nexlore hosts nexnotes).
 app.include_router(verbinden_router.router)
 # The shared AI module (ki 0.1.1): Server › KI-Anbieter (``/api/server/ai``) and Mein Konto › KI (``/api/me/ai``).

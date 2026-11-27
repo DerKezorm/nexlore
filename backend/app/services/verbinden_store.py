@@ -226,6 +226,10 @@ class VerbindenStore:
         """nexlore had no connection with another nex app typed in by hand."""
         return []
 
+    def forget_legacy(self, account_id: Any, partner: str) -> None:
+        """verbinden 0.2.0 (B9, V56): nothing to end, nexlore had no connection typed in by hand (``legacy`` is
+        empty)."""
+
     def retire_key(self, token: str) -> bool:
         """An API token of nexlore that a partner had typed in ends itself (after the partner connected anew)."""
         if not token.startswith(apitokens.TOKEN_PREFIX):

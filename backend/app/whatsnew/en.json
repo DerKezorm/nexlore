@@ -690,7 +690,7 @@
         "title": "Server › Connections",
         "where": "Server › Connections",
         "operator": true,
-        "body": "For the operator: what concerns other apps and programs has an area of its own. Under \"Other nex apps\" you enter the address of nexnotes once, and every account connects with one click. If nexnotes runs in your local network (LAN, VPN), also allow \"Connections into the local network\". The switch \"Connections with other nex apps\" lets every connection rest; nothing is deleted. Under \"Interfaces\" you switch API keys, AI tools (MCP) and the iPhone app on and off. API keys for programs such as n8n keep working as before."
+        "body": "For the operator: what concerns other apps and programs has an area of its own. Under \"Other nex apps\" you enter the address of nexnotes once, and every account connects with one click. When you save, nexlore checks the address and shows whether nexnotes answers there. If somebody connected from nexnotes before the address was entered, nexnotes suggests it to you, and you take it over with one click. If nexnotes runs in your local network (LAN, VPN), also allow \"Connections into the local network\". The switch \"Connections with other nex apps\" lets every connection rest; nothing is deleted. Under \"Interfaces\" you switch API keys, AI tools (MCP) and the iPhone app on and off. API keys for programs such as n8n keep working as before."
       },
       {
         "title": "Settings like in every nex app",

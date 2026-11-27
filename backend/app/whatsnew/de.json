@@ -690,7 +690,7 @@
         "title": "Server › Verbindungen",
         "where": "Server › Verbindungen",
         "operator": true,
-        "body": "Für den Betreiber: Was andere Apps und Programme betrifft, hat einen eigenen Bereich. Unter „Andere nex-Apps“ trägst du die Adresse von nexnotes einmal ein, danach verbindet jedes Konto mit einem Klick. Läuft nexnotes im eigenen Netz (LAN, VPN), erlaube dazu „Verbindungen ins eigene Netz“. Der Schalter „Verbindungen mit anderen nex-Apps“ lässt alle Verbindungen ruhen, gelöscht wird nichts. Unter „Schnittstellen“ schaltest du API-Schlüssel, KI-Werkzeuge (MCP) und die iPhone-App ein und aus. API-Schlüssel für Programme wie n8n gelten weiter wie bisher."
+        "body": "Für den Betreiber: Was andere Apps und Programme betrifft, hat einen eigenen Bereich. Unter „Andere nex-Apps“ trägst du die Adresse von nexnotes einmal ein, danach verbindet jedes Konto mit einem Klick. Beim Speichern prüft nexlore die Adresse und zeigt, ob dort nexnotes antwortet. Hat sich jemand von nexnotes aus verbunden, bevor die Adresse eingetragen war, schlägt nexnotes sie dir vor, und du übernimmst sie mit einem Klick. Läuft nexnotes im eigenen Netz (LAN, VPN), erlaube dazu „Verbindungen ins eigene Netz“. Der Schalter „Verbindungen mit anderen nex-Apps“ lässt alle Verbindungen ruhen, gelöscht wird nichts. Unter „Schnittstellen“ schaltest du API-Schlüssel, KI-Werkzeuge (MCP) und die iPhone-App ein und aus. API-Schlüssel für Programme wie n8n gelten weiter wie bisher."
       },
       {
         "title": "Einstellungen wie in jeder nex-App",
