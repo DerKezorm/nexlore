@@ -16,8 +16,10 @@ from verbinden_contract import StandardAdapter
 
 TAB = {"X-Nexlore-Client": "tab-connect00"}
 ROLES = ("owner", "other", "operator")
-#: The names the contract tests know the accounts by (as its partner names them).
-SHOWN = {"owner": "kim", "other": "sam", "operator": "op"}
+#: The user names the contract tests know the accounts by (as its partner names them, ``Store.account_name``).
+USER = {"owner": "kim", "other": "sam", "operator": "op"}
+#: Their shown names (``display_name``), which the consent page shows with the user name (verbinden 0.1.8, V43).
+SHOWN = {"owner": "Kim Example", "other": "Sam Example", "operator": "Op Example"}
 #: The spaces of each account (the owner has two to give).
 SPACES = {"owner": ("Kim notes", "Kim work"), "other": ("Sam notes",), "operator": ("Op notes",)}
 
@@ -27,6 +29,7 @@ class Adapter(StandardAdapter):
     partner = "nexnotes"
     base = "https://lore.example.com"
     older_link = False
+    shown_names = {"owner": SHOWN["owner"], "other": SHOWN["other"]}  # noqa: RUF012 (read only)
 
     def start(self, folder: Path, *, older: bool = False) -> None:
         """Three accounts with their spaces; with ``older`` an API token of ``owner``, as nexlore wrote it."""
@@ -43,7 +46,7 @@ class Adapter(StandardAdapter):
         self.spaces: dict[str, int] = {}
         self.clients: dict[str, TestClient] = {}
         for role in ROLES:
-            made = make_account(f"connect-{role}", OPERATOR if role == "operator" else MEMBER)
+            made = make_account(USER[role], OPERATOR if role == "operator" else MEMBER)
             self.ids[role] = made.id
         with SessionLocal() as db:
             for role in ROLES:

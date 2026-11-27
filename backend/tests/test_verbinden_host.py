@@ -9,6 +9,7 @@ from __future__ import annotations
 import secrets
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from urllib.parse import quote
 
 import pytest
 from fastapi.testclient import TestClient
@@ -153,5 +154,35 @@ def test_only_nexnotes_has_a_card(kim: tuple[Account, dict[str, int]]) -> None:
     assert [card["partner"] for card in cards] == ["nexnotes"]
     assert cards[0]["grants"] == ["notes.add"] and cards[0]["uses"] == []
     for other in ("nextasks", "nextime", "nexmail"):
-        started = browser.post(f"/api/connect/partners/{other}/start", json={"address": "https://x.example.com"})
+        # Since verbinden 0.1.8 (V42) the start takes no address: the operator's or a connection's.
+        started = browser.post(f"/api/connect/partners/{other}/start", json={})
         assert started.status_code == 404, other
+
+
+def test_the_consent_page_shows_the_account_as_its_profile_does(kim: tuple[Account, dict[str, int]]) -> None:
+    """verbinden 0.1.8 (B1, V43): ``account_card`` gives the shown name, the user name and the own picture at the
+    address nexlore's pages load it from (``Avatar.tsx``); the other app names the account by its user name."""
+    owner, _spaces = kim
+    with SessionLocal() as db:
+        store = VerbindenStore(db)
+        assert store.account_card(owner.id) == {"name": "", "username": "kim", "picture": None, "color": None}
+        row = db.get(Account, owner.id)
+        assert row is not None
+        row.display_name = "Kim Example"
+        row.avatar_at = datetime(2026, 11, 27, 8, 0, tzinfo=UTC)
+        db.commit()
+        card = store.account_card(owner.id)
+        assert card is not None
+        assert (card["name"], card["username"], card["color"]) == ("Kim Example", "kim", None)
+        assert card["picture"] == f"/api/avatars/{owner.id}?v=2026-11-27T08%3A00%3A00%2B00%3A00"
+        assert store.account_name(owner.id) == "kim"
+        assert store.account_card(999999) is None
+    # What the consent page gets: the module keeps the picture, a shown name equal to the user name says nothing.
+    with SessionLocal() as db:
+        shown = nexverbinden.connect.account_card(VerbindenStore(db), owner.id)
+    assert shown["name"] == "Kim Example" and shown["picture"].startswith(f"/api/avatars/{owner.id}?v=")
+    # The same address the profile builds from ``/api/auth/me`` (``encodeURIComponent`` of ``avatar``).
+    browser = TestClient(app, base_url="http://testserver", headers=TAB)
+    sign_in(browser, owner)
+    me = browser.get("/api/auth/me").json()
+    assert shown["picture"] == f"/api/avatars/{me['id']}?v={quote(me['avatar'], safe='')}"

@@ -1,4 +1,4 @@
-"""nexlore's side of the shared module verbinden (``vendor/nexverbinden`` 0.1.3, plan "Entwurf Apps verbinden"): its
+"""nexlore's side of the shared module verbinden (``vendor/nexverbinden`` 0.1.8, plan "Entwurf Apps verbinden"): its
 ``AppConfig`` and the ``Store`` over the tables of ``models_verbinden``.
 
 nexlore is only the host in the catalog (Runde 2, Teil B): nexnotes puts a note into a space of nexlore
@@ -16,6 +16,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import quote
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
@@ -193,8 +194,22 @@ class VerbindenStore:
         return account is not None and not account_out(account)
 
     def account_name(self, account_id: Any) -> str:
+        """The account's user name, as the other app names it ("verbunden als kim"); the shown name with the picture
+        goes to the consent page through ``account_card`` (verbinden 0.1.8, V43). Up to 0.1.7 the shown name stood
+        here: the contract now reads this as the user name of the card."""
         account = self.db.get(Account, int(account_id))
-        return (account.display_name or account.name) if account is not None else ""
+        return account.name if account is not None else ""
+
+    def account_card(self, account_id: Any) -> dict[str, Any] | None:
+        """Who is signed in, for the consent page (verbinden 0.1.8, B1): the shown name and the user name as the
+        profile shows them, and the own picture at the address the page itself loads it from (``Avatar.tsx``:
+        ``/api/avatars/<id>?v=<when it was set>``). nexlore keeps no colour of a person."""
+        account = self.db.get(Account, int(account_id))
+        if account is None:
+            return None
+        picture = (f"/api/avatars/{account.id}?v={quote(account.avatar_at.isoformat(), safe='')}"
+                   if account.avatar_at else None)
+        return {"name": account.display_name, "username": account.name, "picture": picture, "color": None}
 
     def areas(self, account_id: Any) -> list[dict[str, Any]]:
         """The spaces the account may write in (a note can go only there), by their names."""
