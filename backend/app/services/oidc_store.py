@@ -331,7 +331,7 @@ class SqlStore:
     def accept_invite(self, account_id: int, invite: Invite) -> None:
         # A known identity came through an invitation (module 1.0.8): the rights of the invitation come on top of the
         # account's own, never fewer (``accounts.redeem`` only raises). The address it was made for is not taken over:
-        # the account has its own. Only uncoupled: coupled, ``find_invite`` finds none.
+        # the account has its own.
         row = self.db.get(Account, account_id)
         if row is not None and isinstance(invite.rights, InviteRow):
             accounts.redeem(self.db, invite.rights, row, consumed=True, commit=False)

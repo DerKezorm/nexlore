@@ -1427,7 +1427,6 @@
     },
     "providers": {
       "order": "{{name}} verschieben: ziehen oder die Pfeiltasten",
-      "coupled": "über die Kopplung",
       "copy": "Kopieren",
       "more": "Mehr"
     },

@@ -149,8 +149,7 @@ def public_providers() -> list[dict[str, str]]:
 @router.get("/admin/providers", summary="The provider list for the operator (never a secret)")
 def admin_providers(_operator: OperatorAccount, request: Request) -> list[dict[str, Any]]:
     with store() as s:
-        coupled = providers.coupled(s)
-        return [providers.admin_view(entry, _base(request), len(s.links_of_provider(entry.id)), coupled=coupled)
+        return [providers.admin_view(entry, _base(request), len(s.links_of_provider(entry.id)))
                 for entry in s.list_providers()]
 
 

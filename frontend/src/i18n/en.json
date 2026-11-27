@@ -1427,7 +1427,6 @@
     },
     "providers": {
       "order": "Move {{name}}: drag, or the arrow keys",
-      "coupled": "through the coupling",
       "copy": "Copy",
       "more": "More"
     },
