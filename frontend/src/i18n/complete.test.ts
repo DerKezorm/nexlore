@@ -5,8 +5,11 @@
 
 import { SHIPPED } from './index'
 // The texts of "What's new" are served by the server since the module wasneu 0.1.0 (backend/app/whatsnew).
-import whatsNewDe from '../../../backend/app/whatsnew/de.json'
-import whatsNewEn from '../../../backend/app/whatsnew/en.json'
+import { whatsNewTexts } from '../test/whatsNewTexts'
+
+// Read at run time: the image builds the interface from frontend/ alone, without the backend's texts.
+const whatsNewDe = await whatsNewTexts('de')
+const whatsNewEn = await whatsNewTexts('en')
 
 const files = import.meta.glob('./*.json', { eager: true, import: 'default' }) as Record<string, Record<string, unknown>>
 
