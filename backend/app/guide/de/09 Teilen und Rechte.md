@@ -32,13 +32,13 @@ Unter **Mein Konto › Profil** gibst du dir einen **Anzeigenamen**, etwa mit Vo
 
 ## Deine Mailadresse
 
-Unter **Mein Konto › Profil** trägst du deine **Mailadresse** ein und drückst **Bestätigen**. nexlore schickt dir einen Link; erst wenn du ihn öffnest, gilt die Adresse. Bis dahin bleibt eine früher bestätigte Adresse gültig. Einladungen und Benachrichtigungen per Mail gehen an diese Adresse, sehen kann sie niemand außer dir und dem Betreiber.
+Unter **Mein Konto › Profil** trägst du deine **Mailadresse** ein und speicherst; dafür fragt nexlore nach deinem Passwort. nexlore schickt dir einen Link; erst wenn du ihn öffnest, gilt die Adresse. Bis dahin bleibt eine früher bestätigte Adresse gültig. Einladungen und Benachrichtigungen per Mail gehen an diese Adresse, sehen kann sie niemand außer dir und dem Betreiber. Mit ihr meldest du dich auch an, und ein vergessenes Passwort setzt du über sie zurück, siehe [[15 Dein Konto und andere Apps]].
 
-Der Betreiber kann dir unter **Einstellungen › Server › Konten** auch selbst eine Adresse eintragen; sie gilt sofort, und du siehst es unter **Neu seit deinem letzten Besuch**. Meldest du dich nur über einen Anmeldedienst wie authentik an, kommt die Adresse von dort und lässt sich auch nur dort ändern. Ist dein Konto mit einem Passwort und zusätzlich mit einem Anmeldedienst verbunden, behältst du deine eigene Adresse; kennt der Dienst eine andere, bietet dir das Profil an, sie zu übernehmen.
+Deine Adresse trägst nur du selbst ein. Der Betreiber kann sie unter **Einstellungen › Server › Konten** entfernen, aber keine eintragen. Meldest du dich nur über einen Anmeldedienst wie authentik an, kommt die Adresse von dort und lässt sich auch nur dort ändern. Ist dein Konto mit einem Passwort und zusätzlich mit einem Anmeldedienst verbunden, behältst du deine eigene Adresse; kennt der Dienst eine andere, bietet dir das Profil an, sie zu übernehmen.
 
 Unter **Mein Konto › Sicherheit › Anmeldeanbieter** hat jeder Anmeldedienst, den der Betreiber eingerichtet hat, eine Zeile: **Verknüpfen** fragt noch einmal nach deinem Passwort und führt dich dorthin, danach führt sein Knopf auf der Anmeldeseite in dein Konto; **Lösen** nimmt die Verknüpfung wieder weg. nexlore findet dein Konto nie über deine Mailadresse: Wer bei einem Anmeldedienst dieselbe Adresse hat, ist hier erst du, wenn du dich verknüpft hast.
 
-Damit Mails hinausgehen, trägt der Betreiber unter **Einstellungen › Server › Mail** einen Server ein. Ohne ihn ist das Feld im Profil gesperrt und sagt warum.
+Damit Mails hinausgehen, trägt der Betreiber unter **Einstellungen › Server › Mail** einen Server ein. Ohne ihn gilt eine neue Adresse gleich, ohne Link, und es geht keine Mail hinaus.
 
 ## Benachrichtigungen
 

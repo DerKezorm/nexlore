@@ -42,4 +42,4 @@ On a phone you look around, read cards, edit text cards and open notes. Arrangin
 | `Enter` | edits the chosen text card |
 | `Esc` | ends editing, clears the choice |
 
-That was the guide. Enjoy your notes. Back to [[00 Welcome|Welcome]].
+Next: [[15 Your account and other apps]].

@@ -93,3 +93,25 @@ def test_the_new_places_are_named() -> None:
         assert place in guide, place
     backups = texts["guide/de/12 Sicherung und Umzug.md"][0] + texts["guide/en/12 Backups and moving in.md"][0]
     assert "Server › Speicher und Sicherung" in backups and "Server › Storage and backups" in backups
+
+
+def test_the_guide_points_to_the_places_of_1_17() -> None:
+    """Since 1.17.0 there is no account menu: waiting requests stand in the sidebar, "New note" at its top; the
+    operator only removes an address; nexnotes is connected under Other nex apps (guide 01, 09, 11, 15)."""
+    texts = _texts()
+    for language, old in (("de", ("Kontomenü", "auch selbst eine Adresse eintragen", "Knopf **+** oben in der Kopfleiste")),
+                          ("en", ("account menu", "can also enter an address for you", "**+** button in the header"))):
+        guide = "\n".join(text for name, values in texts.items() if name.startswith(f"guide/{language}/") for text in values)
+        for words in old:
+            assert words not in guide, (language, words)
+    new = {
+        "guide/de/15 Dein Konto und andere Apps.md": ("Einstellungen › Server › Allgemein › Andere nex-Apps", "Zugriff beenden",
+                                                     "Passwort vergessen?", "Passkey hinzufügen", "Einstellungen › Server › Konten"),
+        "guide/en/15 Your account and other apps.md": ("Settings › Server › General › Other nex apps", "End access",
+                                                      "Forgot your password?", "Add a passkey", "Settings › Server › Accounts"),
+        "guide/de/11 KI.md": ("Wartende Rückfragen",),
+        "guide/en/11 AI.md": ("Waiting requests",),
+    }
+    for name, places in new.items():
+        for place in places:
+            assert place in texts[name][0], (name, place)

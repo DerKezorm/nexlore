@@ -42,4 +42,4 @@ Auf dem Handy schaust du dich um, liest Karten, bearbeitest Textkarten und öffn
 | `Enter` | gewählte Textkarte bearbeiten |
 | `Esc` | Bearbeiten beenden, Auswahl aufheben |
 
-Das war die Anleitung. Viel Freude mit deinen Notizen. Zurück zu [[00 Willkommen|Willkommen]].
+Weiter mit [[15 Dein Konto und andere Apps]].

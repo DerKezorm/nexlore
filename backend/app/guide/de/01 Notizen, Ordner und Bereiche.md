@@ -10,7 +10,7 @@ Einen neuen Bereich legst du mit dem **+** neben „BEREICHE“ in der Seitenlei
 
 ## Ordner und Notizen
 
-- **Neue Notiz:** der Knopf **+** oben in der Kopfleiste, das **+** neben einem Ordner oder `Alt+N`. Im Dialog wählst du den Ort und auf Wunsch eine Vorlage.
+- **Neue Notiz:** der Knopf **Neue Notiz** oben in der Seitenleiste (auf dem Handy das **+** in der Kopfleiste), das **+** neben einem Ordner oder `Alt+N`. Im Dialog wählst du den Ort und auf Wunsch eine Vorlage. Ein langer Druck oder ein Rechtsklick auf **Neue Notiz** öffnet **Schnell erfassen**.
 - **Neuer Ordner, Umbenennen, Verschieben, Löschen:** Rechtsklick auf einen Ordner oder eine Notiz in der Seitenleiste. Auf dem Handy hältst du den Finger kurz darauf.
 - **Symbol und Farbe:** ebenfalls im Rechtsklick-Menü. Die Farbe gilt auch für die Ordner darin, das Symbol erscheint auch auf der Karte.
 - **Ziehen:** Eine Notiz oder einen Ordner ziehst du in der Seitenleiste auf einen anderen Ordner. Mit den Pfeiltasten wanderst du durch den Baum, `Enter` öffnet.
@@ -34,7 +34,7 @@ Ein Klick auf einen Treffer öffnet die Notiz an der Stelle, an der er steht.
 
 ## Blättern wie durch Plattencover
 
-**Stöbern** unten in der Seitenleiste öffnet die **Coverflow-Ansicht** über dem ganzen Fenster. Sie beginnt im Ordner der offenen Notiz, sonst bei allen Bereichen. Jeder Bereich und jeder Ordner ist eine Karte mit Titelbild, jede Notiz eine Karte mit einem Stück ihres Textes. Im Rechtsklick-Menü eines Ordners in der Seitenleiste steht **Als Coverflow zeigen**.
+**Stöbern** oben rechts in der Kopfleiste (auf dem Handy unten in der Seitenleiste) öffnet die **Coverflow-Ansicht** über dem ganzen Fenster. Sie beginnt im Ordner der offenen Notiz, sonst bei allen Bereichen. Jeder Bereich und jeder Ordner ist eine Karte mit Titelbild, jede Notiz eine Karte mit einem Stück ihres Textes. Im Rechtsklick-Menü eines Ordners in der Seitenleiste steht **Als Coverflow zeigen**.
 
 - **Blättern:** Pfeiltasten, Mausrad, Ziehen oder der Regler unten. Tippst du Buchstaben, springt die Ansicht zur ersten Karte mit diesem Anfang.
 - **Öffnen:** Ein Klick auf die Karte in der Mitte (oder `Enter`) geht in den Ordner hinein oder öffnet die Notiz zum Lesen. **In nexlore öffnen** bringt dich zur Notiz selbst.

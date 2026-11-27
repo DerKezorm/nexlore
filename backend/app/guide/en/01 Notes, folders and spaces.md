@@ -10,7 +10,7 @@ Make a new space with the **+** beside "SPACES" in the sidebar. Whoever manages 
 
 ## Folders and notes
 
-- **New note:** the **+** button in the header, the **+** beside a folder, or `Alt+N`. The dialog lets you choose the place and, if you like, a template.
+- **New note:** the **New note** button at the top of the sidebar (on a phone the **+** in the header), the **+** beside a folder, or `Alt+N`. The dialog lets you choose the place and, if you like, a template. A long press or a right click on **New note** opens **Quick capture**.
 - **New folder, rename, move, delete:** right-click a folder or a note in the sidebar. On a phone, press and hold it.
 - **Symbol and colour:** in the same menu. The colour holds for the folders inside too; the symbol shows on the map as well.
 - **Dragging:** drag a note or a folder in the sidebar onto another folder. The arrow keys walk the tree, `Enter` opens.
@@ -34,7 +34,7 @@ A click on a hit opens the note where the hit stands.
 
 ## Flip through like record covers
 
-**Browse** at the bottom of the sidebar opens the **cover flow** over the whole window. It starts in the folder of the open note, else at all spaces. Every space and folder is a card with a cover picture, every note a card with a little of its text. The right-click menu of a folder in the sidebar has **Show as cover flow**.
+**Browse** at the top right of the header (on a phone at the bottom of the sidebar) opens the **cover flow** over the whole window. It starts in the folder of the open note, else at all spaces. Every space and folder is a card with a cover picture, every note a card with a little of its text. The right-click menu of a folder in the sidebar has **Show as cover flow**.
 
 - **Flip:** arrow keys, the mouse wheel, a drag or the slider at the bottom. Type letters to jump to the first card that begins so.
 - **Open:** a click on the card in the middle (or `Enter`) goes into the folder or opens the note for reading. **Open in nexlore** takes you to the note itself.

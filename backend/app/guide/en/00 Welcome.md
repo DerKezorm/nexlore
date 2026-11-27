@@ -24,6 +24,7 @@ This space is a guide and an example at once. Every note here uses what it expla
 12. [[12 Backups and moving in]]
 13. [[13 Shortcuts]]
 14. [[14 The canvas]]
+15. [[15 Your account and other apps]]
 
 ## The main thing in three sentences
 

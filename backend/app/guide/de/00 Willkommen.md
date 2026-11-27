@@ -24,6 +24,7 @@ Dieser Bereich ist Anleitung und Beispiel zugleich. Jede Notiz hier benutzt, was
 12. [[12 Sicherung und Umzug]]
 13. [[13 Tastenkürzel]]
 14. [[14 Die Leinwand]]
+15. [[15 Dein Konto und andere Apps]]
 
 ## Das Wichtigste in drei Sätzen
 
