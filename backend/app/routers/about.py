@@ -1,5 +1,5 @@
 """Version and license (open to anybody), and whether a newer nexlore is out: the routes of the shared module
-``vendor/nexupdates`` (updates 0.1.1) under ``/api/about``.
+``vendor/nexupdates`` (updates 0.1.3) under ``/api/about``.
 
 The state and the daily check belong to the operator (U2, U15): a member gets the same form as before with every field
 empty and ``hidden`` true, and never makes a question go out. The names of 1.16.0 in the API's description stay

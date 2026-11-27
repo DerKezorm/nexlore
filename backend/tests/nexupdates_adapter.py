@@ -4,11 +4,14 @@ The contract tests in ``backend/tests/nexupdates/`` run the module inside nexlor
 ``services/updates.py`` (the settings' ``update_check``, ``notify_version``, the bell ``notify.operators``), the routes
 under ``/api/about`` (``routers/about.py``), the setup ``POST /api/setup``. The database is the test session's
 (``tests/conftest.py`` empties it before every test). The bell: both operators have a webhook and mail; the webhook
-counts the versions told, the mail (in the account's language, U17) gives the notices.
+counts the versions told, the mail (in the account's language, U17) gives the notices. The devices (U24): the first
+operator's iPhone, paired through the module geraete and signed up for notifications with ``update``; the relay is a
+recorder (``geraete_config.Hooks.send``), and what it got is unsealed with the device's key.
 """
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -22,6 +25,7 @@ class Adapter(StandardAdapter):
     package = "app.vendor.nexupdates"
     prefix = "/api/about"
     also: tuple[str, ...] = ()
+    has_devices = True
 
     def start(self) -> None:
         import pytest
@@ -45,6 +49,11 @@ class Adapter(StandardAdapter):
         self.clients: dict[str, Any] = {}
         self.accounts: dict[str, Any] = {}
         self.languages: dict[str, str] = {}
+        from app.services.geraete_config import Hooks
+
+        self.relayed: list[dict[str, Any]] = []
+        self._patch.setattr(Hooks, "send", lambda _url, body: self.relayed.append(body) or 200)
+        self.phone: tuple[Any, str] | None = None
 
     def _accounts(self) -> None:
         """An operator (German) and a member, with a second operator (English), made at first use: the setup test
@@ -144,6 +153,41 @@ class Adapter(StandardAdapter):
         """The versions the first operator's webhook was told about (the webhook speaks English)."""
         found = [re.fullmatch(r"nexlore (\S+) is out", str(body.get("title"))) for body in self.posts]
         return ["v" + match.group(1) for match in found if match]
+
+    def want_on_device(self, on: bool) -> None:
+        """The first operator's iPhone, paired once and signed up for ``update``; the kind switched on or off."""
+        from app.db import SessionLocal
+        from app.services.geraete_config import CONFIG, GeraeteStore
+        from app.vendor import nexgeraete
+        from app.vendor.nexgeraete import seal
+
+        self._accounts()
+        with SessionLocal() as db:
+            store = GeraeteStore(db)
+            if self.phone is None:
+                holder = store.holder(self.accounts["operator"].id)
+                assert holder is not None
+                device, _key = nexgeraete.devices.add(store, CONFIG, holder, name="Anna's iPhone", kind="ios",
+                                                      via=nexgeraete.VIA_QR)
+                private, public = seal.key_pair()
+                store.set_push(device.id, nexgeraete.PushState("anna-phone", public, ("update",)))
+                self.phone = (device.id, private)
+            store.set_kinds(self.phone[0], {"update": on})
+            store.commit()
+
+    def devices_told(self) -> list[str]:
+        """The versions the relay carried to the operator's iPhone, unsealed with its key."""
+        from app.services.geraete_config import CONFIG
+        from app.vendor.nexgeraete import seal
+
+        if self.phone is None:
+            return []
+        told = []
+        for body in self.relayed:
+            message = json.loads(seal.unseal(body["enc"], self.phone[1], CONFIG.push_info))
+            if message.get("type") == "update":
+                told.append("v" + str(message["version"]))
+        return told
 
     def bell_notices(self) -> list[tuple[str, str, str]]:
         """Every mail of the bell as (language of the operator's account, version, title)."""

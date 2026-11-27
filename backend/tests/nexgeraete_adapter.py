@@ -147,7 +147,7 @@ class Adapter(StandardAdapter):
         from app.vendor.nexkonten import manage
 
         with SessionLocal() as db:
-            getattr(manage, action)(KontenStore(db), self.ids[account], actor_id=self.ids["operator"],
+            getattr(manage, action)(KontenStore(db), self.ids[account], actor_id=self._actor(account),
                                     password=PASSWORD)
         # nexlore ends the browser sessions of a blocked or deleted account; back, the person signs in again.
         if action in ("unblock", "restore") and account in self.clients:
@@ -156,6 +156,14 @@ class Adapter(StandardAdapter):
                 assert row is not None
                 db.expunge(row)
             sign_in(self.clients[account], row)
+
+    def _actor(self, account: str) -> Any:
+        """The operator acts; on the operator's own account a second operator does (nobody blocks themselves)."""
+        if account != "operator":
+            return self.ids["operator"]
+        if "second operator" not in self.ids:
+            self.ids["second operator"] = make_account("second", "operator").id
+        return self.ids["second operator"]
 
     def block(self, account: str = "owner") -> None:
         self._manage("block", account)
@@ -223,15 +231,21 @@ class Adapter(StandardAdapter):
                       {"type": kind, "title": "Kim Example", "text": "changed something"}, send=send)
 
     def announce(self, version: str) -> None:
-        """The way of ``updates.on_newer``. The contract's server runs 1.2.1 (it reads that in the message)."""
+        """The way of ``updates.on_devices`` (G56), with the version nexlore runs."""
         from app.services import updates
 
-        running = updates.APP_VERSION
-        updates.APP_VERSION = "1.2.1"
-        try:
-            updates._on_newer(version)
-        finally:
-            updates.APP_VERSION = running
+        updates._on_devices(version)
+
+    def update_wanted(self) -> bool:
+        """What ``updates.devices_want`` asks (``notices.update_wanted`` over nexlore's store)."""
+        from app.services import updates
+
+        return updates._devices_want()
+
+    def running(self) -> str:
+        from app.services import updates
+
+        return updates.APP_VERSION
 
     def sweep(self) -> int:
         from app.services import geraete_config

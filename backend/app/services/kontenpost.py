@@ -22,7 +22,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import OPERATOR, Account
-from ..vendor import nexkonten, nexpost
+from ..vendor import nexgeraete, nexkonten, nexpost
 from ..vendor.nexpost import MailError
 from . import settings_service
 from .post_store import PostStore
@@ -31,7 +31,7 @@ logger = logging.getLogger("nexlore.mail")
 
 __all__ = [
     "MailError", "can_mail", "configured", "deliver_now", "language_for", "link_for", "mail_language",
-    "note_browser_language", "queue", "send_invite", "send_test",
+    "note_browser_language", "queue", "queue_device", "send_invite", "send_test",
 ]
 
 #: Where each link leads in the interface.
@@ -124,6 +124,23 @@ def queue(db: Session, mail: nexkonten.Mail | None, *, by: str = "", where: str 
     try:
         letter = nexpost.letters.from_account_mail(mail, language=language_for(db, _account_of(db, mail)),
                                                    link=link_for(db, mail), by=by, where=where, days=days)
+    except (MailError, ValueError) as exc:
+        logger.warning("Mail not queued kind=%s reason=%s", mail.kind, type(exc).__name__)
+        return False
+    nexpost.outbox.queue(PostStore(db), letter)
+    db.commit()
+    return True
+
+
+def queue_device(db: Session, mail: nexkonten.Mail | None, device: nexgeraete.Device) -> bool:
+    """The mail "A new sign-in" for a newly paired device, into the outbox like ``queue`` (geraete G29, G50): the
+    module's ``notices.letter`` names the device ("“Kim's iPhone” (iPhone 16 Pro)") where a browser's sign-in names
+    the browser; ``from_account_mail`` reads a User-Agent and would leave the device out."""
+    if mail is None or not configured(db):
+        return False
+    try:
+        letter = nexgeraete.notices.letter(nexpost.letters, mail, device,
+                                           language=language_for(db, _account_of(db, mail)), link=link_for(db, mail))
     except (MailError, ValueError) as exc:
         logger.warning("Mail not queued kind=%s reason=%s", mail.kind, type(exc).__name__)
         return False

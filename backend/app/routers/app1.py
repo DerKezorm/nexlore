@@ -171,8 +171,8 @@ class KeyOut(BaseModel):
 
 
 def _on_paired(holder: nexgeraete.Holder, paired: nexgeraete.Device) -> None:
-    """After every new device: the mail "A new sign-in" as after a sign-in from an unknown browser (G29), unless the
-    person turned it off."""
+    """After every new device: the mail "A new sign-in" as after a sign-in from an unknown browser (G29), naming the
+    device (``notices.letter``, G50), unless the person turned it off."""
     from ..services import kontenpost
     from ..services.konten_store import KontenStore
     from ..vendor.nexkonten import sessions as konten_sessions
@@ -185,7 +185,7 @@ def _on_paired(holder: nexgeraete.Holder, paired: nexgeraete.Device) -> None:
         if konto is None or row is None:
             return
         mail = konten_sessions.new_sign_in(konto, known=False, wanted=bool(row.new_sign_in_mail))
-        if kontenpost.queue(db, mail, where=nexgeraete.describe(paired)):
+        if kontenpost.queue_device(db, mail, paired):
             logger.info("Mail about a new device queued device_id=%s", paired.id)
 
 
@@ -200,11 +200,11 @@ _HANDLERS: dict[tuple[str, str], Any] = {
 
 
 def _pair_in(body: KeyIn | None, secret: str | None = None, code: str | None = None,
-             verifier: str | None = None) -> geraete_api.PairIn:
+             verifier: str | None = None) -> geraete_api.NexgeraetePairIn:
     given = body or KeyIn()
-    return geraete_api.PairIn(secret=given.secret or secret, code=code, verifier=verifier,
-                              device_name=given.device_name, device_kind=given.device_kind,
-                              device=given.device or None)
+    return geraete_api.NexgeraetePairIn(secret=given.secret or secret, code=code, verifier=verifier,
+                                        device_name=given.device_name, device_kind=given.device_kind,
+                                        device=given.device or None)
 
 
 @router.post("/pairing/{pairing_id}/key", response_model=KeyOut, summary="Pick the device key up with the QR code")

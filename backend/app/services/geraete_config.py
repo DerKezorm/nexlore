@@ -322,8 +322,16 @@ def sweep() -> int:
     return gone
 
 
-def announce(version: str, current: str, url: str) -> None:
-    """``updates.on_newer``: operators whose app understands it hear "nexlore <version> is out" on their devices,
-    once per version (G18). The published app understands it not and hears nothing."""
+def update_wanted() -> bool:
+    """``updates.devices_want`` (G56, U24): whether a device of an operator understands and wants "a new version is
+    out". Such a device counts as a bell: only then, and only with the update check allowed, does the background look
+    at most once a day."""
+    with SessionLocal() as db:
+        return nexgeraete.notices.update_wanted(GeraeteStore(db), CONFIG)
+
+
+def newer(version: str, current: str, url: str) -> None:
+    """``updates.on_devices``: operators whose app understands it hear "nexlore <version> is out" on their devices,
+    once per version (G56). The published app understands it not and hears nothing."""
     with SessionLocal() as db:
         nexgeraete.notices.newer(GeraeteStore(db), CONFIG, version, current, url, send=send)
