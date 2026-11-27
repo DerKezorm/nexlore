@@ -667,5 +667,69 @@
       "The browser now asks before it uses the mark, the icons, the manifest and the theme script again, and their addresses carry a version, so a new mark reaches an installed web app too.",
       "A drawing takes the keyboard as soon as it opens."
     ]
+  },
+  "1.17.0": {
+    "lead": "nexlore now works with nexnotes: what you jot down there goes into a space of nexlore in one click. The settings and sidebars are laid out as in the other nex apps, too. Your notes stay as they are.",
+    "sections": [
+      {
+        "title": "Connect nex apps: notes from nexnotes",
+        "where": "My account › Connections › Other nex apps",
+        "body": "nexnotes is where you jot things down quickly; what should last often belongs in your knowledge in nexlore. Once both are connected, choose \"To nexlore\" in the menu of a note in nexnotes and pick a space, and the note lands in nexlore as a new note with its title and text. In nexnotes it stays as it is. Connecting takes one click and no key to copy: in the card nexnotes you choose which spaces nexnotes may file notes in, all of them (including later ones) or only some. Then \"Connect with nexnotes\" and agree once. If you start in nexnotes, nexlore asks you for the same spaces on the page where you agree. Only spaces you may write in are offered."
+      },
+      {
+        "title": "What nexnotes may do, and how to end it",
+        "where": "My account › Connections › Other nex apps › nexnotes",
+        "body": "nexnotes may do exactly one thing: file notes in the spaces you gave it. It sees your account and the names of those spaces, never what your notes say, and it cannot change, move or delete anything. The card shows the account in nexnotes you are connected with, since when, when nexnotes last brought something and which spaces it uses. \"End access\" ends the connection on both sides; what is in nexlore already stays."
+      },
+      {
+        "title": "Setting up other nex apps",
+        "where": "Server › General › Other nex apps",
+        "body": "For the operator: enter the address of nexnotes here once, and every account connects with one click. If nexnotes runs in your local network (LAN, VPN), also allow \"Connections into the local network\". The switch \"Connections with other nex apps\" lets every connection rest; nothing is deleted. When something goes wrong while connecting, you come back to your card and read there what happened. API keys for programs such as n8n keep working as before."
+      },
+      {
+        "title": "Settings like in every nex app",
+        "where": "The gear at the bottom of the sidebar",
+        "body": "The settings are sorted into areas with an address of their own. Under My account: Profile, Security, Appearance, Notes, Spaces, Plugins, AI, Notifications and Connections. For the operator under Server: General, Sign-in, Mail, Storage and backups, AI provider, Plugins, Public pages, Accounts and Log. And About nexlore. The cards look as in the other nex apps, on a phone the list of the areas comes first, and saved links lead to the new place. Light or dark now belongs to your account and follows you to every device; \"Like the system\" follows each device."
+      },
+      {
+        "title": "Sidebars like in nexnotes",
+        "where": "On the left of every page",
+        "body": "Every page has its bar on the left: \"New note\" and the search at the top, your picture, your name and the gear at the bottom. In between is what belongs to the page: spaces and tags, the conversations of Ask Lore, what is due in the calendar, \"Next\" and the views of the tasks. A long press or a right click on \"New note\" opens \"Quick capture\". The account menu is gone: waiting requests of AI programs, drafts and proposals stand in the sidebar at \"New since your last visit\", Commands and Browse at the top right. On a phone \"New note\" and the search stay at the top, and your picture leads to the settings."
+      },
+      {
+        "title": "Signing in and your account",
+        "where": "My account › Profile and My account › Security",
+        "body": "You sign in with your user name or your mail address. \"Forgot your password?\" mails you a link for a new password, once the operator has entered a mail server. Under Security you add passkeys, as soon as nexlore runs at an https address and the operator allows them. When your account signs in from a new browser, you get a mail. Invitations carry a display name, which you can change when you accept."
+      },
+      {
+        "title": "Managing accounts",
+        "where": "Server › Accounts",
+        "body": "For the operator: one row per account with \"Manage\". There you block and unblock an account and set its storage limit and whether it may use AI. A deleted account can be brought back for 30 days, with its spaces and rights. Instead of setting a password for somebody, you make a link for a new password. Everybody enters their own mail address; you can only remove it. The storage for new accounts is under Server › General › Limits."
+      },
+      {
+        "title": "Backups, mail and languages",
+        "where": "Server › Storage and backups",
+        "body": "For the operator: backups run at a time of day you choose, also every month if you like. \"Back up now\" asks first and takes an optional note, shown with the backup in the list, and the card \"Storage\" shows where nexlore keeps how much. Server › Mail shows the sender name, the last mail and a warning when the mail server is reached without encryption. Upload your own languages under Server › General › Languages, with a template to download; a broken file says why."
+      },
+      {
+        "title": "AI and AI tools",
+        "where": "My account › AI and Server › AI provider",
+        "body": "What AI does for you is under My account › AI: whether you use it in notes, your own access and what went out. Under Server › AI provider the operator sets up one service for all, or lets every account bring its own. With AI tools (MCP) a waiting request stands in the sidebar at \"New since your last visit\", and your webhook hears of it once. When a program changes a note, its history names the key or the program. Rights per tool count as soon as you choose them, and the operator can block MCP keys too and unblock them again."
+      },
+      {
+        "title": "New versions",
+        "where": "About nexlore",
+        "body": "A new installation asks once at setup whether nexlore may look for new versions. Only the operator sees whether a newer one is out and switches the check; members see their own version."
+      }
+    ],
+    "smallTitle": "Also",
+    "small": [
+      "A space you folded in the sidebar stays folded, at the next note and after a reload. Opening a note in it unfolds only that space.",
+      "A context menu taller than the window stays on screen and scrolls.",
+      "Dates and times read the same way everywhere in the settings.",
+      "\"Ready for the internet?\" under Server › Sign-in checks each time you open it whether nexlore is set up for the way into the internet.",
+      "In a hardened container (cap_drop: ALL) the write test of the data folder ended every start; that is fixed.",
+      "Nothing to do for the update: nexlore backs the database up first, and every API key, MCP key, connected connector, paired iPhone and sign-in keeps working."
+    ]
   }
 }

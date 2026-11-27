@@ -667,5 +667,69 @@
       "Zeichen, Symbole, Manifest und das Skript für den Modus fragt der Browser jetzt vor dem Benutzen nach, und ihre Adressen tragen eine Fassung. So kommt ein neues Zeichen auch in einer installierten Web-App an.",
       "Eine Zeichnung nimmt die Tastatur gleich beim Öffnen an."
     ]
+  },
+  "1.17.0": {
+    "lead": "nexlore arbeitet jetzt mit nexnotes zusammen: Was du dort schnell notierst, legst du mit einem Klick in einen Bereich von nexlore. Dazu sind Einstellungen und Seitenleisten aufgebaut wie in den anderen nex-Apps. Deine Notizen bleiben, wie sie sind.",
+    "sections": [
+      {
+        "title": "Apps verbinden: Notizen aus nexnotes",
+        "where": "Mein Konto › Verbindungen › Andere nex-Apps",
+        "body": "In nexnotes hältst du schnell etwas fest; was davon bleiben soll, gehört oft in dein Wissen in nexlore. Sind beide verbunden, wählst du in nexnotes im Menü einer Notiz „An nexlore“ und einen Bereich, und die Notiz liegt mit Titel und Text als neue Notiz in nexlore. In nexnotes bleibt sie, wie sie ist. Verbinden geht mit einem Klick, ohne Schlüssel zum Kopieren: In der Karte nexnotes legst du fest, in welche Bereiche nexnotes Notizen ablegen darf, alle (auch spätere) oder nur ausgewählte. Dann „Mit nexnotes verbinden“ und einmal zustimmen. Beginnst du in nexnotes, fragt dich nexlore auf der Seite, auf der du zustimmst, nach denselben Bereichen. Zur Wahl stehen nur Bereiche, in denen du schreiben darfst."
+      },
+      {
+        "title": "Was nexnotes darf, und wie du es beendest",
+        "where": "Mein Konto › Verbindungen › Andere nex-Apps › nexnotes",
+        "body": "nexnotes darf genau eins: Notizen in die Bereiche legen, die du ihm gegeben hast. Es sieht dein Konto und die Namen dieser Bereiche, nie den Inhalt deiner Notizen, und es kann nichts ändern, verschieben oder löschen. Die Karte zeigt, mit welchem Konto in nexnotes du verbunden bist, seit wann, wann nexnotes zuletzt etwas gebracht hat und welche Bereiche es nutzt. „Zugriff beenden“ trennt die Verbindung auf beiden Seiten; was schon in nexlore liegt, bleibt."
+      },
+      {
+        "title": "Andere nex-Apps einrichten",
+        "where": "Server › Allgemein › Andere nex-Apps",
+        "body": "Für den Betreiber: Trag die Adresse von nexnotes hier einmal ein, danach verbindet jedes Konto mit einem Klick. Läuft nexnotes im eigenen Netz (LAN, VPN), erlaube dazu „Verbindungen ins eigene Netz“. Der Schalter „Verbindungen mit anderen nex-Apps“ lässt alle Verbindungen ruhen, gelöscht wird nichts. Geht beim Verbinden etwas schief, kommt man in seine Karte zurück und liest dort, woran es liegt. API-Schlüssel für Programme wie n8n gelten weiter wie bisher."
+      },
+      {
+        "title": "Einstellungen wie in jeder nex-App",
+        "where": "Zahnrad unten in der Seitenleiste",
+        "body": "Die Einstellungen sind in Bereiche mit eigener Adresse geordnet. Unter Mein Konto: Profil, Sicherheit, Darstellung, Notizen, Bereiche, Plugins, KI, Benachrichtigungen und Verbindungen. Für den Betreiber unter Server: Allgemein, Anmeldung, Mail, Speicher und Sicherung, KI-Anbieter, Plugins, Öffentliche Seiten, Konten und Log. Dazu Über nexlore. Die Karten sehen aus wie in den anderen nex-Apps, auf dem Handy kommt zuerst die Liste der Bereiche, und gespeicherte Links führen an den neuen Ort. Hell oder dunkel gehört jetzt zu deinem Konto und gilt auf jedem Gerät; „Wie das System“ folgt dem jeweiligen Gerät."
+      },
+      {
+        "title": "Seitenleisten wie in nexnotes",
+        "where": "Links auf jeder Seite",
+        "body": "Jede Seite hat links ihre Leiste: oben „Neue Notiz“ und die Suche, unten dein Bild, dein Name und das Zahnrad. Dazwischen steht, was zur Seite gehört: Bereiche und Tags, die Gespräche von Frag Lore, im Kalender das Fällige, bei den Aufgaben „Als Nächstes“ und die Ansichten. Ein langer Druck oder ein Rechtsklick auf „Neue Notiz“ öffnet „Schnell erfassen“. Das Kontomenü gibt es nicht mehr: Wartende Rückfragen von KI-Programmen, Entwürfe und Vorschläge stehen in der Seitenleiste bei „Neu seit deinem letzten Besuch“, Befehle und Stöbern oben rechts. Auf dem Handy bleiben „Neue Notiz“ und die Suche oben, und dein Bild führt zu den Einstellungen."
+      },
+      {
+        "title": "Anmelden und dein Konto",
+        "where": "Mein Konto › Profil und Mein Konto › Sicherheit",
+        "body": "Du meldest dich mit Benutzername oder Mailadresse an. „Passwort vergessen?“ schickt dir einen Link für ein neues Passwort, wenn der Betreiber einen Mailserver eingetragen hat. Unter Sicherheit fügst du Passkeys hinzu, sobald nexlore unter einer https-Adresse läuft und der Betreiber sie erlaubt. Meldet sich dein Konto in einem neuen Browser an, bekommst du eine Mail. Einladungen tragen einen Anzeigenamen, den du beim Annehmen ändern kannst."
+      },
+      {
+        "title": "Konten verwalten",
+        "where": "Server › Konten",
+        "body": "Für den Betreiber: eine Zeile je Konto mit „Verwalten“. Dort sperrst und entsperrst du ein Konto und legst seine Speichergrenze fest und ob es KI nutzen darf. Ein gelöschtes Konto lässt sich 30 Tage lang zurückholen, mit seinen Bereichen und Rechten. Statt ein Passwort für jemanden zu setzen, erzeugst du einen Link für ein neues Passwort. Eine Mailadresse trägt jeder selbst ein; du kannst sie nur entfernen. Den Speicher für neue Konten setzt du unter Server › Allgemein › Grenzen."
+      },
+      {
+        "title": "Sicherung, Mail und Sprachen",
+        "where": "Server › Speicher und Sicherung",
+        "body": "Für den Betreiber: Sicherungen laufen zu einer Uhrzeit deiner Wahl, auf Wunsch auch jeden Monat. „Jetzt sichern“ fragt vorher und nimmt eine Notiz mit, die in der Liste bei der Sicherung steht, und die Karte „Speicher“ zeigt, wo nexlore wie viel ablegt. Unter Server › Mail stehen Absendername, die letzte Mail und eine Warnung, wenn der Mailserver ohne Verschlüsselung angesprochen wird. Eigene Sprachen lädst du unter Server › Allgemein › Sprachen hoch, mit einer Vorlage zum Herunterladen; eine kaputte Datei sagt, warum."
+      },
+      {
+        "title": "KI und KI-Werkzeuge",
+        "where": "Mein Konto › KI und Server › KI-Anbieter",
+        "body": "Was KI für dich tut, steht unter Mein Konto › KI: ob du sie in Notizen nutzt, ein eigener Zugang und was hinausging. Der Betreiber richtet unter Server › KI-Anbieter einen Dienst für alle ein oder lässt jedes Konto seinen eigenen nehmen. Bei KI-Werkzeugen (MCP) steht eine wartende Rückfrage in der Seitenleiste bei „Neu seit deinem letzten Besuch“, und dein Webhook hört einmal davon. Ändert ein Programm eine Notiz, nennt ihr Verlauf den Schlüssel oder das Programm. Rechte je Werkzeug gelten, sobald du sie wählst, und der Betreiber kann auch MCP-Schlüssel sperren und wieder freigeben."
+      },
+      {
+        "title": "Neue Versionen",
+        "where": "Über nexlore",
+        "body": "Eine neue Installation fragt bei der Einrichtung einmal, ob nexlore nach neuen Versionen sehen darf. Nur der Betreiber sieht, ob eine neuere erschienen ist, und schaltet die Prüfung; Mitglieder sehen ihre Version."
+      }
+    ],
+    "smallTitle": "Außerdem",
+    "small": [
+      "Ein Bereich, den du in der Seitenleiste zugeklappt hast, bleibt zu, auch bei der nächsten Notiz und nach dem Neuladen. Öffnest du eine Notiz darin, klappt nur dieser Bereich auf.",
+      "Ein Kontextmenü, das höher ist als das Fenster, bleibt ganz im Bild und scrollt.",
+      "Tage und Uhrzeiten lesen sich überall in den Einstellungen gleich.",
+      "„Bereit fürs Internet?“ unter Server › Anmeldung prüft bei jedem Öffnen, ob nexlore für den Weg ins Internet eingerichtet ist.",
+      "In einem gehärteten Container (cap_drop: ALL) beendete die Schreibprobe des Datenordners jeden Start; das ist behoben.",
+      "Beim Update ist nichts zu tun: nexlore sichert die Datenbank vorher, und jeder API-Schlüssel, MCP-Schlüssel, verbundene Konnektor, jedes gekoppelte iPhone und jede Anmeldung gelten weiter."
+    ]
   }
 }

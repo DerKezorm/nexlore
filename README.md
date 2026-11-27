@@ -81,22 +81,36 @@ from one space into another that only resolve for people who may read both.*
 - **Spaces, accounts and rights**: a space is a folder at the top of the vault with members who read, write or
   manage. Links may lead into another space (`[[Team/Note]]`) and resolve only for whoever may read it. What
   somebody may not read does not show up anywhere, not in search, graph, backlinks or tasks, not even its title.
-- **Sign-in** with a password and optionally a second factor (codes from an authenticator app, recovery codes), or
+- **Sign-in** by user name or mail address, with a password and optionally a second factor (codes from an
+  authenticator app, recovery codes) or a passkey (at an https address, when the operator allows them), or
   through one or more OpenID Connect providers side by side, each with its own button (a one-button setup for
   authentik, or a blueprint to import; Microsoft Entra ID also with `common` or `organizations` as the issuer).
   An identity at a provider belongs to an account only once that account linked itself in its profile, came in by
   invitation, or the operator lets new people in through that provider; an account is never found by its mail
   address. Per provider the operator decides whether it checks the second factor itself. Invitations by link or by
-  mail. Every account has a mail address: entered in the profile it counts once the link mailed to it is opened, the
-  operator can set one at once, and an account through a provider only follows the provider's.
+  mail, with a display name. A forgotten password is reset through a link by mail, and a mail tells you when your
+  account signs in from a new browser. Every account has a mail address: entered in the profile it counts once the
+  link mailed to it is opened, the operator can only take one away, and an account through a provider only follows
+  the provider's. "Ready for the internet?" under Server › Sign-in checks the address, the second factor, the proxy and
+  the cookies each time it is opened.
+- **Accounts for a small team**: the operator's list has one row per account with **Manage**: role, blocking and
+  unblocking, a storage limit and whether the account may use AI. A deleted account can be brought back for 30 days
+  with its spaces and rights; instead of setting somebody's password, the operator makes a link for a new one.
+- **Connect nex apps**: nexnotes can put notes into nexlore. Under My account › Connections › Other nex apps you
+  connect it with one click and choose the spaces nexnotes may file notes in (all, including later ones, or only
+  some); then "To nexlore" in the menu of a note in nexnotes puts it into one of them, with its title and text.
+  nexnotes may only add notes there: it sees your account and the names of those spaces, never what your notes say.
+  "End access" ends the connection on both sides. The operator enters the address of nexnotes once under
+  Server › General › Other nex apps (and allows "Connections into the local network" when it runs at home).
 - **Public pages**: share a note or a folder as a reading page, with an expiry and a password if you like. Off until
   the operator opens it.
 - **Versions and trash**: every save is a version (bundled per session, thinned out over time), deleted files wait
   30 days in the trash.
-- **Backups** of the database and every file on a schedule, with a check that shows what a restore would change,
-  a download (the password is asked again) to keep a copy somewhere else, and an upload to move to a new server.
-- **AI in notes** (off by default, each account brings its own service: any address that speaks the usual chat
-  interface, in the cloud or at home): correct spelling, rewrite in one of nine tones, translate, summarize, or write
+- **Backups** of the database and every file on a schedule (at a time of day you choose, also every month), with an
+  optional note when made by hand, a check that shows what a restore would change, a download (the password is asked
+  again) to keep a copy somewhere else, and an upload to move to a new server.
+- **AI in notes** (off by default; the operator sets up one service for all or lets each account bring its own: any
+  address that speaks the usual chat interface, in the cloud or at home): correct spelling, rewrite in one of nine tones, translate, summarize, or write
   from a request with the note as material. The result always stands next to the text first and changes nothing until
   it is taken over; what went out is listed word for word for 14 days.
 - **Ask Lore** (with AI in notes and Ask Lore switched on): ask about your own notes and get an answer from them, as it is
@@ -122,7 +136,11 @@ from one space into another that only resolve for people who may read both.*
 - **Import** of a ZIP as a new space (a space downloaded from another nexlore, or an Obsidian vault), with a report of what is special in it.
 - **A guide to start with**: a new installation gets the space "nexlore", a guide in German or English whose notes
   use what they explain (links, tasks, callouts, a Kanban board, a template), with pictures of the interface.
-- English and German; another language is one JSON file, uploaded by the operator.
+- **Settings like in every nex app**: My account and, for the operator, Server, each area at an address of its own.
+  Every page has its sidebar with "New note" and the search at the top and the way to the settings at the bottom.
+  Light or dark belongs to the account and follows it to every device.
+- English and German; another language is one JSON file, uploaded by the operator (a template to start from is
+  offered under Server › General › Languages).
 
 ## Start
 
@@ -192,8 +210,10 @@ nexlore is made to be reachable from outside, for yourself on the road or for a 
     sender and name, but a proxy can turn a flood away before it costs anything.
 
 Whatever is in nexlore leaves only where you open a way: the webhooks and mail of each account, the AI service an
-account enters (public addresses, or hosts in your own network you list), the daily update check against GitHub (off
-on the About page), and connectors you sign in.
+account or the operator enters (public addresses, or hosts in your own network you list), the daily update check
+against GitHub (asked once at setup, switched on the About page), connectors you sign in, and the other nex apps the
+operator enters under Server › General › Other nex apps (an address in your own network only after "Connections into
+the local network").
 
 ## Your notes in a folder of their own
 
@@ -284,9 +304,10 @@ macOS and Linux (a title with other characters goes into the front matter as `ti
   five tries, a code counts once, and a right password does not reset the count of wrong codes. The seed is stored
   encrypted, recovery codes as hashes.
 - A session alone is not enough for what would hand over other people's notes: downloading, deleting or going back
-  to a backup, giving another account a password, resetting its second factor, changing a role or deleting an account
-  ask for the operator's own password once more, counted like a sign-in. An operator who signs in through the provider has no
-  password in nexlore and is not asked.
+  to a backup, making a link for another account's new password, resetting its second factor, changing a role,
+  renaming, blocking or deleting an account ask for the operator's own password once more, counted like a sign-in.
+  An operator who signs in through the provider has no password in nexlore and needs a sign-in there from the last
+  five minutes instead.
 - Every changing request needs the header `X-Nexlore-Client`, which a page on another site cannot send.
 - A space somebody may not read answers exactly like one that does not exist, in every route.
 - Uploaded files are served with their own sandboxing policy; SVG, HTML and PDF only as downloads. PDFs are drawn
