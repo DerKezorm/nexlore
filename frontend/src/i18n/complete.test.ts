@@ -4,8 +4,9 @@
  */
 
 import { SHIPPED } from './index'
-import whatsNewDe from './whatsnew/de.json'
-import whatsNewEn from './whatsnew/en.json'
+// The texts of "What's new" are served by the server since the module wasneu 0.1.0 (backend/app/whatsnew).
+import whatsNewDe from '../../../backend/app/whatsnew/de.json'
+import whatsNewEn from '../../../backend/app/whatsnew/en.json'
 
 const files = import.meta.glob('./*.json', { eager: true, import: 'default' }) as Record<string, Record<string, unknown>>
 

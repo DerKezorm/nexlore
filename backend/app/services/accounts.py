@@ -21,7 +21,6 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
-from .. import __version__
 from ..models import (
     MANAGE,
     MEMBER,
@@ -34,6 +33,7 @@ from ..models import (
     utcnow,
 )
 from ..security import LOCK_MINUTES, MAX_FAILURES, hash_password, hash_token, verify_password
+from . import whatsnew
 
 logger = logging.getLogger("nexlore.auth")
 
@@ -75,7 +75,7 @@ def create_with_password(db: Session, name: str, password: str, role: str = MEMB
         role=role,
         sign_in=SIGN_IN_PASSWORD,
         password_hash=hash_password(password),
-        whats_new_seen=__version__,
+        whats_new_seen=whatsnew.seen_for_new_account(),
         appearance={"mode": "system"},
     )
     db.add(account)

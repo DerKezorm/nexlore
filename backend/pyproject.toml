@@ -7,7 +7,7 @@ extend-exclude = ["app/vendor/nexoidc", "tests/nexoidc", "app/vendor/nexkonten",
                   "tests/nexsicherung", "app/vendor/nexschluessel", "tests/nexschluessel", "app/vendor/nexsprachen",
                   "tests/nexsprachen", "app/vendor/nexupdates", "tests/nexupdates", "app/vendor/nexmcp", "tests/nexmcp",
                   "app/vendor/nexki", "tests/nexki", "app/vendor/nexverbinden", "tests/nexverbinden",
-                  "app/vendor/nexgeraete", "tests/nexgeraete"]
+                  "app/vendor/nexgeraete", "tests/nexgeraete", "app/vendor/nexwasneu", "tests/nexwasneu"]
 
 [tool.ruff.lint]
 extend-select = ["E501", "E402", "S608", "B", "I"]

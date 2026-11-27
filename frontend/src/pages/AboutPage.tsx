@@ -10,10 +10,11 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { tabId } from '../api/client'
-import { useWhatsNew } from '../lib/whatsNew'
+import { LOGO, whatsNewFetch } from '../lib/wasneuModule'
 import { useAuth } from '../state/auth'
 import { AboutPage, formatMoment, Notice } from '../vendor/nexui'
 import { useUpdates, useUpdatesTexts, whatGoesOut, type Fetcher } from '../vendor/nexupdates'
+import { useAboutWhatsNew } from '../vendor/nexwasneu'
 
 const PARTS = [
   { name: 'FastAPI', url: 'https://fastapi.tiangolo.com', licence: 'MIT' },
@@ -50,37 +51,40 @@ export function AboutArea() {
   const when = useCallback((iso: string) => formatMoment(iso, i18n.language), [i18n.language])
   const state = useUpdates({ fetcher, operator, when, language: i18n.language })
   const words = useUpdatesTexts(i18n.language)
-  // The written text of the running version, to read again at any time.
-  const { entry } = useWhatsNew(me?.version, i18n.language)
+  // "What's new" of the running version and "Earlier versions" (the shared module wasneu); reading here marks nothing.
+  const news = useAboutWhatsNew({ app: 'nexlore', logo: LOGO, fetcher: whatsNewFetch, language: i18n.language })
   const { about, problem } = state
 
   if (!about) return problem ? <Notice tone="danger">{problem}</Notice> : null
   return (
-    <AboutPage
-      app="nexlore"
-      logo="/logo.svg?v=2"
-      tagline={t('about.subtitle')}
-      version={about.version}
-      licence={{ name: about.license, href: 'https://www.gnu.org/licenses/agpl-3.0.html' }}
-      source={about.repo_url}
-      releases={about.releases_url}
-      project={about.project_url}
-      report={`${about.repo_url}/issues/new`}
-      whatsNew={entry ?? null}
-      updates={state.updates}
-      showUpdates={state.showUpdates}
-      operator={operator}
-      onDaily={state.onDaily}
-      onCheck={state.onCheck}
-      checking={state.checking}
-      builtWith={PARTS}
-      builtWithMore={
-        <p className="m-0 text-sm text-[var(--nexui-text-muted)]">
-          {t('about.fonts')}: {FONTS.join(', ')} (OFL-1.1). {t('about.fontsText')}
-        </p>
-      }
-      problem={problem}
-      texts={{ updatesWhatGoesOut: whatGoesOut(words, 'nexlore') }}
-    />
+    <>
+      <AboutPage
+        app="nexlore"
+        logo={LOGO}
+        tagline={t('about.subtitle')}
+        version={about.version}
+        licence={{ name: about.license, href: 'https://www.gnu.org/licenses/agpl-3.0.html' }}
+        source={about.repo_url}
+        releases={about.releases_url}
+        project={about.project_url}
+        report={`${about.repo_url}/issues/new`}
+        {...news.about}
+        updates={state.updates}
+        showUpdates={state.showUpdates}
+        operator={operator}
+        onDaily={state.onDaily}
+        onCheck={state.onCheck}
+        checking={state.checking}
+        builtWith={PARTS}
+        builtWithMore={
+          <p className="m-0 text-sm text-[var(--nexui-text-muted)]">
+            {t('about.fonts')}: {FONTS.join(', ')} (OFL-1.1). {t('about.fontsText')}
+          </p>
+        }
+        problem={problem}
+        texts={{ updatesWhatGoesOut: whatGoesOut(words, 'nexlore') }}
+      />
+      {news.window}
+    </>
   )
 }

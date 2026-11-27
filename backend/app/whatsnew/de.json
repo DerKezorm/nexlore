@@ -669,27 +669,33 @@
     ]
   },
   "1.17.0": {
-    "lead": "nexlore arbeitet jetzt mit nexnotes zusammen: Was du dort schnell notierst, legst du mit einem Klick in einen Bereich von nexlore. Dazu sind Einstellungen und Seitenleisten aufgebaut wie in den anderen nex-Apps. Deine Notizen bleiben, wie sie sind.",
+    "lead": "nexlore arbeitet jetzt mit nexnotes zusammen: Was du dort schnell notierst, legst du mit einem Klick in einen Bereich von nexlore. Dazu sind Einstellungen und Seitenleisten aufgebaut wie in den anderen nex-Apps, und deine iPhones und iPads verwaltest du an einem Ort. Deine Notizen bleiben, wie sie sind.",
     "sections": [
       {
         "title": "Apps verbinden: Notizen aus nexnotes",
-        "where": "Mein Konto › Verbindungen › Andere nex-Apps",
+        "where": "Mein Konto › Verbindungen › nexnotes",
         "body": "In nexnotes hältst du schnell etwas fest; was davon bleiben soll, gehört oft in dein Wissen in nexlore. Sind beide verbunden, wählst du in nexnotes im Menü einer Notiz „An nexlore“ und einen Bereich, und die Notiz liegt mit Titel und Text als neue Notiz in nexlore. In nexnotes bleibt sie, wie sie ist. Verbinden geht mit einem Klick, ohne Schlüssel zum Kopieren: In der Karte nexnotes legst du fest, in welche Bereiche nexnotes Notizen ablegen darf, alle (auch spätere) oder nur ausgewählte. Dann „Mit nexnotes verbinden“ und einmal zustimmen. Beginnst du in nexnotes, fragt dich nexlore auf der Seite, auf der du zustimmst, nach denselben Bereichen. Zur Wahl stehen nur Bereiche, in denen du schreiben darfst."
       },
       {
         "title": "Was nexnotes darf, und wie du es beendest",
-        "where": "Mein Konto › Verbindungen › Andere nex-Apps › nexnotes",
+        "where": "Mein Konto › Verbindungen › nexnotes",
         "body": "nexnotes darf genau eins: Notizen in die Bereiche legen, die du ihm gegeben hast. Es sieht dein Konto und die Namen dieser Bereiche, nie den Inhalt deiner Notizen, und es kann nichts ändern, verschieben oder löschen. Die Karte zeigt, mit welchem Konto in nexnotes du verbunden bist, seit wann, wann nexnotes zuletzt etwas gebracht hat und welche Bereiche es nutzt. „Zugriff beenden“ trennt die Verbindung auf beiden Seiten; was schon in nexlore liegt, bleibt."
       },
       {
-        "title": "Andere nex-Apps einrichten",
-        "where": "Server › Verbindungen › Andere nex-Apps",
-        "body": "Für den Betreiber: Trag die Adresse von nexnotes hier einmal ein, danach verbindet jedes Konto mit einem Klick. Läuft nexnotes im eigenen Netz (LAN, VPN), erlaube dazu „Verbindungen ins eigene Netz“. Der Schalter „Verbindungen mit anderen nex-Apps“ lässt alle Verbindungen ruhen, gelöscht wird nichts. Geht beim Verbinden etwas schief, kommt man in seine Karte zurück und liest dort, woran es liegt. API-Schlüssel für Programme wie n8n gelten weiter wie bisher."
+        "title": "Deine Geräte an einem Ort",
+        "where": "Mein Konto › Verbindungen › Geräte",
+        "body": "Die Karte Geräte zeigt jedes iPhone und iPad, das mit deinem Konto verbunden ist, und wann es zuletzt da war. Ein neues verbindest du mit QR-Code oder einem Code zum Abtippen; du benennst Geräte um, trennst eines oder alle auf einmal. Kommt ein neues Gerät dazu, bekommst du eine Mail wie bei einer neuen Anmeldung. Unter Benachrichtigungen legst du je Gerät fest, welche Mitteilungen es bekommen darf. Die iPhone-App von nexlore selbst ändert sich mit diesem Update nicht: Sie läuft weiter wie bisher und zeigt noch keine Mitteilungen."
+      },
+      {
+        "title": "Server › Verbindungen",
+        "where": "Server › Verbindungen",
+        "operator": true,
+        "body": "Für den Betreiber: Was andere Apps und Programme betrifft, hat einen eigenen Bereich. Unter „Andere nex-Apps“ trägst du die Adresse von nexnotes einmal ein, danach verbindet jedes Konto mit einem Klick. Läuft nexnotes im eigenen Netz (LAN, VPN), erlaube dazu „Verbindungen ins eigene Netz“. Der Schalter „Verbindungen mit anderen nex-Apps“ lässt alle Verbindungen ruhen, gelöscht wird nichts. Unter „Schnittstellen“ schaltest du API-Schlüssel, KI-Werkzeuge (MCP) und die iPhone-App ein und aus. API-Schlüssel für Programme wie n8n gelten weiter wie bisher."
       },
       {
         "title": "Einstellungen wie in jeder nex-App",
         "where": "Zahnrad unten in der Seitenleiste",
-        "body": "Die Einstellungen sind in Bereiche mit eigener Adresse geordnet. Unter Mein Konto: Profil, Sicherheit, Darstellung, Notizen, Bereiche, Plugins, KI, Benachrichtigungen und Verbindungen. Für den Betreiber unter Server: Allgemein, Verbindungen, Anmeldung, Mail, Speicher und Sicherung, KI-Anbieter, Plugins, Öffentliche Seiten, Konten und Log; Server › Verbindungen hält „Andere nex-Apps“ und „Schnittstellen“. Dazu Über nexlore. Die Karten sehen aus wie in den anderen nex-Apps, auf dem Handy kommt zuerst die Liste der Bereiche, und gespeicherte Links führen an den neuen Ort. Hell oder dunkel gehört jetzt zu deinem Konto und gilt auf jedem Gerät; „Wie das System“ folgt dem jeweiligen Gerät."
+        "body": "Die Einstellungen sind in Bereiche mit eigener Adresse geordnet. Unter Mein Konto: Profil, Sicherheit, Darstellung, Notizen, Bereiche, Plugins, KI, Benachrichtigungen und Verbindungen. Für den Betreiber unter Server: Allgemein, Verbindungen, Anmeldung, Mail, Speicher und Sicherung, KI-Anbieter, Plugins, Öffentliche Seiten, Konten und Log. Dazu Über nexlore. Die Karten sehen aus wie in den anderen nex-Apps, auf dem Handy kommt zuerst die Liste der Bereiche, und gespeicherte Links führen an den neuen Ort. Hell oder dunkel gehört jetzt zu deinem Konto und gilt auf jedem Gerät; „Wie das System“ folgt dem jeweiligen Gerät."
       },
       {
         "title": "Seitenleisten wie in nexnotes",
@@ -704,11 +710,13 @@
       {
         "title": "Konten verwalten",
         "where": "Server › Konten",
-        "body": "Für den Betreiber: eine Zeile je Konto mit „Verwalten“. Dort sperrst und entsperrst du ein Konto und legst seine Speichergrenze fest und ob es KI nutzen darf. Ein gelöschtes Konto lässt sich 30 Tage lang zurückholen, mit seinen Bereichen und Rechten. Statt ein Passwort für jemanden zu setzen, erzeugst du einen Link für ein neues Passwort. Eine Mailadresse trägt jeder selbst ein; du kannst sie nur entfernen. Den Speicher für neue Konten setzt du unter Server › Allgemein › Grenzen."
+        "operator": true,
+        "body": "Für den Betreiber: eine Zeile je Konto mit „Verwalten“. Dort sperrst und entsperrst du ein Konto und legst seine Speichergrenze fest und ob es KI nutzen darf. Ein gelöschtes Konto lässt sich 30 Tage lang zurückholen, mit seinen Bereichen und Rechten. Statt ein Passwort für jemanden zu setzen, erzeugst du einen Link für ein neues Passwort. Eine Mailadresse trägt jeder selbst ein; du kannst sie nur entfernen. Unter „Geräte“ siehst du, wie viele iPhones und iPads ein Konto verbunden hat und wann zuletzt, und trennst sie bei Bedarf. Sperrst oder löschst du ein Konto, ruhen seine Geräte und gehen nach dem Entsperren oder Zurückholen wieder, ohne neu verbunden zu werden. Den Speicher für neue Konten setzt du unter Server › Allgemein › Grenzen."
       },
       {
         "title": "Sicherung, Mail und Sprachen",
         "where": "Server › Speicher und Sicherung",
+        "operator": true,
         "body": "Für den Betreiber: Sicherungen laufen zu einer Uhrzeit deiner Wahl, auf Wunsch auch jeden Monat. „Jetzt sichern“ fragt vorher und nimmt eine Notiz mit, die in der Liste bei der Sicherung steht, und die Karte „Speicher“ zeigt, wo nexlore wie viel ablegt. Unter Server › Mail stehen Absendername, die letzte Mail und eine Warnung, wenn der Mailserver ohne Verschlüsselung angesprochen wird. Eigene Sprachen lädst du unter Server › Allgemein › Sprachen hoch, mit einer Vorlage zum Herunterladen; eine kaputte Datei sagt, warum."
       },
       {

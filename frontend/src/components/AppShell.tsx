@@ -17,6 +17,8 @@ import { comboOf, commandFor, isRecording, shownCombo } from '../lib/shortcuts'
 import { storedTheme } from '../lib/theme'
 import { useAuth } from '../state/auth'
 import { refreshNews } from '../lib/news'
+import { LOGO, whatsNewFetch } from '../lib/wasneuModule'
+import { WhatsNewAfterUpdate } from '../vendor/nexwasneu'
 import { startTaken, startWish } from '../lib/start'
 import { CommandPalette } from './CommandPalette'
 import { Coverflow } from './Coverflow'
@@ -30,7 +32,6 @@ import { InstallPrompt } from './InstallPrompt'
 import { Logo } from './Logo'
 import { NewNoteDialog } from './NewNoteDialog'
 import { ScanNotice } from './ScanNotice'
-import { WhatsNewBanner } from './WhatsNew'
 import { SearchDialog } from './SearchDialog'
 import { LoreOverlay } from './LoreOverlay'
 import { LoreSpider } from './LoreSpider'
@@ -88,7 +89,7 @@ export function AppShell() {
   }, [])
 
   const { status, error, spaces, reload } = useStore()
-  const { me, setAppearance } = useAuth()
+  const { me, setAppearance, refresh } = useAuth()
   const [creating, setCreating] = useState<string | null>(null)
   const newNoteAt = useRef<string | null>(null)
   const [todayProblem, setTodayProblem] = useState<string | null>(null)
@@ -419,7 +420,8 @@ export function AppShell() {
         </div>
       </header>
       <ScanNotice />
-      <WhatsNewBanner />
+      {/* "What's new" after an update (the shared module wasneu): the banner, the window on click. */}
+      <WhatsNewAfterUpdate app="nexlore" logo={LOGO} fetcher={whatsNewFetch} language={i18n.language} onSeen={() => void refresh()} />
       {todayProblem && (
         <div className="flex shrink-0 items-center gap-2 border-b border-warn-500/30 bg-warn-500/10 px-4 py-2 text-sm text-warn-500" role="status">
           <span className="flex-1">{todayProblem}</span>

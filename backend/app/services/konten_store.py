@@ -32,7 +32,6 @@ from sqlalchemy import delete, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .. import __version__
 from ..config import get_settings
 from ..models import (
     MEMBER,
@@ -81,6 +80,7 @@ from ..vendor.nexkonten import Account as KontoAccount
 from ..vendor.nexkonten.model2 import KIND_BROWSER, KIND_DEVICE, KIND_WAITING, STAGE_FULL
 from ..vendor.nexkonten.model2 import Passkey as PasskeyData
 from ..vendor.nexkonten.model2 import Session as SessionData
+from . import whatsnew
 from .konten_wanderung import NAME_COLUMNS
 
 logger = logging.getLogger("nexlore.auth")
@@ -346,7 +346,7 @@ class KontenStore:
             password_hash=hash_password(new.password) if new.password else "",
             password_changed_at=utcnow() if new.password else None,
             language=new.language or "",
-            whats_new_seen=__version__,
+            whats_new_seen=whatsnew.seen_for_new_account(),
             # Since E45 a new account has its theme from the start ("system"); only accounts of before have none.
             appearance={"mode": getattr(new, "theme", "system") or "system"},
             device_key=new_device_key(),

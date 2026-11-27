@@ -2281,14 +2281,6 @@
     },
     "whatsNew": "What's new"
   },
-  "whatsNew": {
-    "title": "What's new in nexlore {{version}}",
-    "banner": "nexlore {{version}} is here.",
-    "show": "See what's new",
-    "putAway": "Put away",
-    "where": "Where:",
-    "done": "Got it"
-  },
   "requests": {
     "menu": "Approvals",
     "title": "Approvals",

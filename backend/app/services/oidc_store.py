@@ -17,7 +17,6 @@ import logging
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
-from .. import __version__
 from ..config import get_settings
 from ..db import SessionLocal
 from ..models import (
@@ -34,7 +33,7 @@ from ..models import Invite as InviteRow
 from ..security import decrypt_secret, encrypt_secret
 from ..vendor import nexkonten, nexoidc
 from ..vendor.nexoidc import AccountState, Invite, Link, Provider, ProviderValues, migrate, secret_context
-from . import accounts, emailaddr, settings_service
+from . import accounts, emailaddr, settings_service, whatsnew
 from .konten_store import KontenStore
 from .konten_store import provider_picture as konten_provider_picture
 
@@ -298,7 +297,7 @@ class SqlStore:
             email_source=emailaddr.INVITE if address else "",
             email_confirmed=True,
             email_proven=bool(address and invitation is not None and invitation.mailed),
-            whats_new_seen=__version__,
+            whats_new_seen=whatsnew.seen_for_new_account(),
             # A new account through a provider starts "as the system" (konten E45).
             appearance={"mode": "system"},
         )

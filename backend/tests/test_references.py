@@ -35,7 +35,7 @@ def _texts() -> dict[str, list[str]]:
     for language in ("de", "en"):
         words = json.loads((ROOT / "frontend/src/i18n" / f"{language}.json").read_text(encoding="utf-8"))
         found[f"i18n/{language}.json"] = _strings(words)
-        news = json.loads((ROOT / "frontend/src/i18n/whatsnew" / f"{language}.json").read_text(encoding="utf-8"))
+        news = json.loads((ROOT / "backend/app/whatsnew" / f"{language}.json").read_text(encoding="utf-8"))
         found[f"whatsnew/{language}.json (where)"] = [
             section["where"] for entry in news.values() for section in entry.get("sections", [])
         ]

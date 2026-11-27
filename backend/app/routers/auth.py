@@ -65,7 +65,7 @@ from ..services import (
 from ..services.accounts import AccountError
 from ..services.konten_store import KontenStore, former_names_of
 from ..services.oidc_store import SqlStore
-from ..vendor import nexkonten
+from ..vendor import nexkonten, nexwasneu
 from ..vendor.nexkonten import login as konten_login
 from ..vendor.nexkonten import profiles, resets
 from ..vendor.nexkonten import sessions as konten_sessions
@@ -823,11 +823,25 @@ def password_reset_notice_seen(account: Account, db: DbSession) -> dict[str, Any
 
 @router.post("/me/whats-new/seen", summary="\"What's new\" of the running version is read or put away")
 def whats_new_seen(account: Account, db: DbSession) -> dict[str, Any]:
+    """The way of before (1.9.0 to 1.16.0), with the same answer; the module wasneu stores it (``mark_seen``)."""
+    nexwasneu.mark_seen(whats_new_viewer(account, db))
     row = db.get(AccountRow, account.id)
     assert row is not None
-    row.whats_new_seen = __version__
-    db.commit()
+    db.refresh(row)
     return account_view(row, db)
+
+
+def whats_new_viewer(account: Account, db: DbSession) -> nexwasneu.Viewer:
+    """The signed-in account as the module wasneu needs it (``/api/whats-new``)."""
+
+    def mark(version: str) -> None:
+        row = db.get(AccountRow, account.id)
+        if row is not None:
+            row.whats_new_seen = version
+            db.commit()
+
+    return nexwasneu.Viewer(seen=account.whats_new_seen or "", operator=account.role == OPERATOR, mark=mark,
+                            language=account.language or None)
 
 
 @router.get("/people", summary="Display names for account names: of the own account and of those sharing a space")

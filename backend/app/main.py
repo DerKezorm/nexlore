@@ -85,6 +85,7 @@ from .vendor import nexoidc
 from .vendor.nexki import api as ki_api
 from .vendor.nexkonten import factor as konten_factor
 from .vendor.nexkonten import setup as konten_setup
+from .vendor.nexwasneu import api as _wasneu_api
 
 logger = logging.getLogger("nexlore")
 
@@ -284,6 +285,9 @@ for module in ROUTERS:
     app.include_router(module.router)
 # The shared MCP module (mcp 1.1.0): ``POST /api/mcp``, OAuth for programs, the pages under ``/api/connections/mcp``.
 app.include_router(mcp_router.module_router)
+# The shared module wasneu (0.1.0): "What's new" under ``/api/whats-new`` for the signed-in account; the way of
+# before (``POST /api/me/whats-new/seen``) stays in ``auth``.
+app.include_router(_wasneu_api.router(viewer=auth.whats_new_viewer))
 # The shared device module (geraete 0.1.0): its app routes new in 1.17.0 under ``/api/app/1`` and its browser routes
 # under ``/api/devices``; the ways of 1.16.0 stay in ``app1`` and ``app_pairing`` (ROUTERS). Out of the description:
 # their shapes are the module's (``tests/nexgeraete``), and its ``AddressIn`` would rename nexlore's own (E53).

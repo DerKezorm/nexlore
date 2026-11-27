@@ -2281,14 +2281,6 @@
     },
     "whatsNew": "Was ist neu"
   },
-  "whatsNew": {
-    "title": "Neu in nexlore {{version}}",
-    "banner": "nexlore {{version}} ist da.",
-    "show": "Was ist neu?",
-    "putAway": "Wegklicken",
-    "where": "Wo:",
-    "done": "Verstanden"
-  },
   "requests": {
     "menu": "Freigaben",
     "title": "Freigaben",

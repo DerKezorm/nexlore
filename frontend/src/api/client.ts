@@ -743,7 +743,6 @@ export const authApi = {
   changePassword: (current: string, next: string, confirm: string) =>
     api<void>('/api/auth/password', { method: 'PUT', body: { current, new: next, password_confirm: confirm } }),
   setLanguage: (language: string) => api<Account>('/api/me/language', { method: 'PUT', body: { language } }),
-  whatsNewSeen: () => api<Account>('/api/me/whats-new/seen', { method: 'POST' }),
   /** Display name, username and address with one button (the shared account module): a new username or address
    * with the own password. With a mail server a new address waits for its link (`pending_email`). */
   profile: (change: { display_name?: string; email?: string; name?: string; password?: string }) =>

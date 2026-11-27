@@ -1,0 +1,126 @@
+{
+  "0.2.0": {
+    "de": "sha256-N9Rz2H6Wf4jzsqkCj/qLlkhD6Vhy/oJPuV4MyMKleD0=",
+    "en": "sha256-az+QGWzmIAn6u+eXvBZd8CWJ03Dj3Hfc15TN0/kduF0="
+  },
+  "0.3.0": {
+    "de": "sha256-9PDAeOCdjZOygJmNTSDd9OBe0scVwTb7Xw2LXa2Rw/s=",
+    "en": "sha256-Y7IvrkwxCPWzqOcx2+BUoGBNoj62d23MtUAlY3cJFL8="
+  },
+  "0.4.0": {
+    "de": "sha256-KNwTWzsjhV9kG+7PjUrBu/d1tBnvVnKa9WS3+k3C3rA=",
+    "en": "sha256-UlZ7zoY5z291gIya3EYZgUhUK6WuCKUUD7tMdYaR+hM="
+  },
+  "0.4.1": {
+    "de": "sha256-cp0zuFZT9fZHoVJh7Acv8OFoURIHjMaSXMRb0LanADw=",
+    "en": "sha256-95PkSmaTSQeIt6JEoz4lYoVHiH6aUyXa35zb0deCK3w="
+  },
+  "1.0.0": {
+    "de": "sha256-EOkeIJVeM4rh6qTizGo/s8gaLfFyVWUDhXWIsIZi2is=",
+    "en": "sha256-Ezsm8jYaqpMQZv0ZF7aZmck2/bhxJrlKWMSwo9eQ9+0="
+  },
+  "1.1.0": {
+    "de": "sha256-l1hTV55FzOlf1MatgLIh1P4kGq5f8lk0N/L75Ljv/Eo=",
+    "en": "sha256-BuZlwIFEPKOTYjQuRIFDvOTnO+WPq9GwUFmFrv0NJN4="
+  },
+  "1.2.0": {
+    "de": "sha256-m6EXRgK4drbAtt38YiLbNdWpw5BGHd7Pkt7vnPKAsJk=",
+    "en": "sha256-VEMXOhyuwcd29A0J2JVVuAymGZ3PXmhUST4yWnrbpS0="
+  },
+  "1.3.0": {
+    "de": "sha256-0N9bp2h2SH0T152h7ypEvPMIKNoVJ0e257j5IIBK4jk=",
+    "en": "sha256-eXpts4HwLSq0ZJlIzEVNrOzi9hV+t+Phn5y1wbniwXM="
+  },
+  "1.4.0": {
+    "de": "sha256-5lTaC2BEIfY068+WwaYPrJgPV0366x66vrMxjytNLxI=",
+    "en": "sha256-bF7PKApF7mghVa5AMpV0GatOrHkUkwzV7Enw7A8OfDg="
+  },
+  "1.5.0": {
+    "de": "sha256-+r9+9V6M888NZSJP0gelrKt1mtbz8k5xvR0nNuSlWbw=",
+    "en": "sha256-ftaTU1lGrJW8nzD1KHlmqS2lrNwuxNNiI3EmmFhttaU="
+  },
+  "1.5.1": {
+    "de": "sha256-YBgQ3YusA+6oJAAKj43hujDR/E7MfT3bDoLzATQZPqg=",
+    "en": "sha256-/BddgzPNFeQJl3E1qKeVmZk+GWdt5+XAdXG9qyFVYKY="
+  },
+  "1.5.2": {
+    "de": "sha256-dOqW611XgfhV8A/+P4iQyphH0cf5CaVvUPqDAVevNbo=",
+    "en": "sha256-5/M4+qHpyxHbZMecRs7iWoaW/Pg1dAr9iOe245+h28Y="
+  },
+  "1.6.0": {
+    "de": "sha256-Hy6AYm6nMEaYAGzPyij62u0FpYhW68zEUmK4F8QuuPg=",
+    "en": "sha256-ct/Hwg/lae0JZtxQc5+wwej25YzL58bADiez2+RR/ok="
+  },
+  "1.6.1": {
+    "de": "sha256-4kMPh8rNX1yS3A4tXx0QfF2alz5DA0VnhFx/A1eunek=",
+    "en": "sha256-jNagZOlUZgKvcr/rmF49JutptsU1x1AQeGQw4Gl6aGU="
+  },
+  "1.6.2": {
+    "de": "sha256-LWzX3n29+2/2SLwCFrzlKpTMumwa87O5XJ7q78ld+tE=",
+    "en": "sha256-aW4/bFXl7FeMjn6VIXPKplnwfwDbZbfUyvxc/hasadU="
+  },
+  "1.7.0": {
+    "de": "sha256-dtakSW37PbNYgAQaE1w3JLjOnQD9hSmnfgWv6SYPUEw=",
+    "en": "sha256-kfoywWgghV5FVIUZMx5oclmzEw5TTgP4mnMScz4H76Y="
+  },
+  "1.7.1": {
+    "de": "sha256-TWMeeTxVBAQLCOjRp997eVOnuUKAyF984plFSQ26KY0=",
+    "en": "sha256-WOSkbziHNNtWs763BU7cZD2afU71vBroH8cQrajMyw0="
+  },
+  "1.8.0": {
+    "de": "sha256-H1YTw8Nc8wupQfTfqgcoOlOZpYibwuUFly1aDp2nRL4=",
+    "en": "sha256-+OXbSSXFd1jc4ae95vHfP/lm4HfULSdV3xSGzzZRQ0I="
+  },
+  "1.8.1": {
+    "de": "sha256-QlXoFeiMw1JZvz9l6OwR6bhSeMfpjemfo1Bt14wFlC8=",
+    "en": "sha256-ieCN1jd2wU6RKjk35Wfd6115N+iaZrDBf7uiejaiJEM="
+  },
+  "1.8.2": {
+    "de": "sha256-9MJBHppfVfKyu9k3si/4/WVPbFVDSQyqXoObiu4kujY=",
+    "en": "sha256-QthBJJOosXJwJRTCMnk6EBiC6yw5REk0jazJUs3XeYI="
+  },
+  "1.9.0": {
+    "de": "sha256-aVGHhshUtbpIrFx12q/QAkqeAtOfG1rvICUif03Q0c0=",
+    "en": "sha256-n/lasGCfk8DJSl18EWa9inXzJg2kOQ5+t4kBYCct8lU="
+  },
+  "1.10.0": {
+    "de": "sha256-YLgezBcnIy8N/ih7QRt/PV/jSTGDCZUX5PzYMdvtn/Q=",
+    "en": "sha256-4itXegIEcJPZ44seXn0EokJF76qi+xcYvKDuEQMkL8E="
+  },
+  "1.11.0": {
+    "de": "sha256-ocm2BoWnXow9y1oPH9LIpeAjdUwbdVgGDQ8UFU6NeCA=",
+    "en": "sha256-YsbuS0XKpxXjypBxJwnvu7inXvcuWmpCsApQ1kXjCOE="
+  },
+  "1.12.0": {
+    "de": "sha256-DrhAdg0Mw8MFRvtyCxqQjDz3yOxkMwGciOg6ypqJaAk=",
+    "en": "sha256-seDkUPRecRDXxc7noYau/GZ4m0zIE47e8hG8ufXncnk="
+  },
+  "1.12.1": {
+    "de": "sha256-n8JrO50ytPUjWaGdmtO3aIiMuGcjL7992j1wj/KbojM=",
+    "en": "sha256-2HRMHJe208v8kcctCvLjAwLQcRFX+W7xh/LykWrbTGw="
+  },
+  "1.13.0": {
+    "de": "sha256-SllSXOuWPdhYYCsOPYUG9IgvA7Xm7x/pGuC2sKtHUvE=",
+    "en": "sha256-hgkjaJr6cDURnbqsdf5rOkhAl2WSR/BDxOpfXMTISY8="
+  },
+  "1.13.1": {
+    "de": "sha256-R4DnEZoemVUglNrZfqq6EYIcjXNebftvziQq3rWztj4=",
+    "en": "sha256-M0lb9K9Hhd/KOStxDqHzvJmIdW+Fzgy+208Ke7A4Tug="
+  },
+  "1.14.0": {
+    "de": "sha256-y1TWxhklxmfSO8WK4lEGeyb1OnAi/72s55NevvMp94A=",
+    "en": "sha256-XOASYN9oeob1EMIEzSuntsBGBCovCIJ9exdU5eC0eXs="
+  },
+  "1.15.0": {
+    "de": "sha256-4UJjMGkxrxXFPd+qu1T30Tb2jPWeKPQj+VUcez8l5fs=",
+    "en": "sha256-T688RLYiyP8dbEUuecl6y7a12qHHr8NOZhQFBDhprnM="
+  },
+  "1.15.1": {
+    "de": "sha256-1XfzqtTo4p3PtzEnyVrVZ9gUl/tkL6fCOaTjHOip2zc=",
+    "en": "sha256-r6AK8OYQxAEBZXyvFbJ4KMzVw11msaJ4AG4koLy44SQ="
+  },
+  "1.16.0": {
+    "de": "sha256-XwhIfgDKpQAgfszLD3rItUOSijOA8jTH7pkZ6XS/v5s=",
+    "en": "sha256-Po5bRfxzflHM+keaWFyHGwm8ksSG7na8TC3RfORzdao="
+  }
+}

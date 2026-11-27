@@ -20,7 +20,7 @@ nexnotes ist eine eigene nex-App für schnelle Notizen. Was du dort festhältst 
 
 Dafür verbindest du beide Apps einmal, ohne Schlüssel zum Abtippen:
 
-1. Unter **Mein Konto › Verbindungen** steht bei **Andere nex-Apps** die Karte **nexnotes**.
+1. Unter **Mein Konto › Verbindungen** steht die Karte **nexnotes**.
 2. Dort wählst du, in welche Bereiche nexnotes Notizen ablegen darf: alle, auch spätere, oder nur einzelne. Zur Wahl stehen nur Bereiche, in denen du schreiben darfst.
 3. **Mit nexnotes verbinden** öffnet nexnotes. Dort meldest du dich an, siehst, was nexnotes darf, und stimmst einmal zu. Danach bist du wieder hier.
 

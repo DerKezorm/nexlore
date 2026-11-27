@@ -669,27 +669,33 @@
     ]
   },
   "1.17.0": {
-    "lead": "nexlore now works with nexnotes: what you jot down there goes into a space of nexlore in one click. The settings and sidebars are laid out as in the other nex apps, too. Your notes stay as they are.",
+    "lead": "nexlore now works with nexnotes: what you jot down there goes into a space of nexlore in one click. The settings and sidebars are laid out as in the other nex apps, too, and you manage your iPhones and iPads in one place. Your notes stay as they are.",
     "sections": [
       {
         "title": "Connect nex apps: notes from nexnotes",
-        "where": "My account › Connections › Other nex apps",
+        "where": "My account › Connections › nexnotes",
         "body": "nexnotes is where you jot things down quickly; what should last often belongs in your knowledge in nexlore. Once both are connected, choose \"To nexlore\" in the menu of a note in nexnotes and pick a space, and the note lands in nexlore as a new note with its title and text. In nexnotes it stays as it is. Connecting takes one click and no key to copy: in the card nexnotes you choose which spaces nexnotes may file notes in, all of them (including later ones) or only some. Then \"Connect with nexnotes\" and agree once. If you start in nexnotes, nexlore asks you for the same spaces on the page where you agree. Only spaces you may write in are offered."
       },
       {
         "title": "What nexnotes may do, and how to end it",
-        "where": "My account › Connections › Other nex apps › nexnotes",
+        "where": "My account › Connections › nexnotes",
         "body": "nexnotes may do exactly one thing: file notes in the spaces you gave it. It sees your account and the names of those spaces, never what your notes say, and it cannot change, move or delete anything. The card shows the account in nexnotes you are connected with, since when, when nexnotes last brought something and which spaces it uses. \"End access\" ends the connection on both sides; what is in nexlore already stays."
       },
       {
-        "title": "Setting up other nex apps",
-        "where": "Server › Connections › Other nex apps",
-        "body": "For the operator: enter the address of nexnotes here once, and every account connects with one click. If nexnotes runs in your local network (LAN, VPN), also allow \"Connections into the local network\". The switch \"Connections with other nex apps\" lets every connection rest; nothing is deleted. When something goes wrong while connecting, you come back to your card and read there what happened. API keys for programs such as n8n keep working as before."
+        "title": "Your devices in one place",
+        "where": "My account › Connections › Devices",
+        "body": "The card Devices shows every iPhone and iPad connected to your account, and when it was last there. You connect a new one with a QR code or a code to type in; you rename devices and disconnect one or all at once. When a new device comes in, you get a mail as for a new sign-in. Under Notifications you choose per device which notifications it may get. The nexlore iPhone app itself does not change with this update: it keeps working as before and shows no notifications yet."
+      },
+      {
+        "title": "Server › Connections",
+        "where": "Server › Connections",
+        "operator": true,
+        "body": "For the operator: what concerns other apps and programs has an area of its own. Under \"Other nex apps\" you enter the address of nexnotes once, and every account connects with one click. If nexnotes runs in your local network (LAN, VPN), also allow \"Connections into the local network\". The switch \"Connections with other nex apps\" lets every connection rest; nothing is deleted. Under \"Interfaces\" you switch API keys, AI tools (MCP) and the iPhone app on and off. API keys for programs such as n8n keep working as before."
       },
       {
         "title": "Settings like in every nex app",
         "where": "The gear at the bottom of the sidebar",
-        "body": "The settings are sorted into areas with an address of their own. Under My account: Profile, Security, Appearance, Notes, Spaces, Plugins, AI, Notifications and Connections. For the operator under Server: General, Connections, Sign-in, Mail, Storage and backups, AI provider, Plugins, Public pages, Accounts and Log; Server › Connections holds \"Other nex apps\" and \"Interfaces\". And About nexlore. The cards look as in the other nex apps, on a phone the list of the areas comes first, and saved links lead to the new place. Light or dark now belongs to your account and follows you to every device; \"Like the system\" follows each device."
+        "body": "The settings are sorted into areas with an address of their own. Under My account: Profile, Security, Appearance, Notes, Spaces, Plugins, AI, Notifications and Connections. For the operator under Server: General, Connections, Sign-in, Mail, Storage and backups, AI provider, Plugins, Public pages, Accounts and Log. And About nexlore. The cards look as in the other nex apps, on a phone the list of the areas comes first, and saved links lead to the new place. Light or dark now belongs to your account and follows you to every device; \"Like the system\" follows each device."
       },
       {
         "title": "Sidebars like in nexnotes",
@@ -704,11 +710,13 @@
       {
         "title": "Managing accounts",
         "where": "Server › Accounts",
-        "body": "For the operator: one row per account with \"Manage\". There you block and unblock an account and set its storage limit and whether it may use AI. A deleted account can be brought back for 30 days, with its spaces and rights. Instead of setting a password for somebody, you make a link for a new password. Everybody enters their own mail address; you can only remove it. The storage for new accounts is under Server › General › Limits."
+        "operator": true,
+        "body": "For the operator: one row per account with \"Manage\". There you block and unblock an account and set its storage limit and whether it may use AI. A deleted account can be brought back for 30 days, with its spaces and rights. Instead of setting a password for somebody, you make a link for a new password. Everybody enters their own mail address; you can only remove it. Under \"Devices\" you see how many iPhones and iPads an account has connected and when last, and disconnect them if needed. When you block or delete an account, its devices rest and work again after unblocking or bringing it back, without connecting anew. The storage for new accounts is under Server › General › Limits."
       },
       {
         "title": "Backups, mail and languages",
         "where": "Server › Storage and backups",
+        "operator": true,
         "body": "For the operator: backups run at a time of day you choose, also every month if you like. \"Back up now\" asks first and takes an optional note, shown with the backup in the list, and the card \"Storage\" shows where nexlore keeps how much. Server › Mail shows the sender name, the last mail and a warning when the mail server is reached without encryption. Upload your own languages under Server › General › Languages, with a template to download; a broken file says why."
       },
       {

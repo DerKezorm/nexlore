@@ -20,7 +20,7 @@ nexnotes is a nex app of its own for quick notes. What you jot down there and wa
 
 For that you connect the two apps once, with no key to type:
 
-1. Under **My account › Connections**, **Other nex apps** has the card **nexnotes**.
+1. Under **My account › Connections** stands the card **nexnotes**.
 2. There you choose which spaces nexnotes may put notes into: all, including later ones, or only some. Only spaces you may write in are offered.
 3. **Connect with nexnotes** opens nexnotes. You sign in there, see what nexnotes may do and agree once. Then you are back here.
 
