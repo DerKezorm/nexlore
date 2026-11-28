@@ -108,6 +108,9 @@ def bestand(vault: Path):
         verbindung.execute("UPDATE invites SET expires_at = datetime('now', '+30 days')")
         verbindung.execute("UPDATE accounts SET email_pending_until = datetime('now', '+1 day') "
                            "WHERE email_pending <> ''")
+        # A paired device rests after 365 days unused, a notice of an invitation shows for 30 days.
+        verbindung.execute("UPDATE app_devices SET last_seen_at = datetime('now')")
+        verbindung.execute("UPDATE space_notices SET created_at = datetime('now')")
         verbindung.commit()
     finally:
         verbindung.close()
