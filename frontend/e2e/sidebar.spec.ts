@@ -342,8 +342,9 @@ test('two notes side by side: the right one follows its own links, the left one 
   // A link on the left moves the left side on, and the right one stays.
   await page.locator('[data-pane="left"] article a[data-note]').first().click()
   await expect(page).toHaveURL(/\/note\/Zoo\/Across%20target\.md\?right=Zoo%2FBoard\.md$/)
-  // So does the sidebar.
-  await row(page, 'Reading').click()
+  // So does the sidebar. The tree draws only the rows near the note shown, and notes other files put into Zoo push
+  // Reading out of them: looked for as by hand.
+  await clickRow(page, 'Reading')
   await expect(page).toHaveURL(/\/note\/Zoo\/Reading\.md\?right=Zoo%2FBoard\.md$/)
   await expect(right).toBeVisible()
   // The same note on both sides: the right one only reads.
@@ -525,6 +526,8 @@ test('pictures and other files stand in the tree as in Obsidian and open their p
 })
 
 test('a space folded by hand stays folded at the next note and after a reload; a note in it unfolds it again', async ({ page }) => {
+  // Six looks through the whole tree, which the files before make longer in a full run.
+  test.setTimeout(60_000)
   // GitHub issue 22: the tree is drawn anew for every note, and every space opened again.
   // The tree draws only the rows near the note shown, the spaces sit above it, and listings that come late move the
   // view back to the note: looked for from the top, again until the row is there.
@@ -533,8 +536,14 @@ test('a space folded by hand stays folded at the next note and after a reload; a
     const button = row(page, name)
     await expect(async () => {
       await tree.evaluate((element) => element.scrollTo(0, 0))
-      for (let step = 0; step < 40 && !(await button.isVisible()); step++) {
-        await tree.evaluate((element) => element.scrollBy(0, element.clientHeight / 2))
+      // Down to the end of the tree, however long the files before made it, not a fixed number of steps.
+      for (let step = 0; step < 400 && !(await button.isVisible()); step++) {
+        const atEnd = await tree.evaluate((element) => {
+          const before = element.scrollTop
+          element.scrollBy(0, element.clientHeight / 2)
+          return element.scrollTop === before
+        })
+        if (atEnd) break
         await page.waitForTimeout(50)
       }
       await expect(button).toHaveAttribute('aria-expanded', String(open), { timeout: 500 })

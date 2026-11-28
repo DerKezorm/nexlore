@@ -66,10 +66,12 @@ test('rights per tool are set under the key and kept', async ({ page }) => {
   const box = page.getByTestId('tool-rights-dialog')
   // mcp 1.1.2: rows instead of a table, and every choice saves at once (MCP 21).
   const right = (tool: string) => box.getByTestId('tool-rights-table').locator(`[data-tool="${tool}"]`).getByTestId('tool-right')
-  // A new key may use everything of its level at once (decision 3); reading cannot be asked for.
+  // A new key may use everything of its level at once (decision 3); reading cannot be asked for, so a reading tool
+  // offers only Allow and Deny (mcp 1.1.2).
   await expect(right('create_note').getByRole('radio', { name: 'Allow' })).toHaveAttribute('aria-checked', 'true')
   await expect(right('trash_note').getByRole('radio', { name: 'Allow' })).toHaveAttribute('aria-checked', 'true')
-  await expect(right('read_note').getByRole('radio', { name: 'Ask' })).toBeDisabled()
+  await expect(right('read_note').getByRole('radio', { name: 'Allow' })).toHaveAttribute('aria-checked', 'true')
+  await expect(right('read_note').getByRole('radio', { name: 'Ask' })).toHaveCount(0)
   // Blocked by the operator: cannot be chosen.
   await expect(right('delete_space').getByRole('radio', { name: 'Allow' })).toBeDisabled()
   const saving = () => page.waitForResponse((answer) => /\/api\/connections\/mcp\/keys\/.+\/rights$/.test(answer.url()) && answer.request().method() === 'PUT')
@@ -183,9 +185,12 @@ test('the operator blocks a tool for everybody', async ({ page }) => {
   await page.goto('/settings/server-connections')
   const blocked = page.getByTestId('mcp-operator-blocked')
   await blocked.getByText('Blocked tools').click()
-  await expect(blocked.getByTestId('mcp-operator-block-delete_space').locator('input')).toBeChecked()
+  // The test id stands on the box itself (ui kit CheckboxRow), and it shows what the server keeps: checked once the
+  // answer is in, not at the click.
+  await expect(blocked.getByTestId('mcp-operator-block-delete_space')).toBeChecked()
   const saved = page.waitForResponse((answer) => answer.url().endsWith('/api/connections/mcp/admin') && answer.request().method() === 'PUT')
-  await blocked.getByTestId('mcp-operator-block-trash_note').locator('input').check()
+  await blocked.getByTestId('mcp-operator-block-trash_note').click()
   expect((await saved).status()).toBe(200)
+  await expect(blocked.getByTestId('mcp-operator-block-trash_note')).toBeChecked()
   expect((await (await page.request.get('/api/mcp/tools')).json()).blocked).toContain('trash_note')
 })

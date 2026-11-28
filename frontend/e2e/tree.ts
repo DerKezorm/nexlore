@@ -15,8 +15,14 @@ export async function shownRow(page: Page, name: string) {
   const tree = page.getByTestId('sidebar-tree')
   const button = row(page, name)
   await expect(tree.getByRole('listitem').first()).toBeVisible()
-  for (let step = 0; step < 40 && !(await button.isVisible()); step++) {
-    await tree.evaluate((element) => element.scrollBy(0, element.clientHeight / 2))
+  // Down to the end of the tree, however long the other files made it, not a fixed number of steps.
+  for (let step = 0; step < 400 && !(await button.isVisible()); step++) {
+    const atEnd = await tree.evaluate((element) => {
+      const before = element.scrollTop
+      element.scrollBy(0, element.clientHeight / 2)
+      return element.scrollTop === before
+    })
+    if (atEnd) break
     await page.waitForTimeout(50)
   }
   return button

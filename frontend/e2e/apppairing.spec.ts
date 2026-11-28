@@ -26,7 +26,9 @@ test('an iPhone pairs with the typed code and goes when disconnected', async ({ 
     const auth = { Authorization: `Bearer ${key}` }
     expect((await phone.get('/api/app/1/me', { headers: auth })).status()).toBe(200)
 
-    await expect(dialog.getByTestId('pair-paired')).toContainText('E2E phone is connected')
+    // The name stands in the window's title since geraete 0.1.x, the line below says where the device is now.
+    await expect(dialog.getByTestId('pair-paired')).toContainText('It is in your list of devices now.')
+    await expect(dialog).toContainText('E2E phone is connected')
     await dialog.getByTestId('pair-done').click()
     const row = card.getByTestId('device-row').filter({ hasText: 'E2E phone' })
     await expect(row).toBeVisible()

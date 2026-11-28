@@ -96,10 +96,11 @@ test('the operator reads the log under Server, narrows it, and may download it',
   // The log module's table: one row per line.
   const lines = page.getByRole('table', { name: 'Log' }).locator('[data-part="table-row"]')
   await expect(lines.first()).toBeVisible()
-  // A line only a sign-in writes: narrowed to it.
+  // A line only a sign-in writes: narrowed to it. The search ignores case, so a connector of mcprights.spec.ts that
+  // "signed in" over MCP stands there too when the whole run comes before.
   await page.getByRole('searchbox', { name: 'Search' }).fill('Signed in')
-  await expect(lines.first()).toContainText('Signed in')
-  await expect.poll(async () => (await lines.allInnerTexts()).every((text) => text.includes('Signed in'))).toBe(true)
+  await expect(lines.filter({ hasText: 'Signed in' }).first()).toBeVisible()
+  await expect.poll(async () => (await lines.allInnerTexts()).every((text) => /signed in/i.test(text))).toBe(true)
   await expect(page.getByRole('link', { name: 'Download' })).toHaveAttribute('href', '/api/logs/download')
   expect(problems).toEqual([])
 })

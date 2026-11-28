@@ -11,8 +11,9 @@ test.skip(!!process.env.E2E_BASE_URL, 'makes an account; not against a running i
 
 const TAB = { 'X-Nexlore-Client': 'tab-e2e-sett0' }
 
-// The order of the plan "Einstellungen": the shared areas with nexlore's own between them.
-const MINE = ['Profile', 'Security', 'Appearance', 'Notes', 'Spaces', 'Plugins', 'Notifications', 'Connections']
+// The order of the plan "Einstellungen": the shared areas with nexlore's own between them; "AI" under My account
+// since the shared module ki (E61).
+const MINE = ['Profile', 'Security', 'Appearance', 'Notes', 'Spaces', 'Plugins', 'AI', 'Notifications', 'Connections']
 const SERVER = ['General', 'Connections', 'Sign-in', 'Mail', 'Storage and backups', 'AI provider', 'Plugins', 'Public pages', 'Accounts', 'Log']
 
 test('the settings are in areas beside the content, and the address says which', async ({ page }) => {

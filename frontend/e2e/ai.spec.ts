@@ -59,20 +59,23 @@ test('the operator allows AI and lets each account bring its own; the account co
   // Server › KI-Anbieter: the main switch, then "Each account itself" (a new installation starts with one for all).
   await page.goto('/settings/ai-provider')
   const operator = page.getByTestId('ki-operator')
-  await operator.getByTestId('ki-operator-enabled').check()
+  // The switch shows what the server keeps (ki 0.1.0): it turns on once the answer is in, not at the click itself.
+  await operator.getByTestId('ki-operator-enabled').click()
   await expect(operator.getByTestId('ki-operator-enabled')).toBeChecked()
   await operator.getByTestId('ki-operator-mode').getByRole('radio', { name: 'Each account itself' }).click()
   await expect(operator.getByTestId('ki-operator-mode').getByRole('radio', { name: 'Each account itself' })).toHaveAttribute('aria-checked', 'true')
   // The stand-in runs on this machine: an own access reaches it only once the operator lists it.
   await operator.getByTestId('ki-operator-hosts').fill('127.0.0.1:8478')
+  const hostsSaved = page.waitForResponse((answer) => answer.url().endsWith('/api/server/ai') && answer.request().method() === 'PUT')
   await operator.getByTestId('ki-operator-hosts-save').click()
+  expect((await hostsSaved).ok()).toBe(true)
   await page.reload()
   await expect(page.getByTestId('ki-operator-hosts')).toHaveValue('127.0.0.1:8478')
 
   await page.goto('/settings/ai')
   const own = page.getByTestId('ki-me-own')
   // A tile fills in the address and says where the key comes from.
-  await own.getByRole('radio', { name: 'OpenAI' }).click()
+  await own.getByTestId('ki-me-own-tile-openai').click()
   await expect(own.getByTestId('ki-me-own-url')).toHaveValue('https://api.openai.com/v1/')
   await expect(own.getByRole('link', { name: 'Get a key at OpenAI' })).toBeVisible()
   await own.getByTestId('ki-me-own-url').fill(SERVICE)
