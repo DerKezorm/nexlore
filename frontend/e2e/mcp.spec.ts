@@ -151,5 +151,6 @@ test('the operator switches MCP off again, and both pages say where it goes on',
   await page.goto('/settings/extensions#mcp')
   await expect(page).toHaveURL(/\/settings\/server-connections#mcp$/)
   await expect(page.getByTestId('interfaces-mcp')).not.toBeChecked()
-  await expect(page.getByTestId('mcp-settings')).toBeVisible()
+  // The operator's parts of the shared module mcp (programs, highest level, blocked tools) stay under the switch.
+  await expect(page.getByTestId('mcp-operator')).toBeVisible()
 })

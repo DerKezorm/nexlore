@@ -70,3 +70,23 @@ def test_only_the_programs_own_versions_name_it(world: World) -> None:
     value(call(token, "rename_note", path="Garden/Plan.md", title="Plan 2"))
     sources = [(row["source"], row["key_name"]) for row in _history(world, "Garden/Seeds.md")]
     assert sources[0] == ("rename", None) and ("mcp", "agent write") in sources
+
+
+def test_a_draft_taken_over_names_the_key_that_proposed_it(world: World) -> None:
+    """The e2e "a key made on the account page proposes a draft…": the history says "MCP · <key>" for a draft taken
+    over by hand too, for an existing note and for a new one; the account taking it over stays the author."""
+    token = world.key("draft")
+    plan = value(call(token, "read_note", path="Garden/Plan.md"))
+    made = value(call(token, "propose_change", path="Garden/Plan.md", base_hash=plan["hash"], reason="one more",
+                      content=plan["content"] + "Third line.\n"))
+    assert world.anna.post(f"/api/drafts/{made['draft']}/accept").status_code == 200
+    newest = _history(world, "Garden/Plan.md")[0]
+    assert (newest["source"], newest["key_name"], newest["author"]) == ("mcp", "agent draft", "anna")
+    fresh = value(call(token, "propose_note", folder="Garden", title="Sprouts", content="Cress\n"))
+    taken = world.anna.post(f"/api/drafts/{fresh['draft']}/accept").json()
+    assert [(row["source"], row["key_name"]) for row in _history(world, taken["path"])] == [("mcp", "agent draft")]
+    # Outside the call, nothing stays behind: a save by hand right after names no key.
+    current = world.anna.get("/api/note", params={"path": "Garden/Plan.md"}).json()
+    assert world.anna.put("/api/note", json={"path": "Garden/Plan.md", "content": "By hand.\n",
+                                             "base_hash": current["hash"]}).status_code == 200
+    assert _history(world, "Garden/Plan.md")[0]["key_name"] is None

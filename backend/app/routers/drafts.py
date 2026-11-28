@@ -123,7 +123,10 @@ def accept(draft_id: Annotated[int, Path(ge=1)], account: Account, who: ActorDep
         target = file.path if file is not None else draft.path
         base_hash = draft.base_hash
         new = draft.file_id is None
+        key_name = draft.key_name
     need(account, target, WRITE)
+    # MCP decision 15: what an AI program proposed stands in the history as "MCP · <key>" once taken over, too.
+    named = index.VIA_KEY.set(key_name or None)
     try:
         if new:
             made = vault.create_note(posixpath.dirname(target), posixpath.basename(target), data, actor=who,
@@ -135,6 +138,8 @@ def accept(draft_id: Annotated[int, Path(ge=1)], account: Account, who: ActorDep
     except VaultError as exc:
         raise error("not_found" if exc.status == 404 else exc.code, "Not found." if exc.status == 404 else exc.text,
                     exc.status) from exc
+    finally:
+        index.VIA_KEY.reset(named)
     with SessionLocal() as db:
         found = db.get(Draft, draft_id)
         if found is not None:
