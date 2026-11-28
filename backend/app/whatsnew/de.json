@@ -739,5 +739,17 @@
       "In einem gehärteten Container (cap_drop: ALL) beendete die Schreibprobe des Datenordners jeden Start; das ist behoben.",
       "Beim Update ist nichts zu tun: nexlore sichert die Datenbank vorher, und jeder API-Schlüssel, MCP-Schlüssel, verbundene Konnektor, jedes gekoppelte iPhone und jede Anmeldung gelten weiter."
     ]
+  },
+  "1.17.1": {
+    "lead": "Übernimmst du den Vorschlag eines KI-Programms, nennt der Verlauf wieder den Schlüssel, mit dem es gearbeitet hat.",
+    "sections": [
+      {
+        "title": "Der Schlüssel im Verlauf",
+        "where": "Notiz › Versionen",
+        "body": "Ein Entwurf eines KI-Programms, den du übernimmst, steht im Verlauf mit „MCP · “ und dem Namen seines Schlüssels, wie eine Änderung, die das Programm selbst gemacht hat. Bisher stand dort nur „KI (MCP)“."
+      }
+    ],
+    "smallTitle": "",
+    "small": []
   }
 }

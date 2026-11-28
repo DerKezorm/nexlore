@@ -739,5 +739,17 @@
       "In a hardened container (cap_drop: ALL) the write test of the data folder ended every start; that is fixed.",
       "Nothing to do for the update: nexlore backs the database up first, and every API key, MCP key, connected connector, paired iPhone and sign-in keeps working."
     ]
+  },
+  "1.17.1": {
+    "lead": "When you take over what an AI program proposed, the history names the key it worked with again.",
+    "sections": [
+      {
+        "title": "The key in the history",
+        "where": "Note › Versions",
+        "body": "A draft of an AI program that you take over stands in the history as “MCP · ” and the name of its key, as a change the program made itself does. Before, it said only “AI (MCP)”."
+      }
+    ],
+    "smallTitle": "",
+    "small": []
   }
 }

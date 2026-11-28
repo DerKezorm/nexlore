@@ -122,5 +122,9 @@
   "1.16.0": {
     "de": "sha256-XwhIfgDKpQAgfszLD3rItUOSijOA8jTH7pkZ6XS/v5s=",
     "en": "sha256-Po5bRfxzflHM+keaWFyHGwm8ksSG7na8TC3RfORzdao="
+  },
+  "1.17.0": {
+    "de": "sha256-/V/kgd/LAyCB4mPRjiXQS11+zTp20qPmLbU3xldi6N4=",
+    "en": "sha256-JrG2UvQHEqofSzlWi6O9RaQfXlw21zVa6WZGaUYwDns="
   }
 }
